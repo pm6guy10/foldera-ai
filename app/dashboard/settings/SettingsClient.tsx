@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
 import { useSession, signOut } from 'next-auth/react';
 
 import Link from 'next/link';
-import { ChevronLeft, LogOut } from 'lucide-react';
-import { FolderaMark } from '@/components/nav/FolderaMark';
+import { LogOut } from 'lucide-react';
+import { ProductShell } from '@/components/dashboard/ProductShell';
 import { OWNER_USER_ID, SIGN_OUT_CALLBACK_URL } from '@/lib/auth/constants';
 
 interface Integration {
@@ -232,29 +232,23 @@ export default function SettingsClient() {
 
   if (status === 'loading' || loading) {
     return (
-      <div className="min-h-screen bg-[#07070c]">
-        <Header />
-        <main id="main" className="pt-20 pb-10 px-4 max-w-3xl mx-auto">
-          <div className="animate-pulse space-y-4 mt-8">
-            <div className="h-3 w-32 bg-zinc-800/60 rounded" />
-            <div className="h-24 bg-zinc-900/40 rounded-2xl" />
-            <div className="h-24 bg-zinc-900/40 rounded-2xl" />
-            <div className="h-3 w-24 bg-zinc-800/60 rounded mt-6" />
-            <div className="h-28 bg-zinc-900/40 rounded-2xl" />
-          </div>
-        </main>
-      </div>
+      <ProductShell title="Settings" subtitle="Manage integrations, billing, and account controls from one place.">
+        <div className="animate-pulse space-y-4">
+          <div className="h-3 w-32 rounded bg-panel-raised" />
+          <div className="h-24 rounded-card bg-panel" />
+          <div className="h-24 rounded-card bg-panel" />
+          <div className="h-3 w-24 rounded bg-panel-raised" />
+          <div className="h-28 rounded-card bg-panel" />
+        </div>
+      </ProductShell>
     );
   }
 
   if (status !== 'authenticated') {
     return (
-      <div className="min-h-screen bg-[#07070c]">
-        <Header />
-        <main id="main" className="pt-20 pb-10 px-4 max-w-3xl mx-auto">
-          <p className="text-zinc-500 text-sm mt-8">Please sign in to view settings.</p>
-        </main>
-      </div>
+      <ProductShell title="Settings" subtitle="Manage integrations, billing, and account controls from one place.">
+        <p className="text-sm text-text-secondary">Please sign in to view settings.</p>
+      </ProductShell>
     );
   }
 
@@ -266,46 +260,50 @@ export default function SettingsClient() {
     : '';
 
   return (
-    <div className="min-h-[100dvh] bg-[#07070c] text-white selection:bg-cyan-500/30 selection:text-white pb-[env(safe-area-inset-bottom,0px)]">
-      {/* Ambient grid */}
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
-      </div>
-      <Header />
-      <main
-        id="main"
-        className="relative z-10 pt-[calc(5rem+env(safe-area-inset-top,0px))] pb-16 sm:pb-14 px-4 max-w-3xl mx-auto space-y-9 sm:space-y-10 w-full min-w-0"
-      >
+    <ProductShell
+      title="Settings"
+      subtitle="Manage integrations, billing, and account controls from one place."
+      headerActions={(
+        <button
+          type="button"
+          onClick={handleSignOut}
+          className="inline-flex min-h-[40px] items-center gap-2 rounded-button border border-border px-3 text-xs font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
+        >
+          <LogOut className="h-4 w-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Sign out</span>
+        </button>
+      )}
+    >
 
         {/* Sync status banner */}
         {syncStatus && (
-          <div className="px-4 py-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 backdrop-blur-sm">
-            <p className="text-sm text-cyan-300">{syncStatus}</p>
+          <div className="rounded-card border border-border bg-panel px-4 py-3">
+            <p className="text-sm text-text-primary">{syncStatus}</p>
           </div>
         )}
 
         {integrations.length > 0 && (
-          <section className="rounded-2xl border border-cyan-500/20 bg-cyan-500/8 backdrop-blur-xl overflow-hidden">
-            <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-cyan-500/10">
-              <SectionHeading className="mb-2 text-cyan-300/80">What happens next</SectionHeading>
-              <p className="text-sm text-zinc-100 leading-relaxed">
+          <section className="rounded-card border border-border bg-panel overflow-hidden">
+            <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
+              <SectionHeading className="mb-2 text-accent">What happens next</SectionHeading>
+              <p className="text-sm text-text-primary leading-relaxed">
                 {firstRunStatus.headline}
               </p>
             </div>
-            <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 space-y-3">
-              <p className="text-xs text-zinc-300 leading-relaxed">
+            <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 space-y-3">
+              <p className="text-xs text-text-primary leading-relaxed">
                 {firstRunStatus.detail}
               </p>
               <div className="grid gap-3 sm:grid-cols-3">
                 {firstRunStatus.steps.map((step) => (
-                  <div key={step.label} className="rounded-xl border border-white/10 bg-zinc-950/50 p-3">
-                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-cyan-400">{step.label}</p>
-                    <p className="text-xs text-zinc-300 mt-1 leading-relaxed">{step.copy}</p>
+                  <div key={step.label} className="rounded-card border border-border bg-panel-raised p-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.15em] text-accent">{step.label}</p>
+                    <p className="text-xs text-text-primary mt-1 leading-relaxed">{step.copy}</p>
                   </div>
                 ))}
               </div>
               {firstRunStatus.missingScopes.length > 0 && (
-                <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                <p className="text-[11px] text-text-secondary leading-relaxed">
                   {firstRunStatus.missingScopesLabel}
                 </p>
               )}
@@ -314,12 +312,12 @@ export default function SettingsClient() {
         )}
 
         {actionError && (
-          <p ref={errorRef} className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-sm text-red-400">{actionError}</p>
+          <p ref={errorRef} className="px-4 py-3 rounded-card bg-panel-raised border border-border-strong text-sm text-text-primary">{actionError}</p>
         )}
 
         {mailIngestLooksStale && (
-          <div className="px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30 backdrop-blur-sm">
-            <p className="text-sm text-amber-200/90 leading-relaxed">
+          <div className="px-4 py-3 rounded-card bg-panel-raised border border-border-strong">
+            <p className="text-sm text-text-secondary leading-relaxed">
               Newest mail synced from your inboxes is dated{' '}
               {newestMailSignalAt
                 ? new Date(newestMailSignalAt).toLocaleDateString(undefined, { dateStyle: 'medium' })
@@ -330,55 +328,55 @@ export default function SettingsClient() {
         )}
 
         {/* ── Data sources ── */}
-        <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
+        <section className="rounded-card border border-border bg-panel overflow-hidden">
+          <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
             <SectionHeading className="mb-2">Data sources</SectionHeading>
-            <p className="text-xs text-zinc-600 leading-relaxed">
+            <p className="text-xs text-text-muted leading-relaxed">
               Connect Google and Microsoft mail so Foldera can read context for your morning brief.
             </p>
           </div>
-          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 space-y-4">
+          <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 space-y-4">
             {/* Google card */}
-            <div className={`rounded-2xl border border-white/10 overflow-hidden min-h-[5.75rem] ${google?.is_active ? 'border-l-2 border-l-emerald-500' : ''}`}>
-              <div className="bg-zinc-950/60 p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4 min-h-[5.75rem]">
+            <div className={`rounded-2xl rounded-card border border-border overflow-hidden min-h-[5.75rem] ${google?.is_active ? 'border-l-2 border-l-success' : ''}`}>
+              <div className="bg-panel-raised p-4 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 min-h-[5.75rem]">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <GoogleIcon />
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-white">Google</p>
+                    <p className="text-sm font-bold text-text-primary">Google</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${google?.is_active ? 'bg-emerald-400' : 'bg-amber-400'}`} aria-hidden="true" />
-                      <p className={`text-xs truncate ${google?.is_active ? 'text-zinc-300' : 'text-amber-200/80'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${google?.is_active ? 'bg-success' : 'bg-border-strong'}`} aria-hidden="true" />
+                      <p className={`text-xs truncate ${google?.is_active ? 'text-text-primary' : 'text-text-secondary'}`}>
                         {google?.is_active ? 'Connected' : 'Not connected'}
                         {google?.is_active && google.sync_email ? ` · ${google.sync_email}` : ''}
                       </p>
                     </div>
                     {!google?.is_active && google?.needs_reauth && (
-                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                      <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
                         Google needs a quick reconnect to resume background sync. Tap Connect and Foldera will pick back up.
                       </p>
                     )}
                     {google?.is_active && google.missing_scopes?.length ? (
-                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                      <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
                         Reconnect required — missing {formatMissingScopes(google.missing_scopes)}.
                       </p>
                     ) : null}
                     {google?.is_active && !google.missing_scopes?.length && !google.last_synced_at && (
-                      <p className="text-[11px] text-cyan-200/90 mt-1.5 leading-snug">
+                      <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
                         Connected. Foldera is reading your connected sources and looking for the one thing silently blocking your real goal.
                       </p>
                     )}
                     {google?.is_active && google.needs_reconnect && (
-                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                      <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
                         Reconnect required — Foldera can&apos;t keep reading this source in the background without a new sign-in.
                       </p>
                     )}
                     {google?.is_active && google.sync_stale && !google.needs_reconnect && (
-                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                      <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
                         Sync looks stalled — Foldera hasn&apos;t seen new history in a while. Disconnect and reconnect if new mail isn&apos;t showing up.
                       </p>
                     )}
                     {google?.is_active && formatLastSynced(google.last_synced_at) && (
-                      <p className="text-[10px] text-zinc-600 mt-1 font-medium">
+                      <p className="text-[10px] text-text-muted mt-1 font-medium">
                         Last synced {formatLastSynced(google.last_synced_at)} Pacific
                       </p>
                     )}
@@ -390,7 +388,7 @@ export default function SettingsClient() {
                       type="button"
                       onClick={startGoogleOAuth}
                       disabled={connectingProvider === 'google'}
-                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-cyan-500 text-black hover:bg-cyan-400 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-3 py-2 rounded-button transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                     >
                       {connectingProvider === 'google' ? 'Opening…' : 'Reconnect'}
                     </button>
@@ -415,7 +413,7 @@ export default function SettingsClient() {
                         }
                       }}
                       disabled={disconnecting === 'google'}
-                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] border border-border hover:border-border-strong text-text-secondary hover:text-text-primary px-3 py-2 rounded-button transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                     >
                       {disconnecting === 'google' ? 'Disconnecting…' : 'Disconnect'}
                     </button>
@@ -424,7 +422,7 @@ export default function SettingsClient() {
                       type="button"
                       onClick={startGoogleOAuth}
                       disabled={connectingProvider === 'google'}
-                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-all duration-150 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-wait disabled:hover:scale-100 shadow-[0_0_20px_rgba(255,255,255,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-4 py-2 rounded-button transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                     >
                       {connectingProvider === 'google' ? 'Connecting…' : 'Connect'}
                     </button>
@@ -432,13 +430,13 @@ export default function SettingsClient() {
                 </div>
               </div>
               {providerOAuthError.google && (
-                <div className="px-4 py-3 border-t border-white/5 bg-red-500/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <p className="text-xs text-red-200/90">{providerOAuthError.google}</p>
+                <div className="px-4 py-3 border-t border-border-subtle bg-panel-raised flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <p className="text-xs text-text-secondary">{providerOAuthError.google}</p>
                   <button
                     type="button"
                     onClick={startGoogleOAuth}
                     disabled={connectingProvider === 'google'}
-                    className="shrink-0 min-h-[40px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg disabled:opacity-40"
+                    className="shrink-0 min-h-[40px] text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-4 py-2 rounded-button disabled:opacity-40"
                   >
                     Try again
                   </button>
@@ -447,46 +445,46 @@ export default function SettingsClient() {
             </div>
 
             {/* Microsoft card */}
-            <div className={`rounded-2xl border border-white/10 overflow-hidden ${microsoft?.is_active ? 'border-l-2 border-l-cyan-400' : ''}`}>
-              <div className="bg-zinc-950/60 p-4 md:p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className={`rounded-2xl rounded-card border border-border overflow-hidden ${microsoft?.is_active ? 'border-l-2 border-l-accent' : ''}`}>
+              <div className="bg-panel-raised p-4 md:p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <MicrosoftIcon />
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-white">Microsoft</p>
+                    <p className="text-sm font-bold text-text-primary">Microsoft</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${microsoft?.is_active ? 'bg-emerald-400' : 'bg-amber-400'}`} aria-hidden="true" />
-                      <p className={`text-xs truncate ${microsoft?.is_active ? 'text-zinc-300' : 'text-amber-200/80'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${microsoft?.is_active ? 'bg-success' : 'bg-border-strong'}`} aria-hidden="true" />
+                      <p className={`text-xs truncate ${microsoft?.is_active ? 'text-text-primary' : 'text-text-secondary'}`}>
                         {microsoft?.is_active ? 'Connected' : 'Not connected'}
                         {microsoft?.is_active && microsoft.sync_email ? ` · ${microsoft.sync_email}` : ''}
                       </p>
                     </div>
                     {!microsoft?.is_active && microsoft?.needs_reauth && (
-                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                      <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
                         Microsoft needs a quick reconnect to resume background sync. Tap Connect and Foldera will pick back up.
                       </p>
                     )}
                     {microsoft?.is_active && microsoft.missing_scopes?.length ? (
-                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                      <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
                         Reconnect required — missing {formatMissingScopes(microsoft.missing_scopes)}.
                       </p>
                     ) : null}
                     {microsoft?.is_active && !microsoft.missing_scopes?.length && !microsoft.last_synced_at && (
-                      <p className="text-[11px] text-cyan-200/90 mt-1.5 leading-snug">
+                      <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
                         Connected. Foldera is reading your connected sources and looking for the one thing silently blocking your real goal.
                       </p>
                     )}
                     {microsoft?.is_active && microsoft.needs_reconnect && (
-                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                      <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
                         Reconnect required — Foldera can&apos;t keep reading this source in the background without a new sign-in.
                       </p>
                     )}
                     {microsoft?.is_active && microsoft.sync_stale && !microsoft.needs_reconnect && (
-                      <p className="text-[11px] text-amber-200/90 mt-1.5 leading-snug">
+                      <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
                         Sync looks stalled — Foldera hasn&apos;t seen new history in a while. Disconnect and reconnect Microsoft to pull recent history.
                       </p>
                     )}
                     {microsoft?.is_active && formatLastSynced(microsoft.last_synced_at) && (
-                      <p className="text-[10px] text-zinc-600 mt-1 font-medium">
+                      <p className="text-[10px] text-text-muted mt-1 font-medium">
                         Last synced {formatLastSynced(microsoft.last_synced_at)} Pacific
                       </p>
                     )}
@@ -498,7 +496,7 @@ export default function SettingsClient() {
                       type="button"
                       onClick={startMicrosoftOAuth}
                       disabled={connectingProvider === 'microsoft'}
-                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-cyan-500 text-black hover:bg-cyan-400 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-3 py-2 rounded-button transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                     >
                       {connectingProvider === 'microsoft' ? 'Opening…' : 'Reconnect'}
                     </button>
@@ -525,7 +523,7 @@ export default function SettingsClient() {
                         }
                       }}
                       disabled={disconnecting === 'microsoft'}
-                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] border border-white/10 hover:border-white/20 text-zinc-500 hover:text-zinc-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] border border-border hover:border-border-strong text-text-secondary hover:text-text-primary px-3 py-2 rounded-button transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                     >
                       {disconnecting === 'microsoft' ? 'Disconnecting…' : 'Disconnect'}
                     </button>
@@ -534,7 +532,7 @@ export default function SettingsClient() {
                       type="button"
                       onClick={startMicrosoftOAuth}
                       disabled={connectingProvider === 'microsoft'}
-                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg transition-all duration-150 hover:scale-[1.02] disabled:opacity-40 disabled:cursor-wait disabled:hover:scale-100 shadow-[0_0_20px_rgba(255,255,255,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-4 py-2 rounded-button transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                     >
                       {connectingProvider === 'microsoft' ? 'Connecting…' : 'Connect'}
                     </button>
@@ -542,13 +540,13 @@ export default function SettingsClient() {
                 </div>
               </div>
               {providerOAuthError.microsoft && (
-                <div className="px-4 py-3 border-t border-white/5 bg-red-500/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <p className="text-xs text-red-200/90">{providerOAuthError.microsoft}</p>
+                <div className="px-4 py-3 border-t border-border-subtle bg-panel-raised flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <p className="text-xs text-text-secondary">{providerOAuthError.microsoft}</p>
                   <button
                     type="button"
                     onClick={startMicrosoftOAuth}
                     disabled={connectingProvider === 'microsoft'}
-                    className="shrink-0 min-h-[40px] text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 px-4 py-2 rounded-lg disabled:opacity-40"
+                    className="shrink-0 min-h-[40px] text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-4 py-2 rounded-button disabled:opacity-40"
                   >
                     Try again
                   </button>
@@ -559,35 +557,35 @@ export default function SettingsClient() {
         </section>
 
         {/* ── Preferences ── */}
-        <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
+        <section className="rounded-card border border-border bg-panel overflow-hidden">
+          <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
             <SectionHeading className="mb-2">Preferences</SectionHeading>
-            <p className="text-xs text-zinc-600 leading-relaxed">How Foldera adapts to you over time.</p>
+            <p className="text-xs text-text-muted leading-relaxed">How Foldera adapts to you over time.</p>
           </div>
-          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6">
-            <p className="text-sm text-zinc-400 leading-relaxed">
+          <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6">
+            <p className="text-sm text-text-secondary leading-relaxed">
               Approve and skip on your daily directive train Foldera. No extra sliders here yet.
             </p>
           </div>
         </section>
 
         {/* ── Subscription ── */}
-        <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
+        <section className="rounded-card border border-border bg-panel overflow-hidden">
+          <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
             <SectionHeading className="!mb-0">Subscription</SectionHeading>
           </div>
-          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+          <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-[0.15em] ${isPro ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/30' : 'bg-white/5 text-zinc-500 border border-white/10'}`}>
+              <div className={`px-3 py-1 rounded-button text-[10px] font-black uppercase tracking-[0.15em] ${isPro ? 'bg-accent-dim/20 text-accent border border-accent-dim' : 'bg-panel-raised text-text-secondary border border-border'}`}>
                 {planLabel}
               </div>
               <div>
                 {planDetail && (
-                  <p className={`text-xs font-medium ${subscription?.status === 'past_due' ? 'text-amber-400' : 'text-zinc-500'}`}>
+                  <p className={`text-xs font-medium ${subscription?.status === 'past_due' ? 'text-text-secondary' : 'text-text-secondary'}`}>
                     {planDetail}
                   </p>
                 )}
-                <p className="text-xs text-zinc-600">
+                <p className="text-xs text-text-muted">
                   {isPro ? 'Finished artifacts, every morning.' : 'Upgrade to unlock finished artifacts.'}
                 </p>
               </div>
@@ -614,7 +612,7 @@ export default function SettingsClient() {
                     }
                   }}
                   disabled={portalLoading}
-                  className="text-[10px] font-black uppercase tracking-[0.12em] bg-zinc-800 text-zinc-200 hover:bg-zinc-700 border border-white/10 rounded-lg px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                  className="text-[10px] font-black uppercase tracking-[0.12em] bg-panel-raised text-text-primary hover:bg-panel border border-border rounded-button px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-wait"
                 >
                   {portalLoading ? 'Loading…' : 'Manage subscription'}
                 </button>
@@ -646,7 +644,7 @@ export default function SettingsClient() {
                     }
                   }}
                   disabled={upgrading}
-                  className="text-[10px] font-black uppercase tracking-[0.12em] bg-white text-black hover:bg-zinc-200 rounded-lg px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-wait shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                  className="text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover rounded-button px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-wait"
                 >
                   {upgrading ? 'Loading…' : 'Upgrade'}
                 </button>
@@ -656,17 +654,17 @@ export default function SettingsClient() {
         </section>
 
         {isOwnerAccount && (
-          <section className="rounded-2xl border border-emerald-500/25 bg-emerald-950/15 backdrop-blur-xl overflow-hidden">
-            <div className="px-4 py-4 sm:px-5 sm:py-5 md:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <section className="rounded-card border border-border bg-panel-raised overflow-hidden">
+            <div className="px-4 py-4 sm:px-6 sm:py-6 md:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400/90">Owner</p>
-                <p className="text-sm text-zinc-400 mt-1 leading-snug">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-accent">Owner</p>
+                <p className="text-sm text-text-secondary mt-1 leading-snug">
                   Pipeline runs, agent toggle, and system draft queue — not part of the normal product path.
                 </p>
               </div>
               <Link
                 href="/dashboard/system"
-                className="inline-flex justify-center min-h-[44px] items-center rounded-xl bg-emerald-500/15 border border-emerald-500/35 px-5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-200 hover:bg-emerald-500/25 transition-colors shrink-0"
+                className="inline-flex justify-center min-h-[44px] items-center rounded-card bg-accent-dim/20 border border-accent-dim px-6 text-[10px] font-black uppercase tracking-[0.12em] text-accent hover:bg-accent-dim/30 transition-colors shrink-0"
               >
                 System tools
               </Link>
@@ -675,21 +673,21 @@ export default function SettingsClient() {
         )}
 
         {/* ── Account ── */}
-        <section className="rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl overflow-hidden">
-          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-white/5">
+        <section className="rounded-card border border-border bg-panel overflow-hidden">
+          <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
             <SectionHeading className="!mb-0">Account</SectionHeading>
           </div>
-          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 space-y-4">
+          <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 space-y-4">
             {session?.user?.email && (
-              <div className="rounded-xl bg-zinc-900/40 border border-white/5 px-4 py-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 mb-1">Signed in as</p>
-                <p className="text-sm text-zinc-300 font-medium break-all">{session.user.email}</p>
+              <div className="rounded-card bg-panel-raised border border-border-subtle px-4 py-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.15em] text-text-muted mb-1">Signed in as</p>
+                <p className="text-sm text-text-primary font-medium break-all">{session.user.email}</p>
               </div>
             )}
             <button
               type="button"
               onClick={handleSignOut}
-              className="w-full min-h-[48px] flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-zinc-900/40 hover:bg-zinc-800/60 text-zinc-300 py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+              className="w-full min-h-[48px] flex items-center justify-center gap-2 rounded-card border border-border bg-panel-raised hover:bg-panel text-text-primary py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
             >
               <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
               Sign out
@@ -698,32 +696,31 @@ export default function SettingsClient() {
         </section>
 
         {/* ── Danger zone ── */}
-        <section className="rounded-2xl border border-red-900/30 bg-red-950/10 backdrop-blur-xl overflow-hidden">
-          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 border-b border-red-900/20">
-            <SectionHeading className="!mb-0 text-red-400/80">Danger zone</SectionHeading>
+        <section className="rounded-card border border-border bg-panel-raised overflow-hidden">
+          <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
+            <SectionHeading className="!mb-0 text-text-primary">Danger zone</SectionHeading>
           </div>
-          <div className="px-4 py-5 sm:px-5 sm:py-6 md:px-6 space-y-3">
+          <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 space-y-3">
             <button
               type="button"
               onClick={handleDeleteAccount}
-              className="w-full min-h-[48px] border border-red-900/50 hover:border-red-600/70 bg-transparent hover:bg-red-950/20 text-red-400/90 hover:text-red-300 rounded-xl py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors"
+              className="w-full min-h-[48px] border border-border-strong hover:border-border-strong bg-transparent hover:bg-panel text-text-primary hover:text-text-primary rounded-card py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors"
             >
               {deleteConfirm ? 'Tap again to confirm deletion' : 'Delete account'}
             </button>
             {deleteError && (
-              <p className="text-xs text-red-400">{deleteError}</p>
+              <p className="text-xs text-text-primary">{deleteError}</p>
             )}
           </div>
         </section>
 
-      </main>
-    </div>
+    </ProductShell>
   );
 }
 
 function SectionHeading({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <h2 className={`text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-6 ${className}`}>
+    <h2 className={`text-[11px] font-black uppercase tracking-[0.2em] text-text-secondary mb-6 ${className}`}>
       {children}
     </h2>
   );
@@ -817,45 +814,9 @@ function buildFirstRunStatus(integration: Integration | undefined): {
   };
 }
 
-function Header() {
-  return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 pt-[env(safe-area-inset-top,0px)]">
-      <div className="max-w-3xl mx-auto h-14 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-2.5 sm:px-4 gap-1 sm:gap-2 min-w-0">
-        <div className="flex justify-start min-w-0 overflow-hidden">
-          <Link
-            href="/dashboard"
-            className="text-zinc-500 hover:text-white transition-colors flex items-center gap-0.5 sm:gap-1 min-h-[44px] min-w-[44px] -ml-1 pl-1 pr-1 sm:pr-2 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c] max-w-full"
-            aria-label="Back to dashboard"
-          >
-            <ChevronLeft className="w-5 h-5 shrink-0" aria-hidden="true" />
-            <span className="text-[11px] sm:text-xs font-black uppercase tracking-[0.12em] truncate min-w-0 max-[420px]:hidden">
-              Dashboard
-            </span>
-          </Link>
-        </div>
-        <div className="flex justify-center">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2 group min-h-[44px] min-w-[44px] justify-center rounded-lg px-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
-          >
-            <FolderaMark
-              size="sm"
-              decorative
-              className="shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-transform group-hover:scale-105 shrink-0"
-            />
-            <span className="sr-only sm:hidden">Foldera</span>
-            <span className="text-sm font-black tracking-tighter text-white uppercase hidden sm:inline">Foldera</span>
-          </Link>
-        </div>
-        <div className="min-w-0" aria-hidden="true" />
-      </div>
-    </header>
-  );
-}
-
 function GoogleIcon() {
   return (
-    <div className="w-9 h-9 bg-zinc-900 border border-white/10 rounded-xl flex items-center justify-center shrink-0">
+    <div className="w-9 h-9 bg-panel border border-border rounded-card flex items-center justify-center shrink-0">
       <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
         <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
         <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
@@ -868,7 +829,7 @@ function GoogleIcon() {
 
 function MicrosoftIcon() {
   return (
-    <div className="w-9 h-9 bg-zinc-900 border border-white/10 rounded-xl flex items-center justify-center shrink-0">
+    <div className="w-9 h-9 bg-panel border border-border rounded-card flex items-center justify-center shrink-0">
       <svg width="18" height="18" viewBox="0 0 21 21" aria-hidden="true">
         <rect x="1" y="1" width="9" height="9" fill="#f25022" />
         <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
@@ -878,3 +839,7 @@ function MicrosoftIcon() {
     </div>
   );
 }
+
+
+
+

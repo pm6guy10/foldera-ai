@@ -44,9 +44,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
   return {
     title: post.title,
     description: post.description,
-    alternates: {
-      canonical: postPath,
-    },
+    alternates: { canonical: postPath },
     openGraph: {
       title: post.title,
       description: post.description,
@@ -54,14 +52,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
       siteName: 'Foldera',
       locale: 'en_US',
       type: 'article',
-      images: [
-        {
-          url: ogImageUrl,
-          width: 1200,
-          height: 630,
-          alt: 'Foldera',
-        },
-      ],
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: 'Foldera' }],
     },
     twitter: {
       card: 'summary_large_image',
@@ -81,58 +72,55 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#07070c] text-white antialiased overflow-x-hidden selection:bg-cyan-500/30 selection:text-white">
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
-      </div>
-
+    <div className="bg-bg text-text-primary">
       <NavPublic scrolled platformHref="/#product" />
-
-      <main id="main" className="relative z-10 px-4 pt-24 pb-12 sm:px-8 lg:px-12 w-full min-w-0">
-        <article className="mx-auto max-w-full sm:max-w-2xl w-full min-w-0">
+      <main id="main" className="pt-24 sm:pt-32">
+        <article className="mx-auto max-w-4xl px-4 sm:px-6">
           <Link
             href="/blog"
-            className="inline-flex items-center gap-1.5 text-zinc-500 text-xs font-black uppercase tracking-[0.2em] hover:text-white transition-colors mb-10 min-h-[44px] min-w-[44px] -ml-2 pl-2 py-2 rounded-lg"
+            className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-button px-2 text-xs font-black uppercase tracking-[0.14em] text-text-secondary transition-colors hover:text-text-primary"
           >
-            <ChevronLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             Back to blog
           </Link>
 
-          <header className="mb-10">
-            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">{dateFormatter.format(new Date(post.date))}</p>
-            <h1 className="mt-3 text-4xl font-black tracking-tighter text-white leading-tight">{post.title}</h1>
-            <p className="mt-4 text-base leading-relaxed text-zinc-400">{post.description}</p>
-            <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400">Written by</p>
+          <header className="mt-6 border-b border-border-subtle pb-12">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-text-muted">
+              {dateFormatter.format(new Date(post.date))}
+            </p>
+            <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">{post.title}</h1>
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-text-secondary">{post.description}</p>
+            <div className="mt-8 rounded-card border border-border bg-panel p-6">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Written by</p>
               <Link
                 href={BRANDON_KAPP_PROFILE_PATH}
-                className="mt-2 inline-flex text-lg font-bold text-white transition-colors hover:text-cyan-300"
+                className="mt-3 inline-flex text-xl font-bold text-text-primary transition-colors hover:text-accent-hover"
               >
                 {BRANDON_KAPP_NAME}
               </Link>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">{BRANDON_KAPP_AUTHOR_BLURB}</p>
+              <p className="mt-3 text-sm leading-relaxed text-text-secondary">{BRANDON_KAPP_AUTHOR_BLURB}</p>
             </div>
           </header>
 
-          <div className="max-w-full overflow-x-auto">
+          <div className="py-12">
             <div
-              className="prose prose-invert prose-zinc max-w-full sm:max-w-2xl mx-auto prose-headings:font-black prose-headings:tracking-tight prose-headings:text-white prose-p:text-zinc-300 prose-p:leading-relaxed prose-strong:text-white prose-a:text-cyan-400 prose-a:no-underline prose-a:hover:text-cyan-300 prose-th:text-white prose-td:text-zinc-300 prose-li:text-zinc-300 prose-ol:text-zinc-300 prose-ul:text-zinc-300 prose-blockquote:text-zinc-400 prose-blockquote:border-l-cyan-500/50 prose-hr:border-white/10 prose-code:text-cyan-300 prose-code:bg-zinc-900 prose-code:px-1 prose-code:rounded prose-img:max-w-full prose-img:h-auto"
+              className="prose prose-invert prose-zinc mx-auto max-w-2xl prose-headings:text-text-primary prose-p:text-text-secondary prose-li:text-text-secondary prose-strong:text-text-primary prose-a:text-accent prose-a:no-underline hover:prose-a:text-accent-hover prose-th:text-text-primary prose-td:text-text-secondary"
               dangerouslySetInnerHTML={{ __html: post.contentHtml }}
             />
           </div>
 
-          <div className="mt-16 rounded-2xl bg-zinc-950/80 border border-white/10 backdrop-blur-xl p-8 text-center">
-            <p className="text-white font-bold text-lg mb-6">Finished work, every morning.</p>
+          <section className="rounded-card border border-border bg-panel p-8 text-center">
+            <p className="text-lg font-semibold text-text-primary">Finished work, every morning.</p>
             <Link
               href="/start"
-              className="inline-flex items-center justify-center bg-white text-black font-black uppercase tracking-[0.15em] text-xs rounded-xl py-4 px-8 hover:bg-zinc-200 active:scale-95 shadow-[0_0_40px_rgba(255,255,255,0.2)] transition-all"
+              className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-button bg-accent px-6 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover"
             >
               Get started free
             </Link>
-          </div>
-
-          <BlogFooter />
+          </section>
         </article>
+
+        <BlogFooter />
       </main>
     </div>
   );

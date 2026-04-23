@@ -70,42 +70,42 @@ type ActionWithDomain = ConvictionAction & { domain?: string; generatedAt?: stri
 /** Custom component map to render write_document markdown on the dashboard's dark card. */
 const DOCUMENT_MARKDOWN_COMPONENTS = {
   h1: ({ children }: { children?: ReactNode }) => (
-    <h1 className="text-base font-bold text-white mt-4 mb-2 first:mt-0">{children}</h1>
+    <h1 className="text-base font-bold text-text-primary mt-4 mb-2 first:mt-0">{children}</h1>
   ),
   h2: ({ children }: { children?: ReactNode }) => (
-    <h2 className="text-sm font-bold text-white mt-3 mb-1.5 first:mt-0">{children}</h2>
+    <h2 className="text-sm font-bold text-text-primary mt-3 mb-1.5 first:mt-0">{children}</h2>
   ),
   h3: ({ children }: { children?: ReactNode }) => (
-    <h3 className="text-[11px] font-black uppercase tracking-widest text-zinc-300 mt-3 mb-1 first:mt-0">{children}</h3>
+    <h3 className="text-[11px] font-black uppercase tracking-widest text-text-secondary mt-3 mb-1 first:mt-0">{children}</h3>
   ),
   p: ({ children }: { children?: ReactNode }) => (
-    <p className="text-sm text-zinc-200 leading-relaxed mb-2 last:mb-0">{children}</p>
+    <p className="text-sm text-text-secondary leading-relaxed mb-2 last:mb-0">{children}</p>
   ),
   ul: ({ children }: { children?: ReactNode }) => (
-    <ul className="list-disc pl-5 mb-2 space-y-1 text-sm text-zinc-200 marker:text-cyan-400/70">{children}</ul>
+    <ul className="list-disc pl-6 mb-2 space-y-1 text-sm text-text-secondary marker:text-accent">{children}</ul>
   ),
   ol: ({ children }: { children?: ReactNode }) => (
-    <ol className="list-decimal pl-5 mb-2 space-y-1 text-sm text-zinc-200 marker:text-cyan-400/70">{children}</ol>
+    <ol className="list-decimal pl-6 mb-2 space-y-1 text-sm text-text-secondary marker:text-accent">{children}</ol>
   ),
   li: ({ children }: { children?: ReactNode }) => (
     <li className="leading-relaxed">{children}</li>
   ),
   strong: ({ children }: { children?: ReactNode }) => (
-    <strong className="font-semibold text-white">{children}</strong>
+    <strong className="font-semibold text-text-primary">{children}</strong>
   ),
   em: ({ children }: { children?: ReactNode }) => <em className="italic">{children}</em>,
   a: ({ children, href }: { children?: ReactNode; href?: string }) => (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="text-cyan-400 underline underline-offset-2 hover:text-cyan-300">
+    <a href={href} target="_blank" rel="noopener noreferrer" className="text-accent underline underline-offset-2 hover:text-accent-hover">
       {children}
     </a>
   ),
   code: ({ children }: { children?: ReactNode }) => (
-    <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[0.85em] text-zinc-100">{children}</code>
+    <code className="rounded bg-panel px-1.5 py-0.5 font-mono text-[0.85em] text-text-primary">{children}</code>
   ),
   blockquote: ({ children }: { children?: ReactNode }) => (
-    <blockquote className="border-l-2 border-cyan-500/40 pl-3 text-zinc-400 italic my-2">{children}</blockquote>
+    <blockquote className="border-l-2 border-accent-dim pl-3 text-text-secondary italic my-2">{children}</blockquote>
   ),
-  hr: () => <hr className="my-3 border-white/10" />,
+  hr: () => <hr className="my-3 border-border-subtle" />,
 };
 
 export default function DashboardPage() {
@@ -506,54 +506,67 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-[#07070c] text-white overflow-x-hidden selection:bg-cyan-500/30 selection:text-white">
-      {/* Ambient grid */}
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
-      </div>
-
-      {/* Fixed header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#07070c]/90 backdrop-blur-xl border-b border-white/5 pt-[env(safe-area-inset-top,0px)]">
-        <div className="max-w-2xl mx-auto h-14 flex items-center justify-between px-3 sm:px-5 gap-2 min-w-0 w-full">
-          <Link href="/dashboard" className="flex items-center gap-2 sm:gap-2.5 group min-w-0 max-w-[55%] sm:max-w-none">
-            <FolderaMark
-              size="sm"
-              className="shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-transform group-hover:scale-105 shrink-0"
-            />
-            <span className="text-sm font-black tracking-tighter text-white uppercase truncate">Foldera</span>
+    <div className="min-h-[100dvh] bg-bg text-text-primary">
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-border-subtle bg-bg/95 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <Link href="/dashboard" className="inline-flex min-h-[44px] min-w-[44px] items-center gap-3 rounded-button px-1">
+            <FolderaMark size="sm" decorative />
+            <span className="text-sm font-black uppercase tracking-[0.12em] text-text-primary">Foldera</span>
           </Link>
-          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+          <nav className="hidden items-center gap-2 md:flex">
+            <Link href="/dashboard" className="inline-flex min-h-[40px] items-center rounded-button bg-panel-raised px-3 text-xs font-black uppercase tracking-[0.12em] text-text-primary">
+              Today
+            </Link>
+            <Link href="/dashboard/briefings" className="inline-flex min-h-[40px] items-center rounded-button px-3 text-xs font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary">
+              Briefings
+            </Link>
+            <Link href="/dashboard/signals" className="inline-flex min-h-[40px] items-center rounded-button px-3 text-xs font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary">
+              Signals
+            </Link>
+            <Link href="/dashboard/settings" className="inline-flex min-h-[40px] items-center rounded-button px-3 text-xs font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary">
+              Settings
+            </Link>
+          </nav>
+          <div className="flex items-center gap-1">
             <Link
               href="/dashboard/briefings"
-              className="touch-manipulation min-w-[44px] min-h-[44px] p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-button border border-border text-text-secondary transition-colors hover:text-text-primary md:hidden"
               aria-label="Past directives"
             >
-              <History className="w-5 h-5" />
+              <History className="h-5 w-5" />
             </Link>
-            <Link href="/dashboard/settings" className="touch-manipulation min-w-[44px] min-h-[44px] p-2 rounded-lg text-zinc-500 hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]" aria-label="Settings">
-              <Settings className="w-5 h-5" />
+            <Link
+              href="/dashboard/settings"
+              className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-button border border-border text-text-secondary transition-colors hover:text-text-primary md:hidden"
+              aria-label="Settings"
+            >
+              <Settings className="h-5 w-5" />
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Content */}
-      <main
-        id="main"
-        className="relative z-10 pt-[calc(5rem+env(safe-area-inset-top,0px))] pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] px-4 max-w-2xl mx-auto w-full min-w-0"
-      >
+      <main id="main" className="mx-auto w-full max-w-6xl px-4 pb-16 pt-24 sm:px-6 sm:pt-28">
+        <section className="border-b border-border-subtle pb-8">
+          <h1 className="text-4xl font-black tracking-tight sm:text-5xl">Today</h1>
+          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-text-secondary">
+            One directive, one artifact, one decision.
+          </p>
+        </section>
+
+        <section className="pt-8">
         {oauthReconnect && (
           <div
             role="status"
-            className="mb-5 w-full rounded-xl border border-amber-500/35 bg-amber-950/40 px-4 py-3.5 backdrop-blur-md"
+            className="mb-6 w-full rounded-card border border-border bg-panel px-4 py-4"
           >
-            <p className="text-sm text-amber-100/95 font-medium">
+            <p className="text-sm font-medium text-text-primary">
               Your {oauthReconnect === 'microsoft' ? 'Microsoft' : 'Google'} connection needs a quick refresh so Foldera
               can keep your brief accurate.
             </p>
             <a
               href={oauthReconnect === 'microsoft' ? '/api/microsoft/connect' : '/api/google/connect'}
-              className="mt-3 inline-flex items-center justify-center rounded-lg bg-cyan-500 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-black hover:bg-cyan-400 transition-colors"
+              className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.12em] text-bg transition-colors hover:bg-accent-hover"
             >
               Reconnect {oauthReconnect === 'microsoft' ? 'Microsoft' : 'Google'}
             </a>
@@ -564,81 +577,76 @@ export default function DashboardPage() {
         {flash && !done && (
           <div
             role="status"
-            className="mb-5 w-full max-w-full mx-0 px-4 py-3.5 rounded-xl bg-zinc-950/90 border border-cyan-500/25 backdrop-blur-md shadow-[0_12px_40px_-12px_rgba(0,0,0,0.8)]"
+            className="mb-6 w-full rounded-card border border-border bg-panel px-4 py-4"
           >
-            <p className="text-sm text-zinc-200 font-medium break-words">{flash}</p>
+            <p className="text-sm font-medium text-text-primary">{flash}</p>
           </div>
         )}
 
         {loading ? (
-          <div
-            key="dashboard-directive-skeleton"
-            className="mt-8 max-w-xl animate-pulse"
-            aria-hidden
-          >
+          <div key="dashboard-directive-skeleton" className="mt-8 max-w-xl animate-pulse" aria-hidden>
             <div className="space-y-4">
-              <div className="h-2 w-24 bg-zinc-800 rounded" />
-              <div className="h-7 bg-zinc-800/60 rounded-lg w-full" />
-              <div className="h-7 bg-zinc-800/60 rounded-lg w-4/5" />
-              <div className="h-40 bg-zinc-800/40 rounded-2xl mt-4" />
+              <div className="h-2 w-24 rounded bg-panel-raised" />
+              <div className="h-7 w-full rounded bg-panel-raised" />
+              <div className="h-7 w-4/5 rounded bg-panel-raised" />
+              <div className="mt-4 h-40 rounded-card bg-panel" />
               <div className="flex gap-3 mt-4">
-                <div className="h-14 bg-zinc-800/60 rounded-xl flex-1" />
-                <div className="h-14 bg-zinc-800/40 rounded-xl w-28" />
+                <div className="h-14 flex-1 rounded-button bg-panel-raised" />
+                <div className="h-14 w-28 rounded-button bg-panel-raised" />
               </div>
             </div>
           </div>
         ) : done ? (
-          <div className="mt-20 text-center">
-            <div className="flex items-center justify-center mb-5">
+          <div className="mt-12 rounded-card border border-border bg-panel p-8 text-center">
+            <div className="flex items-center justify-center mb-6">
               {lastDecision === 'skip' ? (
                 <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-40" />
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-400" />
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-pill bg-accent opacity-40" />
+                  <span className="relative inline-flex rounded-pill h-3 w-3 bg-accent" />
                 </span>
               ) : (
-                <div className="w-12 h-12 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
-                  <span className="text-cyan-400 text-xl">✓</span>
+                <div className="flex h-12 w-12 items-center justify-center rounded-pill border border-accent-dim bg-accent-dim/20">
+                  <span className="text-xl text-accent">✓</span>
                 </div>
               )}
             </div>
-            {flash && <p className="text-white text-base font-bold mb-3">{flash}</p>}
+            {flash && <p className="mb-3 text-base font-bold text-text-primary">{flash}</p>}
             {lastDecision === 'approve' && executedActionId && !outcomeRecorded && (
               <div className="mt-4 flex gap-3 justify-center">
                 <button
                   type="button"
                   onClick={() => void recordOutcome('worked')}
-                  className="touch-manipulation min-h-[40px] px-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[10px] font-black uppercase tracking-[0.15em] hover:bg-emerald-500/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                    className="touch-manipulation min-h-[40px] rounded-button border border-success bg-success/20 px-4 text-[10px] font-black uppercase tracking-[0.15em] text-text-primary transition-colors hover:bg-success/30"
                 >
                   It worked
                 </button>
                 <button
                   type="button"
                   onClick={() => void recordOutcome('didnt_work')}
-                  className="touch-manipulation min-h-[40px] px-4 rounded-xl bg-zinc-900 border border-white/10 text-zinc-400 text-[10px] font-black uppercase tracking-[0.15em] hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                    className="touch-manipulation min-h-[40px] rounded-button border border-border bg-panel-raised px-4 text-[10px] font-black uppercase tracking-[0.15em] text-text-secondary transition-colors hover:text-text-primary"
                 >
                   Didn&apos;t work
                 </button>
               </div>
             )}
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 mt-5">Your next read arrives tomorrow morning.</p>
+            <p className="mt-6 text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">Your next read arrives tomorrow morning.</p>
           </div>
         ) : fetchError ? (
-          <div className="mt-20 text-center">
-            <p className="text-zinc-400 text-sm">Something went wrong loading your dashboard.</p>
+          <div className="mt-12 rounded-card border border-border bg-panel p-8 text-center">
+            <p className="text-sm text-text-secondary">Something went wrong loading your dashboard.</p>
             <button
               type="button"
               onClick={() => void load()}
-              className="mt-4 min-h-[44px] text-[10px] font-black uppercase tracking-[0.15em] text-cyan-400 hover:text-cyan-300 transition-colors"
+              className="mt-4 inline-flex min-h-[44px] items-center rounded-button border border-border px-4 text-[10px] font-black uppercase tracking-[0.14em] text-text-primary"
             >
               Try again
             </button>
           </div>
         ) : !action ? (
-          <div className="mt-10 sm:mt-12 px-0">
-            <div className="mx-auto max-w-lg rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-xl p-6 sm:p-10 text-center shadow-[0_40px_80px_-20px_rgba(0,0,0,0.8)]">
-              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse mx-auto mb-5" />
-              <p className="text-zinc-100 text-lg font-semibold leading-snug">You&apos;re set until tomorrow morning.</p>
-              <p className="text-zinc-500 text-sm mt-3 leading-relaxed max-w-sm mx-auto">
+          <div className="mt-12">
+            <div className="mx-auto max-w-2xl rounded-card border border-border bg-panel p-8 text-center">
+              <p className="text-lg font-semibold leading-snug text-text-primary">You&apos;re set until tomorrow morning.</p>
+              <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-text-secondary">
                 No directive is queued in the app right now. Your next read still lands in email — connect accounts in Settings if you want deeper context.
               </p>
               {hasActiveIntegration && (
@@ -646,11 +654,11 @@ export default function DashboardPage() {
                   type="button"
                   onClick={() => void runFirstReadNow()}
                   disabled={firstReadRunning}
-                  className="mt-6 w-full min-h-[52px] touch-manipulation rounded-xl bg-white px-5 py-3.5 text-xs font-black uppercase tracking-[0.15em] text-black shadow-[0_0_30px_rgba(255,255,255,0.14)] transition-all hover:bg-zinc-200 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-wait disabled:opacity-50 disabled:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                  className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-button bg-accent px-6 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60"
                 >
                   {firstReadRunning ? (
                     <span className="inline-flex items-center justify-center gap-2">
-                      <span className="h-4 w-4 rounded-full border-2 border-black/30 border-t-black animate-spin" />
+                      <span className="h-4 w-4 rounded-pill border-2 border-bg/30 border-t-bg animate-spin" />
                       Running first read
                     </span>
                   ) : (
@@ -661,16 +669,14 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl bg-[#0a0a0f] border border-cyan-500/20 shadow-[0_40px_100px_-20px_rgba(0,0,0,1),_0_0_50px_rgba(6,182,212,0.15)] overflow-hidden transition-all duration-300 ease-out max-sm:mx-0 w-full min-w-0">
-            {/* Cyan top accent */}
-            <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
+          <div className="w-full overflow-hidden rounded-card border border-border bg-panel">
 
-            <div className="px-6 py-6 md:px-8 md:py-7 border-b border-white/10">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-2">
+            <div className="border-b border-border-subtle px-6 py-6 md:px-8">
+              <p className="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-accent">
                 Today&apos;s directive
               </p>
               {action.generatedAt && (
-                <p className="text-zinc-600 text-xs mb-3">
+                <p className="mb-3 text-xs text-text-muted">
                   Generated{' '}
                   {new Date(action.generatedAt).toLocaleString('en-US', {
                     month: 'short',
@@ -682,30 +688,30 @@ export default function DashboardPage() {
                   Pacific
                 </p>
               )}
-              <div className="border-l-4 border-cyan-500 pl-4">
-                <p className="text-xl font-bold text-white leading-tight">{action.directive}</p>
+              <div className="border-l-2 border-accent pl-4">
+                <p className="text-xl font-bold leading-tight text-text-primary">{action.directive}</p>
               </div>
             </div>
 
             {/* Artifact — free users see full layout under a blur overlay (conversion) */}
             {artifact && (
-              <div className="px-6 py-5 md:px-8 md:py-6 bg-black/40">
-                <div className="relative isolate min-h-[120px] rounded-2xl overflow-hidden border border-white/10">
+              <div className="border-b border-border-subtle bg-panel px-6 py-6 md:px-8 md:py-6">
+                <div className="relative isolate min-h-[120px] overflow-hidden rounded-card border border-border-subtle bg-panel-raised">
                   <div className={showArtifactBlur ? 'pointer-events-none select-none' : ''}>
                     {isEmail && (
-                      <div className="rounded-2xl bg-cyan-500/10 border border-cyan-500/30 border-l-4 border-l-cyan-500 p-4 md:p-5">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">Drafted Reply</p>
+                      <div className="border-l-2 border-accent p-4 md:p-6">
+                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.14em] text-accent">Drafted Reply</p>
                         {recipient && (
-                          <p className="text-xs text-zinc-500 mb-1 truncate">To: {recipient}</p>
+                          <p className="mb-1 truncate text-xs text-text-muted">To: {recipient}</p>
                         )}
                         {artifact.subject && (
-                          <p className="text-sm text-zinc-300 font-medium mb-2 truncate">
+                          <p className="mb-2 truncate text-sm font-medium text-text-secondary">
                             Re: {artifact.subject}
                           </p>
                         )}
                         {artifact.body && (
                           <p
-                            className={`text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap ${
+                            className={`text-sm leading-relaxed text-text-primary whitespace-pre-wrap ${
                               showArtifactBlur ? '' : 'line-clamp-6'
                             }`}
                           >
@@ -716,13 +722,13 @@ export default function DashboardPage() {
                     )}
 
                     {isDecision && artifact.options && (
-                      <div className="space-y-2 p-4 md:p-5">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">Decision Frame</p>
+                      <div className="space-y-2 p-4 md:p-6">
+                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.14em] text-accent">Decision Frame</p>
                         <div className="grid grid-cols-1 gap-3">
                           {artifact.options.slice(0, 2).map((opt, i) => (
-                            <div key={i} className="rounded-xl bg-zinc-950/60 border border-white/10 p-4">
-                              <p className="text-sm font-bold text-white">{opt.option}</p>
-                              <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{opt.rationale}</p>
+                            <div key={i} className="rounded-card border border-border bg-panel p-4">
+                              <p className="text-sm font-bold text-text-primary">{opt.option}</p>
+                              <p className="mt-1 text-xs leading-relaxed text-text-secondary">{opt.rationale}</p>
                             </div>
                           ))}
                         </div>
@@ -730,13 +736,13 @@ export default function DashboardPage() {
                     )}
 
                     {isWait && (
-                      <div className="rounded-2xl bg-zinc-950/60 border border-white/10 p-4 m-4 md:m-5">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 mb-2">Context</p>
+                      <div className="m-4 rounded-card border border-border bg-panel p-4 md:m-6">
+                        <p className="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">Context</p>
                         {artifact.context && (
-                          <p className="text-sm text-zinc-300 leading-relaxed">{artifact.context}</p>
+                          <p className="text-sm leading-relaxed text-text-primary">{artifact.context}</p>
                         )}
                         {(artifact.tripwires?.[0] || artifact.check_date) && (
-                          <p className="text-xs text-cyan-400 mt-3 font-black uppercase tracking-[0.1em]">
+                          <p className="mt-3 text-xs font-black uppercase tracking-[0.1em] text-accent">
                             Resume when: {artifact.tripwires?.[0] ?? artifact.check_date}
                           </p>
                         )}
@@ -744,9 +750,9 @@ export default function DashboardPage() {
                     )}
 
                     {isDocument && (
-                      <div className="rounded-2xl bg-zinc-950/60 border border-cyan-500/20 border-l-4 border-l-cyan-500 p-4 md:p-5 m-4 md:m-5">
+                      <div className="m-4 rounded-card border border-border bg-panel p-4 md:m-6 md:p-6">
                         <div className="flex items-start justify-between gap-3 mb-1">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400">
+                          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">
                             Finished document
                           </p>
                           {artifactBody && (
@@ -756,22 +762,22 @@ export default function DashboardPage() {
                               title="PDF export is coming soon"
                               aria-label="Download PDF (coming soon)"
                               data-testid="dashboard-document-download-pdf"
-                              className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-zinc-400 opacity-70 cursor-not-allowed"
+                              className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-badge border border-border bg-panel-raised px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary opacity-70"
                             >
                               <Download className="w-3 h-3" aria-hidden="true" />
                               Download PDF
                             </button>
                           )}
                         </div>
-                        <p className="text-[11px] text-zinc-500 leading-snug mb-3">
+                        <p className="mb-3 text-[11px] leading-snug text-text-secondary">
                           Ready to file or share — save it to your Foldera record when you&apos;re happy with it.
                         </p>
                         {artifact.title && (
-                          <p className="text-base font-semibold text-white mb-2">{artifact.title}</p>
+                          <p className="mb-2 text-base font-semibold text-text-primary">{artifact.title}</p>
                         )}
                         {artifactBody ? (
                           <div
-                            className="max-h-[min(50vh,24rem)] overflow-y-auto rounded-lg border border-white/5 bg-black/20 p-4 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
+                            className="max-h-[min(50vh,24rem)] overflow-y-auto rounded-button border border-border bg-panel-raised p-4 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0"
                             data-testid="dashboard-document-body"
                           >
                             <ReactMarkdown components={DOCUMENT_MARKDOWN_COMPONENTS}>
@@ -779,7 +785,7 @@ export default function DashboardPage() {
                             </ReactMarkdown>
                           </div>
                         ) : (
-                          <p className="text-sm text-zinc-400 leading-relaxed">
+                          <p className="text-sm leading-relaxed text-text-secondary">
                             Full text is in your morning email. Save document to file it, or skip to adjust.
                           </p>
                         )}
@@ -791,14 +797,14 @@ export default function DashboardPage() {
                       !isDecision &&
                       !isWait &&
                       !isDocument && (
-                        <div className="p-4 md:p-5">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-cyan-400 mb-3">
+                        <div className="p-4 md:p-6">
+                          <p className="mb-3 text-[10px] font-black uppercase tracking-[0.14em] text-accent">
                             Finished work
                           </p>
                           {artifactBody ? (
-                            <p className="text-sm text-zinc-200 leading-relaxed whitespace-pre-wrap">{artifactBody}</p>
+                            <p className="text-sm leading-relaxed text-text-primary whitespace-pre-wrap">{artifactBody}</p>
                           ) : (
-                            <p className="text-sm text-zinc-400 leading-relaxed">
+                            <p className="text-sm leading-relaxed text-text-secondary">
                               This directive does not have an in-app preview. Check your morning email for the full
                               artifact, or use Approve / Skip to continue.
                             </p>
@@ -808,15 +814,15 @@ export default function DashboardPage() {
                   </div>
 
                   {showArtifactBlur && (
-                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 sm:gap-4 bg-black/50 px-4 py-6 sm:px-5 sm:py-8 text-center backdrop-blur-md">
-                      <Lock className="w-5 h-5 text-cyan-400 shrink-0" aria-hidden="true" />
-                      <p className="text-sm font-semibold text-zinc-100 leading-snug max-w-[18rem] px-1">
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-bg/85 px-4 py-6 text-center backdrop-blur-sm">
+                      <Lock className="h-5 w-5 shrink-0 text-accent" aria-hidden="true" />
+                      <p className="max-w-[18rem] px-1 text-sm font-semibold leading-snug text-text-primary">
                         Upgrade to Pro to keep receiving finished work.
                       </p>
                       <button
                         type="button"
                         onClick={startStripeCheckout}
-                        className="touch-manipulation min-h-[48px] rounded-xl bg-white px-6 py-3.5 text-xs font-black uppercase tracking-[0.15em] text-black shadow-[0_0_30px_rgba(255,255,255,0.15)] transition-transform hover:bg-zinc-200 hover:scale-[1.02] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black/80"
+                        className="touch-manipulation min-h-[48px] rounded-button bg-accent px-6 py-3 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover"
                       >
                         Upgrade to Pro
                       </button>
@@ -827,13 +833,13 @@ export default function DashboardPage() {
             )}
 
             {action.action_type === 'send_message' && isEmail && artifactBody && (
-              <div className="px-4 pt-2 pb-1 border-t border-white/5 text-center">
-                <p className="text-[11px] text-zinc-500 leading-relaxed px-1 mb-1">
+              <div className="border-t border-border-subtle px-4 pb-1 pt-2 text-center">
+                <p className="mb-1 px-1 text-[11px] leading-relaxed text-text-secondary">
                   Approve sends from your connected Gmail or Outlook.{' '}
                   <button
                     type="button"
                     onClick={() => void handleCopyDraft()}
-                    className="underline text-zinc-400 hover:text-zinc-300 transition-colors focus-visible:outline-none"
+                    className="underline transition-colors text-text-secondary hover:text-text-primary focus-visible:outline-none"
                   >
                     Copy as text
                   </button>
@@ -842,15 +848,15 @@ export default function DashboardPage() {
             )}
 
             {action.action_type === 'write_document' && isDocument && artifactBody && (
-              <div className="px-4 pt-2 pb-1 border-t border-white/5 text-center" data-testid="dashboard-document-actions-hint">
-                <p className="text-[12px] text-zinc-400 leading-relaxed px-1 mb-1">
+              <div className="border-t border-border-subtle px-4 pb-1 pt-2 text-center" data-testid="dashboard-document-actions-hint">
+                <p className="mb-1 px-1 text-[12px] leading-relaxed text-text-secondary">
                   Save document files the full text to your Foldera record. Skip keeps it out of your record and tells Foldera to adjust.
                 </p>
-                <p className="text-[11px] text-zinc-500 leading-relaxed px-1">
+                <p className="px-1 text-[11px] leading-relaxed text-text-secondary">
                   <button
                     type="button"
                     onClick={() => void handleCopyDocument()}
-                    className="underline text-zinc-400 hover:text-zinc-300 transition-colors focus-visible:outline-none"
+                    className="underline transition-colors text-text-secondary hover:text-text-primary focus-visible:outline-none"
                   >
                     Copy full text
                   </button>
@@ -859,16 +865,16 @@ export default function DashboardPage() {
             )}
 
             {/* Action buttons */}
-            <div className="p-4 flex flex-row gap-3 max-[400px]:flex-col bg-white/[0.02] border-t border-white/10 max-[400px]:[&>button]:w-full">
+            <div className="flex flex-row gap-3 border-t border-border-subtle bg-panel px-4 py-4 max-[400px]:flex-col max-[400px]:[&>button]:w-full">
               <button
                 type="button"
                 onClick={handleApprove}
                 disabled={executing}
                 data-testid="dashboard-primary-action"
-                className="touch-manipulation flex-1 w-full sm:w-auto min-h-[56px] bg-cyan-500 text-black py-3.5 rounded-xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:bg-cyan-400 transition-all duration-150 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                className="touch-manipulation flex min-h-[56px] w-full flex-1 items-center justify-center gap-2 rounded-button bg-accent py-3 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {executing ? (
-                  <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-bg/30 border-t-bg rounded-pill animate-spin" />
                 ) : action.action_type === 'write_document' ? (
                   'Save document'
                 ) : (
@@ -879,10 +885,10 @@ export default function DashboardPage() {
                 type="button"
                 onClick={handleSkip}
                 disabled={executing}
-                className="touch-manipulation w-full sm:w-auto sm:px-6 min-h-[56px] bg-zinc-900 border border-white/20 text-zinc-400 py-3.5 rounded-xl font-black text-xs uppercase tracking-widest hover:bg-zinc-800 hover:text-zinc-300 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:min-w-[5.5rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
+                className="touch-manipulation flex min-h-[56px] w-full items-center justify-center gap-2 rounded-button border border-border bg-panel-raised py-3 text-xs font-black uppercase tracking-[0.14em] text-text-secondary transition-colors hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60 sm:min-w-[5.5rem] sm:w-auto sm:px-6"
               >
                 {executing ? (
-                  <span className="w-4 h-4 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-border border-t-text-secondary rounded-pill animate-spin" />
                 ) : (
                   action.action_type === 'write_document' ? 'Skip and adjust' : 'Skip'
                 )}
@@ -890,8 +896,10 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
-
+        </section>
       </main>
     </div>
   );
 }
+
+

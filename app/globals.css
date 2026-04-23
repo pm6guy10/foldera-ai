@@ -5,8 +5,23 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: dark;
+  }
+
   :where(a, button, input, textarea, select, summary, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible {
-    @apply outline outline-2 outline-offset-2 outline-cyan-400;
+    @apply outline outline-2 outline-offset-2 outline-accent;
+  }
+
+  html {
+    background-color: #020617;
+  }
+
+  body {
+    @apply bg-bg text-text-primary font-sans antialiased;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overflow-x: hidden;
   }
 }
 
@@ -19,7 +34,6 @@
   }
 }
 
-/* Page shell: fade in without layout shift (respects reduced motion above) */
 @media (prefers-reduced-motion: no-preference) {
   main#main {
     animation: mainFadeIn 0.28s ease-out both;
@@ -35,97 +49,5 @@
   }
 }
 
-/* === BASE BODY === */
-html {
-  background-color: #07070c;
-}
-
-body {
-  color: #e5e7eb;
-  background-color: #07070c;
-  min-height: 100vh;
-  min-height: -webkit-fill-available;
-  overflow-x: hidden;
-}
-
-/* === GRID OVERLAY (subtle depth — dashboard only) === */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-/* === OPT-IN CARD STYLES (dashboard only) === */
-.card {
-  background: #111827;
-  border: 1px solid #27272a;
-  border-radius: 0.75rem;
-  padding: 1.25rem;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
-  margin-bottom: 1rem;
-}
-
-.card-enhanced {
-  position: relative;
-  background-color: #111827;
-  background-clip: padding-box;
-  border: 1px solid transparent;
-  border-radius: 0.85rem;
-  padding: 1.25rem;
-  margin-bottom: 1rem;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-}
-
-.card-enhanced::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  margin: -1px;
-  border-radius: inherit;
-  background: linear-gradient(135deg, #06b6d4, #1f2937, #10b981);
-}
-
-/* === OPT-IN UTILITY CLASSES === */
-.glow-text {
-  background: linear-gradient(90deg, #06b6d4, #10b981);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.btn-secondary {
-  display: inline-block;
-  padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  border: 1px solid #3f3f46;
-  background: transparent;
-  color: #e5e7eb;
-}
-
-.btn-secondary:hover {
-  border-color: #06b6d4;
-  box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
-}
-
-/* === ANIMATIONS === */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.6s ease-out;
-}
-
 /* Onboard flow */
-.onboard-input::placeholder { color: #38342f; }
+.onboard-input::placeholder { color: #52525b; }

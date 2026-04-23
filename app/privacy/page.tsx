@@ -1,88 +1,67 @@
 import type { Metadata } from 'next';
-import { FolderaMark } from '@/components/nav/FolderaMark';
+import { NavPublic } from '@/components/nav/NavPublic';
+import { BlogFooter } from '@/components/nav/BlogFooter';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy — Foldera',
   description: 'How Foldera handles your data.',
 };
 
+const sections = [
+  {
+    title: 'What we collect',
+    body: 'Foldera processes connected email and calendar context to generate directives and artifacts. Signal content is encrypted at rest.',
+  },
+  {
+    title: 'How we use it',
+    body: 'Your data is used only to generate your outputs. Foldera does not sell personal data or use it for advertising.',
+  },
+  {
+    title: 'Encryption',
+    body: 'Signal content and OAuth tokens are encrypted separately. Data in transit uses TLS.',
+  },
+  {
+    title: 'Data retention',
+    body: 'Signals older than 180 days are purged automatically. Deleted accounts are removed according to retention policy.',
+  },
+  {
+    title: 'Third parties',
+    body: 'Foldera uses Supabase, Vercel, Anthropic, Resend, and Stripe to run core product infrastructure.',
+  },
+  {
+    title: 'Your rights',
+    body: 'You can delete your account from settings. Privacy questions: privacy@foldera.ai.',
+  },
+];
+
 export default function PrivacyPage() {
   return (
-    <main id="main" className="min-h-screen bg-[#07070c] text-white overflow-x-hidden">
-      <nav className="border-b border-white/5 py-6 px-4 sm:px-6">
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3 min-w-0">
-          <a href="/" className="flex items-center gap-3 min-w-0">
-            <FolderaMark />
-            <span className="text-lg font-black tracking-tighter uppercase truncate">Foldera</span>
-          </a>
-          <a
-            href="/"
-            className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors shrink-0 min-h-[44px] inline-flex items-center"
-          >
-            Back to home
-          </a>
-        </div>
-      </nav>
+    <div className="bg-bg text-text-primary">
+      <NavPublic scrolled platformHref="/#product" />
+      <main id="main" className="pt-24 sm:pt-32">
+        <section className="border-b border-border-subtle pb-16">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Legal</p>
+            <h1 className="mt-6 text-5xl font-black tracking-tight sm:text-6xl">Privacy Policy</h1>
+            <p className="mt-4 text-sm text-text-secondary">Last updated: March 2026</p>
+          </div>
+        </section>
 
-      <div className="max-w-3xl mx-auto px-4 py-16 sm:py-20 w-full min-w-0">
-        <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-4">Privacy Policy</h1>
-        <p className="text-zinc-400 text-sm mb-10 sm:mb-12">Last updated: March 2026</p>
+        <section className="py-16">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6">
+            <div className="space-y-4">
+              {sections.map((section) => (
+                <article key={section.title} className="rounded-card border border-border bg-panel p-6 sm:p-8">
+                  <h2 className="text-sm font-black uppercase tracking-[0.12em] text-text-primary">{section.title}</h2>
+                  <p className="mt-4 text-sm leading-relaxed text-text-secondary">{section.body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
 
-        <div className="prose prose-invert prose-zinc max-w-none prose-headings:font-black prose-headings:tracking-tight prose-headings:text-white prose-p:text-zinc-300 prose-p:leading-relaxed prose-strong:text-white prose-a:text-cyan-400 prose-a:no-underline prose-a:hover:text-cyan-300 space-y-8 sm:space-y-10 text-sm leading-relaxed break-words">
-          <section>
-            <h2 className="text-white text-lg font-bold mb-3">What we collect</h2>
-            <p>
-              Foldera processes emails and calendar events from connected accounts (Google, Microsoft)
-              to generate actionable briefings. We store encrypted signal metadata, extracted patterns,
-              and generated directives. We never store raw email bodies long-term — content is processed
-              and discarded.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-white text-lg font-bold mb-3">How we use it</h2>
-            <p>
-              Your data is used solely to generate your daily briefings and maintain relationship context.
-              We do not sell, share, or use your data for advertising. Each user&apos;s data is isolated
-              and scoped to their account.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-white text-lg font-bold mb-3">Encryption</h2>
-            <p>
-              All signal content is encrypted at rest using AES-256-GCM before storage.
-              OAuth tokens are encrypted separately. Data in transit uses TLS 1.2+.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-white text-lg font-bold mb-3">Data retention</h2>
-            <p>
-              Signals older than 180 days are automatically purged. If you disconnect an integration
-              or delete your account, associated data is removed within 30 days.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-white text-lg font-bold mb-3">Third parties</h2>
-            <p>
-              We use Supabase (database), Vercel (hosting), Anthropic (AI processing),
-              Resend (transactional email), and Stripe (payments). Each processes only
-              the minimum data required for their service.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-white text-lg font-bold mb-3">Your rights</h2>
-            <p>
-              You can export or delete your data at any time from Dashboard &rarr; Settings.
-              For questions, email <span className="text-cyan-400">privacy@foldera.ai</span>.
-            </p>
-          </section>
-
-        </div>
-      </div>
-    </main>
+        <BlogFooter />
+      </main>
+    </div>
   );
 }

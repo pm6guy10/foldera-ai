@@ -1,100 +1,67 @@
 import type { Metadata } from 'next';
-import { FolderaMark } from '@/components/nav/FolderaMark';
+import { NavPublic } from '@/components/nav/NavPublic';
+import { BlogFooter } from '@/components/nav/BlogFooter';
 
 export const metadata: Metadata = {
   title: 'Terms of Service — Foldera',
   description: 'Terms governing use of Foldera.',
 };
 
+const sections = [
+  {
+    title: 'Service',
+    body: 'Foldera is an AI-powered briefing assistant that processes connected email and calendar data to produce daily actionable directives.',
+  },
+  {
+    title: 'Accounts',
+    body: 'You authenticate with Google or Microsoft OAuth. You are responsible for securing your connected accounts.',
+  },
+  {
+    title: 'Acceptable use',
+    body: 'Do not use Foldera on data you do not have rights to access, and do not abuse the API endpoints.',
+  },
+  {
+    title: 'Billing',
+    body: 'Free includes daily directives and your first three finished artifacts. Pro is $29/month and can be canceled anytime.',
+  },
+  {
+    title: 'AI-generated content',
+    body: 'You are responsible for reviewing generated directives and artifacts before execution.',
+  },
+  {
+    title: 'Contact',
+    body: 'Questions about these terms: support@foldera.ai.',
+  },
+];
+
 export default function TermsPage() {
   return (
-    <main id="main" className="min-h-screen bg-[#07070c] text-white overflow-x-hidden">
-      <nav className="border-b border-white/5 py-6 px-4 sm:px-6">
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3 min-w-0">
-          <a href="/" className="flex items-center gap-3 min-w-0">
-            <FolderaMark />
-            <span className="text-lg font-black tracking-tighter uppercase truncate">Foldera</span>
-          </a>
-          <a
-            href="/"
-            className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors shrink-0 min-h-[44px] inline-flex items-center"
-          >
-            Back to home
-          </a>
-        </div>
-      </nav>
+    <div className="bg-bg text-text-primary">
+      <NavPublic scrolled platformHref="/#product" />
+      <main id="main" className="pt-24 sm:pt-32">
+        <section className="border-b border-border-subtle pb-16">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Legal</p>
+            <h1 className="mt-6 text-5xl font-black tracking-tight sm:text-6xl">Terms of Service</h1>
+            <p className="mt-4 text-sm text-text-secondary">Last updated: March 2026</p>
+          </div>
+        </section>
 
-      <div className="max-w-3xl mx-auto px-4 py-16 sm:py-20 w-full min-w-0">
-        <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-4">Terms of Service</h1>
-        <p className="text-zinc-400 text-sm mb-10 sm:mb-12">Last updated: March 2026</p>
+        <section className="py-16">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6">
+            <div className="space-y-4">
+              {sections.map((section) => (
+                <article key={section.title} className="rounded-card border border-border bg-panel p-6 sm:p-8">
+                  <h2 className="text-sm font-black uppercase tracking-[0.12em] text-text-primary">{section.title}</h2>
+                  <p className="mt-4 text-sm leading-relaxed text-text-secondary">{section.body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
 
-        <div className="prose prose-invert prose-zinc max-w-none prose-headings:font-black prose-headings:tracking-tight prose-headings:text-white prose-p:text-zinc-300 prose-p:leading-relaxed prose-strong:text-white prose-a:text-cyan-400 prose-a:no-underline prose-a:hover:text-cyan-300 space-y-8 sm:space-y-10 text-sm leading-relaxed break-words">
-          <section>
-            <h2 className="text-white text-lg font-bold mb-3">Service</h2>
-            <p>
-              Foldera is an AI-powered briefing assistant that processes connected email and
-              calendar data to produce daily actionable directives. By using the service,
-              you agree to these terms.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-white text-lg font-bold mb-3">Accounts</h2>
-            <p>
-              You must authenticate via Google or Microsoft OAuth to use Foldera.
-              You are responsible for maintaining the security of your connected accounts.
-              One account per person.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-white text-lg font-bold mb-3">Acceptable use</h2>
-            <p>
-              Do not use Foldera to process data you do not have the right to access,
-              attempt to reverse-engineer the AI models, or abuse the API endpoints.
-              We reserve the right to suspend accounts that violate these terms.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-white text-lg font-bold mb-3">Billing</h2>
-            <p>
-              Free tier includes daily directives and 3 full artifacts. Pro is $29/mo,
-              billed monthly. You can cancel at any time from Dashboard &rarr; Settings.
-              Cancellation takes effect at the end of the current billing period. No
-              refunds for partial months.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-white text-lg font-bold mb-3">AI-generated content</h2>
-            <p>
-              Directives and drafts are generated by AI based on your data. While we
-              strive for accuracy, you are responsible for reviewing and approving any
-              actions before they execute. Foldera is not liable for actions taken
-              based on AI-generated recommendations.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-white text-lg font-bold mb-3">Data and termination</h2>
-            <p>
-              You can delete your account and all associated data at any time.
-              Upon cancellation, data is retained for 30 days before permanent deletion.
-              We may terminate accounts that violate these terms with reasonable notice.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-white text-lg font-bold mb-3">Contact</h2>
-            <p>
-              Questions about these terms? Email{' '}
-              <span className="text-cyan-400">support@foldera.ai</span>.
-            </p>
-          </section>
-
-        </div>
-      </div>
-    </main>
+        <BlogFooter />
+      </main>
+    </div>
   );
 }

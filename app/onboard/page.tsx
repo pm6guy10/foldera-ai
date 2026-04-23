@@ -1,18 +1,18 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 
-const FOCUS_PILLS: { label: string; bucket: string }[] = [
+const focusPills: Array<{ label: string; bucket: string }> = [
   { label: 'Career', bucket: 'Career growth' },
   { label: 'Relationships', bucket: 'Relationships' },
   { label: 'Finances', bucket: 'Financial' },
   { label: 'Health', bucket: 'Health & family' },
 ];
 
-const DEFAULT_SELECTED = new Set(['Career growth', 'Relationships']);
+const defaultSelected = new Set(['Career growth', 'Relationships']);
 
 function OnboardContent() {
   const router = useRouter();
@@ -20,7 +20,7 @@ function OnboardContent() {
   const { update } = useSession();
   const isEdit = searchParams?.get('edit') === 'true';
 
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(DEFAULT_SELECTED));
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(defaultSelected));
   const [saving, setSaving] = useState(false);
   const [loadingExisting, setLoadingExisting] = useState(isEdit);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -30,18 +30,16 @@ function OnboardContent() {
     if (!isEdit) return;
     setLoadError(null);
     fetch('/api/onboard/set-goals')
-      .then((r) => r.json())
+      .then((response) => response.json())
       .then((data) => {
         const buckets: string[] = Array.isArray(data.buckets) ? data.buckets : [];
         const next = new Set<string>();
-        for (const pill of FOCUS_PILLS) {
+        for (const pill of focusPills) {
           if (buckets.includes(pill.bucket)) next.add(pill.bucket);
         }
-        setSelected(next.size > 0 ? next : new Set(DEFAULT_SELECTED));
+        setSelected(next.size > 0 ? next : new Set(defaultSelected));
       })
-      .catch(() => {
-        setLoadError('Could not load your existing focus areas. Try again.');
-      })
+      .catch(() => setLoadError('Could not load your existing focus areas. Try again.'))
       .finally(() => setLoadingExisting(false));
   }, [isEdit]);
 
@@ -62,22 +60,15 @@ function OnboardContent() {
       const response = await fetch('/api/onboard/set-goals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          buckets,
-          freeText: null,
-          skipped,
-        }),
+        body: JSON.stringify({ buckets, freeText: null, skipped }),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        const errorMessage =
-          payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string'
-            ? payload.error
-            : 'Could not save. Try again.';
-        setSubmitError(errorMessage);
+        setSubmitError(
+          payload && typeof payload.error === 'string' ? payload.error : 'Could not save. Try again.',
+        );
         return;
       }
-      // Refresh JWT `hasOnboarded` so middleware allows /dashboard (avoids redirect loop).
       await update();
       router.push(isEdit ? '/dashboard/settings' : '/dashboard');
     } catch {
@@ -89,60 +80,42 @@ function OnboardContent() {
 
   if (loadingExisting) {
     return (
-      <main id="main" className="min-h-[100dvh] bg-[#07070c] flex items-center justify-center relative overflow-x-hidden">
-        <div className="absolute inset-0 pointer-events-none z-0">
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
-        </div>
-        <div className="relative z-10 animate-pulse w-8 h-8 rounded-full bg-cyan-500/30" />
-      </main>
+      <div className="min-h-[100dvh] bg-bg text-text-primary">
+        <main id="main" className="mx-auto flex max-w-6xl items-center justify-center px-4 py-16 sm:px-6">
+          <span className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+        </main>
+      </div>
     );
   }
 
   return (
-    <div className="min-h-[100dvh] overflow-x-hidden bg-[#07070c] text-white selection:bg-cyan-500/30 selection:text-white relative pb-[env(safe-area-inset-bottom,0px)]">
-      <div className="absolute inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
-      </div>
-
-      <main id="main" className="relative z-10 flex flex-col items-center px-4 sm:px-6 pt-20 sm:pt-24 pb-20 sm:pb-16 w-full min-w-0">
-        <div className="w-full max-w-md min-w-0">
-          {!isEdit && (
-            <>
-              <p className="text-center text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 mb-4">Step 1 — Your focus</p>
-              <div className="flex flex-col items-center text-center mb-8 sm:mb-10">
-                <div className="flex items-center gap-2 mb-1 max-w-full px-1">
-                  <span className="relative flex h-2 w-2 shrink-0">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-40" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
-                  </span>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-400 leading-snug text-left sm:text-center">
-                    Connected. Your first read arrives tomorrow morning.
-                  </p>
-                </div>
-              </div>
-            </>
-          )}
-
-          <h1 className="text-2xl font-black tracking-tighter text-white text-center mb-2">
+    <div className="min-h-[100dvh] bg-bg text-text-primary">
+      <main id="main" className="mx-auto flex max-w-6xl flex-col px-4 py-16 sm:px-6">
+        <div className="mx-auto w-full max-w-xl rounded-card border border-border bg-panel p-8 sm:p-8">
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">
+            {isEdit ? 'Edit setup' : 'Setup'}
+          </p>
+          <h1 className="mt-6 text-4xl font-black tracking-tight">
             {isEdit ? 'Edit your focus' : 'What matters most to you?'}
           </h1>
-          {!isEdit && (
-            <p className="text-zinc-500 text-sm text-center mb-8">Tap one or more. You can change this anytime in settings.</p>
-          )}
-          {isEdit && <p className="text-zinc-500 text-sm text-center mb-8">Update anytime.</p>}
+          <p className="mt-4 text-sm leading-relaxed text-text-secondary">
+            {isEdit
+              ? 'Update focus areas anytime.'
+              : 'Choose focus areas so Foldera can prioritize the right morning move.'}
+          </p>
 
-          <div className="grid grid-cols-2 gap-3 mb-10">
-            {FOCUS_PILLS.map(({ label, bucket }) => {
+          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+            {focusPills.map(({ label, bucket }) => {
               const active = selected.has(bucket);
               return (
                 <button
                   key={bucket}
                   type="button"
                   onClick={() => toggle(bucket)}
-                  className={`rounded-xl py-4 px-4 text-xs font-black uppercase tracking-[0.12em] transition-colors border ${
+                  className={`inline-flex min-h-[48px] items-center justify-center rounded-pill border px-4 text-xs font-black uppercase tracking-[0.12em] transition-colors ${
                     active
-                      ? 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300'
-                      : 'bg-zinc-950/80 border-white/10 text-zinc-500 hover:border-white/20'
+                      ? 'border-accent-dim bg-accent-dim/20 text-accent-hover'
+                      : 'border-border bg-panel-raised text-text-secondary hover:border-border-strong hover:text-text-primary'
                   }`}
                 >
                   {label}
@@ -151,47 +124,36 @@ function OnboardContent() {
             })}
           </div>
 
-          {!isEdit ? (
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <button
               type="button"
               onClick={() => submit(false)}
               disabled={saving || selected.size === 0}
-              className="w-full bg-white text-black font-black uppercase tracking-[0.15em] text-xs rounded-xl py-4 px-8 hover:bg-zinc-200 active:scale-95 shadow-[0_0_40px_rgba(255,255,255,0.2)] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {saving ? 'Saving…' : 'Go to dashboard'}
+              {saving ? 'Saving…' : isEdit ? 'Save' : 'Continue to dashboard'}
             </button>
-          ) : (
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => submit(false)}
-                disabled={saving}
-                className="flex-1 bg-cyan-500 text-black font-black uppercase tracking-widest text-xs rounded-xl py-3.5 shadow-[0_0_20px_rgba(6,182,212,0.22)] disabled:opacity-50"
-              >
-                {saving ? 'Saving…' : 'Save'}
-              </button>
+            {isEdit ? (
               <Link
                 href="/dashboard/settings"
-                className="flex-1 flex items-center justify-center bg-zinc-900 border border-white/20 text-zinc-500 font-black uppercase tracking-widest text-xs rounded-xl py-3.5"
+                className="inline-flex min-h-[48px] items-center justify-center rounded-button border border-border px-6 text-xs font-black uppercase tracking-[0.14em] text-text-secondary transition-colors hover:text-text-primary"
               >
                 Cancel
               </Link>
-            </div>
-          )}
+            ) : (
+              <button
+                type="button"
+                onClick={() => submit(true)}
+                disabled={saving}
+                className="inline-flex min-h-[48px] items-center justify-center rounded-button border border-border px-6 text-xs font-black uppercase tracking-[0.14em] text-text-secondary transition-colors hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Skip for now
+              </button>
+            )}
+          </div>
 
-          {!isEdit && (
-            <button
-              type="button"
-              onClick={() => submit(true)}
-              disabled={saving}
-              className="w-full mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600 hover:text-zinc-400 transition-colors"
-            >
-              Skip for now
-            </button>
-          )}
-
-          {loadError && <p className="mt-4 text-xs text-red-400 text-center">{loadError}</p>}
-          {submitError && <p className="mt-4 text-xs text-red-400 text-center">{submitError}</p>}
+          {loadError && <p className="mt-6 text-sm text-text-secondary">{loadError}</p>}
+          {submitError && <p className="mt-2 text-sm text-text-secondary">{submitError}</p>}
         </div>
       </main>
     </div>
@@ -202,12 +164,15 @@ export default function OnboardPage() {
   return (
     <Suspense
       fallback={
-        <main id="main" className="min-h-[100dvh] bg-[#07070c] flex items-center justify-center overflow-x-hidden">
-          <div className="animate-pulse w-8 h-8 rounded-full bg-cyan-500/30" />
-        </main>
+        <div className="min-h-[100dvh] bg-bg text-text-primary">
+          <main id="main" className="mx-auto flex max-w-6xl items-center justify-center px-4 py-16 sm:px-6">
+            <span className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+          </main>
+        </div>
       }
     >
       <OnboardContent />
     </Suspense>
   );
 }
+

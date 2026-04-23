@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Radio, Mail, MessageSquare, Calendar, FileText } from 'lucide-react';
+import { Mail, Radio } from 'lucide-react';
+import { ProductShell } from '@/components/dashboard/ProductShell';
 import { SkeletonSignalsPage } from '@/components/ui/skeleton';
 
 interface GraphStats {
@@ -17,33 +18,16 @@ interface IntegrationStatus {
   connected_at?: string | null;
 }
 
-const SOURCE_META: Record<string, { icon: React.ElementType; label: string; color: string }> = {
-  gmail:            { icon: Mail,          label: 'Gmail',            color: 'text-red-400' },
-  google:           { icon: Mail,          label: 'Google',           color: 'text-red-400' },
-  google_calendar:  { icon: Calendar,      label: 'Google Calendar',  color: 'text-emerald-400' },
-  outlook:          { icon: Mail,          label: 'Outlook',          color: 'text-blue-400' },
-  azure_ad:         { icon: Mail,          label: 'Microsoft',        color: 'text-blue-400' },
-  outlook_calendar: { icon: Calendar,      label: 'Outlook Calendar', color: 'text-emerald-400' },
-  onedrive:         { icon: FileText,      label: 'OneDrive',         color: 'text-blue-300' },
-  microsoft_todo:   { icon: MessageSquare, label: 'Microsoft To Do',  color: 'text-cyan-400' },
-  conversation:     { icon: MessageSquare, label: 'Conversation',     color: 'text-cyan-400' },
-  manual:           { icon: MessageSquare, label: 'Manual',           color: 'text-amber-400' },
-};
-
 export default function SignalsPage() {
   const [stats, setStats] = useState<GraphStats | null>(null);
   const [integrations, setIntegrations] = useState<IntegrationStatus[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/graph/stats'),
-      fetch('/api/integrations/status'),
-    ])
-      .then(async ([statsRes, integrationsRes]) => {
-        const nextStats = statsRes.ok ? await statsRes.json() : null;
-        const nextIntegrations = integrationsRes.ok ? await integrationsRes.json() : null;
-
+    Promise.all([fetch('/api/graph/stats'), fetch('/api/integrations/status')])
+      .then(async ([statsResponse, integrationsResponse]) => {
+        const nextStats = statsResponse.ok ? await statsResponse.json() : null;
+        const nextIntegrations = integrationsResponse.ok ? await integrationsResponse.json() : null;
         setStats(nextStats);
         setIntegrations(Array.isArray(nextIntegrations?.integrations) ? nextIntegrations.integrations : []);
       })
@@ -55,149 +39,105 @@ export default function SignalsPage() {
   }, []);
 
   if (loading) {
-    return <SkeletonSignalsPage />;
+    return (
+      <ProductShell
+        title="Signals"
+        subtitle="Foldera reads connected sources in the background."
+      >
+        <SkeletonSignalsPage />
+      </ProductShell>
+    );
   }
 
   const activeIntegrations = integrations.filter((integration) => integration.is_active);
-  const sourceKey = stats?.lastSignalSource ?? '';
-  const sourceMeta = SOURCE_META[sourceKey] ?? {
-    icon: Radio,
-    label: formatSourceLabel(sourceKey),
-    color: 'text-cyan-400',
-  };
-  const SourceIcon = sourceMeta.icon;
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-9 h-9 rounded-xl bg-cyan-600/20 flex items-center justify-center">
-            <Radio className="w-4.5 h-4.5 text-cyan-400" style={{ width: 18, height: 18 }} />
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-50">Sources</h1>
-        </div>
-        <p className="text-zinc-500 text-sm ml-12">
-          Connected inboxes and calendars. Foldera handles the reading in the background so your directive can stay simple.
+    <ProductShell
+      title="Signals"
+      subtitle="Foldera reads connected sources in the background so the morning directive stays focused."
+    >
+      <div className="rounded-card border border-border bg-panel p-6">
+        <h2 className="text-2xl font-bold tracking-tight text-text-primary">Sources</h2>
+        <p className="mt-3 text-sm leading-relaxed text-text-secondary">
+          Connected inboxes and calendars are monitored continuously. Finished work still appears in Today.
         </p>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-3 mb-8">
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-          <p className="text-zinc-500 text-xs uppercase tracking-widest mb-2">Connected sources</p>
-          <p className="text-zinc-50 text-3xl font-semibold tabular-nums">{activeIntegrations.length}</p>
-          <p className="text-zinc-500 text-sm mt-2">Only active connections are shown here. Finished work still lives on the main dashboard.</p>
-        </div>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-          <p className="text-zinc-500 text-xs uppercase tracking-widest mb-2">Background sync</p>
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-zinc-800 flex items-center justify-center shrink-0">
-              <SourceIcon className={`w-4 h-4 ${sourceMeta.color}`} />
-            </div>
-            <div>
-              <p className="text-zinc-200 text-sm font-medium">
-                {stats?.lastSignalAt ? `${sourceMeta.label} refreshed ${formatTimeAgo(stats.lastSignalAt)}` : 'No background sync yet'}
-              </p>
-              <p className="text-zinc-500 text-sm mt-1">
-                {stats?.lastSignalAt ? 'Foldera is pulling context in the background for future directives.' : 'Connect a source in Settings to start building your background context.'}
-              </p>
-            </div>
-          </div>
-        </div>
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <article className="rounded-card border border-border bg-panel p-6">
+          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Connected sources</p>
+          <p className="mt-3 text-4xl font-black tracking-tight">{activeIntegrations.length}</p>
+        </article>
+        <article className="rounded-card border border-border bg-panel p-6">
+          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Last signal</p>
+          <p className="mt-3 text-sm text-text-primary">
+            {stats?.lastSignalAt
+              ? `${formatSource(stats.lastSignalSource)} · ${formatTimeAgo(stats.lastSignalAt)}`
+              : 'No signal yet'}
+          </p>
+        </article>
       </div>
 
       {activeIntegrations.length === 0 ? (
-        <EmptyState />
+        <article className="mt-4 rounded-card border border-border bg-panel p-8">
+          <h3 className="text-lg font-semibold text-text-primary">No sources connected yet</h3>
+          <p className="mt-2 text-sm leading-relaxed text-text-secondary">
+            Connect at least one provider in settings so Foldera can read context.
+          </p>
+          <a
+            href="/dashboard/settings"
+            className="mt-6 inline-flex min-h-[44px] items-center rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg"
+          >
+            Open settings
+          </a>
+        </article>
       ) : (
-        <SourcesOverview integrations={activeIntegrations} />
-      )}
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-10 text-center">
-      <div className="w-12 h-12 rounded-2xl bg-zinc-800 flex items-center justify-center mx-auto mb-5">
-        <Radio className="w-5 h-5 text-zinc-600" />
-      </div>
-      <h3 className="text-zinc-200 font-semibold text-base mb-2">No sources connected yet</h3>
-      <p className="text-zinc-500 text-sm max-w-sm mx-auto leading-relaxed mb-6">
-        Foldera does its best work once it can read your inbox and calendar in the background. Connect a source, then come back to the dashboard for the finished directive.
-      </p>
-      <a
-        href="/dashboard/settings"
-        className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-semibold transition-colors"
-      >
-        Open settings
-      </a>
-    </div>
-  );
-}
-
-function SourcesOverview({ integrations }: { integrations: IntegrationStatus[] }) {
-  return (
-    <div className="space-y-3">
-      <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl p-5">
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <p className="text-zinc-300 text-sm font-medium">Active connections</p>
-          <p className="text-zinc-500 text-xs">{integrations.length} active</p>
-        </div>
-        <div className="space-y-3">
-          {integrations.map((integration) => {
-            const meta = SOURCE_META[integration.provider] ?? {
-              icon: Radio,
-              label: formatSourceLabel(integration.provider),
-              color: 'text-cyan-400',
-            };
-            const Icon = meta.icon;
-            const syncStamp = integration.last_synced_at ?? integration.connected_at ?? null;
-
-            return (
-              <div key={integration.provider} className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 py-3">
-                <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center shrink-0">
-                  <Icon className={`w-4 h-4 ${meta.color}`} />
+        <ul className="mt-4 space-y-3">
+          {activeIntegrations.map((integration) => (
+            <li key={integration.provider} className="rounded-card border border-border bg-panel p-6">
+              <div className="flex items-center gap-3">
+                <div className="inline-flex h-9 w-9 items-center justify-center rounded-badge border border-border bg-panel-raised">
+                  {integration.provider.includes('google') || integration.provider.includes('azure') ? (
+                    <Mail className="h-4 w-4 text-accent" aria-hidden="true" />
+                  ) : (
+                    <Radio className="h-4 w-4 text-accent" aria-hidden="true" />
+                  )}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-zinc-200 text-sm font-medium">{meta.label}</p>
-                  <p className="text-zinc-500 text-sm">
+                <div>
+                  <p className="text-sm font-semibold text-text-primary">{formatSource(integration.provider)}</p>
+                  <p className="text-sm text-text-secondary">
                     {integration.sync_email || 'Connected'}
-                    {syncStamp ? ` · updated ${formatTimeAgo(syncStamp)}` : ''}
+                    {integration.last_synced_at
+                      ? ` · ${formatTimeAgo(integration.last_synced_at)}`
+                      : ''}
                   </p>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5">
-        <p className="text-zinc-300 text-sm font-medium mb-2">What this changes</p>
-        <p className="text-zinc-500 text-sm leading-relaxed">
-          Connected sources feed the engine in the background. Your actual decision point stays on the dashboard and in the morning email, where Foldera shows one directive with the finished artifact attached.
-        </p>
-      </div>
-    </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </ProductShell>
   );
 }
 
 function formatTimeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const minutes = Math.floor(diff / 60000);
-
   if (minutes < 1) return 'just now';
   if (minutes < 60) return `${minutes}m ago`;
-
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
-
   const days = Math.floor(hours / 24);
   return `${days}d ago`;
 }
 
-function formatSourceLabel(value: string): string {
-  return value
+function formatSource(source: string | null | undefined): string {
+  if (!source) return 'Unknown source';
+  return source
     .split('_')
     .filter(Boolean)
     .map((part) => part[0].toUpperCase() + part.slice(1))
     .join(' ');
 }
+

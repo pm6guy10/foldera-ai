@@ -1,36 +1,23 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
-import { Check, ArrowRight } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 import { NavPublic } from '@/components/nav/NavPublic';
+import { BlogFooter } from '@/components/nav/BlogFooter';
 
-const PRO_FEATURES = [
-  'Drafted emails, ready to send',
-  'Documents and decision frames',
-  'Approve and send in one tap',
-  'Gets smarter every day',
-  'Cancel anytime',
+const freeFeatures = [
+  'Daily directive each morning',
+  'Connect Google or Microsoft',
+  'First 3 finished artifacts included',
 ];
 
-const FAQ = [
-  {
-    q: "What's free?",
-    a: "Daily directives (the read) plus a preview of finished work. Upgrade to Pro for full artifacts every morning.",
-  },
-  {
-    q: "What's Pro?",
-    a: "Unlimited access to finished work — drafted emails, documents, and decision frames delivered with every directive.",
-  },
-  {
-    q: 'Can I cancel?',
-    a: 'Anytime. No contracts.',
-  },
-  {
-    q: 'Is my data safe?',
-    a: 'AES-256 encryption. Your data never trains anyone else\'s model. Delete everything anytime.',
-  },
+const proFeatures = [
+  'Unlimited finished artifacts',
+  'Drafted emails, documents, and decision frames',
+  'Approve and send in one step',
+  'Learns from every approve and skip',
 ];
 
 function ProCheckoutButton() {
@@ -42,7 +29,7 @@ function ProCheckoutButton() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/stripe/checkout', {
+      const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -50,15 +37,15 @@ function ProCheckoutButton() {
           email: session?.user?.email ?? undefined,
         }),
       });
-      const data = await res.json().catch(() => ({}));
-      if (res.status === 401) {
+      const payload = await response.json().catch(() => ({}));
+      if (response.status === 401) {
         window.location.href = '/start?plan=pro';
         return;
       }
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || 'Could not start checkout');
+      if (!response.ok || !payload.url) {
+        throw new Error(payload.error || 'Could not start checkout');
       }
-      window.location.href = data.url;
+      window.location.href = payload.url;
     } catch {
       setError('Could not start checkout right now. Try again in a moment.');
     } finally {
@@ -70,10 +57,10 @@ function ProCheckoutButton() {
     return (
       <Link
         href="/start?plan=pro"
-        className="w-full min-h-[56px] py-5 rounded-2xl bg-cyan-500 text-black font-black uppercase tracking-widest text-xs hover:bg-cyan-400 transition-all duration-150 flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:scale-[1.02] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
-        aria-label="Upgrade to Pro"
+        className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover"
       >
-        Upgrade to Pro <ArrowRight className="w-4 h-4" aria-hidden="true" />
+        Upgrade to Pro
+        <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </Link>
     );
   }
@@ -84,124 +71,136 @@ function ProCheckoutButton() {
         type="button"
         onClick={handleCheckout}
         disabled={loading}
-        className="w-full min-h-[56px] py-5 rounded-2xl bg-cyan-500 text-black font-black uppercase tracking-widest text-xs hover:bg-cyan-400 transition-all duration-150 flex items-center justify-center gap-3 shadow-[0_0_20px_rgba(6,182,212,0.22)] hover:scale-[1.02] active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
-        aria-label="Continue to checkout"
+        className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60"
       >
-        {loading ? (
-          <span className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-        ) : (
-          <>Upgrade to Pro <ArrowRight className="w-4 h-4" aria-hidden="true" /></>
-        )}
+        {loading ? 'Loading…' : 'Continue to checkout'}
       </button>
-      {error && <p className="text-sm text-rose-300">{error}</p>}
-      <p className="text-center text-zinc-600 text-xs">$29/mo — cancel anytime.</p>
-      <Link
-        href="/dashboard"
-        className="text-center text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500 hover:text-white transition-colors min-h-[44px] py-3 flex items-center justify-center"
-      >
-        Go to dashboard
-      </Link>
+      {error && <p className="text-xs text-text-secondary">{error}</p>}
     </div>
   );
 }
 
-export default function PricingPage() {
+function PlanCard({
+  title,
+  price,
+  subtitle,
+  features,
+  emphasis = false,
+  cta,
+}: {
+  title: string;
+  price: string;
+  subtitle: string;
+  features: string[];
+  emphasis?: boolean;
+  cta: React.ReactNode;
+}) {
   return (
-    <div className="min-h-[100dvh] bg-[#07070c] text-white flex flex-col antialiased overflow-x-hidden selection:bg-cyan-500/30 selection:text-white">
+    <article
+      className={`rounded-card border p-8 ${
+        emphasis
+          ? 'border-accent-dim bg-panel'
+          : 'border-border bg-panel'
+      }`}
+    >
+      <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${emphasis ? 'text-accent' : 'text-text-secondary'}`}>{title}</p>
+      <p className="mt-4 text-5xl font-black tracking-tight">{price}</p>
+      <p className="mt-4 text-sm leading-relaxed text-text-secondary">{subtitle}</p>
+      <ul className="mt-6 space-y-3">
+        {features.map((feature) => (
+          <li key={feature} className="flex items-start gap-3 text-sm text-text-primary">
+            <Check className="mt-0.5 h-4 w-4 text-success" aria-hidden="true" />
+            <span>{feature}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-8">{cta}</div>
+    </article>
+  );
+}
 
-      <NavPublic scrolled platformHref="/#product" />
+const faq = [
+  {
+    question: 'What is free?',
+    answer: 'Free includes your daily directive and your first three finished artifacts. No credit card is required.',
+  },
+  {
+    question: 'What changes on Pro?',
+    answer: 'Pro removes the artifact limit and keeps delivering full finished work every morning.',
+  },
+  {
+    question: 'Can I cancel?',
+    answer: 'Yes. Cancel anytime from dashboard settings.',
+  },
+];
 
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_80%_80%_at_50%_50%,#000_20%,transparent_100%)]" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[900px] bg-[radial-gradient(circle_at_50%_50%,rgba(6,182,212,0.06)_0%,transparent_50%)] pointer-events-none" />
-      </div>
+export default function PricingPage() {
+  const [scrolled, setScrolled] = useState(false);
 
-      <main
-        id="main"
-        className="relative z-10 flex-1 px-4 sm:px-6 pt-[calc(6rem+env(safe-area-inset-top,0px))] pb-[calc(4rem+env(safe-area-inset-bottom,0px))] md:pb-24 md:pt-[calc(7rem+env(safe-area-inset-top,0px))] w-full min-w-0"
-      >
-        <div className="max-w-5xl mx-auto w-full min-w-0">
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
-          <div className="text-center mb-14 md:mb-16 px-1">
-            <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tighter text-white mb-5 leading-none">
-              Start free.<br />Upgrade when it clicks.
-            </h1>
-            <p className="text-lg md:text-xl text-zinc-400 font-medium max-w-xl mx-auto leading-relaxed">
-              Get the morning read on us. When you want unlimited finished work every day, Pro is $29/mo.
+  return (
+    <div className="bg-bg text-text-primary">
+      <NavPublic scrolled={scrolled} platformHref="/#product" />
+      <main id="main" className="pt-24 sm:pt-32">
+        <section className="border-b border-border-subtle pb-16">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Pricing</p>
+            <h1 className="mt-6 text-5xl font-black tracking-tight sm:text-6xl">Start free. Upgrade when it clicks.</h1>
+            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-text-secondary">
+              The free tier proves value first. Pro removes limits once you want finished artifacts every morning.
             </p>
           </div>
+        </section>
 
-          <div className="rounded-[2rem] border border-white/10 bg-[#0a0a0f]/80 backdrop-blur-xl p-3 sm:p-6 md:p-10 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.85)] max-w-5xl mx-auto mb-16 md:mb-20 w-full max-w-full min-w-0">
-          <div className="grid gap-6 sm:gap-8 md:grid-cols-2 md:gap-10">
-            {/* Free */}
-            <div className="rounded-[1.5rem] sm:rounded-[2rem] bg-[#0a0a0f] border border-white/10 p-6 sm:p-8 md:p-12 flex flex-col min-w-0">
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-zinc-500 mb-6 bg-white/5 border border-white/10 px-4 py-2 rounded-lg inline-block">
-                Free
-              </p>
-              <div className="flex items-baseline gap-2 mb-3">
-                <span className="text-5xl font-black text-white tracking-tighter">$0</span>
-              </div>
-              <p className="text-zinc-400 font-medium mb-8">Daily directive + previews of finished work.</p>
-              <ul className="space-y-3 mb-10 flex-1">
-                {['Morning directive with every run', 'Secure OAuth when you choose to connect', 'Preview what full artifacts look like'].map((f) => (
-                  <li key={f} className="flex items-center gap-3 text-zinc-300 text-sm font-medium">
-                    <div className="p-1 rounded-full bg-white/5 border border-white/10 shrink-0">
-                      <Check className="w-3.5 h-3.5 text-zinc-400" aria-hidden="true" />
-                    </div>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/start"
-                className="w-full min-h-[56px] py-5 rounded-2xl bg-white text-black font-black uppercase tracking-[0.15em] text-xs hover:bg-zinc-200 transition-all duration-150 flex items-center justify-center gap-3 shadow-[0_0_40px_rgba(255,255,255,0.2)] hover:scale-[1.02] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#07070c]"
-                aria-label="Start free"
-              >
-                Get started free <ArrowRight className="w-4 h-4" aria-hidden="true" />
-              </Link>
-              <p className="text-center text-zinc-600 text-xs mt-3">No credit card required.</p>
-            </div>
+        <section className="border-b border-border-subtle py-16">
+          <div className="mx-auto grid max-w-6xl gap-4 px-4 sm:px-6 md:grid-cols-2">
+            <PlanCard
+              title="Free"
+              price="$0"
+              subtitle="Daily directive plus your first three finished artifacts."
+              features={freeFeatures}
+              cta={
+                <Link
+                  href="/start"
+                  className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-button border border-border bg-panel-raised px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary transition-colors hover:border-border-strong"
+                >
+                  Get started free
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              }
+            />
+            <PlanCard
+              title="Pro"
+              price="$29"
+              subtitle="Finished work, every morning."
+              features={proFeatures}
+              emphasis
+              cta={<ProCheckoutButton />}
+            />
+          </div>
+        </section>
 
-            {/* Pro */}
-            <div className="rounded-[1.5rem] sm:rounded-[2rem] bg-[#0a0a0f] border border-cyan-500/30 p-6 sm:p-8 md:p-12 shadow-[0_0_80px_rgba(6,182,212,0.12)] flex flex-col min-w-0">
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-400 mb-6 bg-cyan-500/10 border border-cyan-500/20 px-4 py-2 rounded-lg inline-block">
-                Professional
-              </p>
-              <div className="flex items-baseline gap-2 mb-3">
-                <span className="text-5xl md:text-6xl font-black text-white tracking-tighter">$29</span>
-                <span className="text-zinc-500 font-bold tracking-widest uppercase text-xs">/mo</span>
-              </div>
-              <p className="text-zinc-400 font-medium mb-8">Finished work, every morning.</p>
-              <ul className="space-y-4 mb-10 flex-1">
-                {PRO_FEATURES.map((f) => (
-                  <li key={f} className="flex items-start gap-4 text-white">
-                    <div className="p-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 shrink-0 mt-0.5">
-                      <Check className="w-3.5 h-3.5 text-cyan-400" aria-hidden="true" />
-                    </div>
-                    <span className="text-sm font-bold tracking-tight text-zinc-200 leading-relaxed">{f}</span>
-                  </li>
-                ))}
-              </ul>
-              <ProCheckoutButton />
+        <section className="py-16">
+          <div className="mx-auto max-w-4xl px-4 sm:px-6">
+            <h2 className="text-2xl font-black tracking-tight sm:text-3xl">Questions</h2>
+            <div className="mt-8 space-y-4">
+              {faq.map((item) => (
+                <article key={item.question} className="rounded-card border border-border bg-panel p-6">
+                  <h3 className="text-sm font-black uppercase tracking-[0.12em] text-text-primary">{item.question}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-text-secondary">{item.answer}</p>
+                </article>
+              ))}
             </div>
           </div>
-          </div>
+        </section>
 
-          <div className="max-w-2xl mx-auto px-1 w-full min-w-0">
-            {FAQ.map(({ q, a }) => (
-              <div key={q} className="mb-8">
-                <p className="text-white font-bold text-sm mb-2 leading-snug">{q}</p>
-                <p className="text-zinc-400 text-sm leading-relaxed break-words">{a}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-4 mt-12 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-600">
-            <a href="/privacy" className="hover:text-zinc-400 transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2">Privacy</a>
-            <a href="/terms" className="hover:text-zinc-400 transition-colors min-h-[44px] min-w-[44px] inline-flex items-center justify-center px-2">Terms</a>
-          </div>
-
-        </div>
+        <BlogFooter />
       </main>
     </div>
   );
