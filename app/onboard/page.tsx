@@ -90,21 +90,23 @@ function OnboardContent() {
 
   return (
     <div className="min-h-[100dvh] bg-bg text-text-primary">
-      <main id="main" className="mx-auto flex max-w-6xl flex-col px-4 py-16 sm:px-6">
-        <div className="mx-auto w-full max-w-xl rounded-card border border-border bg-panel p-8 sm:p-8">
+      <main id="main" className="mx-auto flex max-w-6xl flex-col px-4 py-16 sm:px-6 sm:py-20">
+        <div className="mx-auto w-full max-w-3xl rounded-card border border-border bg-panel px-6 py-8 sm:px-10 sm:py-10">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">
             {isEdit ? 'Edit setup' : 'Setup'}
           </p>
-          <h1 className="mt-6 text-4xl font-black tracking-tight">
+          <h1 className="mt-6 text-4xl font-black tracking-tight sm:text-5xl">
             {isEdit ? 'Edit your focus' : 'What matters most to you?'}
           </h1>
-          <p className="mt-4 text-sm leading-relaxed text-text-secondary">
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-text-secondary">
             {isEdit
               ? 'Update focus areas anytime.'
               : 'Choose focus areas so Foldera can prioritize the right morning move.'}
           </p>
 
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
+          <div className="mt-8 border-y border-border-subtle py-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">Focus areas</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {focusPills.map(({ label, bucket }) => {
               const active = selected.has(bucket);
               return (
@@ -122,9 +124,10 @@ function OnboardContent() {
                 </button>
               );
             })}
+            </div>
           </div>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <button
               type="button"
               onClick={() => submit(false)}

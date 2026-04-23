@@ -40,18 +40,20 @@ export default async function BlogIndexPage() {
 
         <section className="py-16">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="divide-y divide-border-subtle border-y border-border-subtle">
               {posts.map((post) => (
-                <article key={post.slug} className="rounded-card border border-border bg-panel p-6 sm:p-8">
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-text-muted">
+                <article key={post.slug} className="grid gap-4 py-6 sm:grid-cols-[220px_minmax(0,1fr)] sm:gap-8 sm:py-7">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-text-muted sm:pt-1">
                     {dateFormatter.format(new Date(post.date))}
                   </p>
-                  <h2 className="mt-4 text-2xl font-bold tracking-tight text-text-primary">
-                    <Link href={`/blog/${post.slug}`} className="transition-colors hover:text-accent-hover">
-                      {post.title}
-                    </Link>
-                  </h2>
-                  <p className="mt-4 text-sm leading-relaxed text-text-secondary">{post.description}</p>
+                  <div>
+                    <h2 className="text-2xl font-bold tracking-tight text-text-primary sm:text-3xl">
+                      <Link href={`/blog/${post.slug}`} className="transition-colors hover:text-accent-hover">
+                        {post.title}
+                      </Link>
+                    </h2>
+                    <p className="mt-3 text-sm leading-relaxed text-text-secondary sm:text-base">{post.description}</p>
+                  </div>
                 </article>
               ))}
             </div>

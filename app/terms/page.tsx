@@ -49,11 +49,11 @@ export default function TermsPage() {
 
         <section className="py-16">
           <div className="mx-auto max-w-4xl px-4 sm:px-6">
-            <div className="space-y-4">
+            <div className="divide-y divide-border-subtle border-y border-border-subtle">
               {sections.map((section) => (
-                <article key={section.title} className="rounded-card border border-border bg-panel p-6 sm:p-8">
+                <article key={section.title} className="py-5 sm:py-6">
                   <h2 className="text-sm font-black uppercase tracking-[0.12em] text-text-primary">{section.title}</h2>
-                  <p className="mt-4 text-sm leading-relaxed text-text-secondary">{section.body}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-text-secondary">{section.body}</p>
                 </article>
               ))}
             </div>

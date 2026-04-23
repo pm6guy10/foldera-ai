@@ -95,11 +95,26 @@ export default function BriefingsHistoryPage() {
       )}
 
       {!error && items.length === 0 && (
-        <div className="rounded-card border border-border bg-panel p-8">
-          <h2 className="text-lg font-semibold text-text-primary">No briefings yet</h2>
-          <p className="mt-2 text-sm leading-relaxed text-text-secondary">
-            Connect a source and check back after the next run.
+        <div className="rounded-card border border-border-subtle bg-panel p-8 sm:p-10">
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">No briefings yet</p>
+          <h2 className="mt-4 text-2xl font-black tracking-tight text-text-primary">You&apos;re clear for now.</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary">
+            Foldera will add completed brief artifacts here after each morning cycle. Open Today for the active directive, or review connected sources in settings.
           </p>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <a
+              href="/dashboard"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.12em] text-bg transition-colors hover:bg-accent-hover"
+            >
+              Open today
+            </a>
+            <a
+              href="/dashboard/settings#connected-accounts"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-button border border-border px-4 text-xs font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
+            >
+              Review sources
+            </a>
+          </div>
         </div>
       )}
 

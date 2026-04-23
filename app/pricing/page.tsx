@@ -80,45 +80,6 @@ function ProCheckoutButton() {
   );
 }
 
-function PlanCard({
-  title,
-  price,
-  subtitle,
-  features,
-  emphasis = false,
-  cta,
-}: {
-  title: string;
-  price: string;
-  subtitle: string;
-  features: string[];
-  emphasis?: boolean;
-  cta: React.ReactNode;
-}) {
-  return (
-    <article
-      className={`rounded-card border p-8 ${
-        emphasis
-          ? 'border-accent-dim bg-panel'
-          : 'border-border bg-panel'
-      }`}
-    >
-      <p className={`text-[10px] font-black uppercase tracking-[0.14em] ${emphasis ? 'text-accent' : 'text-text-secondary'}`}>{title}</p>
-      <p className="mt-4 text-5xl font-black tracking-tight">{price}</p>
-      <p className="mt-4 text-sm leading-relaxed text-text-secondary">{subtitle}</p>
-      <ul className="mt-6 space-y-3">
-        {features.map((feature) => (
-          <li key={feature} className="flex items-start gap-3 text-sm text-text-primary">
-            <Check className="mt-0.5 h-4 w-4 text-success" aria-hidden="true" />
-            <span>{feature}</span>
-          </li>
-        ))}
-      </ul>
-      <div className="mt-8">{cta}</div>
-    </article>
-  );
-}
-
 const faq = [
   {
     question: 'What is free?',
@@ -159,39 +120,60 @@ export default function PricingPage() {
         </section>
 
         <section className="border-b border-border-subtle py-16">
-          <div className="mx-auto grid max-w-6xl gap-4 px-4 sm:px-6 md:grid-cols-2">
-            <PlanCard
-              title="Free"
-              price="$0"
-              subtitle="Daily directive plus your first three finished artifacts."
-              features={freeFeatures}
-              cta={
-                <Link
-                  href="/start"
-                  className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-button border border-border bg-panel-raised px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary transition-colors hover:border-border-strong"
-                >
-                  Get started free
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
-              }
-            />
-            <PlanCard
-              title="Pro"
-              price="$29"
-              subtitle="Finished work, every morning."
-              features={proFeatures}
-              emphasis
-              cta={<ProCheckoutButton />}
-            />
+          <div className="mx-auto grid max-w-6xl gap-5 px-4 sm:px-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,0.9fr)]">
+            <article className="rounded-card border border-accent-dim bg-panel p-7 sm:p-8">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Pro</p>
+              <div className="mt-4 flex items-end gap-3">
+                <p className="text-5xl font-black tracking-tight">$29</p>
+                <p className="pb-1 text-xs font-black uppercase tracking-[0.14em] text-text-secondary">per month</p>
+              </div>
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-text-secondary">
+                Keep the full brief visible and ready to act on every morning.
+              </p>
+              <ul className="mt-7 divide-y divide-border-subtle border-y border-border-subtle">
+                {proFeatures.map((feature) => (
+                  <li key={feature} className="flex items-start gap-3 py-3 text-sm text-text-primary">
+                    <Check className="mt-0.5 h-4 w-4 text-success" aria-hidden="true" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-8">
+                <ProCheckoutButton />
+              </div>
+            </article>
+
+            <aside className="rounded-card border border-border bg-panel p-7 sm:p-8">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">Free</p>
+              <p className="mt-4 text-4xl font-black tracking-tight">$0</p>
+              <p className="mt-4 text-sm leading-relaxed text-text-secondary">
+                Start with one daily directive and your first three finished artifacts.
+              </p>
+              <ul className="mt-6 space-y-3">
+                {freeFeatures.map((feature) => (
+                  <li key={feature} className="flex items-start gap-3 text-sm text-text-primary">
+                    <Check className="mt-0.5 h-4 w-4 text-success" aria-hidden="true" />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/start"
+                className="mt-8 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-button border border-border bg-panel-raised px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary transition-colors hover:border-border-strong"
+              >
+                Get started free
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </aside>
           </div>
         </section>
 
         <section className="py-16">
           <div className="mx-auto max-w-4xl px-4 sm:px-6">
             <h2 className="text-2xl font-black tracking-tight sm:text-3xl">Questions</h2>
-            <div className="mt-8 space-y-4">
+            <div className="mt-8 divide-y divide-border-subtle border-y border-border-subtle">
               {faq.map((item) => (
-                <article key={item.question} className="rounded-card border border-border bg-panel p-6">
+                <article key={item.question} className="py-5 sm:py-6">
                   <h3 className="text-sm font-black uppercase tracking-[0.12em] text-text-primary">{item.question}</h3>
                   <p className="mt-3 text-sm leading-relaxed text-text-secondary">{item.answer}</p>
                 </article>

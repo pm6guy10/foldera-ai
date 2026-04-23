@@ -309,9 +309,9 @@ export default function SettingsClient() {
       )}
     >
 
-      <div className="space-y-6">
+      <div className="space-y-5">
         {/* ── Connected accounts ── */}
-        <section id="connected-accounts" className="rounded-card border border-border bg-panel overflow-hidden">
+        <section id="connected-accounts" className="rounded-card border border-border-subtle bg-panel overflow-hidden">
           <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
             <SectionHeading className="mb-2">Connected accounts</SectionHeading>
             <p className="text-xs text-text-muted leading-relaxed">
@@ -359,19 +359,15 @@ export default function SettingsClient() {
               </div>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <article className="rounded-card border border-border bg-panel-raised p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Connected sources</p>
-                <p className="mt-2 text-2xl font-black tracking-tight text-text-primary">{activeIntegrationCount}</p>
-              </article>
-              <article className="rounded-card border border-border bg-panel-raised p-4">
+            <div className="flex flex-col gap-3 rounded-card border border-border bg-panel-raised px-4 py-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Source summary</p>
+                <p className="text-sm leading-relaxed text-text-primary">
+                  <span className="font-semibold">{activeIntegrationCount}</span> connected sources
+                </p>
                 <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Latest source signal</p>
-                <p className="mt-2 text-sm leading-relaxed text-text-primary">{latestSignalLabel}</p>
-              </article>
-            </div>
-
-            <div className="flex flex-col gap-2 rounded-card border border-border-subtle bg-panel px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-text-secondary">Legacy route: `/dashboard/signals` is still available if bookmarked.</p>
+                <p className="text-xs leading-relaxed text-text-secondary">{latestSignalLabel}</p>
+              </div>
               <Link
                 href="/dashboard/signals"
                 className="inline-flex min-h-[40px] items-center rounded-button border border-border px-3 text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
@@ -603,7 +599,7 @@ export default function SettingsClient() {
         </section>
 
         {/* ── Subscription ── */}
-        <section className="rounded-card border border-border bg-panel overflow-hidden">
+        <section className="rounded-card border border-border-subtle bg-panel overflow-hidden">
           <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
             <SectionHeading className="!mb-0">Subscription</SectionHeading>
           </div>
@@ -687,7 +683,7 @@ export default function SettingsClient() {
         </section>
 
         {/* ── Account ── */}
-        <section className="rounded-card border border-border bg-panel overflow-hidden">
+        <section className="rounded-card border border-border-subtle bg-panel overflow-hidden">
           <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
             <SectionHeading className="!mb-0">Account</SectionHeading>
           </div>
@@ -710,7 +706,7 @@ export default function SettingsClient() {
         </section>
 
         {/* ── Danger zone ── */}
-        <section className="rounded-card border border-border bg-panel overflow-hidden">
+        <section className="rounded-card border border-border-subtle bg-panel overflow-hidden">
           <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
             <SectionHeading className="!mb-0 text-text-primary">Danger zone</SectionHeading>
           </div>

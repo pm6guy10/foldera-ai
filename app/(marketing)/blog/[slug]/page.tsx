@@ -90,15 +90,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             </p>
             <h1 className="mt-4 text-4xl font-black tracking-tight sm:text-5xl">{post.title}</h1>
             <p className="mt-4 max-w-2xl text-base leading-relaxed text-text-secondary">{post.description}</p>
-            <div className="mt-8 rounded-card border border-border bg-panel p-6">
+            <div className="mt-8 border-y border-border-subtle py-5">
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Written by</p>
               <Link
                 href={BRANDON_KAPP_PROFILE_PATH}
-                className="mt-3 inline-flex text-xl font-bold text-text-primary transition-colors hover:text-accent-hover"
+                className="mt-2 inline-flex text-xl font-bold text-text-primary transition-colors hover:text-accent-hover"
               >
                 {BRANDON_KAPP_NAME}
               </Link>
-              <p className="mt-3 text-sm leading-relaxed text-text-secondary">{BRANDON_KAPP_AUTHOR_BLURB}</p>
+              <p className="mt-2 text-sm leading-relaxed text-text-secondary">{BRANDON_KAPP_AUTHOR_BLURB}</p>
             </div>
           </header>
 
@@ -109,7 +109,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             />
           </div>
 
-          <section className="rounded-card border border-border bg-panel p-8 text-center">
+          <section className="border-t border-border-subtle py-10 text-center">
             <p className="text-lg font-semibold text-text-primary">Finished work, every morning.</p>
             <Link
               href="/start"

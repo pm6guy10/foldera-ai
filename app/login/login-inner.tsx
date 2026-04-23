@@ -16,11 +16,11 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
   return (
     <div className="min-h-[100dvh] bg-bg text-text-primary">
       <NavAuthMinimal variant="login" />
-      <main id="main" className="mx-auto flex max-w-6xl flex-col px-4 py-16 sm:px-6">
-        <div className="mx-auto w-full max-w-md rounded-card border border-border bg-panel p-8 sm:p-8">
+      <main id="main" className="mx-auto flex max-w-6xl flex-col px-4 py-16 sm:px-6 sm:py-20">
+        <div className="mx-auto w-full max-w-2xl rounded-card border border-border bg-panel px-6 py-8 sm:px-10 sm:py-10">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Finished work, every morning</p>
-          <h1 className="mt-6 text-4xl font-black tracking-tight">Sign in</h1>
-          <p className="mt-4 text-sm leading-relaxed text-text-secondary">
+          <h1 className="mt-6 text-4xl font-black tracking-tight sm:text-5xl">Sign in</h1>
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-text-secondary">
             Continue with Google or Microsoft to open your dashboard.
           </p>
 
@@ -30,7 +30,7 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
             </div>
           )}
 
-          <div className="mt-6 space-y-3">
+          <div className="mt-7 space-y-3">
             <OAuthButton
               label="Continue with Google"
               provider="google"
@@ -48,6 +48,10 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
               <MicrosoftIcon />
             </OAuthButton>
           </div>
+
+          <p className="mt-6 text-xs leading-relaxed text-text-muted">
+            Foldera only needs source access to prepare your daily brief. You can disconnect any provider from settings.
+          </p>
         </div>
       </main>
     </div>

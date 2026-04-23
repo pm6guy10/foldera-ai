@@ -74,19 +74,20 @@ export default function SignalsPage() {
         </Link>
       </section>
 
-      <section className="mt-4 grid gap-4 md:grid-cols-2">
-        <article className="rounded-card border border-border bg-panel p-5">
-          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Connected sources</p>
-          <p className="mt-2 text-3xl font-black tracking-tight text-text-primary">{activeIntegrations.length}</p>
-        </article>
-        <article className="rounded-card border border-border bg-panel p-5">
-          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Latest source signal</p>
-          <p className="mt-2 text-sm leading-relaxed text-text-primary">{latestSignalLabel}</p>
-        </article>
-      </section>
+      <section className="mt-4 rounded-card border border-border-subtle bg-panel p-6">
+        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Legacy snapshot</p>
+        <div className="mt-4 grid gap-4 border-y border-border-subtle py-4 md:grid-cols-2">
+          <article>
+            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Connected sources</p>
+            <p className="mt-2 text-3xl font-black tracking-tight text-text-primary">{activeIntegrations.length}</p>
+          </article>
+          <article>
+            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Latest source signal</p>
+            <p className="mt-2 text-sm leading-relaxed text-text-primary">{latestSignalLabel}</p>
+          </article>
+        </div>
 
-      <section className="mt-4 rounded-card border border-border bg-panel p-6">
-        <h3 className="text-sm font-black uppercase tracking-[0.12em] text-text-secondary">Legacy connected list</h3>
+        <h3 className="mt-5 text-sm font-black uppercase tracking-[0.12em] text-text-secondary">Connected list</h3>
         {activeIntegrations.length === 0 ? (
           <p className="mt-3 text-sm leading-relaxed text-text-secondary">
             No active sources are connected yet.

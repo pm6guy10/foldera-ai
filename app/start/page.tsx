@@ -72,12 +72,12 @@ function StartContent() {
   return (
     <div className="min-h-[100dvh] bg-bg text-text-primary">
       <NavAuthMinimal variant="start" />
-      <main id="main" className="mx-auto flex max-w-6xl flex-col px-4 py-16 sm:px-6">
-        <div className="mx-auto w-full max-w-md rounded-card border border-border bg-panel p-8 sm:p-8">
+      <main id="main" className="mx-auto flex max-w-6xl flex-col px-4 py-16 sm:px-6 sm:py-20">
+        <div className="mx-auto w-full max-w-2xl rounded-card border border-border bg-panel px-6 py-8 sm:px-10 sm:py-10">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Finished work, every morning</p>
-          <h1 className="mt-6 text-4xl font-black tracking-tight">Get started with Foldera</h1>
-          <p className="mt-4 text-sm leading-relaxed text-text-secondary">
-            One secure sign-in. Foldera handles the reading and prepares one high-leverage move.
+          <h1 className="mt-6 text-4xl font-black tracking-tight sm:text-5xl">Get started with Foldera</h1>
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-text-secondary">
+            One secure sign-in. Foldera reads your connected context and prepares one finished move worth approving.
           </p>
 
           {error && (
@@ -86,7 +86,7 @@ function StartContent() {
             </div>
           )}
 
-          <div className="mt-6 space-y-3">
+          <div className="mt-7 space-y-3">
             <OAuthButton
               label="Continue with Google"
               provider="google"
@@ -105,7 +105,7 @@ function StartContent() {
             </OAuthButton>
           </div>
 
-          <div className="mt-8 rounded-card border border-border-subtle bg-panel-raised p-6">
+          <div className="mt-8 border-y border-border-subtle py-6">
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">What happens next</p>
             <ol className="mt-4 space-y-3 text-sm text-text-secondary">
               <li>1. Connect Google or Microsoft.</li>
