@@ -153,6 +153,12 @@ async function expectRenderedDocumentMarkdown(
   }
 }
 
+async function expectDashboardStatus(page: Page, expectedStatusId: string): Promise<void> {
+  const notice = page.getByTestId('dashboard-status-notice');
+  await expect(notice).toBeVisible({ timeout: 8000 });
+  await expect(notice).toHaveAttribute('data-status-id', expectedStatusId);
+}
+
 const INTEGRATIONS_RESPONSE = {
   integrations: [
     { provider: 'google', is_active: true, sync_email: 'test@gmail.com', last_synced_at: null, missing_scopes: [] },
@@ -538,6 +544,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     const approveBtn = page.getByRole('button', { name: /approve/i });
     await expect(approveBtn).toBeVisible();
     await approveBtn.click();
+    await expectDashboardStatus(page, 'approve_sent');
     await expect(page.getByText(/sent|check your outbox/i).first()).toBeVisible({ timeout: 5000 });
   });
 
@@ -548,6 +555,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     const skipBtn = page.getByRole('button', { name: /snooze 24h|skip/i });
     await expect(skipBtn).toBeVisible();
     await skipBtn.click();
+    await expectDashboardStatus(page, 'skip_snoozed');
     await expect(page.getByText(/snoozed|adjust/i).first()).toBeVisible({ timeout: 5000 });
   });
 
@@ -602,9 +610,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await page.goto('/dashboard');
     await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/Hi Keri,/i)).toBeVisible();
-    await expect(
-      page.getByText('Upgrade to Pro to keep receiving finished work.'),
-    ).toHaveCount(0);
+    await expect(page.getByTestId('dashboard-pro-blur')).toHaveCount(0);
   });
 
   test('non-Pro users see the blur starting with artifact 4 @payments', async ({ page }) => {
@@ -618,6 +624,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     });
     await page.goto('/dashboard');
     await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('dashboard-pro-blur')).toBeVisible();
     await expect(
       page.getByText('Upgrade to Pro to keep receiving finished work.'),
     ).toBeVisible();
@@ -671,6 +678,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     });
 
     await page.getByTestId('dashboard-primary-action').click();
+    await expectDashboardStatus(page, 'approve_saved_document');
     await expect(page.getByText(/Saved\. Your document is in Foldera Signals/i)).toBeVisible({ timeout: 8000 });
     await expect(page.getByText(/It worked/i)).toBeVisible();
   });
@@ -703,6 +711,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       '/dashboard?action=skip&id=00000000-0000-0000-0000-000000000099',
     );
     const documentBody = page.getByTestId('dashboard-document-body');
+    await expectDashboardStatus(page, 'reconciled_stale_action');
     await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 15000 });
     await expect.poll(() => latestCalls).toBe(2);
     await expect(
@@ -744,6 +753,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     const documentBody = page.getByTestId('dashboard-document-body');
     await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
     await page.getByRole('button', { name: /snooze 24h|skip/i }).click();
+    await expectDashboardStatus(page, 'reconciled_stale_action');
     await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 10000 });
     await expect.poll(() => latestCalls).toBe(2);
     await expect(

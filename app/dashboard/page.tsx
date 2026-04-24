@@ -9,6 +9,7 @@ import {
   FileText,
   Layers3,
   Mail,
+  Lock,
   Search,
   Send,
   TriangleAlert,
@@ -50,6 +51,47 @@ function artifactPrimaryText(artifact: ArtifactWithDraftedEmail | null | undefin
 }
 
 type ActionWithDomain = ConvictionAction & { domain?: string; generatedAt?: string };
+type DashboardNoticeKind =
+  | 'approve_sent'
+  | 'approve_saved_document'
+  | 'skip_snoozed'
+  | 'reconciled_stale_action'
+  | 'error';
+type DashboardNotice = { kind: DashboardNoticeKind; message: string };
+
+function approveSuccessFlash(actionType: string | undefined, result: unknown): DashboardNotice {
+  const payload = result && typeof result === 'object' ? (result as Record<string, unknown>) : null;
+  if (actionType === 'write_document') {
+    const emailResult = payload?.document_ready_email;
+    if (emailResult && typeof emailResult === 'object') {
+      const output = emailResult as { sent?: boolean; reason?: string; send_error?: string };
+      if (output.sent === true) {
+        return { kind: 'approve_saved_document', message: 'Saved. We also emailed you the full document.' };
+      }
+      if (output.reason === 'no_verified_email') {
+        return {
+          kind: 'approve_saved_document',
+          message: 'Saved to your Foldera record. Add a verified email in Settings to receive a copy by email.',
+        };
+      }
+      if (typeof output.send_error === 'string' && output.send_error.length > 0) {
+        return { kind: 'approve_saved_document', message: 'Saved. Email delivery failed — your document is still in Foldera Signals.' };
+      }
+    }
+    if (payload?.saved === true) {
+      return { kind: 'approve_saved_document', message: 'Saved. Your document is in Foldera Signals.' };
+    }
+    return { kind: 'approve_saved_document', message: 'Saved.' };
+  }
+
+  const sentVia = (payload as { sent_via?: string } | null)?.sent_via;
+  if (sentVia === 'gmail') return { kind: 'approve_sent', message: 'Sent from your Gmail.' };
+  if (sentVia === 'outlook') return { kind: 'approve_sent', message: 'Sent from your Outlook.' };
+  if (sentVia === 'resend') {
+    return { kind: 'approve_sent', message: 'Sent via Foldera. Connect Gmail in Settings to send from your own inbox.' };
+  }
+  return { kind: 'approve_sent', message: 'Sent. Check your outbox.' };
+}
 
 const DOCUMENT_MARKDOWN_COMPONENTS = {
   h1: ({ children }: { children?: ReactNode }) => (
@@ -151,6 +193,13 @@ export default function DashboardPage() {
   const { data: session, status } = useSession();
   const [action, setAction] = useState<ActionWithDomain | null>(null);
   const [executing, setExecuting] = useState(false);
+  const [notice, setNotice] = useState<DashboardNotice | null>(null);
+  const [artifactVisibilityCount, setArtifactVisibilityCount] = useState(0);
+  const [subPlan, setSubPlan] = useState<string | null>(null);
+  const [subStatus, setSubStatus] = useState<string | null>(null);
+  const [lastDecision, setLastDecision] = useState<'approve' | 'skip' | null>(null);
+  const [executedActionId, setExecutedActionId] = useState<string | null>(null);
+  const [outcomeRecorded, setOutcomeRecorded] = useState(false);
 
   const loadAbortRef = useRef<AbortController | null>(null);
 
@@ -160,20 +209,38 @@ export default function DashboardPage() {
     loadAbortRef.current = controller;
 
     try {
-      const latestRes = await fetch('/api/conviction/latest', { signal: controller.signal });
+      const [latestRes, subscriptionRes] = await Promise.all([
+        fetch('/api/conviction/latest', { signal: controller.signal }),
+        fetch('/api/subscription/status', { signal: controller.signal }),
+      ]);
       if (controller.signal.aborted) return;
+
+      if (subscriptionRes.ok) {
+        const subscription = await subscriptionRes.json().catch(() => ({}));
+        if (controller.signal.aborted) return;
+        setSubPlan(typeof subscription.plan === 'string' ? subscription.plan : null);
+        setSubStatus(typeof subscription.status === 'string' ? subscription.status : null);
+      } else {
+        setSubPlan(null);
+        setSubStatus(null);
+      }
 
       if (!latestRes.ok) {
         setAction(null);
+        setArtifactVisibilityCount(0);
         return;
       }
 
       const data = await latestRes.json().catch(() => ({}));
       if (controller.signal.aborted) return;
+      setArtifactVisibilityCount(typeof data?.approved_count === 'number' ? data.approved_count : 0);
       setAction(data?.id ? data : null);
     } catch {
       if (controller.signal.aborted) return;
       setAction(null);
+      setArtifactVisibilityCount(0);
+      setSubPlan(null);
+      setSubStatus(null);
     }
   }, []);
 
@@ -197,22 +264,43 @@ export default function DashboardPage() {
           const message = (data as { error?: string }).error ?? 'Could not update that action.';
           if (shouldReconcileExecuteFailure(response, message)) {
             await load();
+            setNotice({
+              kind: 'reconciled_stale_action',
+              message: 'That directive was already handled or replaced. Showing your current state.',
+            });
             return;
           }
+          setNotice({ kind: 'error', message });
           return;
         }
 
         if (data.status === 'executed' || data.status === 'skipped') {
+          if (deepAction === 'approve') {
+            setLastDecision('approve');
+            setExecutedActionId((data.action_id as string | undefined) ?? id);
+            setOutcomeRecorded(false);
+            setNotice(approveSuccessFlash((data as { action_type?: string }).action_type ?? action?.action_type, data.result));
+          } else {
+            setLastDecision('skip');
+            setExecutedActionId(null);
+            setNotice({ kind: 'skip_snoozed', message: 'Snoozed. Foldera will adjust.' });
+          }
           await load();
         }
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Could not update that action.';
         if (shouldReconcileExecuteFailure(null, message)) {
           await load();
+          setNotice({
+            kind: 'reconciled_stale_action',
+            message: 'That directive was already handled or replaced. Showing your current state.',
+          });
+          return;
         }
+        setNotice({ kind: 'error', message });
       }
     })();
-  }, [load]);
+  }, [action?.action_type, load]);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -236,20 +324,35 @@ export default function DashboardPage() {
       if (!response.ok) {
         const message = (data as { error?: string }).error ?? 'Approve failed';
         if (shouldReconcileExecuteFailure(response, message)) {
+          setNotice({
+            kind: 'reconciled_stale_action',
+            message: 'That directive was already handled or replaced. Showing your current state.',
+          });
           await load();
           return;
         }
+        setNotice({ kind: 'error', message });
         return;
       }
 
       if (data.status === 'executed' || data.status === 'skipped') {
+        setLastDecision('approve');
+        setExecutedActionId((data.action_id as string | undefined) ?? action.id);
+        setOutcomeRecorded(false);
+        setNotice(approveSuccessFlash((data as { action_type?: string }).action_type ?? action.action_type, data.result));
         await load();
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Approve failed';
       if (shouldReconcileExecuteFailure(null, message)) {
+        setNotice({
+          kind: 'reconciled_stale_action',
+          message: 'That directive was already handled or replaced. Showing your current state.',
+        });
         await load();
+        return;
       }
+      setNotice({ kind: 'error', message });
     } finally {
       setExecuting(false);
     }
@@ -268,23 +371,51 @@ export default function DashboardPage() {
       if (!response.ok) {
         const message = (data as { error?: string }).error ?? 'Skip failed';
         if (shouldReconcileExecuteFailure(response, message)) {
+          setNotice({
+            kind: 'reconciled_stale_action',
+            message: 'That directive was already handled or replaced. Showing your current state.',
+          });
           await load();
           return;
         }
+        setNotice({ kind: 'error', message });
         return;
       }
       if (data.status === 'executed' || data.status === 'skipped') {
+        setLastDecision('skip');
+        setExecutedActionId(null);
+        setNotice({ kind: 'skip_snoozed', message: 'Snoozed. Foldera will adjust.' });
         await load();
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Skip failed';
       if (shouldReconcileExecuteFailure(null, message)) {
+        setNotice({
+          kind: 'reconciled_stale_action',
+          message: 'That directive was already handled or replaced. Showing your current state.',
+        });
         await load();
+        return;
       }
+      setNotice({ kind: 'error', message });
     } finally {
       setExecuting(false);
     }
   };
+
+  const recordOutcome = useCallback(async (outcome: 'worked' | 'didnt_work') => {
+    if (!executedActionId || outcomeRecorded) return;
+    setOutcomeRecorded(true);
+    try {
+      await fetch('/api/conviction/outcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action_id: executedActionId, outcome }),
+      });
+    } catch {
+      /* best effort */
+    }
+  }, [executedActionId, outcomeRecorded]);
 
   const handleCopyDraft = useCallback(async () => {
     const artifact = action?.artifact as ArtifactWithDraftedEmail | null | undefined;
@@ -322,6 +453,20 @@ export default function DashboardPage() {
     }
   }, []);
 
+  async function startStripeCheckout() {
+    try {
+      const response = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (data.url) window.location.href = data.url as string;
+    } catch {
+      setNotice({ kind: 'error', message: 'Could not open checkout right now.' });
+    }
+  }
+
   const sessionName = session?.user?.name?.trim() || 'Brandon';
   const firstName = sessionName.split(' ')[0] || 'Brandon';
   const currentAction = action;
@@ -329,6 +474,9 @@ export default function DashboardPage() {
   const artifactBody = artifactPrimaryText(artifact);
   const isDocument = artifact?.type === 'document';
   const isWait = artifact?.type === 'wait_rationale';
+  const isProArtifactUnlocked =
+    subPlan === 'pro' && (subStatus === 'active' || subStatus === 'past_due' || subStatus === 'active_trial');
+  const showArtifactBlur = Boolean(artifact) && !isProArtifactUnlocked && artifactVisibilityCount > 3;
 
   const hasLiveAction = Boolean(currentAction?.id);
   const cardDirective = currentAction?.directive ?? DEMO_DIRECTIVE;
@@ -339,27 +487,55 @@ export default function DashboardPage() {
   const cardNextStep = isDocument ? 'Next: Save to record' : 'Next: Await response';
   const draftLabel = isDocument ? 'DOCUMENT' : isWait ? 'RATIONALE' : 'DRAFT';
 
-  const draftBody = isDocument ? (
-    artifactBody ? (
-      <div
-        className="max-h-[380px] overflow-y-auto rounded-[16px] border border-border bg-panel-raised p-4"
-        data-testid="dashboard-document-body"
-      >
-        {artifact?.title ? <p className="mb-3 text-base font-semibold text-text-primary">{artifact.title}</p> : null}
-        <ReactMarkdown components={DOCUMENT_MARKDOWN_COMPONENTS}>{artifactBody}</ReactMarkdown>
+  const draftBody = showArtifactBlur ? (
+    <div
+      className="relative overflow-hidden rounded-[16px] border border-border bg-panel-raised p-4"
+      data-testid="dashboard-pro-blur"
+    >
+      <div className="pointer-events-none select-none blur-[5px]">
+        {isDocument ? (
+          <>
+            {artifact?.title ? <p className="mb-3 text-base font-semibold text-text-primary">{artifact.title}</p> : null}
+            <div className="whitespace-pre-line text-[15px] leading-7 text-text-primary">{artifactBody}</div>
+          </>
+        ) : (
+          <div className="whitespace-pre-line text-[15px] leading-7 text-text-primary">{artifactBody}</div>
+        )}
       </div>
-    ) : (
-      <p className="text-[15px] leading-7 text-text-secondary">Full text is in your morning email. Save document to file it, or skip to adjust.</p>
-    )
-  ) : isWait ? (
-    <div className="space-y-3">
-      {artifact?.context ? <p className="text-[15px] leading-7 text-text-primary">{artifact.context}</p> : null}
-      {artifact?.tripwires?.[0] || artifact?.check_date ? (
-        <p className="text-[13px] uppercase tracking-[0.12em] text-accent">Resume when: {artifact?.tripwires?.[0] ?? artifact?.check_date}</p>
-      ) : null}
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-bg/60 px-6 text-center">
+        <p className="max-w-[280px] text-base font-medium text-text-primary">Upgrade to Pro to keep receiving finished work.</p>
+        <button
+          type="button"
+          onClick={() => void startStripeCheckout()}
+          className="foldera-button-primary mt-4"
+        >
+          Upgrade to Pro
+        </button>
+      </div>
     </div>
   ) : (
-    <div className="whitespace-pre-line text-[15px] leading-7 text-text-primary">{artifactBody ?? demoDraft}</div>
+    isDocument ? (
+      artifactBody ? (
+        <div
+          className="max-h-[380px] overflow-y-auto rounded-[16px] border border-border bg-panel-raised p-4"
+          data-testid="dashboard-document-body"
+        >
+          {artifact?.title ? <p className="mb-3 text-base font-semibold text-text-primary">{artifact.title}</p> : null}
+          <ReactMarkdown components={DOCUMENT_MARKDOWN_COMPONENTS}>{artifactBody}</ReactMarkdown>
+        </div>
+      ) : (
+        <p className="text-[15px] leading-7 text-text-secondary">Full text is in your morning email. Save document to file it, or skip to adjust.</p>
+      )
+    ) : isWait ? (
+      <div className="space-y-3">
+        {artifact?.context ? <p className="text-[15px] leading-7 text-text-primary">{artifact.context}</p> : null}
+        {artifact?.tripwires?.[0] || artifact?.check_date ? (
+          <p className="text-[13px] uppercase tracking-[0.12em] text-accent">Resume when: {artifact?.tripwires?.[0] ?? artifact?.check_date}</p>
+        ) : null}
+      </div>
+    ) : (
+      <div className="whitespace-pre-line text-[15px] leading-7 text-text-primary">{artifactBody ?? demoDraft}</div>
+    )
   );
 
   const cardActions = isDocument
@@ -452,6 +628,16 @@ export default function DashboardPage() {
               </div>
             </header>
 
+            {notice ? (
+              <div
+                className="mx-auto mb-4 w-full max-w-[1008px] rounded-[16px] border border-border bg-panel-raised px-4 py-3"
+                data-testid="dashboard-status-notice"
+                data-status-id={notice.kind}
+              >
+                <p className="text-sm text-text-primary">{notice.message}</p>
+              </div>
+            ) : null}
+
             <div className="mx-auto w-full max-w-[1008px] pb-10">
               <DailyBriefCard
                 className="foldera-dashboard-brief-card w-full"
@@ -466,6 +652,24 @@ export default function DashboardPage() {
                 footerText="Grounded in connected sources"
                 actions={cardActions}
               />
+              {lastDecision === 'approve' && executedActionId && !outcomeRecorded ? (
+                <div className="mt-4 flex flex-wrap justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => void recordOutcome('worked')}
+                    className="foldera-button-primary"
+                  >
+                    It worked
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void recordOutcome('didnt_work')}
+                    className="foldera-button-secondary"
+                  >
+                    Didn&apos;t work
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
 
