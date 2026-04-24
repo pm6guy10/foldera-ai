@@ -556,10 +556,9 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupEmptyDashboardMocks(page);
     await page.goto('/dashboard');
     await expect(
-      page.getByText(/finished move|one thing that matters|reading connected sources|task list|connect accounts/i).first(),
-    ).toBeVisible({
-      timeout: 15000,
-    });
+      page.getByRole('heading', { name: /Send the follow-up to Alex Morgan before noon\./i }),
+    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: /Run first read now/i })).toBeVisible();
   });
 
   test('no actionable console errors — desktop', async ({ page }) => {

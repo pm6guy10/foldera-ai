@@ -142,19 +142,43 @@ describeWithAuth('Visual system dashboard screenshots', () => {
   test('capture dashboard desktop and mobile', async ({ page }) => {
     await ensureOutDir();
     await setupDashboardMocks(page);
+    const captures = [
+      { width: 1440, height: 1200, file: 'dashboard-1440.png', maxBriefWidth: 980, rightRailVisible: true },
+      { width: 1920, height: 1200, file: 'dashboard-1920.png', maxBriefWidth: 980, rightRailVisible: true },
+      { width: 1280, height: 1200, file: 'dashboard-1280.png', maxBriefWidth: 960, rightRailVisible: true },
+      { width: 1024, height: 1200, file: 'dashboard-1024.png', maxBriefWidth: 920, rightRailVisible: false },
+      { width: 390, height: 1180, file: 'dashboard-390.png', maxBriefWidth: 390, rightRailVisible: false },
+    ] as const;
 
-    await page.setViewportSize({ width: 1440, height: 1200 });
-    await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: /Send the follow-up to Alex Morgan before noon\./i })).toBeVisible();
-    await expect(page.getByText(/FOLDERA DESIGN SYSTEM/i)).toHaveCount(0);
-    await expect(page.getByText(/DASHBOARD — PRODUCT VIEWS/i)).toHaveCount(0);
-    await page.screenshot({ path: path.join(OUT_DIR, 'dashboard-desktop-clean.png'), fullPage: true });
+    for (const capture of captures) {
+      await page.setViewportSize({ width: capture.width, height: capture.height });
+      await page.goto('/dashboard');
 
-    await page.setViewportSize({ width: 390, height: 1180 });
-    await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: /Send the follow-up to Alex Morgan before noon\./i })).toBeVisible();
-    await expect(page.getByText(/FOLDERA DESIGN SYSTEM/i)).toHaveCount(0);
-    await expect(page.getByText(/DASHBOARD — PRODUCT VIEWS/i)).toHaveCount(0);
-    await page.screenshot({ path: path.join(OUT_DIR, 'dashboard-mobile-clean.png'), fullPage: true });
+      await expect(page.getByRole('heading', { name: /Send the follow-up to Alex Morgan before noon\./i })).toBeVisible();
+      await expect(page.getByText(/FOLDERA DESIGN SYSTEM/i)).toHaveCount(0);
+      await expect(page.getByText(/DASHBOARD — PRODUCT VIEWS/i)).toHaveCount(0);
+      await expect(page.getByText(/No live brief is queued right now/i)).toHaveCount(0);
+
+      const briefCard = page.locator('article.foldera-brief-shell').first();
+      await expect(briefCard).toBeVisible();
+      const briefWidth = await briefCard.evaluate((node) =>
+        Math.round((node as HTMLElement).getBoundingClientRect().width),
+      );
+      expect(briefWidth).toBeLessThanOrEqual(capture.maxBriefWidth);
+
+      const rightRailLabel = page.getByText(/How this brief works/i).first();
+      if (capture.rightRailVisible) {
+        await expect(rightRailLabel).toBeVisible();
+      } else {
+        await expect(rightRailLabel).not.toBeVisible();
+      }
+
+      const hasOverflow = await page.evaluate(
+        () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      );
+      expect(hasOverflow).toBe(false);
+
+      await page.screenshot({ path: path.join(OUT_DIR, capture.file), fullPage: true });
+    }
   });
 });

@@ -593,180 +593,185 @@ export default function DashboardPage() {
 
   return (
     <div className="foldera-page min-h-screen bg-bg text-text-primary">
-      <div className="mx-auto max-w-[1660px] px-3 py-3 sm:px-4 lg:px-6 lg:py-6">
-        <div className="grid gap-4 lg:grid-cols-[250px_minmax(0,1fr)]">
+      <div className="mx-auto max-w-[1500px] px-3 py-3 sm:px-4 lg:px-6 lg:py-6">
+        <div className="grid gap-4 lg:grid-cols-[clamp(240px,18vw,272px)_minmax(0,1fr)]">
           <DashboardSidebar activeLabel="Executive Briefing" userName={firstName} />
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_290px]">
-            <div className="space-y-4">
-              <div className="foldera-panel flex items-center justify-between px-4 py-3 lg:hidden">
-                <FolderaLogo href="/dashboard" markSize="sm" />
-                <div className="flex items-center gap-2">
-                  <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-border bg-panel-raised text-text-secondary" aria-label="Search">
-                    <Search className="h-4 w-4" />
-                  </button>
-                  <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-border bg-panel-raised text-text-secondary" aria-label="Notifications">
-                    <Bell className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-
-              <header className="foldera-panel px-5 py-6 sm:px-6">
-                <p className="foldera-eyebrow">{getDateLabel()}</p>
-                <h1 className="mt-3 text-[44px] font-semibold tracking-[-0.05em] text-text-primary sm:text-[58px]">
-                  {getGreetingLabel()}, {firstName}.
-                </h1>
-                <div className="mt-8 flex flex-wrap gap-6 text-sm text-text-secondary">
-                  <div className="flex items-center gap-3">
-                    <Inbox className="h-4 w-4 text-text-muted" />
-                    <span className="text-[28px] font-semibold tracking-[-0.04em] text-text-primary">5</span>
-                    <span>open threads</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <TriangleAlert className="h-4 w-4 text-warning" />
-                    <span className="text-[28px] font-semibold tracking-[-0.04em] text-warning">2</span>
-                    <span>need attention</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <TrendingUp className="h-4 w-4 text-text-muted" />
-                    <span className="text-[28px] font-semibold tracking-[-0.04em] text-text-primary">1</span>
-                    <span>ready to move</span>
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_clamp(248px,20vw,296px)]">
+            <div className="min-w-0">
+              <div className="mx-auto w-full max-w-[980px] space-y-4">
+                <div className="foldera-panel flex items-center justify-between px-4 py-3 lg:hidden">
+                  <FolderaLogo href="/dashboard" markSize="sm" />
+                  <div className="flex items-center gap-2">
+                    <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-border bg-panel-raised text-text-secondary" aria-label="Search">
+                      <Search className="h-4 w-4" />
+                    </button>
+                    <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-border bg-panel-raised text-text-secondary" aria-label="Notifications">
+                      <Bell className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
-              </header>
 
-              {oauthReconnect ? (
-                <div className="foldera-subpanel px-4 py-4">
-                  <p className="text-sm text-text-primary">
-                    Your {oauthReconnect === 'microsoft' ? 'Microsoft' : 'Google'} connection needs a quick refresh so Foldera can keep your brief accurate.
-                  </p>
-                  <a
-                    href={oauthReconnect === 'microsoft' ? '/api/microsoft/connect' : '/api/google/connect'}
-                    className="foldera-button-primary mt-4"
-                  >
-                    Reconnect {oauthReconnect === 'microsoft' ? 'Microsoft' : 'Google'}
-                  </a>
-                </div>
-              ) : null}
-
-              {!done ? flashBanner : null}
-
-              {loading ? (
-                <div className="foldera-panel animate-pulse px-5 py-6 sm:px-6">
-                  <div className="h-3 w-36 rounded-full bg-white/10" />
-                  <div className="mt-4 h-12 w-3/4 rounded-[16px] bg-white/10" />
-                  <div className="mt-3 h-12 w-2/3 rounded-[16px] bg-white/10" />
-                  <div className="mt-6 h-[520px] rounded-[24px] bg-white/[0.03]" />
-                </div>
-              ) : done ? (
-                <div className="foldera-panel px-5 py-8 text-center sm:px-6">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-300/10 text-accent">
-                    {lastDecision === 'skip' ? <Clock3 className="h-6 w-6" /> : <Send className="h-6 w-6" />}
-                  </div>
-                  {flash ? <p className="mt-5 text-lg font-medium text-text-primary">{flash}</p> : null}
-                  <p className="mt-2 text-sm text-text-muted">Your next read arrives tomorrow morning.</p>
-                  {lastDecision === 'approve' && executedActionId && !outcomeRecorded ? (
-                    <div className="mt-6 flex flex-wrap justify-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => void recordOutcome('worked')}
-                        className="foldera-button-primary"
-                      >
-                        It worked
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void recordOutcome('didnt_work')}
-                        className="foldera-button-secondary"
-                      >
-                        Didn&apos;t work
-                      </button>
+                <header className="foldera-panel px-5 py-5 sm:px-6">
+                  <p className="foldera-eyebrow">{getDateLabel()}</p>
+                  <h1 className="mt-2 text-[38px] font-semibold tracking-[-0.05em] text-text-primary sm:text-[52px]">
+                    {getGreetingLabel()}, {firstName}.
+                  </h1>
+                  <div className="mt-6 flex flex-wrap gap-5 text-sm text-text-secondary">
+                    <div className="flex items-center gap-3">
+                      <Inbox className="h-4 w-4 text-text-muted" />
+                      <span className="text-[28px] font-semibold tracking-[-0.04em] text-text-primary">5</span>
+                      <span>open threads</span>
                     </div>
-                  ) : null}
-                </div>
-              ) : fetchError ? (
-                <div className="foldera-panel px-5 py-8 text-center sm:px-6">
-                  <p className="text-lg font-medium text-text-primary">Something went wrong loading your dashboard.</p>
-                  <button type="button" onClick={() => void load()} className="foldera-button-secondary mt-5">
-                    Try again
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {!currentAction ? (
-                    <div className="foldera-subpanel px-4 py-4">
-                      <p className="text-sm text-text-primary">No live brief is queued right now. Your next finished move still lands in email.</p>
-                      {hasActiveIntegration ? (
+                    <div className="flex items-center gap-3">
+                      <TriangleAlert className="h-4 w-4 text-warning" />
+                      <span className="text-[28px] font-semibold tracking-[-0.04em] text-warning">2</span>
+                      <span>need attention</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <TrendingUp className="h-4 w-4 text-text-muted" />
+                      <span className="text-[28px] font-semibold tracking-[-0.04em] text-text-primary">1</span>
+                      <span>ready to move</span>
+                    </div>
+                  </div>
+                </header>
+
+                {oauthReconnect ? (
+                  <div className="foldera-subpanel px-4 py-4">
+                    <p className="text-sm text-text-primary">
+                      Your {oauthReconnect === 'microsoft' ? 'Microsoft' : 'Google'} connection needs a quick refresh so Foldera can keep your brief accurate.
+                    </p>
+                    <a
+                      href={oauthReconnect === 'microsoft' ? '/api/microsoft/connect' : '/api/google/connect'}
+                      className="foldera-button-primary mt-4"
+                    >
+                      Reconnect {oauthReconnect === 'microsoft' ? 'Microsoft' : 'Google'}
+                    </a>
+                  </div>
+                ) : null}
+
+                {!done ? flashBanner : null}
+
+                {loading ? (
+                  <div className="foldera-panel animate-pulse px-5 py-6 sm:px-6">
+                    <div className="h-3 w-36 rounded-full bg-white/10" />
+                    <div className="mt-4 h-12 w-3/4 rounded-[16px] bg-white/10" />
+                    <div className="mt-3 h-12 w-2/3 rounded-[16px] bg-white/10" />
+                    <div className="mt-6 h-[520px] rounded-[24px] bg-white/[0.03]" />
+                  </div>
+                ) : done ? (
+                  <div className="foldera-panel px-5 py-8 text-center sm:px-6">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-300/10 text-accent">
+                      {lastDecision === 'skip' ? <Clock3 className="h-6 w-6" /> : <Send className="h-6 w-6" />}
+                    </div>
+                    {flash ? <p className="mt-5 text-lg font-medium text-text-primary">{flash}</p> : null}
+                    <p className="mt-2 text-sm text-text-muted">Your next read arrives tomorrow morning.</p>
+                    {lastDecision === 'approve' && executedActionId && !outcomeRecorded ? (
+                      <div className="mt-6 flex flex-wrap justify-center gap-3">
                         <button
                           type="button"
-                          onClick={() => void runFirstReadNow()}
-                          disabled={firstReadRunning}
-                          className="foldera-button-primary mt-4 disabled:cursor-wait disabled:opacity-60"
+                          onClick={() => void recordOutcome('worked')}
+                          className="foldera-button-primary"
                         >
-                          {firstReadRunning ? 'Running first read' : 'Run first read now'}
+                          It worked
                         </button>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  <DailyBriefCard
-                    directive={cardDirective}
-                    whyNow={cardWhyNow}
-                    draftLabel={draftLabel}
-                    draftBody={draftBody}
-                    sourcePills={cardSourcePills}
-                    nextStep={cardNextStep}
-                    statusText={cardStatusText}
-                    footerText="Grounded in connected sources"
-                    actions={cardActions}
-                    blur={showArtifactBlur}
-                    blurCta={(
-                      <div className="text-center">
-                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-300/10 text-accent">
-                          <Lock className="h-5 w-5" />
-                        </div>
-                        <p className="mt-4 max-w-[280px] text-base font-medium text-text-primary">
-                          Upgrade to Pro to keep receiving finished work.
-                        </p>
                         <button
                           type="button"
-                          onClick={() => void startStripeCheckout()}
-                          className="foldera-button-primary mt-4"
+                          onClick={() => void recordOutcome('didnt_work')}
+                          className="foldera-button-secondary"
                         >
-                          Upgrade to Pro
+                          Didn&apos;t work
                         </button>
                       </div>
-                    )}
-                  />
+                    ) : null}
+                  </div>
+                ) : fetchError ? (
+                  <div className="foldera-panel px-5 py-8 text-center sm:px-6">
+                    <p className="text-lg font-medium text-text-primary">Something went wrong loading your dashboard.</p>
+                    <button type="button" onClick={() => void load()} className="foldera-button-secondary mt-5">
+                      Try again
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <DailyBriefCard
+                      className="mx-auto w-full max-w-[960px]"
+                      directive={cardDirective}
+                      whyNow={cardWhyNow}
+                      draftLabel={draftLabel}
+                      draftBody={draftBody}
+                      sourcePills={cardSourcePills}
+                      nextStep={cardNextStep}
+                      statusText={cardStatusText}
+                      footerText="Grounded in connected sources"
+                      actions={cardActions}
+                      blur={showArtifactBlur}
+                      blurCta={(
+                        <div className="text-center">
+                          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-300/10 text-accent">
+                            <Lock className="h-5 w-5" />
+                          </div>
+                          <p className="mt-4 max-w-[280px] text-base font-medium text-text-primary">
+                            Upgrade to Pro to keep receiving finished work.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => void startStripeCheckout()}
+                            className="foldera-button-primary mt-4"
+                          >
+                            Upgrade to Pro
+                          </button>
+                        </div>
+                      )}
+                    />
 
-                  {currentAction?.action_type === 'send_message' && isEmail && artifactBody ? (
-                    <div className="foldera-subpanel px-4 py-4 text-center">
-                      <p className="text-[12px] leading-6 text-text-secondary">
-                        Approve sends from your connected Gmail or Outlook.{' '}
-                        <button type="button" onClick={() => void handleCopyDraft()} className="underline underline-offset-2 hover:text-text-primary">
-                          Copy as text
-                        </button>
-                      </p>
-                    </div>
-                  ) : null}
+                    {!currentAction && hasActiveIntegration ? (
+                      <div className="mx-auto w-full max-w-[960px]">
+                        <div className="foldera-subpanel px-4 py-4">
+                          <p className="text-sm text-text-primary">
+                            Foldera will post your next source-backed brief here as soon as one is ready.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => void runFirstReadNow()}
+                            disabled={firstReadRunning}
+                            className="foldera-button-primary mt-4 disabled:cursor-wait disabled:opacity-60"
+                          >
+                            {firstReadRunning ? 'Running first read' : 'Run first read now'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
 
-                  {currentAction?.action_type === 'write_document' && isDocument && artifactBody ? (
-                    <div className="foldera-subpanel px-4 py-4 text-center" data-testid="dashboard-document-actions-hint">
-                      <p className="text-[12px] leading-6 text-text-secondary">
-                        Save document files the full text to your Foldera record. Skip keeps it out of your record and tells Foldera to adjust.
-                      </p>
-                      <p className="mt-2 text-[12px] leading-6 text-text-secondary">
-                        <button type="button" onClick={() => void handleCopyDocument()} className="underline underline-offset-2 hover:text-text-primary">
-                          Copy full text
-                        </button>
-                      </p>
-                    </div>
-                  ) : null}
-                </div>
-              )}
+                    {currentAction?.action_type === 'send_message' && isEmail && artifactBody ? (
+                      <div className="foldera-subpanel px-4 py-4 text-center">
+                        <p className="text-[12px] leading-6 text-text-secondary">
+                          Approve sends from your connected Gmail or Outlook.{' '}
+                          <button type="button" onClick={() => void handleCopyDraft()} className="underline underline-offset-2 hover:text-text-primary">
+                            Copy as text
+                          </button>
+                        </p>
+                      </div>
+                    ) : null}
+
+                    {currentAction?.action_type === 'write_document' && isDocument && artifactBody ? (
+                      <div className="foldera-subpanel px-4 py-4 text-center" data-testid="dashboard-document-actions-hint">
+                        <p className="text-[12px] leading-6 text-text-secondary">
+                          Save document files the full text to your Foldera record. Skip keeps it out of your record and tells Foldera to adjust.
+                        </p>
+                        <p className="mt-2 text-[12px] leading-6 text-text-secondary">
+                          <button type="button" onClick={() => void handleCopyDocument()} className="underline underline-offset-2 hover:text-text-primary">
+                            Copy full text
+                          </button>
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+              </div>
             </div>
 
-            <aside className="space-y-4">
+            <aside className="hidden space-y-4 xl:block">
               <div className="foldera-panel hidden px-4 py-4 xl:block">
                 <div className="flex items-center gap-3 rounded-[16px] border border-border bg-panel-raised px-4 py-3 text-sm text-text-muted">
                   <Search className="h-4 w-4" />
