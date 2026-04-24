@@ -4187,14 +4187,15 @@ function hasRecentSignalForCandidate(
  *
  * Domains covered: jobs, relationships, admin, product, finance, and all others.
  */
-function classifyLifecycle(args: {
+export function classifyLifecycle(args: {
   urgency: number;
   stakes: number;
   tractability: number;
   entityPenalty: number;
   hasRecentSignal: boolean;
+  forceActionableNow?: boolean;
 }): CandidateLifecycle {
-  const { urgency, stakes, tractability, entityPenalty, hasRecentSignal } = args;
+  const { urgency, stakes, tractability, entityPenalty, hasRecentSignal, forceActionableNow = false } = args;
 
   // Time horizon
   let horizon: TimeHorizon;
@@ -4205,12 +4206,25 @@ function classifyLifecycle(args: {
 
   // Actionability
   let actionability: Actionability;
-  if (stakes < 2) {
+  if (forceActionableNow) {
+    actionability = 'actionable';
+  } else if (stakes < 2) {
     actionability = 'archive_only';
   } else if (tractability >= 0.35 && urgency >= 0.25) {
     actionability = 'actionable';
   } else {
     actionability = 'hold_only';
+  }
+
+  if (forceActionableNow) {
+    const forcedHorizon: TimeHorizon = horizon === 'never' ? 'near_term' : horizon;
+    return {
+      state: 'active_now',
+      horizon: forcedHorizon,
+      actionability,
+      reason:
+        'Interview-class candidate: keep active/actionable despite generic lifecycle thresholds because the confirmed hiring window is a forcing function.',
+    };
   }
 
   // Trash: entity was explicitly skipped 2+ consecutive times AND low urgency
@@ -5865,6 +5879,7 @@ export async function scoreOpenLoops(
       tractability,
       entityPenalty,
       hasRecentSignal: hasRecentSig,
+      forceActionableNow: interviewClass,
     });
 
     // Reentry: if classified dormant_later but a recent signal was found, promote to active_now.

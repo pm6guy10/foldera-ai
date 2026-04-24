@@ -6709,11 +6709,13 @@ export function getLowCrossSignalIssues(
   if (canonicalArtifactType === 'send_message' && shouldSkipLowCrossSignalForThreadBackedOutreach(ctx)) {
     return [];
   }
-  // Structural discrepancy winners (schedule_conflict, behavioral patterns, etc.) are already
-  // cross-source by scorer construction. Requiring two literal token hits from
-  // collectCrossSignalAnchors causes spurious validation failures when the model paraphrases
-  // titles (gen_stage validation → all candidates blocked → generation_failed_sentinel).
-  if (canonicalArtifactType === 'write_document' && ctx.candidate_class === 'discrepancy') {
+  // Only interview-week discrepancy write_document candidates get a paraphrase-safe bypass.
+  // Broad discrepancy bypass let weak single-thread docs skip cross-signal grounding entirely.
+  if (
+    canonicalArtifactType === 'write_document' &&
+    ctx.candidate_class === 'discrepancy' &&
+    shouldSkipLowCrossSignalForInterviewWeekDiscrepancy(ctx)
+  ) {
     return [];
   }
   const anchors = collectCrossSignalAnchors(ctx);
@@ -6747,6 +6749,21 @@ export function getLowCrossSignalIssues(
   return [
     `${LOW_CROSS_SIGNAL_ISSUE_PREFIX}artifact must reference at least two distinct grounded entities or signal sources from context`,
   ];
+}
+
+function shouldSkipLowCrossSignalForInterviewWeekDiscrepancy(ctx: StructuredContext): boolean {
+  if (ctx.discrepancy_class !== 'behavioral_pattern') return false;
+  const haystack = [
+    ctx.candidate_title ?? '',
+    ctx.candidate_reason ?? '',
+    ctx.candidate_analysis ?? '',
+    ...(ctx.supporting_signals ?? []).flatMap((signal) => [
+      signal.summary ?? '',
+      signal.entity ?? '',
+      signal.source ?? '',
+    ]),
+  ].join('\n');
+  return /\bINTERVIEW_WEEK_CLUSTER\b|\binterview week cluster detected\b/i.test(haystack);
 }
 
 function buildLowCrossSignalWaitRationalePayload(

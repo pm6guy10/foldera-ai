@@ -56,8 +56,28 @@ function baseCtx(overrides: Partial<StructuredContext>): StructuredContext {
 }
 
 describe('getLowCrossSignalIssues — discrepancy write_document', () => {
-  it('does not require two literal anchor hits for discrepancy write_document (paraphrase-safe)', () => {
-    const ctx = baseCtx({});
+  it('keeps interview-week behavioral_pattern discrepancy write_document paraphrase-safe', () => {
+    const ctx = baseCtx({
+      discrepancy_class: 'behavioral_pattern',
+      candidate_title: 'Interview week cluster detected: 3 interviews scheduled 2026-04-20 to 2026-04-23',
+      candidate_reason: 'INTERVIEW_WEEK_CLUSTER',
+      supporting_signals: [
+        {
+          source: 'gmail',
+          occurred_at: '2026-04-15T10:00:00Z',
+          entity: 'HCA',
+          summary: 'INTERVIEW_WEEK_CLUSTER',
+          direction: 'received',
+        },
+        {
+          source: 'google_calendar',
+          occurred_at: '2026-04-16T15:00:00Z',
+          entity: 'DSHS',
+          summary: 'Interview confirmation',
+          direction: 'unknown',
+        },
+      ],
+    });
     const payload: GeneratedDirectivePayload = {
       decision: 'ACT',
       directive: 'Resolve the overlapping afternoon commitments using the numbered steps in the memo.',
@@ -80,6 +100,33 @@ describe('getLowCrossSignalIssues — discrepancy write_document', () => {
     };
 
     expect(getLowCrossSignalIssues(payload, ctx, 'write_document')).toEqual([]);
+  });
+
+  it('enforces the anchor bar for non-interview discrepancy write_document when anchors exist', () => {
+    const ctx = baseCtx({
+      discrepancy_class: 'schedule_conflict',
+    });
+    const payload: GeneratedDirectivePayload = {
+      decision: 'ACT',
+      directive: 'Do the thing described in the memo with two grounded hooks from context.',
+      insight: 'insight',
+      why_now: 'why',
+      causal_diagnosis: {
+        why_exists_now: 'x',
+        mechanism: 'y',
+      },
+      artifact_type: 'write_document',
+      artifact: {
+        document_purpose: 'p',
+        target_reader: 'You',
+        title: 't',
+        content:
+          'Situation: two meetings claim the same window. Step 1: confirm which has the firmer external commitment. Step 2: propose a 15-minute slide to the internal sync. Step 3: send a one-line update to stakeholders with the new times. NEXT_ACTION: Confirm the moved slot by 5pm today. Owner: you.',
+      },
+    };
+
+    const issues = getLowCrossSignalIssues(payload, ctx, 'write_document');
+    expect(issues.some((i) => i.startsWith('low_cross_signal:'))).toBe(true);
   });
 
   it('still enforces the anchor bar for non-discrepancy write_document when anchors exist', () => {
