@@ -153,10 +153,17 @@ export function DailyBriefCard({
 
   const primaryAction = actions.find((a) => a.kind === 'primary');
   const otherActions = actions.filter((a) => a.kind !== 'primary');
+  const divider = dashboardCta ? 'border-white/[0.04]' : 'border-white/8';
+  const headPad = compact ? 'px-4 py-4' : dashboardCta ? 'px-5 py-4 sm:px-6' : 'px-5 py-5 sm:px-6';
+  const bodyPad = compact ? 'px-4 py-4' : dashboardCta ? 'px-5 py-4 sm:px-6 sm:py-5' : 'px-5 py-6 sm:px-6 sm:py-6';
+  const bodyStack = dashboardCta && !compact ? 'space-y-4' : 'space-y-6';
+  const sectionTop = dashboardCta && !compact ? 'pt-4' : 'pt-5';
+  const sectionGap = dashboardCta && !compact ? 'gap-4' : 'gap-5';
+  const footPad = compact ? 'px-4 py-4' : dashboardCta ? 'px-5 py-4 sm:px-6 sm:py-5' : 'px-5 py-5 sm:px-6';
 
   return (
     <article className={`foldera-brief-shell ${compact ? 'rounded-[22px]' : ''} ${className}`}>
-      <header className={`${compact ? 'px-4 py-4' : 'px-5 py-5 sm:px-6'} border-b border-white/8`}>
+      <header className={`${headPad} border-b ${divider}`}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <CircleDot className="h-4 w-4 text-accent" strokeWidth={2.4} aria-hidden="true" />
@@ -169,8 +176,8 @@ export function DailyBriefCard({
         </div>
       </header>
 
-      <div className={`${compact ? 'px-4 py-4' : 'px-5 py-6 sm:px-6 sm:py-6'} space-y-6`}>
-        <section className={`${compact ? 'gap-4' : 'gap-5'} grid grid-cols-[auto_minmax(0,1fr)] items-start`}>
+      <div className={`${bodyPad} ${bodyStack}`}>
+        <section className={`${compact ? 'gap-4' : sectionGap} grid grid-cols-[auto_minmax(0,1fr)] items-start`}>
           <div className="flex h-11 w-11 items-center justify-center rounded-[16px] border border-cyan-400/20 bg-cyan-400/6 text-accent">
             <DirectiveIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
           </div>
@@ -185,7 +192,7 @@ export function DailyBriefCard({
                 compact
                   ? 'mt-2 text-[24px] leading-[1.18]'
                   : dashboardCta
-                    ? 'mt-2 text-[34px] leading-[1.16] sm:text-[42px]'
+                    ? 'mt-1.5 text-[32px] leading-[1.12] sm:text-[38px]'
                     : 'mt-2 text-[42px] leading-[1.14] sm:text-[48px]'
               } max-w-3xl font-semibold tracking-[-0.04em] text-text-primary`}
             >
@@ -194,32 +201,32 @@ export function DailyBriefCard({
           </div>
         </section>
 
-        <section className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-5 border-t border-white/8 pt-5">
+        <section className={`grid grid-cols-[auto_minmax(0,1fr)] items-start ${sectionGap} border-t ${divider} ${sectionTop}`}>
           <div className="flex h-11 w-11 items-center justify-center rounded-[16px] border border-amber-400/20 bg-amber-400/6 text-amber-400">
             <WhyIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400">Why This Now</p>
-            <p className="mt-2 max-w-3xl text-[15px] leading-8 text-text-secondary">{whyNow}</p>
+            <p className={`mt-2 max-w-3xl text-[15px] text-text-secondary ${dashboardCta ? 'leading-7' : 'leading-8'}`}>{whyNow}</p>
           </div>
         </section>
 
-        <section className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-5 border-t border-white/8 pt-5">
+        <section className={`grid grid-cols-[auto_minmax(0,1fr)] items-start ${sectionGap} border-t ${divider} ${sectionTop}`}>
           <div className="flex h-11 w-11 items-center justify-center rounded-[16px] border border-white/8 bg-white/[0.02] text-text-secondary">
             <DraftIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">{draftLabel}</p>
-            <div className="mt-2 text-[15px] leading-8 text-text-primary">{draftBody}</div>
+            <div className={`mt-2 text-[15px] text-text-primary ${dashboardCta ? 'leading-7' : 'leading-8'}`}>{draftBody}</div>
           </div>
         </section>
 
-        <section className="border-t border-white/8 pt-5">
+        <section className={`border-t ${divider} ${sectionTop}`}>
           <div className="flex items-center gap-3">
             <SourceIcon className="h-5 w-5 text-text-secondary" strokeWidth={2} aria-hidden="true" />
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">Source Basis</p>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className={`flex flex-wrap gap-2 ${dashboardCta ? 'mt-3' : 'mt-4'}`}>
             {sourcePills.map((pill) => (
               <span
                 key={pill}
@@ -234,20 +241,20 @@ export function DailyBriefCard({
         </section>
       </div>
 
-      <footer className={`${compact ? 'px-4 py-4' : 'px-5 py-5 sm:px-6'} border-t border-white/8`}>
+      <footer className={`${footPad} border-t ${divider}`}>
         {dashboardCta ? (
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
-              <div className="flex min-w-0 items-center gap-2 text-[13px] text-text-muted">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
+              <div className="flex min-w-0 items-center gap-2.5 text-[13px] text-text-muted lg:pt-0.5">
                 <Shield className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
                 <span className="min-w-0 leading-snug">{footerText}</span>
               </div>
-              <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-x-3 sm:gap-y-2 lg:flex-nowrap">
+              <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-x-4 sm:gap-y-2 lg:flex-nowrap lg:gap-x-5">
                 {otherActions.map((action) => (
                   <ActionButton key={action.label} action={action} dashboardCta />
                 ))}
                 {primaryAction ? (
-                  <div className="flex w-full flex-col items-center gap-1.5 sm:w-auto sm:shrink-0">
+                  <div className="flex w-full flex-col items-center gap-2 sm:w-auto sm:shrink-0">
                     <ActionButton action={primaryAction} dashboardCta />
                     <p className="w-full text-center text-[12px] leading-tight text-text-muted sm:max-w-none">{nextStep}</p>
                   </div>

@@ -1,20 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useSession } from 'next-auth/react';
 import {
   Bell,
-  Clock3,
-  Copy,
-  Download,
+  CloudUpload,
   FileText,
   Inbox,
   Layers3,
-  Lock,
   Search,
   Send,
-  Shield,
   TriangleAlert,
   TrendingUp,
 } from 'lucide-react';
@@ -51,31 +47,6 @@ function artifactPrimaryText(artifact: ArtifactWithDraftedEmail | null | undefin
   const raw = artifact.body ?? artifact.text ?? artifact.content;
   if (typeof raw === 'string' && raw.trim().length > 0) return raw;
   return null;
-}
-
-function approveSuccessFlash(actionType: string | undefined, result: unknown): string {
-  const payload = result && typeof result === 'object' ? (result as Record<string, unknown>) : null;
-  if (actionType === 'write_document') {
-    const emailResult = payload?.document_ready_email;
-    if (emailResult && typeof emailResult === 'object') {
-      const output = emailResult as { sent?: boolean; reason?: string; send_error?: string };
-      if (output.sent === true) return 'Saved. We also emailed you the full document.';
-      if (output.reason === 'no_verified_email') {
-        return 'Saved to your Foldera record. Add a verified email in Settings to receive a copy by email.';
-      }
-      if (typeof output.send_error === 'string' && output.send_error.length > 0) {
-        return 'Saved. Email delivery failed — your document is still in Foldera Signals.';
-      }
-    }
-    if (payload?.saved === true) return 'Saved. Your document is in Foldera Signals.';
-    return 'Saved.';
-  }
-
-  const sentVia = (payload as { sent_via?: string } | null)?.sent_via;
-  if (sentVia === 'gmail') return 'Sent from your Gmail.';
-  if (sentVia === 'outlook') return 'Sent from your Outlook.';
-  if (sentVia === 'resend') return 'Sent via Foldera. Connect Gmail in Settings to send from your own inbox.';
-  return 'Sent. Check your outbox.';
 }
 
 type ActionWithDomain = ConvictionAction & { domain?: string; generatedAt?: string };
@@ -123,6 +94,11 @@ I pulled the latest status and can send the finalized version by noon unless you
 Best,
 Brandon`;
 
+const DEMO_DIRECTIVE = 'Send the follow-up to Alex Morgan before noon.';
+const DEMO_WHY =
+  'You have an open thread with no reply, the ask is time-bound, and the current hold on your calendar makes this the cleanest unblocker today.';
+const DEMO_SOURCE_PILLS = ['Email thread', 'Calendar hold', 'Last draft', 'Connected inbox'];
+
 const briefHowRows = [
   {
     title: 'Directive',
@@ -139,15 +115,20 @@ const briefHowRows = [
 ];
 
 function getDateLabel(): string {
-  return new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  }).toUpperCase();
+  return new Date()
+    .toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    })
+    .toUpperCase();
 }
 
 function getGreetingLabel(): string {
-  return 'Good afternoon';
+  const h = new Date().getHours();
+  if (h < 12) return 'Good morning';
+  if (h < 17) return 'Good afternoon';
+  return 'Good evening';
 }
 
 function inferSourcePills(action: ActionWithDomain | null, artifact: ArtifactWithDraftedEmail | null | undefined): string[] {
@@ -169,126 +150,30 @@ function inferSourcePills(action: ActionWithDomain | null, artifact: ArtifactWit
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const [action, setAction] = useState<ActionWithDomain | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [done, setDone] = useState(false);
-  const [flash, setFlash] = useState<string | null>(null);
-  const [fetchError, setFetchError] = useState(false);
   const [executing, setExecuting] = useState(false);
-  const [artifactVisibilityCount, setArtifactVisibilityCount] = useState(0);
-  const [subPlan, setSubPlan] = useState<string | null>(null);
-  const [subStatus, setSubStatus] = useState<string | null>(null);
-  const [lastDecision, setLastDecision] = useState<'approve' | 'skip' | null>(null);
-  const [executedActionId, setExecutedActionId] = useState<string | null>(null);
-  const [outcomeRecorded, setOutcomeRecorded] = useState(false);
-  const [oauthReconnect, setOauthReconnect] = useState<'google' | 'microsoft' | null>(null);
-  const [hasActiveIntegration, setHasActiveIntegration] = useState(false);
 
   const loadAbortRef = useRef<AbortController | null>(null);
-  const isMountedRef = useRef(false);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('generated') === 'true') {
-      window.history.replaceState({}, '', window.location.pathname);
-      setFlash('Brief generated and sent.');
-      setTimeout(() => setFlash(null), 4000);
-    }
-    if (params.get('upgraded') === 'true') {
-      window.history.replaceState({}, '', window.location.pathname);
-      setFlash('Welcome to Pro. Full artifacts unlocked.');
-      setTimeout(() => setFlash(null), 6000);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (status !== 'authenticated') return;
-    let cancelled = false;
-    void fetch('/api/integrations/status', { cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data: { integrations?: Array<{ provider: string; is_active?: boolean; needs_reauth?: boolean }> } | null) => {
-        if (cancelled || !data?.integrations) return;
-        setHasActiveIntegration(data.integrations.some((item) => item.is_active === true));
-        const microsoft = data.integrations.find((item) => item.provider === 'azure_ad' && item.needs_reauth);
-        const google = data.integrations.find((item) => item.provider === 'google' && item.needs_reauth);
-        if (microsoft) setOauthReconnect('microsoft');
-        else if (google) setOauthReconnect('google');
-        else setOauthReconnect(null);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [status]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (sessionStorage.getItem('foldera_pending_checkout') !== 'pro') return;
-    sessionStorage.removeItem('foldera_pending_checkout');
-    void (async () => {
-      try {
-        const response = await fetch('/api/stripe/checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({}),
-        });
-        const data = await response.json().catch(() => ({}));
-        if (data.url) window.location.href = data.url as string;
-      } catch {
-        /* user stays on dashboard */
-      }
-    })();
-  }, []);
 
   const load = useCallback(async () => {
     loadAbortRef.current?.abort();
     const controller = new AbortController();
     loadAbortRef.current = controller;
 
-    setLoading(true);
-    setFetchError(false);
-
     try {
-      const [latestRes, subscriptionRes] = await Promise.all([
-        fetch('/api/conviction/latest', { signal: controller.signal }),
-        fetch('/api/subscription/status', { signal: controller.signal }),
-      ]);
-
-      if (controller.signal.aborted) return;
-
-      if (subscriptionRes.ok) {
-        const subscription = await subscriptionRes.json().catch(() => ({}));
-        if (controller.signal.aborted) return;
-        setSubPlan(typeof subscription.plan === 'string' ? subscription.plan : null);
-        setSubStatus(typeof subscription.status === 'string' ? subscription.status : null);
-      } else {
-        setSubPlan(null);
-        setSubStatus(null);
-      }
-
+      const latestRes = await fetch('/api/conviction/latest', { signal: controller.signal });
       if (controller.signal.aborted) return;
 
       if (!latestRes.ok) {
-        setFetchError(true);
         setAction(null);
-        setArtifactVisibilityCount(0);
         return;
       }
 
       const data = await latestRes.json().catch(() => ({}));
       if (controller.signal.aborted) return;
-      setArtifactVisibilityCount(typeof data?.approved_count === 'number' ? data.approved_count : 0);
       setAction(data?.id ? data : null);
     } catch {
       if (controller.signal.aborted) return;
-      setFetchError(true);
       setAction(null);
-      setArtifactVisibilityCount(0);
-      setSubPlan(null);
-      setSubStatus(null);
-    } finally {
-      if (!controller.signal.aborted && isMountedRef.current) {
-        setLoading(false);
-      }
     }
   }, []);
 
@@ -312,44 +197,31 @@ export default function DashboardPage() {
           const message = (data as { error?: string }).error ?? 'Could not update that action.';
           if (shouldReconcileExecuteFailure(response, message)) {
             await load();
-            setFlash('That directive was already handled or replaced. Showing your current state.');
             return;
           }
-          throw new Error(message);
+          return;
         }
 
         if (data.status === 'executed' || data.status === 'skipped') {
-          setDone(true);
-          setLastDecision(deepAction === 'approve' ? 'approve' : 'skip');
-          if (deepAction === 'approve') {
-            setExecutedActionId((data.action_id as string | undefined) ?? null);
-            setFlash(approveSuccessFlash((data as { action_type?: string }).action_type ?? undefined, data.result));
-          } else {
-            setFlash('Snoozed. Foldera will adjust.');
-          }
-        } else {
-          throw new Error('Unexpected response from Foldera.');
+          await load();
         }
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Could not update that action.';
         if (shouldReconcileExecuteFailure(null, message)) {
           await load();
-          setFlash('That directive was already handled or replaced. Showing your current state.');
-          return;
         }
-        setFlash(message);
       }
     })();
   }, [load]);
 
   useEffect(() => {
-    isMountedRef.current = true;
-    void load();
+    if (status === 'authenticated') {
+      void load();
+    }
     return () => {
-      isMountedRef.current = false;
       loadAbortRef.current?.abort();
     };
-  }, [load]);
+  }, [load, status]);
 
   const handleApprove = async () => {
     if (!action || executing) return;
@@ -365,28 +237,19 @@ export default function DashboardPage() {
         const message = (data as { error?: string }).error ?? 'Approve failed';
         if (shouldReconcileExecuteFailure(response, message)) {
           await load();
-          setFlash('That directive was already handled or replaced. Showing your current state.');
           return;
         }
-        throw new Error(message);
+        return;
       }
 
       if (data.status === 'executed' || data.status === 'skipped') {
-        setDone(true);
-        setLastDecision('approve');
-        setExecutedActionId((data.action_id as string | undefined) ?? null);
-        setFlash(approveSuccessFlash((data as { action_type?: string }).action_type ?? action.action_type, data.result));
-      } else {
-        throw new Error('Unexpected response from Foldera.');
+        await load();
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Approve failed';
       if (shouldReconcileExecuteFailure(null, message)) {
         await load();
-        setFlash('That directive was already handled or replaced. Showing your current state.');
-        return;
       }
-      setFlash(message);
     } finally {
       setExecuting(false);
     }
@@ -406,45 +269,22 @@ export default function DashboardPage() {
         const message = (data as { error?: string }).error ?? 'Skip failed';
         if (shouldReconcileExecuteFailure(response, message)) {
           await load();
-          setFlash('That directive was already handled or replaced. Showing your current state.');
           return;
         }
-        throw new Error(message);
+        return;
       }
       if (data.status === 'executed' || data.status === 'skipped') {
-        setDone(true);
-        setLastDecision('skip');
-        setFlash(action?.action_type === 'write_document' ? 'Skipped. Foldera will adjust.' : 'Snoozed. Foldera will adjust.');
-      } else {
-        throw new Error('Unexpected response from Foldera.');
+        await load();
       }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Skip failed';
       if (shouldReconcileExecuteFailure(null, message)) {
         await load();
-        setFlash('That directive was already handled or replaced. Showing your current state.');
-        return;
       }
-      setFlash(message);
     } finally {
       setExecuting(false);
     }
   };
-
-  const recordOutcome = useCallback(async (outcome: 'worked' | 'didnt_work') => {
-    if (!executedActionId || outcomeRecorded) return;
-    setOutcomeRecorded(true);
-    try {
-      await fetch('/api/conviction/outcome', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action_id: executedActionId, outcome }),
-      });
-    } catch {
-      /* best effort */
-    }
-    setFlash('Foldera will adjust.');
-  }, [executedActionId, outcomeRecorded]);
 
   const handleCopyDraft = useCallback(async () => {
     const artifact = action?.artifact as ArtifactWithDraftedEmail | null | undefined;
@@ -455,11 +295,8 @@ export default function DashboardPage() {
     const block = [`To: ${toLine}`, `Subject: ${subject}`, '', body].join('\n');
     try {
       await navigator.clipboard.writeText(block);
-      setFlash('Copied draft — paste into your mail app, or tap Approve & send to deliver from your connected mailbox.');
-      setTimeout(() => setFlash(null), 6000);
     } catch {
-      setFlash('Could not copy automatically — select the text in your morning email or dashboard.');
-      setTimeout(() => setFlash(null), 5000);
+      /* clipboard may be unavailable */
     }
   }, [action]);
 
@@ -471,46 +308,36 @@ export default function DashboardPage() {
     const block = [title, '', body].join('\n');
     try {
       await navigator.clipboard.writeText(block);
-      setFlash('Copied full document — paste anywhere, or tap Save document to file it in Foldera.');
-      setTimeout(() => setFlash(null), 6000);
     } catch {
-      setFlash('Could not copy automatically — select the text in the preview below.');
-      setTimeout(() => setFlash(null), 5000);
+      /* clipboard may be unavailable */
     }
   }, [action]);
 
-  async function startStripeCheckout() {
+  const handleCopyFallbackDraft = useCallback(async () => {
+    const block = ['To: alex.morgan@example.com', 'Subject: Alex Morgan follow-up', '', demoDraft].join('\n');
     try {
-      const response = await fetch('/api/stripe/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (data.url) window.location.href = data.url as string;
+      await navigator.clipboard.writeText(block);
     } catch {
-      setFlash('Could not open checkout right now.');
+      /* ignore */
     }
-  }
+  }, []);
 
   const sessionName = session?.user?.name?.trim() || 'Brandon';
   const firstName = sessionName.split(' ')[0] || 'Brandon';
   const currentAction = action;
   const artifact = currentAction?.artifact as ArtifactWithDraftedEmail | null | undefined;
   const artifactBody = artifactPrimaryText(artifact);
-  const isEmail = artifact?.type === 'email' || artifact?.type === 'drafted_email';
   const isDocument = artifact?.type === 'document';
   const isWait = artifact?.type === 'wait_rationale';
-  const isProArtifactUnlocked = subPlan === 'pro' && (subStatus === 'active' || subStatus === 'past_due');
-  const showArtifactBlur = Boolean(artifact) && !isProArtifactUnlocked && artifactVisibilityCount > 3;
 
-  const cardDirective = currentAction?.directive ?? 'Send the follow-up to Alex Morgan before noon.';
-  const cardWhyNow = currentAction?.reason ?? 'You have an open thread with no reply, the ask is time-bound, and the current hold on your calendar makes this the cleanest unblocker today.';
-  const cardSourcePills = inferSourcePills(currentAction, artifact);
+  const hasLiveAction = Boolean(currentAction?.id);
+  const cardDirective = currentAction?.directive ?? DEMO_DIRECTIVE;
+  const cardWhyNow = currentAction?.reason ?? DEMO_WHY;
+  const cardSourcePills =
+    hasLiveAction && currentAction ? inferSourcePills(currentAction, artifact) : DEMO_SOURCE_PILLS;
   const cardStatusText = isDocument ? 'READY TO FILE' : isWait ? 'READY TO REVIEW' : 'READY TO SEND';
   const cardNextStep = isDocument ? 'Next: Save to record' : 'Next: Await response';
   const draftLabel = isDocument ? 'DOCUMENT' : isWait ? 'RATIONALE' : 'DRAFT';
-  const reconnectProviderLabel = oauthReconnect === 'microsoft' ? 'Microsoft' : 'Google';
 
   const draftBody = isDocument ? (
     artifactBody ? (
@@ -532,225 +359,154 @@ export default function DashboardPage() {
       ) : null}
     </div>
   ) : (
-    <div className="whitespace-pre-line text-[15px] leading-8 text-text-primary">{artifactBody ?? demoDraft}</div>
+    <div className="whitespace-pre-line text-[15px] leading-7 text-text-primary">{artifactBody ?? demoDraft}</div>
   );
 
-  const handleCopyFallbackDraft = useCallback(async () => {
-    const block = ['To: alex.morgan@example.com', 'Subject: Alex Morgan follow-up', '', demoDraft].join('\n');
-    try {
-      await navigator.clipboard.writeText(block);
-      setFlash('Demo draft copied.');
-      setTimeout(() => setFlash(null), 3500);
-    } catch {
-      setFlash('Demo draft copy failed.');
-      setTimeout(() => setFlash(null), 3500);
-    }
-  }, []);
-
-  const cardActions = currentAction
-    ? isDocument
-      ? [
-          { label: 'Copy full text', kind: 'secondary' as const, onClick: () => void handleCopyDocument() },
-          { label: 'Skip and adjust', kind: 'amber' as const, onClick: () => void handleSkip() },
-          { label: 'Save document', kind: 'primary' as const, onClick: () => void handleApprove(), dataTestId: 'dashboard-primary-action' },
-        ]
-      : [
-          { label: 'Copy draft', kind: 'secondary' as const, onClick: () => void handleCopyDraft() },
-          { label: 'Snooze 24h', kind: 'amber' as const, onClick: () => void handleSkip() },
-          { label: 'Approve & send', kind: 'primary' as const, onClick: () => void handleApprove(), dataTestId: 'dashboard-primary-action' },
-        ]
+  const cardActions = isDocument
+    ? [
+        { label: 'Copy full text', kind: 'secondary' as const, onClick: () => void handleCopyDocument(), disabled: !artifactBody },
+        { label: 'Skip and adjust', kind: 'amber' as const, onClick: () => void handleSkip(), disabled: !hasLiveAction || executing },
+        {
+          label: 'Save document',
+          kind: 'primary' as const,
+          onClick: () => void handleApprove(),
+          disabled: !hasLiveAction || executing,
+          dataTestId: 'dashboard-primary-action',
+        },
+      ]
     : [
-        { label: 'Copy draft', kind: 'secondary' as const, onClick: () => void handleCopyFallbackDraft() },
-        { label: 'Snooze 24h', kind: 'amber' as const, onClick: () => undefined },
-        { label: 'Approve & send', kind: 'primary' as const, onClick: () => undefined },
+        {
+          label: 'Copy draft',
+          kind: 'secondary' as const,
+          onClick: () => void (hasLiveAction ? handleCopyDraft() : handleCopyFallbackDraft()),
+          disabled: false,
+        },
+        { label: 'Snooze 24h', kind: 'amber' as const, onClick: () => void handleSkip(), disabled: !hasLiveAction || executing },
+        {
+          label: 'Approve & send',
+          kind: 'primary' as const,
+          onClick: () => void handleApprove(),
+          disabled: !hasLiveAction || executing,
+          dataTestId: 'dashboard-primary-action',
+        },
       ];
 
-  const railStatusCopy = flash && !done
-    ? flash
-    : fetchError
-      ? 'Live briefing data is unavailable right now. Showing the dashboard contract card.'
-      : oauthReconnect
-        ? `${reconnectProviderLabel} access needs attention in Settings.`
-        : !currentAction && hasActiveIntegration
-          ? 'No pending brief is queued. Foldera will surface the next finished move automatically.'
-          : null;
+  const headerSearch = (
+    <>
+      <div className="flex min-w-0 flex-1 items-center gap-3 rounded-[16px] border border-border bg-panel px-4 py-3 text-sm text-text-muted">
+        <Search className="h-4 w-4 shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1 truncate">Search Foldera...</span>
+        <span className="hidden shrink-0 rounded-[10px] border border-border px-2 py-1 text-[11px] sm:inline">⌘ K</span>
+      </div>
+      <button
+        type="button"
+        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border border-border bg-panel text-text-secondary"
+        aria-label="Notifications"
+      >
+        <Bell className="h-4 w-4" />
+      </button>
+    </>
+  );
 
   return (
-    <div className="foldera-page min-h-screen bg-bg text-text-primary">
-      <div className="mx-auto max-w-[1500px] px-3 py-3 sm:px-4 lg:px-6 lg:py-6">
-        <div className="grid gap-4 lg:grid-cols-[clamp(236px,18vw,264px)_minmax(0,1fr)]">
+    <div className="foldera-dashboard-page foldera-page min-h-screen bg-bg text-text-primary">
+      <div className="mx-auto w-full max-w-[1720px] px-4 py-4 sm:px-5 lg:px-8 lg:py-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(236px,260px)_minmax(0,1fr)] xl:grid-cols-[minmax(236px,260px)_minmax(0,1fr)_300px] xl:gap-8">
           <DashboardSidebar activeLabel="Executive Briefing" userName={firstName} />
 
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_clamp(252px,20vw,304px)]">
-            <div className="min-w-0">
-              <div className="mx-auto w-full max-w-[980px] space-y-4">
-                <div className="foldera-panel flex items-center justify-between px-4 py-3 lg:hidden">
-                  <FolderaLogo href="/dashboard" markSize="sm" />
-                  <div className="flex items-center gap-2">
-                    <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-border bg-panel-raised text-text-secondary" aria-label="Search">
-                      <Search className="h-4 w-4" />
-                    </button>
-                    <button type="button" className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] border border-border bg-panel-raised text-text-secondary" aria-label="Notifications">
-                      <Bell className="h-4 w-4" />
-                    </button>
-                  </div>
+          <div className="min-w-0">
+            <div className="foldera-panel mb-5 flex items-center justify-between gap-3 px-4 py-3 lg:hidden">
+              <FolderaLogo href="/dashboard" markSize="sm" />
+              <div className="flex min-w-0 flex-1 items-center justify-end gap-2">{headerSearch}</div>
+            </div>
+
+            <div className="hidden items-center justify-between gap-4 lg:flex">
+              <p className="foldera-eyebrow">{getDateLabel()}</p>
+              <div className="flex max-w-md flex-1 items-center justify-end gap-3">{headerSearch}</div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 pb-1 pt-2 lg:hidden">
+              <p className="foldera-eyebrow">{getDateLabel()}</p>
+            </div>
+
+            <header className="pb-8 pt-2 lg:pt-0">
+              <h1 className="text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-text-primary">
+                {getGreetingLabel()}, <strong className="font-semibold text-text-primary">{firstName}.</strong>
+              </h1>
+              <div className="mt-6 flex flex-wrap gap-x-10 gap-y-4 text-sm text-text-secondary">
+                <div className="flex items-center gap-3">
+                  <Inbox className="h-4 w-4 text-text-muted" aria-hidden />
+                  <span className="text-[28px] font-semibold tracking-[-0.04em] text-text-primary sm:text-[32px]">5</span>
+                  <span>open threads</span>
                 </div>
+                <div className="flex items-center gap-3">
+                  <TriangleAlert className="h-4 w-4 text-amber-400" aria-hidden />
+                  <span className="text-[28px] font-semibold tracking-[-0.04em] text-amber-400 sm:text-[32px]">2</span>
+                  <span>need attention</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="h-4 w-4 text-text-muted" aria-hidden />
+                  <span className="text-[28px] font-semibold tracking-[-0.04em] text-text-primary sm:text-[32px]">1</span>
+                  <span>ready to move</span>
+                </div>
+              </div>
+            </header>
 
-                <header className="px-1 pb-1 sm:px-2">
-                  <p className="foldera-eyebrow">{getDateLabel()}</p>
-                  <h1 className="mt-2 text-[38px] font-semibold tracking-[-0.05em] text-text-primary sm:text-[52px]">
-                    {getGreetingLabel()}, {firstName}.
-                  </h1>
-                  <div className="mt-5 flex flex-wrap gap-x-7 gap-y-3 text-sm text-text-secondary">
-                    <div className="flex items-center gap-3">
-                      <Inbox className="h-4 w-4 text-text-muted" />
-                      <span className="text-[32px] font-semibold tracking-[-0.04em] text-text-primary">5</span>
-                      <span>open threads</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <TriangleAlert className="h-4 w-4 text-warning" />
-                      <span className="text-[32px] font-semibold tracking-[-0.04em] text-warning">2</span>
-                      <span>need attention</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <TrendingUp className="h-4 w-4 text-text-muted" />
-                      <span className="text-[32px] font-semibold tracking-[-0.04em] text-text-primary">1</span>
-                      <span>ready to move</span>
-                    </div>
-                  </div>
-                </header>
+            <div className="mx-auto w-full max-w-[1008px] pb-10">
+              <DailyBriefCard
+                className="foldera-dashboard-brief-card w-full"
+                dashboardCta
+                directive={cardDirective}
+                whyNow={cardWhyNow}
+                draftLabel={draftLabel}
+                draftBody={draftBody}
+                sourcePills={cardSourcePills}
+                nextStep={cardNextStep}
+                statusText={cardStatusText}
+                footerText="Grounded in connected sources"
+                actions={cardActions}
+              />
+            </div>
+          </div>
 
-                {loading ? (
-                  <div className="foldera-panel animate-pulse px-5 py-6 sm:px-6">
-                    <div className="h-3 w-36 rounded-full bg-white/10" />
-                    <div className="mt-4 h-12 w-3/4 rounded-[16px] bg-white/10" />
-                    <div className="mt-3 h-12 w-2/3 rounded-[16px] bg-white/10" />
-                    <div className="mt-6 h-[520px] rounded-[24px] bg-white/[0.03]" />
-                  </div>
-                ) : done ? (
-                  <div className="foldera-panel px-5 py-8 text-center sm:px-6">
-                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-300/10 text-accent">
-                      {lastDecision === 'skip' ? <Clock3 className="h-6 w-6" /> : <Send className="h-6 w-6" />}
+          <aside className="hidden min-w-0 space-y-5 xl:block">
+            <div className="foldera-panel p-5">
+              <div className="flex items-center justify-between gap-3">
+                <p className="foldera-eyebrow">How this brief works</p>
+                <a href="/#product" className="shrink-0 text-sm text-text-muted hover:text-text-primary">
+                  Learn more →
+                </a>
+              </div>
+              <div className="mt-5 space-y-5">
+                {briefHowRows.map((row) => (
+                  <div
+                    key={row.title}
+                    className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 border-t border-border pt-5 first:border-t-0 first:pt-0"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-border bg-panel-raised text-text-secondary">
+                      {row.title === 'Directive' ? <Send className="h-4 w-4" /> : row.title === 'Draft' ? <FileText className="h-4 w-4" /> : <Layers3 className="h-4 w-4" />}
                     </div>
-                    {flash ? <p className="mt-5 text-lg font-medium text-text-primary">{flash}</p> : null}
-                    <p className="mt-2 text-sm text-text-muted">Your next read arrives tomorrow morning.</p>
-                    {lastDecision === 'approve' && executedActionId && !outcomeRecorded ? (
-                      <div className="mt-6 flex flex-wrap justify-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => void recordOutcome('worked')}
-                          className="foldera-button-primary"
-                        >
-                          It worked
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void recordOutcome('didnt_work')}
-                          className="foldera-button-secondary"
-                        >
-                          Didn&apos;t work
-                        </button>
-                      </div>
-                    ) : null}
+                    <div>
+                      <p className="text-sm font-medium text-text-primary">{row.title}</p>
+                      <p className="mt-2 text-sm leading-7 text-text-muted">{row.body}</p>
+                    </div>
                   </div>
-                ) : (
-                  <div>
-                    <DailyBriefCard
-                      className="mx-auto w-full max-w-[960px]"
-                      directive={cardDirective}
-                      whyNow={cardWhyNow}
-                      draftLabel={draftLabel}
-                      draftBody={draftBody}
-                      sourcePills={cardSourcePills}
-                      nextStep={cardNextStep}
-                      statusText={cardStatusText}
-                      footerText="Grounded in connected sources"
-                      actions={cardActions}
-                      blur={showArtifactBlur}
-                      blurCta={(
-                        <div className="text-center">
-                          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-300/10 text-accent">
-                            <Lock className="h-5 w-5" />
-                          </div>
-                          <p className="mt-4 max-w-[280px] text-base font-medium text-text-primary">
-                            Upgrade to Pro to keep receiving finished work.
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => void startStripeCheckout()}
-                            className="foldera-button-primary mt-4"
-                          >
-                            Upgrade to Pro
-                          </button>
-                        </div>
-                      )}
-                    />
-                  </div>
-                )}
+                ))}
               </div>
             </div>
 
-            <aside className="hidden space-y-4 xl:block">
-              <div className="hidden items-center gap-3 xl:flex">
-                <div className="flex flex-1 items-center gap-3 rounded-[16px] border border-border bg-panel px-4 py-3 text-sm text-text-muted">
-                  <Search className="h-4 w-4" />
-                  <span className="flex-1">Search Foldera...</span>
-                  <span className="rounded-[10px] border border-border px-2 py-1 text-[11px]">⌘ K</span>
-                </div>
-                <button type="button" className="inline-flex h-11 w-11 items-center justify-center rounded-[16px] border border-border bg-panel text-text-secondary">
-                  <Bell className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="foldera-panel p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="foldera-eyebrow">How this brief works</p>
-                  <a href="/#product" className="text-sm text-text-muted hover:text-text-primary">
-                    Learn more →
-                  </a>
-                </div>
-                <div className="mt-5 space-y-5">
-                  {briefHowRows.map((row) => (
-                    <div key={row.title} className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 border-t border-border pt-5 first:border-t-0 first:pt-0">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-border bg-panel-raised text-text-secondary">
-                        {row.title === 'Directive' ? <Send className="h-4 w-4" /> : row.title === 'Draft' ? <FileText className="h-4 w-4" /> : <Layers3 className="h-4 w-4" />}
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-text-primary">{row.title}</p>
-                        <p className="mt-2 text-sm leading-7 text-text-muted">{row.body}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="foldera-panel p-5">
-                <div className="flex min-h-[164px] items-center justify-center rounded-[20px] border border-dashed border-border bg-panel-raised px-6 text-center">
-                  <div>
-                    <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full border border-border bg-panel text-text-muted">
-                      <Download className="h-4 w-4" />
-                    </div>
-                    <p className="mt-4 text-base font-medium text-text-primary">Drop a folder or document</p>
-                    <p className="mt-2 text-sm leading-7 text-text-muted">Foldera will get to work instantly.</p>
+            <div className="foldera-panel p-5">
+              <div className="flex min-h-[168px] items-center justify-center rounded-[20px] border border-dashed border-border bg-panel-raised px-5 text-center">
+                <div>
+                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full border border-border bg-panel text-text-muted">
+                    <CloudUpload className="h-5 w-5" aria-hidden />
                   </div>
+                  <p className="mt-4 text-base font-medium leading-snug text-text-primary">Drop a folder or document.</p>
+                  <p className="mt-2 text-sm leading-7 text-text-muted">Foldera will get to work instantly.</p>
                 </div>
               </div>
-
-              {railStatusCopy ? (
-                <div className="foldera-subpanel px-4 py-4">
-                  <p className="text-sm leading-6 text-text-secondary">{railStatusCopy}</p>
-                  {oauthReconnect ? (
-                    <a
-                      href={`/dashboard/settings?reconnect=${oauthReconnect}`}
-                      className="mt-3 inline-flex text-sm text-text-primary underline underline-offset-2 hover:text-accent"
-                    >
-                      Open Settings
-                    </a>
-                  ) : null}
-                </div>
-              ) : null}
-            </aside>
-          </div>
+            </div>
+          </aside>
         </div>
       </div>
     </div>

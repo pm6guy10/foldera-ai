@@ -143,10 +143,10 @@ describeWithAuth('Visual system dashboard screenshots', () => {
     await ensureOutDir();
     await setupDashboardMocks(page);
     const captures = [
-      { width: 1440, height: 1200, file: 'dashboard-1440.png', maxBriefWidth: 980, rightRailVisible: true },
-      { width: 1920, height: 1200, file: 'dashboard-1920.png', maxBriefWidth: 980, rightRailVisible: true },
-      { width: 1280, height: 1200, file: 'dashboard-1280.png', maxBriefWidth: 960, rightRailVisible: true },
-      { width: 1024, height: 1200, file: 'dashboard-1024.png', maxBriefWidth: 920, rightRailVisible: false },
+      { width: 1440, height: 1200, file: 'dashboard-1440.png', maxBriefWidth: 1024, rightRailVisible: true },
+      { width: 1920, height: 1200, file: 'dashboard-1920.png', maxBriefWidth: 1024, rightRailVisible: true },
+      { width: 1280, height: 1200, file: 'dashboard-1280.png', maxBriefWidth: 1008, rightRailVisible: true },
+      { width: 1024, height: 1200, file: 'dashboard-1024.png', maxBriefWidth: 960, rightRailVisible: false },
       { width: 390, height: 1180, file: 'dashboard-390.png', maxBriefWidth: 390, rightRailVisible: false },
     ] as const;
 
@@ -183,6 +183,10 @@ describeWithAuth('Visual system dashboard screenshots', () => {
       expect(hasOverflow).toBe(false);
 
       await page.screenshot({ path: path.join(OUT_DIR, capture.file), fullPage: true });
+      if (capture.file === 'dashboard-1440.png') {
+        await page.screenshot({ path: path.join(OUT_DIR, 'dashboard-1440-static.png'), fullPage: true });
+        await page.screenshot({ path: path.join(OUT_DIR, 'dashboard-1440-corrected.png'), fullPage: true });
+      }
     }
   });
 });
