@@ -140,6 +140,31 @@ const DEMO_DIRECTIVE = 'Send the follow-up to Alex Morgan before noon.';
 const DEMO_WHY =
   'You have an open thread with no reply, the ask is time-bound, and the current hold on your calendar makes this the cleanest unblocker today.';
 const DEMO_SOURCE_PILLS = ['Email thread', 'Calendar hold', 'Last draft', 'Connected inbox'];
+const DESIGN_W = 2048;
+const DESIGN_H = 1152;
+const DESKTOP_STAGE_MIN_WIDTH = 1280;
+
+type StageMetrics = {
+  isDesktop: boolean;
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+};
+
+function computeStageMetrics(): StageMetrics {
+  if (typeof window === 'undefined') {
+    return { isDesktop: false, scale: 1, offsetX: 0, offsetY: 0 };
+  }
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  if (viewportWidth < DESKTOP_STAGE_MIN_WIDTH) {
+    return { isDesktop: false, scale: 1, offsetX: 0, offsetY: 0 };
+  }
+  const scale = Math.min(viewportWidth / DESIGN_W, viewportHeight / DESIGN_H);
+  const offsetX = (viewportWidth - DESIGN_W * scale) / 2;
+  const offsetY = (viewportHeight - DESIGN_H * scale) / 2;
+  return { isDesktop: true, scale, offsetX, offsetY };
+}
 
 const briefHowRows = [
   {
@@ -200,6 +225,7 @@ export default function DashboardPage() {
   const [lastDecision, setLastDecision] = useState<'approve' | 'skip' | null>(null);
   const [executedActionId, setExecutedActionId] = useState<string | null>(null);
   const [outcomeRecorded, setOutcomeRecorded] = useState(false);
+  const [stageMetrics, setStageMetrics] = useState<StageMetrics>(() => computeStageMetrics());
 
   const loadAbortRef = useRef<AbortController | null>(null);
 
@@ -310,6 +336,33 @@ export default function DashboardPage() {
       loadAbortRef.current?.abort();
     };
   }, [load, status]);
+
+  useEffect(() => {
+    const updateStage = () => setStageMetrics(computeStageMetrics());
+    updateStage();
+    window.addEventListener('resize', updateStage);
+    return () => window.removeEventListener('resize', updateStage);
+  }, []);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const previousOverflowX = document.body.style.overflowX;
+    const previousOverflowY = document.body.style.overflowY;
+    if (stageMetrics.isDesktop) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.overflowX = 'hidden';
+      document.body.style.overflowY = 'hidden';
+    } else {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overflowX = previousOverflowX;
+      document.body.style.overflowY = previousOverflowY;
+    }
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overflowX = previousOverflowX;
+      document.body.style.overflowY = previousOverflowY;
+    };
+  }, [stageMetrics.isDesktop]);
 
   const handleApprove = async () => {
     if (!action || executing) return;
@@ -567,22 +620,176 @@ export default function DashboardPage() {
         },
       ];
 
+  const isDesktopStage = stageMetrics.isDesktop;
+  const stageTransform = `translate(${stageMetrics.offsetX}px, ${stageMetrics.offsetY}px) scale(${stageMetrics.scale})`;
+
+  const searchField = (
+    <div className="flex h-full min-w-0 items-center gap-3 rounded-[16px] border border-border bg-panel px-4 text-sm text-text-muted">
+      <Search className="h-4 w-4 shrink-0" aria-hidden />
+      <span className="min-w-0 flex-1 truncate">Search Foldera...</span>
+      <span className="hidden shrink-0 rounded-[10px] border border-border px-2 py-1 text-[11px] sm:inline">⌘ K</span>
+    </div>
+  );
+
+  const notificationsButton = (
+    <button
+      type="button"
+      className="inline-flex h-full w-full items-center justify-center rounded-[16px] border border-border bg-panel text-text-secondary"
+      aria-label="Notifications"
+    >
+      <Bell className="h-4 w-4" />
+    </button>
+  );
+
   const headerSearch = (
     <>
-      <div className="flex min-w-0 flex-1 items-center gap-3 rounded-[16px] border border-border bg-panel px-4 py-3 text-sm text-text-muted">
-        <Search className="h-4 w-4 shrink-0" aria-hidden />
-        <span className="min-w-0 flex-1 truncate">Search Foldera...</span>
-        <span className="hidden shrink-0 rounded-[10px] border border-border px-2 py-1 text-[11px] sm:inline">⌘ K</span>
-      </div>
-      <button
-        type="button"
-        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border border-border bg-panel text-text-secondary"
-        aria-label="Notifications"
-      >
-        <Bell className="h-4 w-4" />
-      </button>
+      <div className="h-11 min-w-0 flex-1">{searchField}</div>
+      <div className="h-11 w-11 shrink-0">{notificationsButton}</div>
     </>
   );
+
+  if (isDesktopStage) {
+    return (
+      <div className="foldera-dashboard-stage-root text-text-primary">
+        <div className="foldera-dashboard-stage" style={{ transform: stageTransform, transformOrigin: 'top left' }}>
+          <DashboardSidebar activeLabel="Executive Briefing" userName={firstName} variant="stage" />
+
+          <p className="foldera-eyebrow absolute" style={{ left: 390, top: 52 }}>
+            {getDateLabel()}
+          </p>
+
+          <h1
+            className="absolute text-[56px] font-semibold leading-[64px] tracking-[-0.045em] text-text-secondary"
+            style={{ left: 390, top: 86, width: 700, height: 64 }}
+          >
+            {getGreetingLabel()}, <strong className="font-semibold text-text-primary">{firstName}.</strong>
+          </h1>
+
+          <div
+            className="absolute flex items-center justify-between text-[28px] text-text-secondary"
+            style={{ left: 450, top: 176, width: 900, height: 44 }}
+          >
+            <div className="flex items-center gap-3">
+              <Mail className="h-5 w-5 text-text-muted" aria-hidden />
+              <span className="text-[36px] font-semibold tracking-[-0.045em] text-text-primary">5</span>
+              <span className="text-[32px] font-normal">open threads</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <TriangleAlert className="h-5 w-5 text-amber-400" aria-hidden />
+              <span className="text-[36px] font-semibold tracking-[-0.045em] text-amber-400">2</span>
+              <span className="text-[32px] font-normal">need attention</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <TrendingUp className="h-5 w-5 text-text-muted" aria-hidden />
+              <span className="text-[36px] font-semibold tracking-[-0.045em] text-text-primary">1</span>
+              <span className="text-[32px] font-normal">ready to move</span>
+            </div>
+          </div>
+
+          <div className="absolute h-14" style={{ left: 1516, top: 36, width: 404 }}>
+            {searchField}
+          </div>
+          <div className="absolute h-14 w-14" style={{ left: 1950, top: 36 }}>
+            {notificationsButton}
+          </div>
+
+          <div className="absolute" style={{ left: 384, top: 238, width: 1216, height: 850 }}>
+            <DailyBriefCard
+              className="foldera-dashboard-brief-card foldera-dashboard-money-shot h-full w-full"
+              dashboardCta
+              stageDesktop
+              directive={cardDirective}
+              whyNow={cardWhyNow}
+              draftLabel={draftLabel}
+              draftBody={draftBody}
+              sourcePills={cardSourcePills}
+              nextStep={cardNextStep}
+              statusText={cardStatusText}
+              footerText="Grounded in connected sources"
+              actions={cardActions}
+            />
+          </div>
+
+          {notice ? (
+            <div
+              className="absolute rounded-[14px] border border-border bg-panel-raised px-4 py-3"
+              style={{ left: 384, top: 1094, width: 1216 }}
+              data-testid="dashboard-status-notice"
+              data-status-id={notice.kind}
+            >
+              <p className="text-sm text-text-primary">{notice.message}</p>
+            </div>
+          ) : null}
+
+          {lastDecision === 'approve' && executedActionId && !outcomeRecorded ? (
+            <div className="absolute flex justify-center gap-3" style={{ left: 780, top: 1096, width: 430 }}>
+              <button
+                type="button"
+                onClick={() => void recordOutcome('worked')}
+                className="foldera-button-primary"
+              >
+                It worked
+              </button>
+              <button
+                type="button"
+                onClick={() => void recordOutcome('didnt_work')}
+                className="foldera-button-secondary"
+              >
+                Didn&apos;t work
+              </button>
+            </div>
+          ) : null}
+
+          <aside className="absolute" style={{ left: 1660, top: 324, width: 350, height: 300 }}>
+            <div className="foldera-panel foldera-dashboard-right-rail-panel h-full p-6">
+              <div className="flex items-center justify-between gap-3">
+                <p className="foldera-eyebrow">How this brief works</p>
+                <a href="/#product" className="shrink-0 text-sm text-text-muted hover:text-text-primary">
+                  Learn more →
+                </a>
+              </div>
+              <div className="mt-5 space-y-4">
+                {briefHowRows.map((row) => (
+                  <div
+                    key={row.title}
+                    className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 border-t border-border pt-4 first:border-t-0 first:pt-0"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-border bg-panel-raised text-text-secondary">
+                      {row.title === 'Directive' ? (
+                        <Send className="h-4 w-4" />
+                      ) : row.title === 'Draft' ? (
+                        <FileText className="h-4 w-4" />
+                      ) : (
+                        <Layers3 className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-text-primary">{row.title}</p>
+                      <p className="mt-1.5 text-sm leading-7 text-text-muted">{row.body}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+
+          <aside className="absolute" style={{ left: 1660, top: 764, width: 350, height: 200 }}>
+            <div className="foldera-panel foldera-dashboard-right-rail-panel h-full p-5">
+              <div className="flex h-full items-center justify-center rounded-[20px] border border-dashed border-border bg-panel-raised px-5 text-center">
+                <div>
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-border bg-panel text-text-muted">
+                    <CloudUpload className="h-5 w-5" aria-hidden />
+                  </div>
+                  <p className="mt-4 text-base font-medium leading-snug text-text-primary">Drop a folder or document.</p>
+                  <p className="mt-2 text-sm leading-7 text-text-muted">Foldera will get to work instantly.</p>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="foldera-dashboard-page foldera-page min-h-screen bg-bg text-text-primary">
@@ -688,7 +895,13 @@ export default function DashboardPage() {
                     className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 border-t border-border pt-5 first:border-t-0 first:pt-0"
                   >
                     <div className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-border bg-panel-raised text-text-secondary">
-                      {row.title === 'Directive' ? <Send className="h-4 w-4" /> : row.title === 'Draft' ? <FileText className="h-4 w-4" /> : <Layers3 className="h-4 w-4" />}
+                      {row.title === 'Directive' ? (
+                        <Send className="h-4 w-4" />
+                      ) : row.title === 'Draft' ? (
+                        <FileText className="h-4 w-4" />
+                      ) : (
+                        <Layers3 className="h-4 w-4" />
+                      )}
                     </div>
                     <div>
                       <p className="text-sm font-medium text-text-primary">{row.title}</p>

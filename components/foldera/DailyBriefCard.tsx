@@ -22,13 +22,24 @@ type BriefAction = {
   icon?: LucideIcon;
   disabled?: boolean;
   dataTestId?: string;
+  className?: string;
 };
 
-function ActionButton({ action, dashboardCta }: { action: BriefAction; dashboardCta: boolean }) {
+function ActionButton({
+  action,
+  dashboardCta,
+  stageDesktop = false,
+}: {
+  action: BriefAction;
+  dashboardCta: boolean;
+  stageDesktop?: boolean;
+}) {
   if (action.kind === 'primary') {
     if (dashboardCta) {
       const footerPrimaryClass =
-        'foldera-dashboard-approve-btn w-full sm:w-auto sm:shrink-0 lg:w-auto';
+        (stageDesktop
+          ? 'foldera-dashboard-stage-approve-btn'
+          : 'foldera-dashboard-approve-btn w-full sm:w-auto sm:shrink-0 lg:w-auto') + (action.className ? ` ${action.className}` : '');
       if (action.href) {
         return (
           <a href={action.href} className={footerPrimaryClass} data-testid={action.dataTestId}>
@@ -83,7 +94,7 @@ function ActionButton({ action, dashboardCta }: { action: BriefAction; dashboard
   const sharedClassName =
     (action.kind === 'amber'
       ? 'foldera-button-amber'
-      : 'foldera-button-secondary') + dashboardFoot;
+      : 'foldera-button-secondary') + dashboardFoot + (action.className ? ` ${action.className}` : '');
 
   if (action.href) {
     return (
@@ -126,6 +137,8 @@ type DailyBriefCardProps = {
   compact?: boolean;
   /** Dashboard route uses Figma CTA (gradient + icons). Marketing preview keeps the default shell. */
   dashboardCta?: boolean;
+  /** Fixed-layout desktop stage variant for pixel-match dashboard mode. */
+  stageDesktop?: boolean;
 };
 
 export function DailyBriefCard({
@@ -145,6 +158,7 @@ export function DailyBriefCard({
   sourceIcon = Layers3,
   compact = false,
   dashboardCta = false,
+  stageDesktop = false,
 }: DailyBriefCardProps) {
   const DirectiveIcon = directiveIcon;
   const WhyIcon = whyIcon;
@@ -160,6 +174,103 @@ export function DailyBriefCard({
   const sectionTop = compact ? 'pt-4' : dashboardCta ? 'pt-6' : 'pt-5';
   const sectionGap = compact ? 'gap-4' : dashboardCta ? 'gap-6' : 'gap-5';
   const footPad = compact ? 'px-4 py-4' : dashboardCta ? 'px-6 py-5 sm:px-7' : 'px-5 py-5 sm:px-6';
+
+  if (stageDesktop && dashboardCta) {
+    return (
+      <article className={`foldera-brief-shell relative h-full w-full rounded-[26px] ${className}`}>
+        <header className="absolute inset-x-0 top-0 h-[76px] border-b border-white/8 px-[42px]">
+          <div className="flex h-full items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <CircleDot className="h-4 w-4 text-accent" strokeWidth={2.4} aria-hidden="true" />
+              <span className="text-[22px] font-semibold uppercase tracking-[0.18em] text-text-primary">Daily Brief</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[22px] font-semibold uppercase tracking-[0.16em] text-accent">{statusText}</span>
+              <CircleDot className="h-4 w-4 text-accent" strokeWidth={2.4} aria-hidden="true" />
+            </div>
+          </div>
+        </header>
+
+        <div className="absolute left-[55px] top-[252px] h-px w-[1106px] bg-white/8" />
+        <div className="absolute left-[55px] top-[430px] h-px w-[1106px] bg-white/8" />
+        <div className="absolute left-[55px] top-[688px] h-px w-[1106px] bg-white/8" />
+        <div className="absolute left-[40px] top-[742px] h-px w-[1136px] bg-white/8" />
+
+        <div className="absolute left-[104px] top-[122px] flex h-[58px] w-[58px] items-center justify-center rounded-[18px] border border-cyan-400/30 bg-cyan-400/10 text-accent">
+          <DirectiveIcon className="h-7 w-7" strokeWidth={2} aria-hidden="true" />
+        </div>
+        <div className="absolute left-[242px] right-[55px] top-[100px]">
+          <p className="text-[18px] font-semibold uppercase tracking-[0.16em] text-amber-400">Directive</p>
+          <h2 className="mt-3 max-w-[620px] text-[42px] font-semibold leading-[50px] tracking-[-0.035em] text-text-primary">
+            {directive}
+          </h2>
+        </div>
+
+        <div className="absolute left-[104px] top-[274px] flex h-[58px] w-[58px] items-center justify-center rounded-[18px] border border-amber-400/30 bg-amber-400/8 text-amber-400">
+          <WhyIcon className="h-7 w-7" strokeWidth={2} aria-hidden="true" />
+        </div>
+        <div className="absolute left-[242px] right-[55px] top-[252px]">
+          <p className="text-[18px] font-semibold uppercase tracking-[0.16em] text-amber-400">Why This Now</p>
+          <p className="mt-3 max-w-[650px] text-[20px] leading-[32px] text-text-secondary">{whyNow}</p>
+        </div>
+
+        <div className="absolute left-[104px] top-[452px] flex h-[58px] w-[58px] items-center justify-center rounded-[18px] border border-white/12 bg-white/[0.03] text-text-secondary">
+          <DraftIcon className="h-7 w-7" strokeWidth={2} aria-hidden="true" />
+        </div>
+        <div className="absolute left-[242px] right-[55px] top-[430px]">
+          <p className="text-[18px] font-semibold uppercase tracking-[0.16em] text-text-muted">{draftLabel}</p>
+          <div className="mt-3 max-w-[650px] text-[20px] leading-[32px] text-text-primary">{draftBody}</div>
+        </div>
+
+        <div className="absolute left-[104px] top-[692px] flex h-[42px] w-[42px] items-center justify-center rounded-[12px] border border-white/12 bg-white/[0.03] text-text-secondary">
+          <SourceIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+        </div>
+        <p className="absolute left-[242px] top-[690px] text-[18px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+          Source Basis
+        </p>
+        <div className="absolute left-[440px] right-[55px] top-[688px] flex flex-wrap gap-3">
+          {sourcePills.map((pill) => (
+            <span
+              key={pill}
+              className="inline-flex h-[42px] items-center rounded-[12px] border border-border bg-white/[0.03] px-4 text-[17px] text-text-secondary"
+            >
+              {pill}
+            </span>
+          ))}
+        </div>
+
+        <footer className="absolute inset-x-0 top-[742px] h-[108px]">
+          <div className="absolute left-[40px] top-[48px] flex items-center gap-2.5 text-[18px] text-text-muted">
+            <Shield className="h-5 w-5 shrink-0 text-text-secondary" aria-hidden="true" />
+            <span>{footerText}</span>
+          </div>
+          <div className="absolute right-[40px] top-[46px] flex items-start gap-4">
+            {otherActions.map((action) => {
+              const stageClass = action.kind === 'amber' ? 'w-[210px] h-[58px]' : 'w-[190px] h-[58px]';
+              return (
+                <ActionButton
+                  key={action.label}
+                  action={{ ...action, className: `foldera-dashboard-stage-foot-btn ${stageClass}` }}
+                  dashboardCta
+                  stageDesktop
+                />
+              );
+            })}
+            {primaryAction ? (
+              <div className="flex w-[275px] flex-col items-center">
+                <ActionButton
+                  action={{ ...primaryAction, className: 'h-[62px] w-[275px] whitespace-nowrap' }}
+                  dashboardCta
+                  stageDesktop
+                />
+                <p className="mt-2 w-full text-center text-[14px] leading-tight text-text-muted">{nextStep}</p>
+              </div>
+            ) : null}
+          </div>
+        </footer>
+      </article>
+    );
+  }
 
   return (
     <article className={`foldera-brief-shell ${compact ? 'rounded-[22px]' : ''} ${className}`}>
