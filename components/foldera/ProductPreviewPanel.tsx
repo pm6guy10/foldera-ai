@@ -16,15 +16,16 @@ const contextItems = [
 
 export function ProductPreviewPanel() {
   return (
-    <section className="foldera-panel p-6 sm:p-7">
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,0.36fr)_minmax(0,0.64fr)] xl:items-start">
-        <div className="max-w-sm">
+    <section className="foldera-panel p-7 sm:p-8">
+      <div className="grid gap-9 xl:grid-cols-[minmax(0,0.4fr)_minmax(0,0.6fr)] xl:items-start">
+        <div className="max-w-[420px]">
           <p className="foldera-eyebrow text-accent">Product proof</p>
           <h2 className="mt-4 text-[38px] font-semibold leading-[1.02] tracking-[-0.05em] text-text-primary">
-            See the workspace that turns signals into one finished move.
+            The workspace stays quiet until something matters.
           </h2>
           <p className="mt-5 text-[16px] leading-8 text-text-secondary">
-            The live dashboard stays calm: one executive brief, source-backed context, and a single next step that is ready to use.
+            Foldera does not create another task list. It watches for blocked threads, stale follow-ups, time-bound
+            asks, and source-backed opportunities — then turns the highest-leverage one into a finished move.
           </p>
           <div className="mt-6 space-y-3 text-sm text-text-muted">
             <p>5 open threads surfaced before they decay.</p>
@@ -35,10 +36,10 @@ export function ProductPreviewPanel() {
 
         <div className="grid gap-4">
           <div className="foldera-subpanel overflow-hidden">
-            <div className="grid gap-4 border-b border-border px-5 py-5 md:grid-cols-2">
+            <div className="grid gap-6 border-b border-border px-6 py-6 md:grid-cols-[minmax(0,0.46fr)_minmax(0,0.54fr)]">
               <div>
                 <p className="foldera-eyebrow">Executive snapshot</p>
-                <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4">
+                <div className="mt-4 grid grid-cols-2 gap-x-7 gap-y-5">
                   {stats.map((stat) => {
                     const Icon = stat.icon;
                     return (
@@ -57,9 +58,9 @@ export function ProductPreviewPanel() {
 
               <div>
                 <p className="foldera-eyebrow">Context strip</p>
-                <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="mt-4 grid grid-cols-2 gap-4">
                   {contextItems.map((item) => (
-                    <div key={item} className="rounded-[16px] border border-border bg-panel px-4 py-4">
+                    <div key={item} className="rounded-[16px] border border-border bg-panel px-5 py-5">
                       <p className="text-[26px] font-semibold tracking-[-0.05em] text-text-primary">{item.split(' ')[0]}</p>
                       <p className="mt-2 text-xs leading-5 text-text-muted">{item.replace(/^\d+\s/, '')}</p>
                     </div>
@@ -68,8 +69,8 @@ export function ProductPreviewPanel() {
               </div>
             </div>
 
-            <div className="grid gap-4 px-5 py-5 lg:grid-cols-[minmax(0,0.46fr)_minmax(0,0.54fr)]">
-              <div className="rounded-[20px] border border-border bg-panel px-4 py-5">
+            <div className="grid gap-4 px-6 py-6 lg:grid-cols-[minmax(0,0.46fr)_minmax(0,0.54fr)]">
+              <div className="rounded-[20px] border border-border bg-panel px-5 py-6">
                 <div className="flex items-center justify-between text-[9px] font-semibold uppercase tracking-[0.16em] text-text-muted">
                   <span>Daily Brief</span>
                   <span className="text-accent">Ready to send</span>
@@ -82,7 +83,7 @@ export function ProductPreviewPanel() {
                 </button>
               </div>
 
-              <div className="rounded-[20px] border border-border bg-panel px-4 py-5">
+              <div className="rounded-[20px] border border-border bg-panel px-5 py-6">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-[16px] border border-border bg-panel-raised">
                   <Inbox className="h-5 w-5 text-text-muted" />
                 </div>

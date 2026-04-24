@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, FileText, Layers3, Mail, Radar, Shield, Sparkles } from 'lucide-react';
 import { NavPublic } from '@/components/nav/NavPublic';
-import { FolderaLogo } from '@/components/foldera/FolderaLogo';
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
 import { ProductPreviewPanel } from '@/components/foldera/ProductPreviewPanel';
 
@@ -41,6 +40,28 @@ const briefRows = [
     title: 'Source trail',
     body: 'The evidence behind the recommendation.',
   },
+];
+
+const painToOutcome = [
+  {
+    label: 'Before',
+    body: 'Open threads, context switching, unclear next step.',
+  },
+  {
+    label: 'Foldera',
+    body: 'Reads your connected work signals and identifies the one move that matters.',
+  },
+  {
+    label: 'After',
+    body: 'A ready-to-send draft with source-backed reasoning.',
+  },
+];
+
+const trustPrinciples = [
+  'Connected sources, not manual copy-paste',
+  'Drafts tied to evidence',
+  'Clear approval before send',
+  'Audit trail by default',
 ];
 
 function LandingFooter() {
@@ -105,9 +126,12 @@ export default function HomePageClient() {
                     <br />
                     Every morning.
                   </h1>
-                  <p className="mt-6 text-[18px] leading-8 text-text-secondary">
-                    Foldera reads the signals around your real work and delivers the one directive worth acting on —
-                    with the reasoning, draft, and source trail already assembled.
+                  <p className="mt-6 text-[21px] leading-8 tracking-[-0.02em] text-text-secondary">
+                    Foldera turns scattered inboxes, calendar holds, stale drafts, and unresolved threads into one
+                    ready-to-send executive brief.
+                  </p>
+                  <p className="mt-4 text-[16px] leading-7 text-text-muted">
+                    You get the directive, the reasoning, the draft, and the source trail — before the day fragments.
                   </p>
                   <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                     <a href="/start" className="foldera-button-primary">
@@ -144,6 +168,15 @@ export default function HomePageClient() {
               </div>
             </section>
 
+            <section className="grid gap-4 md:grid-cols-3" aria-label="Pain to outcome">
+              {painToOutcome.map((item) => (
+                <article key={item.label} className="foldera-panel p-5 sm:p-6">
+                  <p className="foldera-eyebrow text-text-muted">{item.label}</p>
+                  <p className="mt-4 text-[16px] leading-7 text-text-secondary">{item.body}</p>
+                </article>
+              ))}
+            </section>
+
             <section className="grid gap-6 lg:grid-cols-2">
               <div className="foldera-panel p-6">
                 <h2 className="text-[34px] font-semibold tracking-[-0.05em] text-text-primary">How Foldera works</h2>
@@ -165,7 +198,7 @@ export default function HomePageClient() {
                 </div>
               </div>
 
-              <div className="foldera-panel p-6" id="security">
+              <div className="foldera-panel p-6">
                 <h2 className="text-[34px] font-semibold tracking-[-0.05em] text-text-primary">What shows up in the brief</h2>
                 <div className="mt-6 divide-y divide-border">
                   {briefRows.map((row) => {
@@ -188,15 +221,28 @@ export default function HomePageClient() {
 
             <ProductPreviewPanel />
 
+            <section className="foldera-panel p-6 sm:p-7" id="security">
+              <p className="foldera-eyebrow text-accent">Built for source-grounded work</p>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                {trustPrinciples.map((item) => (
+                  <div key={item} className="rounded-[14px] border border-border bg-panel-raised px-4 py-4">
+                    <p className="text-sm text-text-secondary">{item}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
             <section className="foldera-panel overflow-hidden p-6">
               <div className="grid gap-8 lg:grid-cols-[minmax(0,0.55fr)_minmax(0,0.45fr)] lg:items-center">
                 <div>
                   <p className="foldera-eyebrow text-accent">Finished work, every morning</p>
-                  <h2 className="mt-4 text-[42px] font-semibold leading-[1.02] tracking-[-0.05em] text-text-primary">
-                    Stop starting at the work.
-                    <br />
-                    Get the next finished move.
+                  <h2 className="mt-4 text-[42px] font-semibold leading-[1.05] tracking-[-0.05em] text-text-primary">
+                    Wake up to the move that already has the draft attached.
                   </h2>
+                  <p className="mt-5 max-w-[560px] text-[16px] leading-7 text-text-secondary">
+                    Start with one connected workspace. Foldera finds the next move, explains why it matters, and
+                    prepares the action.
+                  </p>
                   <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                     <a href="/start" className="foldera-button-primary">
                       Start free <ArrowRight className="h-4 w-4" />
@@ -207,7 +253,8 @@ export default function HomePageClient() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_160px] sm:items-end">
+                <div className="foldera-subpanel p-5 sm:p-6">
+                  <p className="foldera-eyebrow">Start with clarity</p>
                   <ul className="space-y-3 text-sm text-text-secondary">
                     <li className="flex items-center gap-3">
                       <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border text-[10px]">✓</span>
@@ -222,11 +269,6 @@ export default function HomePageClient() {
                       Cancel anytime
                     </li>
                   </ul>
-
-                  <div className="relative ml-auto h-32 w-full max-w-[170px] rounded-[26px] border border-fuchsia-500/60 bg-[linear-gradient(180deg,rgba(124,58,237,0.12),rgba(14,165,233,0.04))]">
-                    <div className="absolute bottom-0 right-0 h-24 w-[120px] rounded-[24px] border border-cyan-300/70 bg-transparent" />
-                    <div className="absolute bottom-2 left-4 right-4 h-3 rounded-full bg-[radial-gradient(circle,rgba(34,211,238,0.45),transparent_72%)] blur-md" />
-                  </div>
                 </div>
               </div>
             </section>
