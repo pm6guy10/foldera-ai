@@ -4,13 +4,29 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { NavAuthMinimal } from '@/components/nav/NavPublic';
 
+const SIGN_IN_TIMEOUT_MS = 7000;
+
 export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | null; callbackUrl?: string }) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
-  const errorMessage = errorParam ? 'Sign-in failed. Please try again or use a different account.' : null;
+  const [actionError, setActionError] = useState<string | null>(null);
+  const oauthError = errorParam ? 'Sign-in failed. Please try again or use a different account.' : null;
+  const errorMessage = actionError ?? oauthError;
 
   async function handleSignIn(provider: 'google' | 'azure-ad') {
+    setActionError(null);
     setLoadingProvider(provider);
-    await signIn(provider, { callbackUrl: callbackUrl ?? '/dashboard' });
+    const timeout = window.setTimeout(() => {
+      setLoadingProvider(null);
+      setActionError('Could not connect. Please try again.');
+    }, SIGN_IN_TIMEOUT_MS);
+
+    try {
+      await signIn(provider, { callbackUrl: callbackUrl ?? '/dashboard' });
+    } catch {
+      window.clearTimeout(timeout);
+      setLoadingProvider(null);
+      setActionError('Could not connect. Please try again.');
+    }
   }
 
   return (

@@ -7,6 +7,7 @@ import { Lock } from 'lucide-react';
 import { NavAuthMinimal } from '@/components/nav/NavPublic';
 
 const PENDING_CHECKOUT_KEY = 'foldera_pending_checkout';
+const SIGN_IN_TIMEOUT_MS = 7000;
 
 function OAuthButton({
   label,
@@ -61,9 +62,15 @@ function StartContent() {
   const handleSignIn = async (provider: 'google' | 'azure-ad') => {
     setLoadingProvider(provider);
     setError(null);
+    const timeout = window.setTimeout(() => {
+      setLoadingProvider(null);
+      setError('Could not connect. Please try again.');
+    }, SIGN_IN_TIMEOUT_MS);
+
     try {
       await signIn(provider, { callbackUrl: '/dashboard' });
     } catch {
+      window.clearTimeout(timeout);
       setLoadingProvider(null);
       setError('Could not connect. Please try again.');
     }

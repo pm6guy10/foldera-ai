@@ -27,6 +27,17 @@ function collectConsoleErrors(page: Page): string[] {
   return errors;
 }
 
+function matchApiPath(apiPath: string) {
+  return (url: URL | string): boolean => {
+    try {
+      const parsed = typeof url === 'string' ? new URL(url) : url;
+      return parsed.pathname === apiPath || parsed.pathname === `${apiPath}/`;
+    } catch {
+      return false;
+    }
+  };
+}
+
 // ── Public API (middleware request id) ───────────────────────────────────────
 
 test.describe('Public API', () => {
@@ -137,6 +148,43 @@ test.describe('Start page /start', () => {
     await expect(page.getByRole('button', { name: /microsoft/i })).toBeVisible();
   });
 
+  test('Google sign-in button calls the NextAuth Google endpoint', async ({ page }) => {
+    await page.route(matchApiPath('/api/auth/csrf'), (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ csrfToken: 'mock-csrf-token' }),
+      }),
+    );
+    await page.route(matchApiPath('/api/auth/providers'), (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          google: { id: 'google', type: 'oauth', name: 'Google' },
+          'azure-ad': { id: 'azure-ad', type: 'oauth', name: 'Microsoft' },
+        }),
+      }),
+    );
+
+    let signInPath = '';
+    await page.route(/\/api\/auth\/signin\/.*/, (route) => {
+      signInPath = new URL(route.request().url()).pathname;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, status: 200, error: null, url: '/start?oauth=ok' }),
+      });
+    });
+
+    await page.goto('/start');
+    await Promise.all([
+      page.waitForURL(/\/start\?oauth=ok$/),
+      page.getByRole('button', { name: /continue with google/i }).click(),
+    ]);
+    expect(signInPath).toBe('/api/auth/signin/google');
+  });
+
   test('no actionable console errors — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const errors = collectConsoleErrors(page);
@@ -166,6 +214,43 @@ test.describe('Login page /login', () => {
   test('sign-in heading is visible', async ({ page }) => {
     await page.goto('/login');
     await expect(page.getByText(/sign in/i).first()).toBeVisible();
+  });
+
+  test('Microsoft sign-in button calls the NextAuth Microsoft endpoint', async ({ page }) => {
+    await page.route(matchApiPath('/api/auth/csrf'), (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ csrfToken: 'mock-csrf-token' }),
+      }),
+    );
+    await page.route(matchApiPath('/api/auth/providers'), (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          google: { id: 'google', type: 'oauth', name: 'Google' },
+          'azure-ad': { id: 'azure-ad', type: 'oauth', name: 'Microsoft' },
+        }),
+      }),
+    );
+
+    let signInPath = '';
+    await page.route(/\/api\/auth\/signin\/.*/, (route) => {
+      signInPath = new URL(route.request().url()).pathname;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ ok: true, status: 200, error: null, url: '/login?oauth=ok' }),
+      });
+    });
+
+    await page.goto('/login');
+    await Promise.all([
+      page.waitForURL(/\/login\?oauth=ok$/),
+      page.getByRole('button', { name: /continue with microsoft/i }).click(),
+    ]);
+    expect(signInPath).toBe('/api/auth/signin/azure-ad');
   });
 
   test('no actionable console errors', async ({ page }) => {

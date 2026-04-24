@@ -849,6 +849,50 @@ describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
     });
   });
 
+  test('Google Connect redirects from Settings into the Google OAuth authorize URL', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupSettingsGoogleReauthMocks(page);
+    let googleConnectHit = false;
+    await page.route(matchApiPath('/api/google/connect'), (route) =>
+      {
+        googleConnectHit = true;
+        return route.fulfill({
+          status: 307,
+          headers: {
+            location:
+              'https://accounts.google.com/o/oauth2/v2/auth?client_id=mock-client&redirect_uri=https%3A%2F%2Fwww.foldera.ai%2Fapi%2Fgoogle%2Fcallback',
+          },
+        });
+      },
+    );
+    await page.goto('/dashboard/settings');
+
+    const googleReconnectCopy = page.getByText(
+      /Google needs a quick reconnect to resume background sync/i,
+    );
+    const googleReconnectCard = page
+      .locator('div.rounded-2xl')
+      .filter({ has: googleReconnectCopy })
+      .first();
+
+    const googleConnectRequest = page.waitForRequest(
+      (request) => {
+        try {
+          return new URL(request.url()).pathname === '/api/google/connect';
+        } catch {
+          return false;
+        }
+      },
+      {
+        timeout: 15000,
+      },
+    );
+
+    await googleReconnectCard.getByRole('button', { name: /^Connect$/i }).click({ noWaitAfter: true });
+    await googleConnectRequest;
+    expect(googleConnectHit).toBe(true);
+  });
+
   test('Microsoft Connect redirects from Settings into the Microsoft OAuth authorize URL', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await setupSettingsMicrosoftReauthMocks(page);
