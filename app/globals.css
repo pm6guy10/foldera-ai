@@ -126,33 +126,97 @@
 
   /* Dashboard route — Figma shell (scoped; does not retheme other pages) */
   .foldera-dashboard-page.foldera-page {
-    background: #050505;
+    background:
+      radial-gradient(130% 92% at 52% -12%, rgba(9, 76, 104, 0.28), transparent 64%),
+      radial-gradient(74% 58% at 82% 40%, rgba(7, 52, 73, 0.2), transparent 72%),
+      linear-gradient(180deg, #01050a 0%, #02070d 42%, #02070a 100%);
   }
 
   .foldera-dashboard-brief-card.foldera-brief-shell {
-    border-color: rgba(56, 189, 248, 0.45);
+    border-color: rgba(98, 192, 236, 0.54);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.04),
-      0 0 0 1px rgba(34, 211, 238, 0.12),
-      0 0 48px rgba(34, 211, 238, 0.22),
-      0 -12px 64px rgba(34, 211, 238, 0.12),
-      24px 0 72px rgba(34, 211, 238, 0.1),
-      0 24px 64px rgba(0, 0, 0, 0.55);
+      0 0 0 1px rgba(34, 211, 238, 0.14),
+      0 0 34px rgba(34, 211, 238, 0.18),
+      0 26px 68px rgba(0, 5, 12, 0.62);
+  }
+
+  .foldera-dashboard-money-shot {
+    isolation: isolate;
   }
 
   .foldera-dashboard-brief-card.foldera-brief-shell::before {
-    width: 38%;
-    right: 6%;
-    opacity: 1;
-    box-shadow: 0 0 28px rgba(56, 239, 255, 0.85);
+    width: 46%;
+    right: 8%;
+    opacity: 0.97;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(124, 247, 255, 0.58) 28%,
+      rgba(176, 252, 255, 0.96) 52%,
+      rgba(76, 231, 255, 0.55) 76%,
+      transparent 100%
+    );
+    box-shadow:
+      0 0 22px rgba(91, 241, 255, 0.8),
+      0 0 42px rgba(46, 190, 235, 0.28);
   }
 
   .foldera-dashboard-brief-card.foldera-brief-shell::after {
-    height: 52%;
-    top: 18%;
-    opacity: 1;
-    filter: blur(0.5px);
-    box-shadow: -4px 0 24px rgba(56, 239, 255, 0.35);
+    height: 58%;
+    top: 16%;
+    width: 2px;
+    opacity: 0.92;
+    filter: blur(0.35px);
+    background: linear-gradient(
+      180deg,
+      rgba(154, 248, 255, 0.95) 0%,
+      rgba(94, 231, 255, 0.55) 40%,
+      rgba(88, 228, 255, 0.08) 100%
+    );
+    box-shadow:
+      -2px 0 16px rgba(76, 231, 255, 0.44),
+      0 0 11px rgba(88, 228, 255, 0.2);
+  }
+
+  .foldera-dashboard-sidebar.foldera-panel {
+    border-color: rgba(48, 82, 112, 0.55);
+    background:
+      linear-gradient(180deg, rgba(6, 13, 22, 0.96) 0%, rgba(6, 11, 19, 0.96) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.015),
+      0 14px 36px rgba(0, 0, 0, 0.3);
+  }
+
+  .foldera-dashboard-sidebar .foldera-dashboard-nav-item.is-active {
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+      inset 2px 0 0 rgba(34, 211, 238, 0.85);
+  }
+
+  .foldera-dashboard-sidebar .foldera-dashboard-upgrade {
+    border-color: rgba(65, 94, 123, 0.45);
+    background:
+      linear-gradient(180deg, rgba(10, 18, 30, 0.82) 0%, rgba(7, 14, 24, 0.82) 100%);
+  }
+
+  .foldera-dashboard-sidebar .foldera-dashboard-account {
+    border-color: rgba(65, 92, 120, 0.4);
+    background:
+      linear-gradient(180deg, rgba(9, 16, 26, 0.84) 0%, rgba(7, 13, 23, 0.84) 100%);
+  }
+
+  .foldera-dashboard-sidebar .foldera-dashboard-account-menu {
+    border-color: rgba(72, 98, 126, 0.45);
+  }
+
+  .foldera-dashboard-right-rail .foldera-dashboard-right-rail-panel.foldera-panel {
+    border-color: rgba(52, 84, 112, 0.46);
+    background:
+      linear-gradient(180deg, rgba(7, 14, 24, 0.84) 0%, rgba(6, 12, 21, 0.84) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.012),
+      0 12px 30px rgba(0, 0, 0, 0.25);
   }
 
   .foldera-dashboard-approve-btn {

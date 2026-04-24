@@ -586,8 +586,8 @@ export default function DashboardPage() {
 
   return (
     <div className="foldera-dashboard-page foldera-page min-h-screen bg-bg text-text-primary">
-      <div className="mx-auto w-full max-w-[1720px] px-4 py-4 sm:px-5 lg:px-8 lg:py-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(236px,260px)_minmax(0,1fr)] xl:grid-cols-[minmax(236px,260px)_minmax(0,1fr)_300px] xl:gap-8">
+      <div className="mx-auto w-full max-w-[1840px] px-4 py-4 sm:px-5 lg:px-8 lg:py-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(244px,270px)_minmax(0,1fr)] xl:grid-cols-[minmax(244px,270px)_minmax(0,1fr)_328px] xl:gap-9">
           <DashboardSidebar activeLabel="Executive Briefing" userName={firstName} />
 
           <div className="min-w-0">
@@ -605,7 +605,7 @@ export default function DashboardPage() {
               <p className="foldera-eyebrow">{getDateLabel()}</p>
             </div>
 
-            <header className="pb-8 pt-2 lg:pt-0">
+            <header className="pb-10 pt-3 lg:pt-1">
               <h1 className="text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-text-secondary">
                 {getGreetingLabel()}, <strong className="font-semibold text-text-primary">{firstName}.</strong>
               </h1>
@@ -630,7 +630,7 @@ export default function DashboardPage() {
 
             {notice ? (
               <div
-                className="mx-auto mb-4 w-full max-w-[1008px] rounded-[16px] border border-border bg-panel-raised px-4 py-3"
+                className="mx-auto mb-4 w-full max-w-[1140px] rounded-[16px] border border-border bg-panel-raised px-4 py-3"
                 data-testid="dashboard-status-notice"
                 data-status-id={notice.kind}
               >
@@ -638,9 +638,9 @@ export default function DashboardPage() {
               </div>
             ) : null}
 
-            <div className="mx-auto w-full max-w-[1008px] pb-10">
+            <div className="mx-auto w-full max-w-[1140px] pb-12">
               <DailyBriefCard
-                className="foldera-dashboard-brief-card w-full"
+                className="foldera-dashboard-brief-card foldera-dashboard-money-shot w-full"
                 dashboardCta
                 directive={cardDirective}
                 whyNow={cardWhyNow}
@@ -673,8 +673,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <aside className="hidden min-w-0 space-y-5 xl:block">
-            <div className="foldera-panel p-5">
+          <aside className="foldera-dashboard-right-rail hidden min-w-0 space-y-5 xl:block">
+            <div className="foldera-panel foldera-dashboard-right-rail-panel p-5">
               <div className="flex items-center justify-between gap-3">
                 <p className="foldera-eyebrow">How this brief works</p>
                 <a href="/#product" className="shrink-0 text-sm text-text-muted hover:text-text-primary">
@@ -699,7 +699,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="foldera-panel p-5">
+            <div className="foldera-panel foldera-dashboard-right-rail-panel p-5">
               <div className="flex min-h-[168px] items-center justify-center rounded-[20px] border border-dashed border-border bg-panel-raised px-5 text-center">
                 <div>
                   <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full border border-border bg-panel text-text-muted">

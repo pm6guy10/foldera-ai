@@ -153,13 +153,13 @@ export function DailyBriefCard({
 
   const primaryAction = actions.find((a) => a.kind === 'primary');
   const otherActions = actions.filter((a) => a.kind !== 'primary');
-  const divider = dashboardCta ? 'border-white/[0.04]' : 'border-white/8';
-  const headPad = compact ? 'px-4 py-4' : 'px-5 py-5 sm:px-6';
-  const bodyPad = compact ? 'px-4 py-4' : 'px-5 py-6 sm:px-6 sm:py-6';
-  const bodyStack = compact ? 'space-y-4' : 'space-y-6';
-  const sectionTop = compact ? 'pt-4' : 'pt-5';
-  const sectionGap = compact ? 'gap-4' : 'gap-5';
-  const footPad = compact ? 'px-4 py-4' : 'px-5 py-5 sm:px-6';
+  const divider = dashboardCta ? 'border-white/[0.028]' : 'border-white/8';
+  const headPad = compact ? 'px-4 py-4' : dashboardCta ? 'px-6 py-5 sm:px-7' : 'px-5 py-5 sm:px-6';
+  const bodyPad = compact ? 'px-4 py-4' : dashboardCta ? 'px-6 py-7 sm:px-7 sm:py-8' : 'px-5 py-6 sm:px-6 sm:py-6';
+  const bodyStack = compact ? 'space-y-4' : dashboardCta ? 'space-y-7' : 'space-y-6';
+  const sectionTop = compact ? 'pt-4' : dashboardCta ? 'pt-6' : 'pt-5';
+  const sectionGap = compact ? 'gap-4' : dashboardCta ? 'gap-6' : 'gap-5';
+  const footPad = compact ? 'px-4 py-4' : dashboardCta ? 'px-6 py-5 sm:px-7' : 'px-5 py-5 sm:px-6';
 
   return (
     <article className={`foldera-brief-shell ${compact ? 'rounded-[22px]' : ''} ${className}`}>
@@ -194,7 +194,7 @@ export function DailyBriefCard({
                   : dashboardCta
                     ? 'mt-1.5 text-[32px] leading-[1.12] sm:text-[38px]'
                     : 'mt-2 text-[42px] leading-[1.14] sm:text-[48px]'
-              } max-w-3xl font-semibold tracking-[-0.04em] text-text-primary`}
+              } ${dashboardCta ? 'max-w-[18.5ch]' : 'max-w-3xl'} font-semibold tracking-[-0.04em] text-text-primary`}
             >
               {directive}
             </h2>
@@ -231,7 +231,7 @@ export function DailyBriefCard({
               <span
                 key={pill}
                 className={`border border-border bg-white/[0.02] px-3 py-1.5 text-[12px] text-text-secondary ${
-                  dashboardCta ? 'rounded-full' : 'rounded-[12px]'
+                  dashboardCta ? 'rounded-[10px]' : 'rounded-[12px]'
                 }`}
               >
                 {pill}
@@ -244,19 +244,19 @@ export function DailyBriefCard({
       <footer className={`${footPad} border-t ${divider}`}>
         {dashboardCta ? (
           <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
-              <div className="flex min-w-0 items-center gap-2.5 text-[13px] text-text-muted lg:pt-0.5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:gap-8">
+              <div className="flex min-w-0 items-center gap-2.5 text-[13px] text-text-muted">
                 <Shield className="h-4 w-4 shrink-0 text-text-secondary" aria-hidden="true" />
                 <span className="min-w-0 leading-snug">{footerText}</span>
               </div>
-              <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-x-4 sm:gap-y-2 lg:flex-nowrap lg:gap-x-5">
+              <div className="flex min-w-0 flex-wrap items-center justify-end gap-3 sm:gap-4 lg:flex-nowrap lg:gap-[18px]">
                 {otherActions.map((action) => (
                   <ActionButton key={action.label} action={action} dashboardCta />
                 ))}
                 {primaryAction ? (
-                  <div className="flex w-full flex-col items-center gap-2 sm:w-auto sm:shrink-0">
+                  <div className="flex w-full flex-col items-center gap-2 sm:w-auto sm:shrink-0 sm:items-end">
                     <ActionButton action={primaryAction} dashboardCta />
-                    <p className="w-full text-center text-[12px] leading-tight text-text-muted sm:max-w-none">{nextStep}</p>
+                    <p className="w-full text-center text-[12px] leading-tight text-text-muted sm:text-right">{nextStep}</p>
                   </div>
                 ) : null}
               </div>
