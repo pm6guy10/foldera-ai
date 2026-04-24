@@ -125,12 +125,16 @@ test.describe('Visual system screenshots', () => {
     await page.setViewportSize({ width: 1440, height: 1400 });
     await page.goto('/');
     await expect(page.getByRole('heading', { name: /One finished move\. Every morning\./i })).toBeVisible();
-    await page.screenshot({ path: path.join(OUT_DIR, 'landing-desktop.png'), fullPage: true });
+    await expect(page.getByText(/FOLDERA DESIGN SYSTEM/i)).toHaveCount(0);
+    await expect(page.getByText(/DASHBOARD — PRODUCT VIEWS/i)).toHaveCount(0);
+    await page.screenshot({ path: path.join(OUT_DIR, 'landing-desktop-clean.png'), fullPage: true });
 
     await page.setViewportSize({ width: 390, height: 1200 });
     await page.goto('/');
     await expect(page.getByRole('heading', { name: /One finished move\. Every morning\./i })).toBeVisible();
-    await page.screenshot({ path: path.join(OUT_DIR, 'landing-mobile.png'), fullPage: true });
+    await expect(page.getByText(/FOLDERA DESIGN SYSTEM/i)).toHaveCount(0);
+    await expect(page.getByText(/DASHBOARD — PRODUCT VIEWS/i)).toHaveCount(0);
+    await page.screenshot({ path: path.join(OUT_DIR, 'landing-mobile-clean.png'), fullPage: true });
   });
 });
 
@@ -142,11 +146,15 @@ describeWithAuth('Visual system dashboard screenshots', () => {
     await page.setViewportSize({ width: 1440, height: 1200 });
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: /Send the follow-up to Alex Morgan before noon\./i })).toBeVisible();
-    await page.screenshot({ path: path.join(OUT_DIR, 'dashboard-desktop.png'), fullPage: true });
+    await expect(page.getByText(/FOLDERA DESIGN SYSTEM/i)).toHaveCount(0);
+    await expect(page.getByText(/DASHBOARD — PRODUCT VIEWS/i)).toHaveCount(0);
+    await page.screenshot({ path: path.join(OUT_DIR, 'dashboard-desktop-clean.png'), fullPage: true });
 
     await page.setViewportSize({ width: 390, height: 1180 });
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: /Send the follow-up to Alex Morgan before noon\./i })).toBeVisible();
-    await page.screenshot({ path: path.join(OUT_DIR, 'dashboard-mobile.png'), fullPage: true });
+    await expect(page.getByText(/FOLDERA DESIGN SYSTEM/i)).toHaveCount(0);
+    await expect(page.getByText(/DASHBOARD — PRODUCT VIEWS/i)).toHaveCount(0);
+    await page.screenshot({ path: path.join(OUT_DIR, 'dashboard-mobile-clean.png'), fullPage: true });
   });
 });
