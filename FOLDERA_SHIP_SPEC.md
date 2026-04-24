@@ -1,4 +1,5 @@
 # FOLDERA_SHIP_SPEC.md
+
 **Mode:** deep audit — no code changes
 **Audit date:** 2026-04-21 (PT)
 **Auditor role:** senior architect
@@ -10,7 +11,7 @@
 
 1. **The brain works end-to-end and the dashboard renders the golden artifact correctly — but production has been shipping zero finished work because proof mode is defaulted ON and keeps killing every winning `write_document`, producing the "No thread-backed external send_message candidate cleared proof-mode gates" `do_nothing` rows you keep seeing (6 of the last 20 actions).**
 2. **When candidates do survive proof mode, the post-LLM validators in `lib/briefing/decision-enforcement.ts` reject them for "echoes internal decay metrics," "stale_date_in_directive," and "decision frame" issues, burning 66 `directive_retry` calls in 7 days against 78 first-pass `directive` calls — half the LLM spend is the system fighting itself.**
-3. **The scorer is not the problem: the scorer hands the generator coherent winners (interviews, unpaid wages, overpayment waiver, stale commitments); the *prompt* and the *gate* are what turn those into "Resolve \"Preference divergence: stated...\"" word-salad that a human would never read, let alone pay for.**
+3. **The scorer is not the problem: the scorer hands the generator coherent winners (interviews, unpaid wages, overpayment waiver, stale commitments); the *prompt* and the *gate* are what turn those into "Resolve Preference divergence: stated..." word-salad that a human would never read, let alone pay for.**
 4. **Surfaces are close to credible: landing page says "Finished work. Before you ask.", Stripe checkout is wired, dashboard blurs the artifact until the user pays — the single embarrassing thing is that a Free user cannot *see* one real finished artifact before being asked to pay $29/mo, which is the entire product pitch inverted.**
 5. **The shortest path to first paid user is six changes, roughly 14 hours of work, in this order: (1) flip proof mode OFF in prod, (2) rewrite the generator system prompt to produce finished artifacts in the golden-artifact shape, (3) disarm the validator patterns that kill decay/discrepancy outputs, (4) show the *full* golden artifact (not blurred) to free users exactly once as the sample, (5) record the 90-second Reddit clip against a live cycle, (6) post it.**
 
@@ -36,7 +37,7 @@ Quote the lines that are fighting that goal:
 
 **Diagnosis:** the prompt is asking for finished work *and* for a research paper defending why it's finished work. The LLM splits the difference and produces a compromise that reads like a product manager's status update. Example from production today (action `76800f89-556a-4f4b-85da-9bc50e76b214`, status `skipped`, confidence 82):
 
-> "Resolve \"Preference divergence: stated \"Resolve ESD overpayment waiver (Claim 2MFDBB-007, RCW 50.20.190, hardship waiver submitted)\" but signal velocity is on p..."
+> "Resolve Preference divergence: stated Resolve ESD overpayment waiver (Claim 2MFDBB-007, RCW 50.20.190, hardship waiver submitted) but signal velocity is on p..."
 
 That is the generator narrating a scorer feature (`Preference divergence`, `signal velocity`) to the user. No human pays $29/mo to be quoted at themselves.
 
@@ -72,23 +73,23 @@ That is the generator narrating a scorer feature (`Preference divergence`, `sign
 
 Starting at `scoreOpenLoops` (`lib/briefing/scorer.ts:4228`) → ending at `tkg_actions` row:
 
-1. **`detectAntiPatterns(userId)`** — inserts commitment_decay / signal_velocity meta-loops into the candidate pool with a no-goal penalty. Not fatal but frequently wins when inbox is quiet.
-2. **`checkAndCreateAutoSuppressions(userId)`** — auto-creates "don't mention this again" goals from skip patterns. Good loop. (Can over-fire; one user skip becomes a permanent suppression.)
+1. `**detectAntiPatterns(userId)`** — inserts commitment_decay / signal_velocity meta-loops into the candidate pool with a no-goal penalty. Not fatal but frequently wins when inbox is quiet.
+2. `**checkAndCreateAutoSuppressions(userId)`** — auto-creates "don't mention this again" goals from skip patterns. Good loop. (Can over-fire; one user skip becomes a permanent suppression.)
 3. **Parallel data fetch** — commitments, signals, entities, goals, today-actions, entity salience. Multi-hundred-ms.
 4. **Candidate construction** — threads, hunt findings, decay candidates, discrepancies, emergent patterns, anti-patterns, insight-scan results all get normalized into `ScoredLoop` objects.
 5. **Ranking invariants applied** in `generateDirective` (`generator.ts`) — thread-backed send_message gets a floor; hunt send_message must hit the recipient allowlist; self-addressed candidates demoted.
-6. **`proofModePreflight`** — the first ruthless gate. If `isProofModeThreadBackedSendOnly()` is true and candidate would produce anything other than thread-backed external `send_message`, it is `continue`'d past. **This is the single biggest kill step in production right now.**
+6. `**proofModePreflight`** — the first ruthless gate. If `isProofModeThreadBackedSendOnly()` is true and candidate would produce anything other than thread-backed external `send_message`, it is `continue`'d past. **This is the single biggest kill step in production right now.**
 7. **Hydration + research + LLM call (`directive` endpoint, haiku-4.5).** Success path returns artifact JSON. Validation failure triggers `directive_retry` (second haiku call, different system prompt).
-8. **`getDecisionEnforcementIssues(artifact, actionType, discrepancyClass, matchedGoalCategory)`** — scans the artifact for:
-   - `PASSIVE_OR_IGNORABLE_PATTERNS` (e.g. "when you have time")
-   - `OBVIOUS_FIRST_LAYER_PATTERNS` ("schedule time to review")
-   - missing `EXPLICIT_ASK_PATTERNS` (`?`)
-   - missing `TIME_CONSTRAINT_PATTERNS` (date, "this week")
-   - missing `PRESSURE_OR_CONSEQUENCE_PATTERNS` ("deadline", "risk", "no replies")
-   - missing `OWNERSHIP_PATTERNS` ("owner:", "your calendar")
-   - `REWRITE_REQUIRED_PATTERNS`, `SUMMARY_ONLY_PATTERNS`
-9. **`getWriteDocumentTaskManagerLabelIssues(artifact)`** — bans "NEXT_ACTION:", "Owner: you" task-manager labels in documents.
-10. **`getInternalExecutionBriefIssues(artifact)`** — requires "execution move," "owner checklist," "user questions" in internal execution briefs; rejects "future artifact" (not finished work).
+8. `**getDecisionEnforcementIssues(artifact, actionType, discrepancyClass, matchedGoalCategory)`** — scans the artifact for:
+  - `PASSIVE_OR_IGNORABLE_PATTERNS` (e.g. "when you have time")
+  - `OBVIOUS_FIRST_LAYER_PATTERNS` ("schedule time to review")
+  - missing `EXPLICIT_ASK_PATTERNS` (`?`)
+  - missing `TIME_CONSTRAINT_PATTERNS` (date, "this week")
+  - missing `PRESSURE_OR_CONSEQUENCE_PATTERNS` ("deadline", "risk", "no replies")
+  - missing `OWNERSHIP_PATTERNS` ("owner:", "your calendar")
+  - `REWRITE_REQUIRED_PATTERNS`, `SUMMARY_ONLY_PATTERNS`
+9. `**getWriteDocumentTaskManagerLabelIssues(artifact)`** — bans "NEXT_ACTION:", "Owner: you" task-manager labels in documents.
+10. `**getInternalExecutionBriefIssues(artifact)**` — requires "execution move," "owner checklist," "user questions" in internal execution briefs; rejects "future artifact" (not finished work).
 11. **Stale-date check** — scans the directive text for dates in the past; rejects ("stale_date_in_directive:2026-04-13").
 12. **Echo check** — rejects if artifact body quotes scorer metric names ("decay metrics," "signal velocity," "Preference divergence").
 13. **Validation failure → `continue` to next candidate** (`b189148` on `main`, merged) — not `break`.
@@ -96,6 +97,7 @@ Starting at `scoreOpenLoops` (`lib/briefing/scorer.ts:4228`) → ending at `tkg_
 15. **On win → insert into `tkg_actions`** with status `pending_approval`, confidence ≥ `CONFIDENCE_SEND_THRESHOLD` (70).
 
 **What kills good candidates (the real villains):**
+
 - **Step 6 (proof mode)** — kills every `write_document` winner in production unless `allowWriteDocumentProof` is explicitly set (only in verification paths). The golden-artifact class of output is literally blocked from reaching the LLM.
 - **Step 8 "missing_time_constraint" and "missing_pressure_or_consequence"** — kills perfectly good `write_document` outputs because the user's actual situation doesn't have a deadline.
 - **Step 8 "obvious_first_layer_advice"** — uses regex that false-positives on any artifact that says "schedule" or "review."
@@ -117,14 +119,17 @@ Starting at `scoreOpenLoops` (`lib/briefing/scorer.ts:4228`) → ending at `tkg_
 In Vercel production `NODE_ENV === 'production'`, so the default is `true` unless `FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY=false` is set as an env var. There is no evidence that env var is set.
 
 **What it blocks:** in `proofModeThreadBackedSendEnforcementApplies()`, any candidate whose recommended action is not `send_message` is skipped, with two exceptions:
+
 1. `options.allowWriteDocumentProof === true` (only set in specific verification/golden-path code paths)
 2. `winner.type === 'discrepancy'` AND `recommendedAction !== 'send_message'` (discrepancy write_document can bypass)
 
 **Production evidence it is killing the product:**
+
 - Actions `11e4f04b`, `58ee9c20`, `dd1425f0` — all `do_nothing`, directive = "No thread-backed external send_message candidate cleared proof-mode gates." This is 3 of the last 20 actions. Two more (`5acfb570`, `79f41aec`) are adjacent symptoms.
 - Every `write_document` winner in the last 20 rows is `skipped`.
 
 **Should it be OFF?** Yes. Rationale:
+
 - Proof mode exists to enforce quality for *strangers who will see outgoing email*. It is paranoia against "the LLM sent a hallucinated email to a real contact."
 - The product promise is "finished work" = `write_document` + `send_message`. Blocking `write_document` by default cuts the output class in half.
 - Documents are never auto-sent; the dashboard's approve button for `write_document` is save + optional Resend, not outbox send (see `dashboard/page.tsx:45-58`, `approveSuccessFlash`).
@@ -134,7 +139,7 @@ In Vercel production `NODE_ENV === 'production'`, so the default is `true` unles
 
 ### 1e. Fallback loop: break or continue? Is the branch merged?
 
-**`continue`.** Commit `b189148` ("fix(generator): fall through post-LLM gates instead of breaking out of candidate loop") is on `main`. The `codex/pending-approval-fix` branch is `main`'s ancestor — `git log main..origin/codex/pending-approval-fix` returns empty, and `git log origin/codex/pending-approval-fix..main` returns the golden-artifact commit. **Branch is stale, already merged. Delete it:**
+`**continue`.** Commit `b189148` ("fix(generator): fall through post-LLM gates instead of breaking out of candidate loop") is on `main`. The `codex/pending-approval-fix` branch is `main`'s ancestor — `git log main..origin/codex/pending-approval-fix` returns empty, and `git log origin/codex/pending-approval-fix..main` returns the golden-artifact commit. **Branch is stale, already merged. Delete it:**
 
 ```bash
 git push origin --delete codex/pending-approval-fix
@@ -283,18 +288,21 @@ This is intentionally short. It removes the locked-contacts block, the domain di
 
 ### 2a. Signal health
 
-| source | count | last_at | verdict |
-|---|---|---|---|
-| outlook | 1535 | 2026-04-17 11:30Z | **5 days stale — dead** |
-| gmail | 576 | 2026-04-21 11:44Z | fresh |
-| claude_conversation | 537 | 2026-04-03 23:43Z | **19 days stale — dead** |
-| uploaded_document | 390 | 2026-04-01 00:04Z | **21 days stale — dead** |
-| outlook_calendar | 177 | 2026-04-17 03:21Z | **5 days stale** |
-| drive | 117 | 2026-04-15 17:19Z | **7 days stale** |
-| user_feedback | 77 | 2026-04-22 06:10Z | fresh (synthetic) |
-| chatgpt_conversation | 37 | 2026-03-20 15:15Z | **33 days stale — dead** |
+
+| source               | count | last_at           | verdict                  |
+| -------------------- | ----- | ----------------- | ------------------------ |
+| outlook              | 1535  | 2026-04-17 11:30Z | **5 days stale — dead**  |
+| gmail                | 576   | 2026-04-21 11:44Z | fresh                    |
+| claude_conversation  | 537   | 2026-04-03 23:43Z | **19 days stale — dead** |
+| uploaded_document    | 390   | 2026-04-01 00:04Z | **21 days stale — dead** |
+| outlook_calendar     | 177   | 2026-04-17 03:21Z | **5 days stale**         |
+| drive                | 117   | 2026-04-15 17:19Z | **7 days stale**         |
+| user_feedback        | 77    | 2026-04-22 06:10Z | fresh (synthetic)        |
+| chatgpt_conversation | 37    | 2026-03-20 15:15Z | **33 days stale — dead** |
+
 
 **Diagnosis:**
+
 - Only **Gmail** is actually ingesting. Every other source is stale. The signal graph looks fat (3,448 rows, 356 entities) but it is mostly historical.
 - The `health.ts` script shipped a regression — it reports "no Google mailbox connected" / "no Microsoft mailbox connected" for the local caller even though the DB has fresh Gmail rows written via a different user token. The script is measuring the wrong thing and gave a false green today.
 
@@ -315,12 +323,14 @@ This is intentionally short. It removes the locked-contacts block, the domain di
 
 From `api_usage`:
 
-| day | calls | $ | in_tok | out_tok |
-|---|---|---|---|---|
-| 2026-04-20 | 75 | $0.92 | 650k | 43k |
-| 2026-04-17 | 32 | $0.50 | 371k | 25k |
-| 2026-04-16 | 36 | $0.51 | 377k | 24k |
-| 2026-04-15 | 150 | $1.43 | 1.07M | 63k |
+
+| day        | calls | $     | in_tok | out_tok |
+| ---------- | ----- | ----- | ------ | ------- |
+| 2026-04-20 | 75    | $0.92 | 650k   | 43k     |
+| 2026-04-17 | 32    | $0.50 | 371k   | 25k     |
+| 2026-04-16 | 36    | $0.51 | 377k   | 24k     |
+| 2026-04-15 | 150   | $1.43 | 1.07M  | 63k     |
+
 
 Breakdown by endpoint (7 days):
 
@@ -371,7 +381,7 @@ Skip path: `POST /api/conviction/skip` (assume; same pattern). Also fine. Scorer
 File: `lib/cron/daily-brief-send.ts:158-176`. Builds `DirectiveItem { id, directive, action_type, confidence, reason, artifact }` and calls `sendDailyDirective()` with subject `"Foldera: <first 6 words>"`.
 
 - **The email contains the full artifact content** — `artifactBody` is embedded in the email template, no blur. This is correct: the email is the persuasion surface.
-- **Subject line is weak:** "Foldera: <first 6 words of directive>" truncated to 50. Example: "Foldera: Darlene Craig (darlene.craig@esd.wa.gov) sent..." is fine. "Foldera: Resolve "Preference divergence: stated..." is embarrassing. Fix only matters once generator outputs are fixed — subject line is derivative.
+- **Subject line is weak:** "Foldera: <first 6 words of directive>" truncated to 50. Example: "Foldera: Darlene Craig ([darlene.craig@esd.wa.gov](mailto:darlene.craig@esd.wa.gov)) sent..." is fine. "Foldera: Resolve "Preference divergence: stated..." is embarrassing. Fix only matters once generator outputs are fixed — subject line is derivative.
 - The email is the single place the product actually delivers its promise today. **Do not regress this.**
 
 ### 3c. Landing page
@@ -394,6 +404,7 @@ File: `app/HomePageClient.tsx`.
 File: `app/api/stripe/checkout/route.ts`.
 
 Full path a user takes:
+
 1. Land on `/` → click "Get started free" → `/start`.
 2. `/start` → OAuth Google/Microsoft → authenticated session.
 3. Wake up tomorrow to (maybe) an empty or weak directive, because of §1/§2.
@@ -406,10 +417,11 @@ Full path a user takes:
 10. Webhook (`app/api/stripe/webhook`) → mutates `user_subscriptions`. On success, dashboard re-renders with `isProArtifactUnlocked=true`.
 
 **What breaks:**
+
 - **Nothing in the code path, assuming `STRIPE_SECRET_KEY` and `STRIPE_PRO_PRICE_ID` are set in Vercel prod.** The `FOLDERA_PRODUCT_SPEC.md` says they CANNOT VERIFY keys and Stripe is NOT PROVEN live. That's the real blocker — unverified env.
 - **There is no "Pro Annual" or discount SKU.** Only monthly $29. Fine for v1, but no urgency lever.
 - **Empty-dashboard problem:** if the user's first dashboard visit shows no artifact (currently likely: 0 pending_approval rows for owner, and owner is the most-instrumented user), they will never click upgrade. A stranger lands, sees nothing, bounces. The Stripe path is irrelevant when there is no artifact above it.
-- **Mobile:** the checkout button on `/pricing` has `min-h-[56px]`, is touch-friendly. Checkout flow should work on phone. Dashboard also uses `safe-area-inset-*`, `min-h-[44px]` touch targets. Looks OK but not verified on a real device in this audit.
+- **Mobile:** the checkout button on `/pricing` has `min-h-[56px]`, is touch-friendly. Checkout flow should work on phone. Dashboard also uses `safe-area-inset-`*, `min-h-[44px]` touch targets. Looks OK but not verified on a real device in this audit.
 
 **Priority fix:** verify Stripe env is live (test card, real purchase-then-refund). This is in the published priority queue already.
 
@@ -422,7 +434,7 @@ Dashboard uses responsive Tailwind classes throughout, `min-h-[100dvh]`, `env(sa
 In order of cringe:
 
 1. **Blurred artifact for free users.** The product says "here is finished work" and then literally redacts the finished work. This is the single change that makes a stranger watching over your shoulder say "wait, what?" Fix: show the first artifact unblurred, ever, to free users.
-2. **"Resolve \"Preference divergence: stated ...\"" directive text in the actual `tkg_actions` table.** That is the scorer's pattern name leaking through the LLM into the user-visible directive. If a friend opened your dashboard tomorrow and saw that, they would assume the product was alpha. Fix: the new generator prompt (§1f) forbids meta-commentary; the stale-date / echo validators already exist for this class.
+2. **"Resolve Preference divergence: stated ..." directive text in the actual `tkg_actions` table.** That is the scorer's pattern name leaking through the LLM into the user-visible directive. If a friend opened your dashboard tomorrow and saw that, they would assume the product was alpha. Fix: the new generator prompt (§1f) forbids meta-commentary; the stale-date / echo validators already exist for this class.
 3. **Three days of pipeline_runs in a row with `partial_or_failed` outcome and no winner.** Your database is telling the story that the cron is firing and producing nothing.
 4. **Eighty-five percent directive-retry rate.** Self-explanatory.
 5. **Outlook 5 days stale, Claude 19 days stale, drive 7 days stale.** Visible in the footer health line only to the owner (daily-brief-send line 174-175). Not externally embarrassing but makes every demo stale.
@@ -434,18 +446,20 @@ In order of cringe:
 
 Ordered. Numbered. Effort in hours. Blocked-by dependencies marked.
 
-| # | Change | File(s) | Effort | Blocked by |
-|---|---|---|---|---|
-| 1 | Set `FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY=false` in Vercel prod + `.env.production.example` | Vercel dashboard; `.env.production.example` | **0.25h** | — |
-| 2 | Replace `SYSTEM_PROMPT` in `lib/briefing/generator.ts` with the prompt in §1f | `lib/briefing/generator.ts` | **3h** (write + run brain-receipt verification against 5 real candidates) | — |
-| 3 | Disarm validator patterns that kill decay / discrepancy / overdue outputs: make `missing_time_constraint`, `missing_pressure_or_consequence`, `missing_owner_assignment` advisory (score penalty), not veto — for `write_document` only | `lib/briefing/decision-enforcement.ts` → `getDecisionEnforcementIssues` | **2h** | 2 |
-| 4 | Hydrate attachment text + uploaded document full text + relevant `drive` doc text into `StructuredContext.rawFacts` for the selected winner only (not every candidate) | `lib/briefing/generator.ts` → `buildStructuredContext`; `lib/signals/*` attachment extraction | **4h** | 2 |
-| 5 | Remove artifact blur for the user's first N=1 pending_approval view. After first approve/skip, blur returns for free users | `app/dashboard/page.tsx:403-405`, `app/api/conviction/latest/route.ts:107-118` (already counts approved; add a "first_view" flag) | **1.5h** | 1 (needs real artifact to show) |
-| 6 | Replace landing-page `<ArtifactCard />` with a static render of a real golden artifact (or an inline 60–90s recording) | `app/HomePageClient.tsx:347`, new component | **2h** | 4 (needs production to ship one real artifact to record) |
-| 7 | Verify Stripe live: put a real card through checkout, confirm `user_subscriptions` row flips to `active`, refund | Stripe dashboard, Vercel env, `app/api/stripe/webhook/route.ts` | **1h** | — |
-| 8 | Delete stale `codex/pending-approval-fix` branch (local + remote) | git | **0.1h** | — |
-| 9 | Record 60–90s Reddit clip: live dashboard → real golden artifact → approve → email receipt | — | **2h** | 1, 2, 3, 4, 5 |
-| 10 | Post clip to r/selfimprovement, r/adhd, r/productivity with one-sentence hook | — | **0.5h** | 9 |
+
+| #   | Change                                                                                                                                                                                                                                  | File(s)                                                                                                                           | Effort                                                                    | Blocked by                                               |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------- |
+| 1   | Set `FOLDERA_PROOF_MODE_THREAD_BACKED_SEND_ONLY=false` in Vercel prod + `.env.production.example`                                                                                                                                       | Vercel dashboard; `.env.production.example`                                                                                       | **0.25h**                                                                 | —                                                        |
+| 2   | Replace `SYSTEM_PROMPT` in `lib/briefing/generator.ts` with the prompt in §1f                                                                                                                                                           | `lib/briefing/generator.ts`                                                                                                       | **3h** (write + run brain-receipt verification against 5 real candidates) | —                                                        |
+| 3   | Disarm validator patterns that kill decay / discrepancy / overdue outputs: make `missing_time_constraint`, `missing_pressure_or_consequence`, `missing_owner_assignment` advisory (score penalty), not veto — for `write_document` only | `lib/briefing/decision-enforcement.ts` → `getDecisionEnforcementIssues`                                                           | **2h**                                                                    | 2                                                        |
+| 4   | Hydrate attachment text + uploaded document full text + relevant `drive` doc text into `StructuredContext.rawFacts` for the selected winner only (not every candidate)                                                                  | `lib/briefing/generator.ts` → `buildStructuredContext`; `lib/signals/`* attachment extraction                                     | **4h**                                                                    | 2                                                        |
+| 5   | Remove artifact blur for the user's first N=1 pending_approval view. After first approve/skip, blur returns for free users                                                                                                              | `app/dashboard/page.tsx:403-405`, `app/api/conviction/latest/route.ts:107-118` (already counts approved; add a "first_view" flag) | **1.5h**                                                                  | 1 (needs real artifact to show)                          |
+| 6   | Replace landing-page `<ArtifactCard />` with a static render of a real golden artifact (or an inline 60–90s recording)                                                                                                                  | `app/HomePageClient.tsx:347`, new component                                                                                       | **2h**                                                                    | 4 (needs production to ship one real artifact to record) |
+| 7   | Verify Stripe live: put a real card through checkout, confirm `user_subscriptions` row flips to `active`, refund                                                                                                                        | Stripe dashboard, Vercel env, `app/api/stripe/webhook/route.ts`                                                                   | **1h**                                                                    | —                                                        |
+| 8   | Delete stale `codex/pending-approval-fix` branch (local + remote)                                                                                                                                                                       | git                                                                                                                               | **0.1h**                                                                  | —                                                        |
+| 9   | Record 60–90s Reddit clip: live dashboard → real golden artifact → approve → email receipt                                                                                                                                              | —                                                                                                                                 | **2h**                                                                    | 1, 2, 3, 4, 5                                            |
+| 10  | Post clip to r/selfimprovement, r/adhd, r/productivity with one-sentence hook                                                                                                                                                           | —                                                                                                                                 | **0.5h**                                                                  | 9                                                        |
+
 
 **Total to first paid user:** ~16h of focused work. The critical path is **1 → 2 → 3 → 4 → 5 → 9 → 10**.
 
@@ -460,7 +474,7 @@ Ordered. Numbered. Effort in hours. Blocked-by dependencies marked.
 
 ### 4c. The single change that moves "interesting demo" → "I would pay $29/mo"
 
-**#2 (new generator system prompt).** Every other fix is plumbing. The prompt is what decides whether the artifact is "Resolve \"Preference divergence: stated ...\"" or "Darlene Craig sent you interview questions on April 21. Here is your prep sheet."
+**#2 (new generator system prompt).** Every other fix is plumbing. The prompt is what decides whether the artifact is "Resolve Preference divergence: stated ..." or "Darlene Craig sent you interview questions on April 21. Here is your prep sheet."
 
 The difference between a product that gets skipped 1,065 times and a product that gets paid for is whether the generated artifact feels like the golden one. Nothing else — not scorer tweaks, not UI polish, not Stripe verification — changes that. The prompt is the product.
 
@@ -476,20 +490,22 @@ Everything else is cleanup or verification. These three are the difference betwe
 
 ## Risk register
 
-| # | Change | What could go wrong | Mitigation |
-|---|---|---|---|
-| 1 | Proof mode OFF | A `write_document` winner with weak evidence gets surfaced. User sees it, judges it poor, skips. No revenue lost — free users already skip 97% of directives. | Rely on decision-enforcement's `getInternalExecutionBriefIssues` + new prompt's rule 1 ("real sources, real names"). Monitor first 3 cycles after flip via pipeline_runs. |
-| 2 | New system prompt | LLM ignores one of the rules and produces a hallucinated email (name invented, date wrong). | New prompt rule 1 is "cite real sources or abandon the candidate." `decision-enforcement` stale-date check remains. Run the golden-artifact candidate through a dry-run first; compare output to the hand-authored golden text. |
-| 2 | New system prompt (cont.) | LLM regresses on voice-matching because the "match the user's voice" line replaces the older, longer guidance. | Keep `user_voice_patterns` injection in `buildStructuredContext` intact (it is). Spot-check 3 outputs against the user's past sent mail before approving prompt for all users. |
-| 3 | Validators advisory | A genuinely bad `write_document` ships (summary without execution, no source block). | Leave `REWRITE_REQUIRED_PATTERNS` and `SUMMARY_ONLY_PATTERNS` as **hard** vetoes. Demote only the missing-deadline / missing-owner / missing-pressure patterns. Also: enforce the SOURCE block regex as a hard requirement (document starts with `"SOURCE\n"`). |
-| 4 | Attachment + document hydration | Prompt balloons in size → token cost spikes → haiku latency goes from 3s to 12s. | Cap: only hydrate full text for the *selected winner*, not all candidates. Per-artifact cap of 8K tokens of source material. Truncate with ellipsis, log when truncated. |
-| 4 | Attachment hydration (cont.) | PII leaks into logs (attachment text in structured logger). | Hydration only flows into prompt, never into `logStructuredEvent`. Audit existing logger calls in `generator.ts`. |
-| 5 | Unblur first artifact | Free user reads the full artifact, copies it manually, never upgrades. | Acceptable. The product's moat is *tomorrow's* artifact, not today's. Also: the approve flow files the document in Foldera Signals (`approveSuccessFlash` line 57) — that creates lock-in even if the body is readable. |
-| 6 | Landing page replacement | The real artifact on a public page exposes PII (real recruitment numbers, resume content). | Use a scrubbed variant: keep the shape and verbiage, substitute `Darlene Craig → Dana Calloway`, real RCW → fictional statute. Make one authorized demo artifact for public use. |
-| 7 | Stripe live verification | Live charge fails due to misconfigured webhook → user charged but not marked subscribed. | Refund + immediate manual `user_subscriptions` flip. Existing webhook fails closed on persistence errors (commit `4ea17ae`). Test end-to-end before the Reddit post, not after. |
-| 8 | Branch deletion | — | None. Already merged. |
-| 9 | Reddit recording | Recorded cycle shows a weak artifact if today's scorer winner isn't strong. | Wait for a day when the scorer top candidate has high evidence density (email + attachment + goal overlap). If none available inside 3 days of launch, seed with the force-golden-artifact script and record against that session, labeled honestly as "example". |
-| 10 | Reddit post | 0 signups. | Accept. Post again in a different subreddit after iterating on the hook. The point of the clip is compounding — one doesn't need to pop, a month of posts needs to. |
+
+| #   | Change                          | What could go wrong                                                                                                                                           | Mitigation                                                                                                                                                                                                                                                        |
+| --- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Proof mode OFF                  | A `write_document` winner with weak evidence gets surfaced. User sees it, judges it poor, skips. No revenue lost — free users already skip 97% of directives. | Rely on decision-enforcement's `getInternalExecutionBriefIssues` + new prompt's rule 1 ("real sources, real names"). Monitor first 3 cycles after flip via pipeline_runs.                                                                                         |
+| 2   | New system prompt               | LLM ignores one of the rules and produces a hallucinated email (name invented, date wrong).                                                                   | New prompt rule 1 is "cite real sources or abandon the candidate." `decision-enforcement` stale-date check remains. Run the golden-artifact candidate through a dry-run first; compare output to the hand-authored golden text.                                   |
+| 2   | New system prompt (cont.)       | LLM regresses on voice-matching because the "match the user's voice" line replaces the older, longer guidance.                                                | Keep `user_voice_patterns` injection in `buildStructuredContext` intact (it is). Spot-check 3 outputs against the user's past sent mail before approving prompt for all users.                                                                                    |
+| 3   | Validators advisory             | A genuinely bad `write_document` ships (summary without execution, no source block).                                                                          | Leave `REWRITE_REQUIRED_PATTERNS` and `SUMMARY_ONLY_PATTERNS` as **hard** vetoes. Demote only the missing-deadline / missing-owner / missing-pressure patterns. Also: enforce the SOURCE block regex as a hard requirement (document starts with `"SOURCE\n"`).   |
+| 4   | Attachment + document hydration | Prompt balloons in size → token cost spikes → haiku latency goes from 3s to 12s.                                                                              | Cap: only hydrate full text for the *selected winner*, not all candidates. Per-artifact cap of 8K tokens of source material. Truncate with ellipsis, log when truncated.                                                                                          |
+| 4   | Attachment hydration (cont.)    | PII leaks into logs (attachment text in structured logger).                                                                                                   | Hydration only flows into prompt, never into `logStructuredEvent`. Audit existing logger calls in `generator.ts`.                                                                                                                                                 |
+| 5   | Unblur first artifact           | Free user reads the full artifact, copies it manually, never upgrades.                                                                                        | Acceptable. The product's moat is *tomorrow's* artifact, not today's. Also: the approve flow files the document in Foldera Signals (`approveSuccessFlash` line 57) — that creates lock-in even if the body is readable.                                           |
+| 6   | Landing page replacement        | The real artifact on a public page exposes PII (real recruitment numbers, resume content).                                                                    | Use a scrubbed variant: keep the shape and verbiage, substitute `Darlene Craig → Dana Calloway`, real RCW → fictional statute. Make one authorized demo artifact for public use.                                                                                  |
+| 7   | Stripe live verification        | Live charge fails due to misconfigured webhook → user charged but not marked subscribed.                                                                      | Refund + immediate manual `user_subscriptions` flip. Existing webhook fails closed on persistence errors (commit `4ea17ae`). Test end-to-end before the Reddit post, not after.                                                                                   |
+| 8   | Branch deletion                 | —                                                                                                                                                             | None. Already merged.                                                                                                                                                                                                                                             |
+| 9   | Reddit recording                | Recorded cycle shows a weak artifact if today's scorer winner isn't strong.                                                                                   | Wait for a day when the scorer top candidate has high evidence density (email + attachment + goal overlap). If none available inside 3 days of launch, seed with the force-golden-artifact script and record against that session, labeled honestly as "example". |
+| 10  | Reddit post                     | 0 signups.                                                                                                                                                    | Accept. Post again in a different subreddit after iterating on the hook. The point of the clip is compounding — one doesn't need to pop, a month of posts needs to.                                                                                               |
+
 
 ---
 
@@ -498,6 +514,7 @@ Everything else is cleanup or verification. These three are the difference betwe
 **Health:** `npm run health` → `RESULT: 0 FAILING` (but note: health script reads the local CLI user's tokens, not the production ingest user; the real signal health from `tkg_signals` is in §2a and is uglier than the script reports — this is itself a bug).
 
 **DB queries run (via Supabase MCP against `neydszeamsflpghtrhue`):**
+
 - `tkg_signals` count: 3,448; grouped by source (see §2a)
 - `tkg_entities` count: 356
 - `tkg_actions` for owner — last 20 rows, all status=skipped; status breakdown: 1065 skipped, 10 executed, 9 rejected, 3 approved, **0 pending_approval right now**
@@ -507,6 +524,7 @@ Everything else is cleanup or verification. These three are the difference betwe
 - Distinct signal users: 1
 
 **Git state:**
+
 - `main` @ `15ef97f` (`scripts: force-golden-artifact for hand-authored pending_approval rows`)
 - `origin/codex/pending-approval-fix` — stale, already ancestor of `main`
 - `continue`-not-`break` fix: `b189148` on `main` ✔
