@@ -7,8 +7,8 @@ import {
   Bell,
   CloudUpload,
   FileText,
-  Inbox,
   Layers3,
+  Mail,
   Search,
   Send,
   TriangleAlert,
@@ -430,12 +430,12 @@ export default function DashboardPage() {
             </div>
 
             <header className="pb-8 pt-2 lg:pt-0">
-              <h1 className="text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-text-primary">
+              <h1 className="text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-text-secondary">
                 {getGreetingLabel()}, <strong className="font-semibold text-text-primary">{firstName}.</strong>
               </h1>
               <div className="mt-6 flex flex-wrap gap-x-10 gap-y-4 text-sm text-text-secondary">
                 <div className="flex items-center gap-3">
-                  <Inbox className="h-4 w-4 text-text-muted" aria-hidden />
+                  <Mail className="h-4 w-4 text-text-muted" aria-hidden />
                   <span className="text-[28px] font-semibold tracking-[-0.04em] text-text-primary sm:text-[32px]">5</span>
                   <span>open threads</span>
                 </div>
