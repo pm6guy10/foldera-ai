@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
-import { BadgeHelp, BookCopy, ChevronDown, Link2, LogOut, Radar, ScrollText, Settings, Sparkles } from 'lucide-react';
+import { BadgeHelp, ChevronDown, LayoutGrid, Link2, LogOut, Mail, Radar, ScrollText, Settings } from 'lucide-react';
 import { SIGN_OUT_CALLBACK_URL } from '@/lib/auth/constants';
 import { FolderaLogo } from '@/components/foldera/FolderaLogo';
 
 const navItems = [
-  { label: 'Executive Briefing', href: '/dashboard', icon: Sparkles },
-  { label: 'Playbooks', href: '/dashboard/briefings', icon: BookCopy },
+  { label: 'Executive Briefing', href: '/dashboard', icon: Mail },
+  { label: 'Playbooks', href: '/dashboard/briefings', icon: LayoutGrid },
   { label: 'Signals', href: '/dashboard/signals', icon: Radar },
   { label: 'Audit Log', href: '/dashboard/briefings', icon: ScrollText },
   { label: 'Integrations', href: '/dashboard/settings', icon: Link2 },
@@ -22,7 +22,7 @@ type DashboardSidebarProps = {
 
 export function DashboardSidebar({ activeLabel, userName }: DashboardSidebarProps) {
   return (
-    <aside className="foldera-panel hidden min-h-[calc(100vh-3rem)] flex-col p-5 lg:flex">
+    <aside className="foldera-panel hidden h-[calc(100vh-1.5rem)] min-h-[calc(100vh-1.5rem)] flex-col p-5 lg:sticky lg:top-3 lg:flex">
       <FolderaLogo href="/dashboard" markSize="sm" />
 
       <nav className="mt-8 space-y-2">
@@ -35,7 +35,7 @@ export function DashboardSidebar({ activeLabel, userName }: DashboardSidebarProp
               href={item.href}
               className={`flex min-h-[52px] items-center gap-3 rounded-[16px] px-4 text-sm transition-colors ${
                 isActive
-                  ? 'border border-cyan-400/25 bg-white/[0.04] text-text-primary shadow-[inset_0_0_0_1px_rgba(34,211,238,0.12)]'
+                  ? 'border border-cyan-400/15 bg-white/[0.03] text-text-primary shadow-[inset_3px_0_0_0_rgba(34,211,238,0.95)]'
                   : 'text-text-secondary hover:bg-white/[0.03] hover:text-text-primary'
               }`}
             >

@@ -114,14 +114,14 @@ export function DailyBriefCard({
           </div>
         </header>
 
-        <div className={`${compact ? 'px-4 py-4' : 'px-5 py-6 sm:px-6 sm:py-6'} space-y-5`}>
+        <div className={`${compact ? 'px-4 py-4' : 'px-5 py-6 sm:px-6 sm:py-6'} space-y-6`}>
           <section className={`${compact ? 'gap-4' : 'gap-5'} grid grid-cols-[auto_minmax(0,1fr)] items-start`}>
             <div className="flex h-11 w-11 items-center justify-center rounded-[16px] border border-cyan-400/20 bg-cyan-400/6 text-accent">
               <DirectiveIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">Directive</p>
-              <h2 className={`${compact ? 'mt-2 text-[24px] leading-[1.18]' : 'mt-2 text-[34px] leading-[1.16]'} max-w-3xl font-semibold tracking-[-0.04em] text-text-primary`}>
+              <h2 className={`${compact ? 'mt-2 text-[24px] leading-[1.18]' : 'mt-2 text-[42px] leading-[1.14] sm:text-[48px]'} max-w-3xl font-semibold tracking-[-0.04em] text-text-primary`}>
                 {directive}
               </h2>
             </div>

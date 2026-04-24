@@ -551,14 +551,18 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByText(/snoozed|adjust/i).first()).toBeVisible({ timeout: 5000 });
   });
 
-  test('loads empty state when no directive — desktop', async ({ page }) => {
+  test('loads dashboard contract card when no directive — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupEmptyDashboardMocks(page);
     await page.goto('/dashboard');
     await expect(
       page.getByRole('heading', { name: /Send the follow-up to Alex Morgan before noon\./i }),
     ).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('button', { name: /Run first read now/i })).toBeVisible();
+    await expect(page.getByText(/No live brief is queued right now/i)).toHaveCount(0);
+    await expect(page.getByText(/Your Microsoft connection needs a quick refresh/i)).toHaveCount(0);
+    await expect(page.getByText(/Foldera will post your next source-backed brief here/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Run first read now/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Reconnect Microsoft/i })).toHaveCount(0);
   });
 
   test('no actionable console errors — desktop', async ({ page }) => {
@@ -620,7 +624,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByRole('button', { name: /upgrade to pro/i })).toBeVisible();
   });
 
-  test('write_document journey: document preview, Save document, copy hint, saved status', async ({ page }) => {
+  test('write_document journey: document preview, save action, saved status', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await seedAuthenticatedSession(page);
     await attachCheckoutGuards(page);
@@ -657,8 +661,6 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       bodyLines: [DOCUMENT_DIRECTIVE_ASK, DOCUMENT_DIRECTIVE_CONSEQUENCE],
     });
     await expect(page.getByText(/^DOCUMENT$/i)).toBeVisible();
-    await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Save document files/i);
-    await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Skip keeps it out/i);
     await expect(page.getByRole('button', { name: /save document/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /skip and adjust/i })).toBeVisible();
     const screenshotPath = path.join(process.cwd(), '.screenshots', 'write-document-journey-1280.png');

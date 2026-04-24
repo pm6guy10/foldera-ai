@@ -182,7 +182,6 @@ export default function DashboardPage() {
   const [outcomeRecorded, setOutcomeRecorded] = useState(false);
   const [oauthReconnect, setOauthReconnect] = useState<'google' | 'microsoft' | null>(null);
   const [hasActiveIntegration, setHasActiveIntegration] = useState(false);
-  const [firstReadRunning, setFirstReadRunning] = useState(false);
 
   const loadAbortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(false);
@@ -480,38 +479,6 @@ export default function DashboardPage() {
     }
   }, [action]);
 
-  async function runFirstReadNow() {
-    if (firstReadRunning) return;
-    setFirstReadRunning(true);
-    setFlash(null);
-    try {
-      const response = await fetch('/api/settings/run-brief?force=true&use_llm=true', {
-        method: 'POST',
-      });
-      const data = await response.json().catch(() => ({}));
-      const spendPolicy = data?.spend_policy as
-        | { paid_llm_requested?: boolean; pipeline_dry_run?: boolean }
-        | undefined;
-
-      if (spendPolicy?.paid_llm_requested && spendPolicy?.pipeline_dry_run) {
-        setFlash('First read ran as a dry run. Real generation is not enabled on this deployment.');
-        return;
-      }
-
-      if (!response.ok && !data?.stages) {
-        const message = typeof data?.error === 'string' ? data.error : 'Could not run your first read right now.';
-        throw new Error(message);
-      }
-
-      await load();
-      setFlash(data?.ok === true ? 'First read generated.' : 'First read ran. Foldera will show the result when the pipeline has enough signal.');
-    } catch (error: unknown) {
-      setFlash(error instanceof Error ? error.message : 'Could not run your first read right now.');
-    } finally {
-      setFirstReadRunning(false);
-    }
-  }
-
   async function startStripeCheckout() {
     try {
       const response = await fetch('/api/stripe/checkout', {
@@ -543,6 +510,7 @@ export default function DashboardPage() {
   const cardStatusText = isDocument ? 'READY TO FILE' : isWait ? 'READY TO REVIEW' : 'READY TO SEND';
   const cardNextStep = isDocument ? 'Next: Save to record' : 'Next: Await response';
   const draftLabel = isDocument ? 'DOCUMENT' : isWait ? 'RATIONALE' : 'DRAFT';
+  const reconnectProviderLabel = oauthReconnect === 'microsoft' ? 'Microsoft' : 'Google';
 
   const draftBody = isDocument ? (
     artifactBody ? (
@@ -567,6 +535,18 @@ export default function DashboardPage() {
     <div className="whitespace-pre-line text-[15px] leading-8 text-text-primary">{artifactBody ?? demoDraft}</div>
   );
 
+  const handleCopyFallbackDraft = useCallback(async () => {
+    const block = ['To: alex.morgan@example.com', 'Subject: Alex Morgan follow-up', '', demoDraft].join('\n');
+    try {
+      await navigator.clipboard.writeText(block);
+      setFlash('Demo draft copied.');
+      setTimeout(() => setFlash(null), 3500);
+    } catch {
+      setFlash('Demo draft copy failed.');
+      setTimeout(() => setFlash(null), 3500);
+    }
+  }, []);
+
   const cardActions = currentAction
     ? isDocument
       ? [
@@ -580,24 +560,28 @@ export default function DashboardPage() {
           { label: 'Approve & send', kind: 'primary' as const, onClick: () => void handleApprove(), dataTestId: 'dashboard-primary-action' },
         ]
     : [
-        { label: 'Copy draft', kind: 'secondary' as const, disabled: true },
-        { label: 'Snooze 24h', kind: 'amber' as const, disabled: true },
-        { label: 'Approve & send', kind: 'primary' as const, disabled: true },
+        { label: 'Copy draft', kind: 'secondary' as const, onClick: () => void handleCopyFallbackDraft() },
+        { label: 'Snooze 24h', kind: 'amber' as const, onClick: () => undefined },
+        { label: 'Approve & send', kind: 'primary' as const, onClick: () => undefined },
       ];
 
-  const flashBanner = flash ? (
-    <div className="foldera-subpanel px-4 py-4">
-      <p className="text-sm text-text-primary">{flash}</p>
-    </div>
-  ) : null;
+  const railStatusCopy = flash && !done
+    ? flash
+    : fetchError
+      ? 'Live briefing data is unavailable right now. Showing the dashboard contract card.'
+      : oauthReconnect
+        ? `${reconnectProviderLabel} access needs attention in Settings.`
+        : !currentAction && hasActiveIntegration
+          ? 'No pending brief is queued. Foldera will surface the next finished move automatically.'
+          : null;
 
   return (
     <div className="foldera-page min-h-screen bg-bg text-text-primary">
       <div className="mx-auto max-w-[1500px] px-3 py-3 sm:px-4 lg:px-6 lg:py-6">
-        <div className="grid gap-4 lg:grid-cols-[clamp(240px,18vw,272px)_minmax(0,1fr)]">
+        <div className="grid gap-4 lg:grid-cols-[clamp(236px,18vw,264px)_minmax(0,1fr)]">
           <DashboardSidebar activeLabel="Executive Briefing" userName={firstName} />
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_clamp(248px,20vw,296px)]">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_clamp(252px,20vw,304px)]">
             <div className="min-w-0">
               <div className="mx-auto w-full max-w-[980px] space-y-4">
                 <div className="foldera-panel flex items-center justify-between px-4 py-3 lg:hidden">
@@ -612,45 +596,29 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <header className="foldera-panel px-5 py-5 sm:px-6">
+                <header className="px-1 pb-1 sm:px-2">
                   <p className="foldera-eyebrow">{getDateLabel()}</p>
                   <h1 className="mt-2 text-[38px] font-semibold tracking-[-0.05em] text-text-primary sm:text-[52px]">
                     {getGreetingLabel()}, {firstName}.
                   </h1>
-                  <div className="mt-6 flex flex-wrap gap-5 text-sm text-text-secondary">
+                  <div className="mt-5 flex flex-wrap gap-x-7 gap-y-3 text-sm text-text-secondary">
                     <div className="flex items-center gap-3">
                       <Inbox className="h-4 w-4 text-text-muted" />
-                      <span className="text-[28px] font-semibold tracking-[-0.04em] text-text-primary">5</span>
+                      <span className="text-[32px] font-semibold tracking-[-0.04em] text-text-primary">5</span>
                       <span>open threads</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <TriangleAlert className="h-4 w-4 text-warning" />
-                      <span className="text-[28px] font-semibold tracking-[-0.04em] text-warning">2</span>
+                      <span className="text-[32px] font-semibold tracking-[-0.04em] text-warning">2</span>
                       <span>need attention</span>
                     </div>
                     <div className="flex items-center gap-3">
                       <TrendingUp className="h-4 w-4 text-text-muted" />
-                      <span className="text-[28px] font-semibold tracking-[-0.04em] text-text-primary">1</span>
+                      <span className="text-[32px] font-semibold tracking-[-0.04em] text-text-primary">1</span>
                       <span>ready to move</span>
                     </div>
                   </div>
                 </header>
-
-                {oauthReconnect ? (
-                  <div className="foldera-subpanel px-4 py-4">
-                    <p className="text-sm text-text-primary">
-                      Your {oauthReconnect === 'microsoft' ? 'Microsoft' : 'Google'} connection needs a quick refresh so Foldera can keep your brief accurate.
-                    </p>
-                    <a
-                      href={oauthReconnect === 'microsoft' ? '/api/microsoft/connect' : '/api/google/connect'}
-                      className="foldera-button-primary mt-4"
-                    >
-                      Reconnect {oauthReconnect === 'microsoft' ? 'Microsoft' : 'Google'}
-                    </a>
-                  </div>
-                ) : null}
-
-                {!done ? flashBanner : null}
 
                 {loading ? (
                   <div className="foldera-panel animate-pulse px-5 py-6 sm:px-6">
@@ -685,15 +653,8 @@ export default function DashboardPage() {
                       </div>
                     ) : null}
                   </div>
-                ) : fetchError ? (
-                  <div className="foldera-panel px-5 py-8 text-center sm:px-6">
-                    <p className="text-lg font-medium text-text-primary">Something went wrong loading your dashboard.</p>
-                    <button type="button" onClick={() => void load()} className="foldera-button-secondary mt-5">
-                      Try again
-                    </button>
-                  </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div>
                     <DailyBriefCard
                       className="mx-auto w-full max-w-[960px]"
                       directive={cardDirective}
@@ -724,61 +685,19 @@ export default function DashboardPage() {
                         </div>
                       )}
                     />
-
-                    {!currentAction && hasActiveIntegration ? (
-                      <div className="mx-auto w-full max-w-[960px]">
-                        <div className="foldera-subpanel px-4 py-4">
-                          <p className="text-sm text-text-primary">
-                            Foldera will post your next source-backed brief here as soon as one is ready.
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => void runFirstReadNow()}
-                            disabled={firstReadRunning}
-                            className="foldera-button-primary mt-4 disabled:cursor-wait disabled:opacity-60"
-                          >
-                            {firstReadRunning ? 'Running first read' : 'Run first read now'}
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {currentAction?.action_type === 'send_message' && isEmail && artifactBody ? (
-                      <div className="foldera-subpanel px-4 py-4 text-center">
-                        <p className="text-[12px] leading-6 text-text-secondary">
-                          Approve sends from your connected Gmail or Outlook.{' '}
-                          <button type="button" onClick={() => void handleCopyDraft()} className="underline underline-offset-2 hover:text-text-primary">
-                            Copy as text
-                          </button>
-                        </p>
-                      </div>
-                    ) : null}
-
-                    {currentAction?.action_type === 'write_document' && isDocument && artifactBody ? (
-                      <div className="foldera-subpanel px-4 py-4 text-center" data-testid="dashboard-document-actions-hint">
-                        <p className="text-[12px] leading-6 text-text-secondary">
-                          Save document files the full text to your Foldera record. Skip keeps it out of your record and tells Foldera to adjust.
-                        </p>
-                        <p className="mt-2 text-[12px] leading-6 text-text-secondary">
-                          <button type="button" onClick={() => void handleCopyDocument()} className="underline underline-offset-2 hover:text-text-primary">
-                            Copy full text
-                          </button>
-                        </p>
-                      </div>
-                    ) : null}
                   </div>
                 )}
               </div>
             </div>
 
             <aside className="hidden space-y-4 xl:block">
-              <div className="foldera-panel hidden px-4 py-4 xl:block">
-                <div className="flex items-center gap-3 rounded-[16px] border border-border bg-panel-raised px-4 py-3 text-sm text-text-muted">
+              <div className="hidden items-center gap-3 xl:flex">
+                <div className="flex flex-1 items-center gap-3 rounded-[16px] border border-border bg-panel px-4 py-3 text-sm text-text-muted">
                   <Search className="h-4 w-4" />
                   <span className="flex-1">Search Foldera...</span>
                   <span className="rounded-[10px] border border-border px-2 py-1 text-[11px]">⌘ K</span>
                 </div>
-                <button type="button" className="mt-3 inline-flex h-11 w-11 items-center justify-center rounded-[16px] border border-border bg-panel-raised text-text-secondary">
+                <button type="button" className="inline-flex h-11 w-11 items-center justify-center rounded-[16px] border border-border bg-panel text-text-secondary">
                   <Bell className="h-4 w-4" />
                 </button>
               </div>
@@ -816,6 +735,20 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
+
+              {railStatusCopy ? (
+                <div className="foldera-subpanel px-4 py-4">
+                  <p className="text-sm leading-6 text-text-secondary">{railStatusCopy}</p>
+                  {oauthReconnect ? (
+                    <a
+                      href={`/dashboard/settings?reconnect=${oauthReconnect}`}
+                      className="mt-3 inline-flex text-sm text-text-primary underline underline-offset-2 hover:text-accent"
+                    >
+                      Open Settings
+                    </a>
+                  ) : null}
+                </div>
+              ) : null}
             </aside>
           </div>
         </div>

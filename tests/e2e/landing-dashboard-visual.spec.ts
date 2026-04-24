@@ -8,7 +8,7 @@ loadEnv({ path: '.env.local' });
 
 const HAS_NEXTAUTH_SECRET = Boolean(process.env.NEXTAUTH_SECRET?.trim());
 const describeWithAuth = HAS_NEXTAUTH_SECRET ? test.describe : test.describe.skip;
-const OUT_DIR = path.join(process.cwd(), '.screenshots', 'ship-visual-system');
+const OUT_DIR = path.join(process.cwd(), '.screenshots', 'dashboard-seam');
 const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
 const WEB_PORT = process.env.PLAYWRIGHT_WEB_PORT?.trim() || '3000';
 const WEB_ORIGIN =
@@ -158,6 +158,10 @@ describeWithAuth('Visual system dashboard screenshots', () => {
       await expect(page.getByText(/FOLDERA DESIGN SYSTEM/i)).toHaveCount(0);
       await expect(page.getByText(/DASHBOARD — PRODUCT VIEWS/i)).toHaveCount(0);
       await expect(page.getByText(/No live brief is queued right now/i)).toHaveCount(0);
+      await expect(page.getByText(/Your Microsoft connection needs a quick refresh/i)).toHaveCount(0);
+      await expect(page.getByText(/Foldera will post your next source-backed brief here/i)).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /Run first read now/i })).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /Reconnect Microsoft/i })).toHaveCount(0);
 
       const briefCard = page.locator('article.foldera-brief-shell').first();
       await expect(briefCard).toBeVisible();
