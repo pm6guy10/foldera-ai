@@ -9,13 +9,13 @@ type FolderaMarkProps = {
 };
 
 const boxClass: Record<NonNullable<FolderaMarkProps['size']>, string> = {
-  sm: 'h-9 w-9 rounded-xl bg-white/10 p-1',
-  md: 'h-10 w-10 rounded-2xl bg-white/10 p-1.5',
-  lg: 'h-12 w-12 rounded-2xl bg-white/10 p-2',
+  sm: 'h-7 w-7',
+  md: 'h-8 w-8',
+  lg: 'h-10 w-10',
 };
 
 /**
- * SVG glyph on a frosted plate — transparent mark reads cleanly on dark chrome.
+ * Minimal brand glyph — transparent mark reads cleanly on dark chrome.
  */
 export function FolderaMark({ size = 'md', className = '', decorative = false }: FolderaMarkProps) {
   return (

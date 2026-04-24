@@ -2,7 +2,8 @@
   <defs>
     <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#22d3ee"/>
-      <stop offset="100%" stop-color="#06b6d4"/>
+      <stop offset="52%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
     </linearGradient>
   </defs>
   <path d="M52 196a8 8 0 0 1-8-8V76a8 8 0 0 1 8-8h62l22 22h68a8 8 0 0 1 8 8v90a8 8 0 0 1-8 8Z" fill="none" stroke="url(#g1)" stroke-width="8" stroke-linejoin="round"/>

@@ -11,32 +11,37 @@ module.exports = {
     extend: {
       // ─── Color palette — DO NOT CHANGE. Cyan/emerald accent decided. ───────
       colors: {
-        bg: "#020617",             // zinc-950 — page background
-        panel: "#18181b",          // zinc-900 — card/panel background
-        'panel-raised': "#27272a", // zinc-800 — elevated panels, hover states
+        bg: "#07090d",             // page background
+        panel: "#0b0f14",          // card/panel background
+        'panel-raised': "#121820", // elevated panels, hover states
         border: {
-          DEFAULT: "#3f3f46",      // zinc-700 — default border
-          subtle:  "#27272a",      // zinc-800 — subtle separator
-          strong:  "#52525b",      // zinc-600 — prominent border
+          DEFAULT: "#1b2530",      // default border
+          subtle:  "#121922",      // subtle separator
+          strong:  "#2a3948",      // prominent border
         },
         text: {
-          primary:   "#fafafa",    // zinc-50 — headings
-          secondary: "#a1a1aa",    // zinc-400 — body / labels
-          muted:     "#52525b",    // zinc-600 — placeholder / disabled
+          primary:   "#e6e8eb",    // headings
+          secondary: "#aeb7c2",    // body / labels
+          muted:     "#7a8594",    // placeholder / disabled
         },
         accent: {
-          DEFAULT: "#22d3ee",      // cyan-400 — primary interactive accent
-          hover:   "#67e8f9",      // cyan-300 — hover state
-          dim:     "#0e7490",      // cyan-700 — dark accent bg
+          DEFAULT: "#22d3ee",      // cyan — primary interactive accent
+          hover:   "#67e8f9",      // bright cyan hover state
+          dim:     "#0ea5e9",      // blue accent
         },
-        success: "#10b981",        // emerald-500 — approve / positive
+        brand: {
+          purple: "#7c3aed",
+          blue: "#0ea5e9",
+        },
+        warning: "#f59e0b",
+        success: "#22c55e",
       },
 
       // ─── Border radius — use rounded-xl (card) everywhere ──────────────
       borderRadius: {
-        card:   '12px',   // rounded-xl  — all cards and panels
-        badge:  '6px',    // rounded-md  — badges, chips
-        button: '8px',    // rounded-lg  — buttons
+        card:   '20px',
+        badge:  '10px',
+        button: '14px',
         pill:   '9999px', // rounded-full — pills, avatars
       },
 

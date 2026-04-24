@@ -14,12 +14,13 @@ const navLinks = [
   { label: 'Platform', href: '/#product' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Blog', href: '/blog' },
+  { label: 'Security', href: '/#security' },
+  { label: 'About', href: '/#about' },
 ];
 
 export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavPublicProps) {
   const { status } = useSession();
   const isLoggedIn = status === 'authenticated';
-  const sessionReady = status !== 'loading';
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -42,27 +43,27 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
 
   const shellClass =
     scrolled || menuOpen
-      ? 'bg-bg/95 border-b border-border-subtle backdrop-blur-xl'
-      : 'bg-bg/80 border-b border-transparent';
+      ? 'bg-[#06080cc7] border-b border-border backdrop-blur-xl'
+      : 'bg-[#06080ca8] border-b border-transparent';
 
   return (
     <nav className={`fixed inset-x-0 top-0 z-[60] pt-[env(safe-area-inset-top,0px)] transition-colors ${shellClass}`}>
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <a
           href="/"
-          className="inline-flex min-h-[44px] min-w-[44px] items-center gap-3 rounded-button px-1 text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="inline-flex min-h-[44px] min-w-[44px] items-center gap-3 rounded-[14px] px-1 text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label="Foldera"
         >
           <FolderaMark size="sm" decorative />
-          <span className="hidden text-sm font-black uppercase tracking-[0.12em] sm:inline">Foldera</span>
+          <span className="hidden text-[17px] font-semibold tracking-[-0.04em] sm:inline">Foldera</span>
         </a>
 
-        <div className="hidden items-center gap-8 md:flex">
+        <div className="hidden items-center gap-8 lg:flex">
           {links.map((link) => (
             <a
               key={link.label}
               href={link.href}
-              className="text-xs font-black uppercase tracking-[0.14em] text-text-secondary transition-colors hover:text-text-primary"
+              className="text-[13px] text-text-muted transition-colors hover:text-text-primary"
             >
               {link.label}
             </a>
@@ -73,18 +74,14 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
           {!isLoggedIn && (
             <a
               href="/login"
-              className={`text-xs font-black uppercase tracking-[0.14em] transition-colors ${sessionReady ? 'text-text-secondary hover:text-text-primary' : 'text-transparent'}`}
+              className="text-[13px] text-text-muted transition-colors hover:text-text-primary"
             >
               Sign in
             </a>
           )}
           <a
             href={isLoggedIn ? '/dashboard' : '/start'}
-            className={`inline-flex min-h-[44px] items-center gap-2 rounded-button px-4 text-xs font-black uppercase tracking-[0.14em] transition-colors ${
-              sessionReady
-                ? 'bg-accent text-bg hover:bg-accent-hover'
-                : 'bg-panel text-transparent'
-            }`}
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-[14px] border border-cyan-300/25 bg-accent px-4 text-[13px] font-semibold text-slate-950 transition-colors hover:bg-accent-hover"
           >
             {isLoggedIn ? 'Dashboard' : 'Start free'}
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -95,7 +92,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
           type="button"
           data-testid="nav-mobile-menu-toggle"
           onClick={() => setMenuOpen((value) => !value)}
-          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-button border border-border bg-panel text-text-primary md:hidden"
+          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[14px] border border-border bg-panel text-text-primary lg:hidden"
           aria-label={menuOpen ? 'Close menu (toggle)' : 'Open menu'}
           aria-expanded={menuOpen}
         >
@@ -112,7 +109,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
       </div>
 
       {menuOpen && (
-        <div className="fixed inset-0 z-[70] md:hidden" role="dialog" aria-modal="true" aria-label="Site menu">
+        <div className="fixed inset-0 z-[70] lg:hidden" role="dialog" aria-modal="true" aria-label="Site menu">
           <button
             type="button"
             className="absolute inset-0 bg-bg/90 backdrop-blur-sm"
@@ -120,12 +117,12 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
             onClick={() => setMenuOpen(false)}
             aria-label="Dismiss overlay"
           />
-          <div className="relative mx-4 mt-[calc(4rem+env(safe-area-inset-top,0px))] rounded-card border border-border bg-panel p-6">
+          <div className="relative mx-4 mt-[calc(4rem+env(safe-area-inset-top,0px))] rounded-[24px] border border-border bg-panel p-6">
             <button
               type="button"
               data-testid="nav-mobile-overlay-close"
               onClick={() => setMenuOpen(false)}
-              className="absolute right-4 top-4 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-button border border-border bg-panel-raised text-text-secondary"
+              className="absolute right-4 top-4 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[14px] border border-border bg-panel-raised text-text-secondary"
               aria-label="Close menu"
             >
               <X className="h-4 w-4" aria-hidden="true" />
@@ -137,7 +134,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
                   key={link.label}
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
-                  className="inline-flex min-h-[48px] items-center rounded-button px-3 text-sm font-bold text-text-primary"
+                  className="inline-flex min-h-[48px] items-center rounded-[14px] px-3 text-sm font-medium text-text-primary"
                 >
                   {link.label}
                 </a>
@@ -147,7 +144,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
                 <a
                   href="/login"
                   onClick={() => setMenuOpen(false)}
-                  className="inline-flex min-h-[48px] items-center rounded-button px-3 text-sm font-bold text-text-primary"
+                  className="inline-flex min-h-[48px] items-center rounded-[14px] px-3 text-sm font-medium text-text-primary"
                 >
                   Sign in
                 </a>
@@ -156,7 +153,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
               <a
                 href={isLoggedIn ? '/dashboard' : '/start'}
                 onClick={() => setMenuOpen(false)}
-                className="mt-2 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-button bg-accent px-4 text-sm font-black uppercase tracking-[0.12em] text-bg"
+                className="mt-2 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[14px] bg-accent px-4 text-sm font-semibold text-slate-950"
               >
                 {isLoggedIn ? 'Dashboard' : 'Start free'}
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -173,17 +170,13 @@ export function NavAuthMinimal({ variant }: { variant: 'login' | 'start' }) {
   return (
     <nav className="relative z-20 border-b border-border-subtle bg-bg/95 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <a
-          href="/"
-          className="inline-flex min-h-[44px] min-w-[44px] items-center gap-3 rounded-button px-1 text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-          aria-label="Foldera"
-        >
+        <a href="/" className="inline-flex min-h-[44px] min-w-[44px] items-center gap-3 rounded-[14px] px-1 text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent" aria-label="Foldera">
           <FolderaMark size="sm" decorative />
-          <span className="text-sm font-black uppercase tracking-[0.12em]">Foldera</span>
+          <span className="text-[17px] font-semibold tracking-[-0.04em]">Foldera</span>
         </a>
         <a
           href={variant === 'login' ? '/start' : '/login'}
-          className="inline-flex min-h-[44px] items-center rounded-button px-3 text-xs font-black uppercase tracking-[0.14em] text-text-secondary transition-colors hover:text-text-primary"
+          className="inline-flex min-h-[44px] items-center rounded-[14px] px-3 text-[13px] text-text-muted transition-colors hover:text-text-primary"
         >
           {variant === 'login' ? 'Get started free' : 'Sign in'}
         </a>

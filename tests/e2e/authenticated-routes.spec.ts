@@ -545,10 +545,10 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
     await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
-    const skipBtn = page.getByRole('button', { name: /skip/i });
+    const skipBtn = page.getByRole('button', { name: /snooze 24h|skip/i });
     await expect(skipBtn).toBeVisible();
     await skipBtn.click();
-    await expect(page.getByText(/skipped|adjust/i).first()).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(/snoozed|adjust/i).first()).toBeVisible({ timeout: 5000 });
   });
 
   test('loads empty state when no directive — desktop', async ({ page }) => {
@@ -651,13 +651,13 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await page.goto('/dashboard');
     const documentBody = page.getByTestId('dashboard-document-body');
     await expect(
-      page.locator('.text-xl.font-bold').filter({ hasText: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
+      page.getByRole('heading', { name: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
     ).toBeVisible({ timeout: 15000 });
     await expectRenderedDocumentMarkdown(documentBody, {
       headings: ['Situation', 'Blocking risk', 'Recommendation / decision'],
       bodyLines: [DOCUMENT_DIRECTIVE_ASK, DOCUMENT_DIRECTIVE_CONSEQUENCE],
     });
-    await expect(page.getByText(/Finished document/i)).toBeVisible();
+    await expect(page.getByText(/^DOCUMENT$/i)).toBeVisible();
     await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Save document files/i);
     await expect(page.getByTestId('dashboard-document-actions-hint')).toContainText(/Skip keeps it out/i);
     await expect(page.getByRole('button', { name: /save document/i })).toBeVisible();
@@ -705,7 +705,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 15000 });
     await expect.poll(() => latestCalls).toBe(2);
     await expect(
-      page.locator('.text-xl.font-bold').filter({ hasText: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
+      page.getByRole('heading', { name: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
     ).toBeVisible();
     await expectRenderedDocumentMarkdown(documentBody, {
       headings: ['Situation', 'Blocking risk', 'Recommendation / decision'],
@@ -742,11 +742,11 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await page.goto('/dashboard');
     const documentBody = page.getByTestId('dashboard-document-body');
     await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
-    await page.getByRole('button', { name: /skip/i }).click();
+    await page.getByRole('button', { name: /snooze 24h|skip/i }).click();
     await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 10000 });
     await expect.poll(() => latestCalls).toBe(2);
     await expect(
-      page.locator('.text-xl.font-bold').filter({ hasText: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
+      page.getByRole('heading', { name: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
     ).toBeVisible();
     await expectRenderedDocumentMarkdown(documentBody, {
       headings: ['Situation', 'Blocking risk', 'Recommendation / decision'],

@@ -7,6 +7,18 @@
 @layer base {
   :root {
     color-scheme: dark;
+    --foldera-bg: #07090d;
+    --foldera-surface: #0b0f14;
+    --foldera-surface-2: #121820;
+    --foldera-border: #1b2530;
+    --foldera-border-strong: #2a3948;
+    --foldera-text: #e6e8eb;
+    --foldera-text-secondary: #aeb7c2;
+    --foldera-text-muted: #7a8594;
+    --foldera-cyan: #22d3ee;
+    --foldera-blue: #0ea5e9;
+    --foldera-purple: #7c3aed;
+    --foldera-amber: #f59e0b;
   }
 
   :where(a, button, input, textarea, select, summary, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible {
@@ -14,7 +26,7 @@
   }
 
   html {
-    background-color: #020617;
+    background-color: var(--foldera-bg);
   }
 
   body {
@@ -22,6 +34,93 @@
     min-height: 100vh;
     min-height: -webkit-fill-available;
     overflow-x: hidden;
+  }
+}
+
+@layer components {
+  .foldera-page {
+    background:
+      radial-gradient(circle at top center, rgba(34, 211, 238, 0.08), transparent 34%),
+      radial-gradient(circle at 78% 18%, rgba(124, 58, 237, 0.08), transparent 24%),
+      linear-gradient(180deg, #05070a 0%, var(--foldera-bg) 18%, #06090d 100%);
+  }
+
+  .foldera-panel {
+    @apply rounded-[24px] border border-border bg-panel;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.02),
+      0 24px 80px rgba(0, 0, 0, 0.34);
+  }
+
+  .foldera-subpanel {
+    @apply rounded-[20px] border border-border bg-panel-raised;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  }
+
+  .foldera-brief-shell {
+    position: relative;
+    overflow: hidden;
+    border-radius: 24px;
+    border: 1px solid rgba(74, 154, 224, 0.75);
+    background:
+      linear-gradient(180deg, rgba(9, 14, 20, 0.98) 0%, rgba(7, 11, 16, 0.98) 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.04),
+      0 0 0 1px rgba(34, 211, 238, 0.08),
+      0 0 26px rgba(34, 211, 238, 0.12),
+      0 18px 56px rgba(0, 0, 0, 0.42);
+  }
+
+  .foldera-brief-shell::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    right: 12%;
+    width: 22%;
+    height: 2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, transparent, rgba(98, 239, 255, 0.92), transparent);
+    box-shadow: 0 0 18px rgba(98, 239, 255, 0.7);
+    pointer-events: none;
+  }
+
+  .foldera-brief-shell::after {
+    content: '';
+    position: absolute;
+    right: -18px;
+    bottom: -18px;
+    width: 96px;
+    height: 96px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgba(34, 211, 238, 0.24) 0%, transparent 70%);
+    filter: blur(8px);
+    pointer-events: none;
+  }
+
+  .foldera-eyebrow {
+    @apply text-[11px] font-black uppercase tracking-[0.22em] text-text-muted;
+  }
+
+  .foldera-chip {
+    @apply inline-flex items-center gap-2 rounded-[12px] border border-border bg-panel px-3 py-2 text-[12px] text-text-secondary;
+  }
+
+  .foldera-button-primary {
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[14px] border border-cyan-300/25 bg-accent px-5 text-sm font-semibold text-slate-950 transition-all hover:bg-accent-hover;
+    box-shadow: 0 10px 26px rgba(14, 165, 233, 0.24);
+  }
+
+  .foldera-button-secondary {
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[14px] border border-border bg-panel px-5 text-sm font-medium text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary;
+  }
+
+  .foldera-button-amber {
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[14px] border border-amber-400/30 px-5 text-sm font-medium text-amber-300 transition-colors;
+    background-color: rgba(245, 158, 11, 0.08);
+  }
+
+  .foldera-button-amber:hover {
+    background-color: rgba(245, 158, 11, 0.14);
   }
 }
 
