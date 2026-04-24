@@ -126,7 +126,78 @@ function parseCalendarEventFromContent(text: string): { startMs: number } | null
 /** Contact outreach types: entity skip penalty + contact-only suppression scope. */
 export const CONTACT_ACTION_TYPES = new Set<ActionType>(['send_message', 'schedule']);
 
-export type SuppressionGoalEntityPattern = { pattern: RegExp; goalText: string; contactOnly: boolean };
+type SuppressionSkipReason = 'non_contact' | 'entity_mismatch';
+
+export type SuppressionGoalEntityPattern = {
+  pattern: RegExp;
+  goalText: string;
+  contactOnly: boolean;
+  namedEntity?: string | null;
+};
+
+const CONTACT_ONLY_ENTITY_STOP_WORDS = new Set([
+  'until',
+  'unless',
+  'if',
+  'when',
+  'after',
+  'before',
+  'because',
+  'so',
+  'that',
+  'about',
+  'regarding',
+  'for',
+  'due',
+  'post',
+  'only',
+]);
+
+function normalizeEntityMatchText(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function candidateMatchesNamedEntity(
+  namedEntity: string,
+  title: string,
+  entityName: string | undefined | null,
+): boolean {
+  const needle = normalizeEntityMatchText(namedEntity);
+  if (!needle) return false;
+  const titleNorm = normalizeEntityMatchText(title);
+  if (titleNorm.includes(needle)) return true;
+  const entityNorm = normalizeEntityMatchText(entityName ?? '');
+  return entityNorm.includes(needle);
+}
+
+function extractNamedEntityFromContactOnlyGoal(goalText: string): string | null {
+  const contactOnlyMatch = goalText.match(
+    /^DO NOT (?:suggest contacting|contact|reach out to|message|email)\s+(.+)$/i,
+  );
+  if (!contactOnlyMatch) return null;
+
+  const remainder = contactOnlyMatch[1]?.trim() ?? '';
+  if (!remainder) return null;
+
+  const tokens = remainder.split(/\s+/);
+  const nameTokens: string[] = [];
+
+  for (const rawToken of tokens) {
+    const token = rawToken.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '');
+    if (!token) continue;
+    if (CONTACT_ONLY_ENTITY_STOP_WORDS.has(token.toLowerCase())) break;
+    if (!/^[A-Z][A-Za-z0-9'’.:-]*$/.test(token)) break;
+    nameTokens.push(token.replace(/’/g, "'"));
+    if (nameTokens.length >= 4) break;
+  }
+
+  if (nameTokens.length < 2) return null;
+  return nameTokens.join(' ');
+}
 
 /**
  * Shared suppression-goal evaluation for all candidate types (signal, relationship,
@@ -140,22 +211,53 @@ export function evaluateSuppressionGoalMatch(
   entityName: string | undefined | null,
   suppressionEntities: ReadonlyArray<SuppressionGoalEntityPattern>,
   contactActionTypes: ReadonlySet<ActionType> = CONTACT_ACTION_TYPES,
-): { patternMatched: boolean; isSuppressed: boolean; matchedGoalText: string | null; contactOnly: boolean } {
+): {
+  patternMatched: boolean;
+  isSuppressed: boolean;
+  matchedGoalText: string | null;
+  contactOnly: boolean;
+  skipReason: SuppressionSkipReason | null;
+} {
   let matchedGoalText: string | null = null;
   let contactOnly = false;
+  let mismatchGoalText: string | null = null;
+  let mismatchContactOnly = false;
   const ent = typeof entityName === 'string' ? entityName.trim() : '';
-  for (const { pattern, goalText, contactOnly: co } of suppressionEntities) {
+  for (const { pattern, goalText, contactOnly: co, namedEntity } of suppressionEntities) {
     if (pattern.test(title) || pattern.test(content) || (ent.length > 0 && pattern.test(ent))) {
+      if (co && namedEntity && !candidateMatchesNamedEntity(namedEntity, title, ent)) {
+        if (!mismatchGoalText) {
+          mismatchGoalText = goalText;
+          mismatchContactOnly = true;
+        }
+        continue;
+      }
       matchedGoalText = goalText;
       contactOnly = co;
       break;
     }
   }
   if (!matchedGoalText) {
-    return { patternMatched: false, isSuppressed: false, matchedGoalText: null, contactOnly: false };
+    if (mismatchGoalText) {
+      return {
+        patternMatched: true,
+        isSuppressed: false,
+        matchedGoalText: mismatchGoalText,
+        contactOnly: mismatchContactOnly,
+        skipReason: 'entity_mismatch',
+      };
+    }
+    return {
+      patternMatched: false,
+      isSuppressed: false,
+      matchedGoalText: null,
+      contactOnly: false,
+      skipReason: null,
+    };
   }
   const isSuppressed = !contactOnly || contactActionTypes.has(actionType);
-  return { patternMatched: true, isSuppressed, matchedGoalText, contactOnly };
+  const skipReason: SuppressionSkipReason | null = isSuppressed ? null : 'non_contact';
+  return { patternMatched: true, isSuppressed, matchedGoalText, contactOnly, skipReason };
 }
 
 function mergeUrgencyWithTimeHints(args: {
@@ -4790,12 +4892,13 @@ export async function scoreOpenLoops(
   // only, not write_document or research. Absolute suppression: everything else DO NOT.
   const CONTACT_ONLY_PREFIX = /^DO NOT (suggest contacting|contact|reach out to|message|email)/i;
 
-  const suppressionEntities: Array<{ pattern: RegExp; goalText: string; contactOnly: boolean }> = [];
+  const suppressionEntities: SuppressionGoalEntityPattern[] = [];
   for (const sg of (suppressionGoalRows ?? []) as GoalRow[]) {
     // Skip positive goals — only process blocking instructions
     if (!BLOCKING_GOAL_PREFIX.test(sg.goal_text)) continue;
 
     const isContactOnly = CONTACT_ONLY_PREFIX.test(sg.goal_text);
+    const namedEntity = isContactOnly ? extractNamedEntityFromContactOnlyGoal(sg.goal_text) : null;
 
     // Strategy: extract multi-word proper nouns and acronyms as suppression patterns.
     // Single common words are excluded to avoid false positives.
@@ -4853,6 +4956,7 @@ export async function scoreOpenLoops(
         pattern: new RegExp(entity.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'),
         goalText: sg.goal_text,
         contactOnly: isContactOnly,
+        namedEntity,
       });
     }
   }
@@ -5656,6 +5760,7 @@ export async function scoreOpenLoops(
       isSuppressed,
       matchedGoalText: suppressedByGoal,
       contactOnly: suppressionIsContactOnly,
+      skipReason: suppressionSkipReason,
     } = evaluateSuppressionGoalMatch(
       c.title,
       c.content,
@@ -5672,13 +5777,18 @@ export async function scoreOpenLoops(
         level: 'info',
         userId,
         artifactType: artifactTypeForAction(c.actionType),
-        generationStatus: isSuppressed ? 'suppressed_by_goal' : 'suppression_skipped_non_contact',
+        generationStatus: isSuppressed
+          ? 'suppressed_by_goal'
+          : suppressionSkipReason === 'entity_mismatch'
+            ? 'suppression_skipped_entity_mismatch'
+            : 'suppression_skipped_non_contact',
         details: {
           scope: 'scorer',
           candidate_title: c.title.slice(0, 100),
           suppression_goal: (suppressedByGoal ?? '').slice(0, 120),
           action_type: c.actionType,
           contact_only: suppressionIsContactOnly,
+          reason: suppressionSkipReason,
         },
       });
     }
@@ -6098,7 +6208,11 @@ export async function scoreOpenLoops(
           level: 'info',
           userId,
           artifactType: artifactTypeForAction('make_decision'),
-          generationStatus: divSup.isSuppressed ? 'suppressed_by_goal' : 'suppression_skipped_non_contact',
+          generationStatus: divSup.isSuppressed
+            ? 'suppressed_by_goal'
+            : divSup.skipReason === 'entity_mismatch'
+              ? 'suppression_skipped_entity_mismatch'
+              : 'suppression_skipped_non_contact',
           details: {
             scope: 'scorer',
             candidate_type: 'emergent_divergence',
@@ -6106,6 +6220,7 @@ export async function scoreOpenLoops(
             suppression_goal: (divSup.matchedGoalText ?? '').slice(0, 120),
             action_type: 'make_decision',
             contact_only: divSup.contactOnly,
+            reason: divSup.skipReason,
           },
         });
       }
@@ -6191,7 +6306,11 @@ export async function scoreOpenLoops(
           level: 'info',
           userId,
           artifactType: artifactTypeForAction(ep.suggestedActionType),
-          generationStatus: emergSup.isSuppressed ? 'suppressed_by_goal' : 'suppression_skipped_non_contact',
+          generationStatus: emergSup.isSuppressed
+            ? 'suppressed_by_goal'
+            : emergSup.skipReason === 'entity_mismatch'
+              ? 'suppression_skipped_entity_mismatch'
+              : 'suppression_skipped_non_contact',
           details: {
             scope: 'scorer',
             candidate_type: 'emergent_pattern',
@@ -6199,6 +6318,7 @@ export async function scoreOpenLoops(
             suppression_goal: (emergSup.matchedGoalText ?? '').slice(0, 120),
             action_type: ep.suggestedActionType,
             contact_only: emergSup.contactOnly,
+            reason: emergSup.skipReason,
           },
         });
       }
@@ -6343,7 +6463,11 @@ export async function scoreOpenLoops(
         level: 'info',
         userId,
         artifactType: artifactTypeForAction(d.suggestedActionType),
-        generationStatus: discSup.isSuppressed ? 'suppressed_by_goal' : 'suppression_skipped_non_contact',
+        generationStatus: discSup.isSuppressed
+          ? 'suppressed_by_goal'
+          : discSup.skipReason === 'entity_mismatch'
+            ? 'suppression_skipped_entity_mismatch'
+            : 'suppression_skipped_non_contact',
         details: {
           scope: 'scorer',
           candidate_type: 'discrepancy',
@@ -6352,6 +6476,7 @@ export async function scoreOpenLoops(
           suppression_goal: (discSup.matchedGoalText ?? '').slice(0, 120),
           action_type: d.suggestedActionType,
           contact_only: discSup.contactOnly,
+          reason: discSup.skipReason,
         },
       });
     }
@@ -6517,7 +6642,11 @@ export async function scoreOpenLoops(
         level: 'info',
         userId,
         artifactType: artifactTypeForAction(insightAction),
-        generationStatus: insightSup.isSuppressed ? 'suppressed_by_goal' : 'suppression_skipped_non_contact',
+        generationStatus: insightSup.isSuppressed
+          ? 'suppressed_by_goal'
+          : insightSup.skipReason === 'entity_mismatch'
+            ? 'suppression_skipped_entity_mismatch'
+            : 'suppression_skipped_non_contact',
         details: {
           scope: 'scorer',
           candidate_type: 'insight_scan',
@@ -6525,6 +6654,7 @@ export async function scoreOpenLoops(
           suppression_goal: (insightSup.matchedGoalText ?? '').slice(0, 120),
           action_type: insightAction,
           contact_only: insightSup.contactOnly,
+          reason: insightSup.skipReason,
         },
       });
     }
@@ -6902,7 +7032,11 @@ export async function scoreOpenLoops(
           level: 'info',
           userId,
           artifactType: artifactTypeForAction(huntLoop.suggestedActionType),
-          generationStatus: huntSup.isSuppressed ? 'suppressed_by_goal' : 'suppression_skipped_non_contact',
+          generationStatus: huntSup.isSuppressed
+            ? 'suppressed_by_goal'
+            : huntSup.skipReason === 'entity_mismatch'
+              ? 'suppression_skipped_entity_mismatch'
+              : 'suppression_skipped_non_contact',
           details: {
             scope: 'scorer',
             candidate_type: 'hunt',
@@ -6910,6 +7044,7 @@ export async function scoreOpenLoops(
             suppression_goal: (huntSup.matchedGoalText ?? '').slice(0, 120),
             action_type: huntLoop.suggestedActionType,
             contact_only: huntSup.contactOnly,
+            reason: huntSup.skipReason,
           },
         });
       }
