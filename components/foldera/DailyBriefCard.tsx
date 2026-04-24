@@ -154,12 +154,12 @@ export function DailyBriefCard({
   const primaryAction = actions.find((a) => a.kind === 'primary');
   const otherActions = actions.filter((a) => a.kind !== 'primary');
   const divider = dashboardCta ? 'border-white/[0.04]' : 'border-white/8';
-  const headPad = compact ? 'px-4 py-4' : dashboardCta ? 'px-5 py-4 sm:px-6' : 'px-5 py-5 sm:px-6';
-  const bodyPad = compact ? 'px-4 py-4' : dashboardCta ? 'px-5 py-4 sm:px-6 sm:py-5' : 'px-5 py-6 sm:px-6 sm:py-6';
-  const bodyStack = dashboardCta && !compact ? 'space-y-4' : 'space-y-6';
-  const sectionTop = dashboardCta && !compact ? 'pt-4' : 'pt-5';
-  const sectionGap = dashboardCta && !compact ? 'gap-4' : 'gap-5';
-  const footPad = compact ? 'px-4 py-4' : dashboardCta ? 'px-5 py-4 sm:px-6 sm:py-5' : 'px-5 py-5 sm:px-6';
+  const headPad = compact ? 'px-4 py-4' : 'px-5 py-5 sm:px-6';
+  const bodyPad = compact ? 'px-4 py-4' : 'px-5 py-6 sm:px-6 sm:py-6';
+  const bodyStack = compact ? 'space-y-4' : 'space-y-6';
+  const sectionTop = compact ? 'pt-4' : 'pt-5';
+  const sectionGap = compact ? 'gap-4' : 'gap-5';
+  const footPad = compact ? 'px-4 py-4' : 'px-5 py-5 sm:px-6';
 
   return (
     <article className={`foldera-brief-shell ${compact ? 'rounded-[22px]' : ''} ${className}`}>
