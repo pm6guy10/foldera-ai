@@ -3,22 +3,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useSession } from 'next-auth/react';
-import {
-  Bell,
-  CloudUpload,
-  FileText,
-  Layers3,
-  Mail,
-  Lock,
-  Search,
-  Send,
-  TriangleAlert,
-  TrendingUp,
-} from 'lucide-react';
 import type { ConvictionAction } from '@/lib/briefing/types';
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
-import { DashboardSidebar } from '@/components/foldera/DashboardSidebar';
-import { FolderaLogo } from '@/components/foldera/FolderaLogo';
+import { FolderaDashboardPixelLock } from '@/components/dashboard/foldera-dashboard-pixel-lock';
 
 type ArtifactWithDraftedEmail = {
   type: string;
@@ -75,7 +62,10 @@ function approveSuccessFlash(actionType: string | undefined, result: unknown): D
         };
       }
       if (typeof output.send_error === 'string' && output.send_error.length > 0) {
-        return { kind: 'approve_saved_document', message: 'Saved. Email delivery failed — your document is still in Foldera Signals.' };
+        return {
+          kind: 'approve_saved_document',
+          message: 'Saved. Email delivery failed - your document is still in Foldera Signals.',
+        };
       }
     }
     if (payload?.saved === true) {
@@ -95,40 +85,40 @@ function approveSuccessFlash(actionType: string | undefined, result: unknown): D
 
 const DOCUMENT_MARKDOWN_COMPONENTS = {
   h1: ({ children }: { children?: ReactNode }) => (
-    <h1 className="mb-3 text-base font-semibold text-text-primary first:mt-0">{children}</h1>
+    <h1 className="mb-3 text-base font-semibold text-white first:mt-0">{children}</h1>
   ),
   h2: ({ children }: { children?: ReactNode }) => (
-    <h2 className="mb-3 mt-4 text-sm font-semibold uppercase tracking-[0.14em] text-text-secondary first:mt-0">{children}</h2>
+    <h2 className="mb-3 mt-4 text-sm font-semibold uppercase tracking-[0.14em] text-gray-300 first:mt-0">{children}</h2>
   ),
   h3: ({ children }: { children?: ReactNode }) => (
-    <h3 className="mb-2 mt-4 text-sm font-semibold text-text-primary first:mt-0">{children}</h3>
+    <h3 className="mb-2 mt-4 text-sm font-semibold text-white first:mt-0">{children}</h3>
   ),
   p: ({ children }: { children?: ReactNode }) => (
-    <p className="mb-3 text-[15px] leading-7 text-text-primary last:mb-0">{children}</p>
+    <p className="mb-3 text-[15px] leading-7 text-gray-100 last:mb-0">{children}</p>
   ),
   ul: ({ children }: { children?: ReactNode }) => (
-    <ul className="mb-3 list-disc space-y-2 pl-6 text-[15px] leading-7 text-text-primary marker:text-accent">{children}</ul>
+    <ul className="mb-3 list-disc space-y-2 pl-6 text-[15px] leading-7 text-gray-100 marker:text-cyan-400">{children}</ul>
   ),
   ol: ({ children }: { children?: ReactNode }) => (
-    <ol className="mb-3 list-decimal space-y-2 pl-6 text-[15px] leading-7 text-text-primary marker:text-accent">{children}</ol>
+    <ol className="mb-3 list-decimal space-y-2 pl-6 text-[15px] leading-7 text-gray-100 marker:text-cyan-400">{children}</ol>
   ),
   li: ({ children }: { children?: ReactNode }) => <li>{children}</li>,
-  strong: ({ children }: { children?: ReactNode }) => <strong className="font-semibold text-text-primary">{children}</strong>,
+  strong: ({ children }: { children?: ReactNode }) => <strong className="font-semibold text-white">{children}</strong>,
   a: ({ children, href }: { children?: ReactNode; href?: string }) => (
-    <a href={href} target="_blank" rel="noreferrer" className="text-accent underline underline-offset-2">
+    <a href={href} target="_blank" rel="noreferrer" className="text-cyan-400 underline underline-offset-2">
       {children}
     </a>
   ),
   code: ({ children }: { children?: ReactNode }) => (
-    <code className="rounded-[10px] border border-border bg-panel px-1.5 py-0.5 font-mono text-[13px] text-text-primary">{children}</code>
+    <code className="rounded-[10px] border border-[#1b2530] bg-[#121820] px-1.5 py-0.5 font-mono text-[13px] text-white">{children}</code>
   ),
   blockquote: ({ children }: { children?: ReactNode }) => (
-    <blockquote className="my-3 border-l border-accent pl-4 italic text-text-secondary">{children}</blockquote>
+    <blockquote className="my-3 border-l border-cyan-400 pl-4 italic text-gray-300">{children}</blockquote>
   ),
-  hr: () => <hr className="my-4 border-border" />,
+  hr: () => <hr className="my-4 border-[#1b2530]" />,
 };
 
-const demoDraft = `Hi Alex —
+const demoDraft = `Hi Alex -
 
 Following up on the update from yesterday.
 I pulled the latest status and can send the finalized version by noon unless you want one adjustment first.
@@ -140,46 +130,12 @@ const DEMO_DIRECTIVE = 'Send the follow-up to Alex Morgan before noon.';
 const DEMO_WHY =
   'You have an open thread with no reply, the ask is time-bound, and the current hold on your calendar makes this the cleanest unblocker today.';
 const DEMO_SOURCE_PILLS = ['Email thread', 'Calendar hold', 'Last draft', 'Connected inbox'];
-const DESIGN_W = 2048;
-const DESIGN_H = 1152;
-const DESKTOP_STAGE_MIN_WIDTH = 1280;
+const DESKTOP_BREAKPOINT = 1024;
 
-type StageMetrics = {
-  isDesktop: boolean;
-  scale: number;
-  offsetX: number;
-  offsetY: number;
-};
-
-function computeStageMetrics(): StageMetrics {
-  if (typeof window === 'undefined') {
-    return { isDesktop: false, scale: 1, offsetX: 0, offsetY: 0 };
-  }
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-  if (viewportWidth < DESKTOP_STAGE_MIN_WIDTH) {
-    return { isDesktop: false, scale: 1, offsetX: 0, offsetY: 0 };
-  }
-  const scale = Math.min(viewportWidth / DESIGN_W, viewportHeight / DESIGN_H);
-  const offsetX = (viewportWidth - DESIGN_W * scale) / 2;
-  const offsetY = (viewportHeight - DESIGN_H * scale) / 2;
-  return { isDesktop: true, scale, offsetX, offsetY };
+function computeIsDesktop(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.innerWidth >= DESKTOP_BREAKPOINT;
 }
-
-const briefHowRows = [
-  {
-    title: 'Directive',
-    body: 'The single move that matters most right now.',
-  },
-  {
-    title: 'Draft',
-    body: 'Ready-to-send wording when writing is the bottleneck.',
-  },
-  {
-    title: 'Source trail',
-    body: 'The evidence behind the recommendation.',
-  },
-];
 
 function getDateLabel(): string {
   return new Date()
@@ -225,7 +181,7 @@ export default function DashboardPage() {
   const [lastDecision, setLastDecision] = useState<'approve' | 'skip' | null>(null);
   const [executedActionId, setExecutedActionId] = useState<string | null>(null);
   const [outcomeRecorded, setOutcomeRecorded] = useState(false);
-  const [stageMetrics, setStageMetrics] = useState<StageMetrics>(() => computeStageMetrics());
+  const [isDesktop, setIsDesktop] = useState(() => computeIsDesktop());
 
   const loadAbortRef = useRef<AbortController | null>(null);
 
@@ -338,17 +294,17 @@ export default function DashboardPage() {
   }, [load, status]);
 
   useEffect(() => {
-    const updateStage = () => setStageMetrics(computeStageMetrics());
-    updateStage();
-    window.addEventListener('resize', updateStage);
-    return () => window.removeEventListener('resize', updateStage);
+    const onResize = () => setIsDesktop(computeIsDesktop());
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     const previousOverflowX = document.body.style.overflowX;
     const previousOverflowY = document.body.style.overflowY;
-    if (stageMetrics.isDesktop) {
+    if (isDesktop) {
       document.body.style.overflow = 'hidden';
       document.body.style.overflowX = 'hidden';
       document.body.style.overflowY = 'hidden';
@@ -362,7 +318,7 @@ export default function DashboardPage() {
       document.body.style.overflowX = previousOverflowX;
       document.body.style.overflowY = previousOverflowY;
     };
-  }, [stageMetrics.isDesktop]);
+  }, [isDesktop]);
 
   const handleApprove = async () => {
     if (!action || executing) return;
@@ -542,53 +498,51 @@ export default function DashboardPage() {
 
   const draftBody = showArtifactBlur ? (
     <div
-      className="relative overflow-hidden rounded-[16px] border border-border bg-panel-raised p-4"
+      className="relative overflow-hidden rounded-[16px] border border-[#1b2530] bg-[#121820] p-4"
       data-testid="dashboard-pro-blur"
     >
       <div className="pointer-events-none select-none blur-[5px]">
         {isDocument ? (
           <>
-            {artifact?.title ? <p className="mb-3 text-base font-semibold text-text-primary">{artifact.title}</p> : null}
-            <div className="whitespace-pre-line text-[15px] leading-7 text-text-primary">{artifactBody}</div>
+            {artifact?.title ? <p className="mb-3 text-base font-semibold text-white">{artifact.title}</p> : null}
+            <div className="whitespace-pre-line text-[15px] leading-7 text-gray-100">{artifactBody}</div>
           </>
         ) : (
-          <div className="whitespace-pre-line text-[15px] leading-7 text-text-primary">{artifactBody}</div>
+          <div className="whitespace-pre-line text-[15px] leading-7 text-gray-100">{artifactBody}</div>
         )}
       </div>
-      <div className="absolute inset-0 flex flex-col items-center justify-center bg-bg/60 px-6 text-center">
-        <p className="max-w-[280px] text-base font-medium text-text-primary">Upgrade to Pro to keep receiving finished work.</p>
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#07090dcc] px-6 text-center">
+        <p className="max-w-[280px] text-base font-medium text-white">Upgrade to Pro to keep receiving finished work.</p>
         <button
           type="button"
           onClick={() => void startStripeCheckout()}
-          className="foldera-button-primary mt-4"
+          className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-lg bg-cyan-500 px-4 py-2 font-medium text-black"
         >
           Upgrade to Pro
         </button>
       </div>
     </div>
-  ) : (
-    isDocument ? (
-      artifactBody ? (
-        <div
-          className="max-h-[380px] overflow-y-auto rounded-[16px] border border-border bg-panel-raised p-4"
-          data-testid="dashboard-document-body"
-        >
-          {artifact?.title ? <p className="mb-3 text-base font-semibold text-text-primary">{artifact.title}</p> : null}
-          <ReactMarkdown components={DOCUMENT_MARKDOWN_COMPONENTS}>{artifactBody}</ReactMarkdown>
-        </div>
-      ) : (
-        <p className="text-[15px] leading-7 text-text-secondary">Full text is in your morning email. Save document to file it, or skip to adjust.</p>
-      )
-    ) : isWait ? (
-      <div className="space-y-3">
-        {artifact?.context ? <p className="text-[15px] leading-7 text-text-primary">{artifact.context}</p> : null}
-        {artifact?.tripwires?.[0] || artifact?.check_date ? (
-          <p className="text-[13px] uppercase tracking-[0.12em] text-accent">Resume when: {artifact?.tripwires?.[0] ?? artifact?.check_date}</p>
-        ) : null}
+  ) : isDocument ? (
+    artifactBody ? (
+      <div
+        className="max-h-[380px] overflow-y-auto rounded-[16px] border border-[#1b2530] bg-[#121820] p-4"
+        data-testid="dashboard-document-body"
+      >
+        {artifact?.title ? <p className="mb-3 text-base font-semibold text-white">{artifact.title}</p> : null}
+        <ReactMarkdown components={DOCUMENT_MARKDOWN_COMPONENTS}>{artifactBody}</ReactMarkdown>
       </div>
     ) : (
-      <div className="whitespace-pre-line text-[15px] leading-7 text-text-primary">{artifactBody ?? demoDraft}</div>
+      <p className="text-[15px] leading-7 text-gray-300">Full text is in your morning email. Save document to file it, or skip to adjust.</p>
     )
+  ) : isWait ? (
+    <div className="space-y-3">
+      {artifact?.context ? <p className="text-[15px] leading-7 text-gray-100">{artifact.context}</p> : null}
+      {artifact?.tripwires?.[0] || artifact?.check_date ? (
+        <p className="text-[13px] uppercase tracking-[0.12em] text-cyan-400">Resume when: {artifact?.tripwires?.[0] ?? artifact?.check_date}</p>
+      ) : null}
+    </div>
+  ) : (
+    <div className="whitespace-pre-line text-[15px] leading-7 text-gray-100">{artifactBody ?? demoDraft}</div>
   );
 
   const cardActions = isDocument
@@ -620,312 +574,92 @@ export default function DashboardPage() {
         },
       ];
 
-  const isDesktopStage = stageMetrics.isDesktop;
-  const stageTransform = `translate(${stageMetrics.offsetX}px, ${stageMetrics.offsetY}px) scale(${stageMetrics.scale})`;
-
-  const searchField = (
-    <div className="flex h-full min-w-0 items-center gap-3 rounded-[16px] border border-border bg-panel px-4 text-sm text-text-muted">
-      <Search className="h-4 w-4 shrink-0" aria-hidden />
-      <span className="min-w-0 flex-1 truncate">Search Foldera...</span>
-      <span className="hidden shrink-0 rounded-[10px] border border-border px-2 py-1 text-[11px] sm:inline">⌘ K</span>
-    </div>
-  );
-
-  const notificationsButton = (
-    <button
-      type="button"
-      className="inline-flex h-full w-full items-center justify-center rounded-[16px] border border-border bg-panel text-text-secondary"
-      aria-label="Notifications"
+  const noticeBanner = notice ? (
+    <div
+      className="border-b border-[#1a2530] bg-[#0d1419] px-4 py-3 sm:px-6"
+      data-testid="dashboard-status-notice"
+      data-status-id={notice.kind}
     >
-      <Bell className="h-4 w-4" />
-    </button>
-  );
+      <p className="text-sm text-white">{notice.message}</p>
+    </div>
+  ) : null;
 
-  const headerSearch = (
-    <>
-      <div className="h-11 min-w-0 flex-1">{searchField}</div>
-      <div className="h-11 w-11 shrink-0">{notificationsButton}</div>
-    </>
-  );
+  const outcomeButtons = lastDecision === 'approve' && executedActionId && !outcomeRecorded ? (
+    <div className="flex flex-wrap justify-center gap-3">
+      <button
+        type="button"
+        onClick={() => void recordOutcome('worked')}
+        className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-black"
+      >
+        It worked
+      </button>
+      <button
+        type="button"
+        onClick={() => void recordOutcome('didnt_work')}
+        className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#1b2530] bg-[#0d1419] px-4 py-2 text-sm text-white"
+      >
+        Didn&apos;t work
+      </button>
+    </div>
+  ) : null;
 
-  if (isDesktopStage) {
+  if (isDesktop) {
     return (
-      <div className="foldera-dashboard-stage-root text-text-primary">
-        <div className="foldera-dashboard-stage" style={{ transform: stageTransform, transformOrigin: 'top left' }}>
-          <DashboardSidebar activeLabel="Executive Briefing" userName={firstName} variant="stage" />
-
-          <p className="foldera-eyebrow absolute" style={{ left: 390, top: 52 }}>
-            {getDateLabel()}
-          </p>
-
-          <h1
-            className="absolute text-[56px] font-semibold leading-[64px] tracking-[-0.045em] text-text-secondary"
-            style={{ left: 390, top: 86, width: 700, height: 64 }}
-          >
-            {getGreetingLabel()}, <strong className="font-semibold text-text-primary">{firstName}.</strong>
-          </h1>
-
+      <div className="relative h-screen w-screen overflow-hidden bg-[#04080d] text-[#f3f7fa]">
+        <FolderaDashboardPixelLock
+          onCopyDraft={() => void (hasLiveAction ? handleCopyDraft() : handleCopyFallbackDraft())}
+          onSnooze={() => void handleSkip()}
+          onApprove={() => void handleApprove()}
+          onUpgrade={() => void startStripeCheckout()}
+          disableSnooze={!hasLiveAction || executing}
+          disableApprove={!hasLiveAction || executing}
+        />
+        {notice ? (
           <div
-            className="absolute flex items-center justify-between text-[28px] text-text-secondary"
-            style={{ left: 450, top: 176, width: 900, height: 44 }}
+            className="absolute bottom-6 left-1/2 z-30 w-[min(720px,92vw)] -translate-x-1/2 rounded-lg border border-[#1a2530] bg-[#0d1419f0] px-4 py-3"
+            data-testid="dashboard-status-notice"
+            data-status-id={notice.kind}
           >
-            <div className="flex items-center gap-3">
-              <Mail className="h-5 w-5 text-text-muted" aria-hidden />
-              <span className="text-[36px] font-semibold tracking-[-0.045em] text-text-primary">5</span>
-              <span className="text-[32px] font-normal">open threads</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <TriangleAlert className="h-5 w-5 text-amber-400" aria-hidden />
-              <span className="text-[36px] font-semibold tracking-[-0.045em] text-amber-400">2</span>
-              <span className="text-[32px] font-normal">need attention</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <TrendingUp className="h-5 w-5 text-text-muted" aria-hidden />
-              <span className="text-[36px] font-semibold tracking-[-0.045em] text-text-primary">1</span>
-              <span className="text-[32px] font-normal">ready to move</span>
-            </div>
+            <p className="text-sm text-white">{notice.message}</p>
           </div>
-
-          <div className="absolute h-14" style={{ left: 1516, top: 36, width: 404 }}>
-            {searchField}
-          </div>
-          <div className="absolute h-14 w-14" style={{ left: 1950, top: 36 }}>
-            {notificationsButton}
-          </div>
-
-          <div className="absolute" style={{ left: 384, top: 238, width: 1216, height: 850 }}>
-            <DailyBriefCard
-              className="foldera-dashboard-brief-card foldera-dashboard-money-shot h-full w-full"
-              dashboardCta
-              stageDesktop
-              directive={cardDirective}
-              whyNow={cardWhyNow}
-              draftLabel={draftLabel}
-              draftBody={draftBody}
-              sourcePills={cardSourcePills}
-              nextStep={cardNextStep}
-              statusText={cardStatusText}
-              footerText="Grounded in connected sources"
-              actions={cardActions}
-            />
-          </div>
-
-          {notice ? (
-            <div
-              className="absolute rounded-[14px] border border-border bg-panel-raised px-4 py-3"
-              style={{ left: 384, top: 1094, width: 1216 }}
-              data-testid="dashboard-status-notice"
-              data-status-id={notice.kind}
-            >
-              <p className="text-sm text-text-primary">{notice.message}</p>
-            </div>
-          ) : null}
-
-          {lastDecision === 'approve' && executedActionId && !outcomeRecorded ? (
-            <div className="absolute flex justify-center gap-3" style={{ left: 780, top: 1096, width: 430 }}>
-              <button
-                type="button"
-                onClick={() => void recordOutcome('worked')}
-                className="foldera-button-primary"
-              >
-                It worked
-              </button>
-              <button
-                type="button"
-                onClick={() => void recordOutcome('didnt_work')}
-                className="foldera-button-secondary"
-              >
-                Didn&apos;t work
-              </button>
-            </div>
-          ) : null}
-
-          <aside className="absolute" style={{ left: 1660, top: 324, width: 350, height: 300 }}>
-            <div className="foldera-panel foldera-dashboard-right-rail-panel h-full p-6">
-              <div className="flex items-center justify-between gap-3">
-                <p className="foldera-eyebrow">How this brief works</p>
-                <a href="/#product" className="shrink-0 text-sm text-text-muted hover:text-text-primary">
-                  Learn more →
-                </a>
-              </div>
-              <div className="mt-5 space-y-4">
-                {briefHowRows.map((row) => (
-                  <div
-                    key={row.title}
-                    className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 border-t border-border pt-4 first:border-t-0 first:pt-0"
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-border bg-panel-raised text-text-secondary">
-                      {row.title === 'Directive' ? (
-                        <Send className="h-4 w-4" />
-                      ) : row.title === 'Draft' ? (
-                        <FileText className="h-4 w-4" />
-                      ) : (
-                        <Layers3 className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-text-primary">{row.title}</p>
-                      <p className="mt-1.5 text-sm leading-7 text-text-muted">{row.body}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </aside>
-
-          <aside className="absolute" style={{ left: 1660, top: 764, width: 350, height: 200 }}>
-            <div className="foldera-panel foldera-dashboard-right-rail-panel h-full p-5">
-              <div className="flex h-full items-center justify-center rounded-[20px] border border-dashed border-border bg-panel-raised px-5 text-center">
-                <div>
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-border bg-panel text-text-muted">
-                    <CloudUpload className="h-5 w-5" aria-hidden />
-                  </div>
-                  <p className="mt-4 text-base font-medium leading-snug text-text-primary">Drop a folder or document.</p>
-                  <p className="mt-2 text-sm leading-7 text-text-muted">Foldera will get to work instantly.</p>
-                </div>
-              </div>
-            </div>
-          </aside>
-        </div>
+        ) : null}
+        {outcomeButtons ? (
+          <div className="absolute bottom-20 left-1/2 z-30 -translate-x-1/2">{outcomeButtons}</div>
+        ) : null}
       </div>
     );
   }
 
   return (
-    <div className="foldera-dashboard-page foldera-page min-h-screen bg-bg text-text-primary">
-      <div className="mx-auto w-full max-w-[1840px] px-4 py-4 sm:px-5 lg:px-8 lg:py-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(244px,270px)_minmax(0,1fr)] xl:grid-cols-[minmax(244px,270px)_minmax(0,1fr)_328px] xl:gap-9">
-          <DashboardSidebar activeLabel="Executive Briefing" userName={firstName} />
+    <div className="min-h-screen bg-[#0a0f14] text-[#f3f7fa]">
+      {noticeBanner}
+      <div className="mx-auto w-full max-w-[1140px] px-4 py-6">
+        <p className="mb-1 text-sm uppercase tracking-wide text-gray-500">{getDateLabel()}</p>
+        <h1 className="text-[clamp(2rem,4vw,2.5rem)] text-white">
+          {getGreetingLabel()}, <span className="font-semibold">{firstName}.</span>
+        </h1>
 
-          <div className="min-w-0">
-            <div className="foldera-panel mb-5 flex items-center justify-between gap-3 px-4 py-3 lg:hidden">
-              <FolderaLogo href="/dashboard" markSize="sm" />
-              <div className="flex min-w-0 flex-1 items-center justify-end gap-2">{headerSearch}</div>
-            </div>
-
-            <div className="hidden items-center justify-between gap-4 lg:flex">
-              <p className="foldera-eyebrow">{getDateLabel()}</p>
-              <div className="flex max-w-md flex-1 items-center justify-end gap-3">{headerSearch}</div>
-            </div>
-
-            <div className="flex items-center justify-between gap-3 pb-1 pt-2 lg:hidden">
-              <p className="foldera-eyebrow">{getDateLabel()}</p>
-            </div>
-
-            <header className="pb-10 pt-3 lg:pt-1">
-              <h1 className="text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-text-secondary">
-                {getGreetingLabel()}, <strong className="font-semibold text-text-primary">{firstName}.</strong>
-              </h1>
-              <div className="mt-6 flex flex-wrap gap-x-10 gap-y-4 text-sm text-text-secondary">
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-text-muted" aria-hidden />
-                  <span className="text-[28px] font-semibold tracking-[-0.04em] text-text-primary sm:text-[32px]">5</span>
-                  <span>open threads</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <TriangleAlert className="h-4 w-4 text-amber-400" aria-hidden />
-                  <span className="text-[28px] font-semibold tracking-[-0.04em] text-amber-400 sm:text-[32px]">2</span>
-                  <span>need attention</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <TrendingUp className="h-4 w-4 text-text-muted" aria-hidden />
-                  <span className="text-[28px] font-semibold tracking-[-0.04em] text-text-primary sm:text-[32px]">1</span>
-                  <span>ready to move</span>
-                </div>
-              </div>
-            </header>
-
-            {notice ? (
-              <div
-                className="mx-auto mb-4 w-full max-w-[1140px] rounded-[16px] border border-border bg-panel-raised px-4 py-3"
-                data-testid="dashboard-status-notice"
-                data-status-id={notice.kind}
-              >
-                <p className="text-sm text-text-primary">{notice.message}</p>
-              </div>
-            ) : null}
-
-            <div className="mx-auto w-full max-w-[1140px] pb-12">
-              <DailyBriefCard
-                className="foldera-dashboard-brief-card foldera-dashboard-money-shot w-full"
-                dashboardCta
-                directive={cardDirective}
-                whyNow={cardWhyNow}
-                draftLabel={draftLabel}
-                draftBody={draftBody}
-                sourcePills={cardSourcePills}
-                nextStep={cardNextStep}
-                statusText={cardStatusText}
-                footerText="Grounded in connected sources"
-                actions={cardActions}
-              />
-              {lastDecision === 'approve' && executedActionId && !outcomeRecorded ? (
-                <div className="mt-4 flex flex-wrap justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => void recordOutcome('worked')}
-                    className="foldera-button-primary"
-                  >
-                    It worked
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void recordOutcome('didnt_work')}
-                    className="foldera-button-secondary"
-                  >
-                    Didn&apos;t work
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-
-          <aside className="foldera-dashboard-right-rail hidden min-w-0 space-y-5 xl:block">
-            <div className="foldera-panel foldera-dashboard-right-rail-panel p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="foldera-eyebrow">How this brief works</p>
-                <a href="/#product" className="shrink-0 text-sm text-text-muted hover:text-text-primary">
-                  Learn more →
-                </a>
-              </div>
-              <div className="mt-5 space-y-5">
-                {briefHowRows.map((row) => (
-                  <div
-                    key={row.title}
-                    className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 border-t border-border pt-5 first:border-t-0 first:pt-0"
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-border bg-panel-raised text-text-secondary">
-                      {row.title === 'Directive' ? (
-                        <Send className="h-4 w-4" />
-                      ) : row.title === 'Draft' ? (
-                        <FileText className="h-4 w-4" />
-                      ) : (
-                        <Layers3 className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-text-primary">{row.title}</p>
-                      <p className="mt-2 text-sm leading-7 text-text-muted">{row.body}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="foldera-panel foldera-dashboard-right-rail-panel p-5">
-              <div className="flex min-h-[168px] items-center justify-center rounded-[20px] border border-dashed border-border bg-panel-raised px-5 text-center">
-                <div>
-                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full border border-border bg-panel text-text-muted">
-                    <CloudUpload className="h-5 w-5" aria-hidden />
-                  </div>
-                  <p className="mt-4 text-base font-medium leading-snug text-text-primary">Drop a folder or document.</p>
-                  <p className="mt-2 text-sm leading-7 text-text-muted">Foldera will get to work instantly.</p>
-                </div>
-              </div>
-            </div>
-          </aside>
+        <div className="mb-8 mt-6 flex flex-wrap items-center gap-8 text-sm text-gray-400">
+          <span>5 open threads</span>
+          <span>2 need attention</span>
+          <span>1 ready to move</span>
         </div>
+
+        <DailyBriefCard
+          className="w-full"
+          dashboardCta
+          directive={cardDirective}
+          whyNow={cardWhyNow}
+          draftLabel={draftLabel}
+          draftBody={draftBody}
+          sourcePills={cardSourcePills}
+          nextStep={cardNextStep}
+          statusText={cardStatusText}
+          footerText="Grounded in connected sources"
+          actions={cardActions}
+        />
       </div>
+      {outcomeButtons ? <div className="px-4 pb-8">{outcomeButtons}</div> : null}
     </div>
   );
 }
