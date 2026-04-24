@@ -283,6 +283,7 @@ function findHomeworkHandoffReason(value: string): string | null {
  */
 const INTERVIEW_CLASS_GENERIC_PREP_TRASH_PATTERNS: Array<{ id: string; pattern: RegExp }> = [
   { id: 'prep_checklist', pattern: /\bPREP(?:ARATION)?\s*CHECKLIST\b/i },
+  { id: 'prep_sheet', pattern: /\bPREP(?:ARATION)?\s*SHEET\b/i },
   { id: 'star_method_block', pattern: /\b(?:^|\n)\s*STAR(?:\s+method|\s+format|\.?\s*[:—-])\b/im },
   { id: 'prepare_n_examples', pattern: /\bprepare\s+(?:\d+|two|three|2|3)\s+examples?\b/i },
   { id: 'review_the_posting', pattern: /\breview\s+the\s+(?:job\s+)?posting\b/i },
@@ -4818,8 +4819,49 @@ type ResolvedTemporalAnchor = {
   timeMinutes: number | null;
 };
 
-function toDayKey(d: Date): string {
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+const PACIFIC_TIME_ZONE = 'America/Los_Angeles';
+
+function padTwo(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+function toPacificDayKey(d: Date): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: PACIFIC_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d);
+  const partMap = new Map(parts.map((part) => [part.type, part.value]));
+  const year = partMap.get('year');
+  const month = partMap.get('month');
+  const day = partMap.get('day');
+  if (!year || !month || !day) {
+    // Fallback should be unreachable; keep a deterministic, timezone-agnostic key.
+    return `${d.getUTCFullYear()}-${padTwo(d.getUTCMonth() + 1)}-${padTwo(d.getUTCDate())}`;
+  }
+  return `${year}-${month}-${day}`;
+}
+
+function shiftUtcDays(date: Date, days: number): Date {
+  const shifted = new Date(date);
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+  return shifted;
+}
+
+function normalizeDayKey(year: number, monthOneBased: number, day: number): string | null {
+  if (!Number.isFinite(year) || !Number.isFinite(monthOneBased) || !Number.isFinite(day)) return null;
+  if (monthOneBased < 1 || monthOneBased > 12 || day < 1 || day > 31) return null;
+  const canonical = new Date(Date.UTC(year, monthOneBased - 1, day));
+  if (Number.isNaN(canonical.getTime())) return null;
+  if (
+    canonical.getUTCFullYear() !== year ||
+    canonical.getUTCMonth() + 1 !== monthOneBased ||
+    canonical.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return `${year}-${padTwo(monthOneBased)}-${padTwo(day)}`;
 }
 
 function parseTimeMinutes(text: string): number | null {
@@ -4850,18 +4892,26 @@ function resolveTemporalAnchor(text: string, now = new Date()): ResolvedTemporal
   const timeMinutes = parseTimeMinutes(lower);
 
   if (/\btomorrow\b/i.test(lower)) {
-    const d = new Date(now);
-    d.setUTCDate(d.getUTCDate() + 1);
-    return { dayKey: toDayKey(d), timeMinutes };
+    return { dayKey: toPacificDayKey(shiftUtcDays(now, 1)), timeMinutes };
   }
   if (/\b(?:today|tonight)\b/i.test(lower)) {
-    return { dayKey: toDayKey(now), timeMinutes };
+    return { dayKey: toPacificDayKey(now), timeMinutes };
   }
 
   const iso = lower.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
   if (iso) {
-    const day = new Date(`${iso[1]}T00:00:00Z`);
-    if (!Number.isNaN(day.getTime())) return { dayKey: toDayKey(day), timeMinutes };
+    const [year, month, day] = iso[1].split('-').map(Number);
+    const dayKey = normalizeDayKey(year, month, day);
+    if (dayKey) return { dayKey, timeMinutes };
+  }
+
+  const usDate = lower.match(/\b(\d{1,2})\/(\d{1,2})\/(20\d{2})\b/);
+  if (usDate) {
+    const month = Number(usDate[1]);
+    const day = Number(usDate[2]);
+    const year = Number(usDate[3]);
+    const dayKey = normalizeDayKey(year, month, day);
+    if (dayKey) return { dayKey, timeMinutes };
   }
 
   const monthDay = lower.match(/\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:,\s*(20\d{2}))?\b/i);
@@ -4873,10 +4923,11 @@ function resolveTemporalAnchor(text: string, now = new Date()): ResolvedTemporal
     };
     const month = monthMap[monthToken];
     const day = Number(monthDay[2]);
-    const year = monthDay[3] ? Number(monthDay[3]) : now.getUTCFullYear();
+    const pacificNowYear = Number(toPacificDayKey(now).slice(0, 4));
+    const year = monthDay[3] ? Number(monthDay[3]) : pacificNowYear;
     if (month !== undefined && Number.isFinite(day) && day >= 1 && day <= 31) {
-      const resolved = new Date(Date.UTC(year, month, day));
-      if (!Number.isNaN(resolved.getTime())) return { dayKey: toDayKey(resolved), timeMinutes };
+      const dayKey = normalizeDayKey(year, month + 1, day);
+      if (dayKey) return { dayKey, timeMinutes };
     }
   }
 
@@ -7650,21 +7701,197 @@ function buildGroundedSendMessageDirective(recipientEmail: string, explicitAsk: 
 const BANNED_GENERIC_SEND_MESSAGE_DIRECTIVE_RE =
   /send a decision request that secures one accountable owner and a committed answer by/i;
 
-function resolveDecisionDeadline(candidateDueDate: string | null): string {
-  const dueMatch = candidateDueDate?.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
-  const now = new Date();
-  const startTodayUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  let date = dueMatch?.[1] ?? new Date(Date.now() + daysMs(1)).toISOString().slice(0, 10);
-  if (dueMatch?.[1]) {
-    const [y, mo, d] = dueMatch[1].split('-').map(Number);
-    const dueStart = Date.UTC(y, mo - 1, d);
-    // Overdue commitment dates must not be echoed into user-facing directive/repair copy —
-    // they trip stale-date rejection and read as dead copy in production.
-    if (dueStart < startTodayUtc) {
-      date = new Date(startTodayUtc).toISOString().slice(0, 10);
+type CanonicalDateTimeAnchor = {
+  dayKey: string;
+  timeMinutes: number;
+  label: string;
+};
+
+function formatTimeMinutesAsTwelveHour(timeMinutes: number): string {
+  const safe = Math.max(0, Math.min((24 * 60) - 1, timeMinutes));
+  const hour24 = Math.floor(safe / 60);
+  const minute = safe % 60;
+  const meridiem = hour24 >= 12 ? 'PM' : 'AM';
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${padTwo(minute)} ${meridiem}`;
+}
+
+function formatCanonicalPacificLabel(dayKey: string, timeMinutes: number): string {
+  return `${formatTimeMinutesAsTwelveHour(timeMinutes)} PT on ${dayKey}`;
+}
+
+function buildPacificPartsFromDate(date: Date): { dayKey: string; timeMinutes: number } | null {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: PACIFIC_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+  const partMap = new Map(parts.map((part) => [part.type, part.value]));
+  const year = Number(partMap.get('year'));
+  const month = Number(partMap.get('month'));
+  const day = Number(partMap.get('day'));
+  const hour = Number(partMap.get('hour'));
+  const minute = Number(partMap.get('minute'));
+  if (![year, month, day, hour, minute].every(Number.isFinite)) return null;
+  const dayKey = normalizeDayKey(year, month, day);
+  if (!dayKey) return null;
+  return { dayKey, timeMinutes: (hour * 60) + minute };
+}
+
+function buildAnchorFromPacificLocalParts(input: {
+  year: number;
+  monthOneBased: number;
+  day: number;
+  hour24: number;
+  minute: number;
+}): CanonicalDateTimeAnchor | null {
+  const dayKey = normalizeDayKey(input.year, input.monthOneBased, input.day);
+  if (!dayKey) return null;
+  if (!Number.isFinite(input.hour24) || input.hour24 < 0 || input.hour24 > 23) return null;
+  if (!Number.isFinite(input.minute) || input.minute < 0 || input.minute > 59) return null;
+  const timeMinutes = (input.hour24 * 60) + input.minute;
+  return {
+    dayKey,
+    timeMinutes,
+    label: formatCanonicalPacificLabel(dayKey, timeMinutes),
+  };
+}
+
+function buildAnchorFromUtcParts(input: {
+  year: number;
+  monthOneBased: number;
+  day: number;
+  hour24: number;
+  minute: number;
+}): CanonicalDateTimeAnchor | null {
+  if (
+    !Number.isFinite(input.year) ||
+    !Number.isFinite(input.monthOneBased) ||
+    !Number.isFinite(input.day) ||
+    !Number.isFinite(input.hour24) ||
+    !Number.isFinite(input.minute)
+  ) {
+    return null;
+  }
+  const utcDate = new Date(Date.UTC(
+    input.year,
+    input.monthOneBased - 1,
+    input.day,
+    input.hour24,
+    input.minute,
+    0,
+    0,
+  ));
+  if (Number.isNaN(utcDate.getTime())) return null;
+  const pacific = buildPacificPartsFromDate(utcDate);
+  if (!pacific) return null;
+  return {
+    ...pacific,
+    label: formatCanonicalPacificLabel(pacific.dayKey, pacific.timeMinutes),
+  };
+}
+
+function extractCanonicalDateTimeAnchor(text: string, now = new Date()): CanonicalDateTimeAnchor | null {
+  if (!isNonEmptyString(text)) return null;
+
+  const isoWithZone = text.match(/\b(20\d{2}-\d{2}-\d{2}T[0-2]\d:[0-5]\d(?::[0-5]\d(?:\.\d{1,3})?)?(?:Z|[+\-][0-2]\d:?[0-5]\d))\b/i);
+  if (isoWithZone) {
+    const parsed = new Date(isoWithZone[1]);
+    if (!Number.isNaN(parsed.getTime())) {
+      const pacific = buildPacificPartsFromDate(parsed);
+      if (pacific) {
+        return {
+          ...pacific,
+          label: formatCanonicalPacificLabel(pacific.dayKey, pacific.timeMinutes),
+        };
+      }
     }
   }
-  return `5:00 PM PT on ${date}`;
+
+  const usDateTime = text.match(
+    /\b(\d{1,2})\/(\d{1,2})\/(20\d{2})\s+(\d{1,2}):([0-5]\d)\s*(AM|PM)\s*(UTC|Z|PT|PST|PDT|PACIFIC)?\b/i,
+  );
+  if (usDateTime) {
+    const month = Number(usDateTime[1]);
+    const day = Number(usDateTime[2]);
+    const year = Number(usDateTime[3]);
+    const hourRaw = Number(usDateTime[4]);
+    const minute = Number(usDateTime[5]);
+    const meridiem = usDateTime[6].toUpperCase();
+    let hour24 = hourRaw % 12;
+    if (meridiem === 'PM') hour24 += 12;
+    const zoneToken = (usDateTime[7] ?? '').toUpperCase();
+    const fromUtc = zoneToken === 'UTC' || zoneToken === 'Z';
+    const anchor = fromUtc
+      ? buildAnchorFromUtcParts({ year, monthOneBased: month, day, hour24, minute })
+      : buildAnchorFromPacificLocalParts({ year, monthOneBased: month, day, hour24, minute });
+    if (anchor) return anchor;
+  }
+
+  const monthDateTime = text.match(
+    /\b(?:[A-Za-z]+,\s+)?(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+(\d{1,2})(?:,\s*(20\d{2}))?(?:\s*(?:at|@)\s*)(\d{1,2}):([0-5]\d)\s*(AM|PM)\s*(UTC|Z|PT|PST|PDT|PACIFIC)?\b/i,
+  );
+  if (monthDateTime) {
+    const monthToken = monthDateTime[1].slice(0, 3).toLowerCase();
+    const monthMap: Record<string, number> = {
+      jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6,
+      jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
+    };
+    const month = monthMap[monthToken];
+    const day = Number(monthDateTime[2]);
+    const pacificNowYear = Number(toPacificDayKey(now).slice(0, 4));
+    const year = monthDateTime[3] ? Number(monthDateTime[3]) : pacificNowYear;
+    const hourRaw = Number(monthDateTime[4]);
+    const minute = Number(monthDateTime[5]);
+    const meridiem = monthDateTime[6].toUpperCase();
+    let hour24 = hourRaw % 12;
+    if (meridiem === 'PM') hour24 += 12;
+    const zoneToken = (monthDateTime[7] ?? '').toUpperCase();
+    const fromUtc = zoneToken === 'UTC' || zoneToken === 'Z';
+    if (month) {
+      const anchor = fromUtc
+        ? buildAnchorFromUtcParts({ year, monthOneBased: month, day, hour24, minute })
+        : buildAnchorFromPacificLocalParts({ year, monthOneBased: month, day, hour24, minute });
+      if (anchor) return anchor;
+    }
+  }
+
+  return null;
+}
+
+function resolveDecisionDeadline(candidateDueDate: string | null): string {
+  const now = new Date();
+  const todayKey = toPacificDayKey(now);
+  const canonicalDueDateTime = extractCanonicalDateTimeAnchor(candidateDueDate ?? '', now);
+  if (canonicalDueDateTime) {
+    if (canonicalDueDateTime.dayKey < todayKey) {
+      return `end of day PT on ${todayKey}`;
+    }
+    return canonicalDueDateTime.label;
+  }
+
+  const dueDateText = candidateDueDate ?? '';
+  const dueMatch = dueDateText.match(/\b(20\d{2}-\d{2}-\d{2})\b/);
+  const usDateOnlyMatch = dueDateText.match(/\b(\d{1,2})\/(\d{1,2})\/(20\d{2})\b/);
+  let dateKey: string | null = dueMatch?.[1] ?? null;
+  if (!dateKey && usDateOnlyMatch) {
+    dateKey = normalizeDayKey(
+      Number(usDateOnlyMatch[3]),
+      Number(usDateOnlyMatch[1]),
+      Number(usDateOnlyMatch[2]),
+    );
+  }
+  if (!dateKey) {
+    dateKey = toPacificDayKey(shiftUtcDays(now, 1));
+  }
+  if (dateKey < todayKey) {
+    dateKey = todayKey;
+  }
+  return `end of day PT on ${dateKey}`;
 }
 
 function cleanDecisionTarget(value: string): string {
@@ -7815,14 +8042,21 @@ function extractInterviewOrganization(text: string): string | null {
 function extractInterviewScheduleLine(text: string): string | null {
   const patterns = [
     /\bDate and Time:\s*([^\n]+?)(?:\s+Location:|$)/i,
+    /\bInterview Date(?: and Time)?:\s*([^\n]+?)(?:\s+Location:|$)/i,
     /\bAppointment:\s*([^\n]+)$/im,
+    /\bStart:\s*([^\n]+)$/im,
     /\bInterview\s+(Thursday,\s+[A-Za-z]+\s+\d+\s*@\s*\d{1,2}:\d{2})\b/i,
   ];
   for (const pattern of patterns) {
     const match = text.match(pattern);
     const raw = match?.[1]?.trim();
-    if (raw) return raw.replace(/\s+/g, ' ');
+    if (!raw) continue;
+    const canonical = extractCanonicalDateTimeAnchor(raw);
+    if (canonical) return canonical.label;
+    return raw.replace(/\s+/g, ' ');
   }
+  const fallbackCanonical = extractCanonicalDateTimeAnchor(text);
+  if (fallbackCanonical) return fallbackCanonical.label;
   return null;
 }
 

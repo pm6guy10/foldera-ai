@@ -102,6 +102,8 @@ describe('buildDecisionEnforcedFallbackPayload interview repair', () => {
       forbiddenPatterns: [/prep brief/i, /review the website/i, /prepare examples/i],
     });
     expect(`${title}\n${content}`).toMatch(/fit narrative|hiring fit brief/i);
+    expect(`${title}\n${content}`).toContain('3:15 PM PT on 2026-04-15');
+    expect(`${title}\n${content}`).not.toContain('5:00 PM PT on 2026-04-15');
 
     const decisionIssues = getDecisionEnforcementIssues({
       actionType: 'write_document',
@@ -122,6 +124,87 @@ describe('buildDecisionEnforcedFallbackPayload interview repair', () => {
 
     expect(decisionIssues).toEqual([]);
     expect(causalIssues).toEqual([]);
+  });
+
+  it('normalizes ISO calendar start timestamps into one canonical Pacific interview time', () => {
+    const winner = makeWinner({
+      title: 'Commitment due in 1d: Care Coordinator role interview',
+      content: 'The interview event is in calendar data with a UTC start timestamp.',
+    });
+    const supportingSignals: CompressedSignal[] = [
+      {
+        source: 'outlook',
+        occurred_at: '2026-04-14T21:13:57Z',
+        entity: 'Alex Crisler',
+        direction: 'received',
+        summary:
+          'Re: Comprehensive Healthcare - Phone Screen. The Care Coordinator role is community-based, includes traveling to homes for check-in, and mileage is reimbursed.',
+      },
+      {
+        source: 'outlook_calendar',
+        occurred_at: '2026-04-14T21:13:57Z',
+        entity: 'Alex Crisler',
+        direction: 'unknown',
+        summary:
+          '[Calendar event: Care Coordinator phone screen] Start: 2026-04-15T22:15:00.000Z End: 2026-04-15T23:00:00.000Z',
+      },
+    ];
+
+    const payload = buildDecisionEnforcedFallbackPayload({
+      winner,
+      actionType: 'write_document',
+      candidateDueDate: '2026-04-15',
+      candidateGoal: null,
+      causalDiagnosis: makeDiagnosis(),
+      supportingSignals,
+      userPromptNames: {
+        user_full_name: 'Brandon Kapp',
+        user_first_name: 'Brandon',
+      },
+    });
+
+    expect(payload).not.toBeNull();
+    expect(payload?.directive).toContain('3:15 PM PT on 2026-04-15');
+    const artifact = payload?.artifact as Record<string, string>;
+    expect(`${artifact.title}\n${artifact.content}`).toContain('3:15 PM PT on 2026-04-15');
+  });
+
+  it('uses end-of-day PT deadline wording when no canonical interview schedule line is present', () => {
+    const winner = makeWinner({
+      title: 'Commitment due in 3d: Care Coordinator role interview',
+      content:
+        'The Care Coordinator interview thread has role details but no explicit calendar line in this excerpt.',
+    });
+    const supportingSignals: CompressedSignal[] = [
+      {
+        source: 'outlook',
+        occurred_at: '2026-04-10T18:02:10Z',
+        entity: 'Alex Crisler',
+        direction: 'received',
+        summary:
+          'Re: Comprehensive Healthcare - Phone Screen. The Care Coordinator role is community-based, includes traveling to homes for check-in, and mileage is reimbursed. The next steps include the interview process in MS Teams.',
+      },
+    ];
+
+    const payload = buildDecisionEnforcedFallbackPayload({
+      winner,
+      actionType: 'write_document',
+      candidateDueDate: '2026-04-30',
+      candidateGoal: null,
+      causalDiagnosis: makeDiagnosis(),
+      supportingSignals,
+      userPromptNames: {
+        user_full_name: 'Brandon Kapp',
+        user_first_name: 'Brandon',
+      },
+    });
+
+    expect(payload).not.toBeNull();
+    expect(payload?.artifact_type).toBe('write_document');
+    const artifact = payload?.artifact as Record<string, string>;
+    expect(payload?.directive).toContain('end of day PT on 2026-04-30');
+    expect(`${artifact.title}\n${artifact.content}`).toContain('end of day PT on 2026-04-30');
+    expect(`${artifact.title}\n${artifact.content}`).not.toContain('5:00 PM PT on 2026-04-30');
   });
 
   it('returns null when an interview candidate lacks role-specific evidence', () => {
