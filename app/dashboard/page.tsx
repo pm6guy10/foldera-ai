@@ -101,8 +101,7 @@ export default function DashboardPage() {
   const { status } = useSession();
 
   const [action, setAction] = useState<DashboardAction | null>(null);
-  const [subPlan, setSubPlan] = useState<string | null>(null);
-  const [subStatus, setSubStatus] = useState<string | null>(null);
+  const [artifactPaywallLocked, setArtifactPaywallLocked] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [frame, setFrame] = useState<ImageRect>({ left: 0, top: 0, width: 0, height: 0 });
 
@@ -116,36 +115,24 @@ export default function DashboardPage() {
     loadAbortRef.current = controller;
 
     try {
-      const [latestRes, subscriptionRes] = await Promise.all([
-        fetch('/api/conviction/latest', { signal: controller.signal }),
-        fetch('/api/subscription/status', { signal: controller.signal }),
-      ]);
+      const latestRes = await fetch('/api/conviction/latest', { signal: controller.signal });
 
       if (controller.signal.aborted) return;
 
-      if (subscriptionRes.ok) {
-        const subscription = await subscriptionRes.json().catch(() => ({}));
-        if (controller.signal.aborted) return;
-        setSubPlan(typeof subscription.plan === 'string' ? subscription.plan : null);
-        setSubStatus(typeof subscription.status === 'string' ? subscription.status : null);
-      } else {
-        setSubPlan(null);
-        setSubStatus(null);
-      }
-
       if (!latestRes.ok) {
         setAction(null);
+        setArtifactPaywallLocked(false);
         return;
       }
 
       const latest = await latestRes.json().catch(() => ({}));
       if (controller.signal.aborted) return;
       setAction(latest?.id ? (latest as DashboardAction) : null);
+      setArtifactPaywallLocked(latest?.artifact_paywall_locked === true);
     } catch {
       if (controller.signal.aborted) return;
       setAction(null);
-      setSubPlan(null);
-      setSubStatus(null);
+      setArtifactPaywallLocked(false);
     }
   }, []);
 
@@ -318,8 +305,7 @@ export default function DashboardPage() {
     }
   }, [action]);
 
-  const isProArtifactUnlocked =
-    subPlan === 'pro' && (subStatus === 'active' || subStatus === 'past_due' || subStatus === 'active_trial');
+  const showArtifactBlur = Boolean(action?.artifact) && artifactPaywallLocked;
   const artifactTitle =
     asTrimmedString(action?.artifact?.title) ??
     asTrimmedString(action?.artifact?.subject) ??
@@ -360,7 +346,7 @@ export default function DashboardPage() {
       { kind: 'button', label: 'Drop document', rect: { left: 80.3, top: 66.0, width: 14.3, height: 17.5 }, onClick: () => {} },
     ];
 
-    if (!isProArtifactUnlocked) {
+    if (showArtifactBlur) {
       shared.push({
         kind: 'button',
         label: 'Upgrade to Pro',
@@ -370,7 +356,7 @@ export default function DashboardPage() {
     }
 
     return shared;
-  }, [action?.id, copyDraft, executing, isProArtifactUnlocked, runDecision, startStripeCheckout]);
+  }, [action?.id, copyDraft, executing, runDecision, showArtifactBlur, startStripeCheckout]);
 
   return (
     <main
@@ -452,6 +438,25 @@ export default function DashboardPage() {
           );
         })}
       </div>
+
+      {showArtifactBlur ? (
+        <div
+          style={{
+            position: 'absolute',
+            left: `${frame.left + frame.width * 0.5}px`,
+            top: `${frame.top + frame.height * 0.56}px`,
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none',
+            color: '#ffffff',
+            fontSize: '14px',
+            fontWeight: 500,
+            textAlign: 'center',
+            textShadow: '0 1px 2px rgba(0,0,0,0.85)',
+          }}
+        >
+          Upgrade to Pro to keep receiving finished work.
+        </div>
+      ) : null}
 
       <div
         aria-hidden

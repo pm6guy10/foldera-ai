@@ -16,11 +16,32 @@ import { getSubscriptionStatus } from '@/lib/auth/subscription';
 
 export const dynamic = 'force-dynamic';
 const MIN_PENDING_CONFIDENCE = CONFIDENCE_SEND_THRESHOLD;
+const CONSUMED_FREE_ARTIFACT_STATUSES = ['approved', 'executed', 'skipped'] as const;
 
 function startOfTodayIso(): string {
   const start = new Date();
   start.setUTCHours(0, 0, 0, 0);
   return start.toISOString();
+}
+
+function isProUnlocked(status: string | null | undefined): boolean {
+  return status === 'active' || status === 'active_trial' || status === 'past_due';
+}
+
+async function getConsumedFreeArtifactCount(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+): Promise<number> {
+  try {
+    const { count } = await supabase
+      .from('tkg_actions')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .in('status', [...CONSUMED_FREE_ARTIFACT_STATUSES]);
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
 }
 
 /**
@@ -104,40 +125,17 @@ export async function GET(request: Request) {
       accountCreatedAt = null;
     }
 
-    // Legacy field: count approved + pending_approval for backward compatibility.
-    let approvedCount = 0;
-    try {
-      const { count } = await supabase
-        .from('tkg_actions')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .in('status', ['approved', 'pending_approval']);
-      approvedCount = count ?? 0;
-    } catch {
-      approvedCount = 0;
-    }
+    const consumedFreeArtifactCount = await getConsumedFreeArtifactCount(supabase, userId);
+    const freeArtifactRemaining = consumedFreeArtifactCount < 1;
 
-    // Free sample consumption: once approved/executed/skipped history exists, sample is consumed.
-    let freeArtifactUsageCount = 0;
-    try {
-      const { count } = await supabase
-        .from('tkg_actions')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .in('status', ['approved', 'executed', 'skipped']);
-      freeArtifactUsageCount = count ?? 0;
-    } catch {
-      freeArtifactUsageCount = 0;
-    }
-
-    // Subscription status for blur gate
-    let isSubscribed = false;
+    let subscriptionStatus: string | null = null;
     try {
       const sub = await getSubscriptionStatus(userId);
-      isSubscribed = sub.status === 'active' || sub.status === 'active_trial' || sub.status === 'past_due';
+      subscriptionStatus = sub.status;
     } catch {
-      isSubscribed = false;
+      subscriptionStatus = null;
     }
+    const proUnlocked = isProUnlocked(subscriptionStatus);
 
     const candidates = actions ?? [];
     const todaysCandidates = candidates.filter((candidate) => {
@@ -149,21 +147,20 @@ export async function GET(request: Request) {
       return artifact !== undefined && typeof candidate.confidence === 'number' && candidate.confidence >= MIN_PENDING_CONFIDENCE;
     });
     const action = rankedCandidates[0];
-    const freeArtifactRemaining = freeArtifactUsageCount < 1;
 
     if (!action) {
       return NextResponse.json({
         context_greeting: contextGreeting,
         account_created_at: accountCreatedAt,
-        approved_count: approvedCount,
-        is_subscribed: isSubscribed,
+        approved_count: consumedFreeArtifactCount,
+        is_subscribed: proUnlocked,
         free_artifact_remaining: freeArtifactRemaining,
         artifact_paywall_locked: false,
       }, { status: 200 });
     }
 
     const artifact = extractArtifact(action as Record<string, unknown>);
-    const artifactPaywallLocked = !isSubscribed && Boolean(artifact) && !freeArtifactRemaining;
+    const artifactPaywallLocked = Boolean(artifact) && !proUnlocked && !freeArtifactRemaining;
 
     // Map DB row → ConvictionAction shape
     return NextResponse.json({
@@ -182,8 +179,8 @@ export async function GET(request: Request) {
       artifact,
       context_greeting: contextGreeting,
       account_created_at: accountCreatedAt,
-      approved_count:  approvedCount,
-      is_subscribed:   isSubscribed,
+      approved_count: consumedFreeArtifactCount,
+      is_subscribed: proUnlocked,
       free_artifact_remaining: freeArtifactRemaining,
       artifact_paywall_locked: artifactPaywallLocked,
     });

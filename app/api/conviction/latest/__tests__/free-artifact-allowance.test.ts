@@ -13,17 +13,16 @@ vi.mock('@/lib/utils/api-error', () => ({ apiErrorForRoute: mockApiErrorForRoute
 vi.mock('@/lib/briefing/context-builder', () => ({ buildContextGreeting: mockBuildContextGreeting }));
 vi.mock('@/lib/auth/subscription', () => ({ getSubscriptionStatus: mockGetSubscriptionStatus }));
 
-function buildSupabaseMock(options: {
+type SupabaseMockOptions = {
   pendingActions: Record<string, unknown>[];
-  approvedCount?: number;
-  freeUsageCount?: number;
+  consumedCount: number;
   accountCreatedAt?: string | null;
-}) {
-  const inLegacyStatuses = vi.fn().mockResolvedValue({ count: options.approvedCount ?? 0 });
-  const inFreeUsageStatuses = vi.fn().mockResolvedValue({ count: options.freeUsageCount ?? 0 });
+};
 
-  const legacyCountEqUser = vi.fn().mockReturnValue({ in: inLegacyStatuses });
-  const freeUsageCountEqUser = vi.fn().mockReturnValue({ in: inFreeUsageStatuses });
+function buildSupabaseMock(options: SupabaseMockOptions) {
+  const inConsumedStatuses = vi.fn().mockResolvedValue({ count: options.consumedCount });
+
+  const consumedCountEqUser = vi.fn().mockReturnValue({ in: inConsumedStatuses });
   const pendingLimit = vi.fn().mockResolvedValue({ data: options.pendingActions, error: null });
   const pendingOrderGenerated = vi.fn().mockReturnValue({ limit: pendingLimit });
   const pendingOrderConfidence = vi.fn().mockReturnValue({ order: pendingOrderGenerated });
@@ -34,10 +33,7 @@ function buildSupabaseMock(options: {
     .fn()
     .mockImplementation((_columns: string, config?: { count?: string; head?: boolean }) => {
       if (config?.head) {
-        if (tkgActionsSelect.mock.calls.filter(([, c]) => c?.head).length === 1) {
-          return { eq: legacyCountEqUser };
-        }
-        return { eq: freeUsageCountEqUser };
+        return { eq: consumedCountEqUser };
       }
       return { eq: pendingEqUser };
     });
@@ -62,15 +58,33 @@ function buildSupabaseMock(options: {
       },
     },
     spies: {
-      inLegacyStatuses,
-      inFreeUsageStatuses,
-      tkgActionsSelect,
-      userSubscriptionUpdateEq,
+      inConsumedStatuses,
     },
   };
 }
 
-describe('GET /api/conviction/latest free artifact allowance', () => {
+function buildPendingAction(overrides?: Partial<Record<string, unknown>>): Record<string, unknown> {
+  return {
+    id: 'action-1',
+    directive_text: 'Finalize packet owner outreach.',
+    action_type: 'write_document',
+    confidence: 92,
+    reason: 'Owner confirmation is due today.',
+    status: 'pending_approval',
+    generated_at: new Date().toISOString(),
+    evidence: [],
+    artifact: { type: 'document', title: 'Packet owner confirmation', content: 'Owner must confirm by 4 PM PT.' },
+    execution_result: {},
+    ...(overrides ?? {}),
+  };
+}
+
+async function callLatest() {
+  const { GET } = await import('../route');
+  return GET(new Request('http://localhost/api/conviction/latest'));
+}
+
+describe('GET /api/conviction/latest free artifact allowance contract', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -81,96 +95,135 @@ describe('GET /api/conviction/latest free artifact allowance', () => {
     mockBuildContextGreeting.mockResolvedValue('Today. 0 active commitments. Top priority: None set.');
   });
 
-  it('does not consume the free sample from pending_approval alone', async () => {
+  it('pending_approval alone does not consume the free artifact', async () => {
     const supabase = buildSupabaseMock({
-      pendingActions: [
-        {
-          id: 'action-1',
-          directive_text: 'Finalize packet owner outreach.',
-          action_type: 'write_document',
-          confidence: 92,
-          reason: 'Owner confirmation is due today.',
-          status: 'pending_approval',
-          generated_at: new Date().toISOString(),
-          evidence: [],
-          artifact: { type: 'document', title: 'Packet owner confirmation', content: 'Owner must confirm by 4 PM PT.' },
-          execution_result: {},
-        },
-      ],
-      approvedCount: 1,
-      freeUsageCount: 0,
+      pendingActions: [buildPendingAction()],
+      consumedCount: 0,
     });
     mockCreateServerClient.mockReturnValue(supabase);
-    mockGetSubscriptionStatus.mockResolvedValue({ status: 'inactive' });
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'none' });
 
-    const { GET } = await import('../route');
-    const res = await GET(new Request('http://localhost/api/conviction/latest'));
+    const res = await callLatest();
     expect(res.status).toBe(200);
     const body = (await res.json()) as Record<string, unknown>;
 
+    expect(body.id).toBe('action-1');
+    expect(body.approved_count).toBe(0);
     expect(body.free_artifact_remaining).toBe(true);
     expect(body.artifact_paywall_locked).toBe(false);
-    expect(body.id).toBe('action-1');
-    expect(supabase.spies.inFreeUsageStatuses).toHaveBeenCalledWith('status', ['approved', 'executed', 'skipped']);
+    expect(supabase.spies.inConsumedStatuses).toHaveBeenCalledWith('status', ['approved', 'executed', 'skipped']);
   });
 
-  it('locks artifact for returning free users after approved/executed/skipped history', async () => {
+  it('approved consumes the free artifact for free users', async () => {
     const supabase = buildSupabaseMock({
-      pendingActions: [
-        {
-          id: 'action-2',
-          directive_text: 'Send reply to hiring coordinator.',
-          action_type: 'send_message',
-          confidence: 88,
-          reason: 'Thread has gone stale and deadline is near.',
-          status: 'pending_approval',
-          generated_at: new Date().toISOString(),
-          evidence: [],
-          artifact: { type: 'email', subject: 'Quick follow-up', body: 'Can you confirm by EOD?' },
-          execution_result: {},
-        },
-      ],
-      approvedCount: 4,
-      freeUsageCount: 2,
+      pendingActions: [buildPendingAction({ id: 'action-approved' })],
+      consumedCount: 1,
     });
     mockCreateServerClient.mockReturnValue(supabase);
-    mockGetSubscriptionStatus.mockResolvedValue({ status: 'inactive' });
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'none' });
 
-    const { GET } = await import('../route');
-    const res = await GET(new Request('http://localhost/api/conviction/latest'));
+    const res = await callLatest();
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(body.approved_count).toBe(1);
+    expect(body.free_artifact_remaining).toBe(false);
+    expect(body.artifact_paywall_locked).toBe(true);
+  });
+
+  it('executed consumes the free artifact for free users', async () => {
+    const supabase = buildSupabaseMock({
+      pendingActions: [buildPendingAction({ id: 'action-executed' })],
+      consumedCount: 1,
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'none' });
+
+    const res = await callLatest();
     const body = (await res.json()) as Record<string, unknown>;
 
     expect(body.free_artifact_remaining).toBe(false);
     expect(body.artifact_paywall_locked).toBe(true);
   });
 
-  it('never locks artifact when subscription is active/past_due/active_trial', async () => {
-    for (const status of ['active', 'past_due', 'active_trial']) {
-      const supabase = buildSupabaseMock({
-        pendingActions: [
-          {
-            id: `action-${status}`,
-            directive_text: 'Finalize decision note.',
-            action_type: 'write_document',
-            confidence: 90,
-            reason: 'Decision owner is waiting for this note.',
-            status: 'pending_approval',
-            generated_at: new Date().toISOString(),
-            evidence: [],
-            artifact: { type: 'document', title: 'Decision note', content: 'Decision and next step.' },
-            execution_result: {},
-          },
-        ],
-        approvedCount: 6,
-        freeUsageCount: 6,
-      });
-      mockCreateServerClient.mockReturnValue(supabase);
-      mockGetSubscriptionStatus.mockResolvedValue({ status });
+  it('skipped consumes the free artifact for free users', async () => {
+    const supabase = buildSupabaseMock({
+      pendingActions: [buildPendingAction({ id: 'action-skipped' })],
+      consumedCount: 1,
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'none' });
 
-      const { GET } = await import('../route');
-      const res = await GET(new Request('http://localhost/api/conviction/latest'));
-      const body = (await res.json()) as Record<string, unknown>;
-      expect(body.artifact_paywall_locked).toBe(false);
-    }
+    const res = await callLatest();
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(body.free_artifact_remaining).toBe(false);
+    expect(body.artifact_paywall_locked).toBe(true);
+  });
+
+  it('active never locks artifact', async () => {
+    const supabase = buildSupabaseMock({
+      pendingActions: [buildPendingAction({ id: 'action-active' })],
+      consumedCount: 3,
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'active' });
+
+    const res = await callLatest();
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(body.free_artifact_remaining).toBe(false);
+    expect(body.artifact_paywall_locked).toBe(false);
+    expect(body.is_subscribed).toBe(true);
+  });
+
+  it('active_trial never locks artifact', async () => {
+    const supabase = buildSupabaseMock({
+      pendingActions: [buildPendingAction({ id: 'action-trial' })],
+      consumedCount: 2,
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'active_trial' });
+
+    const res = await callLatest();
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(body.artifact_paywall_locked).toBe(false);
+    expect(body.is_subscribed).toBe(true);
+  });
+
+  it('past_due never locks artifact', async () => {
+    const supabase = buildSupabaseMock({
+      pendingActions: [buildPendingAction({ id: 'action-past-due' })],
+      consumedCount: 5,
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'past_due' });
+
+    const res = await callLatest();
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(body.artifact_paywall_locked).toBe(false);
+    expect(body.is_subscribed).toBe(true);
+  });
+
+  it('no action response includes explicit allowance fields with unlocked paywall', async () => {
+    const supabase = buildSupabaseMock({
+      pendingActions: [],
+      consumedCount: 0,
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'none' });
+
+    const res = await callLatest();
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(body.context_greeting).toBeTypeOf('string');
+    expect(body.account_created_at).toBeTypeOf('string');
+    expect(body.approved_count).toBe(0);
+    expect(body.is_subscribed).toBe(false);
+    expect(body.free_artifact_remaining).toBe(true);
+    expect(body.artifact_paywall_locked).toBe(false);
+    expect(body.id).toBeUndefined();
   });
 });
