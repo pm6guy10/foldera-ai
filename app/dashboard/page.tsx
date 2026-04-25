@@ -538,6 +538,7 @@ export default function DashboardPage() {
     return shared;
   }, [
     action?.id,
+    actionControlsVisible,
     copyActionLabel,
     copyDraft,
     executing,
@@ -561,6 +562,7 @@ export default function DashboardPage() {
       }}
       data-testid="pixel-lock-frame"
     >
+      {/* eslint-disable-next-line @next/next/no-img-element -- Pixel-lock dashboard requires exact PNG shell fidelity */}
       <img
         ref={imageRef}
         src="/Dashboard.png"
@@ -913,7 +915,7 @@ export default function DashboardPage() {
               fontWeight: 600,
             }}
           >
-            Didn't work
+            Didn&apos;t work
           </button>
         </div>
       ) : null}
