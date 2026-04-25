@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useSession } from 'next-auth/react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 type DashboardArtifact = {
   type?: string;
@@ -16,8 +18,14 @@ type DashboardArtifact = {
 
 type DashboardAction = {
   id: string;
+  directive?: string;
   action_type?: string;
   artifact?: DashboardArtifact | null;
+};
+
+type DashboardStatusNotice = {
+  id: string;
+  message: string;
 };
 
 type ImageRect = {
@@ -40,6 +48,8 @@ type HotspotButton = {
   rect: HotspotRect;
   onClick: () => void;
   disabled?: boolean;
+  visible?: boolean;
+  testId?: string;
 };
 
 type HotspotLink = {
@@ -87,6 +97,40 @@ function artifactClipboardText(action: DashboardAction | null): string {
   }
 }
 
+function getArtifactBody(artifact: DashboardArtifact | null | undefined): string {
+  return (
+    asTrimmedString(artifact?.body) ??
+    asTrimmedString(artifact?.text) ??
+    asTrimmedString(artifact?.content) ??
+    ''
+  );
+}
+
+function isWriteDocumentAction(action: DashboardAction | null): boolean {
+  return action?.action_type === 'write_document' || action?.artifact?.type === 'document';
+}
+
+function buildDecisionSuccessNotice(action: DashboardAction | null, decision: 'approve' | 'skip'): DashboardStatusNotice {
+  if (decision === 'skip') {
+    return {
+      id: 'skip_snoozed',
+      message: isWriteDocumentAction(action)
+        ? 'Skipped. Foldera will adjust the next document.'
+        : 'Snoozed. Foldera will adjust the next directive.',
+    };
+  }
+
+  return isWriteDocumentAction(action)
+    ? {
+        id: 'approve_saved_document',
+        message: 'Saved. Your document is in Foldera Signals.',
+      }
+    : {
+        id: 'approve_sent',
+        message: 'Sent. Check your outbox.',
+      };
+}
+
 function toAbsoluteRect(rect: HotspotRect, frame: ImageRect): CSSProperties {
   return {
     position: 'absolute',
@@ -103,6 +147,8 @@ export default function DashboardPage() {
   const [action, setAction] = useState<DashboardAction | null>(null);
   const [artifactPaywallLocked, setArtifactPaywallLocked] = useState(false);
   const [executing, setExecuting] = useState(false);
+  const [statusNotice, setStatusNotice] = useState<DashboardStatusNotice | null>(null);
+  const [outcomeSubmitting, setOutcomeSubmitting] = useState<null | 'worked' | 'didnt_work'>(null);
   const [frame, setFrame] = useState<ImageRect>({ left: 0, top: 0, width: 0, height: 0 });
 
   const loadAbortRef = useRef<AbortController | null>(null);
@@ -258,17 +304,26 @@ export default function DashboardPage() {
           const message = (data as { error?: string }).error ?? `${decision} failed`;
           if (shouldReconcileExecuteFailure(response, message)) {
             await load();
+            setStatusNotice({
+              id: 'reconciled_stale_action',
+              message: 'This directive was already handled or replaced. Foldera loaded the latest one.',
+            });
             return;
           }
           console.error(message);
           return;
         }
 
+        setStatusNotice(buildDecisionSuccessNotice(action, decision));
         await load();
       } catch (error) {
         const message = error instanceof Error ? error.message : `${decision} failed`;
         if (shouldReconcileExecuteFailure(null, message)) {
           await load();
+          setStatusNotice({
+            id: 'reconciled_stale_action',
+            message: 'This directive was already handled or replaced. Foldera loaded the latest one.',
+          });
           return;
         }
         console.error(message);
@@ -277,6 +332,25 @@ export default function DashboardPage() {
       }
     },
     [action, executing, load],
+  );
+
+  const submitOutcome = useCallback(
+    async (outcome: 'worked' | 'didnt_work') => {
+      if (!action?.id || outcomeSubmitting) return;
+      setOutcomeSubmitting(outcome);
+      try {
+        await fetch('/api/conviction/outcome', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action_id: action.id, outcome }),
+        });
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setOutcomeSubmitting(null);
+      }
+    },
+    [action?.id, outcomeSubmitting],
   );
 
   const startStripeCheckout = useCallback(async () => {
@@ -305,17 +379,24 @@ export default function DashboardPage() {
     }
   }, [action]);
 
+  const writeDocument = isWriteDocumentAction(action);
   const showArtifactBlur = Boolean(action?.artifact) && artifactPaywallLocked;
   const artifactTitle =
+    asTrimmedString(action?.directive) ??
     asTrimmedString(action?.artifact?.title) ??
     asTrimmedString(action?.artifact?.subject) ??
     asTrimmedString(action?.artifact?.type) ??
     '';
-  const artifactBody =
-    asTrimmedString(action?.artifact?.body) ??
-    asTrimmedString(action?.artifact?.text) ??
-    asTrimmedString(action?.artifact?.content) ??
-    '';
+  const artifactBody = getArtifactBody(action?.artifact);
+  const artifactTypeLabel = writeDocument
+    ? 'FINISHED DOCUMENT'
+    : action?.action_type === 'send_message'
+      ? 'FOLLOW-UP EMAIL'
+      : asTrimmedString(action?.artifact?.type)?.replace(/_/g, ' ').toUpperCase() ?? 'ARTIFACT';
+  const copyActionLabel = writeDocument ? 'Copy full text' : 'Copy draft';
+  const skipActionLabel = writeDocument ? 'Skip and adjust' : 'Snooze 24h';
+  const primaryActionLabel = writeDocument ? 'Save document' : 'Approve & send';
+  const showOutcomeActions = statusNotice?.id === 'approve_saved_document' || statusNotice?.id === 'approve_sent';
 
   const hotspots = useCallback((): Array<HotspotButton | HotspotLink> => {
     const shared: Array<HotspotButton | HotspotLink> = [
@@ -328,20 +409,29 @@ export default function DashboardPage() {
       { kind: 'link', label: 'Open profile settings', href: '/dashboard/settings', rect: { left: 1.2, top: 84.0, width: 14.0, height: 11.2 } },
       { kind: 'button', label: 'Search', rect: { left: 71.5, top: 3.1, width: 21.4, height: 4.8 }, onClick: () => {} },
       { kind: 'button', label: 'Notifications', rect: { left: 94.6, top: 3.1, width: 2.9, height: 4.8 }, onClick: () => {} },
-      { kind: 'button', label: 'Copy draft', rect: { left: 40.8, top: 85.9, width: 11.4, height: 5.3 }, onClick: () => void copyDraft() },
       {
         kind: 'button',
-        label: 'Snooze 24h',
-        rect: { left: 53.2, top: 85.9, width: 9.9, height: 5.3 },
-        onClick: () => void runDecision('skip'),
-        disabled: !action?.id || executing,
+        label: copyActionLabel,
+        rect: { left: 40.8, top: 85.9, width: 11.4, height: 5.3 },
+        onClick: () => void copyDraft(),
+        visible: true,
       },
       {
         kind: 'button',
-        label: 'Approve & send',
+        label: skipActionLabel,
+        rect: { left: 53.2, top: 85.9, width: 9.9, height: 5.3 },
+        onClick: () => void runDecision('skip'),
+        disabled: !action?.id || executing,
+        visible: true,
+      },
+      {
+        kind: 'button',
+        label: primaryActionLabel,
         rect: { left: 63.6, top: 85.7, width: 13.8, height: 5.6 },
         onClick: () => void runDecision('approve'),
         disabled: !action?.id || executing,
+        visible: true,
+        testId: 'dashboard-primary-action',
       },
       { kind: 'button', label: 'Drop document', rect: { left: 80.3, top: 66.0, width: 14.3, height: 17.5 }, onClick: () => {} },
     ];
@@ -356,7 +446,17 @@ export default function DashboardPage() {
     }
 
     return shared;
-  }, [action?.id, copyDraft, executing, runDecision, showArtifactBlur, startStripeCheckout]);
+  }, [
+    action?.id,
+    copyActionLabel,
+    copyDraft,
+    executing,
+    primaryActionLabel,
+    runDecision,
+    showArtifactBlur,
+    skipActionLabel,
+    startStripeCheckout,
+  ]);
 
   return (
     <main
@@ -426,12 +526,22 @@ export default function DashboardPage() {
               title={hotspot.label}
               onClick={hotspot.onClick}
               disabled={hotspot.disabled}
+              data-testid={hotspot.testId}
+              aria-hidden={hotspot.visible ? undefined : true}
               style={{
                 ...toAbsoluteRect(hotspot.rect, frame),
                 pointerEvents: 'auto',
-                background: 'transparent',
-                border: 'none',
-                opacity: 0,
+                background: hotspot.visible
+                  ? 'linear-gradient(180deg, rgba(20,34,45,0.96) 0%, rgba(10,18,24,0.98) 100%)'
+                  : 'transparent',
+                border: hotspot.visible ? '1px solid rgba(57, 227, 237, 0.28)' : 'none',
+                borderRadius: hotspot.visible ? '12px' : undefined,
+                boxShadow: hotspot.visible ? '0 14px 30px rgba(0,0,0,0.32)' : undefined,
+                color: hotspot.visible ? '#e6faff' : 'transparent',
+                fontSize: hotspot.visible ? '13px' : 0,
+                fontWeight: hotspot.visible ? 600 : 400,
+                letterSpacing: hotspot.visible ? '0.01em' : undefined,
+                opacity: hotspot.visible ? 1 : 0,
                 cursor: hotspot.disabled ? 'not-allowed' : 'pointer',
               }}
             />
@@ -439,22 +549,202 @@ export default function DashboardPage() {
         })}
       </div>
 
+      <section
+        style={{
+          position: 'absolute',
+          left: `${frame.left + frame.width * 0.325}px`,
+          top: `${frame.top + frame.height * 0.435}px`,
+          width: `${frame.width * 0.452}px`,
+          height: `${frame.height * 0.395}px`,
+          padding: '18px 18px 14px',
+          borderRadius: '22px',
+          border: '1px solid rgba(57, 227, 237, 0.16)',
+          background: 'rgba(8, 14, 20, 0.82)',
+          boxShadow: '0 22px 48px rgba(0,0,0,0.45)',
+          overflow: 'hidden',
+          pointerEvents: 'none',
+          opacity: showArtifactBlur ? 0.18 : 1,
+        }}
+      >
+        <p
+          style={{
+            margin: 0,
+            color: '#54dae9',
+            fontSize: '11px',
+            fontWeight: 700,
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+          }}
+        >
+          {artifactTypeLabel}
+        </p>
+        {artifactTitle ? (
+          <h1
+            style={{
+              margin: '8px 0 0',
+              color: '#f3fbff',
+              fontSize: '22px',
+              lineHeight: 1.28,
+              fontWeight: 650,
+            }}
+          >
+            {artifactTitle}
+          </h1>
+        ) : null}
+        <div
+          data-testid="dashboard-document-body"
+          style={{
+            marginTop: '14px',
+            maxHeight: 'calc(100% - 88px)',
+            overflowY: 'auto',
+            paddingRight: '8px',
+            color: '#d6e6ee',
+            fontSize: '13px',
+            lineHeight: 1.55,
+          }}
+        >
+          {writeDocument ? (
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                h2: ({ children }) => (
+                  <h2
+                    style={{
+                      margin: '14px 0 6px',
+                      color: '#f0fbff',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {children}
+                  </h2>
+                ),
+                p: ({ children }) => <p style={{ margin: '0 0 10px' }}>{children}</p>,
+                ul: ({ children }) => <ul style={{ margin: '0 0 10px', paddingLeft: '20px' }}>{children}</ul>,
+                li: ({ children }) => <li style={{ marginBottom: '6px' }}>{children}</li>,
+              }}
+            >
+              {artifactBody}
+            </ReactMarkdown>
+          ) : (
+            <div style={{ whiteSpace: 'pre-line' }}>{artifactBody}</div>
+          )}
+        </div>
+      </section>
+
       {showArtifactBlur ? (
         <div
+          data-testid="dashboard-pro-blur"
           style={{
             position: 'absolute',
             left: `${frame.left + frame.width * 0.5}px`,
             top: `${frame.top + frame.height * 0.56}px`,
             transform: 'translate(-50%, -50%)',
-            pointerEvents: 'none',
-            color: '#ffffff',
-            fontSize: '14px',
-            fontWeight: 500,
             textAlign: 'center',
-            textShadow: '0 1px 2px rgba(0,0,0,0.85)',
           }}
         >
-          Upgrade to Pro to keep receiving finished work.
+          <p
+            style={{
+              margin: 0,
+              color: '#ffffff',
+              fontSize: '14px',
+              fontWeight: 500,
+              textShadow: '0 1px 2px rgba(0,0,0,0.85)',
+            }}
+          >
+            Upgrade to Pro to keep receiving finished work.
+          </p>
+          <button
+            type="button"
+            onClick={() => void startStripeCheckout()}
+            style={{
+              marginTop: '10px',
+              pointerEvents: 'auto',
+              minWidth: '132px',
+              padding: '10px 14px',
+              borderRadius: '12px',
+              border: '1px solid rgba(84, 218, 233, 0.24)',
+              background: 'linear-gradient(180deg, #67f1ff 0%, #31d6e6 100%)',
+              color: '#041118',
+              fontSize: '13px',
+              fontWeight: 700,
+              boxShadow: '0 16px 28px rgba(0,0,0,0.3)',
+              cursor: 'pointer',
+            }}
+          >
+            Upgrade to Pro
+          </button>
+        </div>
+      ) : null}
+
+      {statusNotice ? (
+        <div
+          data-testid="dashboard-status-notice"
+          data-status-id={statusNotice.id}
+          style={{
+            position: 'absolute',
+            left: `${frame.left + frame.width * 0.325}px`,
+            top: `${frame.top + frame.height * 0.845}px`,
+            width: `${frame.width * 0.452}px`,
+            padding: '10px 14px',
+            borderRadius: '14px',
+            border: '1px solid rgba(73, 217, 176, 0.28)',
+            background: 'rgba(10, 24, 20, 0.92)',
+            color: '#d8fbec',
+            fontSize: '13px',
+            fontWeight: 500,
+            boxShadow: '0 16px 32px rgba(0,0,0,0.28)',
+            pointerEvents: 'none',
+          }}
+        >
+          {statusNotice.message}
+        </div>
+      ) : null}
+
+      {showOutcomeActions && action?.id ? (
+        <div
+          style={{
+            position: 'absolute',
+            left: `${frame.left + frame.width * 0.725}px`,
+            top: `${frame.top + frame.height * 0.744}px`,
+            display: 'flex',
+            gap: '8px',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => void submitOutcome('worked')}
+            disabled={Boolean(outcomeSubmitting)}
+            style={{
+              minWidth: '94px',
+              padding: '8px 12px',
+              borderRadius: '12px',
+              border: '1px solid rgba(84, 218, 233, 0.22)',
+              background: 'rgba(11, 20, 27, 0.94)',
+              color: '#f3fbff',
+              fontSize: '12px',
+              fontWeight: 600,
+            }}
+          >
+            It worked
+          </button>
+          <button
+            type="button"
+            onClick={() => void submitOutcome('didnt_work')}
+            disabled={Boolean(outcomeSubmitting)}
+            style={{
+              minWidth: '112px',
+              padding: '8px 12px',
+              borderRadius: '12px',
+              border: '1px solid rgba(84, 218, 233, 0.22)',
+              background: 'rgba(11, 20, 27, 0.94)',
+              color: '#f3fbff',
+              fontSize: '12px',
+              fontWeight: 600,
+            }}
+          >
+            Didn't work
+          </button>
         </div>
       ) : null}
 

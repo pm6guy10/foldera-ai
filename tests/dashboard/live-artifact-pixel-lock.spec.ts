@@ -23,7 +23,7 @@ const SESSION_RESPONSE = {
 type SetupOptions = {
   latestResponse: Record<string, unknown>;
   subscriptionResponse: Record<string, unknown>;
-  onExecute?: () => void;
+  onExecute?: (decision: string | null) => void;
   onCheckout?: () => void;
 };
 
@@ -90,7 +90,14 @@ async function setupDashboardMocks(page: Page, options: SetupOptions): Promise<v
   await page.route(matchApiPath('/api/subscription/status'), fulfillJson(options.subscriptionResponse));
   await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(options.latestResponse));
   await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
-    options.onExecute?.();
+    let decision: string | null = null;
+    try {
+      const payload = route.request().postDataJSON() as { decision?: unknown } | null;
+      decision = typeof payload?.decision === 'string' ? payload.decision : null;
+    } catch {
+      decision = null;
+    }
+    options.onExecute?.(decision);
     await route.fulfill({ status: 200, contentType: 'application/json', body: json({ status: 'executed' }) });
   });
   await page.route(matchApiPath('/api/stripe/checkout'), async (route) => {
@@ -104,8 +111,24 @@ async function setupDashboardMocks(page: Page, options: SetupOptions): Promise<v
 }
 
 describeWithAuth('Dashboard pixel-lock live artifact', () => {
-  test('shows live artifact in frame, keeps desktop no-scroll, and approve hotspot is clickable', async ({ page }) => {
-    let executeCalls = 0;
+  test('shows write_document artifact in frame with type-correct actions and clickable hotspots', async ({ page }) => {
+    let approveCalls = 0;
+    let snoozeCalls = 0;
+    await page.addInitScript(() => {
+      const copied: string[] = [];
+      const clipboard = {
+        writeText: (value: string) => {
+          copied.push(value);
+          return Promise.resolve();
+        },
+      };
+      Object.defineProperty(window.navigator, 'clipboard', {
+        value: clipboard,
+        configurable: true,
+      });
+      (window as Window & { __pixelLockCopied?: string[] }).__pixelLockCopied = copied;
+    });
+
     await setupDashboardMocks(page, {
       latestResponse: {
         id: 'action-pixel-lock-001',
@@ -124,8 +147,9 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
         approved_count: 0,
       },
       subscriptionResponse: { plan: 'free', status: 'inactive' },
-      onExecute: () => {
-        executeCalls += 1;
+      onExecute: (decision) => {
+        if (decision === 'approve') approveCalls += 1;
+        if (decision === 'skip') snoozeCalls += 1;
       },
     });
 
@@ -133,7 +157,7 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
     await page.goto('/dashboard');
 
     await expect(page.getByTestId('pixel-lock-frame')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('pixel-lock-artifact-title')).toHaveText('MAS3 interview packet resolution');
+    await expect(page.getByTestId('pixel-lock-artifact-title')).toHaveText('Finalize the outreach document.');
     await expect(page.getByTestId('pixel-lock-artifact-body')).toContainText('Assign Holly as final packet owner');
 
     const noHorizontalScroll = await page.evaluate(
@@ -147,11 +171,26 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
     });
     expect(desktopBodyOverflowHidden).toBe(true);
 
-    await page.getByRole('button', { name: /approve & send/i }).click();
-    await expect.poll(() => executeCalls).toBeGreaterThan(0);
+    await expect(page.getByRole('button', { name: /copy full text/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /save document/i })).toBeVisible();
+
+    await page.getByRole('button', { name: /copy full text/i }).click();
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          return (window as Window & { __pixelLockCopied?: string[] }).__pixelLockCopied?.length ?? 0;
+        }),
+      )
+      .toBeGreaterThan(0);
+
+    await page.getByRole('button', { name: /skip and adjust/i }).click();
+    await expect.poll(() => snoozeCalls).toBeGreaterThan(0);
+
+    await page.getByRole('button', { name: /save document/i }).click();
+    await expect.poll(() => approveCalls).toBeGreaterThan(0);
   });
 
-  test('shows upgrade CTA overlay only when artifact is paywall-locked', async ({ page }) => {
+  test('preserves send_message labels and shows upgrade CTA overlay only when artifact is paywall-locked', async ({ page }) => {
     let checkoutCalls = 0;
     await setupDashboardMocks(page, {
       latestResponse: {
@@ -180,6 +219,8 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
     await page.goto('/dashboard');
 
     await expect(page.getByTestId('pixel-lock-frame')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: /copy draft/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /approve & send/i })).toBeVisible();
     await expect(page.getByText('Upgrade to Pro to keep receiving finished work.')).toBeVisible();
     await page.getByRole('button', { name: /^Upgrade to Pro$/i }).click();
     await expect.poll(() => checkoutCalls).toBeGreaterThan(0);

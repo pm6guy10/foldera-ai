@@ -2,6 +2,72 @@
 
 Product contract checklist. Every directive must pass before it ships.
 
+## Production Ladder: Works / Broken / Proof
+
+This ladder is the operational definition of production truth.
+
+- `Works` means observable product behavior, not logs alone.
+- `Broken` means a failed observable condition at the rung being claimed.
+- `Proof` must be a build command, test command, Playwright journey, or explicit manual UI check.
+- A change does not count if it only updates docs, screenshots, visual polish, SEO, refactors, or unrelated tests.
+
+### 1. Daily Brief run completes end-to-end
+
+- **Works means:** one real production Daily Brief run reaches a completed product outcome with no manual rescue in the middle.
+- **Broken means:** the run stalls, errors, exits early, or only proves internal progress while the user-observable flow never completes.
+- **Proof command:** explicit manual UI check: trigger one real production Daily Brief run and verify the run reaches a completed user-facing outcome rather than a log-only success.
+- **Do-not-count conditions:** cron 200s, logs, traces, DB rows, or internal stage markers by themselves do not count; docs/screenshots/visual polish/SEO/refactors/unrelated tests also do not count.
+
+### 2. It creates one usable artifact
+
+- **Works means:** the completed run produces exactly one finished, usable artifact of a valid Foldera type.
+- **Broken means:** the output is null, empty, duplicated, placeholder-filled, scaffold-like, or not usable as shipped.
+- **Proof command:** explicit manual UI check: inspect the produced artifact in the real product surface and confirm it is a single finished artifact, not notes or raw generation sludge.
+- **Do-not-count conditions:** "artifact created" in logs, a persisted invalid payload, or a screenshot of static mock content does not count; docs/screenshots/visual polish/SEO/refactors/unrelated tests also do not count.
+
+### 3. Artifact is visible on /dashboard without manual DB/app inspection
+
+- **Works means:** a signed-in user can open `/dashboard` and see the artifact directly in the product without reading DB tables, API JSON, or debug panels.
+- **Broken means:** the artifact exists only in storage/logs/API output, requires refresh tricks or manual inspection, or does not appear in the normal dashboard journey.
+- **Proof command:** Playwright journey or explicit manual UI check: sign in, open `/dashboard`, and verify the artifact is visible in the real dashboard surface.
+- **Do-not-count conditions:** DB inspection, API responses, console logs, screenshots from non-dashboard surfaces, or developer-only views do not count; docs/screenshots/visual polish/SEO/refactors/unrelated tests also do not count.
+
+### 4. User can approve/send/save/use the artifact
+
+- **Works means:** the user can take the intended action on the artifact inside the product flow and reach a completed outcome without repair work.
+- **Broken means:** approve/send/save/use actions error, dead-end, require manual editing to become valid, or force the user into hidden operator steps.
+- **Proof command:** Playwright journey or explicit manual UI check: perform the real approve/send/save/use action from the dashboard artifact and verify completion.
+- **Do-not-count conditions:** button presence, local component state, partial form fill, or an operator-only workaround does not count; docs/screenshots/visual polish/SEO/refactors/unrelated tests also do not count.
+
+### 5. Output quality is demoable and money-moving
+
+- **Works means:** the artifact is grounded, timely, finished, and strong enough to demo as real Foldera value that could move a user toward action or revenue.
+- **Broken means:** the artifact is generic, timid, advisory, obviously unfinished, weakly grounded, or embarrassing to show in a real demo.
+- **Proof command:** explicit manual UI check: read the real artifact in-product and verify it is sendable, usable, or worth saving without rewriting.
+- **Do-not-count conditions:** structural validity alone, pretty formatting alone, or "better than before" language does not count; docs/screenshots/visual polish/SEO/refactors/unrelated tests also do not count.
+
+### 6. System repeats reliably
+
+- **Works means:** the same production path succeeds repeatedly without babysitting, hidden resets, or one-off operator intervention.
+- **Broken means:** the path works once but flakes, requires manual cleanup between runs, or fails for non-owner depth/repeat runs.
+- **Proof command:** explicit manual production check: verify repeated runs of the same flow, with the required outcome reproduced reliably rather than once by luck.
+- **Do-not-count conditions:** a single lucky pass, a replay that skips the real path, or a run that depends on manual cleanup does not count; docs/screenshots/visual polish/SEO/refactors/unrelated tests also do not count.
+
+### 7. Visual polish comes last
+
+- **Works means:** after rungs 1 through 6 are already true, the completed surface is visually clear and demo-safe.
+- **Broken means:** polish problems are real only after the product already works; a polished screenshot of a broken flow is still broken.
+- **Proof command:** Playwright visual journey or explicit manual UI check after functional proof exists.
+- **Do-not-count conditions:** screenshots, pixel polish, copy tweaks, or layout cleanup without advancing a lower rung do not count; docs/screenshots/visual polish/SEO/refactors/unrelated tests also do not count.
+
+## Controller Rule
+
+Every Foldera Codex run must map to:
+
+Doctrine -> production rung -> works/broken definition -> proof command -> result.
+
+If Codex cannot prove that at least one production rung advanced, the run did not count.
+
 ## Permanent Success Criteria
 
 The system passes if and only if ALL of these are true every morning with zero human intervention:
