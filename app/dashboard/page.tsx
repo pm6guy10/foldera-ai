@@ -28,6 +28,12 @@ type DashboardStatusNotice = {
   message: string;
 };
 
+type IntegrationStatusPayload = {
+  integrations?: Array<{
+    is_active?: boolean;
+  }>;
+};
+
 type ImageRect = {
   left: number;
   top: number;
@@ -145,8 +151,11 @@ export default function DashboardPage() {
   const { status } = useSession();
 
   const [action, setAction] = useState<DashboardAction | null>(null);
+  const [loadingLatest, setLoadingLatest] = useState(true);
+  const [hasActiveIntegration, setHasActiveIntegration] = useState(false);
   const [artifactPaywallLocked, setArtifactPaywallLocked] = useState(false);
   const [executing, setExecuting] = useState(false);
+  const [firstReadRunning, setFirstReadRunning] = useState(false);
   const [statusNotice, setStatusNotice] = useState<DashboardStatusNotice | null>(null);
   const [outcomeSubmitting, setOutcomeSubmitting] = useState<null | 'worked' | 'didnt_work'>(null);
   const [frame, setFrame] = useState<ImageRect>({ left: 0, top: 0, width: 0, height: 0 });
@@ -159,6 +168,7 @@ export default function DashboardPage() {
     loadAbortRef.current?.abort();
     const controller = new AbortController();
     loadAbortRef.current = controller;
+    setLoadingLatest(true);
 
     try {
       const latestRes = await fetch('/api/conviction/latest', { signal: controller.signal });
@@ -179,6 +189,10 @@ export default function DashboardPage() {
       if (controller.signal.aborted) return;
       setAction(null);
       setArtifactPaywallLocked(false);
+    } finally {
+      if (!controller.signal.aborted) {
+        setLoadingLatest(false);
+      }
     }
   }, []);
 
@@ -236,6 +250,31 @@ export default function DashboardPage() {
       loadAbortRef.current?.abort();
     };
   }, [load, status]);
+
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      setHasActiveIntegration(false);
+      return;
+    }
+
+    let cancelled = false;
+    void fetch('/api/integrations/status', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: IntegrationStatusPayload | null) => {
+        if (cancelled) return;
+        const integrations = Array.isArray(payload?.integrations) ? payload.integrations : [];
+        setHasActiveIntegration(integrations.some((integration) => integration?.is_active === true));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHasActiveIntegration(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
 
   useEffect(() => {
     const onResize = () => syncFrameAndResolution();
@@ -379,8 +418,58 @@ export default function DashboardPage() {
     }
   }, [action]);
 
+  const runFirstReadNow = useCallback(async () => {
+    if (firstReadRunning) return;
+    setFirstReadRunning(true);
+    setStatusNotice(null);
+
+    try {
+      const response = await fetch('/api/settings/run-brief?force=true&use_llm=true', {
+        method: 'POST',
+      });
+      const payload = await response.json().catch(() => ({}));
+      const spend = payload?.spend_policy as
+        | { paid_llm_requested?: boolean; pipeline_dry_run?: boolean }
+        | undefined;
+
+      if (spend?.paid_llm_requested && spend?.pipeline_dry_run) {
+        setStatusNotice({
+          id: 'first_read_dry_run_disabled',
+          message: 'First read is unavailable on this deployment right now.',
+        });
+        return;
+      }
+
+      if (!response.ok && !payload?.stages) {
+        throw new Error(
+          typeof payload?.error === 'string'
+            ? payload.error
+            : 'Could not run your first read right now.',
+        );
+      }
+
+      await load();
+      setStatusNotice({
+        id: payload?.ok === true ? 'first_read_generated' : 'first_read_started',
+        message:
+          payload?.ok === true
+            ? 'First read generated.'
+            : 'First read ran. Foldera will surface the result as soon as it clears the bar.',
+      });
+    } catch (error) {
+      setStatusNotice({
+        id: 'first_read_failed',
+        message:
+          error instanceof Error ? error.message : 'Could not run your first read right now.',
+      });
+    } finally {
+      setFirstReadRunning(false);
+    }
+  }, [firstReadRunning, load]);
+
   const writeDocument = isWriteDocumentAction(action);
   const showArtifactBlur = Boolean(action?.artifact) && artifactPaywallLocked;
+  const actionControlsVisible = Boolean(action?.id);
   const artifactTitle =
     asTrimmedString(action?.directive) ??
     asTrimmedString(action?.artifact?.title) ??
@@ -414,7 +503,8 @@ export default function DashboardPage() {
         label: copyActionLabel,
         rect: { left: 40.8, top: 85.9, width: 11.4, height: 5.3 },
         onClick: () => void copyDraft(),
-        visible: true,
+        disabled: !action?.id,
+        visible: actionControlsVisible,
       },
       {
         kind: 'button',
@@ -422,7 +512,7 @@ export default function DashboardPage() {
         rect: { left: 53.2, top: 85.9, width: 9.9, height: 5.3 },
         onClick: () => void runDecision('skip'),
         disabled: !action?.id || executing,
-        visible: true,
+        visible: actionControlsVisible,
       },
       {
         kind: 'button',
@@ -430,7 +520,7 @@ export default function DashboardPage() {
         rect: { left: 63.6, top: 85.7, width: 13.8, height: 5.6 },
         onClick: () => void runDecision('approve'),
         disabled: !action?.id || executing,
-        visible: true,
+        visible: actionControlsVisible,
         testId: 'dashboard-primary-action',
       },
       { kind: 'button', label: 'Drop document', rect: { left: 80.3, top: 66.0, width: 14.3, height: 17.5 }, onClick: () => {} },
@@ -549,88 +639,168 @@ export default function DashboardPage() {
         })}
       </div>
 
-      <section
-        style={{
-          position: 'absolute',
-          left: `${frame.left + frame.width * 0.325}px`,
-          top: `${frame.top + frame.height * 0.435}px`,
-          width: `${frame.width * 0.452}px`,
-          height: `${frame.height * 0.395}px`,
-          padding: '18px 18px 14px',
-          borderRadius: '22px',
-          border: '1px solid rgba(57, 227, 237, 0.16)',
-          background: 'rgba(8, 14, 20, 0.82)',
-          boxShadow: '0 22px 48px rgba(0,0,0,0.45)',
-          overflow: 'hidden',
-          pointerEvents: 'none',
-          opacity: showArtifactBlur ? 0.18 : 1,
-        }}
-      >
-        <p
+      {action ? (
+        <section
           style={{
-            margin: 0,
-            color: '#54dae9',
-            fontSize: '11px',
-            fontWeight: 700,
-            letterSpacing: '0.18em',
-            textTransform: 'uppercase',
+            position: 'absolute',
+            left: `${frame.left + frame.width * 0.325}px`,
+            top: `${frame.top + frame.height * 0.435}px`,
+            width: `${frame.width * 0.452}px`,
+            height: `${frame.height * 0.395}px`,
+            padding: '18px 18px 14px',
+            borderRadius: '22px',
+            border: '1px solid rgba(57, 227, 237, 0.16)',
+            background: 'rgba(8, 14, 20, 0.82)',
+            boxShadow: '0 22px 48px rgba(0,0,0,0.45)',
+            overflow: 'hidden',
+            pointerEvents: 'none',
+            opacity: showArtifactBlur ? 0.18 : 1,
           }}
         >
-          {artifactTypeLabel}
-        </p>
-        {artifactTitle ? (
-          <h1
+          <p
             style={{
-              margin: '8px 0 0',
-              color: '#f3fbff',
-              fontSize: '22px',
-              lineHeight: 1.28,
-              fontWeight: 650,
+              margin: 0,
+              color: '#54dae9',
+              fontSize: '11px',
+              fontWeight: 700,
+              letterSpacing: '0.18em',
+              textTransform: 'uppercase',
             }}
           >
-            {artifactTitle}
-          </h1>
-        ) : null}
-        <div
-          data-testid="dashboard-document-body"
-          style={{
-            marginTop: '14px',
-            maxHeight: 'calc(100% - 88px)',
-            overflowY: 'auto',
-            paddingRight: '8px',
-            color: '#d6e6ee',
-            fontSize: '13px',
-            lineHeight: 1.55,
-          }}
-        >
-          {writeDocument ? (
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                h2: ({ children }) => (
-                  <h2
-                    style={{
-                      margin: '14px 0 6px',
-                      color: '#f0fbff',
-                      fontSize: '14px',
-                      fontWeight: 700,
-                    }}
-                  >
-                    {children}
-                  </h2>
-                ),
-                p: ({ children }) => <p style={{ margin: '0 0 10px' }}>{children}</p>,
-                ul: ({ children }) => <ul style={{ margin: '0 0 10px', paddingLeft: '20px' }}>{children}</ul>,
-                li: ({ children }) => <li style={{ marginBottom: '6px' }}>{children}</li>,
+            {artifactTypeLabel}
+          </p>
+          {artifactTitle ? (
+            <h1
+              style={{
+                margin: '8px 0 0',
+                color: '#f3fbff',
+                fontSize: '22px',
+                lineHeight: 1.28,
+                fontWeight: 650,
               }}
             >
-              {artifactBody}
-            </ReactMarkdown>
-          ) : (
-            <div style={{ whiteSpace: 'pre-line' }}>{artifactBody}</div>
-          )}
-        </div>
-      </section>
+              {artifactTitle}
+            </h1>
+          ) : null}
+          <div
+            data-testid="dashboard-document-body"
+            style={{
+              marginTop: '14px',
+              maxHeight: 'calc(100% - 88px)',
+              overflowY: 'auto',
+              paddingRight: '8px',
+              color: '#d6e6ee',
+              fontSize: '13px',
+              lineHeight: 1.55,
+            }}
+          >
+            {writeDocument ? (
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  h2: ({ children }) => (
+                    <h2
+                      style={{
+                        margin: '14px 0 6px',
+                        color: '#f0fbff',
+                        fontSize: '14px',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {children}
+                    </h2>
+                  ),
+                  p: ({ children }) => <p style={{ margin: '0 0 10px' }}>{children}</p>,
+                  ul: ({ children }) => <ul style={{ margin: '0 0 10px', paddingLeft: '20px' }}>{children}</ul>,
+                  li: ({ children }) => <li style={{ marginBottom: '6px' }}>{children}</li>,
+                }}
+              >
+                {artifactBody}
+              </ReactMarkdown>
+            ) : (
+              <div style={{ whiteSpace: 'pre-line' }}>{artifactBody}</div>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {!loadingLatest && !action ? (
+        <section
+          data-testid="dashboard-empty-state"
+          style={{
+            position: 'absolute',
+            left: `${frame.left + frame.width * 0.353}px`,
+            top: `${frame.top + frame.height * 0.474}px`,
+            width: `${frame.width * 0.395}px`,
+            minHeight: `${frame.height * 0.215}px`,
+            padding: '20px 22px',
+            borderRadius: '24px',
+            border: '1px solid rgba(84, 218, 233, 0.16)',
+            background: 'rgba(8, 14, 20, 0.9)',
+            boxShadow: '0 22px 48px rgba(0,0,0,0.45)',
+            textAlign: 'center',
+          }}
+        >
+          <div
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '999px',
+              margin: '0 auto 14px',
+              background: '#54dae9',
+              boxShadow: '0 0 18px rgba(84, 218, 233, 0.4)',
+            }}
+          />
+          <p
+            style={{
+              margin: 0,
+              color: '#f3fbff',
+              fontSize: '18px',
+              fontWeight: 600,
+              lineHeight: 1.35,
+            }}
+          >
+            You&apos;re set until tomorrow morning.
+          </p>
+          <p
+            style={{
+              margin: '10px 0 0',
+              color: '#9eb0b8',
+              fontSize: '13px',
+              lineHeight: 1.55,
+            }}
+          >
+            No directive is queued in the app right now. Your next read still lands in email.
+            {!hasActiveIntegration ? ' Connect accounts in Settings if you want deeper context.' : ''}
+          </p>
+          {hasActiveIntegration ? (
+            <button
+              type="button"
+              onClick={() => void runFirstReadNow()}
+              disabled={firstReadRunning}
+              data-testid="dashboard-run-first-read"
+              style={{
+                marginTop: '16px',
+                minWidth: '208px',
+                minHeight: '46px',
+                padding: '0 16px',
+                borderRadius: '14px',
+                border: 'none',
+                background: '#f4fbff',
+                color: '#031019',
+                fontSize: '11px',
+                fontWeight: 800,
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                cursor: firstReadRunning ? 'wait' : 'pointer',
+                opacity: firstReadRunning ? 0.65 : 1,
+              }}
+            >
+              {firstReadRunning ? 'Running first read' : 'Run first read now'}
+            </button>
+          ) : null}
+        </section>
+      ) : null}
 
       {showArtifactBlur ? (
         <div
