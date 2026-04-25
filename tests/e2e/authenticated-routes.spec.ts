@@ -800,6 +800,16 @@ describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
     await expect(page.getByText(/microsoft/i).first()).toBeVisible();
   });
 
+  test('shows Back to dashboard link on mobile and returns to dashboard', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupSettingsMocks(page);
+    await page.goto('/dashboard/settings');
+    const backLink = page.getByRole('link', { name: /Back to dashboard/i });
+    await expect(backLink).toBeVisible({ timeout: 15000 });
+    await backLink.click();
+    await expect(page).toHaveURL(/\/dashboard(?:\?|$)/);
+  });
+
   test('no actionable console errors — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const errors = collectConsoleErrors(page);

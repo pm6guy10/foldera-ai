@@ -310,6 +310,15 @@ export default function SettingsClient() {
     >
 
       <div className="space-y-5">
+        <div>
+          <Link
+            href="/dashboard"
+            className="inline-flex min-h-[40px] items-center rounded-button border border-border px-3 text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
+          >
+            Back to dashboard
+          </Link>
+        </div>
+
         {/* ── Connected accounts ── */}
         <section id="connected-accounts" className="rounded-card border border-border-subtle bg-panel overflow-hidden">
           <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
@@ -865,7 +874,6 @@ function MicrosoftIcon() {
     </div>
   );
 }
-
 
 
 

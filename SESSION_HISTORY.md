@@ -5078,3 +5078,9 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Restored the connected-user first-read path inside the live pixel-lock `/dashboard` shell. The dashboard now fetches integration status, hides dead approve/copy controls when no pending artifact exists, renders an in-shell empty-state card, and exposes a real `Run first read now` control that calls the existing authenticated `/api/settings/run-brief?force=true&use_llm=true` path and reloads the latest artifact/status in place.
 - Verification: `npm run health` (pass, `RESULT: 0 FAILING`, warnings only); `npm run build` (pass); `npx playwright test tests/dashboard/empty-first-read-pixel-lock.spec.ts` (pass, 1 test).
 - Unresolved issues: Existing broader mocked dashboard specs in unrelated dirty files still encode the prior no-button assumption and were not touched in this narrow seam.
+## 2026-04-24 — Settings mobile return-path seam (Back to dashboard)
+- MODE: FOLDERA PRODUCTION CONTROLLER (rung-3/4 dashboard return-path)
+- Files changed: `app/dashboard/settings/SettingsClient.tsx`, `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`.
+- What changed: Restored an explicit `Back to dashboard` link at the top of `/dashboard/settings` so mobile users can return to `/dashboard` in one tap from settings; added a focused authenticated E2E assertion that the link is visible on mobile and routes back to dashboard.
+- Verification: `npm run lint` (pass); `npm run build` (pass); `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "Back to dashboard link on mobile"` (pass, 1 test).
+- Unresolved issues: Live production proof command `npx playwright test --config playwright.prod.config.ts tests/production/mobile-journey.spec.ts --grep "sign out"` still failed before deploy because `https://foldera.ai` is still serving commit `9c6aeed` without this settings link. Re-run after Vercel deploy of this commit.
