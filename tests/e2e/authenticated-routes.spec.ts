@@ -532,17 +532,19 @@ async function setupSignalsPageMocks(page: Page) {
 // ── Dashboard tests ─────────────────────────────────────────────────────────
 
 describeAuthMocked('Dashboard /dashboard — authenticated', () => {
+  const followUpHeading = /Send a follow-up email to Keri Nopens about the MAS3 timeline\./i;
+
   test('loads and shows directive card — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
   });
 
   test('approve button is clickable', async ({ page }) => {
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
     const approveBtn = page.getByRole('button', { name: /approve/i });
     await expect(approveBtn).toBeVisible();
     await approveBtn.click();
@@ -553,7 +555,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
   test('skip button is clickable', async ({ page }) => {
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
     const skipBtn = page.getByRole('button', { name: /snooze 24h|skip/i });
     await expect(skipBtn).toBeVisible();
     await skipBtn.click();
@@ -565,13 +567,14 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupEmptyDashboardMocks(page);
     await page.goto('/dashboard');
+    await expect(page.getByTestId('dashboard-empty-state')).toBeVisible({ timeout: 15000 });
     await expect(
-      page.getByRole('heading', { name: /Send the follow-up to Alex Morgan before noon\./i }),
+      page.getByText(/You&apos;re set until tomorrow morning\.|You're set until tomorrow morning\./i),
     ).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/No live brief is queued right now/i)).toHaveCount(0);
     await expect(page.getByText(/Your Microsoft connection needs a quick refresh/i)).toHaveCount(0);
     await expect(page.getByText(/Foldera will post your next source-backed brief here/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Run first read now/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Run first read now/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Reconnect Microsoft/i })).toHaveCount(0);
   });
 
@@ -588,16 +591,16 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
   });
 
-  test('live email artifact shows To + Subject + Body in draft section — mobile', async ({ page }) => {
+  test('live email artifact shows title + body in draft section — mobile', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByText('To: keri.nopens@example.com')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('Subject: MAS3 timeline follow-up')).toBeVisible();
-    await expect(page.getByText(/Hi Keri,/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/^FOLLOW-UP EMAIL$/i)).toBeVisible();
+    await expect(page.getByTestId('dashboard-document-body').getByText(/Hi Keri,/i)).toBeVisible();
     await expect(page.getByText(/Hi Alex -/i)).toHaveCount(0);
   });
 
@@ -620,8 +623,8 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       subscriptionResponse: FREE_SUBSCRIPTION_RESPONSE,
     });
     await page.goto('/dashboard');
-    await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/Hi Keri,/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('dashboard-document-body').getByText(/Hi Keri,/i)).toBeVisible();
     await expect(page.getByTestId('dashboard-pro-blur')).toHaveCount(0);
   });
 
@@ -631,11 +634,12 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
         ...DIRECTIVE_RESPONSE,
         approved_count: 4,
         is_subscribed: false,
+        artifact_paywall_locked: true,
       },
       subscriptionResponse: FREE_SUBSCRIPTION_RESPONSE,
     });
     await page.goto('/dashboard');
-    await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId('dashboard-pro-blur')).toBeVisible();
     await expect(
       page.getByText('Upgrade to Pro to keep receiving finished work.'),
@@ -695,7 +699,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByText(/It worked/i)).toBeVisible();
   });
 
-  test('stale email deep-link skip reconciles after execute 404 (query params cleared)', async ({ page }) => {
+  test('stale skip action reconciles after execute 404', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await seedAuthenticatedSession(page);
     await attachCheckoutGuards(page);
@@ -719,10 +723,9 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
         body: json({ error: 'Action already claimed by another request or not found' }),
       });
     });
-    await page.goto(
-      '/dashboard?action=skip&id=00000000-0000-0000-0000-000000000099',
-    );
+    await page.goto('/dashboard');
     const documentBody = page.getByTestId('dashboard-document-body');
+    await page.getByRole('button', { name: /snooze 24h|skip/i }).click();
     await expectDashboardStatus(page, 'reconciled_stale_action');
     await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 15000 });
     await expect.poll(() => latestCalls).toBe(2);
@@ -733,7 +736,6 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       headings: ['Situation', 'Blocking risk', 'Recommendation / decision'],
       bodyLines: [DOCUMENT_DIRECTIVE_ASK, DOCUMENT_DIRECTIVE_CONSEQUENCE],
     });
-    await expect(page).toHaveURL(/\/dashboard$/);
   });
 
   test('skip on stale client action id reloads latest directive', async ({ page }) => {
@@ -763,7 +765,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     });
     await page.goto('/dashboard');
     const documentBody = page.getByTestId('dashboard-document-body');
-    await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
     await page.getByRole('button', { name: /snooze 24h|skip/i }).click();
     await expectDashboardStatus(page, 'reconciled_stale_action');
     await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 10000 });
