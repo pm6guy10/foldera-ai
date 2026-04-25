@@ -686,6 +686,8 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByText(/^FINISHED DOCUMENT$/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /save document/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /skip and adjust/i })).toBeVisible();
+    await expect(page.getByTestId('dashboard-primary-action')).toHaveText(/save document/i);
+    await expect(page.getByRole('button', { name: /skip and adjust/i })).toHaveText(/skip and adjust/i);
     const screenshotPath = path.join(process.cwd(), '.screenshots', 'write-document-journey-1280.png');
     fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
     await page.screenshot({

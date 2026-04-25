@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-25 — Dashboard write_document action labels restored on live pixel-lock shell
+- MODE: FOLDERA PRODUCTION CONTROLLER (rung 4 — approve/save/use path)
+- **Problem:** Production `/dashboard` showed a real pending `write_document`, but the action controls rendered as invisible hotspot buttons with aria labels only, so users could not see `Save document` / `Skip and adjust` on the live surface.
+- **Change:** `app/dashboard/page.tsx` now renders visible hotspot label text for the action buttons inside the pixel-lock shell and centers the labels within the existing hotspot geometry. `tests/e2e/authenticated-routes.spec.ts` now asserts visible button text for the mocked `write_document` journey instead of relying only on accessible-name presence.
+- **Verification:** `npm run lint`; `npm run build`; `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "write_document journey" --config playwright.config.ts`.
+- **Unresolved:** Production deploy proof pending at commit time; rerun the live `/dashboard` pending-document check after the pushed SHA is live.
+
 ## 2026-04-25 — write_document: validator-aware LLM retry for prep-trash / homework_handoff
 - MODE: RUNG 2 repair path (no validator loosening)
 - **Change:** `lib/briefing/generator.ts` — on the single validation retry for `generatePayload`, when issues include `interview_artifact:*` or `homework_handoff:*`, prepend `buildInterviewWriteDocumentValidatorRepairAddendum`: exact failure lines, prose-brief shape rules, phrase bans derived from failure codes, optional `summary_without_decision` guidance. Structured log `interview_write_document_validator_repair_prompt`. Trigger is issue-based for `write_document` (not only `interview_class_hydrated_write_document` ctx), so any prep-gate failure gets the richer retry.

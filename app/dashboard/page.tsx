@@ -623,6 +623,9 @@ export default function DashboardPage() {
               style={{
                 ...toAbsoluteRect(hotspot.rect, frame),
                 pointerEvents: 'auto',
+                display: hotspot.visible ? 'flex' : 'block',
+                alignItems: hotspot.visible ? 'center' : undefined,
+                justifyContent: hotspot.visible ? 'center' : undefined,
                 background: hotspot.visible
                   ? 'linear-gradient(180deg, rgba(20,34,45,0.96) 0%, rgba(10,18,24,0.98) 100%)'
                   : 'transparent',
@@ -634,9 +637,12 @@ export default function DashboardPage() {
                 fontWeight: hotspot.visible ? 600 : 400,
                 letterSpacing: hotspot.visible ? '0.01em' : undefined,
                 opacity: hotspot.visible ? 1 : 0,
+                whiteSpace: hotspot.visible ? 'nowrap' : undefined,
                 cursor: hotspot.disabled ? 'not-allowed' : 'pointer',
               }}
-            />
+            >
+              {hotspot.visible ? hotspot.label : null}
+            </button>
           );
         })}
       </div>
