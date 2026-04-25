@@ -221,6 +221,20 @@ Do not call a task complete with local-only reasoning when Playwright, Vercel, S
 
 ---
 
+## Learning Doctrine
+
+- When a repeated failure teaches a new rule, encode that rule in the repo, not just chat memory.
+- Durable lessons belong in `AGENTS.md` if they change agent behavior.
+- Product success definitions belong in `ACCEPTANCE_GATE.md`.
+- Session receipts belong in `SESSION_HISTORY.md`.
+- Current blockers belong in `CURRENT_STATE.md`.
+- Chat summaries are not source of truth; GitHub commits, tests, CI, Vercel, and repo doctrine are source of truth.
+- The agent must inspect recent commits and `SESSION_HISTORY.md` before selecting a new rung.
+- If a seam is shipped but unproven, the next action is proof, not a new finder run.
+- Paid proof is last-mile validation only. Never use paid runs for discovery when a fixture, unit test, Playwright test, or deterministic script can narrow the failure first.
+
+---
+
 ## Required Final Receipt
 
 Every completed session must include:
