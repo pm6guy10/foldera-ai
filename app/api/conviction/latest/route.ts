@@ -104,7 +104,7 @@ export async function GET(request: Request) {
       accountCreatedAt = null;
     }
 
-    // Count the user's free artifact allowance: approved + pending_approval.
+    // Legacy field: count approved + pending_approval for backward compatibility.
     let approvedCount = 0;
     try {
       const { count } = await supabase
@@ -115,6 +115,19 @@ export async function GET(request: Request) {
       approvedCount = count ?? 0;
     } catch {
       approvedCount = 0;
+    }
+
+    // Free sample consumption: once approved/executed/skipped history exists, sample is consumed.
+    let freeArtifactUsageCount = 0;
+    try {
+      const { count } = await supabase
+        .from('tkg_actions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .in('status', ['approved', 'executed', 'skipped']);
+      freeArtifactUsageCount = count ?? 0;
+    } catch {
+      freeArtifactUsageCount = 0;
     }
 
     // Subscription status for blur gate
@@ -136,6 +149,7 @@ export async function GET(request: Request) {
       return artifact !== undefined && typeof candidate.confidence === 'number' && candidate.confidence >= MIN_PENDING_CONFIDENCE;
     });
     const action = rankedCandidates[0];
+    const freeArtifactRemaining = freeArtifactUsageCount < 1;
 
     if (!action) {
       return NextResponse.json({
@@ -143,10 +157,13 @@ export async function GET(request: Request) {
         account_created_at: accountCreatedAt,
         approved_count: approvedCount,
         is_subscribed: isSubscribed,
+        free_artifact_remaining: freeArtifactRemaining,
+        artifact_paywall_locked: false,
       }, { status: 200 });
     }
 
     const artifact = extractArtifact(action as Record<string, unknown>);
+    const artifactPaywallLocked = !isSubscribed && Boolean(artifact) && !freeArtifactRemaining;
 
     // Map DB row → ConvictionAction shape
     return NextResponse.json({
@@ -167,6 +184,8 @@ export async function GET(request: Request) {
       account_created_at: accountCreatedAt,
       approved_count:  approvedCount,
       is_subscribed:   isSubscribed,
+      free_artifact_remaining: freeArtifactRemaining,
+      artifact_paywall_locked: artifactPaywallLocked,
     });
   } catch (err: unknown) {
     return apiErrorForRoute(err, 'conviction/latest');

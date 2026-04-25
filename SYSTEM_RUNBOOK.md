@@ -44,6 +44,10 @@ A valid loop requires:
 - user can approve
 - works for non-owner user
 
+## Demo Harness Command
+- Golden artifact proof insert: `npm run proof:golden-artifact`
+- Purpose: insert one hand-authored `pending_approval` + `write_document` row so `/api/conviction/latest` and `/dashboard` can be proven against a known-good artifact.
+
 ## Required Verification After Every Meaningful Change
 1. Exhaust the free proof path first: focused tests, fixtures/replays, `npm run build`, Playwright, and non-model truth tools
 2. If the seam is proven by free verification, stop there unless live proof is still explicitly required by the task

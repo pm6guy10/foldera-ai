@@ -8,20 +8,42 @@ import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
 import { FolderaDashboardPixelLock } from '@/components/dashboard/foldera-dashboard-pixel-lock';
 
 type ArtifactWithDraftedEmail = {
-  type: string;
+  [key: string]: unknown;
+  type?: string;
   to?: string;
   recipient?: string;
   subject?: string;
   body?: string;
   text?: string;
   content?: string;
+  markdown?: string;
+  summary?: string;
+  description?: string;
+  rationale?: string;
   title?: string;
-  options?: Array<{ option: string; weight: number; rationale: string }>;
+  options?: Array<{ option?: unknown; weight?: unknown; rationale?: unknown }>;
   recommendation?: string;
   context?: string;
   evidence?: string;
-  tripwires?: string[];
+  tripwires?: unknown;
   check_date?: string;
+  date?: string;
+  time?: string;
+  start?: string;
+  end?: string;
+  attendees?: unknown;
+  sources?: unknown;
+  findings?: string;
+  recommended_action?: string;
+};
+
+type DashboardArtifactView = {
+  label: string;
+  statusText: string;
+  nextStep: string;
+  meta: string[];
+  body: string;
+  isMarkdown?: boolean;
 };
 
 function shouldReconcileExecuteFailure(res: Response | null, errorMessage: string): boolean {
@@ -30,11 +52,240 @@ function shouldReconcileExecuteFailure(res: Response | null, errorMessage: strin
   return message.includes('already claimed') || message.includes('not found');
 }
 
-function artifactPrimaryText(artifact: ArtifactWithDraftedEmail | null | undefined): string | null {
-  if (!artifact) return null;
-  const raw = artifact.body ?? artifact.text ?? artifact.content;
-  if (typeof raw === 'string' && raw.trim().length > 0) return raw;
+function asTrimmedString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function appendMeta(meta: string[], label: string, value: unknown): void {
+  const parsed = asTrimmedString(value);
+  if (!parsed) return;
+  meta.push(`${label}: ${parsed}`);
+}
+
+function firstMeaningfulString(
+  artifact: ArtifactWithDraftedEmail,
+  fields: string[],
+): string | null {
+  for (const field of fields) {
+    const parsed = asTrimmedString(artifact[field]);
+    if (parsed) return parsed;
+  }
   return null;
+}
+
+function stringifyArtifactFallback(artifact: ArtifactWithDraftedEmail): string {
+  try {
+    const serialized = JSON.stringify(artifact, null, 2);
+    return typeof serialized === 'string' && serialized.length > 0 ? serialized : 'Artifact captured.';
+  } catch {
+    return 'Artifact captured.';
+  }
+}
+
+function fallbackBodyFromArtifact(artifact: ArtifactWithDraftedEmail): string {
+  return firstMeaningfulString(artifact, [
+    'body',
+    'text',
+    'content',
+    'markdown',
+    'summary',
+    'recommendation',
+    'rationale',
+    'description',
+    'context',
+    'evidence',
+    'findings',
+    'recommended_action',
+  ]) ?? stringifyArtifactFallback(artifact);
+}
+
+function collectDecisionOptions(artifact: ArtifactWithDraftedEmail): string {
+  if (!Array.isArray(artifact.options) || artifact.options.length === 0) return '';
+  const lines = artifact.options
+    .map((entry, index) => {
+      if (!entry || typeof entry !== 'object') return '';
+      const option = asTrimmedString((entry as { option?: unknown }).option) ?? `Option ${index + 1}`;
+      const weightRaw = (entry as { weight?: unknown }).weight;
+      const weight = typeof weightRaw === 'number' && Number.isFinite(weightRaw) ? `${Math.round(weightRaw * 100)}%` : null;
+      const rationale = asTrimmedString((entry as { rationale?: unknown }).rationale);
+      const head = `- ${option}${weight ? ` (${weight})` : ''}`;
+      return rationale ? `${head}\n  ${rationale}` : head;
+    })
+    .filter((line) => line.length > 0);
+  return lines.join('\n');
+}
+
+function humanDate(isoLike: string): string {
+  const ms = Date.parse(isoLike);
+  if (!Number.isFinite(ms)) return isoLike;
+  return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function humanTime(isoLike: string): string {
+  const ms = Date.parse(isoLike);
+  if (!Number.isFinite(ms)) return isoLike;
+  return new Date(ms).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+function normalizeArtifactForDashboard(
+  artifact: ArtifactWithDraftedEmail | null | undefined,
+  actionType?: string,
+): DashboardArtifactView {
+  const base: DashboardArtifactView = {
+    label: 'FINISHED WORK',
+    statusText: 'READY TO REVIEW',
+    nextStep: 'Next: Review artifact',
+    meta: [],
+    body: 'Artifact details unavailable for this action.',
+  };
+  if (!artifact || typeof artifact !== 'object') return base;
+
+  const type = (asTrimmedString(artifact.type) ?? actionType ?? '').toLowerCase();
+
+  if (type === 'email' || type === 'drafted_email' || type === 'send_message') {
+    const meta: string[] = [];
+    appendMeta(meta, 'To', artifact.to ?? artifact.recipient);
+    appendMeta(meta, 'Subject', artifact.subject);
+    return {
+      label: 'EMAIL DRAFT',
+      statusText: 'READY TO SEND',
+      nextStep: 'Next: Await response',
+      meta,
+      body: firstMeaningfulString(artifact, ['body', 'text', 'content']) ?? fallbackBodyFromArtifact(artifact),
+    };
+  }
+
+  if (type === 'document' || type === 'write_document') {
+    const meta: string[] = [];
+    appendMeta(meta, 'Title', artifact.title);
+    const markdown = firstMeaningfulString(artifact, ['markdown']);
+    const body = markdown ?? firstMeaningfulString(artifact, ['body', 'text', 'content']) ?? fallbackBodyFromArtifact(artifact);
+    return {
+      label: 'FINISHED DOCUMENT',
+      statusText: 'READY TO FILE',
+      nextStep: 'Next: Save to record',
+      meta,
+      body,
+      isMarkdown: Boolean(markdown || firstMeaningfulString(artifact, ['content'])),
+    };
+  }
+
+  if (type === 'decision_frame' || type === 'make_decision') {
+    const meta: string[] = [];
+    appendMeta(meta, 'Recommendation', artifact.recommendation);
+    const rationale = asTrimmedString(artifact.rationale);
+    const options = collectDecisionOptions(artifact);
+    const bodyParts: string[] = [];
+    if (rationale) bodyParts.push(`Rationale: ${rationale}`);
+    if (options) bodyParts.push(`Options:\n${options}`);
+    const body = bodyParts.join('\n\n') || fallbackBodyFromArtifact(artifact);
+    return {
+      label: 'DECISION FRAME',
+      statusText: 'READY TO DECIDE',
+      nextStep: 'Next: Make decision',
+      meta,
+      body,
+    };
+  }
+
+  if (type === 'wait_rationale') {
+    const meta: string[] = [];
+    appendMeta(meta, 'Check date', artifact.check_date);
+    if (Array.isArray(artifact.tripwires)) {
+      const joined = artifact.tripwires.map((item) => asTrimmedString(item)).filter(Boolean).join(' | ');
+      if (joined.length > 0) meta.push(`Tripwires: ${joined}`);
+    } else {
+      appendMeta(meta, 'Tripwires', artifact.tripwires);
+    }
+    const context = asTrimmedString(artifact.context);
+    const evidence = asTrimmedString(artifact.evidence);
+    const parts: string[] = [];
+    if (context) parts.push(context);
+    if (evidence) parts.push(`Evidence: ${evidence}`);
+    const body = parts.join('\n\n') || firstMeaningfulString(artifact, ['body', 'content']) || fallbackBodyFromArtifact(artifact);
+    return {
+      label: 'WAIT RATIONALE',
+      statusText: 'READY TO REVIEW',
+      nextStep: 'Next: Recheck later',
+      meta,
+      body,
+    };
+  }
+
+  if (type === 'calendar_event') {
+    const meta: string[] = [];
+    appendMeta(meta, 'Title', artifact.title);
+    const date = asTrimmedString(artifact.date) ?? (asTrimmedString(artifact.start) ? humanDate(String(artifact.start)) : null);
+    if (date) meta.push(`Date: ${date}`);
+    const explicitTime = asTrimmedString(artifact.time);
+    if (explicitTime) {
+      meta.push(`Time: ${explicitTime}`);
+    } else {
+      const start = asTrimmedString(artifact.start);
+      const end = asTrimmedString(artifact.end);
+      if (start && end) meta.push(`Time: ${humanTime(start)} - ${humanTime(end)}`);
+      else if (start) meta.push(`Time: ${humanTime(start)}`);
+    }
+    if (Array.isArray(artifact.attendees)) {
+      const attendees = artifact.attendees.map((item) => asTrimmedString(item)).filter(Boolean).join(', ');
+      if (attendees.length > 0) meta.push(`Attendees: ${attendees}`);
+    } else {
+      appendMeta(meta, 'Attendees', artifact.attendees);
+    }
+    return {
+      label: 'CALENDAR MOVE',
+      statusText: 'READY TO SCHEDULE',
+      nextStep: 'Next: Confirm calendar',
+      meta,
+      body: firstMeaningfulString(artifact, ['body', 'content', 'description']) ?? fallbackBodyFromArtifact(artifact),
+    };
+  }
+
+  if (type === 'research_brief') {
+    const meta: string[] = [];
+    appendMeta(meta, 'Title', artifact.title);
+    if (Array.isArray(artifact.sources) && artifact.sources.length > 0) {
+      meta.push(`Sources: ${artifact.sources.length}`);
+    }
+    const markdown = firstMeaningfulString(artifact, ['markdown']);
+    const body =
+      markdown
+      ?? firstMeaningfulString(artifact, ['body', 'content', 'summary', 'findings', 'recommended_action'])
+      ?? fallbackBodyFromArtifact(artifact);
+    return {
+      label: 'RESEARCH BRIEF',
+      statusText: 'READY TO USE',
+      nextStep: 'Next: Use brief',
+      meta,
+      body,
+      isMarkdown: Boolean(markdown),
+    };
+  }
+
+  const unknownMeta: string[] = [];
+  appendMeta(unknownMeta, 'Title', artifact.title);
+  appendMeta(unknownMeta, 'Subject', artifact.subject);
+  appendMeta(unknownMeta, 'To', artifact.to);
+  appendMeta(unknownMeta, 'Recipient', artifact.recipient);
+  const unknownBody = firstMeaningfulString(artifact, [
+    'body',
+    'text',
+    'content',
+    'markdown',
+    'summary',
+    'recommendation',
+    'rationale',
+    'description',
+  ]) ?? stringifyArtifactFallback(artifact);
+  return {
+    label: 'FINISHED WORK',
+    statusText: 'READY TO REVIEW',
+    nextStep: 'Next: Review artifact',
+    meta: unknownMeta,
+    body: unknownBody,
+  };
 }
 
 type ActionWithDomain = ConvictionAction & { domain?: string; generatedAt?: string };
@@ -170,12 +421,34 @@ function inferSourcePills(action: ActionWithDomain | null, artifact: ArtifactWit
   return Array.from(pills);
 }
 
+function pixelLockArtifactTitle(
+  artifact: ArtifactWithDraftedEmail | null | undefined,
+  actionType?: string,
+): string | undefined {
+  if (!artifact) return undefined;
+  const type = (asTrimmedString(artifact.type) ?? actionType ?? '').toLowerCase();
+  if (type === 'document' || type === 'write_document') {
+    return firstMeaningfulString(artifact, ['title']) ?? undefined;
+  }
+  if (type === 'email' || type === 'drafted_email' || type === 'send_message') {
+    return firstMeaningfulString(artifact, ['subject']) ?? undefined;
+  }
+  return firstMeaningfulString(artifact, ['title', 'subject']) ?? undefined;
+}
+
+function pixelLockArtifactBody(
+  artifact: ArtifactWithDraftedEmail | null | undefined,
+): string | undefined {
+  if (!artifact) return undefined;
+  return firstMeaningfulString(artifact, ['body', 'content', 'text']) ?? undefined;
+}
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const [action, setAction] = useState<ActionWithDomain | null>(null);
   const [executing, setExecuting] = useState(false);
   const [notice, setNotice] = useState<DashboardNotice | null>(null);
-  const [artifactVisibilityCount, setArtifactVisibilityCount] = useState(0);
+  const [freeArtifactRemaining, setFreeArtifactRemaining] = useState(true);
   const [subPlan, setSubPlan] = useState<string | null>(null);
   const [subStatus, setSubStatus] = useState<string | null>(null);
   const [lastDecision, setLastDecision] = useState<'approve' | 'skip' | null>(null);
@@ -209,18 +482,18 @@ export default function DashboardPage() {
 
       if (!latestRes.ok) {
         setAction(null);
-        setArtifactVisibilityCount(0);
+        setFreeArtifactRemaining(true);
         return;
       }
 
       const data = await latestRes.json().catch(() => ({}));
       if (controller.signal.aborted) return;
-      setArtifactVisibilityCount(typeof data?.approved_count === 'number' ? data.approved_count : 0);
+      setFreeArtifactRemaining(typeof data?.free_artifact_remaining === 'boolean' ? data.free_artifact_remaining : true);
       setAction(data?.id ? data : null);
     } catch {
       if (controller.signal.aborted) return;
       setAction(null);
-      setArtifactVisibilityCount(0);
+      setFreeArtifactRemaining(true);
       setSubPlan(null);
       setSubStatus(null);
     }
@@ -426,26 +699,17 @@ export default function DashboardPage() {
     }
   }, [executedActionId, outcomeRecorded]);
 
-  const handleCopyDraft = useCallback(async () => {
-    const artifact = action?.artifact as ArtifactWithDraftedEmail | null | undefined;
-    if (!artifact) return;
-    const subject = typeof artifact.subject === 'string' ? artifact.subject : '';
-    const body = artifactPrimaryText(artifact) ?? '';
-    const toLine = artifact?.to || artifact?.recipient || '';
-    const block = [`To: ${toLine}`, `Subject: ${subject}`, '', body].join('\n');
-    try {
-      await navigator.clipboard.writeText(block);
-    } catch {
-      /* clipboard may be unavailable */
+  const handleCopyLiveArtifact = useCallback(async () => {
+    if (!action?.id) return;
+    const artifact = action.artifact as ArtifactWithDraftedEmail | null | undefined;
+    const normalized = normalizeArtifactForDashboard(artifact, action.action_type);
+    const lines = [...normalized.meta];
+    if (normalized.body.trim().length > 0) {
+      if (lines.length > 0) lines.push('');
+      lines.push(normalized.body);
     }
-  }, [action]);
-
-  const handleCopyDocument = useCallback(async () => {
-    const artifact = action?.artifact as ArtifactWithDraftedEmail | null | undefined;
-    if (!artifact) return;
-    const title = typeof artifact.title === 'string' ? artifact.title : 'Document';
-    const body = artifactPrimaryText(artifact) ?? '';
-    const block = [title, '', body].join('\n');
+    const block = lines.join('\n').trim();
+    if (block.length === 0) return;
     try {
       await navigator.clipboard.writeText(block);
     } catch {
@@ -480,74 +744,91 @@ export default function DashboardPage() {
   const firstName = sessionName.split(' ')[0] || 'Brandon';
   const currentAction = action;
   const artifact = currentAction?.artifact as ArtifactWithDraftedEmail | null | undefined;
-  const artifactBody = artifactPrimaryText(artifact);
-  const isDocument = artifact?.type === 'document';
-  const isWait = artifact?.type === 'wait_rationale';
+  const normalizedArtifact = normalizeArtifactForDashboard(artifact, currentAction?.action_type);
+  const normalizedBody = normalizedArtifact.body;
+  const normalizedMeta = normalizedArtifact.meta;
+  const hasNormalizedContent = normalizedMeta.length > 0 || normalizedBody.trim().length > 0;
+  const isDocument = normalizedArtifact.label === 'FINISHED DOCUMENT';
   const isProArtifactUnlocked =
     subPlan === 'pro' && (subStatus === 'active' || subStatus === 'past_due' || subStatus === 'active_trial');
-  const showArtifactBlur = Boolean(artifact) && !isProArtifactUnlocked && artifactVisibilityCount > 3;
+  const showArtifactBlur = Boolean(artifact) && !isProArtifactUnlocked && !freeArtifactRemaining;
+  const desktopArtifactTitle = pixelLockArtifactTitle(artifact, currentAction?.action_type);
+  const desktopArtifactBody = pixelLockArtifactBody(artifact);
+  const desktopArtifactType =
+    asTrimmedString(artifact?.type) ?? currentAction?.action_type ?? undefined;
 
   const hasLiveAction = Boolean(currentAction?.id);
   const cardDirective = currentAction?.directive ?? DEMO_DIRECTIVE;
   const cardWhyNow = currentAction?.reason ?? DEMO_WHY;
   const cardSourcePills =
     hasLiveAction && currentAction ? inferSourcePills(currentAction, artifact) : DEMO_SOURCE_PILLS;
-  const cardStatusText = isDocument ? 'READY TO FILE' : isWait ? 'READY TO REVIEW' : 'READY TO SEND';
-  const cardNextStep = isDocument ? 'Next: Save to record' : 'Next: Await response';
-  const draftLabel = isDocument ? 'DOCUMENT' : isWait ? 'RATIONALE' : 'DRAFT';
+  const cardStatusText = hasLiveAction ? normalizedArtifact.statusText : 'READY TO SEND';
+  const cardNextStep = hasLiveAction ? normalizedArtifact.nextStep : 'Next: Await response';
+  const draftLabel = hasLiveAction ? normalizedArtifact.label : 'DRAFT';
 
-  const draftBody = showArtifactBlur ? (
-    <div
-      className="relative overflow-hidden rounded-[16px] border border-[#1b2530] bg-[#121820] p-4"
-      data-testid="dashboard-pro-blur"
-    >
-      <div className="pointer-events-none select-none blur-[5px]">
-        {isDocument ? (
-          <>
-            {artifact?.title ? <p className="mb-3 text-base font-semibold text-white">{artifact.title}</p> : null}
-            <div className="whitespace-pre-line text-[15px] leading-7 text-gray-100">{artifactBody}</div>
-          </>
-        ) : (
-          <div className="whitespace-pre-line text-[15px] leading-7 text-gray-100">{artifactBody}</div>
-        )}
-      </div>
-      <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#07090dcc] px-6 text-center">
-        <p className="max-w-[280px] text-base font-medium text-white">Upgrade to Pro to keep receiving finished work.</p>
-        <button
-          type="button"
-          onClick={() => void startStripeCheckout()}
-          className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-lg bg-cyan-500 px-4 py-2 font-medium text-black"
-        >
-          Upgrade to Pro
-        </button>
-      </div>
+  const draftMetaBlock = normalizedMeta.length > 0 ? (
+    <div className="mb-3 space-y-1">
+      {normalizedMeta.map((line) => (
+        <p key={line} className="text-[12px] uppercase tracking-[0.12em] text-cyan-400">
+          {line}
+        </p>
+      ))}
     </div>
-  ) : isDocument ? (
-    artifactBody ? (
+  ) : null;
+
+  const draftBodyContent = (
+    <>
+      {draftMetaBlock}
+      {normalizedBody.trim().length > 0 ? (
+        normalizedArtifact.isMarkdown ? (
+          <ReactMarkdown components={DOCUMENT_MARKDOWN_COMPONENTS}>{normalizedBody}</ReactMarkdown>
+        ) : (
+          <div className="whitespace-pre-line text-[15px] leading-7 text-gray-100">{normalizedBody}</div>
+        )
+      ) : (
+        <p className="text-[15px] leading-7 text-gray-300">Artifact captured.</p>
+      )}
+    </>
+  );
+
+  const draftBody = hasLiveAction ? (
+    showArtifactBlur ? (
       <div
-        className="max-h-[380px] overflow-y-auto rounded-[16px] border border-[#1b2530] bg-[#121820] p-4"
-        data-testid="dashboard-document-body"
+        className="relative overflow-hidden rounded-[16px] border border-[#1b2530] bg-[#121820] p-4"
+        data-testid="dashboard-pro-blur"
       >
-        {artifact?.title ? <p className="mb-3 text-base font-semibold text-white">{artifact.title}</p> : null}
-        <ReactMarkdown components={DOCUMENT_MARKDOWN_COMPONENTS}>{artifactBody}</ReactMarkdown>
+        <div className="pointer-events-none select-none blur-[5px]">{draftBodyContent}</div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#07090dcc] px-6 text-center">
+          <p className="max-w-[280px] text-base font-medium text-white">Upgrade to Pro to keep receiving finished work.</p>
+          <button
+            type="button"
+            onClick={() => void startStripeCheckout()}
+            className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-lg bg-cyan-500 px-4 py-2 font-medium text-black"
+          >
+            Upgrade to Pro
+          </button>
+        </div>
       </div>
     ) : (
-      <p className="text-[15px] leading-7 text-gray-300">Full text is in your morning email. Save document to file it, or skip to adjust.</p>
+      <div
+        className="max-h-[380px] overflow-y-auto rounded-[16px] border border-[#1b2530] bg-[#121820] p-4"
+        data-testid={normalizedArtifact.isMarkdown ? 'dashboard-document-body' : undefined}
+      >
+        {draftBodyContent}
+      </div>
     )
-  ) : isWait ? (
-    <div className="space-y-3">
-      {artifact?.context ? <p className="text-[15px] leading-7 text-gray-100">{artifact.context}</p> : null}
-      {artifact?.tripwires?.[0] || artifact?.check_date ? (
-        <p className="text-[13px] uppercase tracking-[0.12em] text-cyan-400">Resume when: {artifact?.tripwires?.[0] ?? artifact?.check_date}</p>
-      ) : null}
-    </div>
   ) : (
-    <div className="whitespace-pre-line text-[15px] leading-7 text-gray-100">{artifactBody ?? demoDraft}</div>
+    <div className="whitespace-pre-line text-[15px] leading-7 text-gray-100">{demoDraft}</div>
   );
 
   const cardActions = isDocument
     ? [
-        { label: 'Copy full text', kind: 'secondary' as const, onClick: () => void handleCopyDocument(), disabled: !artifactBody },
+        {
+          label: 'Copy full text',
+          kind: 'secondary' as const,
+          onClick: () => void handleCopyLiveArtifact(),
+          disabled: !hasLiveAction || !hasNormalizedContent,
+        },
         { label: 'Skip and adjust', kind: 'amber' as const, onClick: () => void handleSkip(), disabled: !hasLiveAction || executing },
         {
           label: 'Save document',
@@ -561,7 +842,7 @@ export default function DashboardPage() {
         {
           label: 'Copy draft',
           kind: 'secondary' as const,
-          onClick: () => void (hasLiveAction ? handleCopyDraft() : handleCopyFallbackDraft()),
+          onClick: () => void (hasLiveAction ? handleCopyLiveArtifact() : handleCopyFallbackDraft()),
           disabled: false,
         },
         { label: 'Snooze 24h', kind: 'amber' as const, onClick: () => void handleSkip(), disabled: !hasLiveAction || executing },
@@ -607,12 +888,16 @@ export default function DashboardPage() {
     return (
       <div className="relative h-screen w-screen overflow-hidden bg-[#04080d] text-[#f3f7fa]">
         <FolderaDashboardPixelLock
-          onCopyDraft={() => void (hasLiveAction ? handleCopyDraft() : handleCopyFallbackDraft())}
+          onCopyDraft={() => void (hasLiveAction ? handleCopyLiveArtifact() : handleCopyFallbackDraft())}
           onSnooze={() => void handleSkip()}
           onApprove={() => void handleApprove()}
           onUpgrade={() => void startStripeCheckout()}
           disableSnooze={!hasLiveAction || executing}
           disableApprove={!hasLiveAction || executing}
+          artifactTitle={desktopArtifactTitle}
+          artifactBody={desktopArtifactBody}
+          artifactType={desktopArtifactType}
+          showArtifactBlur={showArtifactBlur}
         />
         {notice ? (
           <div

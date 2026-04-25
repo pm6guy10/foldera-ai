@@ -1,0 +1,187 @@
+import { test, expect, type Page, type Route } from '@playwright/test';
+import { config as loadEnv } from 'dotenv';
+import { encode } from 'next-auth/jwt';
+
+loadEnv({ path: '.env.local' });
+
+const HAS_NEXTAUTH_SECRET = Boolean(process.env.NEXTAUTH_SECRET?.trim());
+const describeWithAuth = HAS_NEXTAUTH_SECRET ? test.describe : test.describe.skip;
+
+const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
+const WEB_PORT = process.env.PLAYWRIGHT_WEB_PORT?.trim() || '3000';
+const WEB_ORIGIN =
+  process.env.PLAYWRIGHT_TEST_BASE_URL?.trim() ||
+  process.env.BASE_URL?.trim() ||
+  `http://127.0.0.1:${WEB_PORT}`;
+
+const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+const SESSION_RESPONSE = {
+  user: { id: MOCK_USER_ID, email: 'test@foldera.ai', name: 'Brandon Kapp' },
+  expires: future,
+};
+
+type SetupOptions = {
+  latestResponse: Record<string, unknown>;
+  subscriptionResponse: Record<string, unknown>;
+  onExecute?: () => void;
+  onCheckout?: () => void;
+};
+
+function json(data: unknown): string {
+  return JSON.stringify(data);
+}
+
+function fulfillJson(data: unknown) {
+  return (route: Route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: json(data) });
+}
+
+function matchApiPath(apiPath: string) {
+  return (url: URL | string): boolean => {
+    try {
+      const parsed = typeof url === 'string' ? new URL(url) : url;
+      return parsed.pathname === apiPath || parsed.pathname === `${apiPath}/`;
+    } catch {
+      return false;
+    }
+  };
+}
+
+async function seedAuthenticatedSession(page: Page): Promise<void> {
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) throw new Error('NEXTAUTH_SECRET is required for authenticated dashboard tests.');
+
+  const sessionToken = await encode({
+    secret,
+    token: {
+      sub: MOCK_USER_ID,
+      userId: MOCK_USER_ID,
+      email: SESSION_RESPONSE.user.email,
+      name: SESSION_RESPONSE.user.name,
+      hasOnboarded: true,
+    },
+  });
+
+  await page.context().addCookies([
+    {
+      name: 'next-auth.session-token',
+      value: sessionToken,
+      url: new URL('/', WEB_ORIGIN).href,
+      httpOnly: true,
+      sameSite: 'Lax',
+    },
+  ]);
+}
+
+async function setupDashboardMocks(page: Page, options: SetupOptions): Promise<void> {
+  await seedAuthenticatedSession(page);
+  await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+  await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+  await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+  await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
+  await page.route(
+    matchApiPath('/api/integrations/status'),
+    fulfillJson({
+      integrations: [
+        { provider: 'google', is_active: true, sync_email: 'test@gmail.com', last_synced_at: null, missing_scopes: [] },
+      ],
+    }),
+  );
+  await page.route(matchApiPath('/api/subscription/status'), fulfillJson(options.subscriptionResponse));
+  await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(options.latestResponse));
+  await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
+    options.onExecute?.();
+    await route.fulfill({ status: 200, contentType: 'application/json', body: json({ status: 'executed' }) });
+  });
+  await page.route(matchApiPath('/api/stripe/checkout'), async (route) => {
+    options.onCheckout?.();
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: json({ url: 'https://checkout.stripe.com/c/pay/cs_test_mock' }),
+    });
+  });
+}
+
+describeWithAuth('Dashboard pixel-lock live artifact', () => {
+  test('shows live artifact in frame, keeps desktop no-scroll, and approve hotspot is clickable', async ({ page }) => {
+    let executeCalls = 0;
+    await setupDashboardMocks(page, {
+      latestResponse: {
+        id: 'action-pixel-lock-001',
+        directive: 'Finalize the outreach document.',
+        action_type: 'write_document',
+        confidence: 87,
+        reason: 'Packet owner must confirm final messaging today.',
+        status: 'pending_approval',
+        artifact: {
+          type: 'document',
+          title: 'MAS3 interview packet resolution',
+          content: 'Assign Holly as final packet owner and confirm reference bundle by 4 PM PT.',
+        },
+        free_artifact_remaining: true,
+        artifact_paywall_locked: false,
+        approved_count: 0,
+      },
+      subscriptionResponse: { plan: 'free', status: 'inactive' },
+      onExecute: () => {
+        executeCalls += 1;
+      },
+    });
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/dashboard');
+
+    await expect(page.getByTestId('pixel-lock-frame')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('pixel-lock-artifact-title')).toHaveText('MAS3 interview packet resolution');
+    await expect(page.getByTestId('pixel-lock-artifact-body')).toContainText('Assign Holly as final packet owner');
+
+    const noHorizontalScroll = await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    );
+    expect(noHorizontalScroll).toBe(true);
+
+    const desktopBodyOverflowHidden = await page.evaluate(() => {
+      const style = window.getComputedStyle(document.body);
+      return style.overflow === 'hidden' && style.overflowX === 'hidden';
+    });
+    expect(desktopBodyOverflowHidden).toBe(true);
+
+    await page.getByRole('button', { name: /approve & send/i }).click();
+    await expect.poll(() => executeCalls).toBeGreaterThan(0);
+  });
+
+  test('shows upgrade CTA overlay only when artifact is paywall-locked', async ({ page }) => {
+    let checkoutCalls = 0;
+    await setupDashboardMocks(page, {
+      latestResponse: {
+        id: 'action-pixel-lock-002',
+        directive: 'Send follow-up email.',
+        action_type: 'send_message',
+        confidence: 84,
+        reason: 'Time-bound ask with no recent reply.',
+        status: 'pending_approval',
+        artifact: {
+          type: 'email',
+          subject: 'Follow-up on packet owner confirmation',
+          body: 'Hi Holly, can you confirm ownership by 4 PM PT?',
+        },
+        free_artifact_remaining: false,
+        artifact_paywall_locked: true,
+        approved_count: 4,
+      },
+      subscriptionResponse: { plan: 'free', status: 'inactive' },
+      onCheckout: () => {
+        checkoutCalls += 1;
+      },
+    });
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/dashboard');
+
+    await expect(page.getByTestId('pixel-lock-frame')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Upgrade to Pro to keep receiving finished work.')).toBeVisible();
+    await page.getByRole('button', { name: /^Upgrade to Pro$/i }).click();
+    await expect.poll(() => checkoutCalls).toBeGreaterThan(0);
+  });
+});
