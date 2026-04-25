@@ -1,14 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import ReactMarkdown from 'react-markdown';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useSession } from 'next-auth/react';
-import type { ConvictionAction } from '@/lib/briefing/types';
-import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
-import { FolderaDashboardPixelLock } from '@/components/dashboard/foldera-dashboard-pixel-lock';
 
-type ArtifactWithDraftedEmail = {
-  [key: string]: unknown;
+type DashboardArtifact = {
   type?: string;
   to?: string;
   recipient?: string;
@@ -16,34 +11,42 @@ type ArtifactWithDraftedEmail = {
   body?: string;
   text?: string;
   content?: string;
-  markdown?: string;
-  summary?: string;
-  description?: string;
-  rationale?: string;
-  title?: string;
-  options?: Array<{ option?: unknown; weight?: unknown; rationale?: unknown }>;
-  recommendation?: string;
-  context?: string;
-  evidence?: string;
-  tripwires?: unknown;
-  check_date?: string;
-  date?: string;
-  time?: string;
-  start?: string;
-  end?: string;
-  attendees?: unknown;
-  sources?: unknown;
-  findings?: string;
-  recommended_action?: string;
+  [key: string]: unknown;
 };
 
-type DashboardArtifactView = {
+type DashboardAction = {
+  id: string;
+  action_type?: string;
+  artifact?: DashboardArtifact | null;
+};
+
+type ImageRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+type HotspotRect = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+type HotspotButton = {
+  kind: 'button';
   label: string;
-  statusText: string;
-  nextStep: string;
-  meta: string[];
-  body: string;
-  isMarkdown?: boolean;
+  rect: HotspotRect;
+  onClick: () => void;
+  disabled?: boolean;
+};
+
+type HotspotLink = {
+  kind: 'link';
+  label: string;
+  rect: HotspotRect;
+  href: string;
 };
 
 function shouldReconcileExecuteFailure(res: Response | null, errorMessage: string): boolean {
@@ -58,405 +61,54 @@ function asTrimmedString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function appendMeta(meta: string[], label: string, value: unknown): void {
-  const parsed = asTrimmedString(value);
-  if (!parsed) return;
-  meta.push(`${label}: ${parsed}`);
-}
+function artifactClipboardText(action: DashboardAction | null): string {
+  if (!action?.artifact || typeof action.artifact !== 'object') return '';
+  const artifact = action.artifact;
+  const lines: string[] = [];
+  const to = asTrimmedString(artifact.to ?? artifact.recipient);
+  const subject = asTrimmedString(artifact.subject);
+  const body =
+    asTrimmedString(artifact.body) ??
+    asTrimmedString(artifact.text) ??
+    asTrimmedString(artifact.content) ??
+    '';
 
-function firstMeaningfulString(
-  artifact: ArtifactWithDraftedEmail,
-  fields: string[],
-): string | null {
-  for (const field of fields) {
-    const parsed = asTrimmedString(artifact[field]);
-    if (parsed) return parsed;
-  }
-  return null;
-}
+  if (to) lines.push(`To: ${to}`);
+  if (subject) lines.push(`Subject: ${subject}`);
+  if (lines.length > 0 && body) lines.push('');
+  if (body) lines.push(body);
 
-function stringifyArtifactFallback(artifact: ArtifactWithDraftedEmail): string {
+  if (lines.length > 0) return lines.join('\n');
+
   try {
-    const serialized = JSON.stringify(artifact, null, 2);
-    return typeof serialized === 'string' && serialized.length > 0 ? serialized : 'Artifact captured.';
+    return JSON.stringify(artifact, null, 2);
   } catch {
-    return 'Artifact captured.';
+    return '';
   }
 }
 
-function fallbackBodyFromArtifact(artifact: ArtifactWithDraftedEmail): string {
-  return firstMeaningfulString(artifact, [
-    'body',
-    'text',
-    'content',
-    'markdown',
-    'summary',
-    'recommendation',
-    'rationale',
-    'description',
-    'context',
-    'evidence',
-    'findings',
-    'recommended_action',
-  ]) ?? stringifyArtifactFallback(artifact);
-}
-
-function collectDecisionOptions(artifact: ArtifactWithDraftedEmail): string {
-  if (!Array.isArray(artifact.options) || artifact.options.length === 0) return '';
-  const lines = artifact.options
-    .map((entry, index) => {
-      if (!entry || typeof entry !== 'object') return '';
-      const option = asTrimmedString((entry as { option?: unknown }).option) ?? `Option ${index + 1}`;
-      const weightRaw = (entry as { weight?: unknown }).weight;
-      const weight = typeof weightRaw === 'number' && Number.isFinite(weightRaw) ? `${Math.round(weightRaw * 100)}%` : null;
-      const rationale = asTrimmedString((entry as { rationale?: unknown }).rationale);
-      const head = `- ${option}${weight ? ` (${weight})` : ''}`;
-      return rationale ? `${head}\n  ${rationale}` : head;
-    })
-    .filter((line) => line.length > 0);
-  return lines.join('\n');
-}
-
-function humanDate(isoLike: string): string {
-  const ms = Date.parse(isoLike);
-  if (!Number.isFinite(ms)) return isoLike;
-  return new Date(ms).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function humanTime(isoLike: string): string {
-  const ms = Date.parse(isoLike);
-  if (!Number.isFinite(ms)) return isoLike;
-  return new Date(ms).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-}
-
-function normalizeArtifactForDashboard(
-  artifact: ArtifactWithDraftedEmail | null | undefined,
-  actionType?: string,
-): DashboardArtifactView {
-  const base: DashboardArtifactView = {
-    label: 'FINISHED WORK',
-    statusText: 'READY TO REVIEW',
-    nextStep: 'Next: Review artifact',
-    meta: [],
-    body: 'Artifact details unavailable for this action.',
-  };
-  if (!artifact || typeof artifact !== 'object') return base;
-
-  const type = (asTrimmedString(artifact.type) ?? actionType ?? '').toLowerCase();
-
-  if (type === 'email' || type === 'drafted_email' || type === 'send_message') {
-    const meta: string[] = [];
-    appendMeta(meta, 'To', artifact.to ?? artifact.recipient);
-    appendMeta(meta, 'Subject', artifact.subject);
-    return {
-      label: 'EMAIL DRAFT',
-      statusText: 'READY TO SEND',
-      nextStep: 'Next: Await response',
-      meta,
-      body: firstMeaningfulString(artifact, ['body', 'text', 'content']) ?? fallbackBodyFromArtifact(artifact),
-    };
-  }
-
-  if (type === 'document' || type === 'write_document') {
-    const meta: string[] = [];
-    appendMeta(meta, 'Title', artifact.title);
-    const markdown = firstMeaningfulString(artifact, ['markdown']);
-    const body = markdown ?? firstMeaningfulString(artifact, ['body', 'text', 'content']) ?? fallbackBodyFromArtifact(artifact);
-    return {
-      label: 'FINISHED DOCUMENT',
-      statusText: 'READY TO FILE',
-      nextStep: 'Next: Save to record',
-      meta,
-      body,
-      isMarkdown: Boolean(markdown || firstMeaningfulString(artifact, ['content'])),
-    };
-  }
-
-  if (type === 'decision_frame' || type === 'make_decision') {
-    const meta: string[] = [];
-    appendMeta(meta, 'Recommendation', artifact.recommendation);
-    const rationale = asTrimmedString(artifact.rationale);
-    const options = collectDecisionOptions(artifact);
-    const bodyParts: string[] = [];
-    if (rationale) bodyParts.push(`Rationale: ${rationale}`);
-    if (options) bodyParts.push(`Options:\n${options}`);
-    const body = bodyParts.join('\n\n') || fallbackBodyFromArtifact(artifact);
-    return {
-      label: 'DECISION FRAME',
-      statusText: 'READY TO DECIDE',
-      nextStep: 'Next: Make decision',
-      meta,
-      body,
-    };
-  }
-
-  if (type === 'wait_rationale') {
-    const meta: string[] = [];
-    appendMeta(meta, 'Check date', artifact.check_date);
-    if (Array.isArray(artifact.tripwires)) {
-      const joined = artifact.tripwires.map((item) => asTrimmedString(item)).filter(Boolean).join(' | ');
-      if (joined.length > 0) meta.push(`Tripwires: ${joined}`);
-    } else {
-      appendMeta(meta, 'Tripwires', artifact.tripwires);
-    }
-    const context = asTrimmedString(artifact.context);
-    const evidence = asTrimmedString(artifact.evidence);
-    const parts: string[] = [];
-    if (context) parts.push(context);
-    if (evidence) parts.push(`Evidence: ${evidence}`);
-    const body = parts.join('\n\n') || firstMeaningfulString(artifact, ['body', 'content']) || fallbackBodyFromArtifact(artifact);
-    return {
-      label: 'WAIT RATIONALE',
-      statusText: 'READY TO REVIEW',
-      nextStep: 'Next: Recheck later',
-      meta,
-      body,
-    };
-  }
-
-  if (type === 'calendar_event') {
-    const meta: string[] = [];
-    appendMeta(meta, 'Title', artifact.title);
-    const date = asTrimmedString(artifact.date) ?? (asTrimmedString(artifact.start) ? humanDate(String(artifact.start)) : null);
-    if (date) meta.push(`Date: ${date}`);
-    const explicitTime = asTrimmedString(artifact.time);
-    if (explicitTime) {
-      meta.push(`Time: ${explicitTime}`);
-    } else {
-      const start = asTrimmedString(artifact.start);
-      const end = asTrimmedString(artifact.end);
-      if (start && end) meta.push(`Time: ${humanTime(start)} - ${humanTime(end)}`);
-      else if (start) meta.push(`Time: ${humanTime(start)}`);
-    }
-    if (Array.isArray(artifact.attendees)) {
-      const attendees = artifact.attendees.map((item) => asTrimmedString(item)).filter(Boolean).join(', ');
-      if (attendees.length > 0) meta.push(`Attendees: ${attendees}`);
-    } else {
-      appendMeta(meta, 'Attendees', artifact.attendees);
-    }
-    return {
-      label: 'CALENDAR MOVE',
-      statusText: 'READY TO SCHEDULE',
-      nextStep: 'Next: Confirm calendar',
-      meta,
-      body: firstMeaningfulString(artifact, ['body', 'content', 'description']) ?? fallbackBodyFromArtifact(artifact),
-    };
-  }
-
-  if (type === 'research_brief') {
-    const meta: string[] = [];
-    appendMeta(meta, 'Title', artifact.title);
-    if (Array.isArray(artifact.sources) && artifact.sources.length > 0) {
-      meta.push(`Sources: ${artifact.sources.length}`);
-    }
-    const markdown = firstMeaningfulString(artifact, ['markdown']);
-    const body =
-      markdown
-      ?? firstMeaningfulString(artifact, ['body', 'content', 'summary', 'findings', 'recommended_action'])
-      ?? fallbackBodyFromArtifact(artifact);
-    return {
-      label: 'RESEARCH BRIEF',
-      statusText: 'READY TO USE',
-      nextStep: 'Next: Use brief',
-      meta,
-      body,
-      isMarkdown: Boolean(markdown),
-    };
-  }
-
-  const unknownMeta: string[] = [];
-  appendMeta(unknownMeta, 'Title', artifact.title);
-  appendMeta(unknownMeta, 'Subject', artifact.subject);
-  appendMeta(unknownMeta, 'To', artifact.to);
-  appendMeta(unknownMeta, 'Recipient', artifact.recipient);
-  const unknownBody = firstMeaningfulString(artifact, [
-    'body',
-    'text',
-    'content',
-    'markdown',
-    'summary',
-    'recommendation',
-    'rationale',
-    'description',
-  ]) ?? stringifyArtifactFallback(artifact);
+function toAbsoluteRect(rect: HotspotRect, frame: ImageRect): CSSProperties {
   return {
-    label: 'FINISHED WORK',
-    statusText: 'READY TO REVIEW',
-    nextStep: 'Next: Review artifact',
-    meta: unknownMeta,
-    body: unknownBody,
+    position: 'absolute',
+    left: `${(rect.left / 100) * frame.width}px`,
+    top: `${(rect.top / 100) * frame.height}px`,
+    width: `${(rect.width / 100) * frame.width}px`,
+    height: `${(rect.height / 100) * frame.height}px`,
   };
-}
-
-type ActionWithDomain = ConvictionAction & { domain?: string; generatedAt?: string };
-type DashboardNoticeKind =
-  | 'approve_sent'
-  | 'approve_saved_document'
-  | 'skip_snoozed'
-  | 'reconciled_stale_action'
-  | 'error';
-type DashboardNotice = { kind: DashboardNoticeKind; message: string };
-
-function approveSuccessFlash(actionType: string | undefined, result: unknown): DashboardNotice {
-  const payload = result && typeof result === 'object' ? (result as Record<string, unknown>) : null;
-  if (actionType === 'write_document') {
-    const emailResult = payload?.document_ready_email;
-    if (emailResult && typeof emailResult === 'object') {
-      const output = emailResult as { sent?: boolean; reason?: string; send_error?: string };
-      if (output.sent === true) {
-        return { kind: 'approve_saved_document', message: 'Saved. We also emailed you the full document.' };
-      }
-      if (output.reason === 'no_verified_email') {
-        return {
-          kind: 'approve_saved_document',
-          message: 'Saved to your Foldera record. Add a verified email in Settings to receive a copy by email.',
-        };
-      }
-      if (typeof output.send_error === 'string' && output.send_error.length > 0) {
-        return {
-          kind: 'approve_saved_document',
-          message: 'Saved. Email delivery failed - your document is still in Foldera Signals.',
-        };
-      }
-    }
-    if (payload?.saved === true) {
-      return { kind: 'approve_saved_document', message: 'Saved. Your document is in Foldera Signals.' };
-    }
-    return { kind: 'approve_saved_document', message: 'Saved.' };
-  }
-
-  const sentVia = (payload as { sent_via?: string } | null)?.sent_via;
-  if (sentVia === 'gmail') return { kind: 'approve_sent', message: 'Sent from your Gmail.' };
-  if (sentVia === 'outlook') return { kind: 'approve_sent', message: 'Sent from your Outlook.' };
-  if (sentVia === 'resend') {
-    return { kind: 'approve_sent', message: 'Sent via Foldera. Connect Gmail in Settings to send from your own inbox.' };
-  }
-  return { kind: 'approve_sent', message: 'Sent. Check your outbox.' };
-}
-
-const DOCUMENT_MARKDOWN_COMPONENTS = {
-  h1: ({ children }: { children?: ReactNode }) => (
-    <h1 className="mb-3 text-base font-semibold text-white first:mt-0">{children}</h1>
-  ),
-  h2: ({ children }: { children?: ReactNode }) => (
-    <h2 className="mb-3 mt-4 text-sm font-semibold uppercase tracking-[0.14em] text-gray-300 first:mt-0">{children}</h2>
-  ),
-  h3: ({ children }: { children?: ReactNode }) => (
-    <h3 className="mb-2 mt-4 text-sm font-semibold text-white first:mt-0">{children}</h3>
-  ),
-  p: ({ children }: { children?: ReactNode }) => (
-    <p className="mb-3 text-[15px] leading-7 text-gray-100 last:mb-0">{children}</p>
-  ),
-  ul: ({ children }: { children?: ReactNode }) => (
-    <ul className="mb-3 list-disc space-y-2 pl-6 text-[15px] leading-7 text-gray-100 marker:text-cyan-400">{children}</ul>
-  ),
-  ol: ({ children }: { children?: ReactNode }) => (
-    <ol className="mb-3 list-decimal space-y-2 pl-6 text-[15px] leading-7 text-gray-100 marker:text-cyan-400">{children}</ol>
-  ),
-  li: ({ children }: { children?: ReactNode }) => <li>{children}</li>,
-  strong: ({ children }: { children?: ReactNode }) => <strong className="font-semibold text-white">{children}</strong>,
-  a: ({ children, href }: { children?: ReactNode; href?: string }) => (
-    <a href={href} target="_blank" rel="noreferrer" className="text-cyan-400 underline underline-offset-2">
-      {children}
-    </a>
-  ),
-  code: ({ children }: { children?: ReactNode }) => (
-    <code className="rounded-[10px] border border-[#1b2530] bg-[#121820] px-1.5 py-0.5 font-mono text-[13px] text-white">{children}</code>
-  ),
-  blockquote: ({ children }: { children?: ReactNode }) => (
-    <blockquote className="my-3 border-l border-cyan-400 pl-4 italic text-gray-300">{children}</blockquote>
-  ),
-  hr: () => <hr className="my-4 border-[#1b2530]" />,
-};
-
-const demoDraft = `Hi Alex -
-
-Following up on the update from yesterday.
-I pulled the latest status and can send the finalized version by noon unless you want one adjustment first.
-
-Best,
-Brandon`;
-
-const DEMO_DIRECTIVE = 'Send the follow-up to Alex Morgan before noon.';
-const DEMO_WHY =
-  'You have an open thread with no reply, the ask is time-bound, and the current hold on your calendar makes this the cleanest unblocker today.';
-const DEMO_SOURCE_PILLS = ['Email thread', 'Calendar hold', 'Last draft', 'Connected inbox'];
-const DESKTOP_BREAKPOINT = 1024;
-
-function computeIsDesktop(): boolean {
-  if (typeof window === 'undefined') return false;
-  return window.innerWidth >= DESKTOP_BREAKPOINT;
-}
-
-function getDateLabel(): string {
-  return new Date()
-    .toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-    })
-    .toUpperCase();
-}
-
-function getGreetingLabel(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
-function inferSourcePills(action: ActionWithDomain | null, artifact: ArtifactWithDraftedEmail | null | undefined): string[] {
-  if (artifact?.type === 'document') {
-    return ['Prepared document', 'Decision basis', 'Connected sources'];
-  }
-  if (artifact?.type === 'wait_rationale') {
-    return ['Current context', 'Source trail'];
-  }
-  const evidenceText = JSON.stringify(action?.evidence ?? []).toLowerCase();
-  const pills = new Set<string>();
-  if (artifact?.type === 'email' || artifact?.type === 'drafted_email' || evidenceText.includes('email')) pills.add('Email thread');
-  if (evidenceText.includes('calendar')) pills.add('Calendar hold');
-  pills.add('Last draft');
-  pills.add('Connected inbox');
-  return Array.from(pills);
-}
-
-function pixelLockArtifactTitle(
-  artifact: ArtifactWithDraftedEmail | null | undefined,
-  actionType?: string,
-): string | undefined {
-  if (!artifact) return undefined;
-  const type = (asTrimmedString(artifact.type) ?? actionType ?? '').toLowerCase();
-  if (type === 'document' || type === 'write_document') {
-    return firstMeaningfulString(artifact, ['title']) ?? undefined;
-  }
-  if (type === 'email' || type === 'drafted_email' || type === 'send_message') {
-    return firstMeaningfulString(artifact, ['subject']) ?? undefined;
-  }
-  return firstMeaningfulString(artifact, ['title', 'subject']) ?? undefined;
-}
-
-function pixelLockArtifactBody(
-  artifact: ArtifactWithDraftedEmail | null | undefined,
-): string | undefined {
-  if (!artifact) return undefined;
-  return firstMeaningfulString(artifact, ['body', 'content', 'text']) ?? undefined;
 }
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession();
-  const [action, setAction] = useState<ActionWithDomain | null>(null);
-  const [executing, setExecuting] = useState(false);
-  const [notice, setNotice] = useState<DashboardNotice | null>(null);
-  const [freeArtifactRemaining, setFreeArtifactRemaining] = useState(true);
+  const { status } = useSession();
+
+  const [action, setAction] = useState<DashboardAction | null>(null);
   const [subPlan, setSubPlan] = useState<string | null>(null);
   const [subStatus, setSubStatus] = useState<string | null>(null);
-  const [lastDecision, setLastDecision] = useState<'approve' | 'skip' | null>(null);
-  const [executedActionId, setExecutedActionId] = useState<string | null>(null);
-  const [outcomeRecorded, setOutcomeRecorded] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(() => computeIsDesktop());
+  const [executing, setExecuting] = useState(false);
+  const [frame, setFrame] = useState<ImageRect>({ left: 0, top: 0, width: 0, height: 0 });
 
   const loadAbortRef = useRef<AbortController | null>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
+  const hasWarnedResolutionRef = useRef(false);
 
   const load = useCallback(async () => {
     loadAbortRef.current?.abort();
@@ -468,6 +120,7 @@ export default function DashboardPage() {
         fetch('/api/conviction/latest', { signal: controller.signal }),
         fetch('/api/subscription/status', { signal: controller.signal }),
       ]);
+
       if (controller.signal.aborted) return;
 
       if (subscriptionRes.ok) {
@@ -482,469 +135,337 @@ export default function DashboardPage() {
 
       if (!latestRes.ok) {
         setAction(null);
-        setFreeArtifactRemaining(true);
         return;
       }
 
-      const data = await latestRes.json().catch(() => ({}));
+      const latest = await latestRes.json().catch(() => ({}));
       if (controller.signal.aborted) return;
-      setFreeArtifactRemaining(typeof data?.free_artifact_remaining === 'boolean' ? data.free_artifact_remaining : true);
-      setAction(data?.id ? data : null);
+      setAction(latest?.id ? (latest as DashboardAction) : null);
     } catch {
       if (controller.signal.aborted) return;
       setAction(null);
-      setFreeArtifactRemaining(true);
       setSubPlan(null);
       setSubStatus(null);
     }
   }, []);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const deepAction = params.get('action');
-    const id = params.get('id');
-    if (!deepAction || !id) return;
-    window.history.replaceState({}, '', window.location.pathname);
-    if (deepAction !== 'approve' && deepAction !== 'skip') return;
+  const syncFrameAndResolution = useCallback(() => {
+    const image = imageRef.current;
+    if (!image) return;
 
-    void (async () => {
-      try {
-        const response = await fetch('/api/conviction/execute', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action_id: id, decision: deepAction }),
-        });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          const message = (data as { error?: string }).error ?? 'Could not update that action.';
-          if (shouldReconcileExecuteFailure(response, message)) {
-            await load();
-            setNotice({
-              kind: 'reconciled_stale_action',
-              message: 'That directive was already handled or replaced. Showing your current state.',
-            });
-            return;
-          }
-          setNotice({ kind: 'error', message });
-          return;
-        }
+    const naturalWidth = image.naturalWidth;
+    const naturalHeight = image.naturalHeight;
+    if (!naturalWidth || !naturalHeight) return;
 
-        if (data.status === 'executed' || data.status === 'skipped') {
-          if (deepAction === 'approve') {
-            setLastDecision('approve');
-            setExecutedActionId((data.action_id as string | undefined) ?? id);
-            setOutcomeRecorded(false);
-            setNotice(approveSuccessFlash((data as { action_type?: string }).action_type ?? action?.action_type, data.result));
-          } else {
-            setLastDecision('skip');
-            setExecutedActionId(null);
-            setNotice({ kind: 'skip_snoozed', message: 'Snoozed. Foldera will adjust.' });
-          }
-          await load();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const viewportRatio = viewportWidth / viewportHeight;
+    const imageRatio = naturalWidth / naturalHeight;
+
+    let width = viewportWidth;
+    let height = viewportHeight;
+    let left = 0;
+    let top = 0;
+
+    if (viewportRatio > imageRatio) {
+      height = viewportHeight;
+      width = height * imageRatio;
+      left = (viewportWidth - width) / 2;
+    } else {
+      width = viewportWidth;
+      height = width / imageRatio;
+      top = (viewportHeight - height) / 2;
+    }
+
+    setFrame({ left, top, width, height });
+
+    if (process.env.NODE_ENV !== 'production') {
+      const requiredDisplayWidth = viewportWidth * window.devicePixelRatio;
+      if (requiredDisplayWidth > naturalWidth) {
+        if (!hasWarnedResolutionRef.current) {
+          console.warn(
+            'Dashboard PNG is below required resolution for this display. Export/generate a 3840px or 5120px version.',
+          );
+          hasWarnedResolutionRef.current = true;
         }
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Could not update that action.';
-        if (shouldReconcileExecuteFailure(null, message)) {
-          await load();
-          setNotice({
-            kind: 'reconciled_stale_action',
-            message: 'That directive was already handled or replaced. Showing your current state.',
-          });
-          return;
-        }
-        setNotice({ kind: 'error', message });
+      } else {
+        hasWarnedResolutionRef.current = false;
       }
-    })();
-  }, [action?.action_type, load]);
+    }
+  }, []);
 
   useEffect(() => {
     if (status === 'authenticated') {
       void load();
     }
+
     return () => {
       loadAbortRef.current?.abort();
     };
   }, [load, status]);
 
   useEffect(() => {
-    const onResize = () => setIsDesktop(computeIsDesktop());
+    const onResize = () => syncFrameAndResolution();
     onResize();
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, []);
+  }, [syncFrameAndResolution]);
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    const previousOverflowX = document.body.style.overflowX;
-    const previousOverflowY = document.body.style.overflowY;
-    if (isDesktop) {
-      document.body.style.overflow = 'hidden';
-      document.body.style.overflowX = 'hidden';
-      document.body.style.overflowY = 'hidden';
-    } else {
-      document.body.style.overflow = previousOverflow;
-      document.body.style.overflowX = previousOverflowX;
-      document.body.style.overflowY = previousOverflowY;
+    const html = document.documentElement;
+    const body = document.body;
+    const root = document.getElementById('__next') ?? document.body.firstElementChild;
+
+    const previousHtmlStyle = html.getAttribute('style');
+    const previousBodyStyle = body.getAttribute('style');
+    const previousRootStyle = root?.getAttribute('style') ?? null;
+
+    html.style.margin = '0';
+    html.style.width = '100%';
+    html.style.height = '100%';
+    html.style.overflow = 'hidden';
+    html.style.background = '#02070d';
+
+    body.style.margin = '0';
+    body.style.width = '100%';
+    body.style.height = '100%';
+    body.style.overflow = 'hidden';
+    body.style.background = '#02070d';
+
+    if (root instanceof HTMLElement) {
+      root.style.margin = '0';
+      root.style.width = '100%';
+      root.style.height = '100%';
+      root.style.overflow = 'hidden';
+      root.style.background = '#02070d';
     }
+
     return () => {
-      document.body.style.overflow = previousOverflow;
-      document.body.style.overflowX = previousOverflowX;
-      document.body.style.overflowY = previousOverflowY;
+      if (previousHtmlStyle === null) html.removeAttribute('style');
+      else html.setAttribute('style', previousHtmlStyle);
+
+      if (previousBodyStyle === null) body.removeAttribute('style');
+      else body.setAttribute('style', previousBodyStyle);
+
+      if (root instanceof HTMLElement) {
+        if (previousRootStyle === null) root.removeAttribute('style');
+        else root.setAttribute('style', previousRootStyle);
+      }
     };
-  }, [isDesktop]);
-
-  const handleApprove = async () => {
-    if (!action || executing) return;
-    setExecuting(true);
-    try {
-      const response = await fetch('/api/conviction/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action_id: action.id, decision: 'approve' }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        const message = (data as { error?: string }).error ?? 'Approve failed';
-        if (shouldReconcileExecuteFailure(response, message)) {
-          setNotice({
-            kind: 'reconciled_stale_action',
-            message: 'That directive was already handled or replaced. Showing your current state.',
-          });
-          await load();
-          return;
-        }
-        setNotice({ kind: 'error', message });
-        return;
-      }
-
-      if (data.status === 'executed' || data.status === 'skipped') {
-        setLastDecision('approve');
-        setExecutedActionId((data.action_id as string | undefined) ?? action.id);
-        setOutcomeRecorded(false);
-        setNotice(approveSuccessFlash((data as { action_type?: string }).action_type ?? action.action_type, data.result));
-        await load();
-      }
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Approve failed';
-      if (shouldReconcileExecuteFailure(null, message)) {
-        setNotice({
-          kind: 'reconciled_stale_action',
-          message: 'That directive was already handled or replaced. Showing your current state.',
-        });
-        await load();
-        return;
-      }
-      setNotice({ kind: 'error', message });
-    } finally {
-      setExecuting(false);
-    }
-  };
-
-  const handleSkip = async () => {
-    if (!action || executing) return;
-    setExecuting(true);
-    try {
-      const response = await fetch('/api/conviction/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action_id: action.id, decision: 'skip' }),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        const message = (data as { error?: string }).error ?? 'Skip failed';
-        if (shouldReconcileExecuteFailure(response, message)) {
-          setNotice({
-            kind: 'reconciled_stale_action',
-            message: 'That directive was already handled or replaced. Showing your current state.',
-          });
-          await load();
-          return;
-        }
-        setNotice({ kind: 'error', message });
-        return;
-      }
-      if (data.status === 'executed' || data.status === 'skipped') {
-        setLastDecision('skip');
-        setExecutedActionId(null);
-        setNotice({ kind: 'skip_snoozed', message: 'Snoozed. Foldera will adjust.' });
-        await load();
-      }
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Skip failed';
-      if (shouldReconcileExecuteFailure(null, message)) {
-        setNotice({
-          kind: 'reconciled_stale_action',
-          message: 'That directive was already handled or replaced. Showing your current state.',
-        });
-        await load();
-        return;
-      }
-      setNotice({ kind: 'error', message });
-    } finally {
-      setExecuting(false);
-    }
-  };
-
-  const recordOutcome = useCallback(async (outcome: 'worked' | 'didnt_work') => {
-    if (!executedActionId || outcomeRecorded) return;
-    setOutcomeRecorded(true);
-    try {
-      await fetch('/api/conviction/outcome', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action_id: executedActionId, outcome }),
-      });
-    } catch {
-      /* best effort */
-    }
-  }, [executedActionId, outcomeRecorded]);
-
-  const handleCopyLiveArtifact = useCallback(async () => {
-    if (!action?.id) return;
-    const artifact = action.artifact as ArtifactWithDraftedEmail | null | undefined;
-    const normalized = normalizeArtifactForDashboard(artifact, action.action_type);
-    const lines = [...normalized.meta];
-    if (normalized.body.trim().length > 0) {
-      if (lines.length > 0) lines.push('');
-      lines.push(normalized.body);
-    }
-    const block = lines.join('\n').trim();
-    if (block.length === 0) return;
-    try {
-      await navigator.clipboard.writeText(block);
-    } catch {
-      /* clipboard may be unavailable */
-    }
-  }, [action]);
-
-  const handleCopyFallbackDraft = useCallback(async () => {
-    const block = ['To: alex.morgan@example.com', 'Subject: Alex Morgan follow-up', '', demoDraft].join('\n');
-    try {
-      await navigator.clipboard.writeText(block);
-    } catch {
-      /* ignore */
-    }
   }, []);
 
-  async function startStripeCheckout() {
+  const runDecision = useCallback(
+    async (decision: 'approve' | 'skip') => {
+      if (!action || executing) return;
+      setExecuting(true);
+
+      try {
+        const response = await fetch('/api/conviction/execute', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action_id: action.id, decision }),
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          const message = (data as { error?: string }).error ?? `${decision} failed`;
+          if (shouldReconcileExecuteFailure(response, message)) {
+            await load();
+            return;
+          }
+          console.error(message);
+          return;
+        }
+
+        await load();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : `${decision} failed`;
+        if (shouldReconcileExecuteFailure(null, message)) {
+          await load();
+          return;
+        }
+        console.error(message);
+      } finally {
+        setExecuting(false);
+      }
+    },
+    [action, executing, load],
+  );
+
+  const startStripeCheckout = useCallback(async () => {
     try {
       const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
       });
-      const data = await response.json().catch(() => ({}));
-      if (data.url) window.location.href = data.url as string;
-    } catch {
-      setNotice({ kind: 'error', message: 'Could not open checkout right now.' });
+      const payload = await response.json().catch(() => ({}));
+      if (typeof payload?.url === 'string') {
+        window.location.href = payload.url;
+      }
+    } catch (error) {
+      console.error(error);
     }
-  }
+  }, []);
 
-  const sessionName = session?.user?.name?.trim() || 'Brandon';
-  const firstName = sessionName.split(' ')[0] || 'Brandon';
-  const currentAction = action;
-  const artifact = currentAction?.artifact as ArtifactWithDraftedEmail | null | undefined;
-  const normalizedArtifact = normalizeArtifactForDashboard(artifact, currentAction?.action_type);
-  const normalizedBody = normalizedArtifact.body;
-  const normalizedMeta = normalizedArtifact.meta;
-  const hasNormalizedContent = normalizedMeta.length > 0 || normalizedBody.trim().length > 0;
-  const isDocument = normalizedArtifact.label === 'FINISHED DOCUMENT';
+  const copyDraft = useCallback(async () => {
+    const text = artifactClipboardText(action);
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (error) {
+      console.error(error);
+    }
+  }, [action]);
+
   const isProArtifactUnlocked =
     subPlan === 'pro' && (subStatus === 'active' || subStatus === 'past_due' || subStatus === 'active_trial');
-  const showArtifactBlur = Boolean(artifact) && !isProArtifactUnlocked && !freeArtifactRemaining;
-  const desktopArtifactTitle = pixelLockArtifactTitle(artifact, currentAction?.action_type);
-  const desktopArtifactBody = pixelLockArtifactBody(artifact);
-  const desktopArtifactType =
-    asTrimmedString(artifact?.type) ?? currentAction?.action_type ?? undefined;
+  const artifactTitle =
+    asTrimmedString(action?.artifact?.title) ??
+    asTrimmedString(action?.artifact?.subject) ??
+    asTrimmedString(action?.artifact?.type) ??
+    '';
+  const artifactBody =
+    asTrimmedString(action?.artifact?.body) ??
+    asTrimmedString(action?.artifact?.text) ??
+    asTrimmedString(action?.artifact?.content) ??
+    '';
 
-  const hasLiveAction = Boolean(currentAction?.id);
-  const cardDirective = currentAction?.directive ?? DEMO_DIRECTIVE;
-  const cardWhyNow = currentAction?.reason ?? DEMO_WHY;
-  const cardSourcePills =
-    hasLiveAction && currentAction ? inferSourcePills(currentAction, artifact) : DEMO_SOURCE_PILLS;
-  const cardStatusText = hasLiveAction ? normalizedArtifact.statusText : 'READY TO SEND';
-  const cardNextStep = hasLiveAction ? normalizedArtifact.nextStep : 'Next: Await response';
-  const draftLabel = hasLiveAction ? normalizedArtifact.label : 'DRAFT';
+  const hotspots = useCallback((): Array<HotspotButton | HotspotLink> => {
+    const shared: Array<HotspotButton | HotspotLink> = [
+      { kind: 'link', label: 'Open Executive Briefing', href: '/dashboard', rect: { left: 1.2, top: 11.8, width: 13.6, height: 6.0 } },
+      { kind: 'link', label: 'Open Playbooks', href: '/dashboard/briefings', rect: { left: 1.3, top: 18.5, width: 13.4, height: 5.2 } },
+      { kind: 'link', label: 'Open Signals', href: '/dashboard/signals', rect: { left: 1.3, top: 24.8, width: 13.4, height: 5.2 } },
+      { kind: 'link', label: 'Open Audit Log', href: '/dashboard/briefings', rect: { left: 1.3, top: 31.0, width: 13.4, height: 5.2 } },
+      { kind: 'link', label: 'Open Integrations', href: '/dashboard/settings', rect: { left: 1.3, top: 37.2, width: 13.4, height: 5.2 } },
+      { kind: 'link', label: 'Open Settings', href: '/dashboard/settings', rect: { left: 1.3, top: 43.4, width: 13.4, height: 5.2 } },
+      { kind: 'link', label: 'Open profile settings', href: '/dashboard/settings', rect: { left: 1.2, top: 84.0, width: 14.0, height: 11.2 } },
+      { kind: 'button', label: 'Search', rect: { left: 71.5, top: 3.1, width: 21.4, height: 4.8 }, onClick: () => {} },
+      { kind: 'button', label: 'Notifications', rect: { left: 94.6, top: 3.1, width: 2.9, height: 4.8 }, onClick: () => {} },
+      { kind: 'button', label: 'Copy draft', rect: { left: 40.8, top: 85.9, width: 11.4, height: 5.3 }, onClick: () => void copyDraft() },
+      {
+        kind: 'button',
+        label: 'Snooze 24h',
+        rect: { left: 53.2, top: 85.9, width: 9.9, height: 5.3 },
+        onClick: () => void runDecision('skip'),
+        disabled: !action?.id || executing,
+      },
+      {
+        kind: 'button',
+        label: 'Approve & send',
+        rect: { left: 63.6, top: 85.7, width: 13.8, height: 5.6 },
+        onClick: () => void runDecision('approve'),
+        disabled: !action?.id || executing,
+      },
+      { kind: 'button', label: 'Drop document', rect: { left: 80.3, top: 66.0, width: 14.3, height: 17.5 }, onClick: () => {} },
+    ];
 
-  const draftMetaBlock = normalizedMeta.length > 0 ? (
-    <div className="mb-3 space-y-1">
-      {normalizedMeta.map((line) => (
-        <p key={line} className="text-[12px] uppercase tracking-[0.12em] text-cyan-400">
-          {line}
-        </p>
-      ))}
-    </div>
-  ) : null;
+    if (!isProArtifactUnlocked) {
+      shared.push({
+        kind: 'button',
+        label: 'Upgrade to Pro',
+        rect: { left: 1.4, top: 56.2, width: 13.1, height: 17.0 },
+        onClick: () => void startStripeCheckout(),
+      });
+    }
 
-  const draftBodyContent = (
-    <>
-      {draftMetaBlock}
-      {normalizedBody.trim().length > 0 ? (
-        normalizedArtifact.isMarkdown ? (
-          <ReactMarkdown components={DOCUMENT_MARKDOWN_COMPONENTS}>{normalizedBody}</ReactMarkdown>
-        ) : (
-          <div className="whitespace-pre-line text-[15px] leading-7 text-gray-100">{normalizedBody}</div>
-        )
-      ) : (
-        <p className="text-[15px] leading-7 text-gray-300">Artifact captured.</p>
-      )}
-    </>
-  );
-
-  const draftBody = hasLiveAction ? (
-    showArtifactBlur ? (
-      <div
-        className="relative overflow-hidden rounded-[16px] border border-[#1b2530] bg-[#121820] p-4"
-        data-testid="dashboard-pro-blur"
-      >
-        <div className="pointer-events-none select-none blur-[5px]">{draftBodyContent}</div>
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#07090dcc] px-6 text-center">
-          <p className="max-w-[280px] text-base font-medium text-white">Upgrade to Pro to keep receiving finished work.</p>
-          <button
-            type="button"
-            onClick={() => void startStripeCheckout()}
-            className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-lg bg-cyan-500 px-4 py-2 font-medium text-black"
-          >
-            Upgrade to Pro
-          </button>
-        </div>
-      </div>
-    ) : (
-      <div
-        className="max-h-[380px] overflow-y-auto rounded-[16px] border border-[#1b2530] bg-[#121820] p-4"
-        data-testid={normalizedArtifact.isMarkdown ? 'dashboard-document-body' : undefined}
-      >
-        {draftBodyContent}
-      </div>
-    )
-  ) : (
-    <div className="whitespace-pre-line text-[15px] leading-7 text-gray-100">{demoDraft}</div>
-  );
-
-  const cardActions = isDocument
-    ? [
-        {
-          label: 'Copy full text',
-          kind: 'secondary' as const,
-          onClick: () => void handleCopyLiveArtifact(),
-          disabled: !hasLiveAction || !hasNormalizedContent,
-        },
-        { label: 'Skip and adjust', kind: 'amber' as const, onClick: () => void handleSkip(), disabled: !hasLiveAction || executing },
-        {
-          label: 'Save document',
-          kind: 'primary' as const,
-          onClick: () => void handleApprove(),
-          disabled: !hasLiveAction || executing,
-          dataTestId: 'dashboard-primary-action',
-        },
-      ]
-    : [
-        {
-          label: 'Copy draft',
-          kind: 'secondary' as const,
-          onClick: () => void (hasLiveAction ? handleCopyLiveArtifact() : handleCopyFallbackDraft()),
-          disabled: false,
-        },
-        { label: 'Snooze 24h', kind: 'amber' as const, onClick: () => void handleSkip(), disabled: !hasLiveAction || executing },
-        {
-          label: 'Approve & send',
-          kind: 'primary' as const,
-          onClick: () => void handleApprove(),
-          disabled: !hasLiveAction || executing,
-          dataTestId: 'dashboard-primary-action',
-        },
-      ];
-
-  const noticeBanner = notice ? (
-    <div
-      className="border-b border-[#1a2530] bg-[#0d1419] px-4 py-3 sm:px-6"
-      data-testid="dashboard-status-notice"
-      data-status-id={notice.kind}
-    >
-      <p className="text-sm text-white">{notice.message}</p>
-    </div>
-  ) : null;
-
-  const outcomeButtons = lastDecision === 'approve' && executedActionId && !outcomeRecorded ? (
-    <div className="flex flex-wrap justify-center gap-3">
-      <button
-        type="button"
-        onClick={() => void recordOutcome('worked')}
-        className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-black"
-      >
-        It worked
-      </button>
-      <button
-        type="button"
-        onClick={() => void recordOutcome('didnt_work')}
-        className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[#1b2530] bg-[#0d1419] px-4 py-2 text-sm text-white"
-      >
-        Didn&apos;t work
-      </button>
-    </div>
-  ) : null;
-
-  if (isDesktop) {
-    return (
-      <div className="relative h-screen w-screen overflow-hidden bg-[#04080d] text-[#f3f7fa]">
-        <FolderaDashboardPixelLock
-          onCopyDraft={() => void (hasLiveAction ? handleCopyLiveArtifact() : handleCopyFallbackDraft())}
-          onSnooze={() => void handleSkip()}
-          onApprove={() => void handleApprove()}
-          onUpgrade={() => void startStripeCheckout()}
-          disableSnooze={!hasLiveAction || executing}
-          disableApprove={!hasLiveAction || executing}
-          artifactTitle={desktopArtifactTitle}
-          artifactBody={desktopArtifactBody}
-          artifactType={desktopArtifactType}
-          showArtifactBlur={showArtifactBlur}
-        />
-        {notice ? (
-          <div
-            className="absolute bottom-6 left-1/2 z-30 w-[min(720px,92vw)] -translate-x-1/2 rounded-lg border border-[#1a2530] bg-[#0d1419f0] px-4 py-3"
-            data-testid="dashboard-status-notice"
-            data-status-id={notice.kind}
-          >
-            <p className="text-sm text-white">{notice.message}</p>
-          </div>
-        ) : null}
-        {outcomeButtons ? (
-          <div className="absolute bottom-20 left-1/2 z-30 -translate-x-1/2">{outcomeButtons}</div>
-        ) : null}
-      </div>
-    );
-  }
+    return shared;
+  }, [action?.id, copyDraft, executing, isProArtifactUnlocked, runDecision, startStripeCheckout]);
 
   return (
-    <div className="min-h-screen bg-[#0a0f14] text-[#f3f7fa]">
-      {noticeBanner}
-      <div className="mx-auto w-full max-w-[1140px] px-4 py-6">
-        <p className="mb-1 text-sm uppercase tracking-wide text-gray-500">{getDateLabel()}</p>
-        <h1 className="text-[clamp(2rem,4vw,2.5rem)] text-white">
-          {getGreetingLabel()}, <span className="font-semibold">{firstName}.</span>
-        </h1>
+    <main
+      style={{
+        position: 'fixed',
+        inset: 0,
+        width: '100vw',
+        height: '100vh',
+        margin: 0,
+        overflow: 'hidden',
+        background: '#02070d',
+      }}
+      data-testid="pixel-lock-frame"
+    >
+      <img
+        ref={imageRef}
+        src="/Dashboard.png"
+        alt="Foldera dashboard"
+        onLoad={syncFrameAndResolution}
+        draggable={false}
+        style={{
+          width: '100vw',
+          height: '100vh',
+          objectFit: 'contain',
+          objectPosition: 'center',
+          display: 'block',
+          userSelect: 'none',
+          background: '#02070d',
+        }}
+      />
 
-        <div className="mb-8 mt-6 flex flex-wrap items-center gap-8 text-sm text-gray-400">
-          <span>5 open threads</span>
-          <span>2 need attention</span>
-          <span>1 ready to move</span>
-        </div>
+      <div
+        style={{
+          position: 'absolute',
+          left: `${frame.left}px`,
+          top: `${frame.top}px`,
+          width: `${frame.width}px`,
+          height: `${frame.height}px`,
+          pointerEvents: 'none',
+        }}
+        aria-hidden={false}
+      >
+        {hotspots().map((hotspot) => {
+          if (hotspot.kind === 'link') {
+            return (
+              <a
+                key={hotspot.label}
+                href={hotspot.href}
+                aria-label={hotspot.label}
+                title={hotspot.label}
+                style={{
+                  ...toAbsoluteRect(hotspot.rect, frame),
+                  pointerEvents: 'auto',
+                  background: 'transparent',
+                  border: 'none',
+                  opacity: 0,
+                }}
+              />
+            );
+          }
 
-        <DailyBriefCard
-          className="w-full"
-          dashboardCta
-          directive={cardDirective}
-          whyNow={cardWhyNow}
-          draftLabel={draftLabel}
-          draftBody={draftBody}
-          sourcePills={cardSourcePills}
-          nextStep={cardNextStep}
-          statusText={cardStatusText}
-          footerText="Grounded in connected sources"
-          actions={cardActions}
-        />
+          return (
+            <button
+              key={hotspot.label}
+              type="button"
+              aria-label={hotspot.label}
+              title={hotspot.label}
+              onClick={hotspot.onClick}
+              disabled={hotspot.disabled}
+              style={{
+                ...toAbsoluteRect(hotspot.rect, frame),
+                pointerEvents: 'auto',
+                background: 'transparent',
+                border: 'none',
+                opacity: 0,
+                cursor: hotspot.disabled ? 'not-allowed' : 'pointer',
+              }}
+            />
+          );
+        })}
       </div>
-      {outcomeButtons ? <div className="px-4 pb-8">{outcomeButtons}</div> : null}
-    </div>
+
+      <div
+        aria-hidden
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          pointerEvents: 'none',
+          opacity: 0,
+        }}
+      >
+        {artifactTitle ? <p data-testid="pixel-lock-artifact-title">{artifactTitle}</p> : null}
+        {artifactBody ? <p data-testid="pixel-lock-artifact-body">{artifactBody}</p> : null}
+      </div>
+    </main>
   );
 }
