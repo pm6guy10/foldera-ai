@@ -41,6 +41,11 @@ describe('GET /api/conviction/history', () => {
           confidence: 77,
           generated_at: '2026-04-01T12:00:00Z',
           directive_text: 'Reach out to Sam about the proposal deadline tomorrow.',
+          artifact: {
+            type: 'email',
+            body: 'Hi Sam, can you confirm the proposal timeline today?',
+          },
+          execution_result: null,
         },
       ],
       error: null,
@@ -57,12 +62,20 @@ describe('GET /api/conviction/history', () => {
     const res = await GET(new Request('http://localhost/api/conviction/history'));
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      items: Array<{ id: string; directive_preview: string; status: string }>;
+      items: Array<{
+        id: string;
+        directive_preview: string;
+        status: string;
+        has_artifact?: boolean;
+        artifact_preview?: string;
+      }>;
     };
     expect(body.items).toHaveLength(1);
     expect(body.items[0].id).toBe('a1');
     expect(body.items[0].status).toBe('executed');
     expect(body.items[0].directive_preview).toContain('Sam');
+    expect(body.items[0].has_artifact).toBe(true);
+    expect(body.items[0].artifact_preview).toContain('Hi Sam');
     expect(mockEq).toHaveBeenCalledWith('user_id', 'u1');
   });
 });

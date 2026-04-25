@@ -496,6 +496,8 @@ async function setupBriefingsMocks(page: Page) {
           confidence: 80,
           generated_at: '2026-04-01T10:00:00.000Z',
           directive_preview: 'First directive preview text for e2e.',
+          has_artifact: true,
+          artifact_preview: 'Artifact preview text for e2e history.',
         },
       ],
     }),
@@ -589,6 +591,16 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByText(/follow-up email/i)).toBeVisible({ timeout: 15000 });
   });
 
+  test('live email artifact shows To + Subject + Body in draft section — mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupDashboardMocks(page);
+    await page.goto('/dashboard');
+    await expect(page.getByText('To: keri.nopens@example.com')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Subject: MAS3 timeline follow-up')).toBeVisible();
+    await expect(page.getByText(/Hi Keri,/i)).toBeVisible();
+    await expect(page.getByText(/Hi Alex -/i)).toHaveCount(0);
+  });
+
   test('no actionable console errors — mobile 390px', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const errors = collectConsoleErrors(page);
@@ -667,7 +679,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       headings: ['Situation', 'Blocking risk', 'Recommendation / decision'],
       bodyLines: [DOCUMENT_DIRECTIVE_ASK, DOCUMENT_DIRECTIVE_CONSEQUENCE],
     });
-    await expect(page.getByText(/^DOCUMENT$/i)).toBeVisible();
+    await expect(page.getByText(/^FINISHED DOCUMENT$/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /save document/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /skip and adjust/i })).toBeVisible();
     const screenshotPath = path.join(process.cwd(), '.screenshots', 'write-document-journey-1280.png');
@@ -951,6 +963,8 @@ describeAuthMocked('Briefings /dashboard/briefings — authenticated', () => {
     await page.goto('/dashboard/briefings');
     await expect(page.getByRole('heading', { name: /past directives/i })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/First directive preview text/i)).toBeVisible();
+    await expect(page.getByText(/Artifact captured/i)).toBeVisible();
+    await expect(page.getByText(/Artifact preview text for e2e history/i)).toBeVisible();
   });
 });
 

@@ -13,6 +13,8 @@ type HistoryItem = {
   confidence: number | null;
   generated_at: string | null;
   directive_preview: string;
+  has_artifact?: boolean;
+  artifact_preview?: string;
 };
 
 function statusClass(status: string) {
@@ -134,6 +136,12 @@ export default function BriefingsHistoryPage() {
                 )}
               </div>
               <p className="mt-3 text-sm leading-relaxed text-text-primary">{row.directive_preview || '—'}</p>
+              {row.has_artifact ? (
+                <div className="mt-3 rounded-card border border-border-subtle bg-panel-raised px-3 py-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-accent">Artifact captured</p>
+                  <p className="mt-2 text-xs leading-relaxed text-text-secondary">{row.artifact_preview || '—'}</p>
+                </div>
+              ) : null}
               {row.generated_at && (
                 <p className="mt-3 text-xs text-text-muted">
                   {new Date(row.generated_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
