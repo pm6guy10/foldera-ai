@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-24 — Interview hydrated write_document: prompt tripwires aligned to persistence validators
+- MODE: PRODUCTION CONTROLLER (rung 2 — usable artifact path)
+- **Problem:** Paid owner generate (`run-paid-generate-once`) often blocked interview-class `write_document` at persistence with `interview_artifact:generic_prep_trash:*` and `homework_handoff:prepare_examples_handoff` while the model still emitted prep-checklist / STAR / dress-code patterns.
+- **Change:** `lib/briefing/generator.ts` — extended `INTERVIEW_FINISHED_BRIEF_WRITE_DOCUMENT` user-prompt block with an explicit list of auto-reject phrases matching the deterministic gates (prep sheet, STAR header, job-posting reread, “prepare examples”, dress/A-V tips, action-items headers, etc.).
+- **Verification:** `npm run lint`; `npm run build`; `npx vitest run lib/briefing/__tests__/artifact-decision-enforcement.test.ts lib/briefing/__tests__/write-document-hydration.test.ts`; `npm run health` (0 FAILING).
+- **Unproven:** Real paid rerun until a native interview `write_document` persists without hitting those gates; local proof is prompt-only.
+
 ## 2026-04-23 — Prod proof plan: Phase 0 + one paid local generate (no prod cron)
 - MODE: VERIFY
 - **Phase 0:** `npm run health` (0 FAILING). `npx vitest run --exclude .claude/worktrees/**` after fixing `app/api/settings/run-brief/__tests__/route.test.ts` — `findRecentPipelineDryRun` and `findLatestPipelineRun` run in parallel; mock must key off `outcome === 'pipeline_dry_run_returned'`, not sequential `maybeSingle` call order. Extended timeouts for cheap-dry-run + `onboard/set-goals` welcome email test. `npm run build` (clean `.next`, retry on Windows; exit 0). `npm run prod:dry-run-plain` — HTTP 200, `short_circuit.reason: cheap_dry_run`, no paid LLM.

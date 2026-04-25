@@ -23,7 +23,7 @@
 ## B. WHAT IS BROKEN (REAL)
 
 - **Repeated-directive health gate** — `npm run health` can FAIL on “Repeated directive” when the same directive shape persists multiple times in 24h (monitor after daily-generate cycles).
-- **Interview write_document quality vs bar** — Native interview-class documents can persist while still reading like prep homework (checklists, STAR prompts) or containing small typos; tightening is prompt/validator/product-judgment work, not persistence plumbing.
+- **Interview write_document quality vs bar** — Native interview-class documents can persist while still reading like prep homework (checklists, STAR prompts) or containing small typos; 2026-04-24 added validator-aligned tripwires to the hydrated interview prompt to cut auto-fail patterns; still needs paid rerun proof.
 - **Dashboard proof gap** — Conviction/latest JSON matches dashboard data, but capturing a **pending** `write_document` on `/dashboard` still requires a timed screenshot or Playwright step before approve/skip.
 - **Convergence depends on name overlap** — `extractConvergence` requires the entity name to appear in signal bodies; calendar titles without names may under-match.
 - **Confidence scores remain variable** — richer candidates help, but thin relationship context still pulls confidence down.
