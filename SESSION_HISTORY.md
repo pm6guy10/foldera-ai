@@ -2,6 +2,12 @@
 
 # Session History
 
+## 2026-04-25 — write_document: validator-aware LLM retry for prep-trash / homework_handoff
+- MODE: RUNG 2 repair path (no validator loosening)
+- **Change:** `lib/briefing/generator.ts` — on the single validation retry for `generatePayload`, when issues include `interview_artifact:*` or `homework_handoff:*`, prepend `buildInterviewWriteDocumentValidatorRepairAddendum`: exact failure lines, prose-brief shape rules, phrase bans derived from failure codes, optional `summary_without_decision` guidance. Structured log `interview_write_document_validator_repair_prompt`. Trigger is issue-based for `write_document` (not only `interview_class_hydrated_write_document` ctx), so any prep-gate failure gets the richer retry.
+- **Tests:** `lib/briefing/__tests__/interview-write-document-repair-prompt.test.ts`
+- **Verification:** `npm run lint`; `npm run build`; focused vitest (artifact-decision-enforcement, write-document-hydration, interview-write-document-repair-prompt); `npm run health` (0 FAILING). **No additional paid `run-paid-generate-once` in this slice** (user cap).
+
 ## 2026-04-24 — Interview hydrated write_document: prompt tripwires aligned to persistence validators
 - MODE: PRODUCTION CONTROLLER (rung 2 — usable artifact path)
 - **Problem:** Paid owner generate (`run-paid-generate-once`) often blocked interview-class `write_document` at persistence with `interview_artifact:generic_prep_trash:*` and `homework_handoff:prepare_examples_handoff` while the model still emitted prep-checklist / STAR / dress-code patterns.

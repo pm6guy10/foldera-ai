@@ -306,6 +306,83 @@ function findInterviewClassGenericPrepTrashId(combined: string): string | null {
   return null;
 }
 
+/** Human-readable forbids for interview-class write_document LLM repair (mirrors persistence gates). */
+const INTERVIEW_GENERIC_PREP_TRASH_REPAIR_HINTS: Record<string, string> = {
+  prep_checklist: 'No prep / preparation checklist headings or numbered prep tasks for the user',
+  prep_sheet: 'No preparation sheet framing',
+  star_method_block: 'Do not mention STAR method, STAR format, or STAR as a labeled framework',
+  prepare_n_examples: 'Do not instruct the user to prepare two/three numbered examples or stories',
+  review_the_posting: 'Do not tell the user to review or reread the job posting or job description',
+  reread_the_description: 'Do not assign rereading the job description',
+  test_your_tech: 'No "test your Zoom/Teams/Webex/mic/camera/audio" coaching',
+  quiet_room_tip: 'No quiet-room or distraction-free environment tips',
+  dress_business_casual: 'No dress code, business casual, what to wear, or dress-for-success guidance',
+  action_items_user: 'No "YOUR ACTION ITEMS" or similar owner task headers',
+  next_steps_for_you: 'No "next steps for you" assignee framing',
+  typo_caree: 'Spell CAREER and employer names correctly — no garbled tokens like CAREE',
+  day_of_interview_tips: 'No day-of-interview tips or checklist sections',
+  research_sites_homework: 'No assigned research / look up / read materials on websites homework',
+  familiarize_homework: 'No "familiarize yourself with" homework sentences',
+};
+
+const HOMEWORK_HANDOFF_REPAIR_HINTS: Record<string, string> = {
+  research_handoff: 'No research / look up / read-up-on external materials assignments',
+  familiarize_handoff: 'No "familiarize yourself with …" homework',
+  prepare_examples_handoff: 'No prepare examples, stories, talking points, or briefs as assigned work',
+  conditional_homework_menu: 'No if/then prep-task menus for the user',
+  locate_source_handoff: 'No locate/find the original invitation or thread scavenger tasks',
+};
+
+function interviewValidatorRepairTriggerIssues(issues: string[]): string[] {
+  return issues.filter(
+    (i) => i.startsWith('interview_artifact:') || i.startsWith('homework_handoff:'),
+  );
+}
+
+/**
+ * When write_document validation fails on `interview_artifact:*` or `homework_handoff:*` (prep-trash /
+ * homework gates), the generic validation retry is insufficient. This addendum feeds exact failures
+ * plus phrase-level forbids. Used for the single LLM retry (`MAX_DIRECTIVE_VALIDATION_RETRIES`).
+ * Exported for unit tests only.
+ */
+export function buildInterviewWriteDocumentValidatorRepairAddendum(issues: string[]): string | null {
+  if (interviewValidatorRepairTriggerIssues(issues).length === 0) return null;
+
+  const hints = new Set<string>();
+  for (const issue of issues) {
+    const pt = issue.match(/^interview_artifact:generic_prep_trash:([\w_]+)/);
+    if (pt) {
+      const hint = INTERVIEW_GENERIC_PREP_TRASH_REPAIR_HINTS[pt[1]];
+      if (hint) hints.add(hint);
+    }
+    const hw = issue.match(/^homework_handoff:([\w_]+)/);
+    if (hw) {
+      const hint = HOMEWORK_HANDOFF_REPAIR_HINTS[hw[1]];
+      if (hint) hints.add(hint);
+    }
+  }
+
+  const summaryFix = issues.some((i) => i.includes('decision_enforcement:summary_without_decision'))
+    ? '\n- **decision_enforcement:summary_without_decision:** End the document body with one short paragraph that states the single concrete in-room stance or talking-point package (what to say), not a topic survey or competency outline only.'
+    : '';
+
+  const hintsBlock =
+    hints.size > 0
+      ? `\n**Phrase-level bans implied by the failure codes (do not reintroduce or paraphrase into new homework):**\n${[...hints].map((h) => `- ${h}`).join('\n')}`
+      : '';
+
+  return (
+    `INTERVIEW_WRITE_DOCUMENT_VALIDATOR_REPAIR (single retry — mandatory):\n` +
+    `The previous JSON failed Foldera finish-quality gates. Produce ONE corrected JSON object only (same schema; CANONICAL_ACTION unchanged).\n\n` +
+    `**Exact validator failures you must clear:**\n${issues.map((i) => `- ${i}`).join('\n')}\n\n` +
+    `**Rewrite shape:**\n` +
+    `- Finished **prose brief** after the SOURCE block: tight narrative the user reads once and speaks from. Short sections of prose are OK; no worksheets, no numbered owner prep lists, no "Preparation notes" homework blocks.\n` +
+    `- Ground logistics (time, Webex, names) in SOURCE as factual sentences only — not as tips assigning the user work.\n` +
+    `- Do not negate banned phrases by quoting them; omit those patterns entirely.${summaryFix}` +
+    hintsBlock
+  );
+}
+
 /** Dollar amounts in artifact JSON must appear verbatim in grounding blob (Check 4). */
 function ungroundedDollarAmounts(artifactJson: string, groundingBlob: string): string[] {
   const dollars = artifactJson.match(/\$\s*[\d,]+(?:\.\d{2})?/g) ?? [];
@@ -9488,12 +9565,24 @@ async function generatePayload(
       const assistantContent = parsed ? JSON.stringify(parsed) : raw;
       attempts.push({ role: 'assistant', content: assistantContent });
       const executableCommit = EXECUTABLE_ARTIFACT_TYPES.has(committed);
-      const validRetryTypes = executableCommit
-        ? 'send_message, write_document, schedule_block'
-        : `${committed} (only)`;
-      attempts.push({
-        role: 'user',
-        content: `Validation failed. Fix these issues and return JSON only.
+      const interviewRepairAddendum =
+        committed === 'write_document' ? buildInterviewWriteDocumentValidatorRepairAddendum(issues) : null;
+      if (interviewRepairAddendum) {
+        logStructuredEvent({
+          event: 'interview_write_document_validator_repair_prompt',
+          level: 'info',
+          userId,
+          artifactType: 'write_document',
+          generationStatus: 'validator_aware_retry',
+          details: {
+            scope: 'generator',
+            attempt_index: attempt,
+            interview_class_prompt: ctx.interview_class_hydrated_write_document === true,
+            trigger_issues: interviewValidatorRepairTriggerIssues(issues),
+          },
+        });
+      }
+      const retryBody = `Validation failed. Fix these issues and return JSON only.
 
 CANONICAL_ACTION is still: ${committed}. Your action and artifact MUST match exactly.
 
@@ -9509,7 +9598,10 @@ Use REAL details from the evidence when present; when a detail is missing, say s
 Include causal_diagnosis with both why_exists_now and mechanism fields.
 
 Issues:
-- ${issues.join('\n- ')}`,
+- ${issues.join('\n- ')}`;
+      attempts.push({
+        role: 'user',
+        content: interviewRepairAddendum ? `${interviewRepairAddendum}\n\n---\n\n${retryBody}` : retryBody,
       });
       continue;
     }
