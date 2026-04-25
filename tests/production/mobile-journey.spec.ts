@@ -156,7 +156,7 @@ for (const { w, h, tag } of VIEWPORTS) {
         page.getByRole('dialog', { name: 'Site menu' }).getByRole('link', { name: 'Dashboard' }),
       ).toHaveCount(0);
       await expect(
-        page.getByRole('dialog', { name: 'Site menu' }).getByRole('link', { name: 'Get started free' }),
+        page.getByRole('dialog', { name: 'Site menu' }).getByRole('link', { name: 'Start free' }),
       ).toBeVisible();
       await page.screenshot({ path: path.join(dir, '17-menu-signed-out.png'), fullPage: true });
       await assertNoHorizontalOverflow(page);
