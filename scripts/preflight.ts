@@ -14,33 +14,17 @@ import { createClient } from '@supabase/supabase-js';
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
+import { ActionRow, CheckResult, evaluatePaidLlmGate, Verdict } from './preflight-core';
+
 config({ path: resolve(process.cwd(), '.env.local') });
 
 const FORTY_EIGHT_H_MS = 48 * 60 * 60 * 1000;
-
-interface ActionRow {
-  action_type: string | null;
-  directive_text: string | null;
-  generated_at: string | null;
-  status: string | null;
-  confidence: number | null;
-  artifact: { title?: string; type?: string } | null;
-}
 
 interface TokenRow {
   provider: string;
   expires_at: number | null;
   disconnected_at: string | null;
   last_synced_at: string | null;
-}
-
-type Verdict = 'PASS' | 'FAIL' | 'WARN';
-
-interface CheckResult {
-  name: string;
-  verdict: Verdict;
-  detail: string;
-  fix?: string;
 }
 
 function relAgo(iso: string | null | undefined): string {
@@ -88,27 +72,10 @@ async function main() {
         detail: 'No tkg_actions rows found.',
       });
     } else {
+      checks.push(evaluatePaidLlmGate(rows, relAgo));
       const allPaidLlmDisabled = rows.every(
         (r) => r.directive_text === 'paid_llm_disabled' || r.action_type === 'do_nothing',
       );
-      const paidLlmDisabledCount = rows.filter(
-        (r) => r.directive_text === 'paid_llm_disabled',
-      ).length;
-
-      if (paidLlmDisabledCount >= 3) {
-        checks.push({
-          name: 'Paid LLM gate',
-          verdict: 'FAIL',
-          detail: `${paidLlmDisabledCount} of last ${rows.length} actions are paid_llm_disabled.`,
-          fix: 'Add ALLOW_PAID_LLM=true in Vercel Environment Variables -> redeploy.',
-        });
-      } else {
-        checks.push({
-          name: 'Paid LLM gate',
-          verdict: 'PASS',
-          detail: `${paidLlmDisabledCount} of ${rows.length} recent actions are paid_llm_disabled.`,
-        });
-      }
 
       const lastReal = rows.find(
         (r) => r.action_type !== 'do_nothing' && r.directive_text !== 'paid_llm_disabled',

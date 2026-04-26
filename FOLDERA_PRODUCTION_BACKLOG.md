@@ -3,7 +3,7 @@
 Last refreshed: 2026-04-26
 
 ## Current top item
-BL-001 — Rung 1 — Production paid-LLM gate is still blocking real generation.
+BL-008 — Rung 1 — Production daily spend cap now blocks real generation after paid-gate clearance.
 
 ## How to use this file
 - Every Codex run opens this file first.
@@ -23,21 +23,40 @@ BL-001 — Rung 1 — Production paid-LLM gate is still blocking real generation
 ### BL-001
 ID: BL-001
 Rung: 1
-Title: Production paid-LLM gate is still blocking real generation
+Title: Production paid-LLM gate no longer blocks live generation
 User-facing path: Owner triggers a real brief run and expects Foldera to generate instead of hard-failing before generation.
 Starting route or trigger: `POST /api/settings/run-brief?force=true&use_llm=true` or nightly `daily-generate`
-Ending success state: A fresh run completes without `paid_llm_disabled` and persists a real non-`do_nothing` action.
-Problem: `npm run preflight` on 2026-04-26 returned `INFRASTRUCTURE BROKEN`; 3 of the last 10 actions were `paid_llm_disabled`.
+Ending success state: A fresh live row proves the newest production blocker is no longer `paid_llm_disabled`.
+Problem: Historical `paid_llm_disabled` rows were still tripping `npm run preflight` even after the production paid-LLM env contract was fixed and redeployed.
 Protected contracts: Keep preview/local paid gates off by default, preserve the spend-policy contract, and do not fake success with `do_nothing` or wait-rationale when generation is infra-blocked.
 Allowed files: `lib/llm/paid-llm-gate.ts`, `app/api/settings/run-brief/**`, `scripts/preflight.ts`, focused tests, `SESSION_HISTORY.md`, `CURRENT_STATE.md`
 Forbidden files: `app/dashboard/**`, `app/api/stripe/**`, `app/(marketing)/**`, unrelated Playwright/dashboard suites
 Required local proof: `npm run preflight`; `npx vitest run lib/llm/__tests__/paid-llm-gate.test.ts app/api/settings/run-brief/__tests__/route.test.ts`; `npm run build`
-Required production proof: Authenticated owner request to `POST https://foldera.ai/api/settings/run-brief?force=true&use_llm=true`, then verify the response contains no `paid_llm_disabled` blocker and the resulting latest action is a real generated outcome.
-Done means: A real production run clears the paid gate and reaches a completed generation outcome without the `paid_llm_disabled` blocker.
+Required production proof: Confirm the live production env contract on the current deployment, then verify the newest production action after redeploy is blocked by something other than `paid_llm_disabled`.
+Done means: Production truth shows the newest live generation row is no longer blocked by `paid_llm_disabled`.
+Do-not-count: Cron 200s, deploy logs, DB rows without a completed user-facing run, or docs/screenshots/refactors/unrelated tests.
+Status: CLOSED
+Last evidence: 2026-04-26 — production env pull shows `ALLOW_PAID_LLM=true`, `ALLOW_PROD_PAID_LLM=true`, `PROD_DEFAULT_PIPELINE_DRY_RUN=false`; live `/api/health?depth=full` reports build `2e7dfd1`; newest owner action at 09:15 PT is `Daily spend cap reached.`, not `paid_llm_disabled`.
+Next blocker: BL-008.
+
+### BL-008
+ID: BL-008
+Rung: 1
+Title: Production daily spend cap now blocks real generation after paid-gate clearance
+User-facing path: Owner triggers a real brief run and expects Foldera to generate a real artifact instead of a no-send blocker.
+Starting route or trigger: Nightly `daily-generate` or a real generation path after the paid gate clears.
+Ending success state: A fresh run persists a real non-`do_nothing` action instead of `Daily spend cap reached.`
+Problem: The newest post-deploy owner action on 2026-04-26 at 09:15 PT is a `daily_cron` `do_nothing` with reason `Daily spend cap reached.` even though the production paid-LLM env contract is live.
+Protected contracts: Preserve the spend-policy contract, keep local/preview paid gates off by default, and do not fake success with `do_nothing` or wait-rationale when real generation should be possible.
+Allowed files: `lib/utils/api-tracker.ts`, `lib/briefing/generator.ts`, `lib/cron/daily-brief-generate.ts`, `app/api/settings/run-brief/**`, focused tests, `SESSION_HISTORY.md`, `CURRENT_STATE.md`
+Forbidden files: `app/dashboard/**`, `app/api/stripe/**`, `app/(marketing)/**`, unrelated Playwright/dashboard suites
+Required local proof: Focused spend-cap / generation-path tests for touched files; `npm run preflight`; `npm run build`
+Required production proof: Verify the newest live generation row no longer records `Daily spend cap reached.` and instead persists a real generated non-`do_nothing` action.
+Done means: A real production generation path gets past the spend-cap blocker and persists a real action.
 Do-not-count: Cron 200s, deploy logs, DB rows without a completed user-facing run, or docs/screenshots/refactors/unrelated tests.
 Status: OPEN
-Last evidence: 2026-04-26 — `npm run preflight` failed with `3 of last 10 actions are paid_llm_disabled`; verdict `INFRASTRUCTURE BROKEN`.
-Next blocker: Set the production paid-LLM env contract correctly and redeploy, then rerun the real owner path once.
+Last evidence: 2026-04-26 — newest owner `tkg_actions` row (`12097101-b2d5-46cb-9fee-64e584dc8458`) is `do_nothing` / `Daily spend cap reached.` with `brief_origin = daily_cron` after the live build `2e7dfd1`.
+Next blocker: Determine why the spend cap is firing on the current production generation path and prove one fresh run persists a real action instead.
 
 ### BL-002
 ID: BL-002
