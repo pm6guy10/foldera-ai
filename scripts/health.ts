@@ -210,7 +210,7 @@ async function main() {
     const since = new Date(now - TWENTY_FOUR_H_MS).toISOString();
     const { data: acts, error } = await supabase
       .from('tkg_actions')
-      .select('directive_text, generated_at, reason, execution_result')
+      .select('directive_text, generated_at, action_type, reason, execution_result')
       .eq('user_id', userId)
       .gte('generated_at', since);
 
@@ -219,6 +219,7 @@ async function main() {
       (acts ?? []).map((row) => ({
         directive_text: row.directive_text,
         generated_at: row.generated_at,
+        action_type: row.action_type,
         reason: row.reason,
         protective_duplicate_block:
           Boolean(

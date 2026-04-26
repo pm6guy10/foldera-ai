@@ -11,6 +11,7 @@ export type RepeatedDirectiveHealthStatus =
 export interface RepeatedDirectiveHealthRow {
   directive_text?: MaybeString;
   generated_at?: MaybeString;
+  action_type?: MaybeString;
   reason?: MaybeString;
   protective_duplicate_block?: boolean | null | undefined;
   verification_stub_persist?: boolean | null | undefined;
@@ -49,6 +50,14 @@ function shapeKeyFromDirectiveText(text: MaybeString): string {
 function safeMs(iso: MaybeString): number {
   const ms = new Date(String(iso ?? '')).getTime();
   return Number.isFinite(ms) ? ms : Number.NEGATIVE_INFINITY;
+}
+
+function isInternalNoSendReasonSlugRow(row: RepeatedDirectiveHealthRow): boolean {
+  if (row.action_type !== 'do_nothing') return false;
+  const directiveText = String(row.directive_text ?? '').trim();
+  const reason = String(row.reason ?? '').trim();
+  if (!directiveText || directiveText !== reason) return false;
+  return /^[A-Za-z0-9_:-]{3,120}$/.test(directiveText);
 }
 
 export function hasDuplicateSuppressionSignal(text: MaybeString): boolean {
@@ -127,7 +136,8 @@ export function summarizeRepeatedDirectiveHealth(
   const liveRows = rows.filter(
     (row) =>
       row.verification_stub_persist !== true &&
-      row.dev_force_fresh_auto_suppressed !== true,
+      row.dev_force_fresh_auto_suppressed !== true &&
+      !isInternalNoSendReasonSlugRow(row),
   );
   const counts = new Map<string, { count: number; latestMs: number; latestIso: string | null }>();
   let latestRow: RepeatedDirectiveHealthRow | null = null;

@@ -104,6 +104,37 @@ describe('duplicate truth semantics', () => {
     expect(summary.maxCopies).toBe(2);
   });
 
+  it('ignores internal do_nothing sentinel slug rows when classifying repeated directives', () => {
+    const summary = summarizeRepeatedDirectiveHealth([
+      {
+        directive_text: 'paid_llm_disabled',
+        action_type: 'do_nothing',
+        reason: 'paid_llm_disabled',
+        generated_at: '2026-04-16T15:15:00.000Z',
+      },
+      {
+        directive_text: 'paid_llm_disabled',
+        action_type: 'do_nothing',
+        reason: 'paid_llm_disabled',
+        generated_at: '2026-04-16T16:15:00.000Z',
+      },
+      {
+        directive_text: 'paid_llm_disabled',
+        action_type: 'do_nothing',
+        reason: 'paid_llm_disabled',
+        generated_at: '2026-04-16T17:45:00.000Z',
+      },
+      {
+        directive_text: 'Email Alex about the permit appeal deadline.',
+        action_type: 'send_message',
+        generated_at: '2026-04-16T17:50:00.000Z',
+      },
+    ], now);
+
+    expect(summary.status).toBe('clear');
+    expect(summary.maxCopies).toBe(1);
+  });
+
   it('selects the latest non-verification row for last-generation truth', () => {
     const latest = selectLatestMeaningfulGenerationRow([
       {

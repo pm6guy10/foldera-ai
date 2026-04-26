@@ -39,6 +39,29 @@ const DIRECTIVE_RESPONSE = {
   },
 };
 
+const HISTORY_RESPONSE = {
+  items: [
+    {
+      id: 'hist-1',
+      status: 'pending_approval',
+      action_type: 'send_message',
+      generated_at: '2026-04-24T08:00:00.000Z',
+      directive_preview: 'Confirm launch timeline with Alex and request final sign-off.',
+      has_artifact: true,
+      artifact_preview: 'Hi Alex - confirming launch timeline and final sign-off.',
+    },
+    {
+      id: 'hist-2',
+      status: 'executed',
+      action_type: 'write_document',
+      generated_at: '2026-04-23T08:00:00.000Z',
+      directive_preview: 'Draft onboarding handoff notes for the customer success team.',
+      has_artifact: true,
+      artifact_preview: 'Handoff summary and checklist prepared.',
+    },
+  ],
+};
+
 const NAV_CONTRACT = [
   { panel: 'briefing', label: 'Executive Briefing' },
   { panel: 'playbooks', label: 'Playbooks' },
@@ -157,8 +180,29 @@ async function setupDashboardMocks(
     matchApiPath('/api/integrations/status'),
     fulfillJson({
       integrations: [
-        { provider: 'google', is_active: true, sync_email: 'test@gmail.com', last_synced_at: null, missing_scopes: [] },
+        {
+          provider: 'google',
+          is_active: true,
+          sync_email: 'test@gmail.com',
+          last_synced_at: '2026-04-25T08:30:00.000Z',
+          missing_scopes: [],
+          needs_reconnect: false,
+          needs_reauth: false,
+          sync_stale: false,
+        },
+        {
+          provider: 'azure_ad',
+          is_active: false,
+          sync_email: null,
+          last_synced_at: null,
+          missing_scopes: [],
+          needs_reconnect: false,
+          needs_reauth: false,
+          sync_stale: false,
+        },
       ],
+      newest_mail_signal_at: '2026-04-25T08:30:00.000Z',
+      mail_ingest_looks_stale: false,
     }),
   );
   await page.route(
@@ -173,6 +217,7 @@ async function setupDashboardMocks(
   );
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
   await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(DIRECTIVE_RESPONSE));
+  await page.route(matchApiPath('/api/conviction/history'), fulfillJson(HISTORY_RESPONSE));
   await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
     if (route.request().method() !== 'POST') return route.continue();
     let decision = 'approve';
@@ -219,41 +264,55 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     }
   });
 
-  test('clicking Settings in /dashboard keeps shell path and switches panel in place', async ({ page }) => {
+  test('clicking each sidebar item keeps the app shell on /dashboard', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
+
+    for (const item of NAV_CONTRACT) {
+      await page.getByTestId(`dashboard-sidebar-item-${item.panel}`).click();
+      await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
+      if (item.panel === 'briefing') {
+        await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBeNull();
+        await expect(page.getByTestId('dashboard-panel-briefing')).toBeVisible();
+      } else {
+        await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBe(item.panel);
+        await expect(page.getByTestId(`dashboard-panel-${item.panel}`)).toBeVisible();
+      }
+    }
+  });
+
+  test('shell panels render panel-specific compact card content', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setupDashboardMocks(page);
+    await page.goto('/dashboard');
+
     await page.getByTestId('dashboard-sidebar-item-settings').click();
-
-    await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
-    await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBe('settings');
     await expect(page.getByTestId('dashboard-panel-settings')).toBeVisible();
-  });
+    await expect(page.getByRole('link', { name: /Open full settings/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open connected accounts/i })).toBeVisible();
 
-  test('clicking Signals in /dashboard keeps shell path and switches panel in place', async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await setupDashboardMocks(page);
-    await page.goto('/dashboard');
+    await page.getByTestId('dashboard-sidebar-item-integrations').click();
+    await expect(page.getByTestId('dashboard-panel-integrations')).toBeVisible();
+    await expect(page.getByText(/Connected account health/i)).toBeVisible();
+    await expect(page.getByRole('link', { name: /Manage connected accounts/i })).toBeVisible();
+
     await page.getByTestId('dashboard-sidebar-item-signals').click();
-
-    await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
-    await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBe('signals');
     await expect(page.getByTestId('dashboard-panel-signals')).toBeVisible();
-  });
+    await expect(page.getByText(/Source status summary/i)).toBeVisible();
+    await expect(page.getByTestId('dashboard-signals-source-status')).toBeVisible();
+    await expect(page.getByTestId('dashboard-signals-connected-count')).toHaveText('1');
+    await expect(page.getByRole('link', { name: /Open full signals/i })).toBeVisible();
 
-  test('active panel content changes visibly when switching between shell panels', async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await setupDashboardMocks(page);
-    await page.goto('/dashboard');
+    await page.getByTestId('dashboard-sidebar-item-audit-log').click();
+    await expect(page.getByTestId('dashboard-panel-audit-log')).toBeVisible();
+    await expect(page.getByText(/Recent directives history/i)).toBeVisible();
+    await expect(page.getByText(/Confirm launch timeline with Alex/i)).toBeVisible();
 
-    await expect(page.getByTestId('dashboard-panel-briefing')).toBeVisible();
     await page.getByTestId('dashboard-sidebar-item-playbooks').click();
     await expect(page.getByTestId('dashboard-panel-playbooks')).toBeVisible();
-    await expect(page.getByTestId('dashboard-panel-briefing')).toHaveCount(0);
-
-    await page.getByTestId('dashboard-sidebar-item-briefing').click();
-    await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBeNull();
-    await expect(page.getByTestId('dashboard-panel-briefing')).toBeVisible();
+    await expect(page.getByText(/Playbook library in progress/i)).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open full playbooks/i })).toBeVisible();
   });
 
   test('deep-link /dashboard?panel=settings opens settings shell panel', async ({ page }) => {

@@ -20,6 +20,7 @@ import {
 import { EmptyStateCard } from '@/components/foldera/EmptyStateCard';
 import { FolderaLogo } from '@/components/foldera/FolderaLogo';
 import { RightPanel } from '@/components/foldera/RightPanel';
+import { formatRelativeTime, providerDisplayName } from '@/lib/ui/provider-display';
 
 type DashboardArtifact = {
   type?: string;
@@ -49,9 +50,40 @@ type DashboardStatusNotice = {
 };
 
 type IntegrationStatusPayload = {
-  integrations?: Array<{
-    is_active?: boolean;
-  }>;
+  integrations?: IntegrationStatusItem[];
+  newest_mail_signal_at?: string | null;
+  mail_ingest_looks_stale?: boolean;
+};
+
+type IntegrationStatusItem = {
+  provider?: string;
+  is_active?: boolean;
+  sync_email?: string | null;
+  last_synced_at?: string | null;
+  needs_reconnect?: boolean;
+  needs_reauth?: boolean;
+  sync_stale?: boolean;
+};
+
+type GraphStatsPayload = {
+  signalsTotal?: number;
+  commitmentsActive?: number;
+  patternsActive?: number;
+  lastSignalAt?: string | null;
+  lastSignalSource?: string | null;
+};
+
+type DashboardHistoryItem = {
+  id: string;
+  status?: string | null;
+  action_type?: string | null;
+  generated_at?: string | null;
+  directive_preview?: string | null;
+  artifact_preview?: string | null;
+};
+
+type DashboardHistoryPayload = {
+  items?: DashboardHistoryItem[];
 };
 
 type StageMetrics = {
@@ -71,16 +103,6 @@ const DEFAULT_STAGE_METRICS: StageMetrics = {
   offsetY: 0,
 };
 
-type DashboardSecondaryPanelKey = Exclude<DashboardPanelKey, 'briefing'>;
-type DashboardShellPanelConfig = {
-  title: string;
-  description: string;
-  primaryHref: string;
-  primaryLabel: string;
-  secondaryHref?: string;
-  secondaryLabel?: string;
-};
-
 const DASHBOARD_PANEL_LABELS: Record<DashboardPanelKey, string> = {
   briefing: 'Executive Briefing',
   playbooks: 'Playbooks',
@@ -88,50 +110,6 @@ const DASHBOARD_PANEL_LABELS: Record<DashboardPanelKey, string> = {
   'audit-log': 'Audit Log',
   integrations: 'Integrations',
   settings: 'Settings',
-};
-
-const DASHBOARD_SHELL_PANEL_CONFIG: Record<DashboardSecondaryPanelKey, DashboardShellPanelConfig> = {
-  playbooks: {
-    title: 'Playbooks',
-    description:
-      'Playbooks are available as a dedicated deep-link route. This in-shell panel keeps switching instant while preserving that full page.',
-    primaryHref: '/dashboard/playbooks',
-    primaryLabel: 'Open full playbooks',
-  },
-  signals: {
-    title: 'Signals',
-    description:
-      'Signals diagnostics stay available through the deep-link route. Use this shell panel for quick navigation, then open the full view when needed.',
-    primaryHref: '/dashboard/signals',
-    primaryLabel: 'Open full signals',
-    secondaryHref: '/dashboard/settings#connected-accounts',
-    secondaryLabel: 'Open connected accounts',
-  },
-  'audit-log': {
-    title: 'Audit Log',
-    description:
-      'Audit history remains available as a route for direct linking. This panel keeps navigation in-place inside the dashboard shell.',
-    primaryHref: '/dashboard/audit-log',
-    primaryLabel: 'Open full audit log',
-  },
-  integrations: {
-    title: 'Integrations',
-    description:
-      'Integration management remains anchored in Settings to avoid runtime risk. Keep switching in-place here and jump to full controls when needed.',
-    primaryHref: '/dashboard/integrations',
-    primaryLabel: 'Open integrations route',
-    secondaryHref: '/dashboard/settings#connected-accounts',
-    secondaryLabel: 'Manage connected accounts',
-  },
-  settings: {
-    title: 'Settings',
-    description:
-      'Settings remains a full route so account and billing controls stay stable. This panel keeps the shell interactive and links to complete settings.',
-    primaryHref: '/dashboard/settings',
-    primaryLabel: 'Open full settings',
-    secondaryHref: '/dashboard/settings#connected-accounts',
-    secondaryLabel: 'Jump to connected accounts',
-  },
 };
 
 function normalizeDashboardPanel(value: string | null): DashboardPanelKey {
@@ -319,6 +297,48 @@ function inferSourcePills(action: DashboardAction | null): string[] {
   return Array.from(pills);
 }
 
+function normalizeIntegrationProvider(provider: string | null | undefined): string {
+  const normalized = (provider ?? '').trim().toLowerCase();
+  if (normalized === 'microsoft' || normalized === 'azure-ad') return 'azure_ad';
+  return normalized;
+}
+
+function getIntegrationStateLabel(integration: IntegrationStatusItem | null | undefined): string {
+  if (!integration?.is_active) return 'Not connected';
+  if (integration.needs_reauth) return 'Needs re-auth';
+  if (integration.needs_reconnect) return 'Needs reconnect';
+  if (integration.sync_stale) return 'Sync stale';
+  return 'Connected';
+}
+
+function getIntegrationStateClass(integration: IntegrationStatusItem | null | undefined): string {
+  if (!integration?.is_active) return 'text-text-muted';
+  if (integration.needs_reauth || integration.needs_reconnect || integration.sync_stale) {
+    return 'text-amber-300';
+  }
+  return 'text-emerald-300';
+}
+
+function getIntegrationMetaLine(integration: IntegrationStatusItem | null | undefined): string {
+  if (!integration?.is_active) return 'Connect from Settings';
+  const meta: string[] = [];
+  const syncEmail = asTrimmedString(integration.sync_email);
+  if (syncEmail) {
+    meta.push(syncEmail);
+  } else {
+    meta.push('Connected');
+  }
+  if (asTrimmedString(integration.last_synced_at)) {
+    meta.push(formatRelativeTime(integration.last_synced_at));
+  }
+  return meta.join(' · ');
+}
+
+function asPanelLabel(value: string | null | undefined, fallback: string): string {
+  const trimmed = asTrimmedString(value);
+  return trimmed ? trimmed.replace(/_/g, ' ') : fallback;
+}
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const [activePanel, setActivePanel] = useState<DashboardPanelKey>('briefing');
@@ -328,6 +348,10 @@ export default function DashboardPage() {
   const [action, setAction] = useState<DashboardAction | null>(null);
   const [loadingLatest, setLoadingLatest] = useState(true);
   const [hasActiveIntegration, setHasActiveIntegration] = useState(false);
+  const [integrationStatus, setIntegrationStatus] = useState<IntegrationStatusPayload | null>(null);
+  const [graphStats, setGraphStats] = useState<GraphStatsPayload | null>(null);
+  const [historyItems, setHistoryItems] = useState<DashboardHistoryItem[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [artifactPaywallLocked, setArtifactPaywallLocked] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [firstReadRunning, setFirstReadRunning] = useState(false);
@@ -387,6 +411,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (status !== 'authenticated') {
       setHasActiveIntegration(false);
+      setIntegrationStatus(null);
       return;
     }
 
@@ -395,6 +420,7 @@ export default function DashboardPage() {
       .then((response) => (response.ok ? response.json() : null))
       .then((payload: IntegrationStatusPayload | null) => {
         if (cancelled) return;
+        setIntegrationStatus(payload);
         const integrations = Array.isArray(payload?.integrations) ? payload.integrations : [];
         setHasActiveIntegration(
           integrations.some((integration) => integration?.is_active === true),
@@ -403,6 +429,64 @@ export default function DashboardPage() {
       .catch(() => {
         if (!cancelled) {
           setHasActiveIntegration(false);
+          setIntegrationStatus(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      setGraphStats(null);
+      return;
+    }
+
+    let cancelled = false;
+    void fetch('/api/graph/stats', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: GraphStatsPayload | null) => {
+        if (!cancelled) {
+          setGraphStats(payload);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setGraphStats(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
+
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      setHistoryItems([]);
+      setHistoryLoaded(false);
+      return;
+    }
+
+    let cancelled = false;
+    setHistoryLoaded(false);
+    void fetch('/api/conviction/history?limit=5', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: DashboardHistoryPayload | null) => {
+        if (cancelled) return;
+        const nextItems = Array.isArray(payload?.items) ? payload.items : [];
+        setHistoryItems(nextItems);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHistoryItems([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setHistoryLoaded(true);
         }
       });
 
@@ -662,6 +746,28 @@ export default function DashboardPage() {
     (statusNotice?.id === 'approve_saved_document' || statusNotice?.id === 'approve_sent') &&
     !outcomeRecorded;
   const stageTransform = `translate(${stageMetrics.offsetX}px, ${stageMetrics.offsetY}px) scale(${stageMetrics.scale})`;
+  const integrationRows = Array.isArray(integrationStatus?.integrations)
+    ? integrationStatus.integrations
+    : [];
+  const connectedSources = integrationRows.filter((integration) => integration?.is_active === true);
+  const connectedSourceCount = connectedSources.length;
+  const latestSignalLabel = asTrimmedString(graphStats?.lastSignalAt)
+    ? `${providerDisplayName(graphStats?.lastSignalSource)} · ${formatRelativeTime(
+        graphStats?.lastSignalAt,
+      )}`
+    : asTrimmedString(integrationStatus?.newest_mail_signal_at)
+      ? `Mail · ${formatRelativeTime(integrationStatus?.newest_mail_signal_at)}`
+      : 'No signal yet';
+  const sourceSummaryRows = connectedSources.slice(0, 3);
+  const googleIntegration =
+    integrationRows.find(
+      (integration) => normalizeIntegrationProvider(integration.provider) === 'google',
+    ) ?? null;
+  const microsoftIntegration =
+    integrationRows.find(
+      (integration) => normalizeIntegrationProvider(integration.provider) === 'azure_ad',
+    ) ?? null;
+  const recentHistory = historyItems.slice(0, 3);
 
   const artifactBodyContent = showArtifactBlur ? (
     <div
@@ -781,45 +887,313 @@ export default function DashboardPage() {
     </div>
   );
 
-  const secondaryPanelConfig =
-    activePanel === 'briefing' ? null : DASHBOARD_SHELL_PANEL_CONFIG[activePanel];
-  const secondaryPanelNode = secondaryPanelConfig ? (
+  const secondaryPanelNode = !isBriefingPanel ? (
     <section
-      className="foldera-dashboard-brief-card foldera-brief-shell flex h-full w-full flex-col gap-6 p-6 sm:p-8"
+      className="foldera-dashboard-brief-card foldera-brief-shell flex h-full w-full flex-col gap-5 p-6 sm:p-8"
       data-testid={`dashboard-panel-${activePanel}`}
     >
-      <div>
-        <p
-          className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted"
-          data-testid="dashboard-active-panel-label"
-        >
-          {secondaryPanelConfig.title}
-        </p>
-        <h2 className="mt-3 max-w-[26ch] text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-text-primary">
-          {secondaryPanelConfig.title}
-        </h2>
-        <p className="mt-4 max-w-[64ch] text-[15px] leading-7 text-text-secondary">
-          {secondaryPanelConfig.description}
-        </p>
-      </div>
-      <div className="mt-auto flex flex-wrap gap-3">
-        <Link
-          href={secondaryPanelConfig.primaryHref}
-          className="foldera-button-primary"
-          data-testid={`dashboard-panel-open-${activePanel}`}
-        >
-          {secondaryPanelConfig.primaryLabel}
-        </Link>
-        {secondaryPanelConfig.secondaryHref && secondaryPanelConfig.secondaryLabel ? (
-          <Link
-            href={secondaryPanelConfig.secondaryHref}
-            className="foldera-button-secondary"
-            data-testid={`dashboard-panel-secondary-${activePanel}`}
-          >
-            {secondaryPanelConfig.secondaryLabel}
-          </Link>
-        ) : null}
-      </div>
+      {activePanel === 'signals' ? (
+        <>
+          <div>
+            <p
+              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted"
+              data-testid="dashboard-active-panel-label"
+            >
+              Signals
+            </p>
+            <h2 className="mt-3 text-[clamp(1.8rem,3.5vw,2.2rem)] font-semibold leading-[1.12] tracking-[-0.04em] text-text-primary">
+              Source status summary
+            </h2>
+            <p className="mt-3 max-w-[64ch] text-[15px] leading-7 text-text-secondary">
+              Live source health and recent signal activity from connected accounts.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <article className="rounded-[14px] border border-border bg-panel-raised p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+                Connected sources
+              </p>
+              <p className="mt-2 text-[34px] font-semibold leading-none text-text-primary" data-testid="dashboard-signals-connected-count">
+                {connectedSourceCount}
+              </p>
+              <p className="mt-2 text-sm text-text-secondary">
+                {connectedSourceCount > 0
+                  ? `${connectedSourceCount} active source${connectedSourceCount === 1 ? '' : 's'}`
+                  : 'No active sources connected yet.'}
+              </p>
+            </article>
+            <article className="rounded-[14px] border border-border bg-panel-raised p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+                Latest signal
+              </p>
+              <p className="mt-2 text-base font-semibold text-text-primary" data-testid="dashboard-signals-latest-label">
+                {latestSignalLabel}
+              </p>
+              <p className="mt-2 text-sm text-text-secondary">
+                {typeof graphStats?.signalsTotal === 'number'
+                  ? `${graphStats.signalsTotal} total signals captured`
+                  : 'Signal totals unavailable right now.'}
+              </p>
+            </article>
+          </div>
+
+          <article className="rounded-[14px] border border-border bg-panel-raised p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+              Source status
+            </p>
+            {sourceSummaryRows.length === 0 ? (
+              <p className="mt-3 text-sm text-text-secondary" data-testid="dashboard-signals-source-status">
+                No active source status yet. Connect Gmail or Microsoft to populate this panel.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-2" data-testid="dashboard-signals-source-status">
+                {sourceSummaryRows.map((integration) => (
+                  <li
+                    key={`${integration.provider ?? 'unknown'}-${integration.sync_email ?? 'connected'}`}
+                    className="flex flex-wrap items-center gap-2 text-sm"
+                  >
+                    <span className="font-semibold text-text-primary">
+                      {providerDisplayName(integration.provider)}
+                    </span>
+                    <span className={`font-medium ${getIntegrationStateClass(integration)}`}>
+                      {getIntegrationStateLabel(integration)}
+                    </span>
+                    <span className="min-w-0 break-all text-text-secondary">
+                      {getIntegrationMetaLine(integration)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </article>
+
+          <div className="mt-auto flex flex-wrap gap-3">
+            <Link
+              href="/dashboard/signals"
+              className="foldera-button-primary"
+              data-testid="dashboard-panel-open-signals"
+            >
+              Open full signals
+            </Link>
+            <Link
+              href="/dashboard/settings#connected-accounts"
+              className="foldera-button-secondary"
+              data-testid="dashboard-panel-secondary-signals"
+            >
+              Open connected accounts
+            </Link>
+          </div>
+        </>
+      ) : null}
+
+      {activePanel === 'integrations' ? (
+        <>
+          <div>
+            <p
+              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted"
+              data-testid="dashboard-active-panel-label"
+            >
+              Integrations
+            </p>
+            <h2 className="mt-3 text-[clamp(1.8rem,3.5vw,2.2rem)] font-semibold leading-[1.12] tracking-[-0.04em] text-text-primary">
+              Connected account health
+            </h2>
+            <p className="mt-3 max-w-[64ch] text-[15px] leading-7 text-text-secondary">
+              Snapshot of Google and Microsoft connection status with direct access to account management.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              { key: 'google', data: googleIntegration },
+              { key: 'azure_ad', data: microsoftIntegration },
+            ].map(({ key, data }) => (
+              <article key={key} className="rounded-[14px] border border-border bg-panel-raised p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+                  {providerDisplayName(key)}
+                </p>
+                <p className={`mt-2 text-base font-semibold ${getIntegrationStateClass(data)}`}>
+                  {getIntegrationStateLabel(data)}
+                </p>
+                <p className="mt-2 min-h-[38px] break-all text-sm text-text-secondary">
+                  {getIntegrationMetaLine(data)}
+                </p>
+              </article>
+            ))}
+          </div>
+
+          <div className="mt-auto flex flex-wrap gap-3">
+            <Link
+              href="/dashboard/integrations"
+              className="foldera-button-primary"
+              data-testid="dashboard-panel-open-integrations"
+            >
+              Open full integrations
+            </Link>
+            <Link
+              href="/dashboard/settings#connected-accounts"
+              className="foldera-button-secondary"
+              data-testid="dashboard-panel-secondary-integrations"
+            >
+              Manage connected accounts
+            </Link>
+          </div>
+        </>
+      ) : null}
+
+      {activePanel === 'settings' ? (
+        <>
+          <div>
+            <p
+              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted"
+              data-testid="dashboard-active-panel-label"
+            >
+              Settings
+            </p>
+            <h2 className="mt-3 text-[clamp(1.8rem,3.5vw,2.2rem)] font-semibold leading-[1.12] tracking-[-0.04em] text-text-primary">
+              Account and control summary
+            </h2>
+            <p className="mt-3 max-w-[64ch] text-[15px] leading-7 text-text-secondary">
+              Quick account context in-shell, with full controls still available on the settings route.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <article className="rounded-[14px] border border-border bg-panel-raised p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">Account</p>
+              <p className="mt-2 text-base font-semibold text-text-primary">{sessionName}</p>
+              <p className="mt-2 break-all text-sm text-text-secondary">
+                {asTrimmedString(session?.user?.email) ?? 'Signed-in session'}
+              </p>
+            </article>
+            <article className="rounded-[14px] border border-border bg-panel-raised p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">Connected accounts</p>
+              <p className="mt-2 text-[30px] font-semibold leading-none text-text-primary">{connectedSourceCount}</p>
+              <p className="mt-2 text-sm text-text-secondary">{latestSignalLabel}</p>
+            </article>
+          </div>
+
+          <div className="mt-auto flex flex-wrap gap-3">
+            <Link
+              href="/dashboard/settings"
+              className="foldera-button-primary"
+              data-testid="dashboard-panel-open-settings"
+            >
+              Open full settings
+            </Link>
+            <Link
+              href="/dashboard/settings#connected-accounts"
+              className="foldera-button-secondary"
+              data-testid="dashboard-panel-secondary-settings"
+            >
+              Open connected accounts
+            </Link>
+          </div>
+        </>
+      ) : null}
+
+      {activePanel === 'audit-log' ? (
+        <>
+          <div>
+            <p
+              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted"
+              data-testid="dashboard-active-panel-label"
+            >
+              Audit Log
+            </p>
+            <h2 className="mt-3 text-[clamp(1.8rem,3.5vw,2.2rem)] font-semibold leading-[1.12] tracking-[-0.04em] text-text-primary">
+              Recent directives history
+            </h2>
+            <p className="mt-3 max-w-[64ch] text-[15px] leading-7 text-text-secondary">
+              Compact summary of recent directives from briefings history.
+            </p>
+          </div>
+
+          <article className="rounded-[14px] border border-border bg-panel-raised p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+              Recent directives
+            </p>
+            {!historyLoaded ? (
+              <p className="mt-3 text-sm text-text-secondary">Loading recent directives...</p>
+            ) : recentHistory.length === 0 ? (
+              <p className="mt-3 text-sm text-text-secondary" data-testid="dashboard-audit-empty-state">
+                No recent directives yet. Open the full audit log for the complete timeline.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-3" data-testid="dashboard-audit-history-list">
+                {recentHistory.map((item) => (
+                  <li key={item.id} className="rounded-[12px] border border-border-subtle bg-panel px-3 py-2">
+                    <p className="text-xs uppercase tracking-[0.1em] text-text-muted">
+                      {asPanelLabel(item.status, 'status unknown')} · {asPanelLabel(item.action_type, 'action')}
+                    </p>
+                    <p className="mt-1 text-sm text-text-primary">
+                      {asTrimmedString(item.directive_preview) ?? 'No directive preview available.'}
+                    </p>
+                    {asTrimmedString(item.artifact_preview) ? (
+                      <p className="mt-1 text-xs text-text-secondary">{item.artifact_preview}</p>
+                    ) : null}
+                    {asTrimmedString(item.generated_at) ? (
+                      <p className="mt-1 text-xs text-text-muted">
+                        {new Date(item.generated_at as string).toLocaleString(undefined, {
+                          dateStyle: 'medium',
+                          timeStyle: 'short',
+                        })}
+                      </p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </article>
+
+          <div className="mt-auto flex flex-wrap gap-3">
+            <Link
+              href="/dashboard/audit-log"
+              className="foldera-button-primary"
+              data-testid="dashboard-panel-open-audit-log"
+            >
+              Open full audit log
+            </Link>
+          </div>
+        </>
+      ) : null}
+
+      {activePanel === 'playbooks' ? (
+        <>
+          <div>
+            <p
+              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted"
+              data-testid="dashboard-active-panel-label"
+            >
+              Playbooks
+            </p>
+            <h2 className="mt-3 text-[clamp(1.8rem,3.5vw,2.2rem)] font-semibold leading-[1.12] tracking-[-0.04em] text-text-primary">
+              Playbook library in progress
+            </h2>
+            <p className="mt-3 max-w-[64ch] text-[15px] leading-7 text-text-secondary">
+              Reusable execution playbooks are still being folded into this shell.
+            </p>
+          </div>
+
+          <article className="rounded-[14px] border border-border bg-panel-raised p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">Current state</p>
+            <p className="mt-2 text-sm text-text-secondary">
+              Use the full playbooks route for updates while this in-shell card stays compact.
+            </p>
+          </article>
+
+          <div className="mt-auto flex flex-wrap gap-3">
+            <Link
+              href="/dashboard/playbooks"
+              className="foldera-button-primary"
+              data-testid="dashboard-panel-open-playbooks"
+            >
+              Open full playbooks
+            </Link>
+          </div>
+        </>
+      ) : null}
     </section>
   ) : null;
 
