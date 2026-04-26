@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import HomePageClient from './HomePageClient';
+import { LandingPage } from '@/components/foldera/LandingPage';
 
 export const metadata: Metadata = {
   alternates: {
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function HomePage() {
-  return <HomePageClient />;
+  return <LandingPage />;
 }

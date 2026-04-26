@@ -6,18 +6,16 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
   Bell,
-  CloudUpload,
-  FileText,
-  Layers3,
   Mail,
   Search,
-  Send,
   TriangleAlert,
   TrendingUp,
 } from 'lucide-react';
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
 import { DashboardSidebar } from '@/components/foldera/DashboardSidebar';
+import { EmptyStateCard } from '@/components/foldera/EmptyStateCard';
 import { FolderaLogo } from '@/components/foldera/FolderaLogo';
+import { RightPanel } from '@/components/foldera/RightPanel';
 
 type DashboardArtifact = {
   type?: string;
@@ -62,6 +60,12 @@ type StageMetrics = {
 const DESIGN_W = 2048;
 const DESIGN_H = 1152;
 const DESKTOP_STAGE_MIN_WIDTH = 1280;
+const DEFAULT_STAGE_METRICS: StageMetrics = {
+  isDesktop: false,
+  scale: 1,
+  offsetX: 0,
+  offsetY: 0,
+};
 
 const DOCUMENT_MARKDOWN_COMPONENTS = {
   h1: ({ children }: { children?: ReactNode }) => (
@@ -93,21 +97,6 @@ const DOCUMENT_MARKDOWN_COMPONENTS = {
     <strong className="font-semibold text-text-primary">{children}</strong>
   ),
 };
-
-const briefHowRows = [
-  {
-    title: 'Directive',
-    body: 'The single move that matters most right now.',
-  },
-  {
-    title: 'Draft',
-    body: 'Ready-to-send wording when writing is the bottleneck.',
-  },
-  {
-    title: 'Source trail',
-    body: 'The evidence behind the recommendation.',
-  },
-];
 
 function shouldReconcileExecuteFailure(res: Response | null, errorMessage: string): boolean {
   if (res && res.status === 404) return true;
@@ -262,7 +251,7 @@ export default function DashboardPage() {
   const [outcomeSubmitting, setOutcomeSubmitting] = useState<null | 'worked' | 'didnt_work'>(
     null,
   );
-  const [stageMetrics, setStageMetrics] = useState<StageMetrics>(() => computeStageMetrics());
+  const [stageMetrics, setStageMetrics] = useState<StageMetrics>(DEFAULT_STAGE_METRICS);
   const [executedActionId, setExecutedActionId] = useState<string | null>(null);
   const [outcomeRecorded, setOutcomeRecorded] = useState(false);
 
@@ -628,7 +617,7 @@ export default function DashboardPage() {
     : [];
 
   const searchField = (
-    <div className="flex h-full min-w-0 items-center gap-3 rounded-[16px] border border-border bg-panel px-4 text-sm text-text-muted">
+    <div className="foldera-dashboard-search-field flex h-full min-w-0 items-center gap-3 rounded-[14px] border border-border bg-panel px-4 text-sm text-text-muted">
       <Search className="h-4 w-4 shrink-0" aria-hidden />
       <span className="min-w-0 flex-1 truncate">Search Foldera...</span>
       <span className="hidden shrink-0 rounded-[10px] border border-border px-2 py-1 text-[11px] sm:inline">
@@ -640,7 +629,7 @@ export default function DashboardPage() {
   const notificationsButton = (
     <button
       type="button"
-      className="inline-flex h-full w-full items-center justify-center rounded-[16px] border border-border bg-panel text-text-secondary"
+      className="foldera-dashboard-notify-btn inline-flex h-full w-full items-center justify-center rounded-[14px] border border-border bg-panel text-text-secondary"
       aria-label="Notifications"
     >
       <Bell className="h-4 w-4" />
@@ -648,32 +637,11 @@ export default function DashboardPage() {
   );
 
   const emptyStateCard = (
-    <div
-      data-testid="dashboard-empty-state"
-      className="foldera-dashboard-brief-card foldera-brief-shell flex h-full w-full items-center justify-center px-8 py-10 text-center"
-    >
-      <div className="max-w-[520px]">
-        <div className="mx-auto h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_18px_rgba(34,211,238,0.55)]" />
-        <h2 className="mt-6 text-[32px] font-semibold tracking-[-0.04em] text-text-primary sm:text-[38px]">
-          You&apos;re set until tomorrow morning.
-        </h2>
-        <p className="mt-4 text-[15px] leading-7 text-text-secondary">
-          No directive is queued in the app right now. Your next read still lands in email.
-          {!hasActiveIntegration ? ' Connect accounts in Settings if you want deeper context.' : ''}
-        </p>
-        {hasActiveIntegration ? (
-          <button
-            type="button"
-            onClick={() => void runFirstReadNow()}
-            disabled={firstReadRunning}
-            data-testid="dashboard-run-first-read"
-            className="foldera-button-primary mt-7"
-          >
-            {firstReadRunning ? 'Running first read' : 'Run first read now'}
-          </button>
-        ) : null}
-      </div>
-    </div>
+    <EmptyStateCard
+      hasActiveIntegration={hasActiveIntegration}
+      firstReadRunning={firstReadRunning}
+      onRunFirstRead={() => void runFirstReadNow()}
+    />
   );
 
   const loadingCard = (
@@ -742,13 +710,13 @@ export default function DashboardPage() {
         >
           <DashboardSidebar activeLabel="Executive Briefing" userName={firstName} variant="stage" />
 
-          <p className="foldera-eyebrow absolute" style={{ left: 390, top: 52 }}>
+          <p className="foldera-eyebrow absolute" style={{ left: 350, top: 52 }}>
             {getDateLabel()}
           </p>
 
           <h1
             className="absolute text-[56px] font-semibold leading-[64px] tracking-[-0.045em] text-text-secondary"
-            style={{ left: 390, top: 86, width: 700, height: 64 }}
+            style={{ left: 350, top: 86, width: 700, height: 64 }}
           >
             {getGreetingLabel()},{' '}
             <strong className="font-semibold text-text-primary">{firstName}.</strong>
@@ -756,7 +724,7 @@ export default function DashboardPage() {
 
           <div
             className="absolute flex items-center justify-between text-[28px] text-text-secondary"
-            style={{ left: 450, top: 176, width: 900, height: 44 }}
+            style={{ left: 400, top: 176, width: 900, height: 44 }}
           >
             <div className="flex items-center gap-3">
               <Mail className="h-5 w-5 text-text-muted" aria-hidden />
@@ -781,25 +749,25 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="absolute h-14" style={{ left: 1516, top: 36, width: 404 }}>
+          <div className="absolute h-14" style={{ left: 1468, top: 36, width: 384 }}>
             {searchField}
           </div>
-          <div className="absolute h-14 w-14" style={{ left: 1950, top: 36 }}>
+          <div className="absolute h-14 w-14" style={{ left: 1882, top: 36 }}>
             {notificationsButton}
           </div>
 
-          <div className="absolute" style={{ left: 384, top: 238, width: 1216, height: 850 }}>
+          <div className="absolute" style={{ left: 344, top: 238, width: 1072, height: 850 }}>
             {cardNode}
           </div>
 
           {statusNoticeNode ? (
-            <div className="absolute" style={{ left: 384, top: 1094, width: 1216 }}>
+            <div className="absolute" style={{ left: 344, top: 1094, width: 1072 }}>
               {statusNoticeNode}
             </div>
           ) : null}
 
           {showOutcomeActions ? (
-            <div className="absolute flex justify-center gap-3" style={{ left: 780, top: 1096, width: 430 }}>
+            <div className="absolute flex justify-center gap-3" style={{ left: 722, top: 1096, width: 430 }}>
               <button
                 type="button"
                 onClick={() => void submitOutcome('worked')}
@@ -819,55 +787,8 @@ export default function DashboardPage() {
             </div>
           ) : null}
 
-          <aside className="absolute" style={{ left: 1660, top: 324, width: 350, height: 300 }}>
-            <div className="foldera-panel foldera-dashboard-right-rail-panel h-full p-6">
-              <div className="flex items-center justify-between gap-3">
-                <p className="foldera-eyebrow">How this brief works</p>
-                <a href="/#product" className="shrink-0 text-sm text-text-muted hover:text-text-primary">
-                  Learn more →
-                </a>
-              </div>
-              <div className="mt-5 space-y-4">
-                {briefHowRows.map((row) => (
-                  <div
-                    key={row.title}
-                    className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 border-t border-border pt-4 first:border-t-0 first:pt-0"
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-border bg-panel-raised text-text-secondary">
-                      {row.title === 'Directive' ? (
-                        <Send className="h-4 w-4" />
-                      ) : row.title === 'Draft' ? (
-                        <FileText className="h-4 w-4" />
-                      ) : (
-                        <Layers3 className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-text-primary">{row.title}</p>
-                      <p className="mt-1.5 text-sm leading-7 text-text-muted">{row.body}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </aside>
-
-          <aside className="absolute" style={{ left: 1660, top: 764, width: 350, height: 200 }}>
-            <div className="foldera-panel foldera-dashboard-right-rail-panel h-full p-5">
-              <div className="flex h-full items-center justify-center rounded-[20px] border border-dashed border-border bg-panel-raised px-5 text-center">
-                <div>
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-border bg-panel text-text-muted">
-                    <CloudUpload className="h-5 w-5" aria-hidden />
-                  </div>
-                  <p className="mt-4 text-base font-medium leading-snug text-text-primary">
-                    Drop a folder or document.
-                  </p>
-                  <p className="mt-2 text-sm leading-7 text-text-muted">
-                    Foldera will get to work instantly.
-                  </p>
-                </div>
-              </div>
-            </div>
+          <aside className="foldera-dashboard-right-rail absolute" style={{ left: 1574, top: 324, width: 332 }}>
+            <RightPanel />
           </aside>
 
           {hiddenArtifactNode}
@@ -878,8 +799,8 @@ export default function DashboardPage() {
 
   return (
     <main className="foldera-dashboard-page foldera-page min-h-screen bg-bg text-text-primary" data-testid="pixel-lock-frame">
-      <div className="mx-auto w-full max-w-[1840px] px-4 py-4 sm:px-5 lg:px-8 lg:py-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(244px,270px)_minmax(0,1fr)] xl:grid-cols-[minmax(244px,270px)_minmax(0,1fr)_328px] xl:gap-9">
+      <div className="mx-auto w-full max-w-[1400px] px-4 py-4 sm:px-5 lg:px-6 lg:py-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[252px_minmax(0,1fr)] xl:grid-cols-[252px_minmax(0,1fr)_300px] xl:gap-8">
           <DashboardSidebar activeLabel="Executive Briefing" userName={firstName} />
 
           <div className="min-w-0">
@@ -904,7 +825,7 @@ export default function DashboardPage() {
             </div>
 
             <header className="pb-10 pt-3 lg:pt-1">
-              <h1 className="text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-text-secondary">
+              <h1 className="text-[clamp(2rem,4vw,3.1rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-text-secondary">
                 {getGreetingLabel()},{' '}
                 <strong className="font-semibold text-text-primary">{firstName}.</strong>
               </h1>
@@ -933,9 +854,9 @@ export default function DashboardPage() {
               </div>
             </header>
 
-            {statusNoticeNode ? <div className="mx-auto mb-4 w-full max-w-[1140px]">{statusNoticeNode}</div> : null}
+            {statusNoticeNode ? <div className="mx-auto mb-4 w-full max-w-[860px]">{statusNoticeNode}</div> : null}
 
-            <div className="mx-auto w-full max-w-[1140px] pb-12">
+            <div className="mx-auto w-full max-w-[860px] pb-12">
               {action ? (
                 <DailyBriefCard
                   className="foldera-dashboard-brief-card foldera-dashboard-money-shot w-full"
@@ -982,53 +903,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <aside className="foldera-dashboard-right-rail hidden min-w-0 space-y-5 xl:block">
-            <div className="foldera-panel foldera-dashboard-right-rail-panel p-5">
-              <div className="flex items-center justify-between gap-3">
-                <p className="foldera-eyebrow">How this brief works</p>
-                <a href="/#product" className="shrink-0 text-sm text-text-muted hover:text-text-primary">
-                  Learn more →
-                </a>
-              </div>
-              <div className="mt-5 space-y-5">
-                {briefHowRows.map((row) => (
-                  <div
-                    key={row.title}
-                    className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 border-t border-border pt-5 first:border-t-0 first:pt-0"
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-border bg-panel-raised text-text-secondary">
-                      {row.title === 'Directive' ? (
-                        <Send className="h-4 w-4" />
-                      ) : row.title === 'Draft' ? (
-                        <FileText className="h-4 w-4" />
-                      ) : (
-                        <Layers3 className="h-4 w-4" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-text-primary">{row.title}</p>
-                      <p className="mt-2 text-sm leading-7 text-text-muted">{row.body}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="foldera-panel foldera-dashboard-right-rail-panel p-5">
-              <div className="flex min-h-[168px] items-center justify-center rounded-[20px] border border-dashed border-border bg-panel-raised px-5 text-center">
-                <div>
-                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full border border-border bg-panel text-text-muted">
-                    <CloudUpload className="h-5 w-5" aria-hidden />
-                  </div>
-                  <p className="mt-4 text-base font-medium leading-snug text-text-primary">
-                    Drop a folder or document.
-                  </p>
-                  <p className="mt-2 text-sm leading-7 text-text-muted">
-                    Foldera will get to work instantly.
-                  </p>
-                </div>
-              </div>
-            </div>
+          <aside className="foldera-dashboard-right-rail hidden min-w-0 xl:block">
+            <RightPanel />
           </aside>
         </div>
       </div>

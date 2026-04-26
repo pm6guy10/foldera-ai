@@ -17,7 +17,9 @@ export function FolderaLogo({
   const content = (
     <>
       <FolderaMark size={markSize} decorative />
-      <span className={`text-[15px] font-semibold tracking-[-0.03em] text-text-primary ${wordmarkClassName}`}>
+      <span
+        className={`bg-gradient-to-r from-cyan-100 via-slate-100 to-slate-300 bg-clip-text text-[16px] font-semibold tracking-[-0.018em] text-transparent ${wordmarkClassName}`}
+      >
         Foldera
       </span>
     </>
@@ -30,7 +32,7 @@ export function FolderaLogo({
   return (
     <Link
       href={href}
-      className={`inline-flex items-center gap-3 rounded-[14px] text-text-primary transition-opacity hover:opacity-95 ${className}`}
+      className={`inline-flex items-center gap-3 rounded-[12px] text-text-primary transition-opacity hover:opacity-95 ${className}`}
     >
       {content}
     </Link>
