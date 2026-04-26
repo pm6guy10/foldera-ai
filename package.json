@@ -17,6 +17,7 @@
     "audit:all": "npx playwright test --config=playwright.audit.config.ts && npx tsx scripts/ux-audit.ts",
     "audit:supabase:sync-fix": "node scripts/audit-supabase-sync-fix.mjs",
     "health": "npx tsx scripts/health.ts",
+    "preflight": "npx tsx scripts/preflight.ts",
     "proof:golden-artifact": "npx tsx scripts/force-golden-artifact.ts",
     "beta:readiness": "npx tsx scripts/beta-readiness.ts",
     "scoreboard": "npx tsx scripts/scoreboard.ts",

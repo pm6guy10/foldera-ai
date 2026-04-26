@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-26 — Production backlog bootstrap + real preflight command
+- MODE: CREATE FOLDERA PRODUCTION BACKLOG — NO PRODUCT CODE CHANGES
+- **Problem:** The repo had no permanent rung-ordered production backlog file, and the requested `npm run preflight` command was not actually wired in the workspace even though future runs were supposed to use it for infra truth before coding.
+- **Change:** Added `scripts/preflight.ts` from the provided source-of-truth content, wired `"preflight": "npx tsx scripts/preflight.ts"` in `package.json`, and created `FOLDERA_PRODUCTION_BACKLOG.md` at repo root with OPEN items ordered by `ACCEPTANCE_GATE.md`, current-state failures, and unresolved session-history evidence.
+- **Verification:** `npm run preflight` (FAIL: `3 of last 10 actions are paid_llm_disabled`, verdict `INFRASTRUCTURE BROKEN`); `npm run health` (FAIL: `Repeated directive`, latest persisted copy 1h ago); `npm run lint`; `npm run build`.
+- **Unresolved:** `BL-001` remains OPEN until the production paid-LLM gate is fixed and re-proven; `npm run health` still fails the repeated-directive gate.
+
 ## 2026-04-26 — Production paid-LLM gate now matches live spend-policy contract
 - MODE: FOLDERA PRODUCTION CONTROLLER (rung 2 artifact usability via live `settings/run-brief`)
 - **Problem:** Production `POST /api/settings/run-brief?force=true&use_llm=true` reported `paid_llm_effective: true` but the signal stage immediately failed with `paid_llm_disabled`, then persisted/sent a `wait_rationale` whose blocker text exposed that internal gate string instead of a usable artifact.
