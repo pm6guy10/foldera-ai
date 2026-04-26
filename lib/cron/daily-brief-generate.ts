@@ -1056,23 +1056,56 @@ function maxIsoTimestamps(a: string | null, b: string | null): string | null {
 
 /**
  * Returns the start of the Pacific-time "day" expressed in UTC.
- * We anchor at 08:00 UTC which is midnight PST (UTC-8).
- * In PDT (UTC-7) this is 1:00 AM, which is still safely before the
- * 4:00 AM PT / 11:00 UTC cron window.
+ * This must follow America/Los_Angeles DST boundaries exactly:
+ * - PST midnight  => 08:00 UTC
+ * - PDT midnight  => 07:00 UTC
  *
- * Why this matters: evening test/manual sessions (e.g. 7 PM PT = 02:00 UTC)
- * fall BEFORE 08:00 UTC, so they belong to "yesterday's PT day" and do NOT
- * set the already-sent flag that would block the morning cron.
+ * A fixed 08:00 UTC anchor misses 00:00–00:59 PT rows during DST and can
+ * falsely mark send-stage runs as no_generated_directive.
  */
-export function ptDayStartIso(): string {
-  const now = new Date();
-  const anchor = new Date(now);
-  anchor.setUTCHours(8, 0, 0, 0);
-  // If we haven't yet crossed 08:00 UTC today, step back to yesterday's 08:00
-  if (now.getTime() < anchor.getTime()) {
-    anchor.setUTCDate(anchor.getUTCDate() - 1);
-  }
-  return anchor.toISOString();
+function getPacificDateParts(now: Date): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const year = Number(parts.find((p) => p.type === 'year')?.value ?? NaN);
+  const month = Number(parts.find((p) => p.type === 'month')?.value ?? NaN);
+  const day = Number(parts.find((p) => p.type === 'day')?.value ?? NaN);
+  return { year, month, day };
+}
+
+function getTimeZoneOffsetMinutes(at: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(at);
+
+  const year = Number(parts.find((p) => p.type === 'year')?.value ?? NaN);
+  const month = Number(parts.find((p) => p.type === 'month')?.value ?? NaN);
+  const day = Number(parts.find((p) => p.type === 'day')?.value ?? NaN);
+  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? NaN);
+  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? NaN);
+  const second = Number(parts.find((p) => p.type === 'second')?.value ?? NaN);
+
+  const wallAsUtcMs = Date.UTC(year, month - 1, day, hour, minute, second);
+  return (wallAsUtcMs - at.getTime()) / 60000;
+}
+
+export function ptDayStartIso(now: Date = new Date()): string {
+  const { year, month, day } = getPacificDateParts(now);
+  // 08:00 UTC is always within the target Pacific day and avoids DST-edge ambiguity.
+  const offsetProbe = new Date(Date.UTC(year, month - 1, day, 8, 0, 0));
+  const offsetMinutes = getTimeZoneOffsetMinutes(offsetProbe, 'America/Los_Angeles');
+  const pacificMidnightUtcMs = Date.UTC(year, month - 1, day, 0, 0, 0) - offsetMinutes * 60_000;
+  return new Date(pacificMidnightUtcMs).toISOString();
 }
 
 function isoHoursAgo(hours: number): string {

@@ -5118,3 +5118,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Added a deterministic persistence-time detector for recursive `write_document` artifacts that echo a raw email-style candidate title into `Write a decision memo on ...` / `Decision lock:` / `Decision required for ...` / `Ask:` / `Consequence:` boilerplate. Wired it through `validateDirectiveForPersistence(...)` so generator candidate fallback rejects the artifact and continues to the next ranked candidate, while the daily-brief persistence path still fails closed to `no_send` if a blocked artifact reaches that layer.
 - Verification: `npm run health` (pass, `RESULT: 0 FAILING`, warnings only); `npx vitest run lib/briefing/__tests__/generator.test.ts lib/briefing/__tests__/generator-runtime.test.ts lib/cron/__tests__/daily-brief.test.ts` (pass); `npm run test:critical-ci-contracts` (pass); `npm run build` (pass).
 - Unresolved issues: No open blocker in this seam. Pre-existing unrelated worktree change in `app/dashboard/page.tsx` was left untouched and is not part of this session.
+
+## 2026-04-25 — Daily-send PT day boundary now tracks real Pacific midnight (DST-safe)
+- MODE: FOLDERA PRODUCTION CONTROLLER (single seam, rung-1 reliability)
+- Files changed: `lib/cron/daily-brief-generate.ts`, `lib/cron/__tests__/pt-day-start.test.ts`, `SESSION_HISTORY.md`.
+- What changed: Replaced the fixed `08:00 UTC` PT-day anchor in `ptDayStartIso()` with an `America/Los_Angeles` DST-aware midnight calculation. This removes a one-hour blind spot during PDT where `00:00–00:59 PT` skipped/no-send rows were excluded from same-day send-stage queries and could cascade into false `no_generated_directive` / `partial_or_failed` outcomes.
+- Verification: `npx vitest run lib/cron/__tests__/pt-day-start.test.ts` (pass, 4 tests); `npm run lint` (pass); `npm run build` (pass).
+- Unresolved issues: Production deploy + post-deploy cron/send proof still required to mark the seam fully closed.
