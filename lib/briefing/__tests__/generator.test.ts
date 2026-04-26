@@ -546,6 +546,36 @@ describe('validateDirectiveForPersistence — evidence array safety', () => {
     ).not.toThrow();
   });
 
+  it('rejects the exact recursive Resend decision-memo artifact before persistence', () => {
+    const directive = buildDirective({
+      directive:
+        'Write a decision memo on "High-value relationship at risk: onboarding@resend.dev" — lock the final decision and owner for "High-value relationship at risk: onboarding@resend.dev" by end of day PT on 2026-04-26.',
+      action_type: 'write_document',
+      reason: 'The time window expires faster than ownership is being assigned.',
+    });
+
+    const issues = validateDirectiveForPersistence({
+      userId: OWNER_USER_ID,
+      directive,
+      artifact: {
+        type: 'document',
+        document_purpose: 'proposal',
+        target_reader: 'decision owner',
+        title: 'Decision lock: High-value relationship at risk: onboarding@resend.dev',
+        content: [
+          'Decision required for "High-value relationship at risk: onboarding@resend.dev": confirm the path, name one owner, and time-bound the commitment.',
+          '',
+          'Ask: lock the final decision and owner for "High-value relationship at risk: onboarding@resend.dev" by end of day PT on 2026-04-26.',
+          '',
+          'Consequence: if unresolved by end of day PT on 2026-04-26, the execution window closes before owners can act.',
+        ].join('\n'),
+      },
+      matchedGoalCategory: null,
+    });
+
+    expect(issues).toContain('decision_enforcement:recursive_directive_template_sludge');
+  });
+
   it('rejects weak behavioral_pattern write_document artifacts that omit the blocked goal and send/stop move', () => {
     const directive = buildDirective({
       directive: 'Pat Lee keeps going quiet.',

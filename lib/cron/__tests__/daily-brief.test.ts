@@ -997,6 +997,43 @@ describe('runDailyGenerate candidate logging', () => {
     expect(mockSupabase.insertedActions.some((row) => row.status === 'skipped')).toBe(true);
   });
 
+  it('does not persist pending_approval when persistence validation flags recursive directive sludge', async () => {
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective({
+      directive:
+        'Write a decision memo on "High-value relationship at risk: onboarding@resend.dev" — lock the final decision and owner for "High-value relationship at risk: onboarding@resend.dev" by end of day PT on 2026-04-26.',
+      action_type: 'write_document',
+      reason: 'The time window expires faster than ownership is being assigned.',
+    }));
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'document',
+      title: 'Decision lock: High-value relationship at risk: onboarding@resend.dev',
+      content: [
+        'Decision required for "High-value relationship at risk: onboarding@resend.dev": confirm the path, name one owner, and time-bound the commitment.',
+        '',
+        'Ask: lock the final decision and owner for "High-value relationship at risk: onboarding@resend.dev" by end of day PT on 2026-04-26.',
+        '',
+        'Consequence: if unresolved by end of day PT on 2026-04-26, the execution window closes before owners can act.',
+      ].join('\n'),
+      document_purpose: 'proposal',
+      target_reader: 'decision owner',
+    });
+    vi.mocked(validateDirectiveForPersistence).mockReturnValue([
+      'decision_enforcement:recursive_directive_template_sludge',
+    ]);
+
+    const result = await runDailyGenerate();
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'no_send_persisted',
+        detail: expect.stringContaining('decision_enforcement:recursive_directive_template_sludge'),
+        success: true,
+      }),
+    ]);
+    expect(mockSupabase.insertedActions.some((row) => row.status === 'pending_approval')).toBe(false);
+    expect(mockSupabase.insertedActions.some((row) => row.status === 'skipped')).toBe(true);
+  });
+
   it('persists no_send instead of pending_approval for schedule_conflict write_document memo artifacts', async () => {
     vi.mocked(generateDirective).mockResolvedValue(buildDirective({
       directive: 'Overlapping events on 2026-04-25.',

@@ -320,6 +320,123 @@ describe('generateDirective runtime failures', () => {
     20_000,
   );
 
+  it('falls through to the next candidate when persistence validation blocks recursive decision-memo sludge', async () => {
+    const scored = asWinnerScored(buildScorerResult());
+    const blockedCandidate: ScoredLoop = {
+      ...buildWinner(),
+      id: 'blocked-resend-loop',
+      title: 'High-value relationship at risk: onboarding@resend.dev',
+      content: 'Ownership on the onboarding@resend.dev relationship still has not been resolved.',
+      suggestedActionType: 'write_document',
+      score: 5.2,
+      relationshipContext: null,
+    };
+    const fallbackCandidate: ScoredLoop = {
+      ...buildWinner(),
+      id: 'fallback-partner-loop',
+      title: 'Confirm the Q2 delivery plan with the partner before Friday',
+      content: 'The Q2 delivery plan is still missing a yes/no from the external partner.',
+      score: 4.7,
+      relationshipContext: '- Partner <partner@example.com> (Partner)',
+    };
+    scored.winner = blockedCandidate;
+    scored.topCandidates = [blockedCandidate, fallbackCandidate];
+    scored.candidateDiscovery = {
+      ...scored.candidateDiscovery,
+      candidateCount: 2,
+      selectionReason: 'Selected because score 5.2 beat the next-best candidate.',
+    };
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueEmptyTkgActionsResults(10);
+
+    anthropicCreate
+      .mockResolvedValueOnce({
+        usage: { input_tokens: 120, output_tokens: 90 },
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            directive:
+              'Write a decision memo on "High-value relationship at risk: onboarding@resend.dev" — lock the final decision and owner for "High-value relationship at risk: onboarding@resend.dev" by end of day PT on 2026-04-26.',
+            artifact_type: 'write_document',
+            artifact: {
+              document_purpose: 'proposal',
+              target_reader: 'decision owner',
+              title: 'Decision lock: High-value relationship at risk: onboarding@resend.dev',
+              content: [
+                'Decision required for "High-value relationship at risk: onboarding@resend.dev": confirm the path, name one owner, and time-bound the commitment.',
+                '',
+                'Ask: lock the final decision and owner for "High-value relationship at risk: onboarding@resend.dev" by end of day PT on 2026-04-26.',
+                '',
+                'Consequence: if unresolved by end of day PT on 2026-04-26, the execution window closes before owners can act.',
+              ].join('\n'),
+            },
+            evidence: 'The onboarding@resend.dev relationship is at risk.',
+            why_now: 'The time window expires faster than ownership is being assigned.',
+            causal_diagnosis: {
+              why_exists_now: 'Decision latency is still larger than the remaining execution window.',
+              mechanism: 'Ownership remains implicit while the deadline keeps approaching.',
+            },
+          }),
+        }],
+      })
+      .mockResolvedValueOnce({
+        usage: { input_tokens: 120, output_tokens: 90 },
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            directive: buildPartnerDirectiveText(),
+            artifact_type: 'send_message',
+            artifact: {
+              to: 'partner@example.com',
+              subject: 'Q2 delivery plan confirmation',
+              body: [
+                'Hi,',
+                '',
+                `Can you confirm by ${weekdayIsoDateFromFixedNow(4)} whether the Q2 delivery plan is final and who owns the last open dependency? If we miss that window, the delivery handoff slips.`,
+                '',
+                'Thanks,',
+                'Brandon',
+              ].join('\n'),
+            },
+            evidence: 'The partner still has not confirmed the Q2 delivery plan.',
+            why_now: 'The deadline is this week and the handoff cannot move without a yes/no.',
+            causal_diagnosis: {
+              why_exists_now: 'The plan is blocked on an external yes/no answer.',
+              mechanism: 'A concrete delivery deadline is approaching without named ownership.',
+            },
+          }),
+        }],
+      });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(anthropicCreate).toHaveBeenCalledTimes(2);
+    expect(directive.directive).not.toBe('__GENERATION_FAILED__');
+    expect(directive.action_type).toBe('send_message');
+    expect(
+      (directive as { winnerSelectionTrace?: { finalWinnerId: string } }).winnerSelectionTrace?.finalWinnerId,
+    ).toBe('fallback-partner-loop');
+    expectEmailArtifactShape(
+      (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact,
+      {
+        expectedRecipient: 'partner@example.com',
+        minSubjectLength: 12,
+        minBodyLength: 80,
+        requireQuestion: true,
+      },
+    );
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'candidate_blocked',
+      generationStatus: 'persistence_validation_failed',
+      details: expect.objectContaining({
+        candidate_title: 'High-value relationship at risk: onboarding@resend.dev',
+        issues: expect.arrayContaining(['decision_enforcement:recursive_directive_template_sludge']),
+      }),
+    }));
+  });
+
   it('maps scorer no_valid_action to a deterministic blocker (not GENERATION_FAILED)', async () => {
     mockScoreOpenLoops.mockResolvedValue({
       outcome: 'no_valid_action',

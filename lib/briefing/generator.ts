@@ -72,6 +72,7 @@ import {
   getArtifactTextForDecisionEnforcement,
   getDecisionEnforcementIssues,
   getInternalExecutionBriefIssues,
+  getRecursiveDirectiveArtifactIssues,
   getWriteDocumentTaskManagerLabelIssues,
   getWriteDocumentMode,
   isInterviewClassWriteDocumentEnforcementRelaxation,
@@ -7655,6 +7656,15 @@ export function validateDirectiveForPersistence(input: {
       issues.push('decision_enforcement:internal_execution_brief_future_artifact');
     }
   }
+
+  issues.push(
+    ...getRecursiveDirectiveArtifactIssues({
+      actionType: input.directive.action_type,
+      directiveText: input.directive.directive,
+      artifact: input.artifact as Record<string, unknown> | null,
+      candidateTitle: persistenceEnforcementCtx.candidateTitle,
+    }),
+  );
 
   if (
     input.artifact &&

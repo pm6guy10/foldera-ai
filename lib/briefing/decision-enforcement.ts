@@ -119,6 +119,19 @@ const SUMMARY_ONLY_PATTERNS = [
   /\bbackground only\b/i,
 ];
 
+const RECURSIVE_DIRECTIVE_TEMPLATE_LINE_RE =
+  /^(?:Decision required for\b|Ask:|Consequence:)/i;
+
+const RECURSIVE_DIRECTIVE_TEMPLATE_PATTERNS = [
+  /\bconfirm the path,\s*name one owner,\s*and time-bound the commitment\b/i,
+  /\block the final decision and owner\b/i,
+  /\bconfirm the decision and name one accountable owner\b/i,
+  /\bname the final approver and decision owner\b/i,
+  /\bexecution window closes before owners can act\b/i,
+  /\btimeline slips and dependent work stays blocked\b/i,
+  /\bdependent work remains blocked\b/i,
+];
+
 export function normalizeDecisionActionType(actionType: string): 'send_message' | 'write_document' | 'other' {
   if (actionType === 'send_message') return 'send_message';
   if (
@@ -164,6 +177,104 @@ export function getWriteDocumentTaskManagerLabelIssues(artifact: Record<string, 
     out.push('decision_enforcement:forbidden_owner_you_task_line');
   }
   return out;
+}
+
+function normalizeRecursiveDirectiveTarget(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[“”"'`]/g, '')
+    .replace(/[^a-z0-9@._:+-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function countNormalizedOccurrences(haystack: string, needle: string): number {
+  if (!haystack || !needle) return 0;
+  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const matches = haystack.match(new RegExp(escaped, 'g'));
+  return matches?.length ?? 0;
+}
+
+function extractRecursiveDirectiveTarget(input: {
+  directiveText: string;
+  title: string;
+  content: string;
+  candidateTitle?: string | null;
+}): string | null {
+  const titleMatch = input.title.match(/^\s*Decision lock:\s*(.+)\s*$/i);
+  if (titleMatch?.[1]?.trim()) return titleMatch[1].trim();
+
+  const contentMatch = input.content.match(/Decision required for\s+[“"]?(.+?)[”"]?:/i);
+  if (contentMatch?.[1]?.trim()) return contentMatch[1].trim();
+
+  const directiveMatch = input.directiveText.match(
+    /Write a decision memo on\s+[“"]?(.+?)[”"]?(?:\s+[—-]\s+|$)/i,
+  );
+  if (directiveMatch?.[1]?.trim()) return directiveMatch[1].trim();
+
+  if (typeof input.candidateTitle === 'string' && input.candidateTitle.trim()) {
+    return input.candidateTitle.trim();
+  }
+
+  return null;
+}
+
+export function getRecursiveDirectiveArtifactIssues(input: {
+  actionType: string;
+  directiveText: string;
+  artifact: Record<string, unknown> | null;
+  candidateTitle?: string | null;
+}): string[] {
+  if (normalizeDecisionActionType(input.actionType) !== 'write_document') {
+    return [];
+  }
+  if (!input.artifact || typeof input.artifact !== 'object') {
+    return [];
+  }
+
+  const title = isNonEmptyString(input.artifact.title) ? input.artifact.title.trim() : '';
+  const content = isNonEmptyString(input.artifact.content) ? input.artifact.content.trim() : '';
+  const directiveText = isNonEmptyString(input.directiveText) ? input.directiveText.trim() : '';
+
+  if (!/^\s*write a decision memo on\b/i.test(directiveText)) return [];
+  if (!/^\s*decision lock\s*:/i.test(title)) return [];
+  if (!/^\s*Decision required for\b/im.test(content)) return [];
+
+  const combined = `${directiveText}\n${title}\n${content}`.trim();
+  const genericHitCount = RECURSIVE_DIRECTIVE_TEMPLATE_PATTERNS.filter((pattern) =>
+    pattern.test(combined)).length;
+  if (genericHitCount < 2) return [];
+
+  const nonEmptyLines = content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const templateOnlyLines =
+    nonEmptyLines.length <= 4 &&
+    nonEmptyLines.every((line) => RECURSIVE_DIRECTIVE_TEMPLATE_LINE_RE.test(line));
+  if (!templateOnlyLines) return [];
+
+  const target = extractRecursiveDirectiveTarget({
+    directiveText,
+    title,
+    content,
+    candidateTitle: input.candidateTitle,
+  });
+  const rawEmailTarget =
+    typeof target === 'string' &&
+    /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(target);
+  if (!rawEmailTarget) return [];
+
+  const normalizedCombined = normalizeRecursiveDirectiveTarget(combined);
+  const normalizedTarget = normalizeRecursiveDirectiveTarget(target ?? '');
+  if (
+    !normalizedTarget ||
+    countNormalizedOccurrences(normalizedCombined, normalizedTarget) < 3
+  ) {
+    return [];
+  }
+
+  return ['decision_enforcement:recursive_directive_template_sludge'];
 }
 
 export type WriteDocumentMode = 'outbound_resolution_note' | 'internal_execution_brief';
