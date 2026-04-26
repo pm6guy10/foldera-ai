@@ -252,6 +252,7 @@ export default function DashboardPage() {
     null,
   );
   const [stageMetrics, setStageMetrics] = useState<StageMetrics>(DEFAULT_STAGE_METRICS);
+  const [stageMeasured, setStageMeasured] = useState(false);
   const [executedActionId, setExecutedActionId] = useState<string | null>(null);
   const [outcomeRecorded, setOutcomeRecorded] = useState(false);
 
@@ -327,7 +328,10 @@ export default function DashboardPage() {
   }, [status]);
 
   useEffect(() => {
-    const updateStage = () => setStageMetrics(computeStageMetrics());
+    const updateStage = () => {
+      setStageMetrics(computeStageMetrics());
+      setStageMeasured(true);
+    };
     updateStage();
     window.addEventListener('resize', updateStage);
     return () => window.removeEventListener('resize', updateStage);
@@ -701,11 +705,23 @@ export default function DashboardPage() {
     </div>
   );
 
+  if (!stageMeasured) {
+    return (
+      <main className="foldera-dashboard-stage-root text-text-primary" data-testid="pixel-lock-frame">
+        <div className="foldera-dashboard-preload-shell" aria-hidden>
+          <div className="foldera-dashboard-preload-bar" />
+          <div className="foldera-dashboard-preload-card" />
+        </div>
+        {hiddenArtifactNode}
+      </main>
+    );
+  }
+
   if (stageMetrics.isDesktop) {
     return (
       <main className="foldera-dashboard-stage-root text-text-primary" data-testid="pixel-lock-frame">
         <div
-          className="foldera-dashboard-stage"
+          className="foldera-dashboard-stage foldera-dashboard-stage--ready"
           style={{ transform: stageTransform, transformOrigin: 'top left' }}
         >
           <DashboardSidebar activeLabel="Executive Briefing" userName={firstName} variant="stage" />

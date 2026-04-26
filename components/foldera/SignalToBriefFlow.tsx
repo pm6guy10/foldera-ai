@@ -37,7 +37,11 @@ export function SignalToBriefFlow() {
             </div>
           </div>
 
-          <div className="flex items-center justify-center py-2">
+          <div className="signal-flow-core flex items-center justify-center py-2">
+            <span className="signal-flow-stream inbound hidden lg:block" aria-hidden />
+            <span className="signal-flow-stream outbound hidden lg:block" aria-hidden />
+            <span className="signal-flow-pulse inbound hidden lg:block" aria-hidden />
+            <span className="signal-flow-pulse outbound hidden lg:block" aria-hidden />
             <div className="relative flex h-[160px] w-[160px] items-center justify-center rounded-full border border-cyan-400/20 bg-panel">
               <div className="core-ring absolute inset-4 rounded-full border border-cyan-400/25" />
               <div className="core-ring-2 absolute inset-8 rounded-full border border-purple-400/20" />
