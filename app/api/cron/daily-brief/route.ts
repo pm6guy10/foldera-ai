@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateCronAuth } from '@/lib/auth/resolve-user';
 import { checkApiCreditCanary } from '@/lib/cron/acceptance-gate';
 import { runBriefLifecycle } from '@/lib/cron/brief-service';
-import { resolveDailyBriefUserIds } from '@/lib/cron/daily-brief-generate';
+import { ptDayStartIso, resolveDailyBriefUserIds } from '@/lib/cron/daily-brief-generate';
 import { getTriggerResponseStatus } from '@/lib/cron/daily-brief';
 import { runPlatformHealthAlert } from '@/lib/cron/cron-health-alert';
 import { logApiBudgetStatusToSystemHealth } from '@/lib/cron/api-budget';
@@ -89,12 +89,11 @@ async function handler(request: NextRequest) {
 
     // Double-fire guard — same pattern as former nightly-ops brief stage.
     const supabase = createServerClient();
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0);
+    const todayStartIso = ptDayStartIso();
     const { data: todayActions } = await supabase
       .from('tkg_actions')
       .select('user_id, execution_result')
-      .gte('generated_at', todayStart.toISOString())
+      .gte('generated_at', todayStartIso)
       .in('user_id', eligibleUserIds);
 
     const usersAlreadySent = new Set(
