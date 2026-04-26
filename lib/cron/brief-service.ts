@@ -27,16 +27,17 @@
  *
  * Pre-generation gate — evaluateReadiness():
  *   SEND              — fresh signal activity; proceed to generateDirective()
- *   NO_SEND           — cooldown active; return no_send_reused, no email, no UI card
- *   INSUFFICIENT_SIGNAL — stale backlog or no new signals; persist skipped evidence, stay silent
+ *   NO_SEND           — cooldown active; return no_send_reused
+ *   INSUFFICIENT_SIGNAL — stale backlog or no new signals; persist skipped no-send evidence
  *
  * Post-generation gate — isSendWorthy():
  *   worthy: true  — directive passes all quality checks; insert pending_approval
  *   worthy: false — output blocked (do_nothing / low confidence / no evidence / placeholder);
- *                   persist skipped evidence, stay silent
+ *                   persist skipped no-send evidence
  *
- * Silence is literal: no-send paths use status='skipped' in tkg_actions so
- * runDailySend never finds them as email candidates.
+ * No-send paths use status='skipped' and carry a wait_rationale artifact.
+ * runDailySend sends that no-send row once per PT day and stamps
+ * daily_brief_sent_at/resend_id for idempotency.
  *
  * The approve field (null | true | false) on persisted directives is the
  * feedback signal for future quality improvement.

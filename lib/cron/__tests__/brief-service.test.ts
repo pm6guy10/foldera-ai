@@ -81,7 +81,7 @@ describe('runBriefLifecycle', () => {
   });
 
   it('does not retry send when generate produced an explicit no-send result', async () => {
-    vi.mocked(runDailyBrief).mockResolvedValue(makeBriefResult('no_send_persisted', 'no_send_blocker_persisted'));
+    vi.mocked(runDailyBrief).mockResolvedValue(makeBriefResult('no_send_persisted', 'email_sent'));
 
     const { result, sendFallbackAttempted } = await runBriefLifecycle({
       userIds: [USER_ID],
@@ -90,7 +90,7 @@ describe('runBriefLifecycle', () => {
 
     expect(runDailySend).not.toHaveBeenCalled();
     expect(sendFallbackAttempted).toBe(false);
-    expect(result.send.results[0].code).toBe('no_send_blocker_persisted');
+    expect(result.send.results[0].code).toBe('email_sent');
   });
 
   it('does not retry send when ensureSend is not set even if generate succeeded and send did not confirm', async () => {

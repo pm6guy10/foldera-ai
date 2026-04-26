@@ -112,13 +112,145 @@ export async function runDailySend(
           });
           continue;
         }
-        if (noSendBlocker.id) {
+
+        if (noSendBlocker.blocker) {
+          const blocker = noSendBlocker.blocker;
+          const blockerExecutionResult = blocker.executionResult ?? {};
+          const blockerSentAt = extractSentAt(blockerExecutionResult);
+          if (blockerSentAt) {
+            results.push({
+              code: 'email_already_sent',
+              meta: { action_id: blocker.id, daily_brief_sent_at: blockerSentAt },
+              success: true,
+              userId,
+            });
+            continue;
+          }
+
+          const blockerResendId =
+            typeof blockerExecutionResult.resend_id === 'string' ? blockerExecutionResult.resend_id : null;
+          if (blockerResendId) {
+            results.push({
+              code: 'email_already_sent',
+              meta: { action_id: blocker.id, resend_id: blockerResendId },
+              success: true,
+              userId,
+            });
+            continue;
+          }
+
+          const directiveText =
+            typeof blocker.directiveText === 'string' && blocker.directiveText.trim().length > 0
+              ? blocker.directiveText.trim()
+              : 'Nothing cleared the bar today.';
+
+          const blockerArtifact = extractArtifact(blockerExecutionResult);
+          const directiveItem: DirectiveItem = {
+            id: blocker.id,
+            directive: directiveText,
+            action_type: blocker.actionType ?? 'do_nothing',
+            confidence: blocker.confidence ?? 45,
+            reason: (blocker.reason ?? '').split('[score=')[0].trim(),
+            artifact: blockerArtifact,
+          };
+
+          const words = directiveItem.directive.split(/\s+/).slice(0, 6).join(' ');
+          const subject = `Foldera: ${words.length > 50 ? `${words.slice(0, 47)}...` : words}`;
+
+          let delivery: unknown;
+          try {
+            const isOwner = userId === process.env.INGEST_USER_ID;
+            const healthLine = isOwner ? (await buildHealthLineForUser(userId)) ?? undefined : undefined;
+            delivery = await sendDailyDirective({
+              to,
+              directives: [directiveItem],
+              date,
+              subject,
+              userId,
+              healthLine,
+            });
+          } catch (sendErr: unknown) {
+            logStructuredEvent({
+              event: 'daily_send_failed',
+              level: 'error',
+              userId,
+              artifactType: artifactTypeForAction(directiveItem.action_type),
+              generationStatus: 'failed',
+              details: {
+                scope: 'daily-send',
+                action_id: blocker.id,
+                no_send_blocker: true,
+                error: sendErr instanceof Error ? sendErr.message : String(sendErr),
+              },
+            });
+            results.push({
+              code: 'email_send_failed',
+              detail: sendErr instanceof Error ? sendErr.message : String(sendErr),
+              success: false,
+              userId,
+            });
+            continue;
+          }
+
+          const deliveryId =
+            delivery &&
+            typeof delivery === 'object' &&
+            'data' in (delivery as Record<string, unknown>) &&
+            typeof (delivery as { data?: { id?: unknown } }).data?.id === 'string'
+              ? ((delivery as { data?: { id?: string } }).data?.id ?? null)
+              : null;
+
+          const { error: updateError } = await supabase
+            .from('tkg_actions')
+            .update({
+              execution_result: {
+                ...blockerExecutionResult,
+                daily_brief_sent_at: new Date().toISOString(),
+                ...(deliveryId ? { resend_id: deliveryId } : {}),
+              },
+            })
+            .eq('id', blocker.id);
+
+          if (updateError) {
+            results.push({
+              code: 'status_update_failed',
+              detail: updateError.message,
+              success: false,
+              userId,
+            });
+            continue;
+          }
+
           results.push({
-            code: 'no_send_blocker_persisted',
-            detail: noSendBlocker.reason ?? 'A no-send blocker was already persisted for today.',
-            meta: { action_id: noSendBlocker.id },
+            code: 'email_sent',
+            meta: {
+              action_id: blocker.id,
+              artifact_type: directiveItem.artifact?.type ?? null,
+              resend_id: deliveryId,
+              no_send_blocker: true,
+            },
             success: true,
             userId,
+          });
+          if (options.cronInvocationId) {
+            void mergePipelineRunDelivery({
+              userId,
+              cronInvocationId: options.cronInvocationId,
+              delivery: {
+                action_id: blocker.id,
+                directive_generated_at: blocker.generatedAt,
+                email_dispatch_at: new Date().toISOString(),
+                resend_id: deliveryId,
+                send_result: deliveryId ? 'resend_accepted' : 'resend_no_id_in_response',
+              },
+            });
+          }
+          logStructuredEvent({
+            event: 'daily_send_complete',
+            userId,
+            artifactType: artifactTypeForAction(directiveItem.action_type),
+            generationStatus: 'sent',
+            details: { scope: 'daily-send', action_id: blocker.id, no_send_blocker: true },
           });
           continue;
         }

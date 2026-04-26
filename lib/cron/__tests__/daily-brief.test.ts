@@ -1467,7 +1467,7 @@ Decide by 2026-04-24.`,
     );
   });
 
-  it('surfaces a persisted no-send blocker during send when no pending action exists', async () => {
+  it('sends persisted no-send blocker wait-rationale when no pending action exists', async () => {
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
     mockSupabase.actionRows = [
       {
@@ -1481,6 +1481,12 @@ Decide by 2026-04-24.`,
         generated_at: new Date().toISOString(),
         execution_result: {
           outcome_type: 'no_send',
+          artifact: {
+            type: 'wait_rationale',
+            context: 'Foldera evaluated 2 candidates today.',
+            evidence: 'Generation validation failed: drafted_email recipient must be a real email address',
+            tripwires: ['Activate when: new signals arrive for "Hiring pipeline"'],
+          },
           generation_log: {
             reason: 'Generation validation failed: drafted_email recipient must be a real email address',
           },
@@ -1492,14 +1498,37 @@ Decide by 2026-04-24.`,
 
     expect(result.results).toEqual([
       expect.objectContaining({
-        code: 'no_send_blocker_persisted',
-        detail: 'Generation validation failed: drafted_email recipient must be a real email address',
+        code: 'email_sent',
         success: true,
       }),
     ]);
-    expect(result.message).toContain('No brief email was sent for 1 user');
-    expect(result.message).toContain('drafted_email recipient must be a real email address');
-    expect(sendDailyDirective).not.toHaveBeenCalled();
+    expect(result.message).toContain('Sent briefs for 1 eligible user.');
+    expect(sendDailyDirective).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'owner@example.com',
+        userId: USER_ID,
+        directives: [
+          expect.objectContaining({
+            id: 'blocked-1',
+            action_type: 'do_nothing',
+            directive: 'No directive sent today.',
+            artifact: expect.objectContaining({ type: 'wait_rationale' }),
+          }),
+        ],
+      }),
+    );
+    expect(mockSupabase.updatedActions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'blocked-1',
+          payload: expect.objectContaining({
+            execution_result: expect.objectContaining({
+              daily_brief_sent_at: expect.any(String),
+            }),
+          }),
+        }),
+      ]),
+    );
   });
 });
 

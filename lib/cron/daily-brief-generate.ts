@@ -383,8 +383,8 @@ export function evaluateBottomGate(
  * Pure function — no DB access, no side effects.
  *
  * SEND              — proceed to generateDirective()
- * NO_SEND           — cooldown active; return no_send_reused silently
- * INSUFFICIENT_SIGNAL — stale backlog / no signals; persist skipped evidence, stay silent
+ * NO_SEND           — cooldown active; return no_send_reused
+ * INSUFFICIENT_SIGNAL — stale backlog / no signals; persist skipped evidence for wait-rationale send
  */
 export function evaluateReadiness(
   signalResult: DailyBriefUserResult,
@@ -448,7 +448,7 @@ export function applyInteractiveStaleGateBypass(
  * Pure function — no DB access, no side effects.
  *
  * Blocks:
- *   - do_nothing directives (never email a wait_rationale)
+ *   - do_nothing directives from pending_approval persistence (no-send rows are handled in send stage)
  *   - confidence below the send threshold (70)
  *   - zero evidence (not grounded in real context)
  *   - placeholder strings in the artifact body
@@ -1337,21 +1337,31 @@ async function reconcilePendingApprovalQueue(
 // No-send persistence
 // ---------------------------------------------------------------------------
 
+export interface PersistedNoSendBlocker {
+  id: string;
+  reason: string | null;
+  actionType: string | null;
+  directiveText: string | null;
+  confidence: number | null;
+  executionResult: Record<string, unknown> | null;
+  generatedAt: string | null;
+}
+
 export async function findPersistedNoSendBlocker(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
   sinceIso: string,
-): Promise<{ error: Error | null; id: string | null; reason: string | null }> {
+): Promise<{ error: Error | null; blocker: PersistedNoSendBlocker | null }> {
   const { data, error } = await supabase
     .from('tkg_actions')
-    .select('id, reason, execution_result, generated_at')
+    .select('id, action_type, directive_text, reason, confidence, execution_result, generated_at')
     .eq('user_id', userId)
     .eq('status', 'skipped')
     .gte('generated_at', sinceIso)
     .order('generated_at', { ascending: false })
     .limit(10);
 
-  if (error) return { error, id: null, reason: null };
+  if (error) return { error, blocker: null };
 
   const blocker = (data ?? []).find((candidate) => {
     const executionResult =
@@ -1361,12 +1371,24 @@ export async function findPersistedNoSendBlocker(
     return executionResult?.outcome_type === 'no_send';
   });
 
-  if (!blocker) return { error: null, id: null, reason: null };
+  if (!blocker) return { error: null, blocker: null };
+
+  const executionResult =
+    blocker.execution_result && typeof blocker.execution_result === 'object'
+      ? (blocker.execution_result as Record<string, unknown>)
+      : null;
 
   return {
     error: null,
-    id: blocker.id as string,
-    reason: extractNoSendBlockerReason(blocker),
+    blocker: {
+      id: blocker.id as string,
+      reason: extractNoSendBlockerReason(blocker),
+      actionType: typeof blocker.action_type === 'string' ? blocker.action_type : null,
+      directiveText: typeof blocker.directive_text === 'string' ? blocker.directive_text : null,
+      confidence: typeof blocker.confidence === 'number' ? blocker.confidence : null,
+      executionResult,
+      generatedAt: typeof blocker.generated_at === 'string' ? blocker.generated_at : null,
+    },
   };
 }
 

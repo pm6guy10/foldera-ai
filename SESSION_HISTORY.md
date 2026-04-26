@@ -5125,3 +5125,10 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Replaced the fixed `08:00 UTC` PT-day anchor in `ptDayStartIso()` with an `America/Los_Angeles` DST-aware midnight calculation. This removes a one-hour blind spot during PDT where `00:00–00:59 PT` skipped/no-send rows were excluded from same-day send-stage queries and could cascade into false `no_generated_directive` / `partial_or_failed` outcomes.
 - Verification: `npx vitest run lib/cron/__tests__/pt-day-start.test.ts` (pass, 4 tests); `npm run lint` (pass); `npm run build` (pass).
 - Unresolved issues: Production deploy + post-deploy cron/send proof still required to mark the seam fully closed.
+
+## 2026-04-25 — Daily send now delivers persisted no-send wait_rationale blockers
+- MODE: FOLDERA PRODUCTION CONTROLLER (single seam, rung-1 reliability)
+- Files changed: `lib/cron/daily-brief-send.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cron/brief-service.ts`, `lib/cron/daily-brief-types.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `lib/cron/__tests__/brief-service.test.ts`, `SESSION_HISTORY.md`
+- What changed: Updated the send-stage no-send path so a persisted `outcome_type = no_send` row is treated as the day’s email candidate. `runDailySend` now sends that wait-rationale artifact, marks the same action row with `daily_brief_sent_at` (and optional `resend_id`), and keeps idempotency through existing sent/resend guards. Expanded `findPersistedNoSendBlocker` payload to provide the exact row data needed for send.
+- Verification: `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/brief-service.test.ts`; `npm run lint`; `npm run build`.
+- Unresolved issues: Post-push deploy and production `/api/cron/daily-send` seam proof still required in this session.
