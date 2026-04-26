@@ -13,16 +13,23 @@ import {
   Radar,
   ScrollText,
   Settings,
+  type LucideIcon,
 } from 'lucide-react';
 import { SIGN_OUT_CALLBACK_URL } from '@/lib/auth/constants';
 import { FolderaLogo } from '@/components/foldera/FolderaLogo';
 
-const navItems = [
+export type DashboardNavItem = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+};
+
+export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
   { label: 'Executive Briefing', href: '/dashboard', icon: Mail },
-  { label: 'Playbooks', href: '/dashboard/briefings', icon: LayoutGrid },
+  { label: 'Playbooks', href: '/dashboard/playbooks', icon: LayoutGrid },
   { label: 'Signals', href: '/dashboard/signals', icon: Radar },
-  { label: 'Audit Log', href: '/dashboard/briefings', icon: ScrollText },
-  { label: 'Integrations', href: '/dashboard/settings', icon: Link2 },
+  { label: 'Audit Log', href: '/dashboard/audit-log', icon: ScrollText },
+  { label: 'Integrations', href: '/dashboard/integrations', icon: Link2 },
   { label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
@@ -50,7 +57,7 @@ export function DashboardSidebar({
         </div>
 
         <nav className="absolute left-[20px] top-[128px] w-[264px] space-y-1.5">
-          {navItems.map((item) => {
+          {DASHBOARD_NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = item.label === activeLabel;
             const classes = `foldera-dashboard-nav-item ${isActive ? 'is-active' : ''} flex w-full items-center gap-3 rounded-[14px] px-4 text-[18px] leading-none transition-colors ${
@@ -137,7 +144,7 @@ export function DashboardSidebar({
       <FolderaLogo href="/dashboard" markSize="sm" />
 
       <nav className="foldera-dashboard-nav mt-7 space-y-1">
-          {navItems.map((item) => {
+          {DASHBOARD_NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = item.label === activeLabel;
             const classes = `foldera-dashboard-nav-item ${isActive ? 'is-active' : ''} flex min-h-[44px] items-center gap-3 rounded-[14px] px-3.5 text-[13px] transition-colors ${

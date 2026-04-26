@@ -3,13 +3,8 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { FolderaMark } from '@/components/nav/FolderaMark';
+import { DASHBOARD_NAV_ITEMS } from '@/components/foldera/DashboardSidebar';
 import { cn } from '@/lib/design-system';
-
-const navItems = [
-  { href: '/dashboard', label: 'Today' },
-  { href: '/dashboard/briefings', label: 'Briefings' },
-  { href: '/dashboard/settings', label: 'Settings' },
-];
 
 export function ProductShell({
   title,
@@ -23,6 +18,7 @@ export function ProductShell({
   headerActions?: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const activePath = pathname ?? '';
 
   return (
     <div className="min-h-[100dvh] bg-bg text-text-primary">
@@ -32,14 +28,16 @@ export function ProductShell({
             <FolderaMark size="sm" decorative />
             <span className="text-sm font-black uppercase tracking-[0.12em]">Foldera</span>
           </Link>
-          <nav className="hidden items-center gap-2 md:flex">
-            {navItems.map((item) => (
+          <nav className="hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto px-2 md:flex">
+            {DASHBOARD_NAV_ITEMS.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'inline-flex min-h-[40px] items-center rounded-button px-3 text-xs font-black uppercase tracking-[0.12em] transition-colors',
-                  pathname === item.href
+                  'inline-flex min-h-[38px] shrink-0 items-center whitespace-nowrap rounded-button px-2.5 text-[11px] font-black uppercase tracking-[0.12em] transition-colors',
+                  (item.href === '/dashboard' && activePath === '/dashboard') ||
+                    (item.href !== '/dashboard' &&
+                      (activePath === item.href || activePath.startsWith(`${item.href}/`)))
                     ? 'bg-panel-raised text-text-primary'
                     : 'text-text-secondary hover:text-text-primary',
                 )}
