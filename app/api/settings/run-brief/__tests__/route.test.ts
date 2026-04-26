@@ -132,6 +132,12 @@ describe('POST /api/settings/run-brief', () => {
     vi.unstubAllEnvs();
   });
 
+  it('exports a 120-second max duration for the route', async () => {
+    const { maxDuration } = await import('../route');
+
+    expect(maxDuration).toBe(120);
+  });
+
   it('returns a cheap dry-run receipt and never runs sync or lifecycle work', async () => {
     const userId = '10101010-1010-1010-1010-101010101010';
     mockResolveUser.mockResolvedValue({ userId });

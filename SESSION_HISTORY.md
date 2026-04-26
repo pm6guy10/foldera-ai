@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-26 — settings run-brief timeout raised to 120 seconds (blocked on pre-existing Windows build race)
+- MODE: BUGFIX (single seam)
+- **Problem:** `app/api/settings/run-brief/route.ts` capped the manual settings route at `60` seconds, while adjacent long-running generation/debug routes already allow `120`.
+- **Change:** Updated `app/api/settings/run-brief/route.ts` `maxDuration` from `60` to `120` and added a focused route test in `app/api/settings/run-brief/__tests__/route.test.ts` that asserts the exported timeout.
+- **Verification:** `npm run health` (`RESULT: 0 FAILING`, warnings only: Gmail fresh 11h, Outlook fresh 10h, last generation `do_nothing`); `npx vitest run app/api/settings/run-brief/__tests__/route.test.ts` (`15 passed`, including the new `maxDuration` assertion).
+- **Unresolved:** `npm run build` is still blocked in this Windows workspace by the pre-existing Next.js generated-file race (`ENOENT .next/export/500.html` on rename, then clean rebuild `ENOENT .next/server/pages-manifest.json`). Because the required build gate did not pass, this change was not committed or pushed in this session.
+
 ## 2026-04-26 — Production backlog bootstrap + real preflight command
 - MODE: CREATE FOLDERA PRODUCTION BACKLOG — NO PRODUCT CODE CHANGES
 - **Problem:** The repo had no permanent rung-ordered production backlog file, and the requested `npm run preflight` command was not actually wired in the workspace even though future runs were supposed to use it for infra truth before coding.
