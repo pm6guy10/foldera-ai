@@ -1,18 +1,34 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useSession } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import {
+  Bell,
+  CloudUpload,
+  FileText,
+  Layers3,
+  Mail,
+  Search,
+  Send,
+  TriangleAlert,
+  TrendingUp,
+} from 'lucide-react';
+import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
+import { DashboardSidebar } from '@/components/foldera/DashboardSidebar';
+import { FolderaLogo } from '@/components/foldera/FolderaLogo';
 
 type DashboardArtifact = {
   type?: string;
   to?: string;
   recipient?: string;
   subject?: string;
+  title?: string;
   body?: string;
   text?: string;
   content?: string;
+  context?: string;
   [key: string]: unknown;
 };
 
@@ -20,6 +36,8 @@ type DashboardAction = {
   id: string;
   directive?: string;
   action_type?: string;
+  reason?: string;
+  evidence?: unknown[];
   artifact?: DashboardArtifact | null;
 };
 
@@ -34,36 +52,62 @@ type IntegrationStatusPayload = {
   }>;
 };
 
-type ImageRect = {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
+type StageMetrics = {
+  isDesktop: boolean;
+  scale: number;
+  offsetX: number;
+  offsetY: number;
 };
 
-type HotspotRect = {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
+const DESIGN_W = 2048;
+const DESIGN_H = 1152;
+const DESKTOP_STAGE_MIN_WIDTH = 1280;
+
+const DOCUMENT_MARKDOWN_COMPONENTS = {
+  h1: ({ children }: { children?: ReactNode }) => (
+    <h1 className="mb-3 text-base font-semibold text-text-primary first:mt-0">{children}</h1>
+  ),
+  h2: ({ children }: { children?: ReactNode }) => (
+    <h2 className="mb-3 mt-4 text-sm font-semibold uppercase tracking-[0.14em] text-text-secondary first:mt-0">
+      {children}
+    </h2>
+  ),
+  h3: ({ children }: { children?: ReactNode }) => (
+    <h3 className="mb-2 mt-4 text-sm font-semibold text-text-primary first:mt-0">{children}</h3>
+  ),
+  p: ({ children }: { children?: ReactNode }) => (
+    <p className="mb-3 text-[15px] leading-7 text-text-primary last:mb-0">{children}</p>
+  ),
+  ul: ({ children }: { children?: ReactNode }) => (
+    <ul className="mb-3 list-disc space-y-2 pl-6 text-[15px] leading-7 text-text-primary marker:text-accent">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }: { children?: ReactNode }) => (
+    <ol className="mb-3 list-decimal space-y-2 pl-6 text-[15px] leading-7 text-text-primary marker:text-accent">
+      {children}
+    </ol>
+  ),
+  li: ({ children }: { children?: ReactNode }) => <li>{children}</li>,
+  strong: ({ children }: { children?: ReactNode }) => (
+    <strong className="font-semibold text-text-primary">{children}</strong>
+  ),
 };
 
-type HotspotButton = {
-  kind: 'button';
-  label: string;
-  rect: HotspotRect;
-  onClick: () => void;
-  disabled?: boolean;
-  visible?: boolean;
-  testId?: string;
-};
-
-type HotspotLink = {
-  kind: 'link';
-  label: string;
-  rect: HotspotRect;
-  href: string;
-};
+const briefHowRows = [
+  {
+    title: 'Directive',
+    body: 'The single move that matters most right now.',
+  },
+  {
+    title: 'Draft',
+    body: 'Ready-to-send wording when writing is the bottleneck.',
+  },
+  {
+    title: 'Source trail',
+    body: 'The evidence behind the recommendation.',
+  },
+];
 
 function shouldReconcileExecuteFailure(res: Response | null, errorMessage: string): boolean {
   if (res && res.status === 404) return true;
@@ -83,14 +127,17 @@ function artifactClipboardText(action: DashboardAction | null): string {
   const lines: string[] = [];
   const to = asTrimmedString(artifact.to ?? artifact.recipient);
   const subject = asTrimmedString(artifact.subject);
+  const title = asTrimmedString(artifact.title);
   const body =
     asTrimmedString(artifact.body) ??
     asTrimmedString(artifact.text) ??
     asTrimmedString(artifact.content) ??
+    asTrimmedString(artifact.context) ??
     '';
 
   if (to) lines.push(`To: ${to}`);
   if (subject) lines.push(`Subject: ${subject}`);
+  if (title && !to && !subject) lines.push(title);
   if (lines.length > 0 && body) lines.push('');
   if (body) lines.push(body);
 
@@ -108,6 +155,7 @@ function getArtifactBody(artifact: DashboardArtifact | null | undefined): string
     asTrimmedString(artifact?.body) ??
     asTrimmedString(artifact?.text) ??
     asTrimmedString(artifact?.content) ??
+    asTrimmedString(artifact?.context) ??
     ''
   );
 }
@@ -116,7 +164,10 @@ function isWriteDocumentAction(action: DashboardAction | null): boolean {
   return action?.action_type === 'write_document' || action?.artifact?.type === 'document';
 }
 
-function buildDecisionSuccessNotice(action: DashboardAction | null, decision: 'approve' | 'skip'): DashboardStatusNotice {
+function buildDecisionSuccessNotice(
+  action: DashboardAction | null,
+  decision: 'approve' | 'skip',
+): DashboardStatusNotice {
   if (decision === 'skip') {
     return {
       id: 'skip_snoozed',
@@ -137,18 +188,69 @@ function buildDecisionSuccessNotice(action: DashboardAction | null, decision: 'a
       };
 }
 
-function toAbsoluteRect(rect: HotspotRect, frame: ImageRect): CSSProperties {
-  return {
-    position: 'absolute',
-    left: `${(rect.left / 100) * frame.width}px`,
-    top: `${(rect.top / 100) * frame.height}px`,
-    width: `${(rect.width / 100) * frame.width}px`,
-    height: `${(rect.height / 100) * frame.height}px`,
-  };
+function getDateLabel(): string {
+  return new Date()
+    .toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    })
+    .toUpperCase();
+}
+
+function getGreetingLabel(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function computeStageMetrics(): StageMetrics {
+  if (typeof window === 'undefined') {
+    return { isDesktop: false, scale: 1, offsetX: 0, offsetY: 0 };
+  }
+
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  if (viewportWidth < DESKTOP_STAGE_MIN_WIDTH) {
+    return { isDesktop: false, scale: 1, offsetX: 0, offsetY: 0 };
+  }
+
+  const scale = Math.min(viewportWidth / DESIGN_W, viewportHeight / DESIGN_H);
+  const offsetX = (viewportWidth - DESIGN_W * scale) / 2;
+  const offsetY = (viewportHeight - DESIGN_H * scale) / 2;
+  return { isDesktop: true, scale, offsetX, offsetY };
+}
+
+function inferSourcePills(action: DashboardAction | null): string[] {
+  if (isWriteDocumentAction(action)) {
+    return ['Prepared document', 'Decision basis', 'Connected sources'];
+  }
+
+  if (action?.artifact?.type === 'wait_rationale' || action?.action_type === 'do_nothing') {
+    return ['Current context', 'Source trail'];
+  }
+
+  const evidenceText = JSON.stringify(action?.evidence ?? []).toLowerCase();
+  const pills = new Set<string>();
+  if (
+    action?.action_type === 'send_message' ||
+    action?.artifact?.type === 'email' ||
+    action?.artifact?.type === 'drafted_email' ||
+    evidenceText.includes('email')
+  ) {
+    pills.add('Email thread');
+  }
+  if (evidenceText.includes('calendar')) {
+    pills.add('Calendar hold');
+  }
+  pills.add('Last draft');
+  pills.add('Connected inbox');
+  return Array.from(pills);
 }
 
 export default function DashboardPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
 
   const [action, setAction] = useState<DashboardAction | null>(null);
   const [loadingLatest, setLoadingLatest] = useState(true);
@@ -157,12 +259,14 @@ export default function DashboardPage() {
   const [executing, setExecuting] = useState(false);
   const [firstReadRunning, setFirstReadRunning] = useState(false);
   const [statusNotice, setStatusNotice] = useState<DashboardStatusNotice | null>(null);
-  const [outcomeSubmitting, setOutcomeSubmitting] = useState<null | 'worked' | 'didnt_work'>(null);
-  const [frame, setFrame] = useState<ImageRect>({ left: 0, top: 0, width: 0, height: 0 });
+  const [outcomeSubmitting, setOutcomeSubmitting] = useState<null | 'worked' | 'didnt_work'>(
+    null,
+  );
+  const [stageMetrics, setStageMetrics] = useState<StageMetrics>(() => computeStageMetrics());
+  const [executedActionId, setExecutedActionId] = useState<string | null>(null);
+  const [outcomeRecorded, setOutcomeRecorded] = useState(false);
 
   const loadAbortRef = useRef<AbortController | null>(null);
-  const imageRef = useRef<HTMLImageElement | null>(null);
-  const hasWarnedResolutionRef = useRef(false);
 
   const load = useCallback(async () => {
     loadAbortRef.current?.abort();
@@ -172,7 +276,6 @@ export default function DashboardPage() {
 
     try {
       const latestRes = await fetch('/api/conviction/latest', { signal: controller.signal });
-
       if (controller.signal.aborted) return;
 
       if (!latestRes.ok) {
@@ -183,6 +286,7 @@ export default function DashboardPage() {
 
       const latest = await latestRes.json().catch(() => ({}));
       if (controller.signal.aborted) return;
+
       setAction(latest?.id ? (latest as DashboardAction) : null);
       setArtifactPaywallLocked(latest?.artifact_paywall_locked === true);
     } catch {
@@ -192,51 +296,6 @@ export default function DashboardPage() {
     } finally {
       if (!controller.signal.aborted) {
         setLoadingLatest(false);
-      }
-    }
-  }, []);
-
-  const syncFrameAndResolution = useCallback(() => {
-    const image = imageRef.current;
-    if (!image) return;
-
-    const naturalWidth = image.naturalWidth;
-    const naturalHeight = image.naturalHeight;
-    if (!naturalWidth || !naturalHeight) return;
-
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const viewportRatio = viewportWidth / viewportHeight;
-    const imageRatio = naturalWidth / naturalHeight;
-
-    let width = viewportWidth;
-    let height = viewportHeight;
-    let left = 0;
-    let top = 0;
-
-    if (viewportRatio > imageRatio) {
-      height = viewportHeight;
-      width = height * imageRatio;
-      left = (viewportWidth - width) / 2;
-    } else {
-      width = viewportWidth;
-      height = width / imageRatio;
-      top = (viewportHeight - height) / 2;
-    }
-
-    setFrame({ left, top, width, height });
-
-    if (process.env.NODE_ENV !== 'production') {
-      const requiredDisplayWidth = viewportWidth * window.devicePixelRatio;
-      if (requiredDisplayWidth > naturalWidth) {
-        if (!hasWarnedResolutionRef.current) {
-          console.warn(
-            'Dashboard PNG is below required resolution for this display. Export/generate a 3840px or 5120px version.',
-          );
-          hasWarnedResolutionRef.current = true;
-        }
-      } else {
-        hasWarnedResolutionRef.current = false;
       }
     }
   }, []);
@@ -263,7 +322,9 @@ export default function DashboardPage() {
       .then((payload: IntegrationStatusPayload | null) => {
         if (cancelled) return;
         const integrations = Array.isArray(payload?.integrations) ? payload.integrations : [];
-        setHasActiveIntegration(integrations.some((integration) => integration?.is_active === true));
+        setHasActiveIntegration(
+          integrations.some((integration) => integration?.is_active === true),
+        );
       })
       .catch(() => {
         if (!cancelled) {
@@ -277,54 +338,39 @@ export default function DashboardPage() {
   }, [status]);
 
   useEffect(() => {
-    const onResize = () => syncFrameAndResolution();
-    onResize();
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [syncFrameAndResolution]);
+    const updateStage = () => setStageMetrics(computeStageMetrics());
+    updateStage();
+    window.addEventListener('resize', updateStage);
+    return () => window.removeEventListener('resize', updateStage);
+  }, []);
 
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
-    const root = document.getElementById('__next') ?? document.body.firstElementChild;
+    const previousHtmlOverflow = html.style.overflow;
+    const previousBodyOverflow = body.style.overflow;
+    const previousBodyOverflowX = body.style.overflowX;
+    const previousBodyOverflowY = body.style.overflowY;
 
-    const previousHtmlStyle = html.getAttribute('style');
-    const previousBodyStyle = body.getAttribute('style');
-    const previousRootStyle = root?.getAttribute('style') ?? null;
-
-    html.style.margin = '0';
-    html.style.width = '100%';
-    html.style.height = '100%';
-    html.style.overflow = 'hidden';
-    html.style.background = '#02070d';
-
-    body.style.margin = '0';
-    body.style.width = '100%';
-    body.style.height = '100%';
-    body.style.overflow = 'hidden';
-    body.style.background = '#02070d';
-
-    if (root instanceof HTMLElement) {
-      root.style.margin = '0';
-      root.style.width = '100%';
-      root.style.height = '100%';
-      root.style.overflow = 'hidden';
-      root.style.background = '#02070d';
+    if (stageMetrics.isDesktop) {
+      html.style.overflow = 'hidden';
+      body.style.overflow = 'hidden';
+      body.style.overflowX = 'hidden';
+      body.style.overflowY = 'hidden';
+    } else {
+      html.style.overflow = previousHtmlOverflow;
+      body.style.overflow = previousBodyOverflow;
+      body.style.overflowX = previousBodyOverflowX;
+      body.style.overflowY = previousBodyOverflowY;
     }
 
     return () => {
-      if (previousHtmlStyle === null) html.removeAttribute('style');
-      else html.setAttribute('style', previousHtmlStyle);
-
-      if (previousBodyStyle === null) body.removeAttribute('style');
-      else body.setAttribute('style', previousBodyStyle);
-
-      if (root instanceof HTMLElement) {
-        if (previousRootStyle === null) root.removeAttribute('style');
-        else root.setAttribute('style', previousRootStyle);
-      }
+      html.style.overflow = previousHtmlOverflow;
+      body.style.overflow = previousBodyOverflow;
+      body.style.overflowX = previousBodyOverflowX;
+      body.style.overflowY = previousBodyOverflowY;
     };
-  }, []);
+  }, [stageMetrics.isDesktop]);
 
   const runDecision = useCallback(
     async (decision: 'approve' | 'skip') => {
@@ -345,14 +391,22 @@ export default function DashboardPage() {
             await load();
             setStatusNotice({
               id: 'reconciled_stale_action',
-              message: 'This directive was already handled or replaced. Foldera loaded the latest one.',
+              message:
+                'This directive was already handled or replaced. Foldera loaded the latest one.',
             });
             return;
           }
-          console.error(message);
+          setStatusNotice({ id: 'execute_failed', message });
           return;
         }
 
+        if (decision === 'approve') {
+          setExecutedActionId(action.id);
+          setOutcomeRecorded(false);
+        } else {
+          setExecutedActionId(null);
+          setOutcomeRecorded(false);
+        }
         setStatusNotice(buildDecisionSuccessNotice(action, decision));
         await load();
       } catch (error) {
@@ -361,11 +415,12 @@ export default function DashboardPage() {
           await load();
           setStatusNotice({
             id: 'reconciled_stale_action',
-            message: 'This directive was already handled or replaced. Foldera loaded the latest one.',
+            message:
+              'This directive was already handled or replaced. Foldera loaded the latest one.',
           });
           return;
         }
-        console.error(message);
+        setStatusNotice({ id: 'execute_failed', message });
       } finally {
         setExecuting(false);
       }
@@ -375,21 +430,22 @@ export default function DashboardPage() {
 
   const submitOutcome = useCallback(
     async (outcome: 'worked' | 'didnt_work') => {
-      if (!action?.id || outcomeSubmitting) return;
+      if (!executedActionId || outcomeSubmitting || outcomeRecorded) return;
       setOutcomeSubmitting(outcome);
       try {
         await fetch('/api/conviction/outcome', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action_id: action.id, outcome }),
+          body: JSON.stringify({ action_id: executedActionId, outcome }),
         });
+        setOutcomeRecorded(true);
       } catch (error) {
         console.error(error);
       } finally {
         setOutcomeSubmitting(null);
       }
     },
-    [action?.id, outcomeSubmitting],
+    [executedActionId, outcomeRecorded, outcomeSubmitting],
   );
 
   const startStripeCheckout = useCallback(async () => {
@@ -467,9 +523,10 @@ export default function DashboardPage() {
     }
   }, [firstReadRunning, load]);
 
+  const sessionName = session?.user?.name?.trim() || 'Brandon Kapp';
+  const firstName = sessionName.split(' ')[0] || 'Brandon';
   const writeDocument = isWriteDocumentAction(action);
   const showArtifactBlur = Boolean(action?.artifact) && artifactPaywallLocked;
-  const actionControlsVisible = Boolean(action?.id);
   const artifactTitle =
     asTrimmedString(action?.directive) ??
     asTrimmedString(action?.artifact?.title) ??
@@ -477,468 +534,506 @@ export default function DashboardPage() {
     asTrimmedString(action?.artifact?.type) ??
     '';
   const artifactBody = getArtifactBody(action?.artifact);
-  const artifactTypeLabel = writeDocument
+  const draftLabel = writeDocument
     ? 'FINISHED DOCUMENT'
-    : action?.action_type === 'send_message'
+    : action?.action_type === 'send_message' || action?.artifact?.type === 'email'
       ? 'FOLLOW-UP EMAIL'
-      : asTrimmedString(action?.artifact?.type)?.replace(/_/g, ' ').toUpperCase() ?? 'ARTIFACT';
+      : action?.artifact?.type === 'wait_rationale' || action?.action_type === 'do_nothing'
+        ? 'WAIT RATIONALE'
+        : asTrimmedString(action?.artifact?.type)?.replace(/_/g, ' ').toUpperCase() ?? 'ARTIFACT';
   const copyActionLabel = writeDocument ? 'Copy full text' : 'Copy draft';
   const skipActionLabel = writeDocument ? 'Skip and adjust' : 'Snooze 24h';
   const primaryActionLabel = writeDocument ? 'Save document' : 'Approve & send';
-  const showOutcomeActions = statusNotice?.id === 'approve_saved_document' || statusNotice?.id === 'approve_sent';
+  const showOutcomeActions =
+    Boolean(executedActionId) &&
+    (statusNotice?.id === 'approve_saved_document' || statusNotice?.id === 'approve_sent') &&
+    !outcomeRecorded;
+  const stageTransform = `translate(${stageMetrics.offsetX}px, ${stageMetrics.offsetY}px) scale(${stageMetrics.scale})`;
 
-  const hotspots = useCallback((): Array<HotspotButton | HotspotLink> => {
-    const shared: Array<HotspotButton | HotspotLink> = [
-      { kind: 'link', label: 'Open Executive Briefing', href: '/dashboard', rect: { left: 1.2, top: 11.8, width: 13.6, height: 6.0 } },
-      { kind: 'link', label: 'Open Playbooks', href: '/dashboard/briefings', rect: { left: 1.3, top: 18.5, width: 13.4, height: 5.2 } },
-      { kind: 'link', label: 'Open Signals', href: '/dashboard/signals', rect: { left: 1.3, top: 24.8, width: 13.4, height: 5.2 } },
-      { kind: 'link', label: 'Open Audit Log', href: '/dashboard/briefings', rect: { left: 1.3, top: 31.0, width: 13.4, height: 5.2 } },
-      { kind: 'link', label: 'Open Integrations', href: '/dashboard/settings', rect: { left: 1.3, top: 37.2, width: 13.4, height: 5.2 } },
-      { kind: 'link', label: 'Open Settings', href: '/dashboard/settings', rect: { left: 1.3, top: 43.4, width: 13.4, height: 5.2 } },
-      { kind: 'link', label: 'Open profile settings', href: '/dashboard/settings', rect: { left: 1.2, top: 84.0, width: 14.0, height: 11.2 } },
-      { kind: 'button', label: 'Search', rect: { left: 71.5, top: 3.1, width: 21.4, height: 4.8 }, onClick: () => {} },
-      { kind: 'button', label: 'Notifications', rect: { left: 94.6, top: 3.1, width: 2.9, height: 4.8 }, onClick: () => {} },
-      {
-        kind: 'button',
-        label: copyActionLabel,
-        rect: { left: 40.8, top: 85.9, width: 11.4, height: 5.3 },
-        onClick: () => void copyDraft(),
-        disabled: !action?.id,
-        visible: actionControlsVisible,
-      },
-      {
-        kind: 'button',
-        label: skipActionLabel,
-        rect: { left: 53.2, top: 85.9, width: 9.9, height: 5.3 },
-        onClick: () => void runDecision('skip'),
-        disabled: !action?.id || executing,
-        visible: actionControlsVisible,
-      },
-      {
-        kind: 'button',
-        label: primaryActionLabel,
-        rect: { left: 63.6, top: 85.7, width: 13.8, height: 5.6 },
-        onClick: () => void runDecision('approve'),
-        disabled: !action?.id || executing,
-        visible: actionControlsVisible,
-        testId: 'dashboard-primary-action',
-      },
-      { kind: 'button', label: 'Drop document', rect: { left: 80.3, top: 66.0, width: 14.3, height: 17.5 }, onClick: () => {} },
-    ];
+  const artifactBodyContent = showArtifactBlur ? (
+    <div
+      className="relative overflow-hidden rounded-[16px] border border-border bg-panel-raised p-4"
+      data-testid="dashboard-pro-blur"
+    >
+      <div className="pointer-events-none select-none blur-[5px]">
+        <div
+          data-testid="dashboard-document-body"
+          className="max-h-[340px] overflow-y-auto pr-2 text-[15px] leading-7 text-text-primary"
+        >
+          {writeDocument ? (
+            <ReactMarkdown components={DOCUMENT_MARKDOWN_COMPONENTS} remarkPlugins={[remarkGfm]}>
+              {artifactBody}
+            </ReactMarkdown>
+          ) : (
+            <div className="whitespace-pre-line">{artifactBody}</div>
+          )}
+        </div>
+      </div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-bg/60 px-6 text-center">
+        <p className="max-w-[280px] text-base font-medium text-text-primary">
+          Upgrade to Pro to keep receiving finished work.
+        </p>
+        <button type="button" onClick={() => void startStripeCheckout()} className="foldera-button-primary mt-4">
+          Upgrade to Pro
+        </button>
+      </div>
+    </div>
+  ) : (
+    <div
+      data-testid="dashboard-document-body"
+      className="max-h-[340px] overflow-y-auto pr-2 text-[15px] leading-7 text-text-primary"
+    >
+      {writeDocument ? (
+        <ReactMarkdown components={DOCUMENT_MARKDOWN_COMPONENTS} remarkPlugins={[remarkGfm]}>
+          {artifactBody}
+        </ReactMarkdown>
+      ) : (
+        <div className="whitespace-pre-line">{artifactBody}</div>
+      )}
+    </div>
+  );
 
-    if (showArtifactBlur) {
-      shared.push({
-        kind: 'button',
-        label: 'Upgrade to Pro',
-        rect: { left: 1.4, top: 56.2, width: 13.1, height: 17.0 },
-        onClick: () => void startStripeCheckout(),
-      });
-    }
+  const draftBody = artifactBody ? (
+    artifactBodyContent
+  ) : (
+    <div
+      data-testid="dashboard-document-body"
+      className="text-[15px] leading-7 text-text-secondary"
+    >
+      Full text is still being prepared.
+    </div>
+  );
 
-    return shared;
-  }, [
-    action?.id,
-    actionControlsVisible,
-    copyActionLabel,
-    copyDraft,
-    executing,
-    primaryActionLabel,
-    runDecision,
-    showArtifactBlur,
-    skipActionLabel,
-    startStripeCheckout,
-  ]);
+  const cardActions = action
+    ? [
+        {
+          label: copyActionLabel,
+          kind: 'secondary' as const,
+          onClick: () => void copyDraft(),
+        },
+        {
+          label: skipActionLabel,
+          kind: 'amber' as const,
+          onClick: () => void runDecision('skip'),
+          disabled: executing,
+        },
+        {
+          label: primaryActionLabel,
+          kind: 'primary' as const,
+          onClick: () => void runDecision('approve'),
+          disabled: executing,
+          dataTestId: 'dashboard-primary-action',
+        },
+      ]
+    : [];
+
+  const searchField = (
+    <div className="flex h-full min-w-0 items-center gap-3 rounded-[16px] border border-border bg-panel px-4 text-sm text-text-muted">
+      <Search className="h-4 w-4 shrink-0" aria-hidden />
+      <span className="min-w-0 flex-1 truncate">Search Foldera...</span>
+      <span className="hidden shrink-0 rounded-[10px] border border-border px-2 py-1 text-[11px] sm:inline">
+        ⌘ K
+      </span>
+    </div>
+  );
+
+  const notificationsButton = (
+    <button
+      type="button"
+      className="inline-flex h-full w-full items-center justify-center rounded-[16px] border border-border bg-panel text-text-secondary"
+      aria-label="Notifications"
+    >
+      <Bell className="h-4 w-4" />
+    </button>
+  );
+
+  const emptyStateCard = (
+    <div
+      data-testid="dashboard-empty-state"
+      className="foldera-dashboard-brief-card foldera-brief-shell flex h-full w-full items-center justify-center px-8 py-10 text-center"
+    >
+      <div className="max-w-[520px]">
+        <div className="mx-auto h-2.5 w-2.5 rounded-full bg-accent shadow-[0_0_18px_rgba(34,211,238,0.55)]" />
+        <h2 className="mt-6 text-[32px] font-semibold tracking-[-0.04em] text-text-primary sm:text-[38px]">
+          You&apos;re set until tomorrow morning.
+        </h2>
+        <p className="mt-4 text-[15px] leading-7 text-text-secondary">
+          No directive is queued in the app right now. Your next read still lands in email.
+          {!hasActiveIntegration ? ' Connect accounts in Settings if you want deeper context.' : ''}
+        </p>
+        {hasActiveIntegration ? (
+          <button
+            type="button"
+            onClick={() => void runFirstReadNow()}
+            disabled={firstReadRunning}
+            data-testid="dashboard-run-first-read"
+            className="foldera-button-primary mt-7"
+          >
+            {firstReadRunning ? 'Running first read' : 'Run first read now'}
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  const loadingCard = (
+    <div className="foldera-dashboard-brief-card foldera-brief-shell flex h-full w-full items-center justify-center px-8 py-10 text-center">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+          Loading
+        </p>
+        <p className="mt-4 text-[18px] leading-8 text-text-secondary">
+          Loading your latest Foldera brief.
+        </p>
+      </div>
+    </div>
+  );
+
+  const cardNode = action ? (
+    <DailyBriefCard
+      className="foldera-dashboard-brief-card foldera-dashboard-money-shot h-full w-full"
+      dashboardCta
+      stageDesktop={stageMetrics.isDesktop}
+      directive={artifactTitle}
+      whyNow={
+        asTrimmedString(action.reason) ??
+        'Foldera surfaced the single move that matters most right now.'
+      }
+      draftLabel={draftLabel}
+      draftBody={draftBody}
+      sourcePills={inferSourcePills(action)}
+      nextStep={writeDocument ? 'Next: Save to record' : 'Next: Await response'}
+      statusText={writeDocument ? 'READY TO FILE' : 'READY TO SEND'}
+      footerText="Grounded in connected sources"
+      actions={cardActions}
+    />
+  ) : loadingLatest ? (
+    loadingCard
+  ) : (
+    emptyStateCard
+  );
+
+  const statusNoticeNode = statusNotice ? (
+    <div
+      className="rounded-[14px] border border-border bg-panel-raised px-4 py-3"
+      data-testid="dashboard-status-notice"
+      data-status-id={statusNotice.id}
+    >
+      <p className="text-sm text-text-primary">{statusNotice.message}</p>
+    </div>
+  ) : null;
+
+  const hiddenArtifactNode = (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute left-0 top-0 opacity-0"
+    >
+      {artifactTitle ? <p data-testid="pixel-lock-artifact-title">{artifactTitle}</p> : null}
+      {artifactBody ? <p data-testid="pixel-lock-artifact-body">{artifactBody}</p> : null}
+    </div>
+  );
+
+  if (stageMetrics.isDesktop) {
+    return (
+      <main className="foldera-dashboard-stage-root text-text-primary" data-testid="pixel-lock-frame">
+        <div
+          className="foldera-dashboard-stage"
+          style={{ transform: stageTransform, transformOrigin: 'top left' }}
+        >
+          <DashboardSidebar activeLabel="Executive Briefing" userName={firstName} variant="stage" />
+
+          <p className="foldera-eyebrow absolute" style={{ left: 390, top: 52 }}>
+            {getDateLabel()}
+          </p>
+
+          <h1
+            className="absolute text-[56px] font-semibold leading-[64px] tracking-[-0.045em] text-text-secondary"
+            style={{ left: 390, top: 86, width: 700, height: 64 }}
+          >
+            {getGreetingLabel()},{' '}
+            <strong className="font-semibold text-text-primary">{firstName}.</strong>
+          </h1>
+
+          <div
+            className="absolute flex items-center justify-between text-[28px] text-text-secondary"
+            style={{ left: 450, top: 176, width: 900, height: 44 }}
+          >
+            <div className="flex items-center gap-3">
+              <Mail className="h-5 w-5 text-text-muted" aria-hidden />
+              <span className="text-[36px] font-semibold tracking-[-0.045em] text-text-primary">
+                5
+              </span>
+              <span className="text-[32px] font-normal">open threads</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <TriangleAlert className="h-5 w-5 text-amber-400" aria-hidden />
+              <span className="text-[36px] font-semibold tracking-[-0.045em] text-amber-400">
+                2
+              </span>
+              <span className="text-[32px] font-normal">need attention</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <TrendingUp className="h-5 w-5 text-text-muted" aria-hidden />
+              <span className="text-[36px] font-semibold tracking-[-0.045em] text-text-primary">
+                1
+              </span>
+              <span className="text-[32px] font-normal">ready to move</span>
+            </div>
+          </div>
+
+          <div className="absolute h-14" style={{ left: 1516, top: 36, width: 404 }}>
+            {searchField}
+          </div>
+          <div className="absolute h-14 w-14" style={{ left: 1950, top: 36 }}>
+            {notificationsButton}
+          </div>
+
+          <div className="absolute" style={{ left: 384, top: 238, width: 1216, height: 850 }}>
+            {cardNode}
+          </div>
+
+          {statusNoticeNode ? (
+            <div className="absolute" style={{ left: 384, top: 1094, width: 1216 }}>
+              {statusNoticeNode}
+            </div>
+          ) : null}
+
+          {showOutcomeActions ? (
+            <div className="absolute flex justify-center gap-3" style={{ left: 780, top: 1096, width: 430 }}>
+              <button
+                type="button"
+                onClick={() => void submitOutcome('worked')}
+                disabled={Boolean(outcomeSubmitting)}
+                className="foldera-button-primary"
+              >
+                It worked
+              </button>
+              <button
+                type="button"
+                onClick={() => void submitOutcome('didnt_work')}
+                disabled={Boolean(outcomeSubmitting)}
+                className="foldera-button-secondary"
+              >
+                Didn&apos;t work
+              </button>
+            </div>
+          ) : null}
+
+          <aside className="absolute" style={{ left: 1660, top: 324, width: 350, height: 300 }}>
+            <div className="foldera-panel foldera-dashboard-right-rail-panel h-full p-6">
+              <div className="flex items-center justify-between gap-3">
+                <p className="foldera-eyebrow">How this brief works</p>
+                <a href="/#product" className="shrink-0 text-sm text-text-muted hover:text-text-primary">
+                  Learn more →
+                </a>
+              </div>
+              <div className="mt-5 space-y-4">
+                {briefHowRows.map((row) => (
+                  <div
+                    key={row.title}
+                    className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 border-t border-border pt-4 first:border-t-0 first:pt-0"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-border bg-panel-raised text-text-secondary">
+                      {row.title === 'Directive' ? (
+                        <Send className="h-4 w-4" />
+                      ) : row.title === 'Draft' ? (
+                        <FileText className="h-4 w-4" />
+                      ) : (
+                        <Layers3 className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-text-primary">{row.title}</p>
+                      <p className="mt-1.5 text-sm leading-7 text-text-muted">{row.body}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
+
+          <aside className="absolute" style={{ left: 1660, top: 764, width: 350, height: 200 }}>
+            <div className="foldera-panel foldera-dashboard-right-rail-panel h-full p-5">
+              <div className="flex h-full items-center justify-center rounded-[20px] border border-dashed border-border bg-panel-raised px-5 text-center">
+                <div>
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-border bg-panel text-text-muted">
+                    <CloudUpload className="h-5 w-5" aria-hidden />
+                  </div>
+                  <p className="mt-4 text-base font-medium leading-snug text-text-primary">
+                    Drop a folder or document.
+                  </p>
+                  <p className="mt-2 text-sm leading-7 text-text-muted">
+                    Foldera will get to work instantly.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          {hiddenArtifactNode}
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <main
-      style={{
-        position: 'fixed',
-        inset: 0,
-        width: '100vw',
-        height: '100vh',
-        margin: 0,
-        overflow: 'hidden',
-        background: '#02070d',
-      }}
-      data-testid="pixel-lock-frame"
-    >
-      {/* eslint-disable-next-line @next/next/no-img-element -- Pixel-lock dashboard requires exact PNG shell fidelity */}
-      <img
-        ref={imageRef}
-        src="/Dashboard.png"
-        alt="Foldera dashboard"
-        onLoad={syncFrameAndResolution}
-        draggable={false}
-        style={{
-          width: '100vw',
-          height: '100vh',
-          objectFit: 'contain',
-          objectPosition: 'center',
-          display: 'block',
-          userSelect: 'none',
-          background: '#02070d',
-        }}
-      />
+    <main className="foldera-dashboard-page foldera-page min-h-screen bg-bg text-text-primary" data-testid="pixel-lock-frame">
+      <div className="mx-auto w-full max-w-[1840px] px-4 py-4 sm:px-5 lg:px-8 lg:py-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(244px,270px)_minmax(0,1fr)] xl:grid-cols-[minmax(244px,270px)_minmax(0,1fr)_328px] xl:gap-9">
+          <DashboardSidebar activeLabel="Executive Briefing" userName={firstName} />
 
-      <div
-        style={{
-          position: 'absolute',
-          left: `${frame.left}px`,
-          top: `${frame.top}px`,
-          width: `${frame.width}px`,
-          height: `${frame.height}px`,
-          pointerEvents: 'none',
-        }}
-        aria-hidden={false}
-      >
-        {hotspots().map((hotspot) => {
-          if (hotspot.kind === 'link') {
-            return (
-              <a
-                key={hotspot.label}
-                href={hotspot.href}
-                aria-label={hotspot.label}
-                title={hotspot.label}
-                style={{
-                  ...toAbsoluteRect(hotspot.rect, frame),
-                  pointerEvents: 'auto',
-                  background: 'transparent',
-                  border: 'none',
-                  opacity: 0,
-                }}
-              />
-            );
-          }
+          <div className="min-w-0">
+            <div className="foldera-panel mb-5 flex items-center justify-between gap-3 px-4 py-3 lg:hidden">
+              <FolderaLogo href="/dashboard" markSize="sm" />
+              <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                <div className="h-11 min-w-0 flex-1">{searchField}</div>
+                <div className="h-11 w-11 shrink-0">{notificationsButton}</div>
+              </div>
+            </div>
 
-          return (
-            <button
-              key={hotspot.label}
-              type="button"
-              aria-label={hotspot.label}
-              title={hotspot.label}
-              onClick={hotspot.onClick}
-              disabled={hotspot.disabled}
-              data-testid={hotspot.testId}
-              aria-hidden={hotspot.visible ? undefined : true}
-              style={{
-                ...toAbsoluteRect(hotspot.rect, frame),
-                pointerEvents: 'auto',
-                display: hotspot.visible ? 'flex' : 'block',
-                alignItems: hotspot.visible ? 'center' : undefined,
-                justifyContent: hotspot.visible ? 'center' : undefined,
-                background: hotspot.visible
-                  ? 'linear-gradient(180deg, rgba(20,34,45,0.96) 0%, rgba(10,18,24,0.98) 100%)'
-                  : 'transparent',
-                border: hotspot.visible ? '1px solid rgba(57, 227, 237, 0.28)' : 'none',
-                borderRadius: hotspot.visible ? '12px' : undefined,
-                boxShadow: hotspot.visible ? '0 14px 30px rgba(0,0,0,0.32)' : undefined,
-                color: hotspot.visible ? '#e6faff' : 'transparent',
-                fontSize: hotspot.visible ? '13px' : 0,
-                fontWeight: hotspot.visible ? 600 : 400,
-                letterSpacing: hotspot.visible ? '0.01em' : undefined,
-                opacity: hotspot.visible ? 1 : 0,
-                whiteSpace: hotspot.visible ? 'nowrap' : undefined,
-                cursor: hotspot.disabled ? 'not-allowed' : 'pointer',
-              }}
-            >
-              {hotspot.visible ? hotspot.label : null}
-            </button>
-          );
-        })}
-      </div>
+            <div className="hidden items-center justify-between gap-4 lg:flex">
+              <p className="foldera-eyebrow">{getDateLabel()}</p>
+              <div className="flex max-w-md flex-1 items-center justify-end gap-3">
+                <div className="h-11 min-w-0 flex-1">{searchField}</div>
+                <div className="h-11 w-11 shrink-0">{notificationsButton}</div>
+              </div>
+            </div>
 
-      {action ? (
-        <section
-          style={{
-            position: 'absolute',
-            left: `${frame.left + frame.width * 0.325}px`,
-            top: `${frame.top + frame.height * 0.435}px`,
-            width: `${frame.width * 0.452}px`,
-            height: `${frame.height * 0.395}px`,
-            padding: '18px 18px 14px',
-            borderRadius: '22px',
-            border: '1px solid rgba(57, 227, 237, 0.16)',
-            background: 'rgba(8, 14, 20, 0.82)',
-            boxShadow: '0 22px 48px rgba(0,0,0,0.45)',
-            overflow: 'hidden',
-            pointerEvents: 'none',
-            opacity: showArtifactBlur ? 0.18 : 1,
-          }}
-        >
-          <p
-            style={{
-              margin: 0,
-              color: '#54dae9',
-              fontSize: '11px',
-              fontWeight: 700,
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-            }}
-          >
-            {artifactTypeLabel}
-          </p>
-          {artifactTitle ? (
-            <h1
-              style={{
-                margin: '8px 0 0',
-                color: '#f3fbff',
-                fontSize: '22px',
-                lineHeight: 1.28,
-                fontWeight: 650,
-              }}
-            >
-              {artifactTitle}
-            </h1>
-          ) : null}
-          <div
-            data-testid="dashboard-document-body"
-            style={{
-              marginTop: '14px',
-              maxHeight: 'calc(100% - 88px)',
-              overflowY: 'auto',
-              paddingRight: '8px',
-              color: '#d6e6ee',
-              fontSize: '13px',
-              lineHeight: 1.55,
-            }}
-          >
-            {writeDocument ? (
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  h2: ({ children }) => (
-                    <h2
-                      style={{
-                        margin: '14px 0 6px',
-                        color: '#f0fbff',
-                        fontSize: '14px',
-                        fontWeight: 700,
-                      }}
-                    >
-                      {children}
-                    </h2>
-                  ),
-                  p: ({ children }) => <p style={{ margin: '0 0 10px' }}>{children}</p>,
-                  ul: ({ children }) => <ul style={{ margin: '0 0 10px', paddingLeft: '20px' }}>{children}</ul>,
-                  li: ({ children }) => <li style={{ marginBottom: '6px' }}>{children}</li>,
-                }}
-              >
-                {artifactBody}
-              </ReactMarkdown>
-            ) : (
-              <div style={{ whiteSpace: 'pre-line' }}>{artifactBody}</div>
-            )}
+            <div className="flex items-center justify-between gap-3 pb-1 pt-2 lg:hidden">
+              <p className="foldera-eyebrow">{getDateLabel()}</p>
+            </div>
+
+            <header className="pb-10 pt-3 lg:pt-1">
+              <h1 className="text-[clamp(2rem,4vw,3.25rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-text-secondary">
+                {getGreetingLabel()},{' '}
+                <strong className="font-semibold text-text-primary">{firstName}.</strong>
+              </h1>
+              <div className="mt-6 flex flex-wrap gap-x-10 gap-y-4 text-sm text-text-secondary">
+                <div className="flex items-center gap-3">
+                  <Mail className="h-4 w-4 text-text-muted" aria-hidden />
+                  <span className="text-[28px] font-semibold tracking-[-0.04em] text-text-primary sm:text-[32px]">
+                    5
+                  </span>
+                  <span>open threads</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <TriangleAlert className="h-4 w-4 text-amber-400" aria-hidden />
+                  <span className="text-[28px] font-semibold tracking-[-0.04em] text-amber-400 sm:text-[32px]">
+                    2
+                  </span>
+                  <span>need attention</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="h-4 w-4 text-text-muted" aria-hidden />
+                  <span className="text-[28px] font-semibold tracking-[-0.04em] text-text-primary sm:text-[32px]">
+                    1
+                  </span>
+                  <span>ready to move</span>
+                </div>
+              </div>
+            </header>
+
+            {statusNoticeNode ? <div className="mx-auto mb-4 w-full max-w-[1140px]">{statusNoticeNode}</div> : null}
+
+            <div className="mx-auto w-full max-w-[1140px] pb-12">
+              {action ? (
+                <DailyBriefCard
+                  className="foldera-dashboard-brief-card foldera-dashboard-money-shot w-full"
+                  dashboardCta
+                  directive={artifactTitle}
+                  whyNow={
+                    asTrimmedString(action.reason) ??
+                    'Foldera surfaced the single move that matters most right now.'
+                  }
+                  draftLabel={draftLabel}
+                  draftBody={draftBody}
+                  sourcePills={inferSourcePills(action)}
+                  nextStep={writeDocument ? 'Next: Save to record' : 'Next: Await response'}
+                  statusText={writeDocument ? 'READY TO FILE' : 'READY TO SEND'}
+                  footerText="Grounded in connected sources"
+                  actions={cardActions}
+                />
+              ) : loadingLatest ? (
+                loadingCard
+              ) : (
+                <div className="min-h-[420px]">{emptyStateCard}</div>
+              )}
+
+              {showOutcomeActions ? (
+                <div className="mt-4 flex flex-wrap justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => void submitOutcome('worked')}
+                    disabled={Boolean(outcomeSubmitting)}
+                    className="foldera-button-primary"
+                  >
+                    It worked
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void submitOutcome('didnt_work')}
+                    disabled={Boolean(outcomeSubmitting)}
+                    className="foldera-button-secondary"
+                  >
+                    Didn&apos;t work
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
-        </section>
-      ) : null}
 
-      {!loadingLatest && !action ? (
-        <section
-          data-testid="dashboard-empty-state"
-          style={{
-            position: 'absolute',
-            left: `${frame.left + frame.width * 0.353}px`,
-            top: `${frame.top + frame.height * 0.474}px`,
-            width: `${frame.width * 0.395}px`,
-            minHeight: `${frame.height * 0.215}px`,
-            padding: '20px 22px',
-            borderRadius: '24px',
-            border: '1px solid rgba(84, 218, 233, 0.16)',
-            background: 'rgba(8, 14, 20, 0.9)',
-            boxShadow: '0 22px 48px rgba(0,0,0,0.45)',
-            textAlign: 'center',
-          }}
-        >
-          <div
-            style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '999px',
-              margin: '0 auto 14px',
-              background: '#54dae9',
-              boxShadow: '0 0 18px rgba(84, 218, 233, 0.4)',
-            }}
-          />
-          <p
-            style={{
-              margin: 0,
-              color: '#f3fbff',
-              fontSize: '18px',
-              fontWeight: 600,
-              lineHeight: 1.35,
-            }}
-          >
-            You&apos;re set until tomorrow morning.
-          </p>
-          <p
-            style={{
-              margin: '10px 0 0',
-              color: '#9eb0b8',
-              fontSize: '13px',
-              lineHeight: 1.55,
-            }}
-          >
-            No directive is queued in the app right now. Your next read still lands in email.
-            {!hasActiveIntegration ? ' Connect accounts in Settings if you want deeper context.' : ''}
-          </p>
-          {hasActiveIntegration ? (
-            <button
-              type="button"
-              onClick={() => void runFirstReadNow()}
-              disabled={firstReadRunning}
-              data-testid="dashboard-run-first-read"
-              style={{
-                marginTop: '16px',
-                minWidth: '208px',
-                minHeight: '46px',
-                padding: '0 16px',
-                borderRadius: '14px',
-                border: 'none',
-                background: '#f4fbff',
-                color: '#031019',
-                fontSize: '11px',
-                fontWeight: 800,
-                letterSpacing: '0.16em',
-                textTransform: 'uppercase',
-                cursor: firstReadRunning ? 'wait' : 'pointer',
-                opacity: firstReadRunning ? 0.65 : 1,
-              }}
-            >
-              {firstReadRunning ? 'Running first read' : 'Run first read now'}
-            </button>
-          ) : null}
-        </section>
-      ) : null}
+          <aside className="foldera-dashboard-right-rail hidden min-w-0 space-y-5 xl:block">
+            <div className="foldera-panel foldera-dashboard-right-rail-panel p-5">
+              <div className="flex items-center justify-between gap-3">
+                <p className="foldera-eyebrow">How this brief works</p>
+                <a href="/#product" className="shrink-0 text-sm text-text-muted hover:text-text-primary">
+                  Learn more →
+                </a>
+              </div>
+              <div className="mt-5 space-y-5">
+                {briefHowRows.map((row) => (
+                  <div
+                    key={row.title}
+                    className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 border-t border-border pt-5 first:border-t-0 first:pt-0"
+                  >
+                    <div className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-border bg-panel-raised text-text-secondary">
+                      {row.title === 'Directive' ? (
+                        <Send className="h-4 w-4" />
+                      ) : row.title === 'Draft' ? (
+                        <FileText className="h-4 w-4" />
+                      ) : (
+                        <Layers3 className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-text-primary">{row.title}</p>
+                      <p className="mt-2 text-sm leading-7 text-text-muted">{row.body}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-      {showArtifactBlur ? (
-        <div
-          data-testid="dashboard-pro-blur"
-          style={{
-            position: 'absolute',
-            left: `${frame.left + frame.width * 0.5}px`,
-            top: `${frame.top + frame.height * 0.56}px`,
-            transform: 'translate(-50%, -50%)',
-            textAlign: 'center',
-          }}
-        >
-          <p
-            style={{
-              margin: 0,
-              color: '#ffffff',
-              fontSize: '14px',
-              fontWeight: 500,
-              textShadow: '0 1px 2px rgba(0,0,0,0.85)',
-            }}
-          >
-            Upgrade to Pro to keep receiving finished work.
-          </p>
-          <button
-            type="button"
-            onClick={() => void startStripeCheckout()}
-            style={{
-              marginTop: '10px',
-              pointerEvents: 'auto',
-              minWidth: '132px',
-              padding: '10px 14px',
-              borderRadius: '12px',
-              border: '1px solid rgba(84, 218, 233, 0.24)',
-              background: 'linear-gradient(180deg, #67f1ff 0%, #31d6e6 100%)',
-              color: '#041118',
-              fontSize: '13px',
-              fontWeight: 700,
-              boxShadow: '0 16px 28px rgba(0,0,0,0.3)',
-              cursor: 'pointer',
-            }}
-          >
-            Upgrade to Pro
-          </button>
+            <div className="foldera-panel foldera-dashboard-right-rail-panel p-5">
+              <div className="flex min-h-[168px] items-center justify-center rounded-[20px] border border-dashed border-border bg-panel-raised px-5 text-center">
+                <div>
+                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full border border-border bg-panel text-text-muted">
+                    <CloudUpload className="h-5 w-5" aria-hidden />
+                  </div>
+                  <p className="mt-4 text-base font-medium leading-snug text-text-primary">
+                    Drop a folder or document.
+                  </p>
+                  <p className="mt-2 text-sm leading-7 text-text-muted">
+                    Foldera will get to work instantly.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
-      ) : null}
-
-      {statusNotice ? (
-        <div
-          data-testid="dashboard-status-notice"
-          data-status-id={statusNotice.id}
-          style={{
-            position: 'absolute',
-            left: `${frame.left + frame.width * 0.325}px`,
-            top: `${frame.top + frame.height * 0.845}px`,
-            width: `${frame.width * 0.452}px`,
-            padding: '10px 14px',
-            borderRadius: '14px',
-            border: '1px solid rgba(73, 217, 176, 0.28)',
-            background: 'rgba(10, 24, 20, 0.92)',
-            color: '#d8fbec',
-            fontSize: '13px',
-            fontWeight: 500,
-            boxShadow: '0 16px 32px rgba(0,0,0,0.28)',
-            pointerEvents: 'none',
-          }}
-        >
-          {statusNotice.message}
-        </div>
-      ) : null}
-
-      {showOutcomeActions && action?.id ? (
-        <div
-          style={{
-            position: 'absolute',
-            left: `${frame.left + frame.width * 0.725}px`,
-            top: `${frame.top + frame.height * 0.744}px`,
-            display: 'flex',
-            gap: '8px',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => void submitOutcome('worked')}
-            disabled={Boolean(outcomeSubmitting)}
-            style={{
-              minWidth: '94px',
-              padding: '8px 12px',
-              borderRadius: '12px',
-              border: '1px solid rgba(84, 218, 233, 0.22)',
-              background: 'rgba(11, 20, 27, 0.94)',
-              color: '#f3fbff',
-              fontSize: '12px',
-              fontWeight: 600,
-            }}
-          >
-            It worked
-          </button>
-          <button
-            type="button"
-            onClick={() => void submitOutcome('didnt_work')}
-            disabled={Boolean(outcomeSubmitting)}
-            style={{
-              minWidth: '112px',
-              padding: '8px 12px',
-              borderRadius: '12px',
-              border: '1px solid rgba(84, 218, 233, 0.22)',
-              background: 'rgba(11, 20, 27, 0.94)',
-              color: '#f3fbff',
-              fontSize: '12px',
-              fontWeight: 600,
-            }}
-          >
-            Didn&apos;t work
-          </button>
-        </div>
-      ) : null}
-
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          left: 0,
-          top: 0,
-          pointerEvents: 'none',
-          opacity: 0,
-        }}
-      >
-        {artifactTitle ? <p data-testid="pixel-lock-artifact-title">{artifactTitle}</p> : null}
-        {artifactBody ? <p data-testid="pixel-lock-artifact-body">{artifactBody}</p> : null}
       </div>
+
+      {hiddenArtifactNode}
     </main>
   );
 }

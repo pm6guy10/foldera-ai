@@ -14,8 +14,8 @@ const navLinks = [
   { label: 'Platform', href: '/#product' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Blog', href: '/blog' },
-  { label: 'Security', href: '/#security' },
-  { label: 'About', href: '/#about' },
+  { label: 'Security', href: '/security' },
+  { label: 'About', href: '/about' },
 ];
 
 export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavPublicProps) {

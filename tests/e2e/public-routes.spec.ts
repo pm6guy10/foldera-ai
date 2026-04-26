@@ -129,6 +129,25 @@ test.describe('Landing page /', () => {
       await context.close();
     }
   });
+
+  test('nav and footer expose real public destinations', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+
+    await expect(page.getByRole('link', { name: 'Security' }).first()).toHaveAttribute(
+      'href',
+      '/security',
+    );
+    await expect(page.getByRole('link', { name: 'About' }).first()).toHaveAttribute(
+      'href',
+      '/about',
+    );
+    await expect(page.getByRole('link', { name: 'Status' }).first()).toHaveAttribute(
+      'href',
+      '/status',
+    );
+    await expect(page.locator('footer a[href="#"]')).toHaveCount(0);
+  });
 });
 
 // ── Start page (/start) ────────────────────────────────────────────────────
@@ -378,6 +397,33 @@ test.describe('Blog routes', () => {
     await page.getByRole('link', { name: 'Brandon Kapp' }).click();
     await expect(page).toHaveURL(/\/brandon-kapp$/);
     await expect(page.getByRole('heading', { name: 'Brandon Kapp', exact: true })).toBeVisible();
+  });
+});
+
+test.describe('About page /about', () => {
+  test('loads with About Foldera heading', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const res = await page.goto('/about');
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole('heading', { name: /^About Foldera$/i })).toBeVisible();
+  });
+});
+
+test.describe('Security page /security', () => {
+  test('loads with Security heading', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const res = await page.goto('/security');
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole('heading', { name: /^Security$/i })).toBeVisible();
+  });
+});
+
+test.describe('Status page /status', () => {
+  test('loads with System Status heading', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const res = await page.goto('/status');
+    expect(res?.status()).toBe(200);
+    await expect(page.getByRole('heading', { name: /^System Status$/i })).toBeVisible();
   });
 });
 

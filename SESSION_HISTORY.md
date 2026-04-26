@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-25 — Dashboard native shell replaces broken PNG overlay presentation
+- MODE: FOLDERA PRODUCTION CONTROLLER (rung 7 — visual polish / demo-safe dashboard presentation)
+- **Problem:** Production `/dashboard` was still a full-screen `Dashboard.png` shell with live overlays, so fake baked-in content showed underneath real empty/document states and the authenticated product looked broken even when controls worked.
+- **Change:** Replaced the authenticated `/dashboard` visual shell in `app/dashboard/page.tsx` with the repo’s native Foldera React/Tailwind composition (dark shell, sidebar, greeting/search header, central `DailyBriefCard`, right explainer rail, drop panel) while preserving the live `/api/conviction/latest`, `/api/integrations/status`, `/api/settings/run-brief`, `/api/conviction/execute`, `/api/conviction/outcome`, and `/api/stripe/checkout` behaviors plus current dashboard test ids. Also fixed public dead-link destinations by wiring landing nav/footer links to real routes and adding minimal `/about`, `/security`, and `/status` pages. Added `pages/_error.tsx` and `pages/500.tsx` so local Windows `next build` completes reliably.
+- **Verification:** `npm run health` (`RESULT: 0 FAILING`, warnings only: Gmail fresh 20h ago, Outlook stale 42h, mail cursors stale microsoft 37h, last generation `do_nothing`); `npm run lint`; `npm run build`; `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "write_document journey" --config playwright.config.ts`; `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "no directive" --config playwright.config.ts`; `npx playwright test tests/e2e/public-routes.spec.ts --grep "nav and footer expose real public destinations|About page /about|Security page /security|Status page /status" --config playwright.config.ts`.
+- **Unresolved:** Production deploy proof pending until the pushed SHA is live; rerun focused `/dashboard` production verification after Vercel finishes deploying.
+
 ## 2026-04-25 — Dashboard write_document action labels restored on live pixel-lock shell
 - MODE: FOLDERA PRODUCTION CONTROLLER (rung 4 — approve/save/use path)
 - **Problem:** Production `/dashboard` showed a real pending `write_document`, but the action controls rendered as invisible hotspot buttons with aria labels only, so users could not see `Save document` / `Skip and adjust` on the live surface.

@@ -367,9 +367,26 @@ function FinalCta() {
 }
 
 function LandingFooter() {
-  const product = ['Executive Briefing', 'Playbooks', 'Signals', 'Integrations', 'Pricing'];
-  const resources = ['Blog', 'Help Center', 'Templates', 'What’s New', 'Status'];
-  const company = ['About', 'Security', 'Privacy', 'Contact'];
+  const product = [
+    { label: 'Executive Briefing', href: '/#example-brief' },
+    { label: 'Playbooks', href: '/#product' },
+    { label: 'Signals', href: '/#how-it-works' },
+    { label: 'Integrations', href: '/#integrations' },
+    { label: 'Pricing', href: '/pricing' },
+  ];
+  const resources = [
+    { label: 'Blog', href: '/blog' },
+    { label: 'Help Center', href: '/start' },
+    { label: 'Templates', href: '/#example-brief' },
+    { label: 'What’s New', href: '/blog' },
+    { label: 'Status', href: '/status' },
+  ];
+  const company = [
+    { label: 'About', href: '/about' },
+    { label: 'Security', href: '/security' },
+    { label: 'Privacy', href: '/privacy' },
+    { label: 'Contact', href: 'mailto:support@foldera.ai' },
+  ];
 
   return (
     <footer className="border-t border-[#1B2530] py-10">
@@ -418,15 +435,21 @@ function LandingFooter() {
   );
 }
 
-function FooterColumn({ title, items }: { title: string; items: string[] }) {
+function FooterColumn({
+  title,
+  items,
+}: {
+  title: string;
+  items: Array<{ label: string; href: string }>;
+}) {
   return (
     <div>
       <h3 className="text-sm font-semibold text-white">{title}</h3>
       <ul className="mt-4 space-y-3 text-sm text-[#9AA7B6]">
         {items.map((item) => (
-          <li key={item}>
-            <a href="#" className="transition hover:text-white">
-              {item}
+          <li key={item.label}>
+            <a href={item.href} className="transition hover:text-white">
+              {item.label}
             </a>
           </li>
         ))}
