@@ -5,6 +5,8 @@ const sourceSignals = [
   'Decision waiting',
 ];
 
+const signalStepClasses = ['signal-step--1', 'signal-step--2', 'signal-step--3', 'signal-step--4'];
+
 export function SignalToBriefFlow() {
   return (
     <section id="product" className="relative overflow-hidden py-12 sm:py-16 lg:py-24">
@@ -28,35 +30,33 @@ export function SignalToBriefFlow() {
               {sourceSignals.map((signal, index) => (
                 <div
                   key={signal}
-                  className="signal-chip rounded-[18px] border border-border bg-panel-raised px-4 py-4 text-sm text-text-secondary"
-                  style={{ ['--i' as string]: index }}
+                  className={`signal-step ${signalStepClasses[index]} rounded-[18px] border border-border bg-panel-raised px-4 py-4 text-sm text-text-secondary`}
                 >
-                  {signal}
+                  <span className="signal-step__dot" aria-hidden />
+                  <span className="signal-step__label">{signal}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="signal-flow-core flex items-center justify-center py-2">
-            <span className="signal-flow-stream inbound hidden lg:block" aria-hidden />
-            <span className="signal-flow-stream outbound hidden lg:block" aria-hidden />
-            <span className="signal-flow-pulse inbound hidden lg:block" aria-hidden />
-            <span className="signal-flow-pulse outbound hidden lg:block" aria-hidden />
+          <div className="signal-core relative flex items-center justify-center py-2">
+            <span className="signal-core-connector signal-core-connector--in hidden lg:block" aria-hidden />
+            <span className="signal-core-connector signal-core-connector--out hidden lg:block" aria-hidden />
             <div className="relative flex h-[160px] w-[160px] items-center justify-center rounded-full border border-cyan-400/20 bg-panel">
-              <div className="core-ring absolute inset-4 rounded-full border border-cyan-400/25" />
-              <div className="core-ring-2 absolute inset-8 rounded-full border border-purple-400/20" />
-              <div className="rounded-full border border-cyan-300/25 bg-accent/10 px-4 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">
+              <div className="signal-core__ring signal-core__ring--outer absolute inset-4 rounded-full border border-cyan-400/25" />
+              <div className="signal-core__ring signal-core__ring--inner absolute inset-8 rounded-full border border-purple-400/20" />
+              <div className="signal-core__label rounded-full border border-cyan-300/25 bg-accent/10 px-4 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">
                 Foldera
               </div>
             </div>
           </div>
 
-          <div className="surface-card output-card relative overflow-hidden p-5 sm:p-6">
+          <div className="surface-card finished-output relative overflow-hidden p-5 sm:p-6">
             <div className="accent-glow absolute inset-x-8 top-0" aria-hidden />
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-accent">
               Finished move out
             </p>
-            <div className="mt-5 rounded-[20px] border border-cyan-400/20 bg-[#071018] p-5 shadow-[0_0_30px_rgba(34,211,238,0.12)]">
+            <div className="finished-output__card mt-5 rounded-[20px] border border-cyan-400/20 bg-[#071018] p-5 shadow-[0_0_30px_rgba(34,211,238,0.12)]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">Directive</p>
               <h3 className="mt-2 text-[24px] font-semibold leading-tight tracking-[-0.03em] text-text-primary">
                 Send the follow-up before noon.

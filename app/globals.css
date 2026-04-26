@@ -215,71 +215,116 @@
     transform: translateY(-2px);
   }
 
-  .signal-chip {
-    animation: signalDrift 6s ease-in-out infinite;
-    animation-delay: calc(var(--i, 0) * 0.6s);
-    will-change: transform, opacity;
+  .signal-step,
+  .signal-step__dot,
+  .signal-step__label,
+  .signal-core,
+  .signal-core__ring,
+  .signal-core__label,
+  .signal-core-connector,
+  .finished-output,
+  .finished-output__card {
+    --signal-cycle: 9s;
   }
 
-  .core-ring {
-    animation: corePulse 4s ease-in-out infinite;
+  .signal-step {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-color: rgba(43, 57, 71, 0.92);
+    opacity: 0.74;
+    transform: translateY(0);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.015);
+    animation: signalStepStage var(--signal-cycle) ease-in-out infinite;
+    animation-delay: var(--signal-delay, 0s);
+    will-change: opacity, border-color, box-shadow, transform;
   }
 
-  .core-ring-2 {
-    animation: corePulse 4s ease-in-out infinite;
-    animation-delay: 1.2s;
+  .signal-step__dot {
+    flex: 0 0 auto;
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 999px;
+    background: rgba(34, 211, 238, 0.92);
+    opacity: 0.35;
+    box-shadow: 0 0 0 rgba(34, 211, 238, 0);
+    animation: signalStepDotStage var(--signal-cycle) ease-in-out infinite;
+    animation-delay: var(--signal-delay, 0s);
   }
 
-  .output-card {
-    animation: outputEmerge 10s ease-in-out infinite;
-    will-change: transform, opacity;
+  .signal-step__label {
+    opacity: 0.68;
+    animation: signalStepTextStage var(--signal-cycle) ease-in-out infinite;
+    animation-delay: var(--signal-delay, 0s);
   }
 
-  .signal-flow-core {
+  .signal-step--1 { --signal-delay: 0s; }
+  .signal-step--2 { --signal-delay: 1.1s; }
+  .signal-step--3 { --signal-delay: 2.2s; }
+  .signal-step--4 { --signal-delay: 3.3s; }
+
+  .signal-core {
     position: relative;
+    opacity: 0.88;
+    transform: translateY(0);
+    animation: signalCoreStage var(--signal-cycle) ease-in-out infinite;
+    will-change: opacity, border-color, box-shadow, transform;
   }
 
-  .signal-flow-stream {
+  .signal-core .rounded-full.border {
+    border-color: rgba(45, 212, 191, 0.18);
+    box-shadow: 0 0 0 rgba(34, 211, 238, 0);
+  }
+
+  .signal-core-connector {
     position: absolute;
     top: 50%;
+    width: 84px;
     height: 1px;
     transform: translateY(-50%);
     pointer-events: none;
-    background: linear-gradient(90deg, rgba(34, 211, 238, 0), rgba(34, 211, 238, 0.52), rgba(34, 211, 238, 0));
-    opacity: 0.55;
+    background: linear-gradient(90deg, rgba(34, 211, 238, 0.1), rgba(34, 211, 238, 0.62), rgba(34, 211, 238, 0.1));
+    opacity: 0.32;
+    animation: signalConnectorStage var(--signal-cycle) ease-in-out infinite;
   }
 
-  .signal-flow-stream.inbound {
-    right: 100%;
-    width: clamp(52px, 7vw, 110px);
+  .signal-core-connector--in { right: 100%; }
+  .signal-core-connector--out { left: 100%; }
+
+  .signal-core__ring {
+    opacity: 0.64;
+    border-color: rgba(34, 211, 238, 0.28);
+    box-shadow: 0 0 0 rgba(34, 211, 238, 0);
+    animation: signalCoreRingStage var(--signal-cycle) ease-in-out infinite;
   }
 
-  .signal-flow-stream.outbound {
-    left: 100%;
-    width: clamp(52px, 7vw, 110px);
+  .signal-core__ring--inner {
+    animation-delay: 0.25s;
   }
 
-  .signal-flow-pulse {
-    position: absolute;
-    top: 50%;
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    transform: translateY(-50%);
-    pointer-events: none;
-    box-shadow: 0 0 16px rgba(34, 211, 238, 0.66);
-    background: radial-gradient(circle, rgba(165, 243, 252, 1) 0%, rgba(34, 211, 238, 0.85) 58%, rgba(34, 211, 238, 0) 100%);
+  .signal-core__label {
+    opacity: 0.78;
+    animation: signalCoreLabelStage var(--signal-cycle) ease-in-out infinite;
   }
 
-  .signal-flow-pulse.inbound {
-    right: calc(100% + clamp(52px, 7vw, 110px));
-    animation: flowInbound 2.8s ease-in-out infinite;
+  .finished-output {
+    opacity: 0.68;
+    transform: translateY(8px);
+    border-color: rgba(43, 57, 71, 0.92);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.02),
+      0 16px 48px rgba(0, 0, 0, 0.3);
+    animation: finishedOutputStage var(--signal-cycle) ease-in-out infinite;
+    will-change: opacity, border-color, box-shadow, transform;
   }
 
-  .signal-flow-pulse.outbound {
-    left: 100%;
-    animation: flowOutbound 2.8s ease-in-out infinite;
-    animation-delay: 1.3s;
+  .finished-output__card {
+    opacity: 0.72;
+    transform: translateY(6px);
+    border-color: rgba(34, 211, 238, 0.2);
+    box-shadow: 0 0 0 rgba(34, 211, 238, 0);
+    animation: finishedOutputCardStage var(--signal-cycle) ease-in-out infinite;
+    will-change: opacity, border-color, box-shadow, transform;
   }
 
   /* Dashboard route — Figma shell (scoped; does not retheme other pages) */
@@ -552,6 +597,51 @@
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+
+  .signal-step,
+  .signal-step__dot,
+  .signal-step__label,
+  .signal-core,
+  .signal-core__ring,
+  .signal-core__label,
+  .signal-core-connector,
+  .finished-output,
+  .finished-output__card {
+    animation: none !important;
+    transform: translateY(0) !important;
+  }
+
+  .signal-step,
+  .signal-step__dot,
+  .signal-step__label,
+  .signal-core,
+  .signal-core__ring,
+  .signal-core__label,
+  .finished-output,
+  .finished-output__card {
+    opacity: 1 !important;
+  }
+
+  .signal-step {
+    border-color: rgba(34, 211, 238, 0.56) !important;
+    box-shadow: 0 0 26px rgba(34, 211, 238, 0.14) !important;
+  }
+
+  .signal-step__dot {
+    box-shadow: 0 0 12px rgba(34, 211, 238, 0.5) !important;
+  }
+
+  .signal-core .rounded-full.border,
+  .signal-core__ring {
+    border-color: rgba(34, 211, 238, 0.56) !important;
+    box-shadow: 0 0 22px rgba(34, 211, 238, 0.14) !important;
+  }
+
+  .finished-output,
+  .finished-output__card {
+    border-color: rgba(34, 211, 238, 0.56) !important;
+    box-shadow: 0 0 26px rgba(34, 211, 238, 0.16) !important;
+  }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -569,84 +659,191 @@
   }
 }
 
-@keyframes signalDrift {
+@keyframes signalStepStage {
   0%,
+  6%,
   100% {
-    transform: translateX(0);
-    opacity: 0.85;
+    opacity: 0.74;
+    transform: translateY(0);
+    border-color: rgba(43, 57, 71, 0.92);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.015);
   }
-  45% {
-    transform: translateX(8px);
+  8%,
+  16% {
     opacity: 1;
+    transform: translateY(-1px);
+    border-color: rgba(34, 211, 238, 0.64);
+    box-shadow:
+      0 0 22px rgba(34, 211, 238, 0.18),
+      inset 0 1px 0 rgba(165, 243, 252, 0.35);
   }
-  55% {
-    transform: translateX(10px);
-    opacity: 0.6;
+  20%,
+  98% {
+    opacity: 0.74;
+    transform: translateY(0);
+    border-color: rgba(43, 57, 71, 0.92);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.015);
   }
 }
 
-@keyframes corePulse {
+@keyframes signalStepDotStage {
   0%,
+  6%,
   100% {
-    transform: scale(1);
-    opacity: 0.7;
+    opacity: 0.35;
+    box-shadow: 0 0 0 rgba(34, 211, 238, 0);
   }
-  50% {
-    transform: scale(1.06);
+  8%,
+  16% {
     opacity: 1;
+    box-shadow: 0 0 14px rgba(34, 211, 238, 0.72);
+  }
+  20%,
+  98% {
+    opacity: 0.35;
+    box-shadow: 0 0 0 rgba(34, 211, 238, 0);
   }
 }
 
-@keyframes outputEmerge {
-  0% {
+@keyframes signalStepTextStage {
+  0%,
+  6%,
+  100% {
+    opacity: 0.68;
+  }
+  8%,
+  16% {
+    opacity: 1;
+  }
+  20%,
+  98% {
+    opacity: 0.68;
+  }
+}
+
+@keyframes signalCoreStage {
+  0%,
+  52%,
+  100% {
+    opacity: 0.88;
+    transform: translateY(0);
+  }
+  58%,
+  72% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+  78%,
+  98% {
+    opacity: 0.9;
+    transform: translateY(0);
+  }
+}
+
+@keyframes signalConnectorStage {
+  0%,
+  52%,
+  100% {
+    opacity: 0.32;
+  }
+  58%,
+  72% {
+    opacity: 0.86;
+  }
+  78%,
+  98% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes signalCoreRingStage {
+  0%,
+  52%,
+  100% {
+    opacity: 0.64;
+    border-color: rgba(34, 211, 238, 0.28);
+    box-shadow: 0 0 0 rgba(34, 211, 238, 0);
+  }
+  58%,
+  72% {
+    opacity: 1;
+    border-color: rgba(34, 211, 238, 0.72);
+    box-shadow: 0 0 26px rgba(34, 211, 238, 0.22);
+  }
+  78%,
+  98% {
+    opacity: 0.72;
+    border-color: rgba(34, 211, 238, 0.35);
+    box-shadow: 0 0 0 rgba(34, 211, 238, 0);
+  }
+}
+
+@keyframes signalCoreLabelStage {
+  0%,
+  52%,
+  100% {
+    opacity: 0.78;
+  }
+  58%,
+  72% {
+    opacity: 1;
+  }
+  78%,
+  98% {
+    opacity: 0.86;
+  }
+}
+
+@keyframes finishedOutputStage {
+  0%,
+  66% {
+    opacity: 0.68;
     transform: translateY(8px);
-    opacity: 0;
+    border-color: rgba(43, 57, 71, 0.92);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.02),
+      0 16px 48px rgba(0, 0, 0, 0.3);
   }
-  18% {
-    transform: translateY(0);
+  74%,
+  96% {
     opacity: 1;
-  }
-  85% {
     transform: translateY(0);
-    opacity: 1;
+    border-color: rgba(34, 211, 238, 0.64);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      0 0 34px rgba(34, 211, 238, 0.2),
+      0 18px 52px rgba(3, 20, 28, 0.52);
   }
   100% {
-    transform: translateY(3px);
-    opacity: 0.92;
+    opacity: 0.68;
+    transform: translateY(8px);
+    border-color: rgba(43, 57, 71, 0.92);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.02),
+      0 16px 48px rgba(0, 0, 0, 0.3);
   }
 }
 
-@keyframes flowInbound {
-  0% {
-    transform: translate(0, -50%);
-    opacity: 0;
+@keyframes finishedOutputCardStage {
+  0%,
+  70% {
+    opacity: 0.72;
+    transform: translateY(6px);
+    border-color: rgba(34, 211, 238, 0.2);
+    box-shadow: 0 0 0 rgba(34, 211, 238, 0);
   }
-  14% {
+  78%,
+  96% {
     opacity: 1;
-  }
-  80% {
-    opacity: 1;
+    transform: translateY(0);
+    border-color: rgba(34, 211, 238, 0.72);
+    box-shadow: 0 0 36px rgba(34, 211, 238, 0.28);
   }
   100% {
-    transform: translate(clamp(52px, 7vw, 110px), -50%);
-    opacity: 0;
-  }
-}
-
-@keyframes flowOutbound {
-  0% {
-    transform: translate(0, -50%);
-    opacity: 0;
-  }
-  14% {
-    opacity: 1;
-  }
-  80% {
-    opacity: 1;
-  }
-  100% {
-    transform: translate(clamp(52px, 7vw, 110px), -50%);
-    opacity: 0;
+    opacity: 0.72;
+    transform: translateY(6px);
+    border-color: rgba(34, 211, 238, 0.2);
+    box-shadow: 0 0 0 rgba(34, 211, 238, 0);
   }
 }
 
