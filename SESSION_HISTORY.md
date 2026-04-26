@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-26 — Production paid-LLM gate now matches live spend-policy contract
+- MODE: FOLDERA PRODUCTION CONTROLLER (rung 2 artifact usability via live `settings/run-brief`)
+- **Problem:** Production `POST /api/settings/run-brief?force=true&use_llm=true` reported `paid_llm_effective: true` but the signal stage immediately failed with `paid_llm_disabled`, then persisted/sent a `wait_rationale` whose blocker text exposed that internal gate string instead of a usable artifact.
+- **Change:** `lib/llm/paid-llm-gate.ts` now aligns runtime Anthropic allowance with the existing spend-policy contract: local/preview still require `ALLOW_PAID_LLM=true`, Vercel production with `PROD_DEFAULT_PIPELINE_DRY_RUN=true` requires `ALLOW_PROD_PAID_LLM=true`, and legacy Vercel production remains a real paid path by default. Added `lib/llm/__tests__/paid-llm-gate.test.ts` to lock the env matrix.
+- **Verification:** Pre-patch live production receipt: authenticated `POST https://foldera.ai/api/settings/run-brief?force=true&use_llm=true` returned HTTP `207` with `signal_processing.errors=["paid_llm_disabled"]`, `generate.results[0].detail="paid_llm_disabled"`, and persisted action `96f92d47-4d75-4522-b93c-d525b0fc154d`. Local code proof: `npx vitest run lib/llm/__tests__/paid-llm-gate.test.ts app/api/settings/run-brief/__tests__/route.test.ts`; `npm run lint`; `npm run build`.
+- **Unresolved:** Post-push deploy proof still required in this session: rerun the same production `settings/run-brief` request and confirm the signal stage no longer fails with `paid_llm_disabled`.
+
 ## 2026-04-25 — Dashboard native shell replaces broken PNG overlay presentation
 - MODE: FOLDERA PRODUCTION CONTROLLER (rung 7 — visual polish / demo-safe dashboard presentation)
 - **Problem:** Production `/dashboard` was still a full-screen `Dashboard.png` shell with live overlays, so fake baked-in content showed underneath real empty/document states and the authenticated product looked broken even when controls worked.
