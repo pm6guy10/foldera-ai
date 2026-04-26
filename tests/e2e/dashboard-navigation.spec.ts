@@ -40,12 +40,12 @@ const DIRECTIVE_RESPONSE = {
 };
 
 const NAV_CONTRACT = [
-  { label: 'Executive Briefing', href: '/dashboard' },
-  { label: 'Playbooks', href: '/dashboard/playbooks' },
-  { label: 'Signals', href: '/dashboard/signals' },
-  { label: 'Audit Log', href: '/dashboard/audit-log' },
-  { label: 'Integrations', href: '/dashboard/integrations' },
-  { label: 'Settings', href: '/dashboard/settings' },
+  { panel: 'briefing', label: 'Executive Briefing' },
+  { panel: 'playbooks', label: 'Playbooks' },
+  { panel: 'signals', label: 'Signals' },
+  { panel: 'audit-log', label: 'Audit Log' },
+  { panel: 'integrations', label: 'Integrations' },
+  { panel: 'settings', label: 'Settings' },
 ] as const;
 
 function json(data: unknown) {
@@ -207,38 +207,73 @@ async function setupDashboardMocks(
 }
 
 describeAuthMocked('Dashboard navigation and action wiring', () => {
-  test('sidebar exposes all six labels with contract hrefs on desktop', async ({ page }) => {
+  test('sidebar exposes all six labels on /dashboard desktop shell', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
 
     for (const item of NAV_CONTRACT) {
-      const link = page.locator(`a[href="${item.href}"]`).filter({ hasText: item.label });
-      await expect(link).toHaveCount(1);
-      await expect(link).toBeVisible();
+      const button = page.getByTestId(`dashboard-sidebar-item-${item.panel}`);
+      await expect(button).toBeVisible();
+      await expect(button).toContainText(item.label);
     }
   });
 
-  test('sidebar links route to settings, signals, playbooks, audit log, and integrations', async ({ page }) => {
+  test('clicking Settings in /dashboard keeps shell path and switches panel in place', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await setupDashboardMocks(page);
+    await page.goto('/dashboard');
+    await page.getByTestId('dashboard-sidebar-item-settings').click();
 
-    for (const item of NAV_CONTRACT.slice(1)) {
-      await page.goto('/dashboard');
-      await page.getByRole('link', { name: item.label, exact: true }).click();
-      await expect(page).toHaveURL(new RegExp(`${item.href.replace(/\//g, '\\/')}(?:#|\\?|$)`));
-    }
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
+    await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBe('settings');
+    await expect(page.getByTestId('dashboard-panel-settings')).toBeVisible();
   });
 
-  test('settings is visible and reachable on desktop dashboard', async ({ page }) => {
+  test('clicking Signals in /dashboard keeps shell path and switches panel in place', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setupDashboardMocks(page);
+    await page.goto('/dashboard');
+    await page.getByTestId('dashboard-sidebar-item-signals').click();
+
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
+    await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBe('signals');
+    await expect(page.getByTestId('dashboard-panel-signals')).toBeVisible();
+  });
+
+  test('active panel content changes visibly when switching between shell panels', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
 
-    const settingsLink = page.locator('a[href="/dashboard/settings"]').filter({ hasText: 'Settings' });
-    await expect(settingsLink).toBeVisible();
-    await settingsLink.click();
-    await expect(page).toHaveURL(/\/dashboard\/settings(?:#|\?|$)/);
+    await expect(page.getByTestId('dashboard-panel-briefing')).toBeVisible();
+    await page.getByTestId('dashboard-sidebar-item-playbooks').click();
+    await expect(page.getByTestId('dashboard-panel-playbooks')).toBeVisible();
+    await expect(page.getByTestId('dashboard-panel-briefing')).toHaveCount(0);
+
+    await page.getByTestId('dashboard-sidebar-item-briefing').click();
+    await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBeNull();
+    await expect(page.getByTestId('dashboard-panel-briefing')).toBeVisible();
+  });
+
+  test('deep-link /dashboard?panel=settings opens settings shell panel', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setupDashboardMocks(page);
+    await page.goto('/dashboard?panel=settings');
+
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
+    await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBe('settings');
+    await expect(page.getByTestId('dashboard-panel-settings')).toBeVisible();
+  });
+
+  test('deep-link /dashboard?panel=signals opens signals shell panel', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setupDashboardMocks(page);
+    await page.goto('/dashboard?panel=signals');
+
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
+    await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBe('signals');
+    await expect(page.getByTestId('dashboard-panel-signals')).toBeVisible();
   });
 
   test('primary action posts approve decision', async ({ page }) => {
@@ -275,6 +310,25 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     expect(clipboardText).toContain('To: alex.morgan@example.com');
     expect(clipboardText).toContain('Subject: Alex Morgan follow-up');
     expect(clipboardText).toContain('Following up on the update from yesterday.');
+  });
+
+  test('mobile 390px has no horizontal overflow on /dashboard shell', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupDashboardMocks(page);
+    await page.goto('/dashboard');
+
+    const layout = await page.evaluate(() => {
+      const html = document.documentElement;
+      const body = document.body;
+      return {
+        htmlScrollWidth: html.scrollWidth,
+        htmlClientWidth: html.clientWidth,
+        bodyScrollWidth: body.scrollWidth,
+      };
+    });
+
+    const maxScrollWidth = Math.max(layout.htmlScrollWidth, layout.bodyScrollWidth);
+    expect(maxScrollWidth).toBeLessThanOrEqual(layout.htmlClientWidth + 1);
   });
 
   test('account menu opens and sign out remains wired', async ({ page }) => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -12,7 +13,10 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
-import { DashboardSidebar } from '@/components/foldera/DashboardSidebar';
+import {
+  DashboardSidebar,
+  type DashboardPanelKey,
+} from '@/components/foldera/DashboardSidebar';
 import { EmptyStateCard } from '@/components/foldera/EmptyStateCard';
 import { FolderaLogo } from '@/components/foldera/FolderaLogo';
 import { RightPanel } from '@/components/foldera/RightPanel';
@@ -66,6 +70,83 @@ const DEFAULT_STAGE_METRICS: StageMetrics = {
   offsetX: 0,
   offsetY: 0,
 };
+
+type DashboardSecondaryPanelKey = Exclude<DashboardPanelKey, 'briefing'>;
+type DashboardShellPanelConfig = {
+  title: string;
+  description: string;
+  primaryHref: string;
+  primaryLabel: string;
+  secondaryHref?: string;
+  secondaryLabel?: string;
+};
+
+const DASHBOARD_PANEL_LABELS: Record<DashboardPanelKey, string> = {
+  briefing: 'Executive Briefing',
+  playbooks: 'Playbooks',
+  signals: 'Signals',
+  'audit-log': 'Audit Log',
+  integrations: 'Integrations',
+  settings: 'Settings',
+};
+
+const DASHBOARD_SHELL_PANEL_CONFIG: Record<DashboardSecondaryPanelKey, DashboardShellPanelConfig> = {
+  playbooks: {
+    title: 'Playbooks',
+    description:
+      'Playbooks are available as a dedicated deep-link route. This in-shell panel keeps switching instant while preserving that full page.',
+    primaryHref: '/dashboard/playbooks',
+    primaryLabel: 'Open full playbooks',
+  },
+  signals: {
+    title: 'Signals',
+    description:
+      'Signals diagnostics stay available through the deep-link route. Use this shell panel for quick navigation, then open the full view when needed.',
+    primaryHref: '/dashboard/signals',
+    primaryLabel: 'Open full signals',
+    secondaryHref: '/dashboard/settings#connected-accounts',
+    secondaryLabel: 'Open connected accounts',
+  },
+  'audit-log': {
+    title: 'Audit Log',
+    description:
+      'Audit history remains available as a route for direct linking. This panel keeps navigation in-place inside the dashboard shell.',
+    primaryHref: '/dashboard/audit-log',
+    primaryLabel: 'Open full audit log',
+  },
+  integrations: {
+    title: 'Integrations',
+    description:
+      'Integration management remains anchored in Settings to avoid runtime risk. Keep switching in-place here and jump to full controls when needed.',
+    primaryHref: '/dashboard/integrations',
+    primaryLabel: 'Open integrations route',
+    secondaryHref: '/dashboard/settings#connected-accounts',
+    secondaryLabel: 'Manage connected accounts',
+  },
+  settings: {
+    title: 'Settings',
+    description:
+      'Settings remains a full route so account and billing controls stay stable. This panel keeps the shell interactive and links to complete settings.',
+    primaryHref: '/dashboard/settings',
+    primaryLabel: 'Open full settings',
+    secondaryHref: '/dashboard/settings#connected-accounts',
+    secondaryLabel: 'Jump to connected accounts',
+  },
+};
+
+function normalizeDashboardPanel(value: string | null): DashboardPanelKey {
+  switch (value) {
+    case 'playbooks':
+    case 'signals':
+    case 'audit-log':
+    case 'integrations':
+    case 'settings':
+    case 'briefing':
+      return value;
+    default:
+      return 'briefing';
+  }
+}
 
 const DOCUMENT_MARKDOWN_COMPONENTS = {
   h1: ({ children }: { children?: ReactNode }) => (
@@ -240,6 +321,9 @@ function inferSourcePills(action: DashboardAction | null): string[] {
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
+  const [activePanel, setActivePanel] = useState<DashboardPanelKey>('briefing');
+  const isBriefingPanel = activePanel === 'briefing';
+  const activeSidebarLabel = DASHBOARD_PANEL_LABELS[activePanel];
 
   const [action, setAction] = useState<DashboardAction | null>(null);
   const [loadingLatest, setLoadingLatest] = useState(true);
@@ -364,6 +448,42 @@ export default function DashboardPage() {
       body.style.overflowY = previousBodyOverflowY;
     };
   }, [stageMetrics.isDesktop]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const syncPanelFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      setActivePanel(normalizeDashboardPanel(params.get('panel')));
+    };
+
+    syncPanelFromUrl();
+    window.addEventListener('popstate', syncPanelFromUrl);
+    return () => {
+      window.removeEventListener('popstate', syncPanelFromUrl);
+    };
+  }, []);
+
+  const selectPanel = useCallback(
+    (panel: DashboardPanelKey) => {
+      if (typeof window === 'undefined') return;
+      const currentPath = window.location.pathname || '/dashboard';
+      if (!currentPath.startsWith('/dashboard')) return;
+
+      const nextParams = new URLSearchParams(window.location.search);
+      if (panel === 'briefing') {
+        nextParams.delete('panel');
+      } else {
+        nextParams.set('panel', panel);
+      }
+
+      const query = nextParams.toString();
+      const nextUrl = query ? `${currentPath}?${query}` : currentPath;
+      window.history.replaceState({}, '', nextUrl);
+      setActivePanel(panel);
+    },
+    [],
+  );
 
   const runDecision = useCallback(
     async (decision: 'approve' | 'skip') => {
@@ -661,31 +781,77 @@ export default function DashboardPage() {
     </div>
   );
 
-  const cardNode = action ? (
-    <DailyBriefCard
-      className="foldera-dashboard-brief-card foldera-dashboard-money-shot h-full w-full"
-      dashboardCta
-      stageDesktop={stageMetrics.isDesktop}
-      directive={artifactTitle}
-      whyNow={
-        asTrimmedString(action.reason) ??
-        'Foldera surfaced the single move that matters most right now.'
-      }
-      draftLabel={draftLabel}
-      draftBody={draftBody}
-      sourcePills={inferSourcePills(action)}
-      nextStep={writeDocument ? 'Next: Save to record' : 'Next: Await response'}
-      statusText={writeDocument ? 'READY TO FILE' : 'READY TO SEND'}
-      footerText="Grounded in connected sources"
-      actions={cardActions}
-    />
+  const secondaryPanelConfig =
+    activePanel === 'briefing' ? null : DASHBOARD_SHELL_PANEL_CONFIG[activePanel];
+  const secondaryPanelNode = secondaryPanelConfig ? (
+    <section
+      className="foldera-dashboard-brief-card foldera-brief-shell flex h-full w-full flex-col gap-6 p-6 sm:p-8"
+      data-testid={`dashboard-panel-${activePanel}`}
+    >
+      <div>
+        <p
+          className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted"
+          data-testid="dashboard-active-panel-label"
+        >
+          {secondaryPanelConfig.title}
+        </p>
+        <h2 className="mt-3 max-w-[26ch] text-[34px] font-semibold leading-[1.1] tracking-[-0.04em] text-text-primary">
+          {secondaryPanelConfig.title}
+        </h2>
+        <p className="mt-4 max-w-[64ch] text-[15px] leading-7 text-text-secondary">
+          {secondaryPanelConfig.description}
+        </p>
+      </div>
+      <div className="mt-auto flex flex-wrap gap-3">
+        <Link
+          href={secondaryPanelConfig.primaryHref}
+          className="foldera-button-primary"
+          data-testid={`dashboard-panel-open-${activePanel}`}
+        >
+          {secondaryPanelConfig.primaryLabel}
+        </Link>
+        {secondaryPanelConfig.secondaryHref && secondaryPanelConfig.secondaryLabel ? (
+          <Link
+            href={secondaryPanelConfig.secondaryHref}
+            className="foldera-button-secondary"
+            data-testid={`dashboard-panel-secondary-${activePanel}`}
+          >
+            {secondaryPanelConfig.secondaryLabel}
+          </Link>
+        ) : null}
+      </div>
+    </section>
+  ) : null;
+
+  const briefingCardNode = action ? (
+    <div data-testid="dashboard-panel-briefing" className="h-full w-full">
+      <DailyBriefCard
+        className="foldera-dashboard-brief-card foldera-dashboard-money-shot h-full w-full"
+        dashboardCta
+        stageDesktop={stageMetrics.isDesktop}
+        directive={artifactTitle}
+        whyNow={
+          asTrimmedString(action.reason) ??
+          'Foldera surfaced the single move that matters most right now.'
+        }
+        draftLabel={draftLabel}
+        draftBody={draftBody}
+        sourcePills={inferSourcePills(action)}
+        nextStep={writeDocument ? 'Next: Save to record' : 'Next: Await response'}
+        statusText={writeDocument ? 'READY TO FILE' : 'READY TO SEND'}
+        footerText="Grounded in connected sources"
+        actions={cardActions}
+      />
+    </div>
   ) : loadingLatest ? (
     loadingCard
   ) : (
     emptyStateCard
   );
 
-  const statusNoticeNode = statusNotice ? (
+  const cardNode = isBriefingPanel ? briefingCardNode : secondaryPanelNode;
+
+  const statusNoticeNode = isBriefingPanel && statusNotice ? (
     <div
       className="rounded-[14px] border border-border bg-panel-raised px-4 py-3"
       data-testid="dashboard-status-notice"
@@ -724,7 +890,14 @@ export default function DashboardPage() {
           className="foldera-dashboard-stage foldera-dashboard-stage--ready"
           style={{ transform: stageTransform, transformOrigin: 'top left' }}
         >
-          <DashboardSidebar activeLabel="Executive Briefing" userName={firstName} variant="stage" />
+          <DashboardSidebar
+            activeLabel={activeSidebarLabel}
+            userName={firstName}
+            variant="stage"
+            appShell
+            activePanel={activePanel}
+            onSelectPanel={selectPanel}
+          />
 
           <p className="foldera-eyebrow absolute" style={{ left: 350, top: 52 }}>
             {getDateLabel()}
@@ -782,7 +955,7 @@ export default function DashboardPage() {
             </div>
           ) : null}
 
-          {showOutcomeActions ? (
+          {isBriefingPanel && showOutcomeActions ? (
             <div className="absolute flex justify-center gap-3" style={{ left: 722, top: 1096, width: 430 }}>
               <button
                 type="button"
@@ -817,7 +990,13 @@ export default function DashboardPage() {
     <main className="foldera-dashboard-page foldera-page min-h-screen bg-bg text-text-primary" data-testid="pixel-lock-frame">
       <div className="mx-auto w-full max-w-[1400px] px-4 py-4 sm:px-5 lg:px-6 lg:py-6">
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[252px_minmax(0,1fr)] xl:grid-cols-[252px_minmax(0,1fr)_300px] xl:gap-8">
-          <DashboardSidebar activeLabel="Executive Briefing" userName={firstName} />
+          <DashboardSidebar
+            activeLabel={activeSidebarLabel}
+            userName={firstName}
+            appShell
+            activePanel={activePanel}
+            onSelectPanel={selectPanel}
+          />
 
           <div className="min-w-0">
             <div className="foldera-panel mb-5 flex items-center justify-between gap-3 px-4 py-3 lg:hidden">
@@ -873,30 +1052,36 @@ export default function DashboardPage() {
             {statusNoticeNode ? <div className="mx-auto mb-4 w-full max-w-[860px]">{statusNoticeNode}</div> : null}
 
             <div className="mx-auto w-full max-w-[860px] pb-12">
-              {action ? (
-                <DailyBriefCard
-                  className="foldera-dashboard-brief-card foldera-dashboard-money-shot w-full"
-                  dashboardCta
-                  directive={artifactTitle}
-                  whyNow={
-                    asTrimmedString(action.reason) ??
-                    'Foldera surfaced the single move that matters most right now.'
-                  }
-                  draftLabel={draftLabel}
-                  draftBody={draftBody}
-                  sourcePills={inferSourcePills(action)}
-                  nextStep={writeDocument ? 'Next: Save to record' : 'Next: Await response'}
-                  statusText={writeDocument ? 'READY TO FILE' : 'READY TO SEND'}
-                  footerText="Grounded in connected sources"
-                  actions={cardActions}
-                />
-              ) : loadingLatest ? (
-                loadingCard
+              {isBriefingPanel ? (
+                action ? (
+                  <div data-testid="dashboard-panel-briefing">
+                    <DailyBriefCard
+                      className="foldera-dashboard-brief-card foldera-dashboard-money-shot w-full"
+                      dashboardCta
+                      directive={artifactTitle}
+                      whyNow={
+                        asTrimmedString(action.reason) ??
+                        'Foldera surfaced the single move that matters most right now.'
+                      }
+                      draftLabel={draftLabel}
+                      draftBody={draftBody}
+                      sourcePills={inferSourcePills(action)}
+                      nextStep={writeDocument ? 'Next: Save to record' : 'Next: Await response'}
+                      statusText={writeDocument ? 'READY TO FILE' : 'READY TO SEND'}
+                      footerText="Grounded in connected sources"
+                      actions={cardActions}
+                    />
+                  </div>
+                ) : loadingLatest ? (
+                  loadingCard
+                ) : (
+                  <div className="min-h-[420px]">{emptyStateCard}</div>
+                )
               ) : (
-                <div className="min-h-[420px]">{emptyStateCard}</div>
+                <div className="min-h-[420px]">{secondaryPanelNode}</div>
               )}
 
-              {showOutcomeActions ? (
+              {isBriefingPanel && showOutcomeActions ? (
                 <div className="mt-4 flex flex-wrap justify-center gap-3">
                   <button
                     type="button"
