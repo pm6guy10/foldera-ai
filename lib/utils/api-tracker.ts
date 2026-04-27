@@ -16,7 +16,7 @@ import { createServerClient } from '@/lib/db/client';
 import { getPipelineRunContext } from '@/lib/observability/pipeline-run-context';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
-const DAILY_SPEND_CAP_USD = 0.05;
+const DAILY_SPEND_CAP_USD = 1.00;
 /** USD/day UTC for `extraction` + `signal_extraction`. Env override for backlog catch-up; unset uses default. */
 function resolveExtractionDailyCapUsd(): number {
   const raw = process.env.EXTRACTION_DAILY_CAP_USD?.trim();
