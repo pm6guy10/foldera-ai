@@ -58,6 +58,25 @@ Status: CLOSED
 Last evidence: 2026-04-27 — live build `d30bc22`; authenticated owner `POST /api/settings/run-brief?force=true&use_llm=true` returned `200`, spent through `insight_scan` + `directive` / `directive_retry`, and persisted action `2a04fa59-c1b7-4312-9adf-f99937cdd552`, which proves the newest live row is no longer blocked by `Daily spend cap reached.`.
 Next blocker: BL-009.
 
+### BL-010
+ID: BL-010
+Rung: 1
+Title: Production cron routes reject the current CRON_SECRET and block manual cron proof
+User-facing path: Manual cron triggers reach the live production cron routes so daily-send and health-check can be verified on the real runtime.
+Starting route or trigger: `POST /api/cron/daily-send` and `GET /api/cron/health-check`
+Ending success state: The current production `CRON_SECRET` authenticates live cron routes again, so the real route returns its cron payload instead of `401 Unauthorized`.
+Problem: On live build `3ccfb88`, both manual cron routes return `401 {"error":"Unauthorized"}` when called with the current project `CRON_SECRET`, including after a same-commit production redeploy.
+Protected contracts: Keep cron routes protected from unauthenticated access, preserve the exact bearer-token contract in `validateCronAuth`, and do not weaken deployment protection or cron auth just to make proof easier.
+Allowed files: `lib/auth/resolve-user.ts`, `app/api/cron/**`, focused tests, `SESSION_HISTORY.md`, `CURRENT_STATE.md`
+Forbidden files: `lib/cron/daily-brief-send.ts`, `lib/briefing/**`, `app/dashboard/**`, `app/api/stripe/**`, unrelated landing/auth surfaces
+Required local proof: Focused cron-auth tests for touched files; `npm run lint`; `npm run build`
+Required production proof: `vercel env pull <temp> --environment=production`, then `POST https://foldera.ai/api/cron/daily-send` and `GET https://foldera.ai/api/cron/health-check` with the documented cron secret header contract (`Authorization: Bearer $CRON_SECRET` and/or `x-cron-secret: $CRON_SECRET`) must return live route payload instead of `401`.
+Done means: The authoritative current production `CRON_SECRET` can successfully authenticate live cron routes again.
+Do-not-count: Deploy logs alone, health route success alone, protected deployment splash pages, or DB rows without a successful cron-route response.
+Status: CLOSED
+Last evidence: 2026-04-27 — pushed `03f747e` and confirmed production build `03f747e` on `https://foldera.ai/api/health?depth=full`; `vercel env pull` returned a 41-char `CRON_SECRET`; live `POST /api/cron/daily-send` and `GET /api/cron/health-check` with `x-cron-secret: $CRON_SECRET` now return route payloads (`200`, including `email_already_sent`) instead of `401`.
+Next blocker: BL-002.
+
 ### BL-002
 ID: BL-002
 Rung: 1
@@ -74,8 +93,8 @@ Required production proof: `curl -i -X POST https://foldera.ai/api/cron/daily-se
 Done means: One real production daily-send trigger produces exactly one user-facing email outcome with the row marked sent.
 Do-not-count: HTTP 200 or 204 alone, logs/traces alone, DB rows alone, or docs/screenshots/refactors/unrelated tests.
 Status: OPEN
-Last evidence: 2026-04-25 — session history recorded post-push deploy and live `/api/cron/daily-send` proof as still pending.
-Next blocker: Trigger the live send path once after deploy and verify the actual email result, not just the HTTP response.
+Last evidence: 2026-04-27 — after BL-010 auth fix on live build `03f747e`, `POST /api/cron/daily-send` with production `CRON_SECRET` + `x-cron-secret` now reaches send logic and returns `200` (`email_already_sent` for action `2a04fa59-c1b7-4312-9adf-f99937cdd552`), so cron auth no longer blocks the seam.
+Next blocker: Capture one fresh live send-stage outcome (new daily brief email or wait-rationale) rather than an already-sent idempotency response.
 
 ### BL-009
 ID: BL-009
