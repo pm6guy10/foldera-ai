@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-27 — Dashboard manual first-read now follows visible latest-action truth
+- MODE: EXECUTION (single seam)
+- **Problem:** `/dashboard` treated `POST /api/settings/run-brief?force=true&use_llm=true` `ok=true` as “First read generated.” even when the post-run `/api/conviction/latest` state stayed empty, so users could see a false-success toast and then nothing after refresh.
+- **Change:** `app/dashboard/page.tsx` now reloads `/api/conviction/latest` with `cache: 'no-store'`, only shows `first_read_generated` when the reloaded payload contains a renderable action with an artifact, shows the clean no-bar message when no visible action exists, and suppresses internal blocker strings from dashboard rendering. `app/api/conviction/latest/route.ts` now responds with explicit no-store cache headers, and focused tests lock both the cache contract and the empty-state/manual-run truth path.
+- **Verification:** `npm run health` (`RESULT: 0 FAILING`; warnings only: Gmail fresh 7h ago, no Microsoft mailbox connected, last generation `write_document`); `npx vitest run app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts`; `npm run lint`; `npm run build`; `npx playwright test tests/dashboard/empty-first-read-pixel-lock.spec.ts`; pushed code commit `ef05422` to `main`; live `/api/health?depth=full` shows production revision `ef05422`; authenticated production Playwright against `https://www.foldera.ai/dashboard` showed pre-click empty state with `Run first read now`, live `POST /api/settings/run-brief?force=true&use_llm=true` returned `200` and persisted action `9c5b2673-4a25-41d6-a8fc-fcc54ebfe85c`, the dashboard rendered a visible artifact with Approve/Skip and no internal failure strings, and hard refresh preserved the same visible artifact. Screenshots: `output/playwright/prod-dashboard-before-click.png`, `output/playwright/prod-dashboard-after-click.png`, `output/playwright/prod-dashboard-after-reload.png`.
+- **Unresolved:** No open blocker in this seam. The quality of the live generated document remains a separate product-quality issue outside this dashboard-truth fix.
+
 ## 2026-04-26 — settings run-brief timeout raised to 120 seconds (blocked on pre-existing Windows build race)
 - MODE: BUGFIX (single seam)
 - **Problem:** `app/api/settings/run-brief/route.ts` capped the manual settings route at `60` seconds, while adjacent long-running generation/debug routes already allow `120`.
