@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
 import { ArrowRight, Check } from 'lucide-react';
 import { NavPublic } from '@/components/nav/NavPublic';
 import { BlogFooter } from '@/components/nav/BlogFooter';
@@ -21,7 +20,6 @@ const proFeatures = [
 ];
 
 function ProCheckoutButton() {
-  const { data: session, status } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,10 +30,7 @@ function ProCheckoutButton() {
       const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: session?.user?.id,
-          email: session?.user?.email ?? undefined,
-        }),
+        body: JSON.stringify({}),
       });
       const payload = await response.json().catch(() => ({}));
       if (response.status === 401) {
@@ -53,18 +48,6 @@ function ProCheckoutButton() {
     }
   };
 
-  if (status !== 'authenticated') {
-    return (
-      <Link
-        href="/start?plan=pro"
-        className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover"
-      >
-        Upgrade to Pro
-        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-      </Link>
-    );
-  }
-
   return (
     <div className="space-y-3">
       <button
@@ -73,7 +56,7 @@ function ProCheckoutButton() {
         disabled={loading}
         className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60"
       >
-        {loading ? 'Loading…' : 'Continue to checkout'}
+        {loading ? 'Loading…' : 'Upgrade to Pro'}
       </button>
       {error && <p className="text-xs text-text-secondary">{error}</p>}
     </div>

@@ -38,7 +38,7 @@ function matchApiPath(apiPath: string) {
   };
 }
 
-// ── Public API (middleware request id) ───────────────────────────────────────
+// ── Public API (route request id) ────────────────────────────────────────────
 
 test.describe('Public API', () => {
   test('/api/health returns 200 and echoes x-request-id', async ({ request }) => {
@@ -94,6 +94,23 @@ test.describe('Landing page /', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     expect(errors).toHaveLength(0);
+  });
+
+  test('does not request /api/auth/session', async ({ page }) => {
+    let sessionRequests = 0;
+    await page.route(matchApiPath('/api/auth/session'), async (route) => {
+      sessionRequests += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ user: null, expires: new Date().toISOString() }),
+      });
+    });
+
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    expect(sessionRequests).toBe(0);
   });
 
   test('loads at mobile 390px', async ({ page }) => {
@@ -316,6 +333,23 @@ test.describe('Pricing page /pricing', () => {
     await page.goto('/pricing');
     await page.waitForLoadState('networkidle');
     expect(errors).toHaveLength(0);
+  });
+
+  test('does not request /api/auth/session', async ({ page }) => {
+    let sessionRequests = 0;
+    await page.route(matchApiPath('/api/auth/session'), async (route) => {
+      sessionRequests += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ user: null, expires: new Date().toISOString() }),
+      });
+    });
+
+    await page.goto('/pricing');
+    await page.waitForLoadState('networkidle');
+
+    expect(sessionRequests).toBe(0);
   });
 });
 

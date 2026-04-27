@@ -3,7 +3,11 @@
  */
 
 import { headers } from 'next/headers';
-import { normalizeInboundRequestId, REQUEST_ID_HEADER } from './request-id-core';
+import {
+  normalizeInboundRequestId,
+  REQUEST_ID_HEADER,
+  resolveRequestIdForRequest,
+} from './request-id-core';
 
 export {
   normalizeInboundRequestId,
@@ -14,8 +18,8 @@ export {
 
 export function getRequestId(): string | undefined {
   try {
-    return normalizeInboundRequestId(headers().get(REQUEST_ID_HEADER));
+    return resolveRequestIdForRequest(headers().get(REQUEST_ID_HEADER));
   } catch {
-    return undefined;
+    return crypto.randomUUID();
   }
 }

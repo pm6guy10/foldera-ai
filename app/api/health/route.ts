@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDeployBuildLabel, getDeployRevision } from '@/lib/config/deploy-revision';
 import { createServerClient } from '@/lib/db/client';
 import { checkApiCreditCanary } from '@/lib/cron/acceptance-gate';
+import { REQUEST_ID_HEADER, resolveRequestIdForRequest } from '@/lib/utils/request-id-core';
 
 export const dynamic = 'force-dynamic';
 
@@ -84,6 +85,7 @@ async function runSchemaProbes(
 
 export async function GET(request: NextRequest) {
   const full = wantsFullHealth(request);
+  const requestId = resolveRequestIdForRequest(request.headers.get(REQUEST_ID_HEADER));
 
   const hasSupabaseCfg = !!(
     process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
@@ -137,6 +139,7 @@ export async function GET(request: NextRequest) {
   const build = getDeployBuildLabel(revision);
 
   const headers = new Headers();
+  headers.set(REQUEST_ID_HEADER, requestId);
   if (revision.git_sha) {
     headers.set('x-foldera-git-sha', revision.git_sha);
   }

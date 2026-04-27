@@ -112,7 +112,7 @@ export async function middleware(request: NextRequest) {
   );
 }
 
-// Public pages, dashboard, and API (request id for correlation; no auth redirect on /api/*)
+// Public pages plus authenticated app surfaces.
 export const config = {
   matcher: [
     '/',
@@ -127,6 +127,5 @@ export const config = {
     '/onboard/:path*',
     '/dashboard',
     '/dashboard/:path*',
-    '/api/:path*',
   ],
 };

@@ -1,7 +1,6 @@
 // File: app/layout.js
 
 import "./globals.css";
-import { Providers } from "./providers";
 import { BuildMarker } from "@/components/BuildMarker";
 import { resolveCanonicalSiteOrigin } from "@/lib/site-canonical";
 
@@ -71,9 +70,7 @@ export default function RootLayout({ children }) {
         >
           Skip to main content
         </a>
-        <Providers>
-          {children}
-        </Providers>
+        {children}
         <BuildMarker />
       </body>
     </html>

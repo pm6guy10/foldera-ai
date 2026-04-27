@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
 import { ChevronRight, X } from 'lucide-react';
 import { FolderaMark } from '@/components/nav/FolderaMark';
 
@@ -19,8 +18,6 @@ const navLinks = [
 ];
 
 export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavPublicProps) {
-  const { status } = useSession();
-  const isLoggedIn = status === 'authenticated';
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -71,19 +68,17 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
         </div>
 
         <div className="hidden items-center gap-3 sm:flex">
-          {!isLoggedIn && (
-            <a
-              href="/login"
-              className="text-[13px] text-text-muted transition-colors hover:text-text-primary"
-            >
-              Sign in
-            </a>
-          )}
           <a
-            href={isLoggedIn ? '/dashboard' : '/start'}
+            href="/login"
+            className="text-[13px] text-text-muted transition-colors hover:text-text-primary"
+          >
+            Sign in
+          </a>
+          <a
+            href="/start"
             className="inline-flex min-h-[44px] items-center gap-2 rounded-[14px] border border-cyan-300/25 bg-accent px-4 text-[13px] font-semibold text-slate-950 transition-colors hover:bg-accent-hover"
           >
-            {isLoggedIn ? 'Dashboard' : 'Start free'}
+            Start free
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </a>
         </div>
@@ -140,22 +135,20 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
                 </a>
               ))}
 
-              {!isLoggedIn && (
-                <a
-                  href="/login"
-                  onClick={() => setMenuOpen(false)}
-                  className="inline-flex min-h-[48px] items-center rounded-[14px] px-3 text-sm font-medium text-text-primary"
-                >
-                  Sign in
-                </a>
-              )}
+              <a
+                href="/login"
+                onClick={() => setMenuOpen(false)}
+                className="inline-flex min-h-[48px] items-center rounded-[14px] px-3 text-sm font-medium text-text-primary"
+              >
+                Sign in
+              </a>
 
               <a
-                href={isLoggedIn ? '/dashboard' : '/start'}
+                href="/start"
                 onClick={() => setMenuOpen(false)}
                 className="mt-2 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[14px] bg-accent px-4 text-sm font-semibold text-slate-950"
               >
-                {isLoggedIn ? 'Dashboard' : 'Start free'}
+                Start free
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </a>
             </nav>
