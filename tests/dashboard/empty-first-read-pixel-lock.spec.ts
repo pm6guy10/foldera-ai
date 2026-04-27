@@ -67,7 +67,7 @@ async function seedAuthenticatedSession(page: Page): Promise<void> {
 }
 
 describeWithAuth('Dashboard empty-state first-read trigger', () => {
-  test('connected user can trigger first read from an empty dashboard shell', async ({ page }) => {
+  test('connected user only sees "First read generated" when latest reload returns a visible action', async ({ page }) => {
     await seedAuthenticatedSession(page);
 
     let latestCalls = 0;
@@ -159,5 +159,88 @@ describeWithAuth('Dashboard empty-state first-read trigger', () => {
       'Can you confirm whether you own the final packet handoff by 4 PM PT today?',
     );
     await expect.poll(() => latestCalls).toBeGreaterThan(1);
+  });
+
+  test('run-brief ok=true with no visible latest action shows the clean no-directive message and stays empty after refresh', async ({ page }) => {
+    await seedAuthenticatedSession(page);
+
+    let latestCalls = 0;
+    let runBriefCalls = 0;
+
+    await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+    await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+    await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+    await page.route(
+      matchApiPath('/api/integrations/status'),
+      fulfillJson({
+        integrations: [
+          {
+            provider: 'google',
+            is_active: true,
+            sync_email: 'test@gmail.com',
+            last_synced_at: null,
+            missing_scopes: [],
+          },
+        ],
+      }),
+    );
+    await page.route(matchApiPath('/api/stripe/checkout'), fulfillJson({ error: 'mock' }));
+    await page.route(matchApiPath('/api/conviction/latest'), async (route) => {
+      latestCalls += 1;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: json({}) });
+    });
+    await page.route(matchApiPath('/api/settings/run-brief'), async (route) => {
+      runBriefCalls += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: json({
+          ok: true,
+          spend_policy: {
+            pipeline_dry_run: false,
+            paid_llm_requested: true,
+            paid_llm_effective: true,
+          },
+          stages: {
+            daily_brief: {
+              ok: true,
+              generate: {
+                results: [
+                  {
+                    code: 'no_send_persisted',
+                    detail:
+                      'All 10 candidates blocked: llm_failed; stale_date_in_directive:March 30; INFINITE_LOOP',
+                  },
+                ],
+              },
+            },
+          },
+        }),
+      });
+    });
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/dashboard');
+
+    await expect(page.getByTestId('dashboard-empty-state')).toBeVisible({ timeout: 15000 });
+    await page.getByTestId('dashboard-run-first-read').click();
+
+    await expect.poll(() => runBriefCalls).toBe(1);
+    await expect(page.getByTestId('dashboard-status-notice')).toHaveAttribute(
+      'data-status-id',
+      'first_read_no_visible_action',
+    );
+    await expect(page.getByText(
+      'No directive cleared the bar. Foldera checked your signals and found nothing ready to act on.',
+    )).toBeVisible();
+    await expect(page.getByTestId('dashboard-empty-state')).toBeVisible();
+    await expect(page.getByText(/llm_failed|stale_date_in_directive|All 10 candidates blocked|INFINITE_LOOP/i)).toHaveCount(0);
+
+    await page.reload();
+
+    await expect(page.getByTestId('dashboard-empty-state')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('dashboard-status-notice')).toHaveCount(0);
+    await expect(page.getByText(/llm_failed|stale_date_in_directive|All 10 candidates blocked|INFINITE_LOOP/i)).toHaveCount(0);
+    await expect.poll(() => latestCalls).toBeGreaterThan(2);
   });
 });

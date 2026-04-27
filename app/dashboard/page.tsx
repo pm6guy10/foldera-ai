@@ -86,6 +86,11 @@ type DashboardHistoryPayload = {
   items?: DashboardHistoryItem[];
 };
 
+type LoadLatestResult = {
+  action: DashboardAction | null;
+  loaded: boolean;
+};
+
 type StageMetrics = {
   isDesktop: boolean;
   scale: number;
@@ -111,6 +116,19 @@ const DASHBOARD_PANEL_LABELS: Record<DashboardPanelKey, string> = {
   integrations: 'Integrations',
   settings: 'Settings',
 };
+
+const FIRST_READ_NO_VISIBLE_ACTION_MESSAGE =
+  'No directive cleared the bar. Foldera checked your signals and found nothing ready to act on.';
+const FIRST_READ_FAILURE_MESSAGE = 'Could not run your first read right now.';
+const FIRST_READ_INTERNAL_FAILURE_PATTERNS = [
+  /\bllm_failed\b/i,
+  /\bstale_date_in_directive\b/i,
+  /\bINFINITE_LOOP\b/i,
+  /\bAll \d+ candidates blocked\b/i,
+  /\bDirective rejected by persistence validation\b/i,
+  /\bOutput blocked by quality gate\b/i,
+  /\bHard bottom gate blocked\b/i,
+] as const;
 
 function normalizeDashboardPanel(value: string | null): DashboardPanelKey {
   switch (value) {
@@ -206,6 +224,62 @@ function getArtifactBody(artifact: DashboardArtifact | null | undefined): string
     asTrimmedString(artifact?.context) ??
     ''
   );
+}
+
+function hasInternalFailureText(value: string | null | undefined): boolean {
+  if (!value) return false;
+  return FIRST_READ_INTERNAL_FAILURE_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+function getDashboardActionArtifact(
+  action: DashboardAction | null | undefined,
+): DashboardArtifact | null {
+  return action?.artifact && typeof action.artifact === 'object' ? action.artifact : null;
+}
+
+function getDashboardActionHeadline(action: DashboardAction | null | undefined): string {
+  const artifact = getDashboardActionArtifact(action);
+  return (
+    asTrimmedString(action?.directive) ??
+    asTrimmedString(artifact?.title) ??
+    asTrimmedString(artifact?.subject) ??
+    asTrimmedString(artifact?.type) ??
+    ''
+  );
+}
+
+function dashboardActionContainsInternalFailureText(
+  action: DashboardAction | null | undefined,
+): boolean {
+  const artifact = getDashboardActionArtifact(action);
+  const userFacingFields = [
+    asTrimmedString(action?.directive),
+    asTrimmedString(action?.reason),
+    asTrimmedString(artifact?.title),
+    asTrimmedString(artifact?.subject),
+    asTrimmedString(artifact?.body),
+    asTrimmedString(artifact?.text),
+    asTrimmedString(artifact?.content),
+    asTrimmedString(artifact?.context),
+  ];
+  return userFacingFields.some((field) => hasInternalFailureText(field));
+}
+
+function isVisibleDashboardAction(value: unknown): value is DashboardAction {
+  if (!value || typeof value !== 'object') return false;
+  const action = value as DashboardAction;
+  if (!asTrimmedString((value as Record<string, unknown>).id)) return false;
+  if (!getDashboardActionArtifact(action)) return false;
+  if (dashboardActionContainsInternalFailureText(action)) return false;
+  return (
+    getDashboardActionHeadline(action).length > 0 ||
+    getArtifactBody(getDashboardActionArtifact(action)).length > 0
+  );
+}
+
+function sanitizeFirstReadFailureMessage(message: string | null | undefined): string {
+  if (hasInternalFailureText(message)) return FIRST_READ_FAILURE_MESSAGE;
+  return asTrimmedString(message) ?? FIRST_READ_FAILURE_MESSAGE;
 }
 
 function isWriteDocumentAction(action: DashboardAction | null): boolean {
@@ -366,31 +440,43 @@ export default function DashboardPage() {
 
   const loadAbortRef = useRef<AbortController | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<LoadLatestResult> => {
     loadAbortRef.current?.abort();
     const controller = new AbortController();
     loadAbortRef.current = controller;
     setLoadingLatest(true);
 
     try {
-      const latestRes = await fetch('/api/conviction/latest', { signal: controller.signal });
-      if (controller.signal.aborted) return;
+      const latestRes = await fetch('/api/conviction/latest', {
+        signal: controller.signal,
+        cache: 'no-store',
+      });
+      if (controller.signal.aborted) {
+        return { action: null, loaded: false };
+      }
 
       if (!latestRes.ok) {
         setAction(null);
         setArtifactPaywallLocked(false);
-        return;
+        return { action: null, loaded: false };
       }
 
       const latest = await latestRes.json().catch(() => ({}));
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) {
+        return { action: null, loaded: false };
+      }
 
-      setAction(latest?.id ? (latest as DashboardAction) : null);
-      setArtifactPaywallLocked(latest?.artifact_paywall_locked === true);
+      const action = isVisibleDashboardAction(latest) ? (latest as DashboardAction) : null;
+      setAction(action);
+      setArtifactPaywallLocked(action ? latest?.artifact_paywall_locked === true : false);
+      return { action, loaded: true };
     } catch {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) {
+        return { action: null, loaded: false };
+      }
       setAction(null);
       setArtifactPaywallLocked(false);
+      return { action: null, loaded: false };
     } finally {
       if (!controller.signal.aborted) {
         setLoadingLatest(false);
@@ -695,25 +781,34 @@ export default function DashboardPage() {
 
       if (!response.ok && !payload?.stages) {
         throw new Error(
-          typeof payload?.error === 'string'
-            ? payload.error
-            : 'Could not run your first read right now.',
+          sanitizeFirstReadFailureMessage(
+            typeof payload?.error === 'string' ? payload.error : null,
+          ),
         );
       }
 
-      await load();
+      const latestResult = await load();
+      if (!latestResult.loaded) {
+        setStatusNotice({
+          id: 'first_read_failed',
+          message: FIRST_READ_FAILURE_MESSAGE,
+        });
+        return;
+      }
+
       setStatusNotice({
-        id: payload?.ok === true ? 'first_read_generated' : 'first_read_started',
-        message:
-          payload?.ok === true
-            ? 'First read generated.'
-            : 'First read ran. Foldera will surface the result as soon as it clears the bar.',
+        id: latestResult.action ? 'first_read_generated' : 'first_read_no_visible_action',
+        message: latestResult.action
+          ? 'First read generated.'
+          : FIRST_READ_NO_VISIBLE_ACTION_MESSAGE,
       });
     } catch (error) {
       setStatusNotice({
         id: 'first_read_failed',
         message:
-          error instanceof Error ? error.message : 'Could not run your first read right now.',
+          error instanceof Error
+            ? sanitizeFirstReadFailureMessage(error.message)
+            : FIRST_READ_FAILURE_MESSAGE,
       });
     } finally {
       setFirstReadRunning(false);
@@ -725,11 +820,7 @@ export default function DashboardPage() {
   const writeDocument = isWriteDocumentAction(action);
   const showArtifactBlur = Boolean(action?.artifact) && artifactPaywallLocked;
   const artifactTitle =
-    asTrimmedString(action?.directive) ??
-    asTrimmedString(action?.artifact?.title) ??
-    asTrimmedString(action?.artifact?.subject) ??
-    asTrimmedString(action?.artifact?.type) ??
-    '';
+    getDashboardActionHeadline(action);
   const artifactBody = getArtifactBody(action?.artifact);
   const draftLabel = writeDocument
     ? 'FINISHED DOCUMENT'

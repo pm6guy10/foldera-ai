@@ -17,6 +17,14 @@ import { getSubscriptionStatus } from '@/lib/auth/subscription';
 export const dynamic = 'force-dynamic';
 const MIN_PENDING_CONFIDENCE = CONFIDENCE_SEND_THRESHOLD;
 const CONSUMED_FREE_ARTIFACT_STATUSES = ['approved', 'executed', 'skipped'] as const;
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'private, no-store, max-age=0, must-revalidate',
+  Pragma: 'no-cache',
+} as const;
+
+function jsonNoStore(payload: unknown): NextResponse {
+  return NextResponse.json(payload, { status: 200, headers: NO_STORE_HEADERS });
+}
 
 function startOfTodayIso(): string {
   const start = new Date();
@@ -149,21 +157,21 @@ export async function GET(request: Request) {
     const action = rankedCandidates[0];
 
     if (!action) {
-      return NextResponse.json({
+      return jsonNoStore({
         context_greeting: contextGreeting,
         account_created_at: accountCreatedAt,
         approved_count: consumedFreeArtifactCount,
         is_subscribed: proUnlocked,
         free_artifact_remaining: freeArtifactRemaining,
         artifact_paywall_locked: false,
-      }, { status: 200 });
+      });
     }
 
     const artifact = extractArtifact(action as Record<string, unknown>);
     const artifactPaywallLocked = Boolean(artifact) && !proUnlocked && !freeArtifactRemaining;
 
     // Map DB row → ConvictionAction shape
-    return NextResponse.json({
+    return jsonNoStore({
       id:              action.id,
       userId,
       directive:       action.directive_text,
