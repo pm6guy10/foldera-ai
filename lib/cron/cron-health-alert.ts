@@ -13,6 +13,8 @@ export type PlatformHealthAlertResult = {
   alert_error?: string;
 };
 
+export type PlatformHealthDepth = 'lite' | 'full';
+
 function resolveHealthBaseUrl(): string {
   if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL.replace(/\/$/, '');
   if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL.replace(/\/$/, '');
@@ -28,13 +30,16 @@ async function sleep(ms: number): Promise<void> {
 }
 
 /**
- * GET /api/health?depth=full with small retries — full probe is intentional (schema/ RPC).
+ * GET /api/health with small retries. Routine cron paths should stay on lite health;
+ * full schema/RPC proof is reserved for cron-auth/manual operator paths.
  * Transient "fetch failed" from the same region as daily-brief is a known false positive
  * and did not read DB/env.
  */
-async function fetchHealthJson(baseUrl: string): Promise<Record<string, unknown>> {
-  // depth=full runs column/RPC contract — needed for real degradation signals (not lite).
-  const url = `${baseUrl}/api/health?depth=full`;
+async function fetchHealthJson(
+  baseUrl: string,
+  depth: PlatformHealthDepth,
+): Promise<Record<string, unknown>> {
+  const url = depth === 'full' ? `${baseUrl}/api/health?depth=full` : `${baseUrl}/api/health`;
   let lastErr: unknown;
   for (let attempt = 1; attempt <= HEALTH_FETCH_RETRIES; attempt += 1) {
     try {
@@ -73,11 +78,14 @@ function formatHealthField(
 }
 
 /**
- * GET /api/health?depth=full on the deployment; if not ok, email DAILY_BRIEF_TO_EMAIL when Resend is configured.
+ * GET /api/health on the deployment; if not ok, email DAILY_BRIEF_TO_EMAIL when Resend is configured.
+ * Default is lite for routine post-cron checks; callers may opt into full for cron-auth/manual proof.
  */
-export async function runPlatformHealthAlert(): Promise<PlatformHealthAlertResult> {
+export async function runPlatformHealthAlert(
+  options: { depth?: PlatformHealthDepth } = {},
+): Promise<PlatformHealthAlertResult> {
   const baseUrl = resolveHealthBaseUrl();
-  const healthData = await fetchHealthJson(baseUrl);
+  const healthData = await fetchHealthJson(baseUrl, options.depth ?? 'lite');
 
   const isHealthy = healthData.status === 'ok';
 

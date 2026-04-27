@@ -40,8 +40,15 @@ function productionAuthStateReady(): boolean {
   }
 }
 
-/** Skips authenticated suites when auth-state.json is missing or session cookies are expired. */
-const describeAuth = productionAuthStateReady() ? test.describe : test.describe.skip;
+const includeAuthenticatedProdSmoke = process.env.FOLDERA_INCLUDE_AUTH_PROD_SMOKE === 'true';
+/** Manual-only authenticated production smoke. Automatic deploy/schedule runs stay public-only. */
+const describeAuth = includeAuthenticatedProdSmoke && productionAuthStateReady()
+  ? test.describe
+  : test.describe.skip;
+/** Manual-only operator check for public full-health proof. */
+const describeManualFullHealthProof = includeAuthenticatedProdSmoke
+  ? test.describe
+  : test.describe.skip;
 /** Manual-only owner proof path — never part of scheduled/deploy production smoke. */
 const describeManualLiveBriefProof = process.env.FOLDERA_INCLUDE_LIVE_BRIEF_PROOF === 'true'
   ? describeAuth
@@ -320,8 +327,8 @@ test.describe('Public: Pricing page', () => {
 // Each test uses a fresh context with no storage state to simulate a brand-new
 // visitor. This surfaces broken buttons and broken flows before real users hit them.
 
-// ── Schema health — catches migration drift before it reaches users ─────────
-test.describe('Schema health', () => {
+// ── Manual-only full schema health — operator path, never automatic smoke ───
+describeManualFullHealthProof('Schema health', () => {
   test('/api/health reports schema ok', async ({ request }) => {
     const res = await request.get('https://foldera.ai/api/health?depth=full');
     expect(res.status()).toBe(200);

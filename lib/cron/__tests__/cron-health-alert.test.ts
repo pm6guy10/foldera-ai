@@ -37,6 +37,7 @@ describe('runPlatformHealthAlert', () => {
     expect(r.ok).toBe(true);
     expect(emailsSend).not.toHaveBeenCalled();
     expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(global.fetch).mock.calls[0]?.[0]).toBe('https://foldera.ai/api/health');
   });
 
   it('after retries, marks unreachable and email explains DB/env were not checked', async () => {
@@ -49,5 +50,19 @@ describe('runPlatformHealthAlert', () => {
     const payload = emailsSend.mock.calls[0][0] as { text: string };
     expect(payload.text).toContain('UNKNOWN (endpoint not reached');
     expect(payload.text).not.toMatch(/Database: FAILED/);
+  });
+
+  it('uses full health only when explicitly requested', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ status: 'ok', ts: '2026-01-01T00:00:00.000Z', db: true, env: true }),
+    } as Response);
+
+    const r = await runPlatformHealthAlert({ depth: 'full' });
+    expect(r.ok).toBe(true);
+    expect(vi.mocked(global.fetch)).toHaveBeenCalledWith(
+      'https://foldera.ai/api/health?depth=full',
+      { cache: 'no-store' },
+    );
   });
 });

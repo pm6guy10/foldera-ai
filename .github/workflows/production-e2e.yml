@@ -29,6 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
+      FOLDERA_INCLUDE_AUTH_PROD_SMOKE: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
       FOLDERA_INCLUDE_LIVE_BRIEF_PROOF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.include_live_brief_proof == 'true' && 'true' || 'false' }}
     steps:
       # Use latest `main` test sources. `deployment_status` would otherwise checkout the deployed
@@ -46,9 +47,11 @@ jobs:
       - run: npx playwright install chromium
 
       - name: Restore auth state
+        if: env.FOLDERA_INCLUDE_AUTH_PROD_SMOKE == 'true'
         run: echo '${{ secrets.FOLDERA_AUTH_STATE }}' > tests/production/auth-state.json
 
       - name: Refresh auth state
+        if: env.FOLDERA_INCLUDE_AUTH_PROD_SMOKE == 'true'
         run: npx tsx tests/production/refresh-auth.ts
         continue-on-error: true
 

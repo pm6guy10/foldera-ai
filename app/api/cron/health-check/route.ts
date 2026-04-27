@@ -3,7 +3,7 @@
  *
  * Manual or external trigger (CRON_SECRET). **Not** a Vercel scheduled cron — Hobby
  * limit is satisfied by running `runPlatformHealthAlert()` from `daily-brief` (`finally`).
- * Fetches /api/health; on failure sends alert to DAILY_BRIEF_TO_EMAIL via Resend.
+ * Fetches /api/health?depth=full; on failure sends alert to DAILY_BRIEF_TO_EMAIL via Resend.
  */
 
 import { NextResponse } from 'next/server';
@@ -16,6 +16,6 @@ export async function GET(request: Request) {
   const authErr = validateCronAuth(request);
   if (authErr) return authErr;
 
-  const result = await runPlatformHealthAlert();
+  const result = await runPlatformHealthAlert({ depth: 'full' });
   return NextResponse.json(result);
 }

@@ -102,6 +102,7 @@ describe('daily-brief cron route', () => {
         userIds: ['user-1'],
       }),
     );
+    expect(runPlatformHealthAlert).toHaveBeenCalledWith({ depth: 'lite' });
     expect(payload.ok).toBe(true);
   });
 });

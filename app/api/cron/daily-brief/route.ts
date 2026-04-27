@@ -187,7 +187,7 @@ async function handler(request: NextRequest) {
       errorClass: cronError ?? null,
       durationMs: Date.now() - cronT0,
     });
-    void runPlatformHealthAlert()
+    void runPlatformHealthAlert({ depth: 'lite' })
       .then((h) =>
         console.log(
           JSON.stringify({

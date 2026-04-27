@@ -10,8 +10,8 @@ export const dynamic = 'force-dynamic';
 // Health endpoint — two depths:
 // - Default (lite): one DB round-trip + env + canary. Use for UptimeRobot, link checks,
 //   and anything that hammers the URL often — avoids ~25 schema queries + 3 RPCs.
-// - ?depth=full (or ?full=1): column + RPC contract used by cron alerts, schema smoke.
-// The nightly health-check and prod schema smoke use depth=full.
+// - ?depth=full (or ?full=1): column + RPC contract used by cron-auth/manual operators,
+//   schema smoke, and explicit migration drift proof.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // [table, column] — verified by attempting a zero-row select
