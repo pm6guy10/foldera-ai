@@ -4,7 +4,7 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
-import { sendDailyDirective, sendDailyDeliverySkipAlert } from '@/lib/email/resend';
+import { NO_SEND_SUBJECT, sendDailyDirective, sendDailyDeliverySkipAlert } from '@/lib/email/resend';
 import type { DirectiveItem } from '@/lib/email/resend';
 import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-users';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
@@ -23,7 +23,6 @@ import {
   resolveDailyBriefUserIds,
 } from './daily-brief-generate';
 import { listConnectedUserIds } from '@/lib/auth/user-tokens';
-import { buildHealthLineForUser } from '@/lib/cron/health-verdict';
 import { mergePipelineRunDelivery } from '@/lib/observability/pipeline-run';
 
 export async function runDailySend(
@@ -154,20 +153,16 @@ export async function runDailySend(
             artifact: blockerArtifact,
           };
 
-          const words = directiveItem.directive.split(/\s+/).slice(0, 6).join(' ');
-          const subject = `Foldera: ${words.length > 50 ? `${words.slice(0, 47)}...` : words}`;
+          const subject = NO_SEND_SUBJECT;
 
           let delivery: unknown;
           try {
-            const isOwner = userId === process.env.INGEST_USER_ID;
-            const healthLine = isOwner ? (await buildHealthLineForUser(userId)) ?? undefined : undefined;
             delivery = await sendDailyDirective({
               to,
               directives: [directiveItem],
               date,
               subject,
               userId,
-              healthLine,
             });
           } catch (sendErr: unknown) {
             logStructuredEvent({
@@ -301,11 +296,7 @@ export async function runDailySend(
 
       let delivery: unknown;
       try {
-        // Fetch health line for the owner user (INGEST_USER_ID) — shown in email footer only.
-        // For all other users, healthLine is undefined (not rendered).
-        const isOwner = userId === process.env.INGEST_USER_ID;
-        const healthLine = isOwner ? (await buildHealthLineForUser(userId)) ?? undefined : undefined;
-        delivery = await sendDailyDirective({ to, directives: [directiveItem], date, subject, userId, healthLine });
+        delivery = await sendDailyDirective({ to, directives: [directiveItem], date, subject, userId });
       } catch (sendErr: unknown) {
         logStructuredEvent({
           event: 'daily_send_failed',

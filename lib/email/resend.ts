@@ -29,6 +29,61 @@ export interface DirectiveItem {
   artifact?: ConvictionArtifact | null;
 }
 
+export const NO_SEND_SUBJECT = 'Foldera: Nothing cleared the bar today';
+export const NO_SEND_DIRECTIVE_TEXT = 'Nothing cleared the bar today.';
+export const NO_SEND_BODY_TEXT =
+  'Foldera checked your recent signals and did not find anything worth interrupting you for.';
+
+const INTERNAL_FAILURE_TEXT_PATTERNS = [
+  /\bllm_failed\b/i,
+  /\bstale_date_in_directive\b/i,
+  /\bartifact_viability\b/i,
+  /\btrigger_lock\b/i,
+  /generation validation failed/i,
+  /all\s+\d+\s+candidates blocked/i,
+  /\ball_candidates_blocked\b/i,
+  /\bsystem commitment\b/i,
+  /\bcandidateFailureReasons\b/i,
+  /\bcandidate failure reasons\b/i,
+  /\bINFINITE_LOOP\b/i,
+];
+
+function isNoSendDirective(directive: DirectiveItem): boolean {
+  const action = directive.action_type.trim().toLowerCase();
+  if (action === 'do_nothing' || action === 'wait_rationale') return true;
+  return directive.artifact?.type === 'wait_rationale';
+}
+
+export function isInternalFailureText(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed) return false;
+  return INTERNAL_FAILURE_TEXT_PATTERNS.some((pattern) => pattern.test(trimmed));
+}
+
+export function sanitizeNoSendDirective(directive: DirectiveItem): DirectiveItem {
+  const safeDirective =
+    directive.directive.trim().length > 0 && !isInternalFailureText(directive.directive)
+      ? directive.directive.trim()
+      : NO_SEND_DIRECTIVE_TEXT;
+  const safeReason =
+    directive.reason.trim().length > 0 && !isInternalFailureText(directive.reason)
+      ? directive.reason.trim()
+      : '';
+
+  return {
+    id: directive.id,
+    directive: safeDirective,
+    action_type: 'do_nothing',
+    confidence: typeof directive.confidence === 'number' ? directive.confidence : 0,
+    reason: safeReason,
+    artifact: {
+      type: 'wait_rationale',
+      context: NO_SEND_BODY_TEXT,
+      evidence: NO_SEND_BODY_TEXT,
+    },
+  };
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -366,21 +421,30 @@ export function renderWriteDocumentReadyEmailHtml(opts: {
 
 /**
  * Full HTML for the daily brief email (send path + local preview).
- * `directive === null` renders the "nothing today" variant.
- * `healthLine` is an optional one-line system health summary for the owner footer.
+ * `directive === null` (or `do_nothing` / `wait_rationale`) renders the "nothing today" variant.
  */
 export function buildDailyDirectiveEmailHtml(opts: {
   baseUrl: string;
   date: string;
   directive: DirectiveItem | null;
-  healthLine?: string;
 }): string {
   const baseUrl = opts.baseUrl.replace(/\/$/, '');
-  const { date, directive, healthLine } = opts;
+  const { date } = opts;
+  const noSendDirective =
+    opts.directive && isNoSendDirective(opts.directive)
+      ? sanitizeNoSendDirective(opts.directive)
+      : null;
+  const directive = noSendDirective ?? opts.directive;
   const prefs = `${baseUrl}/dashboard/settings`;
   const dateDisplay = escapeHtml(formatEmailDateForDisplay(date));
+  const noSendTitle = escapeHtml(noSendDirective?.directive ?? NO_SEND_DIRECTIVE_TEXT);
+  const noSendBody = escapeHtml(
+    noSendDirective?.artifact?.type === 'wait_rationale'
+      ? noSendDirective.artifact.context
+      : NO_SEND_BODY_TEXT,
+  );
 
-  if (!directive) {
+  if (!directive || noSendDirective) {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>${EMAIL_HEAD}</head>
@@ -398,17 +462,16 @@ export function buildDailyDirectiveEmailHtml(opts: {
           <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:700;letter-spacing:0.12em;color:#52525b;">${dateDisplay}</p>
         </td></tr>
         <tr><td style="padding-bottom:20px;">
-          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:20px;font-weight:800;color:#ffffff;line-height:1.3;">Nothing cleared the bar today.</p>
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:20px;font-weight:800;color:#ffffff;line-height:1.3;">${noSendTitle}</p>
         </td></tr>
         <tr><td>
-          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:14px;color:#a1a1aa;line-height:1.65;">Foldera did not find a directive with enough conviction to send.</p>
+          <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:14px;color:#a1a1aa;line-height:1.65;">${noSendBody}</p>
         </td></tr>
         <tr><td style="padding:28px 0 36px 0;text-align:center;">
           <a href="${baseUrl}/dashboard" style="display:inline-block;padding:12px 24px;background:${EMAIL_CYAN_BTN};color:#000000;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.12em;text-transform:uppercase;text-decoration:none;border-radius:${EMAIL_RADIUS_INNER};box-shadow:0 0 20px rgba(6,182,212,0.22);">Open dashboard</a>
         </td></tr>
         <tr><td style="padding-top:28px;text-align:center;border-top:1px solid rgba(255,255,255,0.08);">
           <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:11px;color:#52525b;">Foldera — Finished work, every morning.</p>
-          ${healthLine ? `<p style="margin:8px 0 0 0;font-family:${EMAIL_FONT_STACK};font-size:10px;color:#3f3f46;font-variant-numeric:tabular-nums;">${escapeHtml(healthLine)}</p>` : ''}
           <p style="margin:10px 0 0 0;font-family:${EMAIL_FONT_STACK};font-size:10px;"><a href="${prefs}" style="color:#71717a;">Email preferences</a></p>
         </td></tr>
       </table>
@@ -490,7 +553,6 @@ export function buildDailyDirectiveEmailHtml(opts: {
         </td></tr>
         <tr><td style="padding-top:20px;text-align:center;border-top:1px solid rgba(255,255,255,0.08);">
           <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:11px;color:#52525b;">Foldera — Finished work, every morning.</p>
-          ${healthLine ? `<p style="margin:8px 0 0 0;font-family:${EMAIL_FONT_STACK};font-size:10px;color:#3f3f46;font-variant-numeric:tabular-nums;">${escapeHtml(healthLine)}</p>` : ''}
           <p style="margin:10px 0 0 0;font-family:${EMAIL_FONT_STACK};font-size:10px;"><a href="${prefs}" style="color:#71717a;">Email preferences</a></p>
         </td></tr>
       </table>
@@ -525,37 +587,40 @@ export async function sendDailyDirective({
   date,
   subject,
   userId,
-  healthLine,
 }: {
   to: string;
   directives: DirectiveItem[];
   date: string;
   subject?: string;
   userId: string;
-  /** Optional one-line system health summary injected into the email footer for the owner. */
-  healthLine?: string;
 }) {
   const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
   const directive = directives[0];
+  const sanitizedNoSendDirective = directive && isNoSendDirective(directive)
+    ? sanitizeNoSendDirective(directive)
+    : null;
   const tags = [
     { name: 'email_type', value: 'daily_brief' },
     { name: 'user_id', value: userId },
     ...(directive?.id ? [{ name: 'action_id', value: directive.id }] : []),
   ];
 
-  if (!directive) {
-    const nothingSubject = subject ?? 'Foldera: Nothing today';
-    const html = buildDailyDirectiveEmailHtml({ baseUrl, date, directive: null, healthLine });
+  if (!directive || sanitizedNoSendDirective) {
+    const html = buildDailyDirectiveEmailHtml({
+      baseUrl,
+      date,
+      directive: sanitizedNoSendDirective,
+    });
     return sendResendEmail({
       to,
-      subject: nothingSubject,
+      subject: NO_SEND_SUBJECT,
       html,
       tags,
     });
   }
 
   const emailSubject = subject ?? `Foldera: ${directive.directive.split(/\s+/).slice(0, 6).join(' ')}`;
-  const html = buildDailyDirectiveEmailHtml({ baseUrl, date, directive, healthLine });
+  const html = buildDailyDirectiveEmailHtml({ baseUrl, date, directive });
   return sendResendEmail({
     to,
     subject: emailSubject,

@@ -390,6 +390,7 @@ vi.mock('@/lib/utils/structured-logger', () => ({
 }));
 
 vi.mock('@/lib/email/resend', () => ({
+  NO_SEND_SUBJECT: 'Foldera: Nothing cleared the bar today',
   sendDailyDirective: vi.fn().mockResolvedValue(undefined),
   sendDailyDeliverySkipAlert: vi.fn().mockResolvedValue(undefined),
 }));
@@ -1467,7 +1468,7 @@ Decide by 2026-04-24.`,
     );
   });
 
-  it('sends persisted no-send blocker wait-rationale when no pending action exists', async () => {
+  it('sends persisted no-send blocker with clean no-send subject when no pending action exists', async () => {
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
     mockSupabase.actionRows = [
       {
@@ -1475,20 +1476,20 @@ Decide by 2026-04-24.`,
         user_id: USER_ID,
         status: 'skipped',
         action_type: 'do_nothing',
-        directive_text: 'No directive sent today.',
-        reason: 'Generation validation failed: drafted_email recipient must be a real email address',
+        directive_text: 'All 10 candidates blocked: stale_date_in_directive',
+        reason: 'Generation validation failed: llm_failed',
         confidence: 0,
         generated_at: new Date().toISOString(),
         execution_result: {
           outcome_type: 'no_send',
           artifact: {
             type: 'wait_rationale',
-            context: 'Foldera evaluated 2 candidates today.',
-            evidence: 'Generation validation failed: drafted_email recipient must be a real email address',
-            tripwires: ['Activate when: new signals arrive for "Hiring pipeline"'],
+            context: 'All 10 candidates blocked.',
+            evidence: 'candidateFailureReasons: llm_failed',
+            tripwires: ['trigger_lock:missing_explicit_ask'],
           },
           generation_log: {
-            reason: 'Generation validation failed: drafted_email recipient must be a real email address',
+            reason: 'Generation validation failed: llm_failed',
           },
         },
       },
@@ -1507,11 +1508,12 @@ Decide by 2026-04-24.`,
       expect.objectContaining({
         to: 'owner@example.com',
         userId: USER_ID,
+        subject: 'Foldera: Nothing cleared the bar today',
         directives: [
           expect.objectContaining({
             id: 'blocked-1',
             action_type: 'do_nothing',
-            directive: 'No directive sent today.',
+            directive: 'All 10 candidates blocked: stale_date_in_directive',
             artifact: expect.objectContaining({ type: 'wait_rationale' }),
           }),
         ],
