@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-27 — BL-002 daily-send no longer false-blocks fresh same-day sends after an earlier send
+- MODE: FOLDERA PRODUCTION BACKLOG EXECUTOR (BL-002 only)
+- **Problem:** Production `POST /api/cron/daily-send` still returned `email_already_sent` for the older row `2a04fa59-c1b7-4312-9adf-f99937cdd552` even though the same PT day already had fresher unsent actions (`6536de9e-3928-4d76-aa52-26db12e08b3b` skipped `no_send`, `9c5b2673-4a25-41d6-a8fc-fcc54ebfe85c` pending `write_document`). The day-wide guard in `runDailySend` was turning an old sent row into a false idempotency block for new work.
+- **Change:** Removed the top-level “any action today was already emailed” short-circuit from `lib/cron/daily-brief-send.ts` so send-stage idempotency is decided per selected row (`daily_brief_sent_at` / `resend_id`), not by any older same-day send. Added a focused regression in `lib/cron/__tests__/daily-brief.test.ts` proving a newer unsent pending action still sends when an older same-day no-send row was already stamped.
+- **Verification:** `npm run health` (`RESULT: 0 FAILING`; warnings only: Gmail fresh 8h ago, no Microsoft mailbox connected, last generation `write_document`); `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/brief-service.test.ts`; `npm run build`; `npm run lint`; pre-push hook reran build + `test:ci:e2e:smoke` (38/38 passed); pushed `a406b88` to `main`; Vercel production build `a406b88` / deployment `dpl_C1x2FNif74Khu9fjzwCaCR5cunp3` is live on `https://www.foldera.ai/api/health?depth=full`; live `POST https://www.foldera.ai/api/cron/daily-send` with production `x-cron-secret` returned `200` with `email_sent` for action `9c5b2673-4a25-41d6-a8fc-fcc54ebfe85c` and resend id `65ca14ee-5435-4b76-8064-0dc65133bcbb`; production `tkg_actions` confirms `daily_brief_sent_at = 2026-04-27T16:35:41.863Z` and the same resend id on that row.
+- **Unresolved:** Exact inbox receipt is still unproven in this environment. `tests/production/auth-state.json` can reach Microsoft account selection for `b-kapp@outlook.com`, but Outlook web access falls into `https://login.microsoft.com/consumers/fido/get` and requires a FIDO step before the inbox can be inspected.
+
 ## 2026-04-27 — Dashboard manual first-read now follows visible latest-action truth
 - MODE: EXECUTION (single seam)
 - **Problem:** `/dashboard` treated `POST /api/settings/run-brief?force=true&use_llm=true` `ok=true` as “First read generated.” even when the post-run `/api/conviction/latest` state stayed empty, so users could see a false-success toast and then nothing after refresh.

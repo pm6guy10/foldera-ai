@@ -93,8 +93,8 @@ Required production proof: `curl -i -X POST https://foldera.ai/api/cron/daily-se
 Done means: One real production daily-send trigger produces exactly one user-facing email outcome with the row marked sent.
 Do-not-count: HTTP 200 or 204 alone, logs/traces alone, DB rows alone, or docs/screenshots/refactors/unrelated tests.
 Status: OPEN
-Last evidence: 2026-04-27 — after BL-010 auth fix on live build `03f747e`, `POST /api/cron/daily-send` with production `CRON_SECRET` + `x-cron-secret` now reaches send logic and returns `200` (`email_already_sent` for action `2a04fa59-c1b7-4312-9adf-f99937cdd552`), so cron auth no longer blocks the seam.
-Next blocker: Capture one fresh live send-stage outcome (new daily brief email or wait-rationale) rather than an already-sent idempotency response.
+Last evidence: 2026-04-27 — pushed `a406b88`, waited for live build `a406b88` on `https://www.foldera.ai/api/health?depth=full`, then `POST https://www.foldera.ai/api/cron/daily-send` with production `x-cron-secret` returned `200` with `email_sent` for action `9c5b2673-4a25-41d6-a8fc-fcc54ebfe85c` and resend id `65ca14ee-5435-4b76-8064-0dc65133bcbb`. Production `tkg_actions` now shows `daily_brief_sent_at = 2026-04-27T16:35:41.863Z` and the same resend id on that row, which proves the prior false `email_already_sent` guard is fixed.
+Next blocker: Mailbox receipt proof is still blocked in this environment. `tests/production/auth-state.json` can reach Microsoft account selection for `b-kapp@outlook.com`, but Outlook web access falls into `https://login.microsoft.com/consumers/fido/get` before the inbox can be inspected, so the exact inbox receipt is not yet captured.
 
 ### BL-009
 ID: BL-009
