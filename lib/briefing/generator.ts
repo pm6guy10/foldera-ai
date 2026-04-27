@@ -10968,7 +10968,7 @@ export async function generateDirective(
     }
     return emptyDirective(
       failureUserReason,
-      buildNoSendGenerationLog(failureUserReason, 'validation', scored.candidateDiscovery),
+      buildNoSendGenerationLog(summaryReason, 'validation', scored.candidateDiscovery),
     );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);

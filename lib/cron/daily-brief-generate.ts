@@ -1434,6 +1434,44 @@ function buildNoSendExecutionResult(
   });
 }
 
+const INTERNAL_NO_SEND_REASON_PATTERNS = [
+  /\bllm_failed\b/i,
+  /\bstale_date_in_directive\b/i,
+  /\bartifact_viability\b/i,
+  /\btrigger_lock\b/i,
+  /generation validation failed/i,
+  /all\s+\d+\s+candidates blocked/i,
+  /\ball_candidates_blocked\b/i,
+  /\bsystem commitment\b/i,
+  /\bcandidateFailureReasons\b/i,
+  /\bcandidate failure reasons\b/i,
+  /\bINFINITE_LOOP\b/i,
+];
+
+function isInternalNoSendReason(reason: string): boolean {
+  const trimmed = reason.trim();
+  if (!trimmed) return false;
+  return INTERNAL_NO_SEND_REASON_PATTERNS.some((pattern) => pattern.test(trimmed));
+}
+
+function buildPublicNoSendReason(candidateCount: number): string {
+  if (candidateCount <= 0) return 'Nothing cleared the bar today.';
+  const label = candidateCount === 1 ? 'candidate' : 'candidates';
+  return `Nothing cleared the bar today after evaluating ${candidateCount} ${label}.`;
+}
+
+function getPersistedNoSendReason(directive: ConvictionDirective, reason: string): string {
+  const trimmed = reason.trim();
+  const candidateCount = directive.generationLog?.candidateDiscovery?.candidateCount ?? 0;
+  if (directive.directive !== '__GENERATION_FAILED__') {
+    return trimmed || reason;
+  }
+  if (!trimmed) {
+    return buildPublicNoSendReason(candidateCount);
+  }
+  return isInternalNoSendReason(trimmed) ? buildPublicNoSendReason(candidateCount) : trimmed;
+}
+
 function hasProtectiveDuplicateBlock(
   directive: ConvictionDirective,
   reason: string,
@@ -1549,8 +1587,11 @@ async function persistNoSendOutcome(
   stage: GenerationRunLog['stage'],
   executionResultExtras?: Record<string, unknown>,
 ): Promise<{ id: string; protectiveDuplicateBlock: boolean } | null> {
-  const executionResult = buildNoSendExecutionResult(directive, reason, stage);
-  const waitRationale = buildWaitRationale(directive, reason);
+  const persistedReason = getPersistedNoSendReason(directive, reason);
+  const persistedDirective =
+    persistedReason === directive.reason ? directive : { ...directive, reason: persistedReason };
+  const executionResult = buildNoSendExecutionResult(persistedDirective, persistedReason, stage);
+  const waitRationale = buildWaitRationale(persistedDirective, persistedReason);
   const protectiveDuplicateBlock = hasProtectiveDuplicateBlock(directive, reason);
 
   const { data, error } = await supabase
@@ -1559,7 +1600,7 @@ async function persistNoSendOutcome(
       user_id: userId,
       action_type: 'do_nothing',
       directive_text: waitRationale.directiveText,
-      reason,
+      reason: persistedReason,
       status: 'skipped',
       confidence: 45,
       evidence: directive.evidence,
@@ -2569,6 +2610,7 @@ export async function runDailyGenerate(
       }
 
       if (directive.directive === '__GENERATION_FAILED__') {
+        const publicNoSendReason = getPersistedNoSendReason(directive, directive.reason);
         const savedNoSend = await persistNoSendOutcome(
           supabase, userId, directive, directive.reason, directive.generationLog?.stage ?? 'generation',
         );
@@ -2594,7 +2636,7 @@ export async function runDailyGenerate(
 
         results.push({
           code: 'no_send_persisted',
-          detail: directive.reason,
+          detail: publicNoSendReason,
           meta: buildNoSendResultMeta(cleanupMeta, savedNoSend, {
             candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
             top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates?.length ?? 0,

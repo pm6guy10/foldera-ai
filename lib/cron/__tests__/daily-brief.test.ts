@@ -937,6 +937,52 @@ describe('runDailyGenerate candidate logging', () => {
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.failureReason).toBe('No ranked daily brief candidate.');
   });
 
+  it('sanitizes internal generation blocker sludge before persisting no-send output', async () => {
+    const internalReason =
+      'All 10 candidates blocked: "Risk winner" → stale_date_in_directive:March 30 | "Fallback" → llm_failed';
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective({
+      directive: '__GENERATION_FAILED__',
+      action_type: 'do_nothing',
+      confidence: 0,
+      reason: internalReason,
+      evidence: [],
+      generationLog: buildGenerationLog({
+        outcome: 'no_send',
+        stage: 'validation',
+        reason: internalReason,
+        candidateFailureReasons: ['stale_date_in_directive:March 30', 'llm_failed'],
+        candidateDiscovery: {
+          ...buildGenerationLog().candidateDiscovery!,
+          candidateCount: 10,
+          failureReason: internalReason,
+        },
+      }),
+    }));
+
+    const result = await runDailyGenerate();
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'no_send_persisted',
+        detail: 'Nothing cleared the bar today after evaluating 10 candidates.',
+        success: true,
+      }),
+    ]);
+    expect(result.message).toContain('Nothing cleared the bar today after evaluating 10 candidates.');
+    expect(result.message).not.toContain('stale_date_in_directive');
+    expect(result.message).not.toContain('llm_failed');
+    const saved = mockSupabase.insertedActions[0];
+    expect(saved.directive_text).toBe('Nothing cleared the bar today after evaluating 10 candidates.');
+    expect(saved.reason).toBe('Nothing cleared the bar today after evaluating 10 candidates.');
+    expect((saved.artifact as Record<string, any>).evidence).toBe(
+      'Nothing cleared the bar today after evaluating 10 candidates.',
+    );
+    expect((saved.execution_result as Record<string, any>).no_send.reason).toBe(
+      'Nothing cleared the bar today after evaluating 10 candidates.',
+    );
+    expect((saved.execution_result as Record<string, any>).generation_log.reason).toBe(internalReason);
+  });
+
   it('persists blocked generation outcomes when artifact creation fails', async () => {
     vi.mocked(generateDirective).mockResolvedValue(buildDirective());
     vi.mocked(generateArtifact).mockResolvedValue(null);
