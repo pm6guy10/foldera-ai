@@ -889,10 +889,8 @@ describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
   test('Google Connect redirects from Settings into the Google OAuth authorize URL', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await setupSettingsGoogleReauthMocks(page);
-    let googleConnectHit = false;
     await page.route(matchApiPath('/api/google/connect'), (route) =>
       {
-        googleConnectHit = true;
         return route.fulfill({
           status: 307,
           headers: {
@@ -912,10 +910,10 @@ describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
       .filter({ has: googleReconnectCopy })
       .first();
 
-    const googleConnectRequest = page.waitForRequest(
-      (request) => {
+    const googleConnectResponse = page.waitForResponse(
+      (response) => {
         try {
-          return new URL(request.url()).pathname === '/api/google/connect';
+          return new URL(response.url()).pathname === '/api/google/connect';
         } catch {
           return false;
         }
@@ -926,8 +924,9 @@ describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
     );
 
     await googleReconnectCard.getByRole('button', { name: /^Connect$/i }).click({ noWaitAfter: true });
-    await googleConnectRequest;
-    expect(googleConnectHit).toBe(true);
+    const response = await googleConnectResponse;
+    expect(response.status()).toBe(307);
+    expect(response.headers()['location']).toContain('https://accounts.google.com/o/oauth2/v2/auth');
   });
 
   test('Microsoft Connect redirects from Settings into the Microsoft OAuth authorize URL', async ({ page }) => {
