@@ -14,7 +14,7 @@ import {
 } from './contract';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 120;
+export const maxDuration = 300;
 const DRY_RUN_SERVER_COOLDOWN_MS = 5 * 60 * 1000;
 const DRY_RUN_PENDING_REUSE_WINDOW_HOURS = 18;
 

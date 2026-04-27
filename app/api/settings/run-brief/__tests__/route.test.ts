@@ -132,10 +132,10 @@ describe('POST /api/settings/run-brief', () => {
     vi.unstubAllEnvs();
   });
 
-  it('exports a 120-second max duration for the route', async () => {
+  it('exports a 300-second max duration for the route', async () => {
     const { maxDuration } = await import('../route');
 
-    expect(maxDuration).toBe(120);
+    expect(maxDuration).toBe(300);
   });
 
   it('returns a cheap dry-run receipt and never runs sync or lifecycle work', async () => {
