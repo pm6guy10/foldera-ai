@@ -12,13 +12,41 @@ export function isValidUuid(value: string): boolean {
 }
 
 /**
- * Constant-time Bearer token comparison.
+ * Constant-time secret token comparison.
  * Prevents timing-based brute-force attacks on CRON_SECRET.
  */
-function isValidBearerToken(authHeader: string, secret: string): boolean {
-  const expected = `Bearer ${secret}`;
-  if (authHeader.length !== expected.length) return false;
-  return timingSafeEqual(Buffer.from(authHeader), Buffer.from(expected));
+function isValidSecretToken(token: string, secret: string): boolean {
+  if (token.length !== secret.length) return false;
+  return timingSafeEqual(Buffer.from(token), Buffer.from(secret));
+}
+
+/**
+ * Extracts token from Authorization Bearer header.
+ * Accepts case-insensitive "bearer" with extra surrounding whitespace.
+ */
+function extractBearerToken(authHeader: string): string | null {
+  const match = authHeader.match(/^\s*Bearer\s+(.+?)\s*$/i);
+  return match?.[1] ?? null;
+}
+
+/**
+ * Checks cron auth via either:
+ * - Authorization: Bearer <CRON_SECRET>
+ * - x-cron-secret: <CRON_SECRET>
+ */
+function hasValidCronSecret(request: Request, cronSecret: string): boolean {
+  const authorization = request.headers.get('authorization') ?? '';
+  const bearerToken = extractBearerToken(authorization);
+  if (bearerToken && isValidSecretToken(bearerToken, cronSecret)) {
+    return true;
+  }
+
+  const headerSecret = request.headers.get('x-cron-secret') ?? '';
+  if (headerSecret && isValidSecretToken(headerSecret.trim(), cronSecret)) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -54,9 +82,8 @@ export async function resolveUser(
 export function resolveCronUser(
   request: Request,
 ): { userId: string } | NextResponse {
-  const authHeader = request.headers.get('authorization') ?? '';
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || !isValidBearerToken(authHeader, cronSecret)) {
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  if (!cronSecret || !hasValidCronSecret(request, cronSecret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -77,9 +104,8 @@ export function resolveCronUser(
 export function validateCronAuth(
   request: Request,
 ): NextResponse | null {
-  const authHeader = request.headers.get('authorization') ?? '';
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || !isValidBearerToken(authHeader, cronSecret)) {
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  if (!cronSecret || !hasValidCronSecret(request, cronSecret)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   return null;
