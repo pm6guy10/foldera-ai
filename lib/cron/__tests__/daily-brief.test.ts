@@ -1532,6 +1532,92 @@ Decide by 2026-04-24.`,
       ]),
     );
   });
+
+  it('sends a newer unsent pending action even when an older row was already emailed today', async () => {
+    vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
+    vi.mocked(sendDailyDirective).mockResolvedValue({ data: { id: 'resend-new' } } as never);
+    const olderSentAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    mockSupabase.actionRows = [
+      {
+        id: 'older-sent-blocker',
+        user_id: USER_ID,
+        status: 'skipped',
+        action_type: 'do_nothing',
+        directive_text: 'Older wait rationale already delivered.',
+        reason: 'Nothing cleared the bar.',
+        confidence: 45,
+        generated_at: olderSentAt,
+        execution_result: {
+          outcome_type: 'no_send',
+          daily_brief_sent_at: olderSentAt,
+          resend_id: 'resend-old',
+          artifact: {
+            type: 'wait_rationale',
+            context: 'Older context.',
+            evidence: 'Older evidence.',
+          },
+        },
+      },
+      {
+        id: 'pending-new',
+        user_id: USER_ID,
+        status: 'pending_approval',
+        action_type: 'send_message',
+        directive_text: 'Send the update email.',
+        reason: 'Keep momentum.',
+        confidence: 84,
+        generated_at: new Date().toISOString(),
+        execution_result: {
+          artifact: {
+            type: 'email',
+            to: 'owner@example.com',
+            subject: 'Update',
+            body: 'Hello',
+            draft_type: 'email_compose',
+          },
+        },
+      },
+    ];
+
+    const result = await runDailySend({ userIds: [USER_ID] });
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'email_sent',
+        success: true,
+        userId: USER_ID,
+        meta: expect.objectContaining({
+          action_id: 'pending-new',
+          resend_id: 'resend-new',
+        }),
+      }),
+    ]);
+    expect(sendDailyDirective).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: 'owner@example.com',
+        userId: USER_ID,
+        directives: [
+          expect.objectContaining({
+            id: 'pending-new',
+            action_type: 'send_message',
+          }),
+        ],
+      }),
+    );
+    expect(mockSupabase.updatedActions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'pending-new',
+          payload: expect.objectContaining({
+            execution_result: expect.objectContaining({
+              daily_brief_sent_at: expect.any(String),
+              resend_id: 'resend-new',
+            }),
+          }),
+        }),
+      ]),
+    );
+  });
 });
 
 describe('getTriggerResponseStatus', () => {
