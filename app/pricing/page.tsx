@@ -83,7 +83,7 @@ function ProCheckoutButton() {
 const faq = [
   {
     question: 'What is free?',
-    answer: 'Free includes your daily directive and your first three finished artifacts. No credit card is required.',
+    answer: 'Free includes your daily directive and your first three finished artifacts. No credit card required.',
   },
   {
     question: 'What changes on Pro?',

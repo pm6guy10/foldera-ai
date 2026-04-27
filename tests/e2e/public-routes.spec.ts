@@ -306,6 +306,11 @@ test.describe('Pricing page /pricing', () => {
     await expect(page.getByText('$29', { exact: true })).toBeVisible();
   });
 
+  test('shows "No credit card required"', async ({ page }) => {
+    await page.goto('/pricing');
+    await expect(page.getByText(/no credit card required/i).first()).toBeVisible();
+  });
+
   test('no actionable console errors', async ({ page }) => {
     const errors = collectConsoleErrors(page);
     await page.goto('/pricing');
