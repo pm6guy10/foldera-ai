@@ -1,9 +1,9 @@
 # FOLDERA Production Backlog
 
-Last refreshed: 2026-04-26
+Last refreshed: 2026-04-27
 
 ## Current top item
-BL-008 — Rung 1 — Production daily spend cap now blocks real generation after paid-gate clearance.
+BL-002 — Rung 1 — Production daily-send path still lacks live wait-rationale delivery proof.
 
 ## How to use this file
 - Every Codex run opens this file first.
@@ -54,9 +54,9 @@ Required local proof: Focused spend-cap / generation-path tests for touched file
 Required production proof: Verify the newest live generation row no longer records `Daily spend cap reached.` and instead persists a real generated non-`do_nothing` action.
 Done means: A real production generation path gets past the spend-cap blocker and persists a real action.
 Do-not-count: Cron 200s, deploy logs, DB rows without a completed user-facing run, or docs/screenshots/refactors/unrelated tests.
-Status: OPEN
-Last evidence: 2026-04-26 — newest owner `tkg_actions` row (`12097101-b2d5-46cb-9fee-64e584dc8458`) is `do_nothing` / `Daily spend cap reached.` with `brief_origin = daily_cron` after the live build `2e7dfd1`.
-Next blocker: Determine why the spend cap is firing on the current production generation path and prove one fresh run persists a real action instead.
+Status: CLOSED
+Last evidence: 2026-04-27 — live build `d30bc22`; authenticated owner `POST /api/settings/run-brief?force=true&use_llm=true` returned `200`, spent through `insight_scan` + `directive` / `directive_retry`, and persisted action `2a04fa59-c1b7-4312-9adf-f99937cdd552`, which proves the newest live row is no longer blocked by `Daily spend cap reached.`.
+Next blocker: BL-009.
 
 ### BL-002
 ID: BL-002
@@ -76,6 +76,25 @@ Do-not-count: HTTP 200 or 204 alone, logs/traces alone, DB rows alone, or docs/s
 Status: OPEN
 Last evidence: 2026-04-25 — session history recorded post-push deploy and live `/api/cron/daily-send` proof as still pending.
 Next blocker: Trigger the live send path once after deploy and verify the actual email result, not just the HTTP response.
+
+### BL-009
+ID: BL-009
+Rung: 2
+Title: Owner paid run still collapses the selected winner into internal no-send blocker sludge
+User-facing path: Owner triggers a real paid brief run and expects one usable artifact instead of an internal blocker dump.
+Starting route or trigger: `POST /api/settings/run-brief?force=true&use_llm=true`
+Ending success state: A real production paid run persists one usable artifact instead of `do_nothing` / wait-rationale with raw internal validator strings.
+Problem: Live production proof on 2026-04-27 cleared the spend cap and completed the route, but the selected winner `discrepancy_risk_a11fc15a-819e-4ac6-b44f-9a7de1757c7c` still failed `stale_date_in_directive:March 30`, and fallback candidates collapsed into LLM / validator blocks that were emailed back as user-visible no-send sludge.
+Protected contracts: Preserve the spend-policy contract, one-artifact rule, hard validators, and do not expose internal blocker/debug strings in user-facing output.
+Allowed files: `lib/briefing/generator.ts`, `lib/briefing/decision-enforcement.ts`, `lib/cron/daily-brief-generate.ts`, `app/api/settings/run-brief/**`, focused tests, `SESSION_HISTORY.md`, `CURRENT_STATE.md`
+Forbidden files: `app/dashboard/**`, `app/api/stripe/**`, `app/(marketing)/**`, unrelated landing/dashboard suites
+Required local proof: `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/artifact-decision-enforcement.test.ts lib/cron/__tests__/daily-brief.test.ts app/api/settings/run-brief/__tests__/route.test.ts`; `npm run build`
+Required production proof: Trigger one real authenticated `POST https://foldera.ai/api/settings/run-brief?force=true&use_llm=true`, then verify the latest action is not `do_nothing` and does not expose internal blocker strings.
+Done means: The same live owner paid path produces one usable artifact or a clean user-facing wait-rationale instead of internal validation sludge.
+Do-not-count: HTTP 200 alone, `pipeline_runs` / `api_usage` alone, internal logs alone, or docs/screenshots/refactors/unrelated tests.
+Status: OPEN
+Last evidence: 2026-04-27 — build `d30bc22`; authenticated owner paid run returned `200`, spent through `insight_scan` + multiple `directive` calls, and persisted `no_send_persisted` action `2a04fa59-c1b7-4312-9adf-f99937cdd552` with `All 10 candidates blocked...`; top selected candidate blocked by `stale_date_in_directive:March 30`.
+Next blocker: Repair the selected risk winner's stale-date / no-send collapse so the same live owner path can persist a usable artifact.
 
 ### BL-003
 ID: BL-003
