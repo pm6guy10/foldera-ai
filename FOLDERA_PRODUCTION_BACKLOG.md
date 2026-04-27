@@ -112,8 +112,8 @@ Required production proof: Trigger one real authenticated `POST https://foldera.
 Done means: The same live owner paid path produces one usable artifact or a clean user-facing wait-rationale instead of internal validation sludge.
 Do-not-count: HTTP 200 alone, `pipeline_runs` / `api_usage` alone, internal logs alone, or docs/screenshots/refactors/unrelated tests.
 Status: OPEN
-Last evidence: 2026-04-27 — build `d30bc22`; authenticated owner paid run returned `200`, spent through `insight_scan` + multiple `directive` calls, and persisted `no_send_persisted` action `2a04fa59-c1b7-4312-9adf-f99937cdd552` with `All 10 candidates blocked...`; top selected candidate blocked by `stale_date_in_directive:March 30`.
-Next blocker: Repair the selected risk winner's stale-date / no-send collapse so the same live owner path can persist a usable artifact.
+Last evidence: 2026-04-27 — pushed `0a424aa`; live build `0a424aa`; authenticated owner paid run on `https://www.foldera.ai/dashboard/system` returned `200` with `generate.results[0].code = no_send_persisted` and clean detail `Nothing cleared the bar today after evaluating 20 candidates.`. Fresh action `3e293bb2-a1fd-4130-b83d-08e8a8f569f0` still persisted `do_nothing` / `wait_rationale`, but public `directive_text`, `reason`, returned `detail`, and wait-rationale artifact no longer expose internal blocker strings.
+Next blocker: Repair the live directive-generation validity collapse on the top paid-run candidates so the same owner path persists one usable artifact instead of sanitized `do_nothing`.
 
 ### BL-003
 ID: BL-003
