@@ -30,7 +30,7 @@
 
 ## C. CURRENT LAYER OF WORK
 
-- **Daily-send receipt proof** — 2026-04-27 live build `a406b88` fixed the send-stage false-idempotency seam: `POST /api/cron/daily-send` now returns `email_sent` for fresh action `9c5b2673-4a25-41d6-a8fc-fcc54ebfe85c`, and production `tkg_actions.execution_result` is stamped with `daily_brief_sent_at` plus resend id `65ca14ee-5435-4b76-8064-0dc65133bcbb`. Remaining gap is mailbox receipt capture only; Outlook web verification from `tests/production/auth-state.json` currently stops at Microsoft FIDO instead of an inspectable inbox.
+- **Daily-send receipt proof** — 2026-04-27 live build `b190c2f` now proves the send stage end-to-end. The original `email_sent` proof for action `9c5b2673-4a25-41d6-a8fc-fcc54ebfe85c` still holds, repeat `POST /api/cron/daily-send` now returns `email_already_sent` on the same row, and Microsoft Graph inbox verification through the connected Outlook token found exactly one inbox message from `noreply@foldera.ai` at `2026-04-27T16:35:45Z` with subject `Foldera: Email states no action required; commitment`.
 - **CI unit harness** — `usefulness-gate` VALID1 mocks scorer + Anthropic in the same scenario (fixed 2026-04-22) so the execution-proof test does not false-fail on `surface_follow_up_mismatch`.
 - **`settings/run-brief` test mock** — `Promise.all` for dry-run DB reads; `pipeline_runs` mock must distinguish `findRecentPipelineDryRun` (filters `outcome = pipeline_dry_run_returned`) from `findLatestPipelineRun` (2026-04-23).
 - **Verify in production** — brain-receipt + one nightly-ops cycle; confirm scorer diagnostics list non-email discrepancy classes and larger pre-rank pool.

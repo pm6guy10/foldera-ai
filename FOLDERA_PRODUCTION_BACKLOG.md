@@ -3,7 +3,7 @@
 Last refreshed: 2026-04-27
 
 ## Current top item
-BL-002 — Rung 1 — Production daily-send path still lacks live wait-rationale delivery proof.
+BL-009 — Rung 2 — Owner paid run still collapses the selected winner into internal no-send blocker sludge.
 
 ## How to use this file
 - Every Codex run opens this file first.
@@ -92,9 +92,9 @@ Required local proof: `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib
 Required production proof: `curl -i -X POST https://foldera.ai/api/cron/daily-send -H "Authorization: Bearer $CRON_SECRET" -H "x-cron-secret: $CRON_SECRET"` and then verify the intended recipient receives exactly one fresh daily brief email or wait-rationale for that run.
 Done means: One real production daily-send trigger produces exactly one user-facing email outcome with the row marked sent.
 Do-not-count: HTTP 200 or 204 alone, logs/traces alone, DB rows alone, or docs/screenshots/refactors/unrelated tests.
-Status: OPEN
-Last evidence: 2026-04-27 — pushed `a406b88`, waited for live build `a406b88` on `https://www.foldera.ai/api/health?depth=full`, then `POST https://www.foldera.ai/api/cron/daily-send` with production `x-cron-secret` returned `200` with `email_sent` for action `9c5b2673-4a25-41d6-a8fc-fcc54ebfe85c` and resend id `65ca14ee-5435-4b76-8064-0dc65133bcbb`. Production `tkg_actions` now shows `daily_brief_sent_at = 2026-04-27T16:35:41.863Z` and the same resend id on that row, which proves the prior false `email_already_sent` guard is fixed.
-Next blocker: Mailbox receipt proof is still blocked in this environment. `tests/production/auth-state.json` can reach Microsoft account selection for `b-kapp@outlook.com`, but Outlook web access falls into `https://login.microsoft.com/consumers/fido/get` before the inbox can be inspected, so the exact inbox receipt is not yet captured.
+Status: CLOSED
+Last evidence: 2026-04-27 — live build `b190c2f`; repeat `POST https://foldera.ai/api/cron/daily-send` with the production `x-cron-secret` returned `email_already_sent` for the same action `9c5b2673-4a25-41d6-a8fc-fcc54ebfe85c`, preserving exactly-once send semantics after the earlier `email_sent` proof. Browser proof with `tests/production/auth-state.json` still hit Microsoft FIDO at `https://login.microsoft.com/consumers/fido/get`, but the same connected Outlook token path proved mailbox delivery directly: Microsoft Graph `me/mailFolders/inbox/messages` returned exactly one inbox message from `noreply@foldera.ai` at `2026-04-27T16:35:45Z` with subject `Foldera: Email states no action required; commitment`.
+Next blocker: BL-009.
 
 ### BL-009
 ID: BL-009
