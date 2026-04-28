@@ -128,6 +128,74 @@ const WEAK_WINNER_PATTERN =
 const VAGUE_SUBJECT_PATTERN =
   /^(re:?\s*)?(follow(ing)? up|quick (question|note|check)|hi|hey|check[- ]?in|catch[- ]?up|touching base|fyi|update|reaching out)\s*\.?$/i;
 
+function looksLikeReadyToSendWriteDocument(content: string): boolean {
+  return /(?:^|\n)to:\s*.+(?:\n|$)/i.test(content) && /(?:^|\n)subject:\s*.+(?:\n|$)/i.test(content);
+}
+
+function normalizeArtifactForPersistence(
+  directive: ConvictionDirective,
+  artifact: ConvictionArtifact | Record<string, unknown> | null,
+): ConvictionArtifact | null {
+  if (!artifact || typeof artifact !== 'object') {
+    return null;
+  }
+
+  const base =
+    normalizeEmailArtifactContentField(artifact as Record<string, unknown>) ??
+    (artifact as Record<string, unknown>);
+
+  if (directive.action_type !== 'write_document') {
+    return base as unknown as ConvictionArtifact;
+  }
+
+  const record = { ...(base as Record<string, unknown>) };
+  const title =
+    typeof record.title === 'string' && record.title.trim().length > 0
+      ? record.title.trim()
+      : directive.directive.slice(0, 120).trim() || 'Decision memo';
+  const content =
+    typeof record.content === 'string' && record.content.trim().length > 0
+      ? record.content.trim()
+      : typeof record.body === 'string' && record.body.trim().length > 0
+        ? record.body.trim()
+        : '';
+  const persistenceCtx = buildPersistenceDecisionEnforcementContext(directive);
+  const interviewClass = isInterviewClassWriteDocumentEnforcementRelaxation({
+    actionType: directive.action_type,
+    candidateTitle: persistenceCtx.candidateTitle,
+    supportingContext: persistenceCtx.supportingContext,
+    directiveText: directive.directive,
+    reason: directive.reason,
+    artifact: record,
+  });
+  const readyToSend = looksLikeReadyToSendWriteDocument(content);
+  const documentPurpose =
+    typeof record.document_purpose === 'string' && record.document_purpose.trim().length > 0
+      ? record.document_purpose.trim()
+      : readyToSend
+        ? 'brief'
+        : interviewClass
+          ? 'hiring fit brief'
+          : 'decision memo';
+  const targetReader =
+    typeof record.target_reader === 'string' && record.target_reader.trim().length > 0
+      ? record.target_reader.trim()
+      : readyToSend
+        ? 'user'
+        : interviewClass
+          ? 'private notes'
+          : 'decision owner';
+
+  return {
+    ...record,
+    type: 'document',
+    title,
+    content,
+    document_purpose: documentPurpose,
+    target_reader: targetReader,
+  } as unknown as ConvictionArtifact;
+}
+
 // ---------------------------------------------------------------------------
 // Hard bottom gate — blocks operationally empty winners before persistence
 // ---------------------------------------------------------------------------
@@ -2284,7 +2352,8 @@ export async function runDailyGenerate(
         ) {
           const goals = await loadOnboardingGoalsForFirstMorning(supabase, userId);
           if (goals.length > 0) {
-            const { directive, artifact } = buildFirstMorningWelcome(goals);
+            const { directive, artifact: rawArtifact } = buildFirstMorningWelcome(goals);
+            const artifact = normalizeArtifactForPersistence(directive, rawArtifact) ?? rawArtifact;
             const persistenceIssues = [
               ...getArtifactPersistenceIssues(directive.action_type, artifact, directive),
               ...validateDirectiveForPersistence({ userId, directive, artifact }),
@@ -2691,6 +2760,7 @@ export async function runDailyGenerate(
       let artifact = null;
       try {
         artifact = await generateArtifact(userId, directive);
+        artifact = normalizeArtifactForPersistence(directive, artifact) ?? artifact;
       } catch (artErr: unknown) {
         logStructuredEvent({
           event: 'daily_generate_failed',
@@ -2947,10 +3017,7 @@ export async function runDailyGenerate(
       // this winner exist and why was it allowed to persist?"
       const outcomeReceipt = buildOutcomeReceipt(directive, artifact, bottomGate);
 
-      const artifactForRow = artifact
-        ? normalizeEmailArtifactContentField(artifact as unknown as Record<string, unknown>) ??
-          (artifact as unknown as Record<string, unknown>)
-        : null;
+      const artifactForRow = normalizeArtifactForPersistence(directive, artifact);
 
       const { data: saved, error: saveErr } = await supabase
         .from('tkg_actions')

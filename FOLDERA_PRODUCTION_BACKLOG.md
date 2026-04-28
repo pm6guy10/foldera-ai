@@ -150,8 +150,8 @@ Required production proof: Trigger one real owner interview-class run through `P
 Done means: A real production interview-class run creates exactly one usable `write_document` artifact instead of blocking before persistence.
 Do-not-count: Logs saying “artifact created,” a persisted invalid payload, static mock screenshots, or docs/screenshots/refactors/unrelated tests.
 Status: OPEN
-Last evidence: 2026-04-24 — paid owner generate still produced prep-trash / validator-blocked interview output; 2026-04-22 owner-data traces still showed interview winners falling out before stable persistence.
-Next blocker: Get one real interview-class candidate to survive ranking plus persistence gates in the live owner path.
+Last evidence: 2026-04-27 — local seam proof passed after hydrating legacy `write_document` payloads on both the briefing parse path and the daily-brief persistence path. `npx vitest run lib/briefing/__tests__/stakes-gate.test.ts lib/briefing/__tests__/write-document-hydration.test.ts lib/briefing/__tests__/interview-fallback.test.ts lib/briefing/__tests__/artifact-decision-enforcement.test.ts lib/cron/__tests__/daily-brief.test.ts`, `npm run lint`, and `npm run build` all passed. The focused daily-brief regression now proves a live-shaped interview confirmation document is persisted with `document_purpose` + `target_reader` instead of the legacy invalid payload shape.
+Next blocker: Run one approved real owner paid proof through `POST /api/settings/run-brief?force=true&use_llm=true` after deploy and verify the newest action is a single valid interview-class `write_document` in `pending_approval`.
 
 ### BL-004
 ID: BL-004

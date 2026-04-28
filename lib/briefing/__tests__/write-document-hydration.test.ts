@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSignalSnippetWithFullBody } from '../generator';
+import { parseGeneratedPayload, parseSignalSnippetWithFullBody } from '../generator';
 
 describe('parseSignalSnippetWithFullBody (interview write_document hydration)', () => {
   it('preserves full mail body beyond the 1.5k standard snippet cap', () => {
@@ -38,5 +38,30 @@ describe('parseSignalSnippetWithFullBody (interview write_document hydration)', 
     const s = parseSignalSnippetWithFullBody(plaintext, row, 1000);
     expect(s!.snippet).toContain('[truncated');
     expect(s!.snippet.length).toBeLessThanOrEqual(1100);
+  });
+});
+
+describe('parseGeneratedPayload (legacy write_document hydration)', () => {
+  it('adds write_document metadata for legacy interview-shaped payloads', () => {
+    const raw = JSON.stringify({
+      action_type: 'write_document',
+      directive_text: 'Alex sent interview confirmation April 21. Here is your prep sheet for April 29.',
+      confidence: 72,
+      reason: 'Interview is 7 days away; calendar time differs from email.',
+      artifact: {
+        type: 'document',
+        title: 'Interview prep',
+        content: 'Confirmed interview with candidate Alex for Care Coordinator role on April 29, 2026.',
+      },
+    });
+
+    expect(parseGeneratedPayload(raw)).toMatchObject({
+      artifact_type: 'write_document',
+      artifact: expect.objectContaining({
+        document_purpose: 'decision memo',
+        target_reader: 'decision owner',
+        title: 'Interview prep',
+      }),
+    });
   });
 });

@@ -1011,6 +1011,105 @@ describe('runDailyGenerate candidate logging', () => {
     expect(mockSupabase.insertedActions.some((row) => row.status === 'pending_approval')).toBe(false);
   });
 
+  it('hydrates legacy interview write_document metadata before pending_approval persistence', async () => {
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective({
+      action_type: 'write_document',
+      directive: 'Interview is 0 days out with no calendar acceptance or confirmation sent.',
+      reason:
+        'Interview is due in 0 days. No confirmation email sent. No calendar response recorded. With an appointment scheduled at 3:30 PM tomorrow, the window to confirm and prepare closes tonight.',
+      generationLog: buildGenerationLog({
+        candidateDiscovery: {
+          candidateCount: 1,
+          suppressedCandidateCount: 0,
+          selectionMargin: 0,
+          selectionReason: 'Interview exposure is the strongest immediate thread.',
+          failureReason: null,
+          topCandidates: [
+            {
+              id: 'discrepancy_exposure_interview',
+              rank: 1,
+              candidateType: 'discrepancy',
+              discrepancyClass: 'exposure',
+              actionType: 'write_document',
+              score: 999,
+              scoreBreakdown: {
+                stakes: 5,
+                urgency: 0.95,
+                tractability: 0.8,
+                freshness: 1,
+                actionTypeRate: 0.5,
+                entityPenalty: 0,
+              },
+              targetGoal: {
+                text: 'Care Coordinator interview with Alex April 29',
+                priority: 5,
+                category: 'career',
+              },
+              sourceSignals: [
+                {
+                  kind: 'signal',
+                  id: 'sig-interview',
+                  source: 'outlook',
+                  occurredAt: '2026-04-28T02:00:00.000Z',
+                  summary: 'Alex Crisler confirmed the Care Coordinator interview for April 29.',
+                },
+              ],
+              decision: 'selected',
+              decisionReason: 'Interview exposure is the strongest immediate thread.',
+            },
+          ],
+        },
+      }),
+      winnerSelectionTrace: {
+        finalWinnerId: 'discrepancy_exposure_interview',
+        finalWinnerType: 'discrepancy',
+        finalWinnerReason: 'Interview exposure is the strongest immediate thread.',
+        scorerTopId: 'discrepancy_exposure_interview',
+        scorerTopType: 'discrepancy',
+        scorerTopDisplacementReason: null,
+      },
+    }));
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'document',
+      title: 'Confirmation Email to Alex Crisler — Care Coordinator Interview, April 29, 9 PM',
+      content: [
+        'SOURCE',
+        'Email: Alex Crisler (Alex.Crisler@comphc.org), April 21, 2026 — Comprehensive Healthcare - Interview Confirmation',
+        '',
+        'To: Alex.Crisler@comphc.org',
+        'Subject: Confirming Interview Tomorrow — April 29, 9 PM',
+        '',
+        'Alex,',
+        '',
+        'Thank you for the confirmation email and interview details. I am confirming my attendance for tomorrow at 9 PM via Webex.',
+      ].join('\n'),
+    } as any);
+
+    const result = await runDailyGenerate();
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'pending_approval_persisted',
+        success: true,
+      }),
+    ]);
+    const saved = mockSupabase.insertedActions[0];
+    expect(saved.status).toBe('pending_approval');
+    expect(saved.artifact).toEqual(
+      expect.objectContaining({
+        type: 'document',
+        document_purpose: 'brief',
+        target_reader: 'user',
+      }),
+    );
+    expect((saved.execution_result as Record<string, any>).artifact).toEqual(
+      expect.objectContaining({
+        document_purpose: 'brief',
+        target_reader: 'user',
+      }),
+    );
+  });
+
   it('does not persist pending_approval when artifact structural validation fails', async () => {
     vi.mocked(generateDirective).mockResolvedValue(buildDirective());
     vi.mocked(generateArtifact).mockResolvedValue({

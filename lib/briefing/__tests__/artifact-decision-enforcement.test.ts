@@ -131,6 +131,32 @@ describe('artifact decision enforcement', () => {
     );
   });
 
+  it('rejects write_document artifacts that omit document metadata required for persistence', () => {
+    const directive = baseDirective({
+      action_type: 'write_document',
+      directive: 'Turn the interview thread into one finished artifact before the panel meets.',
+      reason: 'The panel is already scheduled and the artifact must be ready as a real document, not loose notes.',
+    });
+    const artifact = {
+      type: 'document',
+      title: 'Care Coordinator interview confirmation',
+      content: 'Confirmed interview with Alex Crisler on April 29, 2026. Lock the final prep move before the panel meets.',
+    };
+
+    const issues = validateDirectiveForPersistence({
+      userId: 'user-1',
+      directive,
+      artifact,
+    });
+
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        'write_document document_purpose is required',
+        'write_document target_reader is required',
+      ]),
+    );
+  });
+
   it('accepts write_document artifact when it includes explicit ask, deadline, pressure, and ownership', () => {
     const directive = baseDirective({
       action_type: 'write_document',

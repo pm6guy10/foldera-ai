@@ -6630,16 +6630,6 @@ export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | 
     }
   }
 
-  // Normalize send_message: bidirectional to/recipient
-  if (artifactType === 'send_message') {
-    if (artifact.recipient === undefined && artifact.to !== undefined) {
-      artifact.recipient = artifact.to;
-    }
-    if (artifact.to === undefined && artifact.recipient !== undefined) {
-      artifact.to = artifact.recipient;
-    }
-  }
-
   const directiveRaw =
     typeof parsed.directive === 'string' && parsed.directive.trim().length > 0
       ? parsed.directive.trim()
@@ -6653,6 +6643,43 @@ export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | 
           .map((part) => part.trim())
           .filter(Boolean)[0] ?? directiveRaw)
       : '';
+
+  // Normalize send_message: bidirectional to/recipient
+  if (artifactType === 'send_message') {
+    if (artifact.recipient === undefined && artifact.to !== undefined) {
+      artifact.recipient = artifact.to;
+    }
+    if (artifact.to === undefined && artifact.recipient !== undefined) {
+      artifact.to = artifact.recipient;
+    }
+  } else if (artifactType === 'write_document') {
+    const fallbackTitle = directiveOneSentence.slice(0, 120).trim() || 'Decision memo';
+    const fallbackContent =
+      typeof parsed.reason === 'string' && parsed.reason.trim().length > 0
+        ? parsed.reason.trim()
+        : typeof parsed.insight === 'string' && parsed.insight.trim().length > 0
+          ? parsed.insight.trim()
+          : 'Document the decision and accountable owner.';
+    artifact = {
+      ...artifact,
+      document_purpose:
+        typeof artifact.document_purpose === 'string' && artifact.document_purpose.trim().length > 0
+          ? artifact.document_purpose
+          : 'decision memo',
+      target_reader:
+        typeof artifact.target_reader === 'string' && artifact.target_reader.trim().length > 0
+          ? artifact.target_reader
+          : 'decision owner',
+      title:
+        typeof artifact.title === 'string' && artifact.title.trim().length > 0
+          ? artifact.title
+          : fallbackTitle,
+      content:
+        typeof artifact.content === 'string' && artifact.content.trim().length > 0
+          ? artifact.content
+          : fallbackContent,
+    };
+  }
 
   return {
     insight: typeof parsed.insight === 'string' ? parsed.insight : (typeof parsed.evidence === 'string' ? parsed.evidence : ''),
@@ -7551,6 +7578,13 @@ export function validateDirectiveForPersistence(input: {
   if (!input.artifact || typeof input.artifact !== 'object') {
     issues.push('artifact is required before persistence');
   } else if (normalizeDecisionActionType(String(input.directive.action_type)) === 'write_document') {
+    const art = input.artifact as Record<string, unknown>;
+    if (!isNonEmptyString(art.document_purpose)) {
+      issues.push('write_document document_purpose is required');
+    }
+    if (!isNonEmptyString(art.target_reader)) {
+      issues.push('write_document target_reader is required');
+    }
     if (shouldBlockScheduleConflictWriteDocumentPersistence(input.directive, input.artifact as Record<string, unknown>)) {
       issues.push('schedule_conflict write_document below product bar; require a real calendar artifact or suppress');
     }
