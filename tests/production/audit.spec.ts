@@ -57,10 +57,40 @@ async function unauthContext(browser: Browser): Promise<BrowserContext> {
   return browser.newContext({ storageState: undefined });
 }
 
+function productionAuthStateReady(): boolean {
+  const statePath = process.env.PLAYWRIGHT_AUTH_STATE_PATH ?? path.join(__dirname, 'auth-state.json');
+  if (!fs.existsSync(statePath)) return false;
+  try {
+    const data = JSON.parse(fs.readFileSync(statePath, 'utf8')) as {
+      cookies?: Array<{ name?: string; expires?: number }>;
+    };
+    const now = Date.now() / 1000;
+    const sessionCookies = (data.cookies ?? []).filter(
+      (cookie) =>
+        typeof cookie.name === 'string' &&
+        (cookie.name.includes('session-token') || cookie.name.includes('authjs')),
+    );
+    if (sessionCookies.length === 0) return false;
+    for (const cookie of sessionCookies) {
+      if (typeof cookie.expires === 'number' && cookie.expires > 0 && cookie.expires < now) {
+        return false;
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function authContext(browser: Browser): Promise<BrowserContext> {
   const statePath = process.env.PLAYWRIGHT_AUTH_STATE_PATH ?? 'tests/production/auth-state.json';
   return browser.newContext({ storageState: statePath });
 }
+
+const includeAuthenticatedProdAudit = process.env.FOLDERA_INCLUDE_AUTH_PROD_SMOKE === 'true';
+const describeAuth = includeAuthenticatedProdAudit && productionAuthStateReady()
+  ? test.describe
+  : test.describe.skip;
 
 // ── Console / request listeners ────────────────────────────────────────────
 
@@ -277,7 +307,7 @@ test.describe('Section 2 — Public button interaction', () => {
 
 // ── SECTION 3: Authenticated dashboard audit ──────────────────────────────
 
-test.describe('Section 3 — Authenticated dashboard audit', () => {
+describeAuth('Section 3 — Authenticated dashboard audit', () => {
   const AUTH_ROUTES = ['/dashboard', '/dashboard/settings', '/onboard?edit=true'];
 
   for (const route of AUTH_ROUTES) {
@@ -332,7 +362,7 @@ async function getWithRetry(
   throw lastErr;
 }
 
-test.describe('Section 4 — API health check', () => {
+describeAuth('Section 4 — API health check', () => {
   interface ApiCheck {
     method: 'GET';
     path: string;
@@ -414,7 +444,7 @@ test.describe('Section 4 — API health check', () => {
 
 // ── SECTION 5: Generate now button ────────────────────────────────────────
 
-test.describe('Section 5 — Generate now button', () => {
+describeAuth('Section 5 — Generate now button', () => {
   test('click Generate now on /dashboard/system', async ({ browser }) => {
     test.setTimeout(180_000);
 

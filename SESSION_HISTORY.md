@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-28 — Production E2E schedule no longer hard-fails when auth state is intentionally absent
+- MODE: CI SEAM (single seam)
+- Files changed: `tests/production/audit.spec.ts`, `SESSION_HISTORY.md`.
+- What changed: Brought `tests/production/audit.spec.ts` into line with the already-shipped production smoke contract. The authenticated dashboard audit, authenticated API audit, and owner-only Generate Now audit now run only when `FOLDERA_INCLUDE_AUTH_PROD_SMOKE=true` and the production auth state file is present and unexpired. Scheduled/deploy runs stay public-only instead of crashing on a missing `tests/production/auth-state.json`.
+- Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `npm run lint` (pass); `npm run build` (pass); `$env:FOLDERA_INCLUDE_AUTH_PROD_SMOKE='false'; $env:FOLDERA_INCLUDE_LIVE_BRIEF_PROOF='false'; $env:PLAYWRIGHT_AUTH_STATE_PATH='tests/production/__missing-auth-state.json'; npm run test:prod` (pass: `37 passed`, `24 skipped`; skipped set includes the authenticated smoke/audit sections and the manual full-health / live-brief proof lanes).
+- Unresolved issues: No open blocker in this seam. Manual `workflow_dispatch` authenticated production audit still depends on a fresh `tests/production/auth-state.json`, by design.
+
 ## 2026-04-27 — BL-009 public no-send sludge removed, but live paid run still falls back to sanitized do-nothing
 - MODE: FOLDERA PRODUCTION BACKLOG EXECUTOR (BL-009 only)
 - **Problem:** The live owner paid `POST /api/settings/run-brief?force=true&use_llm=true` path was still surfacing raw internal generator/validator sludge like `All 10 candidates blocked`, `llm_failed`, and `stale_date_in_directive` through persisted no-send output, even after the spend-cap seam cleared. That made the same production no-send outcome user-visible sludge instead of a clean wait-rationale.
