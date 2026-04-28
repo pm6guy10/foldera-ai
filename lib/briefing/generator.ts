@@ -7757,6 +7757,29 @@ function isDoNothingSchemaIssue(issue: string): boolean {
   return issue.startsWith('do_nothing ');
 }
 
+function isCanonicalArtifactSchemaRepairableIssue(issue: string): boolean {
+  const normalized = normalizeValidationIssue(issue);
+  const lower = normalized.toLowerCase();
+  if (lower === 'response was not valid json in the required schema.') return true;
+  if (
+    lower.startsWith('artifact type "') &&
+    lower.includes('is not valid')
+  ) {
+    return true;
+  }
+  if (lower.startsWith('artifact_type must be "')) return true;
+  if (
+    lower === 'directive is required' ||
+    lower === 'insight is required' ||
+    lower === 'why_now is required'
+  ) {
+    return true;
+  }
+  if (lower.startsWith('send_message ')) return true;
+  if (lower.startsWith('write_document ')) return true;
+  return false;
+}
+
 function isLowCrossSignalValidationIssue(issue: string): boolean {
   return issue.toLowerCase().startsWith(LOW_CROSS_SIGNAL_ISSUE_PREFIX);
 }
@@ -7772,6 +7795,7 @@ function shouldAttemptDecisionEnforcementRepair(
       isDecisionEnforcementIssue(issue) ||
       isCausalDiagnosisIssue(issue) ||
       isDoNothingSchemaIssue(issue) ||
+      isCanonicalArtifactSchemaRepairableIssue(issue) ||
       issue.startsWith('interview_artifact:generic_prep_trash:'),
   );
   if (!hasReparable) return false;
@@ -7780,6 +7804,7 @@ function shouldAttemptDecisionEnforcementRepair(
       !isDecisionEnforcementIssue(issue) &&
       !isCausalDiagnosisIssue(issue) &&
       !isDoNothingSchemaIssue(issue) &&
+      !isCanonicalArtifactSchemaRepairableIssue(issue) &&
       !issue.startsWith('interview_artifact:generic_prep_trash:') &&
       !isLowCrossSignalValidationIssue(issue),
   );

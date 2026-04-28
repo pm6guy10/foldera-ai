@@ -1439,6 +1439,101 @@ describe('generateDirective runtime failures', () => {
     }));
   });
 
+  it('repairs send_message fallback when the model drifts into write_document schema', async () => {
+    const scored = asWinnerScored(buildScorerResult());
+    scored.winner.type = 'commitment';
+    scored.winner.suggestedActionType = 'send_message';
+    scored.winner.title = 'Commitment due today: confirm launch approval owner';
+    scored.winner.content = `Launch approval owner is unresolved and deadline is ${isoDateFromFixedNow(1)}.`;
+    scored.winner.relationshipContext = '- Launch Approver <approver@launchco.com> (Approver)';
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 120, output_tokens: 90 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Write a quick update.',
+          artifact_type: 'write_document',
+          artifact: {
+            title: 'Status update',
+            content: 'Need approval owner.',
+          },
+          evidence: 'Owner is unresolved.',
+          why_now: 'Need movement.',
+          causal_diagnosis: {
+            why_exists_now: 'The thread asks for approval but no owner has accepted accountability.',
+            mechanism: 'Unowned dependency before deadline.',
+          },
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(directive.directive).not.toBe('__GENERATION_FAILED__');
+    expect(directive.action_type).toBe('send_message');
+    const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    expectEmailArtifactShape(embeddedArtifact, {
+      expectedRecipient: 'approver@launchco.com',
+      minSubjectLength: 12,
+      minBodyLength: 60,
+      requireQuestion: true,
+      dateAnchors: [isoDateFromFixedNow(1)],
+      requiredRegexes: [/confirm|owner|next step/i],
+    });
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'candidate_repaired',
+      generationStatus: 'decision_enforcement_repaired',
+    }));
+  });
+
+  it('repairs send_message fallback when the model output is not valid JSON', async () => {
+    const scored = asWinnerScored(buildScorerResult());
+    scored.winner.type = 'commitment';
+    scored.winner.suggestedActionType = 'send_message';
+    scored.winner.title = 'Commitment due today: confirm launch approval owner';
+    scored.winner.content = `Launch approval owner is unresolved and deadline is ${isoDateFromFixedNow(1)}.`;
+    scored.winner.relationshipContext = '- Launch Approver <approver@launchco.com> (Approver)';
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 120, output_tokens: 90 },
+      content: [{
+        type: 'text',
+        text: 'not valid json',
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(directive.directive).not.toBe('__GENERATION_FAILED__');
+    expect(directive.action_type).toBe('send_message');
+    const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    expectEmailArtifactShape(embeddedArtifact, {
+      expectedRecipient: 'approver@launchco.com',
+      minSubjectLength: 12,
+      minBodyLength: 60,
+      requireQuestion: true,
+      dateAnchors: [isoDateFromFixedNow(1)],
+      requiredRegexes: [/confirm|owner|next step/i],
+    });
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'candidate_repaired',
+      generationStatus: 'decision_enforcement_repaired',
+    }));
+  });
+
   it('produces different repaired artifacts when causal diagnosis mechanism changes', async () => {
     const scored = asWinnerScored(buildScorerResult());
     scored.winner.type = 'commitment';
