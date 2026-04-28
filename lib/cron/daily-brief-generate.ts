@@ -2021,6 +2021,7 @@ export async function runDailyGenerate(
   const supabase = createServerClient();
   const date = new Date().toISOString().slice(0, 10);
   const todayStart = todayStartIso();
+  const ptTodayStart = ptDayStartIso();
 
   const runOpts: DailyBriefSignalWindowOptions =
     options.verificationStubPersist === true
@@ -2198,7 +2199,7 @@ export async function runDailyGenerate(
           if (elapsed >= 0 && elapsed < BRIEF_FULL_CYCLE_COOLDOWN_MS) {
             const bypassScheduledCooldown =
               isScheduledDailyBriefInvocation(runOpts.briefInvocationSource) &&
-              !(await hasCompletedScheduledBriefCycleForPtDay(supabase, userId, todayStart));
+              !(await hasCompletedScheduledBriefCycleForPtDay(supabase, userId, ptTodayStart));
             if (bypassScheduledCooldown) {
               logStructuredEvent({
                 event: 'brief_generation_cycle_cooldown_bypassed',
@@ -2210,7 +2211,7 @@ export async function runDailyGenerate(
                   last_cycle_at: lastIso,
                   brief_invocation_source: runOpts.briefInvocationSource ?? null,
                   bypass_reason: 'no_same_pt_day_scheduled_run',
-                  pt_day_start: todayStart,
+                  pt_day_start: ptTodayStart,
                 },
               });
             } else {
