@@ -3,7 +3,7 @@
 Last refreshed: 2026-04-27
 
 ## Current top item
-BL-003 — Rung 2 — Native interview write_document still does not reliably persist as the real winner.
+BL-011 — Rung 1 — Duplicate generic no-send emails still need merged daily-send idempotency fix.
 
 ## How to use this file
 - Every Codex run opens this file first.
@@ -56,7 +56,7 @@ Done means: A real production generation path gets past the spend-cap blocker an
 Do-not-count: Cron 200s, deploy logs, DB rows without a completed user-facing run, or docs/screenshots/refactors/unrelated tests.
 Status: CLOSED
 Last evidence: 2026-04-27 — live build `d30bc22`; authenticated owner `POST /api/settings/run-brief?force=true&use_llm=true` returned `200`, spent through `insight_scan` + `directive` / `directive_retry`, and persisted action `2a04fa59-c1b7-4312-9adf-f99937cdd552`, which proves the newest live row is no longer blocked by `Daily spend cap reached.`.
-Next blocker: BL-009.
+Next blocker: BL-011.
 
 ### BL-010
 ID: BL-010
@@ -94,7 +94,26 @@ Done means: One real production daily-send trigger produces exactly one user-fac
 Do-not-count: HTTP 200 or 204 alone, logs/traces alone, DB rows alone, or docs/screenshots/refactors/unrelated tests.
 Status: CLOSED
 Last evidence: 2026-04-27 — live build `b190c2f`; repeat `POST https://foldera.ai/api/cron/daily-send` with the production `x-cron-secret` returned `email_already_sent` for the same action `9c5b2673-4a25-41d6-a8fc-fcc54ebfe85c`, preserving exactly-once send semantics after the earlier `email_sent` proof. Browser proof with `tests/production/auth-state.json` still hit Microsoft FIDO at `https://login.microsoft.com/consumers/fido/get`, but the same connected Outlook token path proved mailbox delivery directly: Microsoft Graph `me/mailFolders/inbox/messages` returned exactly one inbox message from `noreply@foldera.ai` at `2026-04-27T16:35:45Z` with subject `Foldera: Email states no action required; commitment`.
-Next blocker: BL-009.
+Next blocker: BL-011.
+
+### BL-011
+ID: BL-011
+Rung: 1
+Title: Duplicate generic no-send emails still need merged daily-send idempotency fix
+User-facing path: User receives daily brief email only when there is a real artifact or explicitly useful no-send policy, not duplicate “Nothing cleared the bar” messages.
+Starting route or trigger: Nightly `daily-send` after one or more generic `do_nothing` / `wait_rationale` rows exist for the same user/PT day.
+Ending success state: Generic no-send truth persists for observability but does not send email in normal daily-send; explicit no-send opt-in can still send; real artifact emails still send once; duplicate no-send rows cannot produce duplicate emails for one user/PT day.
+Problem: A Codex environment created and locally verified commit `a6bc280` / earlier `57b8ed9` titled “Suppress generic no-send emails and enforce per-day daily brief idempotency,” but the environment could not reach GitHub (`CONNECT tunnel 403`, SSH unreachable), so the patch never reached GitHub main and no PR exists. Main does not contain `daily_email_idempotency_key`.
+Protected contracts: Preserve no-send persistence, preserve real `send_message` / `write_document` delivery, preserve existing `resend_id` and `daily_brief_sent_at` idempotency, do not force production cron, do not send generic “nothing cleared the bar” email in normal daily-send.
+Allowed files: `lib/cron/daily-brief-send.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `SESSION_HISTORY.md`
+Forbidden files: `lib/briefing/**`, `app/dashboard/**`, `app/api/stripe/**`, `supabase/**`, `.github/workflows/**`, Vercel/Supabase quota files, unrelated tests.
+Required local proof: `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts`; `npm run build`
+Required production proof: Passive next normal daily-send window; do not force cron. Verify generic no-send persists but sends no email, real artifact emails still send once, and duplicate no-send rows do not produce duplicate emails.
+Done means: The idempotency/no-send suppression patch is visible on GitHub main, deployed, and awaiting passive production proof or already passively proven by the next normal daily-send.
+Do-not-count: Local-only commit, unpushed branch, Codex “safe to merge” report, forced cron proof, or duplicate no-send email still arriving.
+Status: OPEN
+Last evidence: 2026-04-27 — local Codex commit reported as `a6bc280` with diff limited to `daily-brief-send.ts`, `daily-brief.test.ts`, and `SESSION_HISTORY.md`; tests/build passed locally; GitHub push/PR failed due container network limits; GitHub main did not contain `daily_email_idempotency_key`.
+Next blocker: Recover/recreate the three-file patch on a GitHub-connected runtime, merge to main, deploy, then wait for passive daily-send proof.
 
 ### BL-009
 ID: BL-009
