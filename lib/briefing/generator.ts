@@ -3707,7 +3707,8 @@ export function buildPromptFromStructuredContext(
       ? 'INTERVIEW_FINISHED_BRIEF_WRITE_DOCUMENT (system path — mandatory compliance):\n' +
         '- Hydrated SOURCE excerpts in this prompt (email bodies, calendar, uploads, job materials) satisfy Rule 1 for this run.\n' +
         '- Return ONLY a single JSON object per the schema. No refusal prose, no markdown code fences, no text before `{` or after `}`.\n' +
-        '- Produce one finished Shape B write_document: a tight interview **brief the user can read once** and speak from — not a prep checklist, not STAR homework, not "action items" or "prepare examples."\n' +
+        '- Produce one finished Shape B write_document: a tight role-fit answer packet the user can open and use immediately. It must contain at least one complete first-person answer the user can say verbatim, grounded in the source excerpts.\n' +
+        '- Do the synthesis inside the artifact. Do not tell the user to prepare, review, research, brainstorm, gather examples, or use STAR; those are homework handoffs, not finished work.\n' +
         '- After the SOURCE block, use short sections of **polished prose** (or one integrated narrative). Ground every claim in the cited sources. No confirmation-email template. No metacommentary ("here is a framework…").\n' +
         '- Banned: numbered owner to-dos, "Prepare three stories," "your task," task-manager labels, or bulleted research assignments. Interview confirmations, invites, JD links, and recruiter mail are sufficient source material; you do not need a two-way email thread with every person on the calendar.\n' +
         '- Automatic rejection tripwires (do not write these anywhere in directive, why_now, title, or body — integrate facts as prose instead): headings or lines like "prep checklist" / "preparation sheet"; "STAR" as a method or framework label; "review the job posting" / "reread the job description"; telling the user to "prepare" numbered "examples" / "stories" / "talking points"; "dress code" / "business casual" / "what to wear" / "dress for success"; "your action items"; "next steps for you"; "day-of-interview" checklist or tips; A/V coaching like "test your zoom|teams|webex|mic|camera"; the phrase "quiet room" as a tip. Do not assign research or "familiarize yourself with" homework.\n' +
@@ -8371,31 +8372,34 @@ function buildInterviewWriteDocumentPayload(input: {
     evidence.location ? `Location: ${evidence.location}.` : '',
   ].filter(Boolean).join(' ');
   const directive =
-    `Deliver a one-page fit narrative for ${ownerFirst} for the ${roleLabel} interview (${scheduleLabel}) — speakable lines grounded in the thread.`.slice(0, 340);
+    `Deliver a ready-to-say role-fit answer packet for ${ownerFirst} for the ${roleLabel} interview (${scheduleLabel}), grounded in the thread.`.slice(0, 340);
 
   return {
-    insight: `${roleLabel} has enough concrete hooks in the thread to produce one strong fit narrative instead of another prep outline.`,
+    insight: `${roleLabel} has enough concrete hooks in the thread to produce one strong role-fit answer instead of another coaching outline.`,
     causal_diagnosis: input.causalDiagnosis,
     decision: 'ACT',
     directive,
     artifact_type: 'write_document',
     artifact: {
-      document_purpose: 'hiring fit brief',
+      document_purpose: 'hiring fit answer packet',
       target_reader: 'private notes',
-      title: `${roleLabel} — fit narrative for ${scheduleLabel}`,
+      title: `${roleLabel} — role-fit answer for ${scheduleLabel}`,
       content: [
         'SOURCE',
         sourceBlock,
         '',
-        `What ${ownerFirst} can say in ${locationLabel} (${scheduleLabel}) when discussion turns to fit for ${roleLabel}:`,
+        `Use this answer in ${locationLabel} (${scheduleLabel}) when discussion turns to fit for ${roleLabel}.`,
         '',
-        `The role is already defined around ${evidence.roleAnchors.slice(0, 4).join(', ')}. Lead with that match in plain language before adding broader motivation.`,
+        `Answer spine: the role is already defined around ${evidence.roleAnchors.slice(0, 4).join(', ')}. The strongest move is to make that match explicit before broader motivation.`,
+        '',
+        `Commitment: this answer commits to ${evidence.roleAnchors.slice(0, 3).join(', ')} as the fit signal, so the conversation does not stay generic.`,
         '',
         pressureLine,
         processLine,
         '',
-        `Commit to this line of reasoning before ${deadline}; it keeps the same substance when interviewers compare notes later.`,
+        `Use by ${deadline}; it keeps the same substance when interviewers compare notes later.`,
         '',
+        'First-person answer:',
         buildInterviewAnswerScript(evidence),
       ].filter(Boolean).join('\n'),
     },

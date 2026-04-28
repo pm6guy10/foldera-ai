@@ -99,9 +99,19 @@ describe('buildDecisionEnforcedFallbackPayload interview repair', () => {
       minLength: 180,
       minParagraphs: 1,
       requiredTerms: ['community-based', 'mileage is reimbursed'],
-      forbiddenPatterns: [/prep brief/i, /review the website/i, /prepare examples/i],
+      forbiddenPatterns: [
+        /prep brief/i,
+        /review the website/i,
+        /prepare examples/i,
+        /\bSTAR\b/i,
+        /dress code|business casual|what to wear/i,
+        /action items/i,
+        /\bchecklist\b/i,
+      ],
     });
-    expect(`${title}\n${content}`).toMatch(/fit narrative|hiring fit brief/i);
+    expect(`${title}\n${content}`).toMatch(/role-fit answer|hiring fit answer packet/i);
+    expect(content).toContain('First-person answer:');
+    expect(content).toContain('I am a strong match for Care Coordinator');
     expect(`${title}\n${content}`).toContain('3:15 PM PT on 2026-04-15');
     expect(`${title}\n${content}`).not.toContain('5:00 PM PT on 2026-04-15');
 
