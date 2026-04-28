@@ -1,6 +1,6 @@
 # FOLDERA Production Backlog
 
-Last refreshed: 2026-04-27
+Last refreshed: 2026-04-28
 
 ## Current top item
 BL-011 — Rung 1 — Duplicate generic no-send emails still need merged daily-send idempotency fix.
@@ -114,6 +114,25 @@ Do-not-count: Local-only commit, unpushed branch, Codex “safe to merge” repo
 Status: OPEN
 Last evidence: 2026-04-27 — pushed `4297b16` to `main`; production health flipped to build `4297b16` on deployment `dpl_Co3ZVHFkRxXEDENSZUSAQWysyyFm`; `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts`, `npm run lint`, `npm run build`, and the repo push hook smoke lane all passed. `runDailySend` now suppresses generic scheduled no-send emails, preserves explicit scoped no-send sends, and stamps `daily_email_idempotency_key` on sent rows without reintroducing the BL-002 newer-pending-action short-circuit.
 Next blocker: Wait for the next normal daily-send window and verify passive production behavior: generic no-send rows persist without sending an email, explicit scoped no-send still sends once when invoked, and any real artifact email still delivers once for the PT day.
+
+### BL-012
+ID: BL-012
+Rung: 1
+Title: Manual Generate Now checkpoint must not block the next scheduled morning daily brief
+User-facing path: A user can click Generate Now in the evening and still receive the next scheduled morning daily brief without waiting out a 20-hour cooldown.
+Starting route or trigger: Evening `POST /api/settings/run-brief?force=true&use_llm=true`, followed by the next normal scheduled `daily-brief` cron.
+Ending success state: The scheduled morning cron remains eligible when the latest full-cycle checkpoint came from `settings_run_brief`, while duplicate same-PT-day scheduled cron runs still stay blocked.
+Problem: `user_brief_cycle_gates.last_cycle_at` was source-agnostic, so a successful evening manual Generate Now wrote the same full-cycle checkpoint used by scheduled cron and blocked the next morning run for about 20 hours. That also prevented BL-011 passive send-stage proof from ever exercising.
+Protected contracts: Preserve manual Generate Now cooldown/limit behavior, preserve duplicate scheduled cron suppression per user/PT day, preserve BL-011 generic no-send suppression semantics, and do not reintroduce the BL-002 newer-pending-action send bug.
+Allowed files: `lib/cron/daily-brief-generate.ts`, `lib/cron/brief-cycle-gate.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `lib/cron/__tests__/manual-send.test.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `SESSION_HISTORY.md`
+Forbidden files: `app/dashboard/**`, `lib/briefing/**`, `lib/email/**`, `app/api/stripe/**`, auth/session code, migrations unless absolutely required, unrelated tests, styling/layout files
+Required local proof: `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts`; `npm run lint`; `npm run build`; `npm run controller:autopilot`
+Required production proof: Wait for the deployed build to advance, then verify on live production rows that a recent `settings_run_brief` checkpoint still sits within the 20-hour cooldown, no same-PT-day scheduled `cron_daily_brief` run exists for that user, and the deployed scheduled-cooldown predicate therefore leaves the next normal morning cron eligible without forcing cron.
+Done means: Production truth shows a recent manual Generate Now checkpoint no longer blocks the next scheduled morning daily brief path.
+Do-not-count: Local-only tests, forced cron runs, source-only reasoning without production row proof, or docs/screenshots/refactors/unrelated tests.
+Status: CLOSED
+Last evidence: 2026-04-28 — pushed `ead16d4` and follow-up PT-day fix `82f3f0b` to `main`; production health flipped to build `82f3f0b` on deployment `dpl_9tptKMN3WYX317TvmqmjYg45rHkn`; `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts`, `npm run lint`, and `npm run build` all passed after the PT-day correction. Live production row proof on the deployed build shows owner `settings_run_brief` `pipeline_runs.created_at = 2026-04-28T02:13:55.781779Z`, `user_brief_cycle_gates.last_cycle_at = 2026-04-28T02:13:54.469Z`, elapsed `11.53h < 20h`, zero same-PT-day scheduled `cron_daily_brief` user runs since PT start `2026-04-28T08:00:00.000Z`, and therefore the deployed scheduled gate now leaves the next normal cron eligible instead of blocking on the manual checkpoint.
+Next blocker: BL-011 passive next-window send-stage proof remains open.
 
 ### BL-009
 ID: BL-009
