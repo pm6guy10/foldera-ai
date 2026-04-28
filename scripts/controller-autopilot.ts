@@ -213,6 +213,14 @@ export function findWaitingPassiveProofBacklogItems(
   );
 }
 
+export function findWaitingExternalQuotaBacklogItems(
+  items: readonly BacklogItem[],
+): BacklogItem[] {
+  return items.filter(
+    (item) => item.status?.trim().toUpperCase() === 'WAITING_EXTERNAL_QUOTA',
+  );
+}
+
 export function parseSessionHistoryEntries(markdown: string): SessionHistoryEntry[] {
   const matches = [...markdown.matchAll(/^##\s+(.+)$/gm)];
 
@@ -258,6 +266,18 @@ function printWaitingPassiveProofItems(items: readonly BacklogItem[]) {
 
   for (const item of items) {
     console.log(`- ${item.id} — ${compact(item.nextBlocker ?? 'passive proof pending', 120)}`);
+  }
+}
+
+function printWaitingExternalBlockerItems(items: readonly BacklogItem[]) {
+  console.log('WAITING EXTERNAL BLOCKER ITEMS:');
+  if (items.length === 0) {
+    console.log('- none');
+    return;
+  }
+
+  for (const item of items) {
+    console.log(`- ${item.id} — ${compact(item.nextBlocker ?? 'external blocker pending', 120)}`);
   }
 }
 
@@ -362,6 +382,7 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
   const dirtyClassification = classifyDirtyEntries(dirtyEntries);
   const backlogItems = backlogText ? parseBacklogItems(backlogText) : [];
   const waitingPassiveProofItems = findWaitingPassiveProofBacklogItems(backlogItems);
+  const waitingExternalQuotaItems = findWaitingExternalQuotaBacklogItems(backlogItems);
   const firstOpenItem = findFirstOpenBacklogItem(backlogItems);
   const recentSessionEntries = sessionHistoryText
     ? parseSessionHistoryEntries(sessionHistoryText).slice(-3)
@@ -372,7 +393,10 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
   }
 
   if (!hardStopReason && !firstOpenItem) {
-    hardStopReason = 'No actionable OPEN backlog item found.';
+    hardStopReason =
+      waitingPassiveProofItems.length > 0 || waitingExternalQuotaItems.length > 0
+        ? 'No actionable OPEN backlog item found; all remaining backlog items are waiting or blocked.'
+        : 'No actionable OPEN backlog item found.';
   }
 
   if (!hardStopReason && dirtyClassification.blocking.length > 0) {
@@ -399,6 +423,7 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
 
   console.log('');
   printWaitingPassiveProofItems(waitingPassiveProofItems);
+  printWaitingExternalBlockerItems(waitingExternalQuotaItems);
 
   console.log('');
   console.log('DIRTY FILE CLASSIFICATION');

@@ -5314,3 +5314,15 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - What changed: Added `WAITING_PASSIVE_PROOF` backlog status support to `controller:autopilot`. The controller now reports waiting passive-proof items separately, skips them when selecting actionable work, and chooses the first later `OPEN` backlog item instead. Marked BL-011 as `WAITING_PASSIVE_PROOF` with next blocker `next normal daily-send proof required`, and moved the backlog’s current top actionable item pointer to BL-003.
 - Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `npx vitest run scripts/__tests__/controller-autopilot.test.ts` (pass, 5 tests); `npm run controller:autopilot` while files were dirty correctly reported `WAITING PASSIVE PROOF ITEMS: - BL-011 — next normal daily-send proof required` and selected `BL-003`; `npm run lint` (pass); `npm run build` (pass).
 - Unresolved issues: BL-011 remains waiting passive proof only; it is intentionally not closed and still requires the next normal scheduled daily-send window.
+
+## 2026-04-28 — Controller skips external-quota backlog items
+- MODE: Queue-state fix only (controller/backlog orchestration, no product behavior changes).
+- Files changed: FOLDERA_PRODUCTION_BACKLOG.md, scripts/controller-autopilot.ts, scripts/__tests__/controller-autopilot.test.ts, SESSION_HISTORY.md.
+- What changed: Added WAITING_EXTERNAL_QUOTA queue state handling to controller selection/reporting. Controller now skips both waiting statuses (WAITING_PASSIVE_PROOF, WAITING_EXTERNAL_QUOTA) when choosing actionable work, prints a dedicated WAITING EXTERNAL BLOCKER ITEMS section, and returns STOP with explicit reason when no OPEN item remains. Updated BL-003 status to WAITING_EXTERNAL_QUOTA with the quota-reset blocker window and moved backlog top pointer to the next actionable OPEN seam.
+- Verification: 
+px vitest run scripts/__tests__/controller-autopilot.test.ts; 
+pm run controller:autopilot; 
+pm run lint; 
+pm run build.
+- Unresolved issues: BL-003 remains blocked pending external paid-model quota reset/access window.
+

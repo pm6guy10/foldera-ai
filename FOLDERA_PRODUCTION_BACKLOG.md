@@ -3,7 +3,7 @@
 Last refreshed: 2026-04-28
 
 ## Current top item
-BL-003 — Rung 2 — Native interview write_document still does not reliably persist as the real winner.
+BL-004 — Rung 3 — Pending write_document visibility on `/dashboard` still lacks locked production proof.
 
 ## How to use this file
 - Every Codex run opens this file first.
@@ -168,9 +168,9 @@ Required local proof: `npx vitest run lib/briefing/__tests__/stakes-gate.test.ts
 Required production proof: Trigger one real owner interview-class run through `POST https://foldera.ai/api/settings/run-brief?force=true&use_llm=true`, then verify the resulting latest action is a single interview-class `write_document` in `pending_approval`, not a blocked fallback or `do_nothing`.
 Done means: A real production interview-class run creates exactly one usable `write_document` artifact instead of blocking before persistence.
 Do-not-count: Logs saying “artifact created,” a persisted invalid payload, static mock screenshots, or docs/screenshots/refactors/unrelated tests.
-Status: OPEN
+Status: WAITING_EXTERNAL_QUOTA
 Last evidence: 2026-04-27 — local seam proof passed after hydrating legacy `write_document` payloads on both the briefing parse path and the daily-brief persistence path. `npx vitest run lib/briefing/__tests__/stakes-gate.test.ts lib/briefing/__tests__/write-document-hydration.test.ts lib/briefing/__tests__/interview-fallback.test.ts lib/briefing/__tests__/artifact-decision-enforcement.test.ts lib/cron/__tests__/daily-brief.test.ts`, `npm run lint`, and `npm run build` all passed. The focused daily-brief regression now proves a live-shaped interview confirmation document is persisted with `document_purpose` + `target_reader` instead of the legacy invalid payload shape.
-Next blocker: Run one approved real owner paid proof through `POST /api/settings/run-brief?force=true&use_llm=true` after deploy and verify the newest action is a single valid interview-class `write_document` in `pending_approval`.
+Next blocker: Paid model quota reset/access required before fresh owner interview-class paid production proof can run. Quota message says access returns 2026-05-01 00:00 UTC.
 
 ### BL-004
 ID: BL-004
