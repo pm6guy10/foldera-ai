@@ -112,8 +112,8 @@ Required production proof: Passive next normal daily-send window; do not force c
 Done means: The idempotency/no-send suppression patch is visible on GitHub main, deployed, and awaiting passive production proof or already passively proven by the next normal daily-send.
 Do-not-count: Local-only commit, unpushed branch, Codex “safe to merge” report, forced cron proof, or duplicate no-send email still arriving.
 Status: OPEN
-Last evidence: 2026-04-27 — local Codex commit reported as `a6bc280` with diff limited to `daily-brief-send.ts`, `daily-brief.test.ts`, and `SESSION_HISTORY.md`; tests/build passed locally; GitHub push/PR failed due container network limits; GitHub main did not contain `daily_email_idempotency_key`.
-Next blocker: Recover/recreate the three-file patch on a GitHub-connected runtime, merge to main, deploy, then wait for passive daily-send proof.
+Last evidence: 2026-04-27 — pushed `4297b16` to `main`; production health flipped to build `4297b16` on deployment `dpl_Co3ZVHFkRxXEDENSZUSAQWysyyFm`; `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts`, `npm run lint`, `npm run build`, and the repo push hook smoke lane all passed. `runDailySend` now suppresses generic scheduled no-send emails, preserves explicit scoped no-send sends, and stamps `daily_email_idempotency_key` on sent rows without reintroducing the BL-002 newer-pending-action short-circuit.
+Next blocker: Wait for the next normal daily-send window and verify passive production behavior: generic no-send rows persist without sending an email, explicit scoped no-send still sends once when invoked, and any real artifact email still delivers once for the PT day.
 
 ### BL-009
 ID: BL-009
