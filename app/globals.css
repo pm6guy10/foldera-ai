@@ -405,6 +405,58 @@
     isolation: isolate;
   }
 
+  .foldera-dashboard-current-brief {
+    overflow-wrap: break-word;
+  }
+
+  .foldera-dashboard-current-brief > div > section:first-child h2 {
+    max-width: 27ch;
+  }
+
+  .foldera-dashboard-current-brief .foldera-dashboard-artifact-body {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(96, 236, 255, 0.34) rgba(8, 18, 28, 0.86);
+  }
+
+  .foldera-dashboard-current-brief .foldera-dashboard-artifact-body::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .foldera-dashboard-current-brief .foldera-dashboard-artifact-body::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: rgba(8, 18, 28, 0.86);
+  }
+
+  .foldera-dashboard-current-brief .foldera-dashboard-artifact-body::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(96, 236, 255, 0.34);
+  }
+
+  .foldera-dashboard-current-brief [data-testid='dashboard-document-body'] {
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 640px) {
+    .foldera-dashboard-current-brief > div > section.grid {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.875rem;
+    }
+
+    .foldera-dashboard-current-brief > div > section.grid > div:first-child {
+      justify-self: start;
+    }
+
+    .foldera-dashboard-current-brief > div > section:first-child h2 {
+      max-width: 100%;
+      font-size: 28px;
+      line-height: 1.14;
+    }
+
+    .foldera-dashboard-current-brief .foldera-dashboard-artifact-body {
+      max-height: 520px;
+    }
+  }
+
   .foldera-dashboard-brief-card.foldera-brief-shell::before {
     top: -1px;
     width: 42%;

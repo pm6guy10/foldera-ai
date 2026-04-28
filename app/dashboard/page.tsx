@@ -100,7 +100,7 @@ type StageMetrics = {
 
 const DESIGN_W = 2048;
 const DESIGN_H = 1152;
-const DESKTOP_STAGE_MIN_WIDTH = 1280;
+const DESKTOP_STAGE_MIN_WIDTH = 1440;
 const DEFAULT_STAGE_METRICS: StageMetrics = {
   isDesktop: false,
   scale: 1,
@@ -868,7 +868,7 @@ export default function DashboardPage() {
       <div className="pointer-events-none select-none blur-[5px]">
         <div
           data-testid="dashboard-document-body"
-          className="max-h-[340px] overflow-y-auto pr-2 text-[15px] leading-7 text-text-primary"
+          className="foldera-dashboard-artifact-body max-h-[340px] overflow-y-auto pr-2 text-[15px] leading-7 text-text-primary"
         >
           {writeDocument ? (
             <ReactMarkdown components={DOCUMENT_MARKDOWN_COMPONENTS} remarkPlugins={[remarkGfm]}>
@@ -891,7 +891,7 @@ export default function DashboardPage() {
   ) : (
     <div
       data-testid="dashboard-document-body"
-      className="max-h-[340px] overflow-y-auto pr-2 text-[15px] leading-7 text-text-primary"
+      className="foldera-dashboard-artifact-body max-h-[340px] overflow-y-auto pr-2 text-[15px] leading-7 text-text-primary"
     >
       {writeDocument ? (
         <ReactMarkdown components={DOCUMENT_MARKDOWN_COMPONENTS} remarkPlugins={[remarkGfm]}>
@@ -1452,9 +1452,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="foldera-dashboard-page foldera-page min-h-screen bg-bg text-text-primary" data-testid="pixel-lock-frame">
+    <main className="foldera-dashboard-page foldera-page min-h-screen overflow-x-hidden bg-bg text-text-primary" data-testid="pixel-lock-frame">
       <div className="mx-auto w-full max-w-[1400px] px-4 py-4 sm:px-5 lg:px-6 lg:py-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[252px_minmax(0,1fr)] xl:grid-cols-[252px_minmax(0,1fr)_300px] xl:gap-8">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[252px_minmax(0,1fr)] 2xl:grid-cols-[252px_minmax(0,1fr)_300px] 2xl:gap-8">
           <DashboardSidebar
             activeLabel={activeSidebarLabel}
             userName={firstName}
@@ -1484,7 +1484,7 @@ export default function DashboardPage() {
               <p className="foldera-eyebrow">{getDateLabel()}</p>
             </div>
 
-            <header className="pb-10 pt-3 lg:pt-1">
+            <header className="pb-7 pt-3 lg:pb-8 lg:pt-1">
               <h1 className="text-[clamp(2rem,4vw,3.1rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-text-secondary">
                 {getGreetingLabel()},{' '}
                 <strong className="font-semibold text-text-primary">{firstName}.</strong>
@@ -1516,12 +1516,12 @@ export default function DashboardPage() {
 
             {statusNoticeNode ? <div className="mx-auto mb-4 w-full max-w-[860px]">{statusNoticeNode}</div> : null}
 
-            <div className="mx-auto w-full max-w-[860px] pb-12">
+            <div className="mx-auto w-full max-w-[940px] pb-12">
               {isBriefingPanel ? (
                 action ? (
                   <div data-testid="dashboard-panel-briefing">
                     <DailyBriefCard
-                      className="foldera-dashboard-brief-card foldera-dashboard-money-shot w-full"
+                      className="foldera-dashboard-brief-card foldera-dashboard-money-shot foldera-dashboard-current-brief w-full"
                       dashboardCta
                       directive={artifactTitle}
                       whyNow={
@@ -1569,7 +1569,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <aside className="foldera-dashboard-right-rail hidden min-w-0 xl:block">
+          <aside className="foldera-dashboard-right-rail hidden min-w-0 2xl:block">
             <RightPanel />
           </aside>
         </div>
