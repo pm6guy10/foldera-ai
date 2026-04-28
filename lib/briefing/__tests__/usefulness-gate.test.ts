@@ -14,7 +14,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ScoredLoop, ScorerResult } from '../scorer';
+import type { ScoredLoop, ScorerResult, ScorerResultWinnerSelected } from '../scorer';
 
 const FIXED_NOW = new Date('2026-04-20T15:00:00.000Z');
 
@@ -178,13 +178,15 @@ function buildWinner(): ScoredLoop {
       summary: 'MAS3 hiring manager thread',
     }],
     relationshipContext: '- MAS3 Hiring Manager <manager@mas3corp.com> (Hiring)',
+    confidence_prior: 78,
   };
 }
 
-function buildScorerResult(): ScorerResult {
+function buildScorerResult(winner: ScoredLoop = buildWinner()): ScorerResultWinnerSelected {
   return {
     outcome: 'winner_selected',
-    winner: buildWinner(),
+    winner,
+    topCandidates: [winner],
     deprioritized: [],
     candidateDiscovery: {
       candidateCount: 3, suppressedCandidateCount: 0, selectionMargin: 0.8,
@@ -388,11 +390,7 @@ describe('usefulness gate — execution proof', () => {
         summary: 'MAS3 Project deadline',
       }],
     };
-    mockScoreOpenLoops.mockResolvedValue({
-      ...buildScorerResult(),
-      winner: writeWinner,
-      topCandidates: [writeWinner],
-    });
+    mockScoreOpenLoops.mockResolvedValue(buildScorerResult(writeWinner));
 
     anthropicCreate.mockResolvedValue(anthropicResponse({
       directive: 'Prepare the MAS3 compliance packet before the go-live window closes.',
@@ -465,11 +463,7 @@ describe('usefulness gate — execution proof', () => {
       relationshipContext: 'Marcus <marcus@company.com> (Finance)',
       matchedGoal: { text: 'Board-ready Q1 close', priority: 4, category: 'financial' },
     };
-    mockScoreOpenLoops.mockResolvedValue({
-      ...buildScorerResult(),
-      winner: marcusBudgetWinner,
-      topCandidates: [marcusBudgetWinner],
-    });
+    mockScoreOpenLoops.mockResolvedValue(buildScorerResult(marcusBudgetWinner));
 
     anthropicCreate.mockResolvedValue(anthropicResponse({
       directive: 'Send the budget confirmation email to Marcus today.',
@@ -506,11 +500,7 @@ describe('usefulness gate — execution proof', () => {
       type: 'commitment' as const,
       suggestedActionType: 'write_document' as const,
     };
-    mockScoreOpenLoops.mockResolvedValue({
-      ...buildScorerResult(),
-      winner: writeWinner,
-      topCandidates: [writeWinner],
-    });
+    mockScoreOpenLoops.mockResolvedValue(buildScorerResult(writeWinner));
 
     anthropicCreate.mockResolvedValue(anthropicResponse({
       directive: 'Send the Acme integration status report to their stakeholders before Thursday.',
@@ -540,6 +530,127 @@ describe('usefulness gate — execution proof', () => {
     expect(result.action_type).toBe('write_document');
     expect(mockLogStructuredEvent).not.toHaveBeenCalledWith(
       expect.objectContaining({ event: 'usefulness_rejected' })
+    );
+  });
+
+  it('VALID3 — explicit interview attendance request with no calendar evidence may still generate send_message confirmation', async () => {
+    const confirmationWinner: ScoredLoop = {
+      ...buildWinner(),
+      id: 'alex-confirm-attendance',
+      type: 'discrepancy',
+      discrepancyClass: 'meeting_open_thread',
+      title: 'Confirm attendance with Alex Crisler for the Care Coordinator interview',
+      content:
+        'Alex Crisler explicitly asked whether you will attend the Care Coordinator interview. No matching calendar event or prior confirmation exists.',
+      suggestedActionType: 'send_message',
+      relatedSignals: [
+        'Alex asked: please confirm whether you will attend the Care Coordinator interview.',
+      ],
+      sourceSignals: [{
+        kind: 'signal',
+        id: 'sig-alex-confirm-request',
+        occurredAt: new Date().toISOString(),
+        summary: 'Recruiter asked you to confirm interview attendance; no matching calendar event exists.',
+      }],
+      relationshipContext: 'Alex Crisler <alex.crisler@comphc.org> (Recruiting)',
+      entityName: 'Alex Crisler',
+      matchedGoal: { text: 'Land the Care Coordinator role', priority: 5, category: 'career' },
+    };
+    mockScoreOpenLoops.mockResolvedValue(buildScorerResult(confirmationWinner));
+
+    anthropicCreate.mockResolvedValue(anthropicResponse({
+      directive: 'Confirm attendance with Alex Crisler for the Care Coordinator interview today.',
+      artifact_type: 'send_message',
+      artifact: {
+        to: 'alex.crisler@comphc.org',
+        subject: 'Re: Care Coordinator interview attendance',
+        body: 'Hi Alex,\n\nYes, I will attend the Care Coordinator interview. Please let me know if there is anything else you need from me before then.\n\nThanks,\nBrandon',
+      },
+      evidence: 'Alex explicitly asked whether you will attend, and there is still no matching calendar event or prior confirmation artifact.',
+      why_now: 'The attendance request is still open and the interview date is already fixed.',
+    }));
+
+    const { generateDirective } = await import('../generator');
+    const result = await generateDirective('user-1', { dryRun: true });
+
+    expect(result.directive).not.toBe(SENTINEL);
+    expect(result.action_type).toBe('send_message');
+    expect(result.directive.toLowerCase()).toContain('confirm attendance');
+  });
+
+  it('BAD7 — confirmed Alex interview cannot emit send_message when the committed action is write_document', async () => {
+    const confirmedInterviewWinner: ScoredLoop = {
+      ...buildWinner(),
+      id: 'alex-confirmed-prep',
+      type: 'discrepancy',
+      discrepancyClass: 'preparation_gap',
+      title: 'Care Coordinator Interview Prep — April 29',
+      content: [
+        'ROLE: Care Coordinator',
+        'INTERVIEWER_ORG: Alex Crisler / Comprehensive Healthcare',
+        'TIME: April 29 2026 at 9:00 PM PT',
+        'LOGISTICS: matching calendar event already exists; confirmation email already exists; Microsoft Teams details are already named in the source.',
+        'TALKING_POINTS:',
+        '- Lead with concrete examples that show how you handle care coordinator work without dropping follow-through.',
+        '- Tie each answer back to coordination, documentation, and calm communication under time pressure at Comprehensive Healthcare.',
+        '- Show one specific example of staying accurate when schedules or logistics changed quickly.',
+        'QUESTIONS:',
+        '- What does success in the first 30 days look like for the Care Coordinator role?',
+        '- Which teams or stakeholders does this role coordinate with most often day to day?',
+        '- What is the next step after this interview, and who owns that follow-up?',
+        'NEXT_ACTION: Use this brief for the interview itself. Do not send an employer-facing confirmation email unless the source explicitly asks again and no matching confirmation evidence exists.',
+      ].join('\n'),
+      suggestedActionType: 'write_document',
+      discrepancyPreferredAction: 'write_document',
+      relatedSignals: [
+        'Alex Crisler confirmed the Care Coordinator interview for April 29 at 9:00 PM PT and a matching Microsoft Teams calendar event already exists.',
+      ],
+      sourceSignals: [
+        {
+          kind: 'signal',
+          id: 'sig-alex-calendar',
+          occurredAt: new Date().toISOString(),
+          summary: 'Calendar event: Care Coordinator Interview - Comprehensive Healthcare',
+        },
+        {
+          kind: 'signal',
+          id: 'sig-alex-confirmation',
+          occurredAt: new Date().toISOString(),
+          summary: 'Interview Confirmation with Comprehensive Healthcare for April 29',
+        },
+      ],
+      relationshipContext: 'Alex Crisler <alex.crisler@comphc.org> (Recruiting)',
+      entityName: 'Alex Crisler',
+      matchedGoal: { text: 'Land the Care Coordinator role', priority: 5, category: 'career' },
+    };
+    mockScoreOpenLoops.mockResolvedValue(buildScorerResult(confirmedInterviewWinner));
+
+    anthropicCreate.mockResolvedValue(anthropicResponse({
+      directive: 'Send the confirmation email to Alex Crisler now.',
+      artifact_type: 'send_message',
+      artifact: {
+        to: 'alex.crisler@comphc.org',
+        subject: 'Re: Care Coordinator interview confirmation',
+        body: 'Hi Alex,\n\nI am confirming my attendance for the Care Coordinator interview on April 29 at 9:00 PM PT.\n\nThanks,\nBrandon',
+      },
+      evidence: 'The interview is 0 days out with no confirmation sent.',
+      why_now: 'The interview is imminent.',
+    }));
+
+    const { generateDirective } = await import('../generator');
+    const result = await generateDirective('user-1', { dryRun: true });
+
+    expect(result.directive).toBe(SENTINEL);
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'candidate_blocked',
+        generationStatus: 'llm_generation_failed',
+        details: expect.objectContaining({
+          issues: expect.arrayContaining([
+            'artifact_type must be "write_document" (system commitment) but model returned "send_message"',
+          ]),
+        }),
+      })
     );
   });
 });

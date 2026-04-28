@@ -919,6 +919,142 @@ describe('Cross-source discrepancy extractors', () => {
     });
     expect(result.some((d) => d.class === 'stale_document')).toBe(true);
   });
+
+  it('routes a confirmed Alex Crisler interview into a prep artifact instead of an outbound confirmation email', () => {
+    const interviewNow = new Date('2026-04-28T18:00:00.000Z');
+    const result = detectDiscrepancies({
+      entities: [{
+        id: 'alex-crisler',
+        name: 'Alex Crisler',
+        primary_email: 'alex.crisler@comphc.org',
+        emails: ['alex.crisler@comphc.org'],
+        trust_class: 'trusted',
+        total_interactions: 12,
+        last_interaction: '2026-04-21T18:00:00.000Z',
+        patterns: { bx_stats: { silence_detected: false, signal_count_90d: 4 } },
+      }],
+      commitments: [],
+      goals: [],
+      decryptedSignals: [],
+      structuredSignals: [
+        {
+          id: 'alex-care-coordinator-calendar',
+          source: 'google_calendar',
+          type: 'calendar_event',
+          occurred_at: '2026-04-21T18:00:00.000Z',
+          content: [
+            '[Calendar event: Care Coordinator Interview - Comprehensive Healthcare]',
+            'Start: 2026-04-30T04:00:00.000Z',
+            'End: 2026-04-30T05:00:00.000Z',
+            'Attendees: alex.crisler@comphc.org',
+            'Organizer: Alex Crisler',
+            'Location: Microsoft Teams',
+          ].join('\n'),
+        },
+        {
+          id: 'alex-care-coordinator-confirmation',
+          source: 'gmail',
+          type: 'email',
+          occurred_at: '2026-04-21T18:15:00.000Z',
+          content: [
+            'From: Alex Crisler <alex.crisler@comphc.org>',
+            'Subject: Interview Confirmation with Comprehensive Healthcare for April 29',
+            'Body: Your Care Coordinator interview is confirmed for April 29 at 9:00 PM PT via Microsoft Teams.',
+            'Focus areas: patient coordination, calm communication, documentation accuracy.',
+          ].join('\n'),
+        },
+      ],
+      now: interviewNow,
+    });
+
+    const prep = result.find((d) => d.title === 'Care Coordinator Interview Prep — April 29');
+
+    expect(prep).toBeDefined();
+    expect(prep).toMatchObject({
+      class: 'preparation_gap',
+      suggestedActionType: 'write_document',
+      discrepancyPreferredAction: 'write_document',
+      entityName: 'Alex Crisler',
+    });
+    expect(prep?.content).toContain('ROLE: Care Coordinator');
+    expect(prep?.content).toContain('INTERVIEWER_ORG: Alex Crisler / Comprehensive Healthcare');
+    expect(prep?.content).toMatch(/TIME: .*April 29.*9:00 PM PT/);
+    expect(prep?.content).toContain('LOGISTICS: matching calendar event already exists; confirmation email already exists; Microsoft Teams details are already named in the source.');
+    expect(prep?.content).toContain('TALKING_POINTS:');
+    expect(prep?.content).toContain('QUESTIONS:');
+    expect(prep?.content).toContain('NEXT_ACTION: Use this brief for the interview itself.');
+    expect(prep?.content?.toLowerCase()).not.toContain('confirming my attendance');
+    expect(prep?.content?.toLowerCase()).not.toContain('no confirmation sent');
+    expect(
+      result.filter((d) => d.entityName === 'Alex Crisler' && d.suggestedActionType === 'send_message'),
+    ).toHaveLength(0);
+  });
+
+  it('routes a same-role interview time mismatch into an internal schedule check instead of outbound confirmation', () => {
+    const interviewNow = new Date('2026-04-28T18:00:00.000Z');
+    const result = detectDiscrepancies({
+      entities: [{
+        id: 'alex-crisler',
+        name: 'Alex Crisler',
+        primary_email: 'alex.crisler@comphc.org',
+        emails: ['alex.crisler@comphc.org'],
+        trust_class: 'trusted',
+        total_interactions: 12,
+        last_interaction: '2026-04-21T18:00:00.000Z',
+        patterns: { bx_stats: { silence_detected: false, signal_count_90d: 4 } },
+      }],
+      commitments: [],
+      goals: [],
+      decryptedSignals: [],
+      structuredSignals: [
+        {
+          id: 'alex-care-coordinator-calendar',
+          source: 'google_calendar',
+          type: 'calendar_event',
+          occurred_at: '2026-04-21T18:00:00.000Z',
+          content: [
+            '[Calendar event: Care Coordinator Interview - Comprehensive Healthcare]',
+            'Start: 2026-04-30T04:00:00.000Z',
+            'End: 2026-04-30T05:00:00.000Z',
+            'Attendees: alex.crisler@comphc.org',
+            'Organizer: Alex Crisler',
+            'Location: Microsoft Teams',
+          ].join('\n'),
+        },
+        {
+          id: 'alex-care-coordinator-confirmation',
+          source: 'gmail',
+          type: 'email',
+          occurred_at: '2026-04-21T18:15:00.000Z',
+          content: [
+            'From: Alex Crisler <alex.crisler@comphc.org>',
+            'Subject: Interview Confirmation with Comprehensive Healthcare for April 29',
+            'Body: Your Care Coordinator interview is confirmed for April 29 at 8:00 PM PT via Microsoft Teams.',
+            'Please review the attached agenda before the panel starts.',
+          ].join('\n'),
+        },
+      ],
+      now: interviewNow,
+    });
+
+    const scheduleCheck = result.find((d) => d.title === 'Interview Schedule Check — Care Coordinator — April 29');
+
+    expect(scheduleCheck).toBeDefined();
+    expect(scheduleCheck).toMatchObject({
+      class: 'preparation_gap',
+      suggestedActionType: 'write_document',
+      discrepancyPreferredAction: 'write_document',
+      entityName: 'Alex Crisler',
+    });
+    expect(scheduleCheck?.content).toContain('ROLE: Care Coordinator');
+    expect(scheduleCheck?.content).toContain('CONFLICTING_EVIDENCE:');
+    expect(scheduleCheck?.content).toContain('Calendar: Care Coordinator Interview - Comprehensive Healthcare');
+    expect(scheduleCheck?.content).toContain('Email: Interview Confirmation with Comprehensive Healthcare for April 29');
+    expect(scheduleCheck?.content).toContain('NEXT_ACTION: Verify the correct time, invite, and owner before replying to anyone.');
+    expect(
+      result.filter((d) => d.entityName === 'Alex Crisler' && d.suggestedActionType === 'send_message'),
+    ).toHaveLength(0);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -1709,7 +1845,6 @@ describe('extractBehavioralPatterns (class: behavioral_pattern)', () => {
         makeCommitment({
           id: 'commit-mas3-wait',
           description: 'Waiting on MAS3 (HCA) hiring decision',
-          created_at: daysAgoISO(11),
           updated_at: daysAgoISO(11),
         }),
       ],

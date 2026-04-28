@@ -245,10 +245,19 @@ const INTERVIEW_DETAIL_PROMPT_PATTERN =
   /\b(?:focus on|focus areas?|bring examples of|panel(?: is)? looking for|emphasis on|topics include|they care about)\s*:?\s*([^\n.]+)/ig;
 
 const INTERVIEW_CONFIRMATION_PATTERN =
-  /\b(?:confirm(?:ed|ing|ation)?|scheduled|schedule(?:d)?|invite(?:d|s|ation)?|selected\s+to\s+interview|interview\s+(?:is|has\s+been)\s+(?:set|scheduled|confirmed)|we\s+look\s+forward\s+to\s+(?:meeting|speaking)|panel\s+(?:will|is\s+scheduled\s+to)\s+(?:meet|interview))\b/i;
+  /\b(?:confirm(?:ed|ing|ation)?|scheduled|schedule(?:d)?|invite(?:d|s|ation)?|calendar\s+invite|selected\s+to\s+interview|interview\s+(?:is|has\s+been)\s+(?:set|scheduled|confirmed)|we\s+look\s+forward\s+to\s+(?:meeting|speaking)|panel\s+(?:will|is\s+scheduled\s+to)\s+(?:meet|interview)|microsoft\s+teams|teams|webex|zoom)\b/i;
 
 const INTERVIEW_SPECULATIVE_PATTERN =
   /\b(?:if\s+(?:you\s+are\s+)?selected|may\s+be\s+invited|might\s+be\s+invited|potential\s+interview|possible\s+interview|future\s+interview|interview\s+pool|eligible\s+list|screening\s+criteria|application\s+(?:received|under\s+review)|not\s+selected|cancel(?:ed|led)|postponed)\b/i;
+
+const INTERVIEW_CONFIRM_REQUEST_PATTERNS = [
+  /\bplease\s+confirm\s+(?:whether\s+you(?:'ll|\s+will)?\s+attend|that\s+you(?:'ll|\s+will)?\s+attend|your\s+attendance|if\s+you(?:'ll|\s+will|\s+can)?\s+attend|if\s+this\s+time\s+works|availability)\b/i,
+  /\bcan\s+you\s+confirm\s+(?:whether\s+you(?:'ll|\s+will)?\s+attend|your\s+attendance|if\s+you(?:'ll|\s+will|\s+can)?\s+attend|if\s+this\s+time\s+works|availability)\b/i,
+  /\bcould\s+you\s+confirm\s+(?:whether\s+you(?:'ll|\s+will)?\s+attend|your\s+attendance|if\s+you(?:'ll|\s+will|\s+can)?\s+attend|if\s+this\s+time\s+works|availability)\b/i,
+  /\b(?:reply|let\s+me\s+know)\s+(?:whether\s+you(?:'ll|\s+will)?\s+attend|if\s+you(?:'ll|\s+will|\s+can)?\s+attend|if\s+this\s+time\s+works)\b/i,
+] as const;
+
+const INTERVIEW_PLATFORM_PATTERN = /\b(?:microsoft\s+teams|teams|webex|zoom)\b/i;
 
 /**
  * Rejection reason codes for entity admission control.
@@ -1873,6 +1882,220 @@ function openThreadHeuristic(
   return { subject: subj };
 }
 
+function hasExplicitInterviewAttendanceRequest(text: string): boolean {
+  if (!looksLikeInterviewSignal(text)) return false;
+  return INTERVIEW_CONFIRM_REQUEST_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function formatInterviewPrepDatePt(ms: number): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    month: 'long',
+    day: 'numeric',
+  }).format(ms);
+}
+
+function formatInterviewPrepDateTimePt(ms: number): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(ms).replace(',', '') + ' PT';
+}
+
+function interviewTimeVariantsPt(ms: number): string[] {
+  const formats: Intl.DateTimeFormatOptions[] = [
+    { timeZone: 'America/Los_Angeles', hour: 'numeric', minute: '2-digit', hour12: true },
+    { timeZone: 'America/Los_Angeles', hour: 'numeric', hour12: true },
+  ];
+  return [...new Set(
+    formats
+      .map((format) => new Intl.DateTimeFormat('en-US', format).format(ms))
+      .map((value) => normalizeInterviewToken(value.replace(/\./g, '')))
+      .filter(Boolean),
+  )];
+}
+
+function extractInterviewClockMentions(text: string): string[] {
+  const matches = text.match(/\b\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)\b/gi) ?? [];
+  return [...new Set(
+    matches
+      .map((value) => normalizeInterviewToken(value.replace(/\./g, '')))
+      .filter(Boolean),
+  )];
+}
+
+function hasConflictingInterviewTimeReference(text: string, startMs: number): boolean {
+  if (!looksLikeInterviewSignal(text)) return false;
+  const mentionedTimes = extractInterviewClockMentions(text);
+  if (mentionedTimes.length === 0) return false;
+  const expectedTimes = new Set(interviewTimeVariantsPt(startMs));
+  return !mentionedTimes.some((value) => expectedTimes.has(value));
+}
+
+function extractInterviewRoleLabel(text: string): string | null {
+  const explicitRoleMatch =
+    text.match(/\b([A-Z][A-Za-z/& ]{2,80}?)\s+Interview\b/) ??
+    text.match(/\bRole:\s*([^\n]+)/i) ??
+    text.match(/\bPosition:\s*([^\n]+)/i);
+  const explicitRole = explicitRoleMatch?.[1]?.replace(/\s+/g, ' ').trim();
+  if (explicitRole) return explicitRole;
+  return extractRoleFromInterviewText(text);
+}
+
+function extractInterviewOrganizationLabel(text: string): string | null {
+  const explicitOrg = extractOrgFromInterviewText(text);
+  if (explicitOrg) return explicitOrg;
+
+  const subject = extractSubjectFromSignal(text);
+  const fallbackMatch =
+    subject.match(/[—-]\s*([A-Z][A-Za-z& ]{2,80}?)\s*-\s*Interview Confirmation/i) ??
+    subject.match(/\bwith\s+([A-Z][A-Za-z& ]{2,80}?)(?:\s+for|\s+on|\s*$)/i) ??
+    text.match(/\bEmployer:\s*([^\n]+)/i);
+  return fallbackMatch?.[1]?.replace(/\s+/g, ' ').trim() ?? null;
+}
+
+function extractInterviewContactLabel(signal: StructuredSignalInput | undefined, fallback: string): string {
+  const fromMatch = signal?.content.match(/^From:\s*([^<\n]+?)(?:<|\n|$)/im);
+  const cleaned = fromMatch?.[1]?.replace(/\s+/g, ' ').trim();
+  return cleaned && cleaned.length > 0 ? cleaned : fallback;
+}
+
+function extractInterviewLocationLabel(text: string): string | null {
+  const locationMatch = text.match(/\bLocation:\s*([^\n]+)/i);
+  if (locationMatch?.[1]) return locationMatch[1].trim();
+
+  const platformMatch = text.match(INTERVIEW_PLATFORM_PATTERN);
+  if (!platformMatch?.[0]) return null;
+  const platform = platformMatch[0].toLowerCase();
+  if (platform.includes('microsoft teams') || platform === 'teams') return 'Microsoft Teams';
+  if (platform === 'webex') return 'Webex';
+  if (platform === 'zoom') return 'Zoom';
+  return platformMatch[0];
+}
+
+function summarizeInterviewSignal(signal: StructuredSignalInput): string {
+  const subject = extractSubjectFromSignal(signal.content);
+  const compact = signal.content.replace(/\s+/g, ' ').trim();
+  const summary = subject ? `Subject: ${subject}. ${compact}` : compact;
+  return summary.slice(0, 260);
+}
+
+function buildInterviewSourceSignal(signal: StructuredSignalInput): GenerationCandidateSource {
+  return {
+    kind: 'signal',
+    id: signal.id,
+    source: signal.source,
+    occurredAt: signal.occurred_at,
+    summary: summarizeInterviewSignal(signal),
+  };
+}
+
+function collectEntityInterviewSignals(
+  structured: StructuredSignalInput[],
+  entity: EntityRow,
+  startMs: number,
+): StructuredSignalInput[] {
+  const earliestMs = startMs - FOURTEEN_DAYS_MS;
+  const latestMs = startMs + 3 * 86400000;
+  const entityTokens = entity.name.toLowerCase().split(/\s+/).filter((token) => token.length >= 3);
+  const entityEmails = new Set(
+    [entity.primary_email, ...(entity.emails ?? [])]
+      .filter(Boolean)
+      .map((value) => String(value).toLowerCase()),
+  );
+
+  return structured.filter((signal) => {
+    if (!isEmailLikeSource(signal.source)) return false;
+    const occurredMs = new Date(signal.occurred_at).getTime();
+    if (!Number.isFinite(occurredMs) || occurredMs < earliestMs || occurredMs > latestMs) return false;
+    if (!looksLikeInterviewSignal(signal.content)) return false;
+
+    const contentLow = signal.content.toLowerCase();
+    if ([...entityEmails].some((email) => contentLow.includes(email))) return true;
+    return entityTokens.length > 0 && entityTokens.every((token) => contentLow.includes(token));
+  });
+}
+
+function collectInterviewFocusPointLines(text: string): string[] {
+  const notes = extractInterviewFocusNotes(text)
+    .flatMap((note) => note.split(/(?:,|;|\band\b)/i))
+    .map((note) => note.replace(/\s+/g, ' ').trim())
+    .filter((note) => note.length >= 8);
+  return [...new Set(notes)];
+}
+
+function buildInterviewTalkingPoints(input: {
+  focusNotes: string[];
+  roleLabel: string;
+  orgLabel: string | null;
+}): string[] {
+  const points = [...input.focusNotes];
+
+  if (points.length < 3) {
+    points.push(`Lead with concrete examples that show how you handle ${input.roleLabel.toLowerCase()} work without dropping follow-through.`);
+  }
+  if (points.length < 3) {
+    points.push(`Tie each answer back to real coordination, documentation, and calm communication under time pressure${input.orgLabel ? ` at ${input.orgLabel}` : ''}.`);
+  }
+  if (points.length < 3) {
+    points.push('Show one specific example of staying accurate when schedules, logistics, or stakeholder expectations changed quickly.');
+  }
+
+  return points.slice(0, 3);
+}
+
+function buildInterviewQuestions(roleLabel: string): string[] {
+  return [
+    `What does success in the first 30 days look like for the ${roleLabel} role?`,
+    `Which teams or stakeholders does this role coordinate with most often day to day?`,
+    'What is the next step after this interview, and who owns that follow-up?',
+  ];
+}
+
+function buildInterviewPrepContent(input: {
+  roleLabel: string;
+  interviewerLabel: string;
+  orgLabel: string | null;
+  timeLabel: string;
+  logisticsLabel: string;
+  talkingPoints: string[];
+  questions: string[];
+}): string {
+  return [
+    `ROLE: ${input.roleLabel}`,
+    `INTERVIEWER_ORG: ${input.interviewerLabel}${input.orgLabel ? ` / ${input.orgLabel}` : ''}`,
+    `TIME: ${input.timeLabel}`,
+    `LOGISTICS: ${input.logisticsLabel}`,
+    'TALKING_POINTS:',
+    ...input.talkingPoints.map((point) => `- ${point}`),
+    'QUESTIONS:',
+    ...input.questions.map((question) => `- ${question}`),
+    'NEXT_ACTION: Use this brief for the interview itself. Do not send an employer-facing confirmation email unless the source explicitly asks again and no matching confirmation evidence exists.',
+  ].join('\n');
+}
+
+function buildInterviewScheduleCheckContent(input: {
+  roleLabel: string;
+  timeLabel: string;
+  calendarTitle: string;
+  confirmationSubjects: string[];
+  logisticsLabel: string;
+}): string {
+  return [
+    `ROLE: ${input.roleLabel}`,
+    `TIME_TO_VERIFY: ${input.timeLabel}`,
+    'CONFLICTING_EVIDENCE:',
+    `- Calendar: ${input.calendarTitle}`,
+    ...input.confirmationSubjects.slice(0, 3).map((subject) => `- Email: ${subject}`),
+    `NEXT_ACTION: Verify the correct time, invite, and owner before replying to anyone. ${input.logisticsLabel} Do not send an employer-facing confirmation email until the schedule is reconciled.`,
+  ].join('\n');
+}
+
 function extractScheduleConflicts(structured: StructuredSignalInput[], nowMs: number): Discrepancy[] {
   const results: Discrepancy[] = [];
   const horizon = nowMs + SEVEN_DAYS_MS;
@@ -2033,6 +2256,7 @@ function extractCalendarEntityGaps(
     const evt = parseCalendarEventFromContent(s.content);
     if (!evt || evt.startMs < nowMs || evt.startMs > horizon) continue;
     const matchedEntities = entityIdsForCalendarRow(evt, entities);
+    const isInterviewEvent = looksLikeInterviewSignal(evt.title) && !isInterviewNoiseTitle(evt.title);
     for (const ent of matchedEntities) {
       if (results.length >= MAX_CROSS_CLASS * 2) break;
       if (isSelfEntity(ent, selfEmails, selfNameTokens)) continue;
@@ -2041,6 +2265,180 @@ function extractCalendarEntityGaps(
       const recentEmail = hasRecentEmailWithEntity(structured, ent, nowMs);
       const lastIx = ent.last_interaction ? new Date(ent.last_interaction).getTime() : 0;
       const coldMeeting = lastIx > 0 && nowMs - lastIx >= 30 * 86400000;
+
+      if (isInterviewEvent) {
+        const matchingConfirmationEmails = matchingInterviewEmailSignals(structured, evt.title, evt.startMs);
+        const relatedInterviewEmails = collectEntityInterviewSignals(structured, ent, evt.startMs);
+        const matchingEmailIds = new Set(matchingConfirmationEmails.map((signal) => signal.id));
+        const conflictingInterviewEmails = relatedInterviewEmails.filter((signal) => {
+          const signalText = `${extractSubjectFromSignal(signal.content)}\n${signal.content}`;
+          return hasInterviewConfirmationLanguage(signalText) && !matchingEmailIds.has(signal.id);
+        });
+        const timeMismatchEmails = relatedInterviewEmails.filter((signal) =>
+          hasConflictingInterviewTimeReference(
+            `${extractSubjectFromSignal(signal.content)}\n${signal.content}`,
+            evt.startMs,
+          ));
+        const explicitAttendanceRequestSignals = relatedInterviewEmails.filter((signal) =>
+          hasExplicitInterviewAttendanceRequest(
+            `${extractSubjectFromSignal(signal.content)}\n${signal.content}`,
+          ));
+        const scheduleCheckSignals = [...new Map(
+          [...conflictingInterviewEmails, ...timeMismatchEmails].map((signal) => [signal.id, signal]),
+        ).values()];
+        const hasMatchingCalendarEvent = true;
+        const hasCalendarInviteEvidence =
+          calendarHasConfirmationQualityEvidence(s.content, evt.title, evt.startMs)
+          || /\bOrganizer:\s*[^\n]+/i.test(s.content)
+          || INTERVIEW_PLATFORM_PATTERN.test(s.content);
+        const hasConfirmationEvidence =
+          hasMatchingCalendarEvent
+          || matchingConfirmationEmails.length > 0
+          || hasCalendarInviteEvidence;
+
+        const combinedInterviewText = [
+          evt.title,
+          s.content,
+          ...matchingConfirmationEmails.map((signal) => signal.content),
+          ...scheduleCheckSignals.map((signal) => signal.content),
+        ].join('\n');
+        const roleLabel = extractInterviewRoleLabel(combinedInterviewText) ?? splitInterviewTitle(evt.title).role ?? 'Interview';
+        const orgLabel = extractInterviewOrganizationLabel(combinedInterviewText);
+        const interviewerLabel = extractInterviewContactLabel(matchingConfirmationEmails[0], ent.name);
+        const timeLabel = formatInterviewPrepDateTimePt(evt.startMs);
+        const dateLabel = formatInterviewPrepDatePt(evt.startMs);
+        const locationLabel = extractInterviewLocationLabel(combinedInterviewText);
+        const logisticsParts = ['matching calendar event already exists'];
+        if (matchingConfirmationEmails.length > 0) logisticsParts.push('confirmation email already exists');
+        if (explicitAttendanceRequestSignals.length > 0) logisticsParts.push('source also asked for attendance confirmation');
+        if (locationLabel) logisticsParts.push(`${locationLabel} details are already named in the source`);
+        else if (/\bOrganizer:\s*[^\n]+/i.test(s.content)) logisticsParts.push('organizer details are already attached to the invite');
+        const logisticsLabel = logisticsParts.join('; ') + '.';
+        const stakes = Math.max(4, entityStakeFromTrust(ent.trust_class));
+        const sourceSignals = [
+          buildInterviewSourceSignal(s),
+          ...matchingConfirmationEmails.map(buildInterviewSourceSignal),
+          ...scheduleCheckSignals
+            .filter((signal) => !matchingEmailIds.has(signal.id))
+            .map(buildInterviewSourceSignal),
+        ];
+
+        if (scheduleCheckSignals.length > 0) {
+          const confirmationSubjects = scheduleCheckSignals.map((signal) => {
+            const subject = extractSubjectFromSignal(signal.content);
+            return subject || summarizeInterviewSignal(signal);
+          });
+          const delta: DeltaMetric = {
+            baseline: 'single interview date/time with one consistent confirmation trail',
+            current: 'calendar interview row now has conflicting confirmation artifacts',
+            delta_pct: 100,
+            timeframe: `${daysUntil} day(s) until interview`,
+            entity: ent.name,
+          };
+          const trigger: TriggerMetadata = {
+            baseline_state: `Interview confirmation should resolve to one verified schedule for ${roleLabel}`,
+            current_state: `Calendar interview in ${daysUntil} day(s) now competes with conflicting interview confirmation artifacts`,
+            delta: 'calendar/event confirmation mismatch → verify schedule internally before replying',
+            timeframe: `${daysUntil} day(s) until interview`,
+            outcome_class: 'job',
+            why_now:
+              'Conflicting interview evidence makes an employer-facing confirmation risky because it can repeat the wrong time, invite, or owner.',
+          };
+          results.push({
+            id: `discrepancy_interview_check_${ent.id}_${s.id}`.replace(/\W/g, '_'),
+            class: 'preparation_gap',
+            title: `Interview Schedule Check — ${roleLabel} — ${dateLabel}`,
+            content: buildInterviewScheduleCheckContent({
+              roleLabel,
+              timeLabel,
+              calendarTitle: evt.title,
+              confirmationSubjects,
+              logisticsLabel,
+            }),
+            stakes,
+            urgency: meetingPrepUrgency(daysUntil),
+            suggestedActionType: 'write_document',
+            discrepancyPreferredAction: 'write_document',
+            evidence: JSON.stringify({
+              ...delta,
+              matching_confirmation_count: matchingConfirmationEmails.length,
+              conflicting_confirmation_count: conflictingInterviewEmails.length,
+              time_mismatch_confirmation_count: timeMismatchEmails.length,
+              explicit_confirmation_request_count: explicitAttendanceRequestSignals.length,
+            }),
+            sourceSignals,
+            matchedGoal: null,
+            entityName: ent.name,
+            trigger,
+            scoringHints: {
+              calendarStartMs: evt.startMs,
+              coldEntityMeetingBoost: coldMeeting,
+            },
+          });
+          continue;
+        }
+
+        if (hasConfirmationEvidence) {
+          if (daysUntil <= 2) {
+            const focusNotes = collectInterviewFocusPointLines(combinedInterviewText);
+            const talkingPoints = buildInterviewTalkingPoints({
+              focusNotes,
+              roleLabel,
+              orgLabel,
+            });
+            const delta: DeltaMetric = {
+              baseline: 'outbound confirmation only when attendance is explicitly requested and unconfirmed',
+              current: 'calendar interview already has confirmation-quality evidence',
+              delta_pct: 100,
+              timeframe: `${daysUntil} day(s) until interview`,
+              entity: ent.name,
+            };
+            const trigger: TriggerMetadata = {
+              baseline_state: 'Interview confirmation path is only valid when no confirmation evidence exists',
+              current_state: `Interview in ${daysUntil} day(s) for ${roleLabel} is already confirmed by calendar or source mail`,
+              delta: 'confirmed interview → private prep artifact instead of employer-facing confirmation email',
+              timeframe: `${daysUntil} day(s) until interview`,
+              outcome_class: 'job',
+              why_now:
+                'A confirmed interview inside the next two days is better served by a private prep brief than an employer-facing confirmation note that can misstate time or create noise.',
+            };
+            results.push({
+              id: `discrepancy_interview_prep_${ent.id}_${s.id}`.replace(/\W/g, '_'),
+              class: 'preparation_gap',
+              title: `${roleLabel} Interview Prep — ${dateLabel}`,
+              content: buildInterviewPrepContent({
+                roleLabel,
+                interviewerLabel,
+                orgLabel,
+                timeLabel,
+                logisticsLabel,
+                talkingPoints,
+                questions: buildInterviewQuestions(roleLabel),
+              }),
+              stakes,
+              urgency: meetingPrepUrgency(daysUntil),
+              suggestedActionType: 'write_document',
+              discrepancyPreferredAction: 'write_document',
+              evidence: JSON.stringify({
+                ...delta,
+                matching_confirmation_count: matchingConfirmationEmails.length,
+                matching_calendar_event: true,
+                explicit_confirmation_request_count: explicitAttendanceRequestSignals.length,
+              }),
+              sourceSignals,
+              matchedGoal: null,
+              entityName: ent.name,
+              trigger,
+              scoringHints: {
+                calendarStartMs: evt.startMs,
+                coldEntityMeetingBoost: coldMeeting,
+              },
+            });
+          }
+          continue;
+        }
+      }
+
       if (openTh && daysUntil <= 7) {
         const delta: DeltaMetric = {
           baseline: `Thread: ${openTh.subject}`,
