@@ -226,8 +226,8 @@ Required production proof: Trigger one real interview-class production run, open
 Done means: The real artifact is demoable and money-moving without manual rewrite.
 Do-not-count: Structural validity alone, pretty formatting alone, or “better than before” language by itself.
 Status: OPEN
-Last evidence: 2026-04-24 — paid run still hit `generic_prep_trash` / `prepare_examples_handoff`; `CURRENT_STATE.md` still marks interview write_document quality as broken.
-Next blocker: Tighten the prompt/model output enough that the first persisted interview document clears validators and reads like finished work.
+Last evidence: 2026-04-28 — pushed `7f60386` with a narrower interview role-fit answer packet prompt plus focused fallback assertions; local focused tests, lint, and build passed; production build advanced to `7f60386`; the single approved paid production run hit Anthropic API usage limit during signal processing (`You have reached your specified API usage limits. You will regain access on 2026-05-01 at 00:00 UTC.`, request `req_011CaWazgZaCWLeeQciNyFhP`) and reused older pending action `65bf6017-0351-44fa-a6a2-6caf04092667`, so no fresh BL-005 artifact was generated or quality-proven.
+Next blocker: Wait for Anthropic quota/access reset, then run one fresh interview-class paid production proof and inspect the resulting artifact in-product before closing BL-005.
 
 ### BL-006
 ID: BL-006

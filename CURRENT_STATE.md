@@ -24,7 +24,7 @@
 ## B. WHAT IS BROKEN (REAL)
 
 - **Repeated-directive health gate** — `npm run health` can FAIL on “Repeated directive” when the same directive shape persists multiple times in 24h (monitor after daily-generate cycles).
-- **Interview write_document quality vs bar** — Native interview-class documents can persist while still reading like prep homework (checklists, STAR prompts) or containing small typos; 2026-04-24 added validator-aligned tripwires to the hydrated interview prompt to cut auto-fail patterns; still needs paid rerun proof.
+- **Interview write_document quality vs bar** — Native interview-class documents can persist while still reading like prep homework (checklists, STAR prompts) or containing small typos. 2026-04-28 shipped `7f60386`, tightening the hydrated interview document into a role-fit answer packet with focused test coverage, but the approved production proof hit Anthropic quota during signal processing (`req_011CaWazgZaCWLeeQciNyFhP`; reset 2026-05-01 00:00 UTC) and reused an older pending action, so BL-005 still needs one fresh paid artifact proof.
 - **Convergence depends on name overlap** — `extractConvergence` requires the entity name to appear in signal bodies; calendar titles without names may under-match.
 - **Confidence scores remain variable** — richer candidates help, but thin relationship context still pulls confidence down.
 
@@ -34,7 +34,7 @@
 - **CI unit harness** — `usefulness-gate` VALID1 mocks scorer + Anthropic in the same scenario (fixed 2026-04-22) so the execution-proof test does not false-fail on `surface_follow_up_mismatch`.
 - **`settings/run-brief` test mock** — `Promise.all` for dry-run DB reads; `pipeline_runs` mock must distinguish `findRecentPipelineDryRun` (filters `outcome = pipeline_dry_run_returned`) from `findLatestPipelineRun` (2026-04-23).
 - **Verify in production** — brain-receipt + one nightly-ops cycle; confirm scorer diagnostics list non-email discrepancy classes and larger pre-rank pool.
-- **Interview brief quality** — 2026-04-23 paid `run-paid-generate-once` run: model still produced prep-style / clothing tips; **validators blocked persistence** (`generic_prep_trash`, `prepare_examples_handoff`, etc.); next seam is **prompt/model** to reduce garbage-in, not just gates.
+- **Interview brief quality** — 2026-04-28 prompt/model seam is shipped locally and deployed at `7f60386`, but production proof is blocked by Anthropic API quota until 2026-05-01 00:00 UTC. Do not close BL-005 until a fresh paid interview-class run produces a new `pending_approval` `write_document` that opens in-product and reads like finished work.
 - **Tune extraction thresholds** — burst/idle windows for stale documents, follow-up day counts, intent phrase regex if false positives appear.
 
 ## D. CONSTRAINTS
