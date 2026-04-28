@@ -3,7 +3,7 @@
 Last refreshed: 2026-04-28
 
 ## Current top item
-BL-005 — Rung 5 — Interview write_document artifacts still miss the demoable quality bar.
+BL-006 — Rung 6 — No real connected non-owner account exists to prove repeatable multi-user runs.
 
 ## How to use this file
 - Every Codex run opens this file first.
@@ -225,7 +225,7 @@ Required local proof: `npx vitest run lib/briefing/__tests__/artifact-decision-e
 Required production proof: Trigger one real interview-class production run, open the resulting artifact in-product, and verify it reads like finished work instead of checklist/STAR/dress-code prep trash.
 Done means: The real artifact is demoable and money-moving without manual rewrite.
 Do-not-count: Structural validity alone, pretty formatting alone, or “better than before” language by itself.
-Status: OPEN
+Status: WAITING_EXTERNAL_QUOTA
 Last evidence: 2026-04-28 — pushed `7f60386` with a narrower interview role-fit answer packet prompt plus focused fallback assertions; local focused tests, lint, and build passed; production build advanced to `7f60386`; the single approved paid production run hit Anthropic API usage limit during signal processing (`You have reached your specified API usage limits. You will regain access on 2026-05-01 at 00:00 UTC.`, request `req_011CaWazgZaCWLeeQciNyFhP`) and reused older pending action `65bf6017-0351-44fa-a6a2-6caf04092667`, so no fresh BL-005 artifact was generated or quality-proven.
 Next blocker: Wait for Anthropic quota/access reset, then run one fresh interview-class paid production proof and inspect the resulting artifact in-product before closing BL-005.
 
