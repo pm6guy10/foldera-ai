@@ -210,6 +210,25 @@ Status: CLOSED
 Last evidence: 2026-04-28 — local dashboard proof passed (`npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "write_document journey"`, `npx playwright test tests/dashboard/live-artifact-pixel-lock.spec.ts`, `npm run lint`, `npm run build`). Production proof used the documented `npm run proof:golden-artifact` gate to insert owner row `65bf6017-0351-44fa-a6a2-6caf04092667` as `pending_approval` `write_document`; live `https://foldera.ai/dashboard` loaded through `tests/production/auth-state.json`, `/api/conviction/latest` returned that same row, and the real dashboard surface visibly rendered the title/body plus `Save document` and `Skip and adjust` controls before any action. Screenshot: `output/playwright/bl004-production-dashboard-pending-write-document.png`. The proof row was then cleared through the normal dashboard Skip action; production DB now shows status `skipped`.
 Next blocker: BL-005.
 
+### BL-014
+ID: BL-014
+Rung: 5
+Title: Stale/pre-quality interview write_document artifacts can still be emailed by daily-send
+User-facing path: Scheduled daily brief email includes one finished artifact, not stale interview prep homework.
+Starting route or trigger: Scheduled `cron_daily_brief` send stage (`runDailySend` / `POST /api/cron/daily-send`) selecting a pending interview `write_document`.
+Ending success state: Scheduled daily-send suppresses interview `write_document` artifacts that fail the current finished-work quality bar before Resend, records the blocked result on the action row, and leaves valid artifact sends idempotent.
+Problem: On 2026-04-28, Foldera emailed `ESB Technician Interview Prep — Recruitment 2026-02344`, a prep-sheet artifact with Q1/Q2/Q3/Q4 prompts, checklist/coaching framing, and no finished role-fit answer packet.
+Protected contracts: Do not run paid generation, do not close BL-005, preserve the pending row for observability, do not delete production rows, do not stamp `daily_brief_sent_at` for suppressed artifacts, and preserve valid-send exactly-once behavior.
+Allowed files: `lib/cron/daily-brief-send.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `lib/cron/__tests__/manual-send.test.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`
+Forbidden files: `app/dashboard/**`, `app/api/auth/**`, `app/api/stripe/**`, `app/(marketing)/**`, `package.json`, lockfiles, migrations, visual/styling files, broad generator refactors, paid LLM/provider code.
+Required local proof: `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts`; `npm run lint`; `npm run build`; `npm run health`; `npm run preflight`
+Required production proof: Verify production deploy advanced to the fix commit and production health reports that revision. Do not force a garbage email or run paid generation to prove suppression.
+Done means: Scheduled daily-send suppresses interview `write_document` artifacts that fail the current finished-work quality bar. The ESB Technician prep-sheet class is regression-tested and cannot email again.
+Do-not-count: Prompt-only quality fixes, generator proof blocked by quota, deleting rows manually, local-only unpushed code, or sending a garbage email to prove the guard.
+Status: CLOSED
+Last evidence: 2026-04-28 — `runDailySend` now applies a deterministic scheduled-send guard for interview `write_document` artifacts. The exact ESB Technician prep-sheet class is regression-tested: scheduled daily-send returns `no_send_blocker_persisted`, records `daily_send_suppression.code = interview_write_document_quality_blocked` in `execution_result`, does not call Resend, and does not stamp `daily_brief_sent_at` or `resend_id`. Local focused proof passed with `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts` (`35` tests).
+Next blocker: Deploy must advance to this commit; production suppression proof is deploy-health revision plus local regression only because paid generation and garbage-email proof are forbidden.
+
 ### BL-005
 ID: BL-005
 Rung: 5

@@ -1808,6 +1808,98 @@ Decide by 2026-04-24.`,
     expect(serialized).not.toContain('API usage limits');
   });
 
+  it('suppresses stale interview prep write_document artifacts during scheduled daily-send', async () => {
+    vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
+    mockSupabase.actionRows = [
+      {
+        id: 'esb-interview-prep-1',
+        user_id: USER_ID,
+        status: 'pending_approval',
+        action_type: 'write_document',
+        directive_text: 'ESB Technician Interview Prep — Recruitment 2026-02344',
+        reason: 'Prepare for the interview questions attached.',
+        confidence: 88,
+        generated_at: new Date().toISOString(),
+        execution_result: {
+          artifact: {
+            type: 'document',
+            document_purpose: 'brief',
+            target_reader: 'private notes',
+            title: 'ESB Technician Interview Prep — Recruitment 2026-02344',
+            content: [
+              'SOURCE Email: Darlene Craig',
+              'The interview questions attached are for the ES Benefits Technician role.',
+              '',
+              'ESB TECHNICIAN INTERVIEW PREP',
+              '',
+              'Q1: UI KNOWLEDGE AND FIT',
+              '- Prepare examples about unemployment insurance systems.',
+              '',
+              'Q2: 85% INCOMING CALLS',
+              '- Talk about pressure handling and customer service.',
+              '',
+              'Q3: VIRTUAL COLLABORATION',
+              '- Ask them: what tools does the team use?',
+              '',
+              'Q4: TECH CONFIDENCE',
+              '- Use STAR as a framework for each answer.',
+              '',
+              'THREE THINGS TO KEEP COMING BACK TO',
+              '- Action items: review the website, prep checklist, dress code, business casual, what to wear.',
+            ].join('\n'),
+          },
+        },
+      },
+    ];
+
+    const result = await runDailySend();
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'no_send_blocker_persisted',
+        detail: 'Interview write_document suppressed at send time because it failed the finished-work email bar.',
+        success: true,
+        meta: expect.objectContaining({
+          action_id: 'esb-interview-prep-1',
+          interview_write_document_suppressed: true,
+          suppression_code: 'interview_write_document_quality_blocked',
+          daily_email_idempotency_key: expect.stringContaining(`daily-brief:${USER_ID}:`),
+          suppression_reasons: expect.arrayContaining([
+            expect.stringContaining('blocked_marker:'),
+            'missing_finished_interview_document_purpose',
+            'missing_usable_first_person_answer',
+          ]),
+        }),
+      }),
+    ]);
+    expect(sendDailyDirective).not.toHaveBeenCalled();
+    expect(mockSupabase.updatedActions).toEqual([
+      expect.objectContaining({
+        id: 'esb-interview-prep-1',
+        payload: expect.objectContaining({
+          execution_result: expect.objectContaining({
+            artifact: expect.objectContaining({
+              title: 'ESB Technician Interview Prep — Recruitment 2026-02344',
+            }),
+            daily_send_suppression: expect.objectContaining({
+              code: 'interview_write_document_quality_blocked',
+              reasons: expect.arrayContaining([
+                expect.stringContaining('blocked_marker:'),
+                'missing_finished_interview_document_purpose',
+                'missing_usable_first_person_answer',
+              ]),
+            }),
+          }),
+        }),
+      }),
+    ]);
+    const updatedExecutionResult = mockSupabase.updatedActions[0]?.payload as
+      | { execution_result?: Record<string, unknown> }
+      | undefined;
+    expect(updatedExecutionResult?.execution_result?.daily_brief_sent_at).toBeUndefined();
+    expect(updatedExecutionResult?.execution_result?.resend_id).toBeUndefined();
+  });
+
   it('sends generic persisted no-send blocker once for an explicitly scoped manual run', async () => {
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
     vi.mocked(sendDailyDirective).mockResolvedValue({ data: { id: 'resend-no-send' } } as never);

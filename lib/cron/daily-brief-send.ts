@@ -94,6 +94,94 @@ function hasRealDeliverableArtifact(
   return false;
 }
 
+const INTERVIEW_BAD_ARTIFACT_PATTERNS = [
+  /\binterview prep\b/i,
+  /\bQ1:/i,
+  /\bQ2:/i,
+  /\bQ3:/i,
+  /\bQ4:/i,
+  /THREE THINGS TO KEEP COMING BACK TO/i,
+  /\bAsk them:/i,
+  /generic bullet-answer prep format/i,
+  /prepare examples/i,
+  /prep checklist/i,
+  /\bSTAR\b(?:\s+as\s+a\s+framework)?/i,
+  /\baction items\b/i,
+  /dress code/i,
+  /business casual/i,
+  /what to wear/i,
+  /review the website/i,
+  /generic coaching/i,
+  /checklist framing/i,
+];
+
+function isLikelyInterviewDocumentText(text: string): boolean {
+  return /\b(interview|recruitment|hiring|role-fit|phone screen|technician interview|answer packet)\b/i.test(text);
+}
+
+function hasFinishedInterviewDocumentPurpose(text: string): boolean {
+  return /\b(role-fit answer|hiring fit answer packet|role fit answer|interview answer packet|finished answer packet)\b/i.test(text);
+}
+
+function hasUsableFirstPersonAnswer(text: string): boolean {
+  return /First-person answer:\s*I\b[\s\S]{80,}/i.test(text) ||
+    /\bI (?:am|have|can|would|bring|built|led|handled|solve|support)\b[\s\S]{120,}/i.test(text);
+}
+
+function hasSourceGrounding(text: string): boolean {
+  return /\bSOURCE\b/i.test(text) ||
+    /\bSource Email:/i.test(text) ||
+    /\bContact \/ thread:/i.test(text) ||
+    /\bsource\/context\b/i.test(text) ||
+    /\bevidence\b/i.test(text);
+}
+
+function getInterviewDocumentSuppressionReasons(
+  actionType: string | null | undefined,
+  artifact: ReturnType<typeof extractArtifact>,
+  directiveText: string | null | undefined,
+  reason: string | null | undefined,
+): string[] {
+  const normalizedAction = typeof actionType === 'string' ? actionType.trim().toLowerCase() : '';
+  if (normalizedAction !== 'write_document' || !artifact || artifact.type !== 'document') {
+    return [];
+  }
+
+  const title = typeof artifact.title === 'string' ? artifact.title : '';
+  const content = typeof artifact.content === 'string' ? artifact.content : '';
+  const documentPurpose =
+    'document_purpose' in artifact && typeof artifact.document_purpose === 'string'
+      ? artifact.document_purpose
+      : '';
+  const text = [
+    title,
+    documentPurpose,
+    content,
+    typeof directiveText === 'string' ? directiveText : '',
+    typeof reason === 'string' ? reason : '',
+  ].join('\n');
+
+  if (!isLikelyInterviewDocumentText(text)) {
+    return [];
+  }
+
+  const reasons = INTERVIEW_BAD_ARTIFACT_PATTERNS
+    .filter((pattern) => pattern.test(text))
+    .map((pattern) => `blocked_marker:${pattern.source}`);
+
+  if (!hasFinishedInterviewDocumentPurpose(text)) {
+    reasons.push('missing_finished_interview_document_purpose');
+  }
+  if (!hasUsableFirstPersonAnswer(text)) {
+    reasons.push('missing_usable_first_person_answer');
+  }
+  if (!hasSourceGrounding(text)) {
+    reasons.push('missing_source_context_grounding');
+  }
+
+  return reasons;
+}
+
 function shouldAllowExplicitNoSendEmail(options: DailyBriefSignalWindowOptions): boolean {
   return Boolean(options.userIds?.length) && options.briefInvocationSource !== 'cron_daily_brief';
 }
@@ -424,6 +512,56 @@ export async function runDailySend(
             action_id: action.id,
             daily_email_idempotency_key: dailyEmailIdempotencyKey,
             generic_no_send_suppressed: true,
+          },
+          success: true,
+          userId,
+        });
+        continue;
+      }
+      const interviewSuppressionReasons = !shouldAllowExplicitNoSendEmail(options)
+        ? getInterviewDocumentSuppressionReasons(
+            action.action_type as string | null | undefined,
+            actionArtifact,
+            action.directive_text as string | null | undefined,
+            action.reason as string | null | undefined,
+          )
+        : [];
+      if (interviewSuppressionReasons.length > 0) {
+        const suppression = {
+          code: 'interview_write_document_quality_blocked',
+          suppressed_at: new Date().toISOString(),
+          reasons: interviewSuppressionReasons,
+          daily_email_idempotency_key: dailyEmailIdempotencyKey,
+        };
+        const { error: updateError } = await supabase
+          .from('tkg_actions')
+          .update({
+            execution_result: {
+              ...executionResult,
+              daily_send_suppression: suppression,
+            },
+          })
+          .eq('id', action.id);
+
+        if (updateError) {
+          results.push({
+            code: 'status_update_failed',
+            detail: updateError.message,
+            success: false,
+            userId,
+          });
+          continue;
+        }
+
+        results.push({
+          code: 'no_send_blocker_persisted',
+          detail: 'Interview write_document suppressed at send time because it failed the finished-work email bar.',
+          meta: {
+            action_id: action.id,
+            daily_email_idempotency_key: dailyEmailIdempotencyKey,
+            interview_write_document_suppressed: true,
+            suppression_code: suppression.code,
+            suppression_reasons: interviewSuppressionReasons,
           },
           success: true,
           userId,
