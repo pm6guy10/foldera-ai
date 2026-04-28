@@ -32,6 +32,8 @@ import {
 } from './daily-brief-generate';
 import { listConnectedUserIds } from '@/lib/auth/user-tokens';
 import { mergePipelineRunDelivery } from '@/lib/observability/pipeline-run';
+import { evaluateArtifactQualityGate } from '@/lib/briefing/artifact-quality-gate';
+import type { ActionType, EvidenceItem } from '@/lib/briefing/types';
 
 function buildDailyEmailIdempotencyKey(userId: string, ptDayIso: string): string {
   return `daily-brief:${userId}:${ptDayIso.slice(0, 10)}`;
@@ -259,7 +261,7 @@ export async function runDailySend(
 
       const { data: actions, error: actionsError } = await supabase
         .from('tkg_actions')
-        .select('id, action_type, directive_text, reason, confidence, execution_result, generated_at')
+        .select('id, action_type, directive_text, reason, confidence, evidence, execution_result, generated_at')
         .eq('user_id', userId)
         .eq('status', 'pending_approval')
         .gte('generated_at', todayStart)
@@ -567,6 +569,78 @@ export async function runDailySend(
           userId,
         });
         continue;
+      }
+      if (!shouldAllowExplicitNoSendEmail(options) && actionArtifact) {
+        const artifactQualityGate = evaluateArtifactQualityGate({
+          directive: {
+            action_type: (action.action_type as ActionType | null) ?? 'do_nothing',
+            directive: typeof action.directive_text === 'string' ? action.directive_text : '',
+            reason: typeof action.reason === 'string' ? action.reason : '',
+            evidence: Array.isArray((action as { evidence?: unknown }).evidence)
+              ? ((action as { evidence?: unknown }).evidence as EvidenceItem[])
+              : [],
+          },
+          artifact: actionArtifact,
+        });
+
+        if (!artifactQualityGate.passes) {
+          const suppression = {
+            code: 'artifact_quality_gate_blocked',
+            suppressed_at: new Date().toISOString(),
+            category: artifactQualityGate.category,
+            reasons: artifactQualityGate.reasons,
+            daily_email_idempotency_key: dailyEmailIdempotencyKey,
+          };
+          const { error: updateError } = await supabase
+            .from('tkg_actions')
+            .update({
+              execution_result: {
+                ...executionResult,
+                daily_send_suppression: suppression,
+              },
+            })
+            .eq('id', action.id);
+
+          if (updateError) {
+            results.push({
+              code: 'status_update_failed',
+              detail: updateError.message,
+              success: false,
+              userId,
+            });
+            continue;
+          }
+
+          logStructuredEvent({
+            event: 'artifact_quality_gate_blocked',
+            level: 'warn',
+            userId,
+            artifactType: artifactTypeForAction(action.action_type as string | null | undefined),
+            generationStatus: 'send_suppressed',
+            details: {
+              scope: 'daily-send',
+              action_id: action.id,
+              category: artifactQualityGate.category,
+              reasons: artifactQualityGate.reasons,
+            },
+          });
+
+          results.push({
+            code: 'no_send_blocker_persisted',
+            detail: 'Persisted artifact suppressed at send time because it failed the artifact quality gate.',
+            meta: {
+              action_id: action.id,
+              daily_email_idempotency_key: dailyEmailIdempotencyKey,
+              artifact_quality_gate_suppressed: true,
+              suppression_code: suppression.code,
+              suppression_reasons: artifactQualityGate.reasons,
+              suppression_category: artifactQualityGate.category,
+            },
+            success: true,
+            userId,
+          });
+          continue;
+        }
       }
       const sentAt = extractSentAt(executionResult);
       if (sentAt) {

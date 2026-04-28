@@ -78,6 +78,11 @@ import { looksLikeDiscrepancyTriageOrChoreList } from '@/lib/briefing/discrepanc
 import {
   directiveLooksLikeScheduleConflict,
 } from '@/lib/briefing/schedule-conflict-guards';
+import {
+  evaluateArtifactQualityFailSafe,
+  evaluateArtifactQualityGate,
+  summarizeArtifactQualityRun,
+} from '@/lib/briefing/artifact-quality-gate';
 import { effectiveDiscrepancyClassForGates } from '@/lib/briefing/effective-discrepancy-class';
 import { isAutomatedRoutingRecipient } from '@/lib/email/automated-routing-recipient';
 import { insertDirectiveMlSnapshot } from '@/lib/ml/directive-ml-snapshot';
@@ -2851,6 +2856,82 @@ export async function runDailyGenerate(
           meta: buildNoSendResultMeta(cleanupMeta, savedNoSend, {
             candidate_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? 0,
             top_candidate_count: directive.generationLog?.candidateDiscovery?.topCandidates?.length ?? 0,
+            ...extractThresholdValues(directive),
+          }),
+          success: true,
+          userId,
+        });
+        continue;
+      }
+
+      const artifactQualityGate = evaluateArtifactQualityGate({
+        directive,
+        artifact,
+      });
+      if (!artifactQualityGate.passes) {
+        const qualitySummary = summarizeArtifactQualityRun([artifactQualityGate]);
+        const failSafe = evaluateArtifactQualityFailSafe({
+          current: qualitySummary,
+          deliveredLast24h: 1,
+        });
+        const blockDetail = `Artifact quality gate blocked: ${artifactQualityGate.reasons.join('; ')}`;
+        const qualityGateReceipt = buildBlockedOutcomeReceipt(
+          directive,
+          artifact,
+          { pass: false, blocked_reasons: [] },
+          { persistenceIssues: artifactQualityGate.reasons.map((reason) => `artifact_quality:${reason}`) },
+        );
+        logStructuredEvent({
+          event: 'artifact_quality_gate_blocked',
+          level: 'warn',
+          userId,
+          artifactType: artifactTypeForAction(directive.action_type),
+          generationStatus: 'artifact_quality_gate_blocked',
+          details: {
+            scope: 'daily-generate',
+            category: artifactQualityGate.category,
+            reasons: artifactQualityGate.reasons,
+            reject_rate: failSafe.rejectRate,
+            fail_safe_status: failSafe.status,
+            fail_safe_reason: failSafe.reason,
+          },
+        });
+        const savedNoSend = await persistNoSendOutcome(
+          supabase,
+          userId,
+          directive,
+          blockDetail,
+          'validation',
+          {
+            outcome_receipt: qualityGateReceipt,
+            artifact_quality_receipt: qualityGateReceipt.artifact_quality_receipt,
+            artifact_quality_gate: {
+              category: artifactQualityGate.category,
+              reasons: artifactQualityGate.reasons,
+              fail_safe_status: failSafe.status,
+              fail_safe_reason: failSafe.reason,
+              reject_rate: failSafe.rejectRate,
+            },
+          },
+        );
+        if (!savedNoSend) {
+          results.push({
+            code: 'directive_persist_failed',
+            detail: 'Failed to persist artifact-quality no-send outcome.',
+            meta: cleanupMeta,
+            success: false,
+            userId,
+          });
+          continue;
+        }
+        results.push({
+          code: 'no_send_persisted',
+          detail: blockDetail,
+          meta: buildNoSendResultMeta(cleanupMeta, savedNoSend, {
+            artifact_quality_gate_blocked_reasons: artifactQualityGate.reasons,
+            artifact_quality_gate_category: artifactQualityGate.category,
+            artifact_quality_fail_safe_status: failSafe.status,
+            outcome_receipt: qualityGateReceipt,
             ...extractThresholdValues(directive),
           }),
           success: true,
