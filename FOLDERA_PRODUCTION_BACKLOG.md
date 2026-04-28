@@ -3,7 +3,7 @@
 Last refreshed: 2026-04-27
 
 ## Current top item
-BL-009 — Rung 2 — Owner paid run still collapses the selected winner into internal no-send blocker sludge.
+BL-003 — Rung 2 — Native interview write_document still does not reliably persist as the real winner.
 
 ## How to use this file
 - Every Codex run opens this file first.
@@ -111,9 +111,9 @@ Required local proof: `npx vitest run lib/briefing/__tests__/generator-runtime.t
 Required production proof: Trigger one real authenticated `POST https://foldera.ai/api/settings/run-brief?force=true&use_llm=true`, then verify the latest action is not `do_nothing` and does not expose internal blocker strings.
 Done means: The same live owner paid path produces one usable artifact or a clean user-facing wait-rationale instead of internal validation sludge.
 Do-not-count: HTTP 200 alone, `pipeline_runs` / `api_usage` alone, internal logs alone, or docs/screenshots/refactors/unrelated tests.
-Status: OPEN
-Last evidence: 2026-04-27 — pushed `0a424aa`; live build `0a424aa`; authenticated owner paid run on `https://www.foldera.ai/dashboard/system` returned `200` with `generate.results[0].code = no_send_persisted` and clean detail `Nothing cleared the bar today after evaluating 20 candidates.`. Fresh action `3e293bb2-a1fd-4130-b83d-08e8a8f569f0` still persisted `do_nothing` / `wait_rationale`, but public `directive_text`, `reason`, returned `detail`, and wait-rationale artifact no longer expose internal blocker strings.
-Next blocker: Repair the live directive-generation validity collapse on the top paid-run candidates so the same owner path persists one usable artifact instead of sanitized `do_nothing`.
+Status: CLOSED
+Last evidence: 2026-04-27 — pushed `237a122`; Vercel production health flipped to build `237a122`; authenticated owner `Generate with AI` on `https://www.foldera.ai/dashboard/system` returned `200` with `generate.results[0].code = pending_approval_persisted`, `send.results[0].code = email_sent`, and fresh action `b872f567-51f2-4c54-a500-7d0813e9159a`. The latest persisted row is `pending_approval` `write_document`, not `do_nothing`, and its user-facing `directive_text` / `reason` contain no internal validator strings.
+Next blocker: BL-003.
 
 ### BL-003
 ID: BL-003
