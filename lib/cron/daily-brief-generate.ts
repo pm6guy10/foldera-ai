@@ -56,6 +56,8 @@ import { getDeployRevision } from '@/lib/config/deploy-revision';
 import {
   BRIEF_FULL_CYCLE_COOLDOWN_MS,
   fetchBriefCycleLastAtMap,
+  hasCompletedScheduledBriefCycleForPtDay,
+  isScheduledDailyBriefInvocation,
   recordBriefCycleCheckpoint,
 } from '@/lib/cron/brief-cycle-gate';
 import type {
@@ -2194,31 +2196,50 @@ export async function runDailyGenerate(
         if (Number.isFinite(lastMs)) {
           const elapsed = Date.now() - lastMs;
           if (elapsed >= 0 && elapsed < BRIEF_FULL_CYCLE_COOLDOWN_MS) {
-            const nextAt = new Date(lastMs + BRIEF_FULL_CYCLE_COOLDOWN_MS).toISOString();
-            logStructuredEvent({
-              event: 'brief_generation_cycle_cooldown',
-              userId,
-              artifactType: null,
-              generationStatus: 'gate_blocked',
-              details: {
-                scope: 'pre_signal_processing',
-                last_cycle_at: lastIso,
-                next_eligible_at: nextAt,
-                brief_invocation_source: runOpts.briefInvocationSource ?? null,
-              },
-            });
-            results.push({
-              code: 'generation_cycle_cooldown',
-              detail: `Full brief cycle cooldown; next eligible at ${nextAt}`,
-              meta: {
-                last_cycle_at: lastIso,
-                next_eligible_at: nextAt,
-                cooldown_ms_remaining: BRIEF_FULL_CYCLE_COOLDOWN_MS - elapsed,
-              },
-              success: true,
-              userId,
-            });
-            continue;
+            const bypassScheduledCooldown =
+              isScheduledDailyBriefInvocation(runOpts.briefInvocationSource) &&
+              !(await hasCompletedScheduledBriefCycleForPtDay(supabase, userId, todayStart));
+            if (bypassScheduledCooldown) {
+              logStructuredEvent({
+                event: 'brief_generation_cycle_cooldown_bypassed',
+                userId,
+                artifactType: null,
+                generationStatus: 'gate_passed',
+                details: {
+                  scope: 'pre_signal_processing',
+                  last_cycle_at: lastIso,
+                  brief_invocation_source: runOpts.briefInvocationSource ?? null,
+                  bypass_reason: 'no_same_pt_day_scheduled_run',
+                  pt_day_start: todayStart,
+                },
+              });
+            } else {
+              const nextAt = new Date(lastMs + BRIEF_FULL_CYCLE_COOLDOWN_MS).toISOString();
+              logStructuredEvent({
+                event: 'brief_generation_cycle_cooldown',
+                userId,
+                artifactType: null,
+                generationStatus: 'gate_blocked',
+                details: {
+                  scope: 'pre_signal_processing',
+                  last_cycle_at: lastIso,
+                  next_eligible_at: nextAt,
+                  brief_invocation_source: runOpts.briefInvocationSource ?? null,
+                },
+              });
+              results.push({
+                code: 'generation_cycle_cooldown',
+                detail: `Full brief cycle cooldown; next eligible at ${nextAt}`,
+                meta: {
+                  last_cycle_at: lastIso,
+                  next_eligible_at: nextAt,
+                  cooldown_ms_remaining: BRIEF_FULL_CYCLE_COOLDOWN_MS - elapsed,
+                },
+                success: true,
+                userId,
+              });
+              continue;
+            }
           }
         }
       }

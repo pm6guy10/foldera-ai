@@ -2,6 +2,13 @@ import type { SupabaseClient } from '@/lib/db/client';
 
 /** Minimum time between full per-user generation cycles (signal processing + downstream). */
 export const BRIEF_FULL_CYCLE_COOLDOWN_MS = 20 * 60 * 60 * 1000;
+export const SCHEDULED_DAILY_BRIEF_INVOCATION_SOURCE = 'cron_daily_brief';
+
+export function isScheduledDailyBriefInvocation(
+  invocationSource: string | null | undefined,
+): boolean {
+  return invocationSource === SCHEDULED_DAILY_BRIEF_INVOCATION_SOURCE;
+}
 
 /**
  * PostgREST returns 404 / PGRST205 when the relation is not in the schema cache
@@ -86,4 +93,32 @@ export async function recordBriefCycleCheckpoint(
     }
     throw error;
   }
+}
+
+export async function hasCompletedScheduledBriefCycleForPtDay(
+  supabase: SupabaseClient,
+  userId: string,
+  ptDayStartIso: string,
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('pipeline_runs')
+    .select('id, created_at, completed_at, outcome')
+    .eq('user_id', userId)
+    .eq('phase', 'user_run')
+    .eq('invocation_source', SCHEDULED_DAILY_BRIEF_INVOCATION_SOURCE)
+    .gte('created_at', ptDayStartIso)
+    .limit(10);
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).some((row) => {
+    const completedAt = (row as { completed_at?: string | null }).completed_at;
+    const outcome = (row as { outcome?: string | null }).outcome;
+    return (
+      (typeof completedAt === 'string' && completedAt.trim().length > 0) ||
+      (typeof outcome === 'string' && outcome.trim().length > 0)
+    );
+  });
 }

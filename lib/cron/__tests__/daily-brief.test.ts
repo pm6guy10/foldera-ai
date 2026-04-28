@@ -24,6 +24,7 @@ const mockSupabase = {
   insertedActions: [] as Array<Record<string, unknown>>,
   updatedActions: [] as Array<Record<string, unknown>>,
   briefCycleGateRows: [] as Array<{ user_id: string; last_cycle_at: string }>,
+  pipelineRunRows: [] as Array<Record<string, unknown>>,
 
   auth: {
     admin: {
@@ -106,6 +107,46 @@ const mockSupabase = {
             }
           }
           return Promise.resolve({ error: null });
+        },
+      };
+    }
+
+    if (table === 'pipeline_runs') {
+      return {
+        select() {
+          const state = {
+            filters: {} as Record<string, unknown>,
+            gteFilters: [] as Array<{ field: string; value: string }>,
+          };
+
+          const query = {
+            eq(field: string, value: unknown) {
+              state.filters[field] = value;
+              return query;
+            },
+            gte(field: string, value: string) {
+              state.gteFilters.push({ field, value });
+              return query;
+            },
+            limit(count: number) {
+              let rows = [...self.pipelineRunRows];
+
+              for (const [field, value] of Object.entries(state.filters)) {
+                rows = rows.filter((row) => row[field] === value);
+              }
+
+              for (const { field, value } of state.gteFilters) {
+                rows = rows.filter((row) => {
+                  const fieldValue = row[field];
+                  return typeof fieldValue === 'string' && fieldValue >= value;
+                });
+              }
+
+              return Promise.resolve({ data: rows.slice(0, count), error: null });
+            },
+          };
+
+          return query;
         },
       };
     }
@@ -527,6 +568,7 @@ describe('runDailyGenerate candidate logging', () => {
     mockSupabase.insertedActions = [];
     mockSupabase.updatedActions = [];
     mockSupabase.briefCycleGateRows = [];
+    mockSupabase.pipelineRunRows = [];
     vi.mocked(generateDirective).mockReset();
     vi.mocked(validateDirectiveForPersistence).mockReset();
     vi.mocked(generateArtifact).mockReset();
@@ -651,6 +693,67 @@ describe('runDailyGenerate candidate logging', () => {
       expect.objectContaining({ code: 'pending_approval_persisted', success: true, userId: USER_ID }),
     ]);
     expect(vi.mocked(generateDirective)).toHaveBeenCalled();
+  });
+
+  it('does not let a recent manual settings_run_brief checkpoint block scheduled cron generation', async () => {
+    const recent = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    mockSupabase.briefCycleGateRows = [{ user_id: USER_ID, last_cycle_at: recent }];
+    mockSupabase.pipelineRunRows = [
+      {
+        id: 'manual-user-run-1',
+        user_id: USER_ID,
+        phase: 'user_run',
+        invocation_source: 'settings_run_brief',
+        created_at: recent,
+        completed_at: recent,
+        outcome: 'generation_returned',
+      },
+    ];
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective());
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'email',
+      to: 'holly@example.com',
+      subject: 'Decision needed today: MAS3 reference packet owner by 4 PM PT',
+      body: 'Hi Holly,\n\nCan you confirm by 4 PM PT today whether you can send two MAS3 reference talking points, and name who owns final packet delivery? If we miss this cutoff, the interview packet slips.\n\nThanks,\nBrandon',
+      draft_type: 'email_compose',
+    });
+
+    const result = await runDailyGenerate({
+      userIds: [USER_ID],
+      briefInvocationSource: 'cron_daily_brief',
+    });
+
+    expect(result.results.some((r) => r.code === 'generation_cycle_cooldown')).toBe(false);
+    expect(result.results).toEqual([
+      expect.objectContaining({ code: 'pending_approval_persisted', success: true, userId: USER_ID }),
+    ]);
+    expect(vi.mocked(generateDirective)).toHaveBeenCalled();
+  });
+
+  it('still blocks duplicate scheduled cron generation when a same-day scheduled run already completed', async () => {
+    const recent = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    mockSupabase.briefCycleGateRows = [{ user_id: USER_ID, last_cycle_at: recent }];
+    mockSupabase.pipelineRunRows = [
+      {
+        id: 'scheduled-user-run-1',
+        user_id: USER_ID,
+        phase: 'user_run',
+        invocation_source: 'cron_daily_brief',
+        created_at: recent,
+        completed_at: recent,
+        outcome: 'pending_approval_persisted',
+      },
+    ];
+
+    const result = await runDailyGenerate({
+      userIds: [USER_ID],
+      briefInvocationSource: 'cron_daily_brief',
+    });
+
+    expect(result.results).toEqual([
+      expect.objectContaining({ code: 'generation_cycle_cooldown', success: true, userId: USER_ID }),
+    ]);
+    expect(vi.mocked(generateDirective)).not.toHaveBeenCalled();
   });
 
   it('persists top candidate discovery on successful directive generation', async () => {
