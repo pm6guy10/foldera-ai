@@ -19,12 +19,12 @@
 - **Email send idempotency** — `daily-brief-send.ts` checks both `daily_brief_sent_at` (existing guard) and `resend_id` (new guard) before calling Resend. After a successful send, `resend_id` is stored in `execution_result` alongside `daily_brief_sent_at`. Cron double-fire cannot produce duplicate sends.
 - **Hallucination guard in send_message prompt** — Both send_message prompt locations in `generator.ts` now include a `GROUNDING RULE` prohibiting fabricated professional relationships, shared projects, organizational roles, or budget contexts that don't appear in signal data.
 - **Artifact generator resilience + class-aware discrepancy transform** — `loadRelationshipContext()` failures no longer throw out of `generateArtifact()` before the Haiku transform try/catch (they fall back to “No relationship data available.”). `discrepancyClass` is copied onto `ConvictionDirective` for discrepancy winners; `detectDiscrepancyFlavor()` uses class first so `schedule_conflict` never picks the “person” outreach template just because `reason` mentions “reconnect”. `evaluateBottomGate()` has a **schedule_conflict + write_document** path: numbered calendar-resolution steps + ISO date satisfy concrete-move / pressure without requiring an external named recipient.
+- **Dashboard pending write_document visibility is production-proven** — 2026-04-28 BL-004 captured a live `/dashboard` screenshot against known production `pending_approval` write_document row `65bf6017-0351-44fa-a6a2-6caf04092667`; `/api/conviction/latest` returned the same row, and the dashboard rendered the document title/body plus Save/Skip controls before the proof row was skipped through the normal product action.
 
 ## B. WHAT IS BROKEN (REAL)
 
 - **Repeated-directive health gate** — `npm run health` can FAIL on “Repeated directive” when the same directive shape persists multiple times in 24h (monitor after daily-generate cycles).
 - **Interview write_document quality vs bar** — Native interview-class documents can persist while still reading like prep homework (checklists, STAR prompts) or containing small typos; 2026-04-24 added validator-aligned tripwires to the hydrated interview prompt to cut auto-fail patterns; still needs paid rerun proof.
-- **Dashboard proof gap** — Conviction/latest JSON matches dashboard data, but capturing a **pending** `write_document` on `/dashboard` still requires a timed screenshot or Playwright step before approve/skip.
 - **Convergence depends on name overlap** — `extractConvergence` requires the entity name to appear in signal bodies; calendar titles without names may under-match.
 - **Confidence scores remain variable** — richer candidates help, but thin relationship context still pulls confidence down.
 

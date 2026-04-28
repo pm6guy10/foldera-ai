@@ -3,7 +3,7 @@
 Last refreshed: 2026-04-28
 
 ## Current top item
-BL-004 — Rung 3 — Pending write_document visibility on `/dashboard` still lacks locked production proof.
+BL-005 — Rung 5 — Interview write_document artifacts still miss the demoable quality bar.
 
 ## How to use this file
 - Every Codex run opens this file first.
@@ -206,9 +206,9 @@ Required local proof: `npx playwright test tests/e2e/authenticated-routes.spec.t
 Required production proof: Browser check on `https://foldera.ai/dashboard` with a known `pending_approval` `write_document`: capture a screenshot before approve/skip and confirm the title/body are visible in the real dashboard surface.
 Done means: A signed-in production user can open `/dashboard` and see the pending artifact directly, with captured proof before taking action.
 Do-not-count: DB/API inspection, console logs, screenshots from non-dashboard surfaces, or static mock content.
-Status: OPEN
-Last evidence: 2026-04-26 — `CURRENT_STATE.md` still lists the dashboard pending-write_document proof gap as open.
-Next blocker: Line up one known pending-artifact window and capture the real dashboard state before it is approved or skipped.
+Status: CLOSED
+Last evidence: 2026-04-28 — local dashboard proof passed (`npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "write_document journey"`, `npx playwright test tests/dashboard/live-artifact-pixel-lock.spec.ts`, `npm run lint`, `npm run build`). Production proof used the documented `npm run proof:golden-artifact` gate to insert owner row `65bf6017-0351-44fa-a6a2-6caf04092667` as `pending_approval` `write_document`; live `https://foldera.ai/dashboard` loaded through `tests/production/auth-state.json`, `/api/conviction/latest` returned that same row, and the real dashboard surface visibly rendered the title/body plus `Save document` and `Skip and adjust` controls before any action. Screenshot: `output/playwright/bl004-production-dashboard-pending-write-document.png`. The proof row was then cleared through the normal dashboard Skip action; production DB now shows status `skipped`.
+Next blocker: BL-005.
 
 ### BL-005
 ID: BL-005

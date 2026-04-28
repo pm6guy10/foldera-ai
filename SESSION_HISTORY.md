@@ -5333,3 +5333,10 @@ pm run lint;
 pm run build.
 - Unresolved issues: BL-003 remains blocked pending external paid-model quota reset/access window.
 
+
+## 2026-04-28 — BL-004 dashboard pending write_document visibility proof closed
+- MODE: FOLDERA PRODUCTION AUTOPILOT (BL-004 proof-only dashboard seam)
+- Files changed: `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.
+- What changed: Closed the dashboard proof gap without product code changes. Used the documented golden-artifact proof gate to create one production `pending_approval` `write_document` row, captured the real `/dashboard` surface before any approve/skip action, then cleared the proof row through the normal dashboard Skip action so it would not remain sendable.
+- Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `npm run preflight` (`INFRASTRUCTURE DEGRADED`, `0 FAIL`); `npm run controller:autopilot` selected BL-004; `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "write_document journey" --reporter=list` (pass, 1/1); `npx playwright test tests/dashboard/live-artifact-pixel-lock.spec.ts --reporter=list` (pass, 2/2); `npm run lint` (pass); `npm run build` (pass); `npm run proof:golden-artifact` inserted row `65bf6017-0351-44fa-a6a2-6caf04092667`; production browser proof with `tests/production/auth-state.json` on `https://foldera.ai/dashboard` returned that same row from `/api/conviction/latest` and rendered the document body plus Save/Skip controls. Screenshot: `output/playwright/bl004-production-dashboard-pending-write-document.png`. Dashboard Skip action returned `200` with status `skipped`, and production DB confirmed the proof row is no longer `pending_approval`.
+- Unresolved issues: BL-004 is closed. The next top OPEN item is BL-005, which is not the same dashboard visibility path and requires a separate artifact-quality/generation run.
