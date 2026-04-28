@@ -60,6 +60,7 @@ export interface BacklogItem {
   doneMeans: string | null;
   doNotCount: string | null;
   status: string | null;
+  nextBlocker: string | null;
 }
 
 export interface SessionHistoryEntry {
@@ -195,12 +196,21 @@ export function parseBacklogItems(markdown: string): BacklogItem[] {
       doneMeans: extractField(block, 'Done means'),
       doNotCount: extractField(block, 'Do-not-count'),
       status: extractField(block, 'Status'),
+      nextBlocker: extractField(block, 'Next blocker'),
     };
   });
 }
 
 export function findFirstOpenBacklogItem(items: readonly BacklogItem[]): BacklogItem | null {
   return items.find((item) => item.status?.trim().toUpperCase() === 'OPEN') ?? null;
+}
+
+export function findWaitingPassiveProofBacklogItems(
+  items: readonly BacklogItem[],
+): BacklogItem[] {
+  return items.filter(
+    (item) => item.status?.trim().toUpperCase() === 'WAITING_PASSIVE_PROOF',
+  );
 }
 
 export function parseSessionHistoryEntries(markdown: string): SessionHistoryEntry[] {
@@ -236,6 +246,18 @@ function printDirtyGroup(title: string, entries: readonly ClassifiedDirtyEntry[]
 
   for (const entry of entries) {
     console.log(`- ${entry.path} [${entry.status}] - ${entry.reason}`);
+  }
+}
+
+function printWaitingPassiveProofItems(items: readonly BacklogItem[]) {
+  console.log('WAITING PASSIVE PROOF ITEMS:');
+  if (items.length === 0) {
+    console.log('- none');
+    return;
+  }
+
+  for (const item of items) {
+    console.log(`- ${item.id} — ${compact(item.nextBlocker ?? 'passive proof pending', 120)}`);
   }
 }
 
@@ -339,6 +361,7 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
   const dirtyEntries = parseGitStatusShort(dirtyStatusOutput);
   const dirtyClassification = classifyDirtyEntries(dirtyEntries);
   const backlogItems = backlogText ? parseBacklogItems(backlogText) : [];
+  const waitingPassiveProofItems = findWaitingPassiveProofBacklogItems(backlogItems);
   const firstOpenItem = findFirstOpenBacklogItem(backlogItems);
   const recentSessionEntries = sessionHistoryText
     ? parseSessionHistoryEntries(sessionHistoryText).slice(-3)
@@ -349,7 +372,7 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
   }
 
   if (!hardStopReason && !firstOpenItem) {
-    hardStopReason = 'No OPEN backlog item found.';
+    hardStopReason = 'No actionable OPEN backlog item found.';
   }
 
   if (!hardStopReason && dirtyClassification.blocking.length > 0) {
@@ -373,6 +396,9 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
   if (controllerResult === 'STOP') {
     console.log(`HARD STOP REASON: ${hardStopReason}`);
   }
+
+  console.log('');
+  printWaitingPassiveProofItems(waitingPassiveProofItems);
 
   console.log('');
   console.log('DIRTY FILE CLASSIFICATION');

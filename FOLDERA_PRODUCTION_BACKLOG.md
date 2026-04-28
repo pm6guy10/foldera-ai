@@ -3,7 +3,7 @@
 Last refreshed: 2026-04-28
 
 ## Current top item
-BL-011 — Rung 1 — Duplicate generic no-send emails still need merged daily-send idempotency fix.
+BL-003 — Rung 2 — Native interview write_document still does not reliably persist as the real winner.
 
 ## How to use this file
 - Every Codex run opens this file first.
@@ -111,9 +111,9 @@ Required local proof: `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib
 Required production proof: Passive next normal daily-send window; do not force cron. Verify generic no-send persists but sends no email, real artifact emails still send once, and duplicate no-send rows do not produce duplicate emails.
 Done means: The idempotency/no-send suppression patch is visible on GitHub main, deployed, and awaiting passive production proof or already passively proven by the next normal daily-send.
 Do-not-count: Local-only commit, unpushed branch, Codex “safe to merge” report, forced cron proof, or duplicate no-send email still arriving.
-Status: OPEN
+Status: WAITING_PASSIVE_PROOF
 Last evidence: 2026-04-27 — pushed `4297b16` to `main`; production health flipped to build `4297b16` on deployment `dpl_Co3ZVHFkRxXEDENSZUSAQWysyyFm`; `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts`, `npm run lint`, `npm run build`, and the repo push hook smoke lane all passed. `runDailySend` now suppresses generic scheduled no-send emails, preserves explicit scoped no-send sends, and stamps `daily_email_idempotency_key` on sent rows without reintroducing the BL-002 newer-pending-action short-circuit.
-Next blocker: Wait for the next normal daily-send window and verify passive production behavior: generic no-send rows persist without sending an email, explicit scoped no-send still sends once when invoked, and any real artifact email still delivers once for the PT day.
+Next blocker: next normal daily-send proof required
 
 ### BL-012
 ID: BL-012

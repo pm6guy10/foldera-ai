@@ -3,12 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   classifyDirtyEntries,
   findFirstOpenBacklogItem,
+  findWaitingPassiveProofBacklogItems,
   parseBacklogItems,
   parseSessionHistoryEntries,
 } from '../controller-autopilot';
 
 describe('controller-autopilot backlog parsing', () => {
-  it('selects the first OPEN backlog item in file order', () => {
+  it('skips WAITING_PASSIVE_PROOF items and selects the first later OPEN backlog item', () => {
     const items = parseBacklogItems(`
 ### BL-001
 ID: BL-001
@@ -18,11 +19,12 @@ Status: CLOSED
 ### BL-011
 ID: BL-011
 Rung: 1
-Title: First open seam
+Title: Waiting seam
 User-facing path: Daily-send path
 Required local proof: npm run build
 Required production proof: passive send proof
-Status: OPEN
+Status: WAITING_PASSIVE_PROOF
+Next blocker: next normal daily-send proof required
 
 ### BL-099
 ID: BL-099
@@ -31,10 +33,59 @@ Status: OPEN
 `);
 
     const firstOpen = findFirstOpenBacklogItem(items);
+    const waitingItems = findWaitingPassiveProofBacklogItems(items);
 
-    expect(firstOpen?.id).toBe('BL-011');
+    expect(firstOpen?.id).toBe('BL-099');
+    expect(firstOpen?.title).toBe('Later open seam');
+    expect(waitingItems.map((item) => item.id)).toEqual(['BL-011']);
+    expect(waitingItems[0]?.nextBlocker).toBe('next normal daily-send proof required');
+  });
+
+  it('still reports waiting passive-proof items separately from actionable work', () => {
+    const items = parseBacklogItems(`
+### BL-011
+ID: BL-011
+Title: Waiting seam
+Status: WAITING_PASSIVE_PROOF
+Next blocker: next normal daily-send proof required
+
+### BL-003
+ID: BL-003
+Title: Actionable seam
+Status: OPEN
+`);
+
+    const waitingItems = findWaitingPassiveProofBacklogItems(items);
+
+    expect(waitingItems).toHaveLength(1);
+    expect(waitingItems[0]).toMatchObject({
+      id: 'BL-011',
+      status: 'WAITING_PASSIVE_PROOF',
+      nextBlocker: 'next normal daily-send proof required',
+    });
+  });
+
+  it('keeps existing OPEN behavior when no waiting passive-proof item exists', () => {
+    const items = parseBacklogItems(`
+### BL-003
+ID: BL-003
+Rung: 2
+Title: First open seam
+Status: OPEN
+
+### BL-004
+ID: BL-004
+Title: Later open seam
+Status: OPEN
+`);
+
+    const firstOpen = findFirstOpenBacklogItem(items);
+    const waitingItems = findWaitingPassiveProofBacklogItems(items);
+
+    expect(firstOpen?.id).toBe('BL-003');
     expect(firstOpen?.title).toBe('First open seam');
-    expect(firstOpen?.rung).toBe('1');
+    expect(firstOpen?.rung).toBe('2');
+    expect(waitingItems).toEqual([]);
   });
 });
 
