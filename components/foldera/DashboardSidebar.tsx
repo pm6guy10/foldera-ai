@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import {
-  ArrowUpRight,
   ChevronDown,
   LayoutGrid,
   Link2,
@@ -111,18 +110,6 @@ export function DashboardSidebar({
           })}
         </nav>
 
-        <div className="foldera-subpanel foldera-dashboard-upgrade absolute left-[20px] top-[650px] h-[182px] w-[264px] px-4 py-4">
-          <div className="flex items-start gap-3">
-            <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-accent" strokeWidth={2.25} aria-hidden />
-            <div>
-              <p className="text-[20px] font-semibold leading-none text-accent">Upgrade to Pro</p>
-              <p className="mt-3 text-[16px] leading-7 text-text-muted">
-                Unlock team features, custom playbooks, and enterprise integrations.
-              </p>
-            </div>
-          </div>
-        </div>
-
         <div className="foldera-dashboard-account absolute left-[22px] top-[974px] h-[86px] w-[260px] rounded-[16px] border border-border bg-white/[0.02] px-3 py-3">
           <div className="flex items-center gap-3">
             <div
@@ -154,6 +141,14 @@ export function DashboardSidebar({
               className="foldera-dashboard-account-menu absolute bottom-full left-0 right-0 z-20 mb-2 rounded-[14px] border border-border bg-panel p-2 shadow-lg"
               role="menu"
             >
+              <Link
+                href="/dashboard/settings"
+                role="menuitem"
+                className="flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-left text-sm text-text-secondary hover:bg-white/[0.04] hover:text-text-primary"
+              >
+                <Settings className="h-4 w-4" aria-hidden />
+                Settings
+              </Link>
               <button
                 type="button"
                 role="menuitem"
@@ -214,18 +209,6 @@ export function DashboardSidebar({
       </nav>
 
       <div className="mt-auto space-y-4 pt-6">
-        <div className="foldera-subpanel foldera-dashboard-upgrade px-3.5 py-3.5">
-          <div className="flex items-start gap-2">
-            <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-accent" strokeWidth={2.25} aria-hidden />
-            <div>
-              <p className="text-sm font-semibold text-accent">Upgrade to Pro</p>
-              <p className="mt-2 text-sm leading-7 text-text-muted">
-                Unlock team features, custom playbooks, and enterprise integrations.
-              </p>
-            </div>
-          </div>
-        </div>
-
         <div className="foldera-dashboard-account relative rounded-[18px] border border-border bg-white/[0.02] px-3 py-3">
           <div className="flex items-center gap-3">
             <div
@@ -257,6 +240,14 @@ export function DashboardSidebar({
               className="foldera-dashboard-account-menu absolute bottom-full left-0 right-0 z-20 mb-2 rounded-[14px] border border-border bg-panel p-2 shadow-lg"
               role="menu"
             >
+              <Link
+                href="/dashboard/settings"
+                role="menuitem"
+                className="flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-left text-sm text-text-secondary hover:bg-white/[0.04] hover:text-text-primary"
+              >
+                <Settings className="h-4 w-4" aria-hidden />
+                Settings
+              </Link>
               <button
                 type="button"
                 role="menuitem"

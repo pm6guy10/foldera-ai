@@ -1377,7 +1377,7 @@ Decide by 2026-04-24.`,
     expect(generateArtifact).not.toHaveBeenCalled();
   });
 
-  it('recovers a user-skipped high-confidence directive instead of generating do_nothing', async () => {
+  it('does not recover a user-skipped high-confidence directive into pending_approval', async () => {
     const skippedId = 'skipped-good-action-1';
     mockSupabase.actionRows = [
       {
@@ -1400,26 +1400,25 @@ Decide by 2026-04-24.`,
         },
       },
     ];
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective());
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'email',
+      to: 'holly@example.com',
+      subject: 'Decision needed today: MAS3 reference packet owner by 4 PM PT',
+      body: 'Hi Holly,\n\nCan you confirm by 4 PM PT today whether you can send two MAS3 reference talking points, and name who owns final packet delivery? If we miss this cutoff, the interview packet slips.\n\nThanks,\nBrandon',
+      draft_type: 'email_compose',
+    });
 
     const result = await runDailyGenerate({ userIds: [USER_ID] });
 
     expect(result.results).toEqual([
       expect.objectContaining({
-        code: 'pending_approval_reused',
+        code: 'pending_approval_persisted',
         success: true,
-        meta: expect.objectContaining({
-          action_id: skippedId,
-          artifact_present: true,
-          recovered: true,
-        }),
       }),
     ]);
-
-    // Should NOT have generated a new directive
-    expect(generateDirective).not.toHaveBeenCalled();
-
-    // Should have restored the action to pending_approval
-    expect(mockSupabase.updatedActions).toEqual(
+    expect(generateDirective).toHaveBeenCalledTimes(1);
+    expect(mockSupabase.updatedActions).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: skippedId,
@@ -1427,6 +1426,16 @@ Decide by 2026-04-24.`,
         }),
       ]),
     );
+    expect(result.results).not.toEqual([
+      expect.objectContaining({
+        success: true,
+        meta: expect.objectContaining({
+          action_id: skippedId,
+          recovered: true,
+        }),
+      }),
+    ]);
+
   });
 
   it('auto-suppresses already-sent pending actions and generates a fresh action', async () => {
@@ -1716,6 +1725,56 @@ Decide by 2026-04-24.`,
       expect.arrayContaining([
         expect.objectContaining({
           id: 'recoverable-skipped-1',
+          payload: expect.objectContaining({ status: 'pending_approval' }),
+        }),
+      ]),
+    );
+  });
+
+  it('does not recover same-day user-skipped actions back into pending_approval during normal runs', async () => {
+    mockSupabase.actionRows = [
+      {
+        id: 'user-skipped-1',
+        user_id: USER_ID,
+        status: 'skipped',
+        skip_reason: null,
+        action_type: 'write_document',
+        directive_text: 'Darlene Craig sent you interview questions for ESB Technician.',
+        confidence: 90,
+        generated_at: new Date().toISOString(),
+        execution_result: {
+          generation_log: { outcome: 'selected' },
+          artifact: {
+            type: 'document',
+            title: 'ESB Technician interview prep',
+            content: 'Old skipped document content.',
+          },
+        },
+      },
+    ];
+
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective());
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'email',
+      to: 'holly@example.com',
+      subject: 'Decision needed today: MAS3 reference packet owner by 4 PM PT',
+      body: 'Hi Holly,\n\nCan you confirm by 4 PM PT today whether you can send two MAS3 reference talking points, and name who owns final packet delivery? If we miss this cutoff, the interview packet slips.\n\nThanks,\nBrandon',
+      draft_type: 'email_compose',
+    });
+
+    const result = await runDailyGenerate({ userIds: [USER_ID] });
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'pending_approval_persisted',
+        success: true,
+      }),
+    ]);
+    expect(generateDirective).toHaveBeenCalledTimes(1);
+    expect(mockSupabase.updatedActions).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'user-skipped-1',
           payload: expect.objectContaining({ status: 'pending_approval' }),
         }),
       ]),

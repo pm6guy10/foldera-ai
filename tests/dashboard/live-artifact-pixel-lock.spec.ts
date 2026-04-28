@@ -187,6 +187,11 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
 
     await expect(page.getByRole('button', { name: /copy full text/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /save document/i })).toBeVisible();
+    await expect(page.getByText(/open threads/i)).toHaveCount(0);
+    await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
+    await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);
+    await expect(page.getByText(/^Upgrade to Pro$/i)).toHaveCount(0);
 
     await page.getByRole('button', { name: /copy full text/i }).click();
     await expect
@@ -196,12 +201,14 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
         }),
       )
       .toBeGreaterThan(0);
-
-    await page.getByRole('button', { name: /skip and adjust/i }).click();
-    await expect.poll(() => snoozeCalls).toBeGreaterThan(0);
+    await expect(page.getByTestId('dashboard-status-notice')).toHaveAttribute(
+      'data-status-id',
+      'copy_succeeded',
+    );
 
     await page.getByRole('button', { name: /save document/i }).click();
     await expect.poll(() => approveCalls).toBeGreaterThan(0);
+    expect(snoozeCalls).toBe(0);
   });
 
   test('preserves send_message labels and shows upgrade CTA overlay only when artifact is paywall-locked', async ({ page }) => {

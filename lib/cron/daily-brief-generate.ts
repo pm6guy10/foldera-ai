@@ -2323,43 +2323,6 @@ export async function runDailyGenerate(
         continue;
       }
 
-      // Recovery: if a high-confidence directive was user-skipped today (skip_reason IS NULL),
-      // restore it to pending_approval rather than generating do_nothing.
-      if (!proofFreshRun) {
-        const { data: recoverable } = await supabase
-          .from('tkg_actions')
-          .select('id, confidence, action_type, directive_text, execution_result')
-          .eq('user_id', userId)
-          .eq('status', 'skipped')
-          .is('skip_reason', null)
-          .neq('action_type', 'do_nothing')
-          .gte('confidence', 70)
-          .gte('generated_at', todayStart)
-          .order('confidence', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (recoverable) {
-          await supabase
-            .from('tkg_actions')
-            .update({ status: 'pending_approval', skip_reason: null })
-            .eq('id', recoverable.id);
-
-          results.push({
-            code: 'pending_approval_reused',
-            meta: {
-              ...cleanupMeta,
-              action_id: recoverable.id,
-              artifact_present: extractArtifact(recoverable.execution_result) !== null,
-              recovered: true,
-            },
-            success: true,
-            userId,
-          });
-          continue;
-        }
-      }
-
       // First-morning welcome: goals-only directive for brand-new accounts with few signals.
       try {
         const signalTotal = await countTotalSignalsForUser(supabase, userId);

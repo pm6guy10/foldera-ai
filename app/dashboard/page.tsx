@@ -6,9 +6,7 @@ import { useSession } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
-  Bell,
   Mail,
-  Search,
   TriangleAlert,
   TrendingUp,
 } from 'lucide-react';
@@ -19,7 +17,6 @@ import {
 } from '@/components/foldera/DashboardSidebar';
 import { EmptyStateCard } from '@/components/foldera/EmptyStateCard';
 import { FolderaLogo } from '@/components/foldera/FolderaLogo';
-import { RightPanel } from '@/components/foldera/RightPanel';
 import { formatRelativeTime, providerDisplayName } from '@/lib/ui/provider-display';
 
 type DashboardArtifact = {
@@ -213,6 +210,36 @@ function artifactClipboardText(action: DashboardAction | null): string {
     return JSON.stringify(artifact, null, 2);
   } catch {
     return '';
+  }
+}
+
+async function writeClipboardText(text: string): Promise<boolean> {
+  if (!text) return false;
+
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall through to the textarea copy path for browsers that block clipboard writes.
+  }
+
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', 'true');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const copied = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return copied;
+  } catch {
+    return false;
   }
 }
 
@@ -413,6 +440,20 @@ function asPanelLabel(value: string | null | undefined, fallback: string): strin
   return trimmed ? trimmed.replace(/_/g, ' ') : fallback;
 }
 
+type LoadedGraphStats = GraphStatsPayload & {
+  signalsTotal: number;
+  commitmentsActive: number;
+  patternsActive: number;
+};
+
+function hasDashboardStats(payload: GraphStatsPayload | null): payload is LoadedGraphStats {
+  return (
+    typeof payload?.signalsTotal === 'number' &&
+    typeof payload.commitmentsActive === 'number' &&
+    typeof payload.patternsActive === 'number'
+  );
+}
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const [activePanel, setActivePanel] = useState<DashboardPanelKey>('briefing');
@@ -437,6 +478,7 @@ export default function DashboardPage() {
   const [stageMeasured, setStageMeasured] = useState(false);
   const [executedActionId, setExecutedActionId] = useState<string | null>(null);
   const [outcomeRecorded, setOutcomeRecorded] = useState(false);
+  const [locallyHiddenActionIds, setLocallyHiddenActionIds] = useState<Set<string>>(() => new Set());
 
   const loadAbortRef = useRef<AbortController | null>(null);
 
@@ -466,7 +508,9 @@ export default function DashboardPage() {
         return { action: null, loaded: false };
       }
 
-      const action = isVisibleDashboardAction(latest) ? (latest as DashboardAction) : null;
+      const visibleAction = isVisibleDashboardAction(latest) ? (latest as DashboardAction) : null;
+      const action =
+        visibleAction && !locallyHiddenActionIds.has(visibleAction.id) ? visibleAction : null;
       setAction(action);
       setArtifactPaywallLocked(action ? latest?.artifact_paywall_locked === true : false);
       return { action, loaded: true };
@@ -482,7 +526,7 @@ export default function DashboardPage() {
         setLoadingLatest(false);
       }
     }
-  }, []);
+  }, [locallyHiddenActionIds]);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -664,7 +708,11 @@ export default function DashboardPage() {
         const response = await fetch('/api/conviction/execute', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action_id: action.id, decision }),
+          body: JSON.stringify({
+            action_id: action.id,
+            decision,
+            ...(decision === 'skip' ? { skip_reason: 'not_relevant' } : {}),
+          }),
         });
         const data = await response.json().catch(() => ({}));
 
@@ -683,15 +731,37 @@ export default function DashboardPage() {
           return;
         }
 
+        if (
+          (data as { status?: string }).status === 'failed' ||
+          typeof (data as { error?: unknown }).error === 'string'
+        ) {
+          setStatusNotice({
+            id: 'execute_failed',
+            message:
+              typeof (data as { error?: unknown }).error === 'string'
+                ? ((data as { error: string }).error)
+                : `${decision} failed`,
+          });
+          return;
+        }
+
         if (decision === 'approve') {
           setExecutedActionId(action.id);
           setOutcomeRecorded(false);
         } else {
+          setLocallyHiddenActionIds((current) => {
+            const next = new Set(current);
+            next.add(action.id);
+            return next;
+          });
+          setAction(null);
           setExecutedActionId(null);
           setOutcomeRecorded(false);
         }
         setStatusNotice(buildDecisionSuccessNotice(action, decision));
-        await load();
+        if (decision === 'approve') {
+          await load();
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : `${decision} failed`;
         if (shouldReconcileExecuteFailure(null, message)) {
@@ -749,12 +819,16 @@ export default function DashboardPage() {
 
   const copyDraft = useCallback(async () => {
     const text = artifactClipboardText(action);
-    if (!text) return;
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch (error) {
-      console.error(error);
+    if (!text) {
+      setStatusNotice({ id: 'copy_failed', message: 'Nothing available to copy.' });
+      return;
     }
+    const copied = await writeClipboardText(text);
+    setStatusNotice(
+      copied
+        ? { id: 'copy_succeeded', message: 'Copied full text.' }
+        : { id: 'copy_failed', message: 'Copy failed. Select the text manually.' },
+    );
   }, [action]);
 
   const runFirstReadNow = useCallback(async () => {
@@ -859,6 +933,29 @@ export default function DashboardPage() {
       (integration) => normalizeIntegrationProvider(integration.provider) === 'azure_ad',
     ) ?? null;
   const recentHistory = historyItems.slice(0, 3);
+  const dashboardStats = hasDashboardStats(graphStats)
+    ? [
+        {
+          icon: Mail,
+          value: graphStats.signalsTotal,
+          label: 'signals captured',
+          valueClassName: 'text-text-primary',
+        },
+        {
+          icon: TriangleAlert,
+          value: graphStats.commitmentsActive,
+          label: 'active commitments',
+          valueClassName: graphStats.commitmentsActive > 0 ? 'text-amber-400' : 'text-text-primary',
+        },
+        {
+          icon: TrendingUp,
+          value: graphStats.patternsActive,
+          label: 'patterns tracked',
+          valueClassName: 'text-text-primary',
+        },
+      ]
+    : [];
+  const hasStats = dashboardStats.length > 0;
 
   const artifactBodyContent = showArtifactBlur ? (
     <div
@@ -936,26 +1033,6 @@ export default function DashboardPage() {
         },
       ]
     : [];
-
-  const searchField = (
-    <div className="foldera-dashboard-search-field flex h-full min-w-0 items-center gap-3 rounded-[14px] border border-border bg-panel px-4 text-sm text-text-muted">
-      <Search className="h-4 w-4 shrink-0" aria-hidden />
-      <span className="min-w-0 flex-1 truncate">Search Foldera...</span>
-      <span className="hidden shrink-0 rounded-[10px] border border-border px-2 py-1 text-[11px] sm:inline">
-        ⌘ K
-      </span>
-    </div>
-  );
-
-  const notificationsButton = (
-    <button
-      type="button"
-      className="foldera-dashboard-notify-btn inline-flex h-full w-full items-center justify-center rounded-[14px] border border-border bg-panel text-text-secondary"
-      aria-label="Notifications"
-    >
-      <Bell className="h-4 w-4" />
-    </button>
-  );
 
   const emptyStateCard = (
     <EmptyStateCard
@@ -1376,39 +1453,23 @@ export default function DashboardPage() {
             <strong className="font-semibold text-text-primary">{firstName}.</strong>
           </h1>
 
-          <div
-            className="absolute flex items-center justify-between text-[28px] text-text-secondary"
-            style={{ left: 400, top: 176, width: 900, height: 44 }}
-          >
-            <div className="flex items-center gap-3">
-              <Mail className="h-5 w-5 text-text-muted" aria-hidden />
-              <span className="text-[36px] font-semibold tracking-[-0.045em] text-text-primary">
-                5
-              </span>
-              <span className="text-[32px] font-normal">open threads</span>
+          {hasStats ? (
+            <div
+              className="absolute flex items-center justify-between text-[28px] text-text-secondary"
+              data-testid="dashboard-truth-stats"
+              style={{ left: 400, top: 176, width: 900, height: 44 }}
+            >
+              {dashboardStats.map(({ icon: Icon, value, label, valueClassName }) => (
+                <div key={label} className="flex items-center gap-3">
+                  <Icon className="h-5 w-5 text-text-muted" aria-hidden />
+                  <span className={`text-[36px] font-semibold tracking-[-0.045em] ${valueClassName}`}>
+                    {value}
+                  </span>
+                  <span className="text-[32px] font-normal">{label}</span>
+                </div>
+              ))}
             </div>
-            <div className="flex items-center gap-3">
-              <TriangleAlert className="h-5 w-5 text-amber-400" aria-hidden />
-              <span className="text-[36px] font-semibold tracking-[-0.045em] text-amber-400">
-                2
-              </span>
-              <span className="text-[32px] font-normal">need attention</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <TrendingUp className="h-5 w-5 text-text-muted" aria-hidden />
-              <span className="text-[36px] font-semibold tracking-[-0.045em] text-text-primary">
-                1
-              </span>
-              <span className="text-[32px] font-normal">ready to move</span>
-            </div>
-          </div>
-
-          <div className="absolute h-14" style={{ left: 1468, top: 36, width: 384 }}>
-            {searchField}
-          </div>
-          <div className="absolute h-14 w-14" style={{ left: 1882, top: 36 }}>
-            {notificationsButton}
-          </div>
+          ) : null}
 
           <div className="absolute" style={{ left: 344, top: 238, width: 1072, height: 850 }}>
             {cardNode}
@@ -1441,10 +1502,6 @@ export default function DashboardPage() {
             </div>
           ) : null}
 
-          <aside className="foldera-dashboard-right-rail absolute" style={{ left: 1574, top: 324, width: 332 }}>
-            <RightPanel />
-          </aside>
-
           {hiddenArtifactNode}
         </div>
       </main>
@@ -1454,7 +1511,7 @@ export default function DashboardPage() {
   return (
     <main className="foldera-dashboard-page foldera-page min-h-screen overflow-x-hidden bg-bg text-text-primary" data-testid="pixel-lock-frame">
       <div className="mx-auto w-full max-w-[1400px] px-4 py-4 sm:px-5 lg:px-6 lg:py-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[252px_minmax(0,1fr)] 2xl:grid-cols-[252px_minmax(0,1fr)_300px] 2xl:gap-8">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[252px_minmax(0,1fr)] 2xl:gap-8">
           <DashboardSidebar
             activeLabel={activeSidebarLabel}
             userName={firstName}
@@ -1466,18 +1523,10 @@ export default function DashboardPage() {
           <div className="min-w-0">
             <div className="foldera-panel mb-5 flex items-center justify-between gap-3 px-4 py-3 lg:hidden">
               <FolderaLogo href="/dashboard" markSize="sm" />
-              <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-                <div className="h-11 min-w-0 flex-1">{searchField}</div>
-                <div className="h-11 w-11 shrink-0">{notificationsButton}</div>
-              </div>
             </div>
 
             <div className="hidden items-center justify-between gap-4 lg:flex">
               <p className="foldera-eyebrow">{getDateLabel()}</p>
-              <div className="flex max-w-md flex-1 items-center justify-end gap-3">
-                <div className="h-11 min-w-0 flex-1">{searchField}</div>
-                <div className="h-11 w-11 shrink-0">{notificationsButton}</div>
-              </div>
             </div>
 
             <div className="flex items-center justify-between gap-3 pb-1 pt-2 lg:hidden">
@@ -1489,29 +1538,22 @@ export default function DashboardPage() {
                 {getGreetingLabel()},{' '}
                 <strong className="font-semibold text-text-primary">{firstName}.</strong>
               </h1>
-              <div className="mt-6 flex flex-wrap gap-x-10 gap-y-4 text-sm text-text-secondary">
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-text-muted" aria-hidden />
-                  <span className="text-[28px] font-semibold tracking-[-0.04em] text-text-primary sm:text-[32px]">
-                    5
-                  </span>
-                  <span>open threads</span>
+              {hasStats ? (
+                <div
+                  className="mt-6 flex flex-wrap gap-x-10 gap-y-4 text-sm text-text-secondary"
+                  data-testid="dashboard-truth-stats"
+                >
+                  {dashboardStats.map(({ icon: Icon, value, label, valueClassName }) => (
+                    <div key={label} className="flex items-center gap-3">
+                      <Icon className="h-4 w-4 text-text-muted" aria-hidden />
+                      <span className={`text-[28px] font-semibold tracking-[-0.04em] sm:text-[32px] ${valueClassName}`}>
+                        {value}
+                      </span>
+                      <span>{label}</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center gap-3">
-                  <TriangleAlert className="h-4 w-4 text-amber-400" aria-hidden />
-                  <span className="text-[28px] font-semibold tracking-[-0.04em] text-amber-400 sm:text-[32px]">
-                    2
-                  </span>
-                  <span>need attention</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <TrendingUp className="h-4 w-4 text-text-muted" aria-hidden />
-                  <span className="text-[28px] font-semibold tracking-[-0.04em] text-text-primary sm:text-[32px]">
-                    1
-                  </span>
-                  <span>ready to move</span>
-                </div>
-              </div>
+              ) : null}
             </header>
 
             {statusNoticeNode ? <div className="mx-auto mb-4 w-full max-w-[860px]">{statusNoticeNode}</div> : null}
@@ -1569,9 +1611,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <aside className="foldera-dashboard-right-rail hidden min-w-0 2xl:block">
-            <RightPanel />
-          </aside>
         </div>
       </div>
 

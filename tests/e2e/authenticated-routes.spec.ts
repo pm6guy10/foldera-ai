@@ -123,6 +123,7 @@ function findDocumentLine(body: string, prefix: string): string {
 }
 
 const DOCUMENT_DIRECTIVE_TITLE = DOCUMENT_DIRECTIVE_RESPONSE.directive.replace(/\.$/, '');
+const DOCUMENT_ARTIFACT_TITLE = DOCUMENT_DIRECTIVE_RESPONSE.artifact.title;
 const DOCUMENT_DIRECTIVE_BODY = DOCUMENT_DIRECTIVE_RESPONSE.artifact.body;
 const DOCUMENT_DIRECTIVE_ASK = findDocumentLine(DOCUMENT_DIRECTIVE_BODY, 'Ask:');
 const DOCUMENT_DIRECTIVE_CONSEQUENCE = findDocumentLine(DOCUMENT_DIRECTIVE_BODY, 'Consequence:');
@@ -336,6 +337,7 @@ async function setupDashboardMocks(
   );
   await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
   await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
+  await page.route(matchApiPath('/api/graph/stats'), fulfillJson(GRAPH_STATS_RESPONSE));
   await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(options.latestResponse ?? DIRECTIVE_RESPONSE));
   await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
     let decision: string | undefined;
@@ -592,6 +594,16 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/open threads/i)).toHaveCount(0);
+    await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
+    await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);
+    await expect(page.getByText(/^Upgrade to Pro$/i)).toHaveCount(0);
+    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('24');
+    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('signals captured');
+    await expect.poll(async () =>
+      page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
+    ).toBeLessThanOrEqual(1);
   });
 
   test('live email artifact shows title + body in draft section — mobile', async ({ page }) => {
@@ -649,6 +661,21 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
 
   test('write_document journey: document preview, save action, saved status', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
+    await page.addInitScript(() => {
+      const writes: string[] = [];
+      Object.defineProperty(window, '__dashboardClipboardWrites', {
+        configurable: true,
+        value: writes,
+      });
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: async (value: string) => {
+            writes.push(value);
+          },
+        },
+      });
+    });
     await seedAuthenticatedSession(page);
     await attachCheckoutGuards(page);
     await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
@@ -660,6 +687,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     );
     await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
     await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
+    await page.route(matchApiPath('/api/graph/stats'), fulfillJson(GRAPH_STATS_RESPONSE));
     await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(DOCUMENT_DIRECTIVE_RESPONSE));
     await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
       if (route.request().method() !== 'POST') return route.continue();
@@ -684,10 +712,30 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       bodyLines: [DOCUMENT_DIRECTIVE_ASK, DOCUMENT_DIRECTIVE_CONSEQUENCE],
     });
     await expect(page.getByText(/^FINISHED DOCUMENT$/i)).toBeVisible();
+    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('24');
+    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('signals captured');
+    await expect(page.getByText(/open threads/i)).toHaveCount(0);
+    await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
+    await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);
+    await expect(page.getByText(/^Upgrade to Pro$/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /save document/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /skip and adjust/i })).toBeVisible();
     await expect(page.getByTestId('dashboard-primary-action')).toHaveText(/save document/i);
     await expect(page.getByRole('button', { name: /skip and adjust/i })).toHaveText(/skip and adjust/i);
+    await page.getByRole('button', { name: /account menu/i }).click();
+    await expect(page.getByRole('menuitem', { name: /^Settings$/i })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: /^Sign out$/i })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: /copy full text/i }).click();
+    await expectDashboardStatus(page, 'copy_succeeded');
+    const copiedText = await page.evaluate(() => {
+      const writes = (window as Window & { __dashboardClipboardWrites?: string[] })
+        .__dashboardClipboardWrites ?? [];
+      return writes[writes.length - 1] ?? '';
+    });
+    expect(copiedText).toContain(DOCUMENT_ARTIFACT_TITLE);
+    expect(copiedText).toContain(DOCUMENT_DIRECTIVE_ASK);
     const screenshotPath = path.join(process.cwd(), '.screenshots', 'write-document-journey-1280.png');
     fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
     await page.screenshot({
@@ -699,6 +747,71 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expectDashboardStatus(page, 'approve_saved_document');
     await expect(page.getByText(/Saved\. Your document is in Foldera Signals/i)).toBeVisible({ timeout: 8000 });
     await expect(page.getByText(/It worked/i)).toBeVisible();
+  });
+
+  test('write_document journey: skip sends reason and first read does not resurrect skipped artifact', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await seedAuthenticatedSession(page);
+    await attachCheckoutGuards(page);
+    await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+    await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+    await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+    await page.route(
+      matchApiPath('/api/subscription/status'),
+      fulfillJson({ plan: 'pro', status: 'active', current_period_end: null, can_manage_billing: true }),
+    );
+    await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
+    await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
+    await page.route(matchApiPath('/api/graph/stats'), fulfillJson(GRAPH_STATS_RESPONSE));
+    await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(DOCUMENT_DIRECTIVE_RESPONSE));
+    let executeBody: { decision?: string; skip_reason?: string } | null = null;
+    await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
+      if (route.request().method() !== 'POST') return route.continue();
+      executeBody = route.request().postDataJSON() as { decision?: string; skip_reason?: string };
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: json({
+          status: 'skipped',
+          action_id: DOCUMENT_DIRECTIVE_RESPONSE.id,
+          action_type: 'write_document',
+        }),
+      });
+    });
+    await page.route(matchApiPath('/api/settings/run-brief'), async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: json({
+          ok: true,
+          stages: {
+            daily_brief: {
+              ok: true,
+              generate: { results: [{ code: 'pending_approval_reused', success: true }] },
+            },
+          },
+        }),
+      });
+    });
+
+    await page.goto('/dashboard');
+    await expect(
+      page.getByRole('heading', { name: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
+    ).toBeVisible({ timeout: 15000 });
+
+    await page.getByRole('button', { name: /skip and adjust/i }).click();
+    await expectDashboardStatus(page, 'skip_snoozed');
+    expect(executeBody).toEqual(
+      expect.objectContaining({
+        decision: 'skip',
+        skip_reason: 'not_relevant',
+      }),
+    );
+    await expect(page.getByTestId('dashboard-empty-state')).toBeVisible();
+
+    await page.getByTestId('dashboard-run-first-read').click();
+    await expectDashboardStatus(page, 'first_read_no_visible_action');
+    await expect(page.getByText(DOCUMENT_DIRECTIVE_ASK)).toHaveCount(0);
   });
 
   test('stale skip action reconciles after execute 404', async ({ page }) => {

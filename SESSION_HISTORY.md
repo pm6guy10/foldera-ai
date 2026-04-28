@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-28 — Dashboard control truth pass Phase 1
+- MODE: Phase 1 Dashboard Trust Contract only.
+- Files changed: `app/dashboard/page.tsx`, `components/foldera/DashboardSidebar.tsx`, `lib/cron/daily-brief-generate.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `tests/e2e/authenticated-routes.spec.ts`, `tests/dashboard/live-artifact-pixel-lock.spec.ts`, `SESSION_HISTORY.md`.
+- What changed: Wired dashboard copy-to-clipboard with fallback and visible copied/error state; made Save document surface execute failures; sent explicit `skip_reason` for skips; prevented locally skipped actions from immediately resurfacing after Run first read; removed skipped-row recovery that restored same-day skipped actions to `pending_approval`; replaced fake 5/2/1 stats with `/api/graph/stats`-backed values only when available; removed fake search, notification, upload/drop, and static Upgrade to Pro affordances; limited the account menu to Settings and Sign out.
+- Verification: Starting state checked at `693979f` with a clean worktree; initial `npm run health` returned `RESULT: 0 FAILING`. Focused Vitest/API tests passed for daily-brief recovery plus conviction execute/latest; requested dashboard Playwright specs passed on a fresh built server; additional 390px mobile dashboard proof passed with no fake controls and no horizontal overflow; `npm run lint`, `npm run build`, `npm run health`, and `npm run preflight` passed except preflight's existing local `ALLOW_PAID_LLM` warning.
+- Unresolved issues: No Phase 1 blocker. Production deploy proof remains pending until this commit is pushed and the deployed build advances.
+
 ## 2026-04-28 — Dashboard long directive text no longer overlaps itself
 - MODE: Dashboard rendering seam only.
 - Files changed: `components/foldera/DailyBriefCard.tsx`, `tests/dashboard/live-artifact-pixel-lock.spec.ts`, `SESSION_HISTORY.md`.
