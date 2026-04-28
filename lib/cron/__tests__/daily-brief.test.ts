@@ -390,7 +390,12 @@ vi.mock('@/lib/utils/structured-logger', () => ({
 }));
 
 vi.mock('@/lib/email/resend', () => ({
+  NO_SEND_BODY_TEXT: 'Foldera checked your recent signals and did not find anything worth interrupting you for.',
+  NO_SEND_DIRECTIVE_TEXT: 'Nothing cleared the bar today.',
   NO_SEND_SUBJECT: 'Foldera: Nothing cleared the bar today',
+  isInternalFailureText: vi.fn((text: string) =>
+    /\bllm_failed\b|\bstale_date_in_directive\b|all\s+\d+\s+candidates blocked/i.test(text),
+  ),
   sendDailyDirective: vi.fn().mockResolvedValue(undefined),
   sendDailyDeliverySkipAlert: vi.fn().mockResolvedValue(undefined),
 }));
@@ -1613,7 +1618,7 @@ Decide by 2026-04-24.`,
     );
   });
 
-  it('sends persisted no-send blocker with clean no-send subject when no pending action exists', async () => {
+  it('suppresses generic persisted no-send blocker during normal daily-send', async () => {
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
     mockSupabase.actionRows = [
       {
@@ -1621,20 +1626,16 @@ Decide by 2026-04-24.`,
         user_id: USER_ID,
         status: 'skipped',
         action_type: 'do_nothing',
-        directive_text: 'All 10 candidates blocked: stale_date_in_directive',
-        reason: 'Generation validation failed: llm_failed',
-        confidence: 0,
+        directive_text: 'Nothing cleared the bar today after evaluating 10 candidates.',
+        reason: 'Nothing cleared the bar today after evaluating 10 candidates.',
+        confidence: 45,
         generated_at: new Date().toISOString(),
         execution_result: {
           outcome_type: 'no_send',
           artifact: {
             type: 'wait_rationale',
-            context: 'All 10 candidates blocked.',
-            evidence: 'candidateFailureReasons: llm_failed',
-            tripwires: ['trigger_lock:missing_explicit_ask'],
-          },
-          generation_log: {
-            reason: 'Generation validation failed: llm_failed',
+            context: 'Foldera checked your recent signals and did not find anything worth interrupting you for.',
+            evidence: 'Foldera checked your recent signals and did not find anything worth interrupting you for.',
           },
         },
       },
@@ -1644,8 +1645,60 @@ Decide by 2026-04-24.`,
 
     expect(result.results).toEqual([
       expect.objectContaining({
+        code: 'no_send_blocker_persisted',
+        detail: 'Generic no-send blocker persisted without email delivery.',
+        success: true,
+        meta: expect.objectContaining({
+          action_id: 'blocked-1',
+          generic_no_send_suppressed: true,
+          daily_email_idempotency_key: expect.stringContaining(`daily-brief:${USER_ID}:`),
+        }),
+      }),
+    ]);
+    expect(result.message).toContain('No brief email was sent for 1 user because an explicit no-send blocker was recorded.');
+    expect(sendDailyDirective).not.toHaveBeenCalled();
+    expect(mockSupabase.updatedActions).toEqual([]);
+  });
+
+  it('sends generic persisted no-send blocker once for an explicitly scoped manual run', async () => {
+    vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
+    vi.mocked(sendDailyDirective).mockResolvedValue({ data: { id: 'resend-no-send' } } as never);
+    mockSupabase.actionRows = [
+      {
+        id: 'blocked-1',
+        user_id: USER_ID,
+        status: 'skipped',
+        action_type: 'do_nothing',
+        directive_text: 'Nothing cleared the bar today after evaluating 10 candidates.',
+        reason: 'Nothing cleared the bar today after evaluating 10 candidates.',
+        confidence: 45,
+        generated_at: new Date().toISOString(),
+        execution_result: {
+          outcome_type: 'no_send',
+          artifact: {
+            type: 'wait_rationale',
+            context: 'Foldera checked your recent signals and did not find anything worth interrupting you for.',
+            evidence: 'Foldera checked your recent signals and did not find anything worth interrupting you for.',
+          },
+        },
+      },
+    ];
+
+    const result = await runDailySend({
+      userIds: [USER_ID],
+      briefInvocationSource: 'settings_run_brief',
+    });
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
         code: 'email_sent',
         success: true,
+        meta: expect.objectContaining({
+          action_id: 'blocked-1',
+          no_send_blocker: true,
+          resend_id: 'resend-no-send',
+          daily_email_idempotency_key: expect.stringContaining(`daily-brief:${USER_ID}:`),
+        }),
       }),
     ]);
     expect(result.message).toContain('Sent briefs for 1 eligible user.');
@@ -1658,7 +1711,7 @@ Decide by 2026-04-24.`,
           expect.objectContaining({
             id: 'blocked-1',
             action_type: 'do_nothing',
-            directive: 'All 10 candidates blocked: stale_date_in_directive',
+            directive: 'Nothing cleared the bar today after evaluating 10 candidates.',
             artifact: expect.objectContaining({ type: 'wait_rationale' }),
           }),
         ],
@@ -1671,11 +1724,77 @@ Decide by 2026-04-24.`,
           payload: expect.objectContaining({
             execution_result: expect.objectContaining({
               daily_brief_sent_at: expect.any(String),
+              resend_id: 'resend-no-send',
+              daily_email_idempotency_key: expect.stringContaining(`daily-brief:${USER_ID}:`),
             }),
           }),
         }),
       ]),
     );
+  });
+
+  it('does not send a second generic no-send email when another same-day row already has send evidence', async () => {
+    vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
+    const earlierSentAt = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    mockSupabase.actionRows = [
+      {
+        id: 'older-sent-no-send',
+        user_id: USER_ID,
+        status: 'skipped',
+        action_type: 'do_nothing',
+        directive_text: 'Nothing cleared the bar today.',
+        reason: 'Nothing cleared the bar today.',
+        confidence: 45,
+        generated_at: earlierSentAt,
+        execution_result: {
+          outcome_type: 'no_send',
+          daily_brief_sent_at: earlierSentAt,
+          resend_id: 'resend-old-no-send',
+          artifact: {
+            type: 'wait_rationale',
+            context: 'Foldera checked your recent signals and did not find anything worth interrupting you for.',
+            evidence: 'Foldera checked your recent signals and did not find anything worth interrupting you for.',
+          },
+        },
+      },
+      {
+        id: 'blocked-2',
+        user_id: USER_ID,
+        status: 'skipped',
+        action_type: 'do_nothing',
+        directive_text: 'Nothing cleared the bar today after evaluating 4 candidates.',
+        reason: 'Nothing cleared the bar today after evaluating 4 candidates.',
+        confidence: 45,
+        generated_at: new Date().toISOString(),
+        execution_result: {
+          outcome_type: 'no_send',
+          artifact: {
+            type: 'wait_rationale',
+            context: 'Foldera checked your recent signals and did not find anything worth interrupting you for.',
+            evidence: 'Foldera checked your recent signals and did not find anything worth interrupting you for.',
+          },
+        },
+      },
+    ];
+
+    const result = await runDailySend({
+      userIds: [USER_ID],
+      briefInvocationSource: 'settings_run_brief',
+    });
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'email_already_sent',
+        success: true,
+        meta: expect.objectContaining({
+          action_id: 'older-sent-no-send',
+          resend_id: 'resend-old-no-send',
+          daily_email_idempotency_key: expect.stringContaining(`daily-brief:${USER_ID}:`),
+        }),
+      }),
+    ]);
+    expect(sendDailyDirective).not.toHaveBeenCalled();
+    expect(mockSupabase.updatedActions).toEqual([]);
   });
 
   it('sends a newer unsent pending action even when an older row was already emailed today', async () => {

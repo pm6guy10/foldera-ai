@@ -4,7 +4,14 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
-import { NO_SEND_SUBJECT, sendDailyDirective, sendDailyDeliverySkipAlert } from '@/lib/email/resend';
+import {
+  isInternalFailureText,
+  NO_SEND_BODY_TEXT,
+  NO_SEND_DIRECTIVE_TEXT,
+  NO_SEND_SUBJECT,
+  sendDailyDirective,
+  sendDailyDeliverySkipAlert,
+} from '@/lib/email/resend';
 import type { DirectiveItem } from '@/lib/email/resend';
 import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-users';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
@@ -24,6 +31,106 @@ import {
 } from './daily-brief-generate';
 import { listConnectedUserIds } from '@/lib/auth/user-tokens';
 import { mergePipelineRunDelivery } from '@/lib/observability/pipeline-run';
+
+function buildDailyEmailIdempotencyKey(userId: string, ptDayIso: string): string {
+  return `daily-brief:${userId}:${ptDayIso.slice(0, 10)}`;
+}
+
+function extractResendId(executionResult: Record<string, unknown> | null): string | null {
+  return executionResult && typeof executionResult.resend_id === 'string'
+    ? executionResult.resend_id
+    : null;
+}
+
+function extractDailyEmailIdempotencyKey(executionResult: Record<string, unknown> | null): string | null {
+  return executionResult && typeof executionResult.daily_email_idempotency_key === 'string'
+    ? executionResult.daily_email_idempotency_key
+    : null;
+}
+
+function isGenericNoSendText(value: string | null | undefined): boolean {
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return (
+    trimmed === NO_SEND_DIRECTIVE_TEXT ||
+    trimmed.startsWith('Nothing cleared the bar today') ||
+    trimmed === NO_SEND_BODY_TEXT ||
+    isInternalFailureText(trimmed)
+  );
+}
+
+function isGenericNoSendBlocker(blocker: {
+  directiveText: string | null;
+  reason: string | null;
+  executionResult: Record<string, unknown> | null;
+}): boolean {
+  if (isGenericNoSendText(blocker.directiveText) || isGenericNoSendText(blocker.reason)) {
+    return true;
+  }
+
+  const artifact = extractArtifact(blocker.executionResult);
+  if (!artifact || artifact.type !== 'wait_rationale') return false;
+
+  const context = typeof artifact.context === 'string' ? artifact.context.trim() : '';
+  const evidence = typeof artifact.evidence === 'string' ? artifact.evidence.trim() : '';
+  return (
+    context === NO_SEND_BODY_TEXT ||
+    evidence === NO_SEND_BODY_TEXT ||
+    isGenericNoSendText(context) ||
+    isGenericNoSendText(evidence)
+  );
+}
+
+function shouldAllowExplicitNoSendEmail(options: DailyBriefSignalWindowOptions): boolean {
+  return Boolean(options.userIds?.length) && options.briefInvocationSource !== 'cron_daily_brief';
+}
+
+async function findExistingSameDayEmailDelivery(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  todayStart: string,
+  currentActionId: string,
+  idempotencyKey: string,
+): Promise<{
+  actionId: string;
+  dailyBriefSentAt: string | null;
+  resendId: string | null;
+  dailyEmailIdempotencyKey: string | null;
+} | null> {
+  const { data, error } = await supabase
+    .from('tkg_actions')
+    .select('id, execution_result, generated_at')
+    .eq('user_id', userId)
+    .gte('generated_at', todayStart)
+    .order('generated_at', { ascending: false })
+    .limit(25);
+
+  if (error) return null;
+
+  for (const row of data ?? []) {
+    if (row.id === currentActionId) continue;
+    const executionResult =
+      row.execution_result && typeof row.execution_result === 'object'
+        ? (row.execution_result as Record<string, unknown>)
+        : null;
+    const sentAt = extractSentAt(executionResult ?? {});
+    const resendId = extractResendId(executionResult);
+    if (!sentAt && !resendId) continue;
+
+    const existingKey = extractDailyEmailIdempotencyKey(executionResult);
+    if (existingKey && existingKey !== idempotencyKey) continue;
+
+    return {
+      actionId: row.id as string,
+      dailyBriefSentAt: sentAt,
+      resendId,
+      dailyEmailIdempotencyKey: existingKey,
+    };
+  }
+
+  return null;
+}
 
 export async function runDailySend(
   options: DailyBriefSignalWindowOptions = {},
@@ -48,6 +155,7 @@ export async function runDailySend(
         results.push({ code: 'no_verified_email', success: false, userId });
         continue;
       }
+      const dailyEmailIdempotencyKey = buildDailyEmailIdempotencyKey(userId, todayStart);
 
       const { data: actions, error: actionsError } = await supabase
         .from('tkg_actions')
@@ -95,19 +203,70 @@ export async function runDailySend(
           if (blockerSentAt) {
             results.push({
               code: 'email_already_sent',
-              meta: { action_id: blocker.id, daily_brief_sent_at: blockerSentAt },
+              meta: {
+                action_id: blocker.id,
+                daily_brief_sent_at: blockerSentAt,
+                daily_email_idempotency_key:
+                  extractDailyEmailIdempotencyKey(blockerExecutionResult) ?? dailyEmailIdempotencyKey,
+              },
               success: true,
               userId,
             });
             continue;
           }
 
-          const blockerResendId =
-            typeof blockerExecutionResult.resend_id === 'string' ? blockerExecutionResult.resend_id : null;
+          const blockerResendId = extractResendId(blockerExecutionResult);
           if (blockerResendId) {
             results.push({
               code: 'email_already_sent',
-              meta: { action_id: blocker.id, resend_id: blockerResendId },
+              meta: {
+                action_id: blocker.id,
+                resend_id: blockerResendId,
+                daily_email_idempotency_key:
+                  extractDailyEmailIdempotencyKey(blockerExecutionResult) ?? dailyEmailIdempotencyKey,
+              },
+              success: true,
+              userId,
+            });
+            continue;
+          }
+
+          const existingSameDayDelivery = await findExistingSameDayEmailDelivery(
+            supabase,
+            userId,
+            todayStart,
+            blocker.id,
+            dailyEmailIdempotencyKey,
+          );
+          if (existingSameDayDelivery) {
+            results.push({
+              code: 'email_already_sent',
+              meta: {
+                action_id: existingSameDayDelivery.actionId,
+                ...(existingSameDayDelivery.dailyBriefSentAt
+                  ? { daily_brief_sent_at: existingSameDayDelivery.dailyBriefSentAt }
+                  : {}),
+                ...(existingSameDayDelivery.resendId
+                  ? { resend_id: existingSameDayDelivery.resendId }
+                  : {}),
+                daily_email_idempotency_key:
+                  existingSameDayDelivery.dailyEmailIdempotencyKey ?? dailyEmailIdempotencyKey,
+              },
+              success: true,
+              userId,
+            });
+            continue;
+          }
+
+          if (isGenericNoSendBlocker(blocker) && !shouldAllowExplicitNoSendEmail(options)) {
+            results.push({
+              code: 'no_send_blocker_persisted',
+              detail: 'Generic no-send blocker persisted without email delivery.',
+              meta: {
+                action_id: blocker.id,
+                daily_email_idempotency_key: dailyEmailIdempotencyKey,
+                generic_no_send_suppressed: true,
+              },
               success: true,
               userId,
             });
@@ -177,6 +336,7 @@ export async function runDailySend(
               execution_result: {
                 ...blockerExecutionResult,
                 daily_brief_sent_at: new Date().toISOString(),
+                daily_email_idempotency_key: dailyEmailIdempotencyKey,
                 ...(deliveryId ? { resend_id: deliveryId } : {}),
               },
             })
@@ -198,6 +358,7 @@ export async function runDailySend(
               action_id: blocker.id,
               artifact_type: directiveItem.artifact?.type ?? null,
               resend_id: deliveryId,
+              daily_email_idempotency_key: dailyEmailIdempotencyKey,
               no_send_blocker: true,
             },
             success: true,
@@ -251,7 +412,12 @@ export async function runDailySend(
       if (existingResendId) {
         results.push({
           code: 'email_already_sent',
-          meta: { action_id: action.id, resend_id: existingResendId },
+          meta: {
+            action_id: action.id,
+            resend_id: existingResendId,
+            daily_email_idempotency_key:
+              extractDailyEmailIdempotencyKey(executionResult) ?? dailyEmailIdempotencyKey,
+          },
           success: true,
           userId,
         });
@@ -308,6 +474,7 @@ export async function runDailySend(
           execution_result: {
             ...executionResult,
             daily_brief_sent_at: new Date().toISOString(),
+            daily_email_idempotency_key: dailyEmailIdempotencyKey,
             ...(deliveryId ? { resend_id: deliveryId } : {}),
           },
         })
@@ -329,6 +496,7 @@ export async function runDailySend(
           action_id: action.id,
           artifact_type: directiveItem.artifact?.type ?? null,
           resend_id: deliveryId,
+          daily_email_idempotency_key: dailyEmailIdempotencyKey,
         },
         success: true,
         userId,
@@ -377,7 +545,7 @@ export async function runDailySend(
 
   const totalConnectedUsers = (await listConnectedUserIds(supabase)).length;
   const emailsSent = results.filter((r) => r.code === 'email_sent').length;
-  const gotEmailOrAlready = new Set(['email_sent', 'email_already_sent']);
+  const gotEmailOrAlready = new Set(['email_sent', 'email_already_sent', 'no_send_blocker_persisted']);
   const skips = results
     .filter((r) => r.userId && !gotEmailOrAlready.has(r.code))
     .map((r) => ({
