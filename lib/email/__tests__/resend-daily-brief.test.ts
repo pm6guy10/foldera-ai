@@ -84,6 +84,36 @@ describe('daily brief no-send sanitization', () => {
     expect(html).toContain(NO_SEND_BODY_TEXT);
   });
 
+  it('does not leak raw quota/provider payloads into no-send html', () => {
+    const leakedPayload =
+      'batch: 400 {"type":"error","error":{"type":"invalid_request_error","message":"You have reached your specified API usage limits. You will regain access on 2026-05-01 at 00:00 UTC."},"request_id":"req_011CaWQh3JawpX84Nqs5uW5o"}';
+    const html = buildDailyDirectiveEmailHtml({
+      baseUrl: BASE_URL,
+      date: DATE,
+      directive: {
+        id: 'blocked-4',
+        directive: leakedPayload,
+        action_type: 'do_nothing',
+        confidence: 0,
+        reason: leakedPayload,
+        artifact: {
+          type: 'wait_rationale',
+          context: leakedPayload,
+          evidence: leakedPayload,
+        },
+      },
+    });
+
+    expect(html).toContain(NO_SEND_DIRECTIVE_TEXT);
+    expect(html).toContain(NO_SEND_BODY_TEXT);
+    expect(html).not.toContain('batch: 400');
+    expect(html).not.toContain('invalid_request_error');
+    expect(html).not.toContain('request_id');
+    expect(html).not.toContain('req_011CaWQh3JawpX84Nqs5uW5o');
+    expect(html).not.toContain('API usage limits');
+    expect(html).not.toContain('2026-05-01');
+  });
+
   it('never renders owner healthLine text in customer daily brief html', () => {
     const html = buildDailyDirectiveEmailHtml({
       baseUrl: BASE_URL,
@@ -149,6 +179,8 @@ describe('isInternalFailureText', () => {
   it('flags exact internal failure tokens that must never be customer-facing', () => {
     expect(isInternalFailureText('llm_failed')).toBe(true);
     expect(isInternalFailureText('stale_date_in_directive:March 30')).toBe(true);
+    expect(isInternalFailureText('batch: 400 invalid_request_error request_id=req_123')).toBe(true);
+    expect(isInternalFailureText('You have reached your specified API usage limits.')).toBe(true);
     expect(isInternalFailureText('System: RED — INFINITE_LOOP')).toBe(true);
     expect(isInternalFailureText('Normal customer copy.')).toBe(false);
   });

@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-28 — BL-013 scheduled no-send/internal-failure leak suppressed at send stage
+- MODE: Emergency production seam (single user-facing leak seam only).
+- Files changed: `lib/cron/daily-brief-send.ts`, `lib/email/resend.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `lib/cron/__tests__/manual-send.test.ts`, `lib/email/__tests__/resend-daily-brief.test.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `SESSION_HISTORY.md`.
+- What changed: Hardened scheduled `runDailySend` so cron delivery only sends real artifacts (`send_message` with valid email artifact or `write_document` with valid document artifact). Any scheduled no-send/internal-failure/quota/provider/missing-artifact row now exits with `code: no_send_blocker_persisted` and `meta.generic_no_send_suppressed=true` without calling `sendDailyDirective`. Explicit scoped/manual no-send remains allowed and now passes through explicit directive sanitization before delivery. Added defense-in-depth email sanitizer in `lib/email/resend.ts` that strips/blocklists raw provider/API leakage strings (`batch: 400`, `invalid_request_error`, `request_id`, `req_*`, API usage limit text, quota reset UTC timestamps, `llm_failed`, `stale_date_in_directive`, `candidate_blocked`, `All candidates blocked`) from outbound content.
+- Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts` (pass, 34 tests); `npx vitest run lib/email/__tests__/resend-daily-brief.test.ts` (pass, 8 tests); `npm run lint` (pass); `npm run build` (pass); `npm run controller:autopilot` (expected `CONTROLLER RESULT: STOP` on dirty seam files; no command failure outside dirtiness gate).
+- Unresolved issues: Production push/deploy proof pending in this session entry until commit is pushed and production revision advances.
+
 ## 2026-04-28 — Production E2E schedule no longer hard-fails when auth state is intentionally absent
 - MODE: CI SEAM (single seam)
 - Files changed: `tests/production/audit.spec.ts`, `SESSION_HISTORY.md`.

@@ -9,6 +9,7 @@ import {
   NO_SEND_BODY_TEXT,
   NO_SEND_DIRECTIVE_TEXT,
   NO_SEND_SUBJECT,
+  sanitizeDirectiveForDelivery,
   sendDailyDirective,
   sendDailyDeliverySkipAlert,
 } from '@/lib/email/resend';
@@ -60,26 +61,37 @@ function isGenericNoSendText(value: string | null | undefined): boolean {
   );
 }
 
-function isGenericNoSendBlocker(blocker: {
-  directiveText: string | null;
-  reason: string | null;
-  executionResult: Record<string, unknown> | null;
-}): boolean {
-  if (isGenericNoSendText(blocker.directiveText) || isGenericNoSendText(blocker.reason)) {
-    return true;
+function hasValidEmailArtifact(
+  artifact: ReturnType<typeof extractArtifact>,
+): artifact is Extract<NonNullable<ReturnType<typeof extractArtifact>>, { type: 'email' }> {
+  if (!artifact || artifact.type !== 'email') return false;
+  const to = typeof artifact.to === 'string' ? artifact.to.trim() : '';
+  const subject = typeof artifact.subject === 'string' ? artifact.subject.trim() : '';
+  const body = typeof artifact.body === 'string' ? artifact.body.trim() : '';
+  return to.includes('@') && subject.length > 0 && body.length > 0;
+}
+
+function hasValidDocumentArtifact(
+  artifact: ReturnType<typeof extractArtifact>,
+): artifact is Extract<NonNullable<ReturnType<typeof extractArtifact>>, { type: 'document' }> {
+  if (!artifact || artifact.type !== 'document') return false;
+  const title = typeof artifact.title === 'string' ? artifact.title.trim() : '';
+  const content = typeof artifact.content === 'string' ? artifact.content.trim() : '';
+  return title.length > 0 && content.length > 0;
+}
+
+function hasRealDeliverableArtifact(
+  actionType: string | null | undefined,
+  artifact: ReturnType<typeof extractArtifact>,
+): boolean {
+  const normalized = typeof actionType === 'string' ? actionType.trim().toLowerCase() : '';
+  if (normalized === 'send_message') {
+    return hasValidEmailArtifact(artifact);
   }
-
-  const artifact = extractArtifact(blocker.executionResult);
-  if (!artifact || artifact.type !== 'wait_rationale') return false;
-
-  const context = typeof artifact.context === 'string' ? artifact.context.trim() : '';
-  const evidence = typeof artifact.evidence === 'string' ? artifact.evidence.trim() : '';
-  return (
-    context === NO_SEND_BODY_TEXT ||
-    evidence === NO_SEND_BODY_TEXT ||
-    isGenericNoSendText(context) ||
-    isGenericNoSendText(evidence)
-  );
+  if (normalized === 'write_document') {
+    return hasValidDocumentArtifact(artifact);
+  }
+  return false;
 }
 
 function shouldAllowExplicitNoSendEmail(options: DailyBriefSignalWindowOptions): boolean {
@@ -258,7 +270,7 @@ export async function runDailySend(
             continue;
           }
 
-          if (isGenericNoSendBlocker(blocker) && !shouldAllowExplicitNoSendEmail(options)) {
+          if (!shouldAllowExplicitNoSendEmail(options)) {
             results.push({
               code: 'no_send_blocker_persisted',
               detail: 'Generic no-send blocker persisted without email delivery.',
@@ -287,6 +299,7 @@ export async function runDailySend(
             reason: (blocker.reason ?? '').split('[score=')[0].trim(),
             artifact: blockerArtifact,
           };
+          const safeDirectiveItem = sanitizeDirectiveForDelivery(directiveItem);
 
           const subject = NO_SEND_SUBJECT;
 
@@ -294,7 +307,7 @@ export async function runDailySend(
           try {
             delivery = await sendDailyDirective({
               to,
-              directives: [directiveItem],
+              directives: [safeDirectiveItem],
               date,
               subject,
               userId,
@@ -354,12 +367,12 @@ export async function runDailySend(
 
           results.push({
             code: 'email_sent',
-            meta: {
-              action_id: blocker.id,
-              artifact_type: directiveItem.artifact?.type ?? null,
-              resend_id: deliveryId,
-              daily_email_idempotency_key: dailyEmailIdempotencyKey,
-              no_send_blocker: true,
+              meta: {
+                action_id: blocker.id,
+                artifact_type: safeDirectiveItem.artifact?.type ?? null,
+                resend_id: deliveryId,
+                daily_email_idempotency_key: dailyEmailIdempotencyKey,
+                no_send_blocker: true,
             },
             success: true,
             userId,
@@ -380,7 +393,7 @@ export async function runDailySend(
           logStructuredEvent({
             event: 'daily_send_complete',
             userId,
-            artifactType: artifactTypeForAction(directiveItem.action_type),
+            artifactType: artifactTypeForAction(safeDirectiveItem.action_type),
             generationStatus: 'sent',
             details: { scope: 'daily-send', action_id: blocker.id, no_send_blocker: true },
           });
@@ -395,6 +408,28 @@ export async function runDailySend(
         action.execution_result && typeof action.execution_result === 'object'
           ? (action.execution_result as Record<string, unknown>)
           : {};
+      const actionArtifact = extractArtifact(action.execution_result);
+      if (
+        !shouldAllowExplicitNoSendEmail(options) &&
+        (
+          !hasRealDeliverableArtifact(action.action_type as string, actionArtifact) ||
+          isGenericNoSendText(action.directive_text as string | null | undefined) ||
+          isGenericNoSendText(action.reason as string | null | undefined)
+        )
+      ) {
+        results.push({
+          code: 'no_send_blocker_persisted',
+          detail: 'Generic no-send blocker persisted without email delivery.',
+          meta: {
+            action_id: action.id,
+            daily_email_idempotency_key: dailyEmailIdempotencyKey,
+            generic_no_send_suppressed: true,
+          },
+          success: true,
+          userId,
+        });
+        continue;
+      }
       const sentAt = extractSentAt(executionResult);
       if (sentAt) {
         results.push({
@@ -430,15 +465,16 @@ export async function runDailySend(
         action_type: action.action_type as string,
         confidence: (action.confidence as number) ?? 0,
         reason: ((action.reason as string) ?? '').split('[score=')[0].trim(),
-        artifact: extractArtifact(action.execution_result),
+        artifact: actionArtifact,
       };
+      const safeDirectiveItem = sanitizeDirectiveForDelivery(directiveItem);
 
-      const words = directiveItem.directive.split(/\s+/).slice(0, 6).join(' ');
+      const words = safeDirectiveItem.directive.split(/\s+/).slice(0, 6).join(' ');
       const subject = `Foldera: ${words.length > 50 ? `${words.slice(0, 47)}...` : words}`;
 
       let delivery: unknown;
       try {
-        delivery = await sendDailyDirective({ to, directives: [directiveItem], date, subject, userId });
+        delivery = await sendDailyDirective({ to, directives: [safeDirectiveItem], date, subject, userId });
       } catch (sendErr: unknown) {
         logStructuredEvent({
           event: 'daily_send_failed',
@@ -494,7 +530,7 @@ export async function runDailySend(
         code: 'email_sent',
         meta: {
           action_id: action.id,
-          artifact_type: directiveItem.artifact?.type ?? null,
+          artifact_type: safeDirectiveItem.artifact?.type ?? null,
           resend_id: deliveryId,
           daily_email_idempotency_key: dailyEmailIdempotencyKey,
         },

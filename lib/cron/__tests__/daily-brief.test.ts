@@ -7,7 +7,7 @@ import { persistDirectiveHistorySignal } from '@/lib/signals/directive-history-s
 import { countUnprocessedSignals, processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { summarizeSignals } from '@/lib/signals/summarizer';
 import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-users';
-import { sendDailyDirective } from '@/lib/email/resend';
+import { NO_SEND_DIRECTIVE_TEXT, sanitizeDirectiveForDelivery, sendDailyDirective } from '@/lib/email/resend';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 
 const USER_ID = '11111111-1111-1111-1111-111111111111';
@@ -435,8 +435,9 @@ vi.mock('@/lib/email/resend', () => ({
   NO_SEND_DIRECTIVE_TEXT: 'Nothing cleared the bar today.',
   NO_SEND_SUBJECT: 'Foldera: Nothing cleared the bar today',
   isInternalFailureText: vi.fn((text: string) =>
-    /\bllm_failed\b|\bstale_date_in_directive\b|all\s+\d+\s+candidates blocked/i.test(text),
+    /\bllm_failed\b|\bstale_date_in_directive\b|all\s+\d+\s+candidates blocked|\ball candidates blocked\b|\bbatch:\s*400\b|\binvalid_request_error\b|\brequest_id\b|\breq_[A-Za-z0-9]+\b|\bapi usage limits\b/i.test(text),
   ),
+  sanitizeDirectiveForDelivery: vi.fn((directive: unknown) => directive),
   sendDailyDirective: vi.fn().mockResolvedValue(undefined),
   sendDailyDeliverySkipAlert: vi.fn().mockResolvedValue(undefined),
 }));
@@ -1763,6 +1764,50 @@ Decide by 2026-04-24.`,
     expect(mockSupabase.updatedActions).toEqual([]);
   });
 
+  it('suppresses leaked quota/internal-failure no-send rows during scheduled daily-send', async () => {
+    vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
+    const leakedPayload =
+      'batch: 400 {"type":"error","error":{"type":"invalid_request_error","message":"You have reached your specified API usage limits. You will regain access on 2026-05-01 at 00:00 UTC."},"request_id":"req_011CaWQh3JawpX84Nqs5uW5o"}';
+    mockSupabase.actionRows = [
+      {
+        id: 'blocked-leak-1',
+        user_id: USER_ID,
+        status: 'pending_approval',
+        action_type: 'do_nothing',
+        directive_text: leakedPayload,
+        reason: leakedPayload,
+        confidence: 99,
+        generated_at: new Date().toISOString(),
+        execution_result: {
+          artifact: {
+            type: 'wait_rationale',
+            context: leakedPayload,
+            evidence: leakedPayload,
+          },
+        },
+      },
+    ];
+
+    const result = await runDailySend();
+    const serialized = JSON.stringify(result);
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'no_send_blocker_persisted',
+        success: true,
+        meta: expect.objectContaining({
+          action_id: 'blocked-leak-1',
+          generic_no_send_suppressed: true,
+          daily_email_idempotency_key: expect.stringContaining(`daily-brief:${USER_ID}:`),
+        }),
+      }),
+    ]);
+    expect(sendDailyDirective).not.toHaveBeenCalled();
+    expect(serialized).not.toContain('Nothing cleared the bar today');
+    expect(serialized).not.toContain('invalid_request_error');
+    expect(serialized).not.toContain('API usage limits');
+  });
+
   it('sends generic persisted no-send blocker once for an explicitly scoped manual run', async () => {
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
     vi.mocked(sendDailyDirective).mockResolvedValue({ data: { id: 'resend-no-send' } } as never);
@@ -1805,6 +1850,7 @@ Decide by 2026-04-24.`,
       }),
     ]);
     expect(result.message).toContain('Sent briefs for 1 eligible user.');
+    expect(sanitizeDirectiveForDelivery).toHaveBeenCalled();
     expect(sendDailyDirective).toHaveBeenCalledWith(
       expect.objectContaining({
         to: 'owner@example.com',
@@ -1834,6 +1880,65 @@ Decide by 2026-04-24.`,
         }),
       ]),
     );
+  });
+
+  it('uses sanitized no-send content before sending in explicit manual scope', async () => {
+    vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
+    vi.mocked(sendDailyDirective).mockResolvedValue({ data: { id: 'resend-no-send' } } as never);
+    vi.mocked(sanitizeDirectiveForDelivery).mockImplementationOnce((directive) => ({
+      ...(directive as Record<string, unknown>),
+      directive: NO_SEND_DIRECTIVE_TEXT,
+      reason: '',
+      artifact: {
+        type: 'wait_rationale',
+        context: 'Foldera checked your recent signals and did not find anything worth interrupting you for.',
+        evidence: 'Foldera checked your recent signals and did not find anything worth interrupting you for.',
+      },
+    }));
+    const leakedPayload =
+      'batch: 400 {"type":"error","error":{"type":"invalid_request_error","message":"You have reached your specified API usage limits. You will regain access on 2026-05-01 at 00:00 UTC."},"request_id":"req_011CaWQh3JawpX84Nqs5uW5o"}';
+    mockSupabase.actionRows = [
+      {
+        id: 'blocked-leak-2',
+        user_id: USER_ID,
+        status: 'skipped',
+        action_type: 'do_nothing',
+        directive_text: leakedPayload,
+        reason: leakedPayload,
+        confidence: 45,
+        generated_at: new Date().toISOString(),
+        execution_result: {
+          outcome_type: 'no_send',
+          artifact: {
+            type: 'wait_rationale',
+            context: leakedPayload,
+            evidence: leakedPayload,
+          },
+        },
+      },
+    ];
+
+    const result = await runDailySend({
+      userIds: [USER_ID],
+      briefInvocationSource: 'settings_run_brief',
+    });
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'email_sent',
+        success: true,
+        meta: expect.objectContaining({ action_id: 'blocked-leak-2' }),
+      }),
+    ]);
+    expect(sendDailyDirective).toHaveBeenCalledTimes(1);
+    const call = vi.mocked(sendDailyDirective).mock.calls[0]?.[0];
+    const sent = JSON.stringify(call);
+    expect(sent).toContain(NO_SEND_DIRECTIVE_TEXT);
+    expect(sent).not.toContain('batch: 400');
+    expect(sent).not.toContain('invalid_request_error');
+    expect(sent).not.toContain('request_id');
+    expect(sent).not.toContain('req_011CaWQh3JawpX84Nqs5uW5o');
+    expect(sent).not.toContain('API usage limits');
   });
 
   it('does not send a second generic no-send email when another same-day row already has send evidence', async () => {

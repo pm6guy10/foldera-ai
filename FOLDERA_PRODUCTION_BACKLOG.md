@@ -151,6 +151,25 @@ Done means: The same live owner paid path produces one usable artifact or a clea
 Do-not-count: HTTP 200 alone, `pipeline_runs` / `api_usage` alone, internal logs alone, or docs/screenshots/refactors/unrelated tests.
 Status: CLOSED
 Last evidence: 2026-04-27 — pushed `237a122`; Vercel production health flipped to build `237a122`; authenticated owner `Generate with AI` on `https://www.foldera.ai/dashboard/system` returned `200` with `generate.results[0].code = pending_approval_persisted`, `send.results[0].code = email_sent`, and fresh action `b872f567-51f2-4c54-a500-7d0813e9159a`. The latest persisted row is `pending_approval` `write_document`, not `do_nothing`, and its user-facing `directive_text` / `reason` contain no internal validator strings.
+Next blocker: BL-013.
+
+### BL-013
+ID: BL-013
+Rung: 2
+Title: Scheduled do_nothing/internal-failure no-send email escaped to user
+User-facing path: Nightly scheduled `daily-send` must never email internal no-send/debug/quota failure rows.
+Starting route or trigger: Scheduled `cron_daily_brief` send stage (`runDailySend` / `POST /api/cron/daily-send`).
+Ending success state: Scheduled send suppresses no-send/internal-failure/quota/provider-failure/missing-artifact rows with `no_send_blocker_persisted`, while valid `send_message` / `write_document` rows still send once.
+Problem: A user received `Foldera: Nothing cleared the bar today` with raw provider payload text (`batch: 400`, `invalid_request_error`, `request_id`, `API usage limits`, quota reset date). Scheduled no-send should have been suppressed, not sanitized-and-sent.
+Protected contracts: Preserve no-send persistence for observability, preserve explicit scoped/manual no-send sends (sanitized), preserve real artifact once-only sends, preserve `daily_email_idempotency_key`, preserve BL-002 newer-pending-action send behavior, no `OWNER_USER_ID` hardcode.
+Allowed files: `lib/cron/daily-brief-send.ts`, `lib/cron/daily-brief-generate.ts`, `lib/email/resend.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `lib/cron/__tests__/manual-send.test.ts`, focused email/render tests, `FOLDERA_PRODUCTION_BACKLOG.md`, `SESSION_HISTORY.md`
+Forbidden files: `app/dashboard/**`, `app/api/stripe/**`, auth/session code, billing code, migrations, visual/styling files, unrelated tests, broad refactors
+Required local proof: `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts`; `npm run lint`; `npm run build`; `npm run controller:autopilot`
+Required production proof: Verify production deploy advanced to the pushed fix and confirm the leaked no-send/internal-failure class is now suppressed by deployed scheduled-send gating logic (without forcing cron).
+Done means: Scheduled no-send/internal-failure rows no longer call send delivery; exact leaked payload is regression-tested; real artifact sends still pass once-only behavior; push + deploy are complete.
+Do-not-count: Sanitized no-send customer email delivery, local-only tests, forced cron proof, or docs-only status updates without deployed logic.
+Status: CLOSED
+Last evidence: 2026-04-28 — `runDailySend` now suppresses all scheduled non-artifact/no-send/internal-failure rows with `code: no_send_blocker_persisted` and `meta.generic_no_send_suppressed=true`; manual scoped no-send still routes through sanitization; delivery sanitization now strips `batch: 400`, `invalid_request_error`, `request_id`, `req_*`, `API usage limits`, quota reset UTC timestamps, `llm_failed`, `stale_date_in_directive`, and candidate-blocked/all-candidates-blocked text. Added exact leaked-payload regression in `lib/cron/__tests__/daily-brief.test.ts` (scheduled suppression + manual sanitized send assertion) and `lib/email/__tests__/resend-daily-brief.test.ts` (rendered no-send leak suppression). Validation passed: `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts`, `npx vitest run lib/email/__tests__/resend-daily-brief.test.ts`, `npm run lint`, `npm run build`, `npm run controller:autopilot` (expected STOP on dirty files while reporting BL-011 waiting passive proof).
 Next blocker: BL-003.
 
 ### BL-003

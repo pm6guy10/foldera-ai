@@ -41,11 +41,40 @@ const INTERNAL_FAILURE_TEXT_PATTERNS = [
   /\btrigger_lock\b/i,
   /generation validation failed/i,
   /all\s+\d+\s+candidates blocked/i,
+  /all candidates blocked/i,
   /\ball_candidates_blocked\b/i,
+  /\bcandidate_blocked\b/i,
   /\bsystem commitment\b/i,
   /\bcandidateFailureReasons\b/i,
   /\bcandidate failure reasons\b/i,
   /\bINFINITE_LOOP\b/i,
+  /\bbatch:\s*400\b/i,
+  /\binvalid_request_error\b/i,
+  /\brequest_id\b/i,
+  /\breq_[A-Za-z0-9]+\b/i,
+  /\bapi usage limits\b/i,
+  /\byou have reached your specified api usage limits\b/i,
+  /\bquota\b/i,
+  /\bprovider failure\b/i,
+  /\b20\d{2}-\d{2}-\d{2}\s+at\s+\d{2}:\d{2}\s+utc\b/i,
+];
+
+const INTERNAL_FAILURE_TEXT_STRIP_PATTERNS = [
+  /\bbatch:\s*400\b/gi,
+  /\binvalid_request_error\b/gi,
+  /\brequest_id\b/gi,
+  /\breq_[A-Za-z0-9]+\b/gi,
+  /\bapi usage limits\b/gi,
+  /\byou have reached your specified api usage limits\b/gi,
+  /\bllm_failed\b/gi,
+  /\bstale_date_in_directive\b/gi,
+  /\ball candidates blocked\b/gi,
+  /\ball\s+\d+\s+candidates blocked\b/gi,
+  /\bcandidate_blocked\b/gi,
+  /\bquota\b/gi,
+  /\bprovider failure\b/gi,
+  /\b20\d{2}-\d{2}-\d{2}\s+at\s+\d{2}:\d{2}\s+utc\b/gi,
+  /\{(?:\s|"|:|,|[A-Za-z0-9_.-])+invalid_request_error(?:\s|"|:|,|[A-Za-z0-9_.-])+\}/gi,
 ];
 
 function isNoSendDirective(directive: DirectiveItem): boolean {
@@ -60,19 +89,30 @@ export function isInternalFailureText(text: string): boolean {
   return INTERNAL_FAILURE_TEXT_PATTERNS.some((pattern) => pattern.test(trimmed));
 }
 
+function stripInternalFailureContent(text: string): string {
+  let cleaned = text;
+  for (const pattern of INTERNAL_FAILURE_TEXT_STRIP_PATTERNS) {
+    cleaned = cleaned.replace(pattern, ' ');
+  }
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  return cleaned;
+}
+
+function sanitizePlainTextForDelivery(value: string | null | undefined): string {
+  if (typeof value !== 'string') return '';
+  return stripInternalFailureContent(value);
+}
+
 export function sanitizeNoSendDirective(directive: DirectiveItem): DirectiveItem {
-  const safeDirective =
-    directive.directive.trim().length > 0 && !isInternalFailureText(directive.directive)
-      ? directive.directive.trim()
-      : NO_SEND_DIRECTIVE_TEXT;
+  const cleanedReason = sanitizePlainTextForDelivery(directive.reason);
   const safeReason =
-    directive.reason.trim().length > 0 && !isInternalFailureText(directive.reason)
-      ? directive.reason.trim()
+    cleanedReason.length > 0 && !isInternalFailureText(cleanedReason)
+      ? cleanedReason
       : '';
 
   return {
     id: directive.id,
-    directive: safeDirective,
+    directive: NO_SEND_DIRECTIVE_TEXT,
     action_type: 'do_nothing',
     confidence: typeof directive.confidence === 'number' ? directive.confidence : 0,
     reason: safeReason,
@@ -81,6 +121,53 @@ export function sanitizeNoSendDirective(directive: DirectiveItem): DirectiveItem
       context: NO_SEND_BODY_TEXT,
       evidence: NO_SEND_BODY_TEXT,
     },
+  };
+}
+
+export function sanitizeDirectiveForDelivery(directive: DirectiveItem): DirectiveItem {
+  if (isNoSendDirective(directive)) {
+    return sanitizeNoSendDirective(directive);
+  }
+
+  const artifact = directive.artifact;
+  let sanitizedArtifact = artifact;
+
+  if (artifact?.type === 'email') {
+    const subject = sanitizePlainTextForDelivery(artifact.subject) || 'Foldera update';
+    const body =
+      sanitizePlainTextForDelivery(artifact.body) ||
+      'Foldera prepared this message without internal system diagnostics.';
+    sanitizedArtifact = {
+      ...artifact,
+      subject,
+      body,
+    };
+  } else if (artifact?.type === 'document') {
+    const title = sanitizePlainTextForDelivery(artifact.title) || 'Foldera document';
+    const content =
+      sanitizePlainTextForDelivery(artifact.content) ||
+      'Foldera prepared this document without internal system diagnostics.';
+    sanitizedArtifact = {
+      ...artifact,
+      title,
+      content,
+    };
+  } else if (artifact?.type === 'wait_rationale') {
+    sanitizedArtifact = {
+      ...artifact,
+      context: NO_SEND_BODY_TEXT,
+      evidence: NO_SEND_BODY_TEXT,
+    };
+  }
+
+  const cleanedDirective = sanitizePlainTextForDelivery(directive.directive);
+  const cleanedReason = sanitizePlainTextForDelivery(directive.reason);
+
+  return {
+    ...directive,
+    directive: cleanedDirective || 'Foldera prepared your daily brief update.',
+    reason: cleanedReason,
+    artifact: sanitizedArtifact,
   };
 }
 
@@ -595,7 +682,7 @@ export async function sendDailyDirective({
   userId: string;
 }) {
   const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
-  const directive = directives[0];
+  const directive = directives[0] ? sanitizeDirectiveForDelivery(directives[0]) : null;
   const sanitizedNoSendDirective = directive && isNoSendDirective(directive)
     ? sanitizeNoSendDirective(directive)
     : null;
@@ -619,7 +706,8 @@ export async function sendDailyDirective({
     });
   }
 
-  const emailSubject = subject ?? `Foldera: ${directive.directive.split(/\s+/).slice(0, 6).join(' ')}`;
+  const rawSubject = subject ?? `Foldera: ${directive.directive.split(/\s+/).slice(0, 6).join(' ')}`;
+  const emailSubject = sanitizePlainTextForDelivery(rawSubject) || 'Foldera: Daily brief update';
   const html = buildDailyDirectiveEmailHtml({ baseUrl, date, directive });
   return sendResendEmail({
     to,

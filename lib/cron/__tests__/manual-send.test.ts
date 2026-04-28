@@ -165,6 +165,7 @@ vi.mock('@/lib/auth/daily-brief-users', () => ({
 
 vi.mock('@/lib/email/resend', () => ({
   NO_SEND_SUBJECT: 'Foldera: Nothing cleared the bar today',
+  sanitizeDirectiveForDelivery: vi.fn((directive: unknown) => directive),
   sendDailyDirective: vi.fn(),
   sendDailyDeliverySkipAlert: vi.fn().mockResolvedValue(undefined),
 }));
