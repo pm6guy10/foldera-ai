@@ -94,26 +94,56 @@ describe('buildDecisionEnforcedFallbackPayload interview repair', () => {
     expect(payload).not.toBeNull();
     expect(payload?.artifact_type).toBe('write_document');
     const artifact = payload?.artifact as Record<string, string>;
+    expect(artifact.document_purpose).toBe('hiring fit answer packet');
+    expect(artifact.target_reader).toBe('private notes');
+
+    const forbiddenPrepOrInternalPatterns = [
+      /prep brief/i,
+      /prep checklist/i,
+      /review the website/i,
+      /review the job/i,
+      /prepare examples/i,
+      /prepare (?:three|two|\d+)?\s*(?:stories|talking points|examples)/i,
+      /\bSTAR\b/i,
+      /dress code|business casual|what to wear/i,
+      /action items/i,
+      /\bchecklist\b/i,
+      /generic coaching/i,
+      /familiarize yourself/i,
+      /validator|debug|provider/i,
+      /Anthropic|invalid_request_error|request_id|req_[A-Za-z0-9]+/i,
+      /generation_log|candidate_blocked|llm_failed/i,
+    ];
+
     const { title, content } = expectDocumentArtifactShape(artifact, {
       minTitleLength: 20,
-      minLength: 180,
+      minLength: 650,
       minParagraphs: 1,
-      requiredTerms: ['community-based', 'mileage is reimbursed'],
-      forbiddenPatterns: [
-        /prep brief/i,
-        /review the website/i,
-        /prepare examples/i,
-        /\bSTAR\b/i,
-        /dress code|business casual|what to wear/i,
-        /action items/i,
-        /\bchecklist\b/i,
+      titleRequiredTerms: ['Care Coordinator'],
+      titleRequiredRegexes: [/role-fit answer/i],
+      requiredTerms: [
+        'SOURCE',
+        'Contact / thread: recruiter or scheduling mail in the signals above',
+        'Time: 3:15 PM PT on 2026-04-15',
+        'Comprehensive Healthcare',
+        'Care Coordinator',
+        'community-based',
+        'mileage is reimbursed',
       ],
+      requiredRegexes: [
+        /First-person answer:\nI am a strong match for Care Coordinator/i,
+        /because the work is centered on community-based.+mileage is reimbursed/i,
+        /Commitment: this answer commits to .+ as the fit signal/i,
+      ],
+      forbiddenPatterns: forbiddenPrepOrInternalPatterns,
     });
-    expect(`${title}\n${content}`).toMatch(/role-fit answer|hiring fit answer packet/i);
+    const artifactText = `${title}\n${content}`;
+    expect(artifactText).toMatch(/role-fit answer|hiring fit answer packet/i);
     expect(content).toContain('First-person answer:');
+    expect(content.split('\n').filter(Boolean).length).toBeGreaterThanOrEqual(8);
     expect(content).toContain('I am a strong match for Care Coordinator');
-    expect(`${title}\n${content}`).toContain('3:15 PM PT on 2026-04-15');
-    expect(`${title}\n${content}`).not.toContain('5:00 PM PT on 2026-04-15');
+    expect(artifactText).toContain('3:15 PM PT on 2026-04-15');
+    expect(artifactText).not.toContain('5:00 PM PT on 2026-04-15');
 
     const decisionIssues = getDecisionEnforcementIssues({
       actionType: 'write_document',
