@@ -13,6 +13,8 @@ const WEB_ORIGIN =
   process.env.PLAYWRIGHT_TEST_BASE_URL?.trim() ||
   process.env.BASE_URL?.trim() ||
   `http://127.0.0.1:${WEB_PORT}`;
+const LONG_DOCUMENT_DIRECTIVE =
+  'Darlene Craig (darlene.craig@esd.wa.gov) sent you interview questions for ESB Technician (2026-02344) on April 21. Here is your completed prep sheet built from those questions, your resume, and the job posting.';
 
 const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 const SESSION_RESPONSE = {
@@ -71,6 +73,12 @@ async function seedAuthenticatedSession(page: Page): Promise<void> {
       sameSite: 'Lax',
     },
   ]);
+}
+
+async function requiredBox(page: Page, testId: string) {
+  const box = await page.getByTestId(testId).boundingBox();
+  if (!box) throw new Error(`Missing visible box for ${testId}`);
+  return box;
 }
 
 async function setupDashboardMocks(page: Page, options: SetupOptions): Promise<void> {
@@ -132,10 +140,10 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
     await setupDashboardMocks(page, {
       latestResponse: {
         id: 'action-pixel-lock-001',
-        directive: 'Finalize the outreach document.',
+        directive: LONG_DOCUMENT_DIRECTIVE,
         action_type: 'write_document',
         confidence: 87,
-        reason: 'Packet owner must confirm final messaging today.',
+        reason: 'Darlene Craig sent interview questions for 2026-02344 directly to you.',
         status: 'pending_approval',
         artifact: {
           type: 'document',
@@ -157,8 +165,14 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
     await page.goto('/dashboard');
 
     await expect(page.getByTestId('pixel-lock-frame')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('pixel-lock-artifact-title')).toHaveText('Finalize the outreach document.');
+    await expect(page.getByTestId('pixel-lock-artifact-title')).toHaveText(LONG_DOCUMENT_DIRECTIVE);
     await expect(page.getByTestId('pixel-lock-artifact-body')).toContainText('Assign Holly as final packet owner');
+
+    const directiveBox = await requiredBox(page, 'dashboard-brief-directive-section');
+    const whyBox = await requiredBox(page, 'dashboard-brief-why-section');
+    const draftBox = await requiredBox(page, 'dashboard-brief-draft-section');
+    expect(directiveBox.y + directiveBox.height).toBeLessThanOrEqual(whyBox.y + 1);
+    expect(whyBox.y + whyBox.height).toBeLessThanOrEqual(draftBox.y + 1);
 
     const noHorizontalScroll = await page.evaluate(
       () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,

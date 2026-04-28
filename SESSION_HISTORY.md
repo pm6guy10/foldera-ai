@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-28 — Dashboard long directive text no longer overlaps itself
+- MODE: Dashboard rendering seam only.
+- Files changed: `components/foldera/DailyBriefCard.tsx`, `tests/dashboard/live-artifact-pixel-lock.spec.ts`, `SESSION_HISTORY.md`.
+- What changed: Replaced the desktop-stage `DailyBriefCard` body’s fixed absolute section coordinates with a contained flowing/scrollable stack, so long real `write_document` directives push `Why This Now` and `Finished Document` down instead of painting over them. Added focused Playwright coverage using the long Darlene Craig/ESB Technician directive shape and bounding-box assertions for directive, why-now, and draft sections.
+- Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `npm run build` (pass); `$env:CI='true'; $env:PLAYWRIGHT_WEB_PORT='3011'; npx playwright test tests/dashboard/live-artifact-pixel-lock.spec.ts --reporter=list` (2 passed); local browser proof screenshot `output/playwright/dashboard-long-directive-no-overlap.png` with directive bottom `508`, why-now top `533`, draft top `640`.
+- Unresolved issues: Production deploy/live revision proof pending until this commit is pushed and Vercel advances.
+
 ## 2026-04-28 — BL-005 interview document prompt tightened, production proof blocked by Anthropic quota
 - MODE: FOLDERA PRODUCTION AUTOPILOT (BL-005 only; no BL-006 continuation).
 - Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/interview-fallback.test.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.

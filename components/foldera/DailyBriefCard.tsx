@@ -198,60 +198,79 @@ export function DailyBriefCard({
           </div>
         </header>
 
-        <div className="absolute left-[52px] top-[236px] h-px w-[1112px] bg-white/8" />
-        <div className="absolute left-[52px] top-[392px] h-px w-[1112px] bg-white/8" />
-        <div className="absolute left-[52px] top-[620px] h-px w-[1112px] bg-white/8" />
-        <div className="absolute left-[38px] top-[668px] h-px w-[1140px] bg-white/8" />
+        <div className="absolute inset-x-0 bottom-[126px] top-[68px] overflow-y-auto px-[52px] py-[28px]">
+          <section
+            className="grid grid-cols-[126px_minmax(0,1fr)] gap-0"
+            data-testid="dashboard-brief-directive-section"
+          >
+            <div className="flex h-[52px] w-[52px] items-center justify-center self-start justify-self-center rounded-[16px] border border-cyan-400/34 bg-cyan-400/10 text-accent">
+              <DirectiveIcon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[16px] font-semibold uppercase tracking-[0.14em] text-amber-400">Directive</p>
+              <h2 className="mt-2 max-w-[760px] text-[34px] font-semibold leading-[40px] text-text-primary">
+                {directive}
+              </h2>
+            </div>
+          </section>
 
-        <div className="absolute left-[94px] top-[102px] flex h-[52px] w-[52px] items-center justify-center rounded-[16px] border border-cyan-400/34 bg-cyan-400/10 text-accent">
-          <DirectiveIcon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
-        </div>
-        <div className="absolute left-[220px] right-[60px] top-[82px]">
-          <p className="text-[16px] font-semibold uppercase tracking-[0.14em] text-amber-400">Directive</p>
-          <h2 className="mt-2 max-w-[620px] text-[36px] font-semibold leading-[44px] tracking-[-0.032em] text-text-primary">
-            {directive}
-          </h2>
+          <section
+            className="mt-[28px] grid grid-cols-[126px_minmax(0,1fr)] gap-0 border-t border-white/8 pt-[28px]"
+            data-testid="dashboard-brief-why-section"
+          >
+            <div className="flex h-[52px] w-[52px] items-center justify-center self-start justify-self-center rounded-[16px] border border-amber-400/30 bg-amber-400/8 text-amber-400">
+              <WhyIcon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[16px] font-semibold uppercase tracking-[0.14em] text-amber-400">Why This Now</p>
+              <p className="mt-2 max-w-[760px] text-[18px] leading-[30px] text-text-secondary">{whyNow}</p>
+            </div>
+          </section>
+
+          <section
+            className="mt-[28px] grid grid-cols-[126px_minmax(0,1fr)] gap-0 border-t border-white/8 pt-[28px]"
+            data-testid="dashboard-brief-draft-section"
+          >
+            <div className="flex h-[52px] w-[52px] items-center justify-center self-start justify-self-center rounded-[16px] border border-white/12 bg-white/[0.03] text-text-secondary">
+              <DraftIcon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[16px] font-semibold uppercase tracking-[0.14em] text-text-muted">{draftLabel}</p>
+              <div className="mt-2 max-w-[760px] text-[18px] leading-[30px] text-text-primary">{draftBody}</div>
+            </div>
+          </section>
+
+          <section
+            className="mt-[28px] grid grid-cols-[126px_minmax(0,1fr)] gap-0 border-t border-white/8 pt-[24px]"
+            data-testid="dashboard-brief-source-section"
+          >
+            <div className="flex h-[38px] w-[38px] items-center justify-center self-start justify-self-center rounded-[11px] border border-white/12 bg-white/[0.03] text-text-secondary">
+              <SourceIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
+            </div>
+            <div className="grid min-w-0 grid-cols-[160px_minmax(0,1fr)] gap-4">
+              <p className="text-[16px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+                Source Basis
+              </p>
+              <div className="flex flex-wrap gap-2.5">
+                {sourcePills.map((pill) => (
+                  <span
+                    key={pill}
+                    className="inline-flex h-[36px] items-center rounded-[10px] border border-border bg-white/[0.03] px-3.5 text-[15px] text-text-secondary"
+                  >
+                    {pill}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </section>
         </div>
 
-        <div className="absolute left-[94px] top-[246px] flex h-[52px] w-[52px] items-center justify-center rounded-[16px] border border-amber-400/30 bg-amber-400/8 text-amber-400">
-          <WhyIcon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
-        </div>
-        <div className="absolute left-[220px] right-[60px] top-[236px]">
-          <p className="text-[16px] font-semibold uppercase tracking-[0.14em] text-amber-400">Why This Now</p>
-          <p className="mt-2 max-w-[680px] text-[18px] leading-[30px] text-text-secondary">{whyNow}</p>
-        </div>
-
-        <div className="absolute left-[94px] top-[406px] flex h-[52px] w-[52px] items-center justify-center rounded-[16px] border border-white/12 bg-white/[0.03] text-text-secondary">
-          <DraftIcon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
-        </div>
-        <div className="absolute left-[220px] right-[60px] top-[392px]">
-          <p className="text-[16px] font-semibold uppercase tracking-[0.14em] text-text-muted">{draftLabel}</p>
-          <div className="mt-2 max-w-[680px] text-[18px] leading-[30px] text-text-primary">{draftBody}</div>
-        </div>
-
-        <div className="absolute left-[94px] top-[624px] flex h-[38px] w-[38px] items-center justify-center rounded-[11px] border border-white/12 bg-white/[0.03] text-text-secondary">
-          <SourceIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
-        </div>
-        <p className="absolute left-[220px] top-[622px] text-[16px] font-semibold uppercase tracking-[0.14em] text-text-muted">
-          Source Basis
-        </p>
-        <div className="absolute left-[396px] right-[60px] top-[620px] flex flex-wrap gap-2.5">
-          {sourcePills.map((pill) => (
-            <span
-              key={pill}
-              className="inline-flex h-[36px] items-center rounded-[10px] border border-border bg-white/[0.03] px-3.5 text-[15px] text-text-secondary"
-            >
-              {pill}
-            </span>
-          ))}
-        </div>
-
-        <footer className="absolute inset-x-0 top-[668px] h-[104px]">
-          <div className="absolute left-[38px] top-[44px] flex items-center gap-2.5 text-[16px] text-text-muted">
+        <footer className="absolute inset-x-0 bottom-0 h-[126px] border-t border-white/8">
+          <div className="absolute left-[38px] top-[48px] flex items-center gap-2.5 text-[16px] text-text-muted">
             <Shield className="h-5 w-5 shrink-0 text-text-secondary" aria-hidden="true" />
             <span>{footerText}</span>
           </div>
-          <div className="absolute right-[40px] top-[42px] flex items-start gap-3">
+          <div className="absolute right-[40px] top-[38px] flex items-start gap-3">
             {otherActions.map((action) => {
               const stageClass = action.kind === 'amber' ? 'w-[194px] h-[52px]' : 'w-[176px] h-[52px]';
               return (
