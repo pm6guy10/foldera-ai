@@ -823,20 +823,44 @@ describe('briefing pipeline receipt', () => {
     const generateResult = await runDailyGenerate({ userIds: [TEST_USER_ID] });
     expect(generateResult.results).toEqual([
       expect.objectContaining({
-        code: 'pending_approval_persisted',
+        code: 'no_send_persisted',
+        detail: 'Artifact quality gate blocked: unclassified_artifact',
+        meta: expect.objectContaining({
+          artifact_quality_fail_safe_status: 'GREEN',
+          artifact_quality_gate_blocked_reasons: ['unclassified_artifact'],
+          outcome_receipt: expect.objectContaining({
+            artifact: expect.objectContaining({
+              artifact_pass_fail: 'FAIL',
+            }),
+          }),
+        }),
         success: true,
         userId: TEST_USER_ID,
       }),
     ]);
 
     const savedAction = runtime.actions.find(
-      (action) => action.user_id === TEST_USER_ID && action.status === 'pending_approval',
+      (action) => action.user_id === TEST_USER_ID && action.status === 'skipped',
     );
     expect(savedAction).toBeTruthy();
-    expect(savedAction?.action_type).not.toBe('do_nothing');
-    expect(savedAction?.execution_result?.artifact).toBeTruthy();
-    expect(savedAction?.execution_result?.artifact?.type).not.toBe('wait_rationale');
-    expectExecutableArtifact(savedAction!.execution_result.artifact);
+    expect(savedAction?.action_type).toBe('do_nothing');
+    expect(savedAction?.reason).toBe('Artifact quality gate blocked: unclassified_artifact');
+    expect(savedAction?.execution_result?.artifact_quality_gate).toEqual(
+      expect.objectContaining({
+        category: null,
+        reasons: ['unclassified_artifact'],
+        fail_safe_status: 'GREEN',
+      }),
+    );
+    expect(savedAction?.execution_result?.original_candidate).toEqual(
+      expect.objectContaining({
+        action_type: 'write_document',
+        blocked_by: 'Artifact quality gate blocked: unclassified_artifact',
+      }),
+    );
+    expect(
+      runtime.actions.some((action) => action.user_id === TEST_USER_ID && action.status === 'pending_approval'),
+    ).toBe(false);
 
     const sendResult = await runDailySend({ userIds: [TEST_USER_ID] });
     expect(sendResult.results).toEqual([
@@ -845,6 +869,9 @@ describe('briefing pipeline receipt', () => {
         success: true,
         userId: TEST_USER_ID,
         meta: expect.objectContaining({
+          action_id: savedAction?.id,
+          artifact_type: 'wait_rationale',
+          no_send_blocker: true,
           resend_id: 're_12345',
         }),
       }),
@@ -853,5 +880,6 @@ describe('briefing pipeline receipt', () => {
 
     const sentAction = runtime.actions.find((action) => action.id === savedAction?.id);
     expect(sentAction?.execution_result?.daily_brief_sent_at).toEqual(expect.any(String));
+    expect(sentAction?.execution_result?.resend_id).toBe('re_12345');
   }, 30000);
 });
