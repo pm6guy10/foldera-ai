@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-29 — Controller skips external account blockers
+- MODE: FOLDERA AUTOPILOT UNBLOCKER — controller/backlog eligibility fix only.
+- Files changed: `scripts/controller-autopilot.ts`, `scripts/__tests__/controller-autopilot.test.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.
+- What changed: Added external account/proof waiting states to controller reporting and selection. BL-006 is now `WAITING_EXTERNAL_ACCOUNT`, remains tracked with its non-owner acceptance criteria intact, and no longer blocks autopilot from selecting the next actionable `OPEN` item.
+- Verification: `npx vitest run scripts/__tests__/controller-autopilot.test.ts` (pass, 8 tests); `npm run controller:autopilot` while source-of-truth files were dirty selected `BL-007` and reported `BL-006` under `WAITING EXTERNAL BLOCKER ITEMS` before correctly stopping on dirty docs; `npm run health` (`RESULT: 0 FAILING`); `npm run preflight` (`INFRASTRUCTURE DEGRADED`, 0 fail, local paid LLM unset only); `npm run lint` (pass); `npm run build` (pass).
+- Unresolved issues: BL-006 still requires a real connected non-owner auth account with live token rows before it can be proven or closed.
+
 ## 2026-04-28 — Dashboard control truth pass Phase 1
 - MODE: Phase 1 Dashboard Trust Contract only.
 - Files changed: `app/dashboard/page.tsx`, `components/foldera/DashboardSidebar.tsx`, `lib/cron/daily-brief-generate.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `tests/e2e/authenticated-routes.spec.ts`, `tests/dashboard/live-artifact-pixel-lock.spec.ts`, `SESSION_HISTORY.md`.

@@ -7,6 +7,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   classifyDirtyEntries,
   findFirstOpenBacklogItem,
+  findWaitingExternalBlockerBacklogItems,
   findWaitingExternalQuotaBacklogItems,
   findWaitingPassiveProofBacklogItems,
   parseBacklogItems,
@@ -100,6 +101,37 @@ Status: OPEN
     expect(waitingExternal.map((item) => item.id)).toEqual(['BL-003']);
   });
 
+  it('skips external account/proof blockers and selects the first actionable OPEN item', () => {
+    const items = parseBacklogItems(`
+### BL-006
+ID: BL-006
+Title: Missing real non-owner account
+Status: WAITING_EXTERNAL_ACCOUNT
+Next blocker: Provision and connect one real non-owner user with live auth and token rows.
+
+### BL-015
+ID: BL-015
+Title: External proof blocked seam
+Status: WAITING_EXTERNAL_PROOF
+Next blocker: External product data proof required.
+
+### BL-007
+ID: BL-007
+Title: First actionable seam
+Status: OPEN
+`);
+
+    const firstOpen = findFirstOpenBacklogItem(items);
+    const waitingExternal = findWaitingExternalBlockerBacklogItems(items);
+
+    expect(firstOpen?.id).toBe('BL-007');
+    expect(waitingExternal.map((item) => item.id)).toEqual(['BL-006', 'BL-015']);
+    expect(waitingExternal.map((item) => item.status)).toEqual([
+      'WAITING_EXTERNAL_ACCOUNT',
+      'WAITING_EXTERNAL_PROOF',
+    ]);
+  });
+
   it('keeps existing OPEN behavior when no waiting passive-proof item exists', () => {
     const items = parseBacklogItems(`
 ### BL-003
@@ -146,6 +178,11 @@ Next blocker: next normal daily-send proof required
 ID: BL-003
 Status: WAITING_EXTERNAL_QUOTA
 Next blocker: quota reset pending
+
+### BL-006
+ID: BL-006
+Status: WAITING_EXTERNAL_ACCOUNT
+Next blocker: non-owner account setup pending
 `,
       );
       writeFileSync(

@@ -1,13 +1,15 @@
 # FOLDERA Production Backlog
 
-Last refreshed: 2026-04-28
+Last refreshed: 2026-04-29
 
 ## Current top item
-BL-006 — Rung 6 — No real connected non-owner account exists to prove repeatable multi-user runs.
+BL-007 — Rung 6 — Repeated-directive health failure still trips within the 24-hour window.
 
 ## How to use this file
 - Every Codex run opens this file first.
-- Execute the first OPEN item only.
+- Execute the first actionable OPEN item only.
+- Autopilot skips externally blocked waiting statuses: `WAITING_EXTERNAL_ACCOUNT`, `WAITING_EXTERNAL_PROOF`, `WAITING_EXTERNAL_QUOTA`, and `WAITING_PASSIVE_PROOF`.
+- Skipped external blockers remain visible and must not be marked CLOSED until their proof requirement is genuinely satisfied.
 - After shipping, update Status to CLOSED with evidence.
 - If a new blocker is discovered, insert it at the correct rung position.
 - Infrastructure items always sort above code items at the same rung.
@@ -263,8 +265,8 @@ Required local proof: `npm run beta:readiness -- <real-non-owner-user-id-or-emai
 Required production proof: Connect one real non-owner account through the product, then verify one full run reaches artifact, email, and approve depth for that user without synthetic IDs.
 Done means: One real non-owner user completes the production loop and the acceptance gate no longer fails `NON_OWNER_DEPTH`.
 Do-not-count: Synthetic user rows, owner-only runs, logs alone, or manual DB fabrication.
-Status: OPEN
-Last evidence: 2026-04-14 and 2026-03-29 — no real connected non-owner auth account exists; `NON_OWNER_DEPTH` remains blocked.
+Status: WAITING_EXTERNAL_ACCOUNT
+Last evidence: 2026-04-29 — production check found zero connected non-owner token users after excluding owner and synthetic test IDs; `NON_OWNER_DEPTH` remains blocked by missing real account/data, not a code path.
 Next blocker: Provision and connect one real non-owner user with live auth and token rows.
 
 ### BL-007

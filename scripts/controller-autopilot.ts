@@ -216,8 +216,22 @@ export function findWaitingPassiveProofBacklogItems(
 export function findWaitingExternalQuotaBacklogItems(
   items: readonly BacklogItem[],
 ): BacklogItem[] {
-  return items.filter(
+  return findWaitingExternalBlockerBacklogItems(items).filter(
     (item) => item.status?.trim().toUpperCase() === 'WAITING_EXTERNAL_QUOTA',
+  );
+}
+
+export function findWaitingExternalBlockerBacklogItems(
+  items: readonly BacklogItem[],
+): BacklogItem[] {
+  const externalWaitingStatuses = new Set([
+    'WAITING_EXTERNAL_ACCOUNT',
+    'WAITING_EXTERNAL_PROOF',
+    'WAITING_EXTERNAL_QUOTA',
+  ]);
+
+  return items.filter(
+    (item) => externalWaitingStatuses.has(item.status?.trim().toUpperCase() ?? ''),
   );
 }
 
@@ -382,7 +396,7 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
   const dirtyClassification = classifyDirtyEntries(dirtyEntries);
   const backlogItems = backlogText ? parseBacklogItems(backlogText) : [];
   const waitingPassiveProofItems = findWaitingPassiveProofBacklogItems(backlogItems);
-  const waitingExternalQuotaItems = findWaitingExternalQuotaBacklogItems(backlogItems);
+  const waitingExternalBlockerItems = findWaitingExternalBlockerBacklogItems(backlogItems);
   const firstOpenItem = findFirstOpenBacklogItem(backlogItems);
   const recentSessionEntries = sessionHistoryText
     ? parseSessionHistoryEntries(sessionHistoryText).slice(-3)
@@ -394,7 +408,7 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
 
   if (!hardStopReason && !firstOpenItem) {
     hardStopReason =
-      waitingPassiveProofItems.length > 0 || waitingExternalQuotaItems.length > 0
+      waitingPassiveProofItems.length > 0 || waitingExternalBlockerItems.length > 0
         ? 'No actionable OPEN backlog item found; all remaining backlog items are waiting or blocked.'
         : 'No actionable OPEN backlog item found.';
   }
@@ -423,7 +437,7 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
 
   console.log('');
   printWaitingPassiveProofItems(waitingPassiveProofItems);
-  printWaitingExternalBlockerItems(waitingExternalQuotaItems);
+  printWaitingExternalBlockerItems(waitingExternalBlockerItems);
 
   console.log('');
   console.log('DIRTY FILE CLASSIFICATION');
