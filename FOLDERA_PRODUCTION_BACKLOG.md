@@ -3,7 +3,7 @@
 Last refreshed: 2026-04-29
 
 ## Current top item
-No currently actionable backlog item. Controller should stop cleanly until a waiting blocker clears or fresh failing evidence creates a code/test/proof seam.
+BL-015 — Owner money-shot artifact is not consistently excellent.
 
 ## How to use this file
 - Every Codex run opens this file first.
@@ -22,6 +22,25 @@ No currently actionable backlog item. Controller should stop cleanly until a wai
 - Infrastructure > code > polish at the same rung.
 
 ## Items
+
+### BL-015
+ID: BL-015
+Rung: 0
+Title: Owner money-shot artifact is not consistently excellent
+User-facing path: Brandon runs Generate Now and receives one finished artifact that is specific, grounded, timely, and immediately usable.
+Starting route or trigger: Owner `POST /api/settings/run-brief?force=true&use_llm=true` after external model capacity is available, or deterministic local fixture replay when live capacity is unavailable.
+Ending success state: One artifact from real owner-shaped data is rated PASS against a strict money-shot rubric and is visible in-product as `pending_approval`.
+Problem: The system has plumbing, gates, and suppression, but Brandon has not seen a consistently amazing artifact from his own data yet.
+Protected contracts: No generic prep homework; no reminders; no summaries; no debug/provider strings; no fake facts; no fabricated user claims; no monitor-inbox actions; no prepare/research/review handoff; preserve artifact quality gate; preserve one-artifact rule; preserve approve/send behavior.
+Allowed files: `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`, `lib/briefing/generator.ts`, `lib/briefing/artifact-quality-gate.ts`, `lib/briefing/__tests__/*`, `lib/cron/__tests__/*`, fixture/test files only when they use real owner-shaped redacted examples
+Forbidden files: dashboard UI, auth/session, billing, migrations, provider sync code, non-owner proof scripts, broad refactors
+Required local proof: `npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts`; `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts`; `npm run health`; `npm run preflight`; `npm run lint`; `npm run build`
+Required production proof: Trigger one authenticated owner Generate Now run after external model capacity returns, then verify the resulting latest action is one strict-rubric PASS artifact in `pending_approval` and visible in-product.
+Done means: Bad owner-shaped artifacts are blocked, one good owner-shaped artifact passes, the artifact is finished work instead of prep, no existing good artifact path breaks, and production proof is complete or explicitly waiting on external capacity.
+Do-not-count: Structural validity alone, a generic checklist, a reminder-only artifact, a static mock, a non-owner proof, a provider/debug no-send, or a local-only proof presented as live product proof.
+Status: OPEN
+Last evidence: 2026-04-29 — deterministic local owner-shaped suite added for CHC/Alex confirmation sludge, ESB Technician prep homework, generic interview checklist output, stale reminder-only interview output, and one finished owner-shaped money-shot artifact. Generator runtime proof now blocks the CHC/Alex email-shaped document and falls through to a finished CHC decision brief.
+Next blocker: Run the required local proof set, then complete one live owner Generate Now proof after external model capacity returns.
 
 ### BL-001
 ID: BL-001

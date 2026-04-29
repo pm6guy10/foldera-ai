@@ -112,6 +112,7 @@ import {
 } from './stakes-gate';
 import { getGoalQuarantineReason, isUsableGoalRow } from './goal-hygiene';
 import { buildSignalMetadataSummaryRows } from './signal-metadata-summary';
+import { evaluateArtifactQualityGate } from './artifact-quality-gate';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -142,6 +143,27 @@ const ARTIFACT_VIABILITY_PRESSURE_RE =
   /\b(today|tonight|tomorrow|this week|next week|deadline|due|before|by\s+\d|expires?|expiring|final|urgent|window clos|cutoff|overdue|at risk|slip|blocked|blocker)\b/i;
 const ARTIFACT_VIABILITY_ASK_RE =
   /\b(can you|could you|would you|will you|please|reply|confirm|approve|decide|send|schedule|share|name the owner|yes\/no)\b/i;
+const OWNER_MONEY_SHOT_GATE_RE =
+  /\b(?:ESB|ES Benefits|Technician|ProviderOne|HCA|ESD|DSHS|CHC|Comprehensive Healthcare|Alex Crisler|Darlene Craig|interview|recruitment|role-fit|phone screen|Care Coordinator)\b/i;
+
+function shouldApplyOwnerMoneyShotQualityGate(input: {
+  candidate: ScoredLoop;
+  directive: Pick<ConvictionDirective, 'action_type' | 'directive' | 'reason'>;
+  artifact: ConvictionArtifact;
+}): boolean {
+  if (input.directive.action_type !== 'write_document') return false;
+  const artifactRecord = input.artifact as unknown as Record<string, unknown>;
+  const text = [
+    input.candidate.title,
+    input.candidate.content,
+    input.candidate.entityName ?? '',
+    input.directive.directive,
+    input.directive.reason,
+    typeof artifactRecord.title === 'string' ? artifactRecord.title : '',
+    typeof artifactRecord.content === 'string' ? artifactRecord.content : '',
+  ].join('\n');
+  return OWNER_MONEY_SHOT_GATE_RE.test(text);
+}
 
 /**
  * Thread-backed external `send_message` proof path: no write_document / schedule_block /
@@ -10893,6 +10915,59 @@ export async function generateDirective(
         details: { scope: 'post_llm_validation', amounts: badDollars.slice(0, 4) },
       });
       continue;
+    }
+
+    if (
+      !options.pipelineDryRun &&
+      shouldApplyOwnerMoneyShotQualityGate({
+        candidate: currentCandidate,
+        directive,
+        artifact: payload.artifact as unknown as ConvictionArtifact,
+      })
+    ) {
+      const artifactQualityGate = evaluateArtifactQualityGate({
+        directive,
+        artifact: payload.artifact as unknown as ConvictionArtifact,
+        sourceFacts: [
+          ctx.selected_candidate,
+          ctx.candidate_title,
+          ...ctx.surgical_raw_facts,
+          ...ctx.supporting_signals.map((signal) => signal.summary),
+        ].filter((fact): fact is string => typeof fact === 'string' && fact.trim().length > 0),
+      });
+      if (!artifactQualityGate.passes) {
+        const receipt = directive.artifactQualityReceipt ?? artifactQualityReceipt;
+        directive.artifactQualityReceipt = {
+          ...receipt,
+          final_artifact_bar_passed: false,
+          blocker_bucket: 'artifact_quality_gate',
+        };
+        const artifactQualityReasons = artifactQualityGate.reasons.map((reason) => `artifact_quality:${reason}`);
+        candidateBlockLog.push({
+          title: currentCandidate.title.slice(0, 80),
+          reasons: artifactQualityReasons,
+        });
+        logStructuredEvent({
+          event: 'candidate_blocked',
+          level: 'warn',
+          userId,
+          artifactType: canonicalAction,
+          generationStatus: 'artifact_quality_gate_failed',
+          details: {
+            scope: 'generator',
+            candidate_title: currentCandidate.title.slice(0, 80),
+            category: artifactQualityGate.category,
+            reasons: artifactQualityGate.reasons,
+          },
+        });
+        continue;
+      }
+      const receipt = directive.artifactQualityReceipt ?? artifactQualityReceipt;
+      directive.artifactQualityReceipt = {
+        ...receipt,
+        final_artifact_bar_passed: true,
+        blocker_bucket: null,
+      };
     }
 
     // Trigger action lock validation — discrepancy candidates only (skip when cross-signal degraded to wait_rationale

@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-29 — BL-015 owner money-shot artifact gate hardened locally
+- MODE: FOLDERA MONEY-SHOT ARTIFACT SEAM — owner data quality first.
+- Files changed: `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`, `lib/briefing/generator.ts`, `lib/briefing/artifact-quality-gate.ts`, `lib/briefing/__tests__/artifact-quality-gate.test.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `lib/briefing/__tests__/owner-money-shot-artifact.fixture.ts`.
+- What changed: Added BL-015 as the new Rung 0 owner money-shot artifact item. Added strict owner-shaped fixture coverage for CHC/Alex confirmation garbage, ESB Technician prep homework, generic interview checklist output, stale reminder-only interview output, and one finished owner-shaped artifact. The artifact quality gate now blocks `write_document` payloads that are email drafts in disguise, and the generator applies the owner-shaped quality gate inside candidate fallback so the bad CHC/Alex document is blocked before continuing to a finished CHC decision brief.
+- Verification: `npm run health` passed (`RESULT: 0 FAILING`; warnings only: Outlook not connected, last generation `do_nothing`); `npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts` passed (6 tests); `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts` passed (32 tests); `npm run preflight` returned `3 pass`, `1 warn`, `0 FAIL`, `INFRASTRUCTURE DEGRADED` only because local `ALLOW_PAID_LLM` is unset; `npm run lint` passed; `npm run build` passed.
+- Unresolved issues: Production proof is `WAITING_EXTERNAL_QUOTA`; one fresh owner `Generate Now` run must still produce a strict-rubric PASS artifact in `pending_approval` and be inspected in-product after external model quota/access returns.
+
 ## 2026-04-29 — Controller autopilot selects only currently actionable backlog items
 - MODE: FOLDERA AUTOPILOT ELIGIBILITY HARDENING — universal controller/backlog rule only.
 - Files changed: `scripts/controller-autopilot.ts`, `scripts/__tests__/controller-autopilot.test.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `ACCEPTANCE_GATE.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.

@@ -9,6 +9,10 @@ import {
   GOOD_ARTIFACT_GOLD_SET_V1_2,
   STALE_INTERVIEW_SUPPRESSION_FIXTURE,
 } from './artifact-gold-set-v1-2.fixture';
+import {
+  OWNER_MONEY_SHOT_BAD_ARTIFACTS,
+  OWNER_MONEY_SHOT_GOOD_ARTIFACT,
+} from './owner-money-shot-artifact.fixture';
 
 describe('artifact quality gold set v1.2', () => {
   it('rejects every bad fixture with a deterministic reason', () => {
@@ -83,5 +87,38 @@ describe('artifact quality gold set v1.2', () => {
       rejectRate: 0.9,
       reason: 'reject_rate_above_85pct_two_runs',
     });
+  });
+});
+
+describe('owner money-shot artifact suite', () => {
+  it('blocks owner-shaped failures before they can become demo artifacts', () => {
+    const results = OWNER_MONEY_SHOT_BAD_ARTIFACTS.map((item) => ({
+      item,
+      result: evaluateArtifactQualityGate({
+        directive: item.directive,
+        artifact: item.artifact,
+        sourceFacts: item.sourceFacts,
+        now: item.now ?? new Date('2026-04-29T12:00:00.000Z'),
+      }),
+    }));
+
+    expect(results).toHaveLength(4);
+    for (const { item, result } of results) {
+      expect(result.passes, item.id).toBe(false);
+      expect(result.reasons, item.id).toContain(item.expectedReason);
+    }
+  });
+
+  it('passes one finished owner-shaped artifact that can be used without rewriting', () => {
+    const result = evaluateArtifactQualityGate({
+      directive: OWNER_MONEY_SHOT_GOOD_ARTIFACT.directive,
+      artifact: OWNER_MONEY_SHOT_GOOD_ARTIFACT.artifact,
+      sourceFacts: OWNER_MONEY_SHOT_GOOD_ARTIFACT.sourceFacts,
+      now: OWNER_MONEY_SHOT_GOOD_ARTIFACT.now ?? new Date('2026-04-29T12:00:00.000Z'),
+    });
+
+    expect(result.passes, result.reasons.join(',')).toBe(true);
+    expect(result.category).toBe(OWNER_MONEY_SHOT_GOOD_ARTIFACT.expectedCategory);
+    expect(result.reasons).toEqual([]);
   });
 });

@@ -9,6 +9,7 @@ export type ArtifactQualityCategory =
   | 'SUPPRESSION_DECISION';
 
 export type ArtifactQualityBlockReason =
+  | 'action_type_mismatch'
   | 'internal_debug_token'
   | 'placeholder_content'
   | 'no_source_grounding'
@@ -190,7 +191,7 @@ function classifyDraftEmail(artifact: ConvictionArtifact, text: string): boolean
   return (
     hasRecipient &&
     hasSubject &&
-    DRAFT_EMAIL_ANCHOR_PATTERN.test(text) &&
+    (DRAFT_EMAIL_ANCHOR_PATTERN.test(text) || OUTCOME_PATTERN.test(text)) &&
     body.trim().length >= 80 &&
     SIGN_OFF_PATTERN.test(body)
   );
@@ -239,7 +240,7 @@ export function classifyArtifactCategory(
   text = artifactText(artifact),
 ): ArtifactQualityCategory | null {
   if (directive.action_type === 'do_nothing' && classifySuppressionDecision(text)) return 'SUPPRESSION_DECISION';
-  if (classifyDraftEmail(artifact, text)) return 'DRAFT_EMAIL';
+  if (directive.action_type === 'send_message' && classifyDraftEmail(artifact, text)) return 'DRAFT_EMAIL';
   if (classifyRoleFitLine(text)) return 'ROLE_FIT_LINE';
   if (classifyRoleFitPacket(text)) return 'ROLE_FIT_PACKET';
   if (classifyDecisionBrief(text)) return 'DECISION_BRIEF';
@@ -256,7 +257,10 @@ export function evaluateArtifactQualityGate(
   const reasons: ArtifactQualityBlockReason[] = [];
   const category = classifyArtifactCategory(input.directive, input.artifact, text);
   const suppressionDecision = category === 'SUPPRESSION_DECISION';
+  const draftEmailOnNonEmailAction =
+    input.directive.action_type !== 'send_message' && classifyDraftEmail(input.artifact, text);
 
+  if (draftEmailOnNonEmailAction) reasons.push('action_type_mismatch');
   if (INTERNAL_DEBUG_PATTERN.test(combined)) reasons.push('internal_debug_token');
   if (PLACEHOLDER_PATTERN.test(combined)) reasons.push('placeholder_content');
   if (!hasSourceGrounding(combined, evidence)) reasons.push('no_source_grounding');

@@ -437,6 +437,159 @@ describe('generateDirective runtime failures', () => {
     }));
   });
 
+  it('falls through when the owner money-shot gate blocks confirmation-email sludge', async () => {
+    const scored = asWinnerScored(buildScorerResult());
+    const blockedCandidate: ScoredLoop = {
+      ...buildWinner(),
+      id: 'blocked-chc-alex-confirmation-doc',
+      type: 'commitment',
+      suggestedActionType: 'write_document',
+      title: 'CHC bridge-job response from Alex needs a decision brief',
+      content: 'Alex from CHC asked for availability this week; the useful artifact is a decision brief for Brandon, not a confirmation email draft stored as a document.',
+      entityName: 'Alex Crisler',
+      matchedGoal: {
+        text: 'Protect the higher-upside interview week while keeping CHC warm',
+        priority: 5,
+        category: 'career',
+      },
+      relationshipContext: '- Alex Crisler <Alex.Crisler@comphc.org> (CHC)',
+      sourceSignals: [
+        {
+          kind: 'signal',
+          id: 'sig-chc-alex',
+          summary: 'Alex Crisler at CHC asked for Brandon availability this week.',
+          occurredAt: FIXED_NOW.toISOString(),
+        },
+      ],
+    };
+    const fallbackCandidate: ScoredLoop = {
+      ...blockedCandidate,
+      id: 'good-chc-decision-brief',
+      title: 'CHC bridge-job availability decision before interview week',
+      content: 'Alex from CHC asked for availability this week while the interview window is constrained; the useful artifact is a finished decision brief.',
+      entityName: 'Alex Crisler',
+      relationshipContext: '- Alex Crisler <Alex.Crisler@comphc.org> (CHC)',
+      score: 4.9,
+      sourceSignals: [
+        {
+          kind: 'signal',
+          id: 'sig-chc-alex-decision',
+          summary: 'Alex Crisler at CHC asked for Brandon availability this week while interview preparation time is constrained.',
+          occurredAt: FIXED_NOW.toISOString(),
+        },
+      ],
+    };
+    scored.winner = blockedCandidate;
+    scored.topCandidates = [blockedCandidate, fallbackCandidate];
+    scored.candidateDiscovery = {
+      ...scored.candidateDiscovery,
+      candidateCount: 2,
+      selectionReason: 'Selected because CHC confirmation ranked first before quality gating.',
+    };
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueEmptyTkgActionsResults(12);
+
+    anthropicCreate
+      .mockResolvedValueOnce({
+        usage: { input_tokens: 120, output_tokens: 90 },
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            directive: 'Create the CHC bridge-job decision brief from Alex Crisler availability note today.',
+            artifact_type: 'write_document',
+            artifact: {
+              document_purpose: 'brief',
+              target_reader: 'private notes',
+              title: 'Confirmation Email to Alex Crisler — CHC availability',
+              content: [
+                'Source Email: Alex Crisler at CHC asked for Brandon availability this week.',
+                'Decision: reply today after preserving the higher-upside interview window.',
+                'Deciding criterion: keep CHC warm without giving away interview preparation time.',
+                'Owner: Brandon owns the reply boundary and should not let an open availability ask cannibalize the interview window.',
+                'Next action: send this confirmation by 4 PM PT today.',
+                'Consequence: if unresolved by 4 PM PT today, CHC gets a vague answer and the interview window loses protected preparation time.',
+                'Mechanism: decision latency is now larger than the remaining execution window, so the decision has to close before availability expands by default.',
+                'To: Alex.Crisler@comphc.org',
+                'Subject: CHC availability this week',
+                'Hi Alex,',
+                '',
+                'Thank you for reaching out. I can confirm availability after the interview window closes this week and will send exact times by 4 PM PT today.',
+                '',
+                'Thanks,',
+                'Brandon',
+              ].join('\n'),
+            },
+            evidence: 'Alex Crisler at CHC asked for Brandon availability this week.',
+            why_now: 'The CHC response needs a decision today, but a document must not be an email draft in disguise.',
+            causal_diagnosis: {
+              why_exists_now: 'The availability ask is open while interview preparation time is constrained.',
+              mechanism: 'Competing opportunity window with a same-day response decision.',
+            },
+          }),
+        }],
+      })
+      .mockResolvedValue({
+        usage: { input_tokens: 120, output_tokens: 90 },
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            directive: 'Use the CHC bridge-job decision brief today before giving Alex availability.',
+            artifact_type: 'write_document',
+            artifact: {
+              document_purpose: 'brief',
+              target_reader: 'private notes',
+              title: 'CHC bridge-job availability decision',
+              content: [
+                'Source Email: Alex Crisler at CHC asked for Brandon availability this week.',
+                'Decision: decline any CHC availability that overlaps the higher-upside interview window this week.',
+                'Deciding criterion: preserve interview preparation time while keeping CHC warm for later availability.',
+                'Owner: Brandon owns the reply boundary and should not let an open availability ask cannibalize the interview window.',
+                'Next action: reply to Alex today with availability after the interview window closes.',
+                'Deadline: send the availability note by 4 PM PT today.',
+                'Consequence: if unresolved by 4 PM PT today, CHC gets a vague answer and the interview window loses protected preparation time.',
+                'Mechanism: decision latency is now larger than the remaining execution window, so the decision has to close before availability expands by default.',
+                'Trigger: if CHC needs coverage before the interview window closes, decline that slot and offer the next open time.',
+              ].join('\n'),
+            },
+            evidence: 'Alex Crisler at CHC asked for Brandon availability this week while interview preparation time is constrained.',
+            why_now: 'The CHC availability answer is due today and the decision boundary is whether to protect the interview window.',
+            causal_diagnosis: {
+              why_exists_now: 'The availability ask is open while interview preparation time is constrained.',
+              mechanism: 'Competing opportunity window with a same-day response decision.',
+            },
+          }),
+        }],
+      });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(anthropicCreate).toHaveBeenCalled();
+    expect(directive.directive).not.toBe('__GENERATION_FAILED__');
+    expect(directive.action_type).toBe('write_document');
+    expect(
+      (directive as { winnerSelectionTrace?: { finalWinnerId: string } }).winnerSelectionTrace?.finalWinnerId,
+    ).toBe('good-chc-decision-brief');
+    expect(directive.artifactQualityReceipt?.final_artifact_bar_passed).toBe(true);
+    expectDocumentArtifactShape(
+      (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact,
+      {
+        minTitleLength: 20,
+        minLength: 250,
+        requiredRegexes: [/Source Email: Alex Crisler/i, /Decision:/i, /Next action:/i, /Deadline:/i],
+      },
+    );
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'candidate_blocked',
+      generationStatus: 'artifact_quality_gate_failed',
+      details: expect.objectContaining({
+        candidate_title: 'CHC bridge-job response from Alex needs a decision brief',
+        reasons: expect.arrayContaining(['action_type_mismatch']),
+      }),
+    }));
+  });
+
   it('maps scorer no_valid_action to a deterministic blocker (not GENERATION_FAILED)', async () => {
     mockScoreOpenLoops.mockResolvedValue({
       outcome: 'no_valid_action',
