@@ -1851,12 +1851,33 @@ Decide by 2026-04-24.`,
           action_id: 'blocked-1',
           generic_no_send_suppressed: true,
           daily_email_idempotency_key: expect.stringContaining(`daily-brief:${USER_ID}:`),
+          quiet_hold_receipt: expect.objectContaining({
+            status: 'held_no_finished_artifact',
+            delivery: 'silent',
+            next_retry_trigger: 'next_scheduled_daily_send',
+            blocked_reasons_summary: expect.arrayContaining([
+              'generic_no_send_suppressed',
+              'no_finished_artifact_available',
+            ]),
+          }),
         }),
       }),
     ]);
     expect(result.message).toContain('No brief email was sent for 1 user because an explicit no-send blocker was recorded.');
     expect(sendDailyDirective).not.toHaveBeenCalled();
-    expect(mockSupabase.updatedActions).toEqual([]);
+    expect(mockSupabase.updatedActions).toEqual([
+      expect.objectContaining({
+        id: 'blocked-1',
+        payload: expect.objectContaining({
+          execution_result: expect.objectContaining({
+            quiet_hold_receipt: expect.objectContaining({
+              status: 'held_no_finished_artifact',
+              delivery: 'silent',
+            }),
+          }),
+        }),
+      }),
+    ]);
   });
 
   it('suppresses leaked quota/internal-failure no-send rows during scheduled daily-send', async () => {
@@ -1894,6 +1915,14 @@ Decide by 2026-04-24.`,
           action_id: 'blocked-leak-1',
           generic_no_send_suppressed: true,
           daily_email_idempotency_key: expect.stringContaining(`daily-brief:${USER_ID}:`),
+          quiet_hold_receipt: expect.objectContaining({
+            status: 'held_no_finished_artifact',
+            delivery: 'silent',
+            blocked_reasons_summary: expect.arrayContaining([
+              'generic_no_send_suppressed',
+              'no_finished_artifact_available',
+            ]),
+          }),
         }),
       }),
     ]);
@@ -1959,6 +1988,17 @@ Decide by 2026-04-24.`,
           interview_write_document_suppressed: true,
           suppression_code: 'interview_write_document_quality_blocked',
           daily_email_idempotency_key: expect.stringContaining(`daily-brief:${USER_ID}:`),
+          quiet_hold_receipt: expect.objectContaining({
+            status: 'held_no_finished_artifact',
+            delivery: 'silent',
+            next_retry_trigger: 'next_scheduled_daily_send',
+            blocked_reasons_summary: expect.arrayContaining([
+              'interview_write_document_quality_blocked',
+              'interview_prep_marker',
+              'missing_finished_interview_document_purpose',
+              'missing_usable_first_person_answer',
+            ]),
+          }),
           suppression_reasons: expect.arrayContaining([
             expect.stringContaining('blocked_marker:'),
             'missing_finished_interview_document_purpose',
@@ -1982,6 +2022,15 @@ Decide by 2026-04-24.`,
                 expect.stringContaining('blocked_marker:'),
                 'missing_finished_interview_document_purpose',
                 'missing_usable_first_person_answer',
+              ]),
+            }),
+            quiet_hold_receipt: expect.objectContaining({
+              status: 'held_no_finished_artifact',
+              delivery: 'silent',
+              blocked_reasons_summary: expect.arrayContaining([
+                'interview_write_document_quality_blocked',
+                'interview_prep_marker',
+                'missing_finished_interview_document_purpose',
               ]),
             }),
           }),
@@ -2028,6 +2077,15 @@ Decide by 2026-04-24.`,
           artifact_quality_gate_suppressed: true,
           suppression_code: 'artifact_quality_gate_blocked',
           suppression_reasons: expect.arrayContaining(['no_concrete_outcome']),
+          quiet_hold_receipt: expect.objectContaining({
+            status: 'held_no_finished_artifact',
+            delivery: 'silent',
+            next_retry_trigger: 'next_scheduled_daily_send',
+            blocked_reasons_summary: expect.arrayContaining([
+              'artifact_quality_gate_blocked',
+              'no_concrete_outcome',
+            ]),
+          }),
         }),
       }),
     ]);
@@ -2040,6 +2098,14 @@ Decide by 2026-04-24.`,
             daily_send_suppression: expect.objectContaining({
               code: 'artifact_quality_gate_blocked',
               reasons: expect.arrayContaining(['no_concrete_outcome']),
+            }),
+            quiet_hold_receipt: expect.objectContaining({
+              status: 'held_no_finished_artifact',
+              delivery: 'silent',
+              blocked_reasons_summary: expect.arrayContaining([
+                'artifact_quality_gate_blocked',
+                'no_concrete_outcome',
+              ]),
             }),
           }),
         }),

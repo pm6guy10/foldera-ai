@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-29 — Quiet hold receipts normalized on scheduled suppressions
+- MODE: FOLDERA QUIET HOLD RECEIPT NORMALIZATION — existing daily-send suppression path only.
+- Files changed: `lib/cron/daily-brief-types.ts`, `lib/cron/daily-brief-send.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `SESSION_HISTORY.md`.
+- What changed: Added the normalized `QuietHoldReceipt` shape (`status: held_no_finished_artifact`, checked time, optional candidates evaluated, reason summary, next retry trigger, `delivery: silent`) and stamped it onto the existing scheduled `no_send_blocker_persisted` / `daily_send_suppression` paths. Scheduled no-send/internal-failure/artifact-quality holds remain silent, explicit/manual no-send delivery remains unchanged, and valid `send_message` / `write_document` delivery still uses the existing send path.
+- Verification: `npx vitest run lib/cron/__tests__/daily-brief.test.ts` passed; `npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts` passed; `npm run test:ci:unit` passed; `npm run health` passed (`RESULT: 0 FAILING`; warnings only); `npm run preflight` returned `3 pass`, `1 warn`, `0 FAIL` with local `ALLOW_PAID_LLM` unset; `npm run lint` passed; `npm run build` passed.
+- Unresolved issues: No blocker for this seam. Live scheduled suppression proof remains organic/passive unless a future run produces a suppressed row; no paid/model-backed proof was run.
+
 ## 2026-04-29 — CI artifact gate scope repaired
 - MODE: CI repair for `fix(artifacts): harden owner money-shot artifact quality`.
 - Files changed: `SESSION_HISTORY.md`, `lib/briefing/generator.ts`, `lib/briefing/artifact-quality-gate.ts`, `lib/briefing/__tests__/artifact-quality-gate.test.ts`.

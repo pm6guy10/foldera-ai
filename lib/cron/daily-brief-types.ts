@@ -40,6 +40,15 @@ export interface DailyBriefUserResult {
   userId?: string;
 }
 
+export interface QuietHoldReceipt {
+  status: 'held_no_finished_artifact';
+  checked_at: string;
+  candidates_evaluated?: number;
+  blocked_reasons_summary: string[];
+  next_retry_trigger: string;
+  delivery: 'silent';
+}
+
 export interface DailyBriefRunResult {
   date: string;
   message: string;

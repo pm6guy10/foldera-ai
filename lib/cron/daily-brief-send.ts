@@ -20,6 +20,7 @@ import type {
   DailyBriefRunResult,
   DailyBriefSignalWindowOptions,
   DailyBriefUserResult,
+  QuietHoldReceipt,
 } from './daily-brief-types';
 import { buildRunResult, buildSendMessage } from './daily-brief-status';
 import {
@@ -61,6 +62,104 @@ function isGenericNoSendText(value: string | null | undefined): boolean {
     trimmed === NO_SEND_BODY_TEXT ||
     isInternalFailureText(trimmed)
   );
+}
+
+function readObject(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function readStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    : [];
+}
+
+function normalizeQuietHoldReason(reason: unknown): string | null {
+  if (typeof reason !== 'string') return null;
+  const trimmed = reason.trim();
+  if (!trimmed) return null;
+
+  if (
+    isGenericNoSendText(trimmed) ||
+    isInternalFailureText(trimmed) ||
+    /\b(batch:\s*\d+|invalid_request_error|request_id|api usage limits|quota|llm_failed|candidate_blocked|all candidates blocked)\b/i.test(trimmed) ||
+    /\breq_[A-Za-z0-9]+\b/.test(trimmed)
+  ) {
+    return 'no_finished_artifact_available';
+  }
+
+  if (trimmed.startsWith('blocked_marker:')) {
+    return 'interview_prep_marker';
+  }
+
+  const codeLike = trimmed.match(/^[a-z0-9_:-]+$/i);
+  if (codeLike) return trimmed;
+
+  return trimmed.length > 120 ? `${trimmed.slice(0, 117)}...` : trimmed;
+}
+
+function inferCandidatesEvaluated(executionResult: Record<string, unknown>): number | undefined {
+  const generationLog = readObject(executionResult.generation_log);
+  const direct =
+    typeof generationLog?.candidates_evaluated === 'number'
+      ? generationLog.candidates_evaluated
+      : typeof generationLog?.candidatesEvaluated === 'number'
+        ? generationLog.candidatesEvaluated
+        : undefined;
+  if (typeof direct === 'number' && Number.isFinite(direct)) return direct;
+
+  const candidateDiscovery = readObject(generationLog?.candidateDiscovery);
+  const discoveryValue =
+    typeof candidateDiscovery?.candidates_evaluated === 'number'
+      ? candidateDiscovery.candidates_evaluated
+      : typeof candidateDiscovery?.candidatesEvaluated === 'number'
+        ? candidateDiscovery.candidatesEvaluated
+        : undefined;
+  if (typeof discoveryValue === 'number' && Number.isFinite(discoveryValue)) {
+    return discoveryValue;
+  }
+
+  const topCandidates = Array.isArray(candidateDiscovery?.topCandidates)
+    ? candidateDiscovery.topCandidates.length
+    : undefined;
+  return topCandidates && topCandidates > 0 ? topCandidates : undefined;
+}
+
+function buildQuietHoldReceipt(input: {
+  executionResult?: Record<string, unknown>;
+  checkedAt?: string;
+  blockedReasons?: unknown[];
+  fallbackReason?: unknown;
+  candidatesEvaluated?: number;
+}): QuietHoldReceipt {
+  const executionResult = input.executionResult ?? {};
+  const generationLog = readObject(executionResult.generation_log);
+  const noSend = readObject(executionResult.no_send);
+  const reasons = [
+    ...(input.blockedReasons ?? []),
+    input.fallbackReason,
+    noSend?.reason,
+    generationLog?.reason,
+    ...readStringArray(generationLog?.candidateFailureReasons),
+  ]
+    .map(normalizeQuietHoldReason)
+    .filter((reason): reason is string => Boolean(reason));
+  const inferredCandidatesEvaluated = inferCandidatesEvaluated(executionResult);
+
+  return {
+    status: 'held_no_finished_artifact',
+    checked_at: input.checkedAt ?? new Date().toISOString(),
+    ...(typeof input.candidatesEvaluated === 'number'
+      ? { candidates_evaluated: input.candidatesEvaluated }
+      : typeof inferredCandidatesEvaluated === 'number'
+        ? { candidates_evaluated: inferredCandidatesEvaluated }
+        : {}),
+    blocked_reasons_summary: [...new Set(reasons.length > 0 ? reasons : ['no_finished_artifact_available'])],
+    next_retry_trigger: 'next_scheduled_daily_send',
+    delivery: 'silent',
+  };
 }
 
 function hasValidEmailArtifact(
@@ -361,6 +460,31 @@ export async function runDailySend(
           }
 
           if (!shouldAllowExplicitNoSendEmail(options)) {
+            const quietHoldReceipt = buildQuietHoldReceipt({
+              executionResult: blockerExecutionResult,
+              blockedReasons: ['generic_no_send_suppressed'],
+              fallbackReason: blocker.reason ?? blocker.directiveText,
+            });
+            const { error: updateError } = await supabase
+              .from('tkg_actions')
+              .update({
+                execution_result: {
+                  ...blockerExecutionResult,
+                  quiet_hold_receipt: quietHoldReceipt,
+                },
+              })
+              .eq('id', blocker.id);
+
+            if (updateError) {
+              results.push({
+                code: 'status_update_failed',
+                detail: updateError.message,
+                success: false,
+                userId,
+              });
+              continue;
+            }
+
             results.push({
               code: 'no_send_blocker_persisted',
               detail: 'Generic no-send blocker persisted without email delivery.',
@@ -368,6 +492,7 @@ export async function runDailySend(
                 action_id: blocker.id,
                 daily_email_idempotency_key: dailyEmailIdempotencyKey,
                 generic_no_send_suppressed: true,
+                quiet_hold_receipt: quietHoldReceipt,
               },
               success: true,
               userId,
@@ -507,6 +632,31 @@ export async function runDailySend(
           isGenericNoSendText(action.reason as string | null | undefined)
         )
       ) {
+        const quietHoldReceipt = buildQuietHoldReceipt({
+          executionResult,
+          blockedReasons: ['generic_no_send_suppressed'],
+          fallbackReason: action.reason ?? action.directive_text,
+        });
+        const { error: updateError } = await supabase
+          .from('tkg_actions')
+          .update({
+            execution_result: {
+              ...executionResult,
+              quiet_hold_receipt: quietHoldReceipt,
+            },
+          })
+          .eq('id', action.id);
+
+        if (updateError) {
+          results.push({
+            code: 'status_update_failed',
+            detail: updateError.message,
+            success: false,
+            userId,
+          });
+          continue;
+        }
+
         results.push({
           code: 'no_send_blocker_persisted',
           detail: 'Generic no-send blocker persisted without email delivery.',
@@ -514,6 +664,7 @@ export async function runDailySend(
             action_id: action.id,
             daily_email_idempotency_key: dailyEmailIdempotencyKey,
             generic_no_send_suppressed: true,
+            quiet_hold_receipt: quietHoldReceipt,
           },
           success: true,
           userId,
@@ -529,6 +680,11 @@ export async function runDailySend(
           )
         : [];
       if (interviewSuppressionReasons.length > 0) {
+        const quietHoldReceipt = buildQuietHoldReceipt({
+          executionResult,
+          blockedReasons: ['interview_write_document_quality_blocked', ...interviewSuppressionReasons],
+          fallbackReason: action.reason,
+        });
         const suppression = {
           code: 'interview_write_document_quality_blocked',
           suppressed_at: new Date().toISOString(),
@@ -541,6 +697,7 @@ export async function runDailySend(
             execution_result: {
               ...executionResult,
               daily_send_suppression: suppression,
+              quiet_hold_receipt: quietHoldReceipt,
             },
           })
           .eq('id', action.id);
@@ -564,6 +721,7 @@ export async function runDailySend(
             interview_write_document_suppressed: true,
             suppression_code: suppression.code,
             suppression_reasons: interviewSuppressionReasons,
+            quiet_hold_receipt: quietHoldReceipt,
           },
           success: true,
           userId,
@@ -584,6 +742,11 @@ export async function runDailySend(
         });
 
         if (!artifactQualityGate.passes) {
+          const quietHoldReceipt = buildQuietHoldReceipt({
+            executionResult,
+            blockedReasons: ['artifact_quality_gate_blocked', ...artifactQualityGate.reasons],
+            fallbackReason: action.reason,
+          });
           const suppression = {
             code: 'artifact_quality_gate_blocked',
             suppressed_at: new Date().toISOString(),
@@ -597,6 +760,7 @@ export async function runDailySend(
               execution_result: {
                 ...executionResult,
                 daily_send_suppression: suppression,
+                quiet_hold_receipt: quietHoldReceipt,
               },
             })
             .eq('id', action.id);
@@ -635,6 +799,7 @@ export async function runDailySend(
               suppression_code: suppression.code,
               suppression_reasons: artifactQualityGate.reasons,
               suppression_category: artifactQualityGate.category,
+              quiet_hold_receipt: quietHoldReceipt,
             },
             success: true,
             userId,
