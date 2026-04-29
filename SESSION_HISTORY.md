@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-29 — Controller autopilot selects only currently actionable backlog items
+- MODE: FOLDERA AUTOPILOT ELIGIBILITY HARDENING — universal controller/backlog rule only.
+- Files changed: `scripts/controller-autopilot.ts`, `scripts/__tests__/controller-autopilot.test.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `ACCEPTANCE_GATE.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.
+- What changed: Added a universal backlog eligibility classifier so `controller:autopilot` selects only `OPEN` items whose next required step can be performed now in the current repo/runtime. The controller now reports skipped non-actionable items with backlog ID, status, reason, and the condition required to make the item actionable. The skipped status set now includes external account/proof/quota, passive proof, paid proof, manual auth, real-user, and future time-window waits, and `OPEN` items with blocker text for quota/account/passive/proof/no-current-failure are skipped without hardcoded backlog IDs. BL-007 moved from `OPEN` to `WAITING_EXTERNAL_PROOF` because health currently reports no repeated directive and the remaining requirement is real monitored proof, not a current code seam.
+- Verification: `npm run controller:autopilot` returned the expected clean STOP with `Selected backlog ID: UNKNOWN`, skipped blocker reports for BL-011/BL-003/BL-005/BL-006/BL-007, and no product runtime selection; `npx vitest run scripts/__tests__/controller-autopilot.test.ts` passed (10 tests); `npm run health` passed (`RESULT: 0 FAILING`, warnings only); `npm run preflight` returned `3 pass`, `1 warn`, `0 FAIL`, `INFRASTRUCTURE DEGRADED` only because local `ALLOW_PAID_LLM` is unset; `npm run lint` passed; `npm run build` passed.
+- Unresolved issues: No actionable backlog item exists right now. BL-011 waits on passive daily-send proof, BL-003/BL-005 wait on paid-model quota/proof, BL-006 waits on a real connected non-owner account, and BL-007 waits on fresh repeated-directive failure evidence or two real monitored production brief runs without recurrence.
+
 ## 2026-04-29 — Controller skips external account blockers
 - MODE: FOLDERA AUTOPILOT UNBLOCKER — controller/backlog eligibility fix only.
 - Files changed: `scripts/controller-autopilot.ts`, `scripts/__tests__/controller-autopilot.test.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.

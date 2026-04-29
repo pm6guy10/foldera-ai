@@ -6,10 +6,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   classifyDirtyEntries,
-  findFirstOpenBacklogItem,
+  findFirstActionableBacklogItem,
   findWaitingExternalBlockerBacklogItems,
   findWaitingExternalQuotaBacklogItems,
   findWaitingPassiveProofBacklogItems,
+  getBacklogEligibility,
   parseBacklogItems,
   parseSessionHistoryEntries,
   runControllerAutopilot,
@@ -39,7 +40,7 @@ Title: Later open seam
 Status: OPEN
 `);
 
-    const firstOpen = findFirstOpenBacklogItem(items);
+    const firstOpen = findFirstActionableBacklogItem(items);
     const waitingItems = findWaitingPassiveProofBacklogItems(items);
 
     expect(firstOpen?.id).toBe('BL-099');
@@ -92,7 +93,7 @@ Title: First actionable seam
 Status: OPEN
 `);
 
-    const firstOpen = findFirstOpenBacklogItem(items);
+    const firstOpen = findFirstActionableBacklogItem(items);
     const waitingPassive = findWaitingPassiveProofBacklogItems(items);
     const waitingExternal = findWaitingExternalQuotaBacklogItems(items);
 
@@ -121,7 +122,7 @@ Title: First actionable seam
 Status: OPEN
 `);
 
-    const firstOpen = findFirstOpenBacklogItem(items);
+    const firstOpen = findFirstActionableBacklogItem(items);
     const waitingExternal = findWaitingExternalBlockerBacklogItems(items);
 
     expect(firstOpen?.id).toBe('BL-007');
@@ -129,6 +130,88 @@ Status: OPEN
     expect(waitingExternal.map((item) => item.status)).toEqual([
       'WAITING_EXTERNAL_ACCOUNT',
       'WAITING_EXTERNAL_PROOF',
+    ]);
+  });
+
+  it('skips OPEN items whose next blocker is external/proof-only and selects the first actionable OPEN item', () => {
+    const items = parseBacklogItems(`
+### BL-021
+ID: BL-021
+Title: Open but quota-blocked
+Status: OPEN
+Next blocker: Paid model quota reset/access required before fresh production proof can run.
+
+### BL-022
+ID: BL-022
+Title: Open but missing real account
+Status: OPEN
+Next blocker: Provision and connect one real non-owner user with live auth and token rows.
+
+### BL-023
+ID: BL-023
+Title: Open but passive proof only
+Status: OPEN
+Next blocker: next normal daily-send proof required
+
+### BL-025
+ID: BL-025
+Title: Open but no current repro
+Status: OPEN
+Next blocker: No current failing seam to repair; health gate is passing.
+
+### BL-024
+ID: BL-024
+Title: Actionable seam
+Status: OPEN
+Next blocker: Trace the code path and add deterministic regression coverage.
+`);
+
+    const firstActionable = findFirstActionableBacklogItem(items);
+    const eligibility = items.map(getBacklogEligibility);
+
+    expect(firstActionable?.id).toBe('BL-024');
+    expect(eligibility.slice(0, 4).map((item) => item.reason)).toEqual([
+      'blocked by quota',
+      'blocked by missing connected account',
+      'blocked by passive next-window proof',
+      'no current failing seam to repair',
+    ]);
+    expect(eligibility[4]?.actionable).toBe(true);
+  });
+
+  it('skips the universal waiting status set without hardcoded backlog IDs', () => {
+    const items = parseBacklogItems(`
+### BL-101
+ID: BL-101
+Status: WAITING_PAID_PROOF
+
+### BL-102
+ID: BL-102
+Status: WAITING_MANUAL_AUTH
+
+### BL-103
+ID: BL-103
+Status: WAITING_REAL_USER
+
+### BL-104
+ID: BL-104
+Status: WAITING_TIME_WINDOW
+
+### BL-105
+ID: BL-105
+Status: OPEN
+Next blocker: Current code seam can be tested locally.
+`);
+
+    const firstActionable = findFirstActionableBacklogItem(items);
+    const waitingExternal = findWaitingExternalBlockerBacklogItems(items);
+
+    expect(firstActionable?.id).toBe('BL-105');
+    expect(waitingExternal.map((item) => item.id)).toEqual([
+      'BL-101',
+      'BL-102',
+      'BL-103',
+      'BL-104',
     ]);
   });
 
@@ -146,7 +229,7 @@ Title: Later open seam
 Status: OPEN
 `);
 
-    const firstOpen = findFirstOpenBacklogItem(items);
+    const firstOpen = findFirstActionableBacklogItem(items);
     const waitingItems = findWaitingPassiveProofBacklogItems(items);
 
     expect(firstOpen?.id).toBe('BL-003');
@@ -201,7 +284,17 @@ Next blocker: non-owner account setup pending
       expect(
         logs.some((line) =>
           line.includes(
-            'HARD STOP REASON: No actionable OPEN backlog item found; all remaining backlog items are waiting or blocked.',
+            'HARD STOP REASON: No actionable backlog item found; all parsed items are waiting, blocked, closed, missing status, or missing a current code/proof seam.',
+          ),
+        ),
+      ).toBe(true);
+      expect(logs.some((line) => line.includes('SKIPPED NON-ACTIONABLE ITEMS:'))).toBe(
+        true,
+      );
+      expect(
+        logs.some((line) =>
+          line.includes(
+            'BL-006 | status=WAITING_EXTERNAL_ACCOUNT | reason=requires unavailable external account setup',
           ),
         ),
       ).toBe(true);

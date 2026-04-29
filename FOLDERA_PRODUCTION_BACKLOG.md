@@ -3,13 +3,14 @@
 Last refreshed: 2026-04-29
 
 ## Current top item
-BL-007 — Rung 6 — Repeated-directive health failure still trips within the 24-hour window.
+No currently actionable backlog item. Controller should stop cleanly until a waiting blocker clears or fresh failing evidence creates a code/test/proof seam.
 
 ## How to use this file
 - Every Codex run opens this file first.
 - Execute the first actionable OPEN item only.
-- Autopilot skips externally blocked waiting statuses: `WAITING_EXTERNAL_ACCOUNT`, `WAITING_EXTERNAL_PROOF`, `WAITING_EXTERNAL_QUOTA`, and `WAITING_PASSIVE_PROOF`.
-- Skipped external blockers remain visible and must not be marked CLOSED until their proof requirement is genuinely satisfied.
+- Autopilot skips any item that is not currently actionable, including `WAITING_EXTERNAL_ACCOUNT`, `WAITING_EXTERNAL_PROOF`, `WAITING_EXTERNAL_QUOTA`, `WAITING_PASSIVE_PROOF`, `WAITING_PAID_PROOF`, `WAITING_MANUAL_AUTH`, `WAITING_REAL_USER`, and `WAITING_TIME_WINDOW`.
+- Autopilot also skips `OPEN` items when `Next blocker` says the next step requires unavailable external account setup, paid/model quota, passive waiting, manual reauth, real user onboarding, a future natural cron/time window, fabricated production data, or fresh failure evidence that does not currently exist.
+- Skipped blockers remain visible and must not be marked CLOSED until their proof requirement is genuinely satisfied.
 - After shipping, update Status to CLOSED with evidence.
 - If a new blocker is discovered, insert it at the correct rung position.
 - Infrastructure items always sort above code items at the same rung.
@@ -284,6 +285,6 @@ Required local proof: `npm run health`; focused duplicate/regression tests for t
 Required production proof: Run the real brief path twice inside the monitored window and verify health no longer reports repeated copies of one directive shape.
 Done means: Consecutive real runs stay unique enough that the 24-hour repeated-directive health gate passes.
 Do-not-count: Muting the check, deleting rows manually, or proving uniqueness only in mocks.
-Status: OPEN
-Last evidence: 2026-04-26 — `npm run health` failed `Repeated directive`; latest persisted copy 1 hour ago.
-Next blocker: Trace which stage is reissuing the same directive shape and prove the fix survives a second real run.
+Status: WAITING_EXTERNAL_PROOF
+Last evidence: 2026-04-29 — `npm run health` reports `✓ No repeated directive`, so there is no current local repeated-directive failure or code seam to repair. This item requires two real monitored production brief runs with no repeated-directive recurrence before it can close.
+Next blocker: Capture fresh repeated-directive failure evidence or complete two real monitored production brief runs without recurrence; do not fabricate proof data or use owner-only shortcuts for non-owner requirements.

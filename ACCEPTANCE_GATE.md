@@ -68,6 +68,14 @@ Doctrine -> production rung -> works/broken definition -> proof command -> resul
 
 If Codex cannot prove that at least one production rung advanced, the run did not count.
 
+## Controller Backlog Eligibility
+
+`controller:autopilot` may select only backlog items that are actionable now.
+
+An item is actionable only when `Status: OPEN` and the next required step can be performed now by code, tests, or free proof in the current repo/runtime.
+
+The controller must skip items whose status or next blocker requires unavailable external account setup, paid/model quota, passive waiting, paid proof, manual reauth, real user onboarding, a future natural cron/time window, fabricated production data, or fresh failure evidence that does not currently exist. Skipped items remain open or waiting; they must not be closed until their real proof requirement is satisfied.
+
 ## Permanent Success Criteria
 
 The system passes if and only if ALL of these are true every morning with zero human intervention:
