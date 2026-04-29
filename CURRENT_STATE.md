@@ -40,7 +40,7 @@
 - **`settings/run-brief` test mock** — `Promise.all` for dry-run DB reads; `pipeline_runs` mock must distinguish `findRecentPipelineDryRun` (filters `outcome = pipeline_dry_run_returned`) from `findLatestPipelineRun` (2026-04-23).
 - **Verify in production** — brain-receipt + one nightly-ops cycle; confirm scorer diagnostics list non-email discrepancy classes and larger pre-rank pool.
 - **Interview brief quality** — 2026-04-28 prompt/model seam is shipped locally and deployed at `7f60386`, but production proof is blocked by Anthropic API quota until 2026-05-01 00:00 UTC. Do not close BL-005 until a fresh paid interview-class run produces a new `pending_approval` `write_document` that opens in-product and reads like finished work.
-- **Owner money-shot artifact proof** — BL-015 is now the top Rung 0 owner-quality item. Free deterministic proof is the active path; production proof remains waiting on external quota and must be a single owner `Generate Now` run followed by in-product `pending_approval` artifact inspection.
+- **Owner money-shot artifact proof** — BL-015 is now the top Rung 0 owner-quality item. Free deterministic proof passed on 2026-04-29 with the focused artifact-quality and generator-runtime suites, plus lint/build/health/preflight. Production proof remains waiting on external quota and explicit paid-proof approval; it must be a single owner `Generate Now` run followed by in-product `pending_approval` artifact inspection.
 - **Tune extraction thresholds** — burst/idle windows for stale documents, follow-up day counts, intent phrase regex if false positives appear.
 
 ## D. CONSTRAINTS

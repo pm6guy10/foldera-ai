@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-29 — BL-015 local proof re-run stops at paid owner proof boundary
+- MODE: FOLDERA PRODUCTION AUTOPILOT — BL-015 proof state only.
+- Files changed: `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.
+- What changed: Re-ran the selected BL-015 owner money-shot proof path without product-code edits. The source-of-truth files now record that the local deterministic proof set is complete, while BL-015 remains `OPEN` because the required live owner `Generate Now` proof is paid/model-backed and still requires external model capacity plus explicit paid-proof approval.
+- Verification: `npm run controller:autopilot` selected BL-015; `npm run health` passed (`RESULT: 0 FAILING`; warnings only: Outlook not connected, last generation `do_nothing`); `npm run preflight` returned `3 pass`, `1 warn`, `0 FAIL`, `INFRASTRUCTURE DEGRADED` only because local `ALLOW_PAID_LLM` is unset; `npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts lib/briefing/__tests__/generator-runtime.test.ts` passed; `npm run lint` passed; `npm run build` passed.
+- Unresolved issues: Production proof was not run. The next blocker is one authenticated owner Generate Now run after external model capacity returns and explicit paid-proof approval is available, followed by in-product inspection of the resulting `pending_approval` artifact.
+
 ## 2026-04-29 — Quiet hold receipts normalized on scheduled suppressions
 - MODE: FOLDERA QUIET HOLD RECEIPT NORMALIZATION — existing daily-send suppression path only.
 - Files changed: `lib/cron/daily-brief-types.ts`, `lib/cron/daily-brief-send.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `SESSION_HISTORY.md`.

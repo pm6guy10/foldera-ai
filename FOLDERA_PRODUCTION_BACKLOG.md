@@ -39,8 +39,8 @@ Required production proof: Trigger one authenticated owner Generate Now run afte
 Done means: Bad owner-shaped artifacts are blocked, one good owner-shaped artifact passes, the artifact is finished work instead of prep, no existing good artifact path breaks, and production proof is complete or explicitly waiting on external capacity.
 Do-not-count: Structural validity alone, a generic checklist, a reminder-only artifact, a static mock, a non-owner proof, a provider/debug no-send, or a local-only proof presented as live product proof.
 Status: OPEN
-Last evidence: 2026-04-29 — deterministic local owner-shaped suite added for CHC/Alex confirmation sludge, ESB Technician prep homework, generic interview checklist output, stale reminder-only interview output, and one finished owner-shaped money-shot artifact. Generator runtime proof now blocks the CHC/Alex email-shaped document and falls through to a finished CHC decision brief.
-Next blocker: Run the required local proof set, then complete one live owner Generate Now proof after external model capacity returns.
+Last evidence: 2026-04-29 — deterministic local owner-shaped suite added and re-proved for CHC/Alex confirmation sludge, ESB Technician prep homework, generic interview checklist output, stale reminder-only interview output, and one finished owner-shaped money-shot artifact. `npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts lib/briefing/__tests__/generator-runtime.test.ts`, `npm run lint`, `npm run build`, `npm run health`, and `npm run preflight` passed; generator runtime proof blocks the CHC/Alex email-shaped document and falls through to a finished CHC decision brief.
+Next blocker: Complete one live owner Generate Now proof after external model capacity returns and explicit paid-proof approval is available.
 
 ### BL-001
 ID: BL-001
