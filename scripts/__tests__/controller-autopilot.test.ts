@@ -179,6 +179,41 @@ Next blocker: Trace the code path and add deterministic regression coverage.
     expect(eligibility[4]?.actionable).toBe(true);
   });
 
+  it('skips OPEN items whose next blocker requires paid live Generate Now proof', () => {
+    const items = parseBacklogItems(`
+### BL-015
+ID: BL-015
+Title: Owner money-shot artifact
+Status: OPEN
+Next blocker: Complete one live owner Generate Now proof after external model capacity returns and explicit paid-proof approval is available.
+
+### BL-016
+ID: BL-016
+Title: Paid/model-backed proof wording
+Status: OPEN
+Next blocker: paid/model-backed proof required before this item can close.
+
+### BL-017
+ID: BL-017
+Title: Actionable seam
+Status: OPEN
+Next blocker: Trace the local code path and add deterministic regression coverage.
+`);
+
+    const firstActionable = findFirstActionableBacklogItem(items);
+    const eligibility = items.map(getBacklogEligibility);
+
+    expect(firstActionable?.id).toBe('BL-017');
+    expect(eligibility[0]).toMatchObject({
+      actionable: false,
+      reason: 'blocked by paid/model-backed proof',
+    });
+    expect(eligibility[1]).toMatchObject({
+      actionable: false,
+      reason: 'blocked by paid/model-backed proof',
+    });
+  });
+
   it('skips the universal waiting status set without hardcoded backlog IDs', () => {
     const items = parseBacklogItems(`
 ### BL-101

@@ -175,7 +175,8 @@ const BLOCKER_TEXT_RULES: Array<{
       'Wait for the natural production window and record the proof result before reopening.',
   },
   {
-    pattern: /\b(paid proof|paid\/model|model-backed proof|paid generation|paid production proof)\b/i,
+    pattern:
+      /\b(paid[-\s]?proof|paid\/model(?:-backed)?|model-backed proof|paid generation|paid production proof|explicit paid[-\s]?proof approval|external model capacity|generate now proof)\b/i,
     reason: 'blocked by paid/model-backed proof',
     actionableCondition:
       'Get explicit approval and available model quota for the smallest paid proof before reopening.',
