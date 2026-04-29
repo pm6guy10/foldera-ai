@@ -28,6 +28,7 @@ export interface ArtifactQualityGateInput {
   artifact: ConvictionArtifact;
   now?: Date;
   sourceFacts?: string[];
+  strictActionTypeMatch?: boolean;
 }
 
 export interface ArtifactQualityGateResult {
@@ -258,7 +259,9 @@ export function evaluateArtifactQualityGate(
   const category = classifyArtifactCategory(input.directive, input.artifact, text);
   const suppressionDecision = category === 'SUPPRESSION_DECISION';
   const draftEmailOnNonEmailAction =
-    input.directive.action_type !== 'send_message' && classifyDraftEmail(input.artifact, text);
+    input.strictActionTypeMatch === true &&
+    input.directive.action_type !== 'send_message' &&
+    classifyDraftEmail(input.artifact, text);
 
   if (draftEmailOnNonEmailAction) reasons.push('action_type_mismatch');
   if (INTERNAL_DEBUG_PATTERN.test(combined)) reasons.push('internal_debug_token');

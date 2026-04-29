@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-29 — CI artifact gate scope repaired
+- MODE: CI repair for `fix(artifacts): harden owner money-shot artifact quality`.
+- Files changed: `SESSION_HISTORY.md`, `lib/briefing/generator.ts`, `lib/briefing/artifact-quality-gate.ts`, `lib/briefing/__tests__/artifact-quality-gate.test.ts`.
+- What changed: Scoped `action_type_mismatch` to explicit strict owner money-shot evaluation instead of the global artifact-quality persistence gate, and narrowed the owner money-shot generator trigger so generic interview wording does not pull unrelated valid `write_document` artifacts into the strict owner gate.
+- Verification: Reproduced the failed CI tests locally first. `npx vitest run lib/cron/__tests__/daily-brief.test.ts -t "hydrates legacy interview write_document metadata before pending_approval persistence"` passed; `npx vitest run lib/briefing/__tests__/usefulness-gate.test.ts -t "VALID2"` passed; full `lib/cron/__tests__/daily-brief.test.ts`, `lib/briefing/__tests__/usefulness-gate.test.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, and `lib/briefing/__tests__/artifact-quality-gate.test.ts` passed; `npm run test:ci:unit` passed; `npm run health` passed (`RESULT: 0 FAILING`); `npm run preflight` returned `3 pass`, `1 warn`, `0 FAIL`; `npm run lint` passed; `npm run build` passed.
+- Unresolved issues: Production owner money-shot proof remains `WAITING_EXTERNAL_QUOTA`; this entry only fixes the CI regression from the strict gate scope.
+
 ## 2026-04-29 — BL-015 owner money-shot artifact gate hardened locally
 - MODE: FOLDERA MONEY-SHOT ARTIFACT SEAM — owner data quality first.
 - Files changed: `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`, `lib/briefing/generator.ts`, `lib/briefing/artifact-quality-gate.ts`, `lib/briefing/__tests__/artifact-quality-gate.test.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `lib/briefing/__tests__/owner-money-shot-artifact.fixture.ts`.

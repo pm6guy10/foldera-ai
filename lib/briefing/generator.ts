@@ -144,7 +144,7 @@ const ARTIFACT_VIABILITY_PRESSURE_RE =
 const ARTIFACT_VIABILITY_ASK_RE =
   /\b(can you|could you|would you|will you|please|reply|confirm|approve|decide|send|schedule|share|name the owner|yes\/no)\b/i;
 const OWNER_MONEY_SHOT_GATE_RE =
-  /\b(?:ESB|ES Benefits|Technician|ProviderOne|HCA|ESD|DSHS|CHC|Comprehensive Healthcare|Alex Crisler|Darlene Craig|interview|recruitment|role-fit|phone screen|Care Coordinator)\b/i;
+  /\b(?:ESB|ES Benefits|ProviderOne|HCA|ESD|DSHS|CHC|Comprehensive Healthcare|Alex Crisler|Darlene Craig|Care Coordinator|recruitment 2026-02344)\b/i;
 
 function shouldApplyOwnerMoneyShotQualityGate(input: {
   candidate: ScoredLoop;
@@ -10928,6 +10928,7 @@ export async function generateDirective(
       const artifactQualityGate = evaluateArtifactQualityGate({
         directive,
         artifact: payload.artifact as unknown as ConvictionArtifact,
+        strictActionTypeMatch: true,
         sourceFacts: [
           ctx.selected_candidate,
           ctx.candidate_title,

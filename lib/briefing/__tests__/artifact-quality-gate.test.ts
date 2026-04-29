@@ -98,6 +98,7 @@ describe('owner money-shot artifact suite', () => {
         directive: item.directive,
         artifact: item.artifact,
         sourceFacts: item.sourceFacts,
+        strictActionTypeMatch: true,
         now: item.now ?? new Date('2026-04-29T12:00:00.000Z'),
       }),
     }));
@@ -120,5 +121,21 @@ describe('owner money-shot artifact suite', () => {
     expect(result.passes, result.reasons.join(',')).toBe(true);
     expect(result.category).toBe(OWNER_MONEY_SHOT_GOOD_ARTIFACT.expectedCategory);
     expect(result.reasons).toEqual([]);
+  });
+
+  it('keeps action-type mismatch opt-in so legacy persistence does not block valid documents', () => {
+    const actionMismatchCase = OWNER_MONEY_SHOT_BAD_ARTIFACTS.find((item) => (
+      item.expectedReason === 'action_type_mismatch'
+    ));
+    expect(actionMismatchCase).toBeDefined();
+
+    const result = evaluateArtifactQualityGate({
+      directive: actionMismatchCase!.directive,
+      artifact: actionMismatchCase!.artifact,
+      sourceFacts: actionMismatchCase!.sourceFacts,
+      now: actionMismatchCase!.now ?? new Date('2026-04-29T12:00:00.000Z'),
+    });
+
+    expect(result.reasons).not.toContain('action_type_mismatch');
   });
 });
