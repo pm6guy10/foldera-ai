@@ -53,6 +53,7 @@ describe('runPlatformHealthAlert', () => {
   });
 
   it('uses full health only when explicitly requested', async () => {
+    vi.stubEnv('CRON_SECRET', 'test-cron-secret');
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ status: 'ok', ts: '2026-01-01T00:00:00.000Z', db: true, env: true }),
@@ -62,7 +63,10 @@ describe('runPlatformHealthAlert', () => {
     expect(r.ok).toBe(true);
     expect(vi.mocked(global.fetch)).toHaveBeenCalledWith(
       'https://foldera.ai/api/health?depth=full',
-      { cache: 'no-store' },
+      {
+        cache: 'no-store',
+        headers: { Authorization: 'Bearer test-cron-secret' },
+      },
     );
   });
 });

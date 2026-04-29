@@ -40,10 +40,18 @@ async function fetchHealthJson(
   depth: PlatformHealthDepth,
 ): Promise<Record<string, unknown>> {
   const url = depth === 'full' ? `${baseUrl}/api/health?depth=full` : `${baseUrl}/api/health`;
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  const init: RequestInit =
+    depth === 'full' && cronSecret
+      ? {
+          cache: 'no-store',
+          headers: { Authorization: `Bearer ${cronSecret}` },
+        }
+      : { cache: 'no-store' };
   let lastErr: unknown;
   for (let attempt = 1; attempt <= HEALTH_FETCH_RETRIES; attempt += 1) {
     try {
-      const healthRes = await fetch(url, { cache: 'no-store' });
+      const healthRes = await fetch(url, init);
       const healthData = (await healthRes.json()) as Record<string, unknown>;
       if (!healthRes.ok) {
         return {

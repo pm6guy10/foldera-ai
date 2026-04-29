@@ -40,4 +40,35 @@ describe('GET /api/health', () => {
       vercel_env: null,
     });
   });
+
+  it('rejects full health without the cron/operator secret before running expensive probes', async () => {
+    process.env.CRON_SECRET = 'test-cron-secret';
+    process.env.NEXT_PUBLIC_SUPABASE_URL = '';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = '';
+
+    const { GET } = await import('../route');
+    const res = await GET(req('http://localhost/api/health?depth=full'));
+    expect(res.status).toBe(401);
+    await expect(res.json()).resolves.toEqual({ error: 'Unauthorized' });
+  });
+
+  it('allows full health with the cron/operator secret', async () => {
+    process.env.CRON_SECRET = 'test-cron-secret';
+    process.env.NEXT_PUBLIC_SUPABASE_URL = '';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = '';
+    delete process.env.ENCRYPTION_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.RESEND_API_KEY;
+
+    const { GET } = await import('../route');
+    const res = await GET(
+      new NextRequest(new URL('http://localhost/api/health?depth=full'), {
+        headers: { Authorization: 'Bearer test-cron-secret' },
+      }),
+    );
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+    expect(body.depth).toBe('full');
+    expect(body.schema).toBe('ok');
+  });
 });

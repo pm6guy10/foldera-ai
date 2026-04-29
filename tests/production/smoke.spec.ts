@@ -330,7 +330,12 @@ test.describe('Public: Pricing page', () => {
 // ── Manual-only full schema health — operator path, never automatic smoke ───
 describeManualFullHealthProof('Schema health', () => {
   test('/api/health reports schema ok', async ({ request }) => {
-    const res = await request.get('https://foldera.ai/api/health?depth=full');
+    const cronSecret = process.env.CRON_SECRET?.trim();
+    test.skip(!cronSecret, 'CRON_SECRET is required for manual full-health proof');
+
+    const res = await request.get('https://foldera.ai/api/health?depth=full', {
+      headers: { Authorization: `Bearer ${cronSecret}` },
+    });
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.db).toBe(true);

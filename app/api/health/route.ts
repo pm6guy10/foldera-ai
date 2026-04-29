@@ -3,6 +3,7 @@ import { getDeployBuildLabel, getDeployRevision } from '@/lib/config/deploy-revi
 import { createServerClient } from '@/lib/db/client';
 import { checkApiCreditCanary } from '@/lib/cron/acceptance-gate';
 import { REQUEST_ID_HEADER, resolveRequestIdForRequest } from '@/lib/utils/request-id-core';
+import { validateCronAuth } from '@/lib/auth/resolve-user';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,6 +87,11 @@ async function runSchemaProbes(
 export async function GET(request: NextRequest) {
   const full = wantsFullHealth(request);
   const requestId = resolveRequestIdForRequest(request.headers.get(REQUEST_ID_HEADER));
+
+  if (full) {
+    const authErr = validateCronAuth(request);
+    if (authErr) return authErr;
+  }
 
   const hasSupabaseCfg = !!(
     process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
