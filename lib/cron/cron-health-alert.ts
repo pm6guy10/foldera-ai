@@ -45,7 +45,7 @@ async function fetchHealthJson(
     depth === 'full' && cronSecret
       ? {
           cache: 'no-store',
-          headers: { Authorization: `Bearer ${cronSecret}` },
+          headers: { 'x-cron-secret': cronSecret },
         }
       : { cache: 'no-store' };
   let lastErr: unknown;

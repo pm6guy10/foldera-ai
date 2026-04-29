@@ -65,7 +65,7 @@ describe('runPlatformHealthAlert', () => {
       'https://foldera.ai/api/health?depth=full',
       {
         cache: 'no-store',
-        headers: { Authorization: 'Bearer test-cron-secret' },
+        headers: { 'x-cron-secret': 'test-cron-secret' },
       },
     );
   });

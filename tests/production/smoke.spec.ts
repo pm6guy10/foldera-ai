@@ -334,7 +334,7 @@ describeManualFullHealthProof('Schema health', () => {
     test.skip(!cronSecret, 'CRON_SECRET is required for manual full-health proof');
 
     const res = await request.get('https://foldera.ai/api/health?depth=full', {
-      headers: { Authorization: `Bearer ${cronSecret}` },
+      headers: { 'x-cron-secret': cronSecret },
     });
     expect(res.status()).toBe(200);
     const body = await res.json();
