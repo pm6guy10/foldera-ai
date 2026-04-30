@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-30 — `/api/conviction/latest` Supabase egress reduced
+- MODE: FOLDERA COST ATTRIBUTION — first concrete Supabase egress reducer only.
+- Files changed: `app/api/conviction/latest/route.ts`, `app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts`, `SESSION_HISTORY.md`.
+- What changed: Replaced the dashboard latest route's 20-row `select('*')` pending-action read with a 5-row metadata ranking query, followed by one narrow payload fetch for the selected action id. The route no longer builds the context greeting or calls `auth.admin.getUserById` when a pending artifact exists; those heavier reads now run only for the empty dashboard state.
+- Verification: `npx vitest run app/api/conviction/latest/__tests__/*` did not match a file under this shell/Vitest filter; direct focused route test `npx vitest run app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts` passed (9 tests); source scan found no `select('*')` in `app/api/conviction/latest/route.ts`; `npm run health` passed (`RESULT: 0 FAILING`, warnings only); `npm run preflight` returned `3 pass`, `1 warn`, `0 FAIL`, degraded only because local `ALLOW_PAID_LLM` is unset; `npm run lint` passed; `npm run build` passed; `npx playwright test tests/e2e/authenticated-routes.spec.ts -g "loads and shows directive card"` passed.
+- Unresolved issues: This is a repo-side reducer, not proof that total Vercel/Supabase usage is fixed. Exact next manual check is Vercel Observability top paths plus Supabase query/egress logs after this revision is deployed.
+
 ## 2026-04-29 — BL-015 local proof re-run stops at paid owner proof boundary
 - MODE: FOLDERA PRODUCTION AUTOPILOT — BL-015 proof state only.
 - Files changed: `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.

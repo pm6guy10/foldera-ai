@@ -16,11 +16,21 @@ import { getSubscriptionStatus } from '@/lib/auth/subscription';
 
 export const dynamic = 'force-dynamic';
 const MIN_PENDING_CONFIDENCE = CONFIDENCE_SEND_THRESHOLD;
+const PENDING_RANKING_LIMIT = 5;
+const PENDING_RANKING_SELECT = 'id, confidence, generated_at, status';
+const PENDING_PAYLOAD_SELECT =
+  'id, action_type, directive_text, reason, confidence, evidence, status, generated_at, approved_at, executed_at, execution_result, artifact';
 const CONSUMED_FREE_ARTIFACT_STATUSES = ['approved', 'executed', 'skipped'] as const;
 const NO_STORE_HEADERS = {
   'Cache-Control': 'private, no-store, max-age=0, must-revalidate',
   Pragma: 'no-cache',
 } as const;
+
+type PendingRankingRow = {
+  id?: unknown;
+  confidence?: unknown;
+  generated_at?: unknown;
+};
 
 function jsonNoStore(payload: unknown): NextResponse {
   return NextResponse.json(payload, { status: 200, headers: NO_STORE_HEADERS });
@@ -34,6 +44,12 @@ function startOfTodayIso(): string {
 
 function isProUnlocked(status: string | null | undefined): boolean {
   return status === 'active' || status === 'active_trial' || status === 'past_due';
+}
+
+function isPendingRankingRow(value: unknown): value is PendingRankingRow {
+  if (!value || typeof value !== 'object') return false;
+  const row = value as PendingRankingRow;
+  return typeof row.id === 'string' && typeof row.confidence === 'number';
 }
 
 async function getConsumedFreeArtifactCount(
@@ -102,35 +118,17 @@ export async function GET(request: Request) {
       }
     })();
 
-    const { data: actions, error } = await supabase
+    const { data: candidates, error } = await supabase
       .from('tkg_actions')
-      .select('*')
+      .select(PENDING_RANKING_SELECT)
       .eq('user_id', userId)
       .eq('status', 'pending_approval')
       .order('confidence', { ascending: false })
       .order('generated_at', { ascending: false })
-      .limit(20);
+      .limit(PENDING_RANKING_LIMIT);
 
     if (error) {
       throw new Error(error.message ?? JSON.stringify(error));
-    }
-
-    // Build context greeting (runs even if no action, for empty state)
-    let contextGreeting: string;
-    try {
-      contextGreeting = await buildContextGreeting(userId);
-    } catch {
-      contextGreeting = 'Today. 0 active commitments. Top priority: None set.';
-    }
-
-    let accountCreatedAt: string | null = null;
-    try {
-      const { data: userData, error: authUserError } = await supabase.auth.admin.getUserById(userId);
-      if (!authUserError) {
-        accountCreatedAt = userData.user?.created_at ?? null;
-      }
-    } catch {
-      accountCreatedAt = null;
     }
 
     const consumedFreeArtifactCount = await getConsumedFreeArtifactCount(supabase, userId);
@@ -145,18 +143,54 @@ export async function GET(request: Request) {
     }
     const proUnlocked = isProUnlocked(subscriptionStatus);
 
-    const candidates = actions ?? [];
-    const todaysCandidates = candidates.filter((candidate) => {
+    const rankingRows = (candidates ?? []).filter(isPendingRankingRow);
+    const todaysCandidates = rankingRows.filter((candidate) => {
       const generatedAt = typeof candidate.generated_at === 'string' ? candidate.generated_at : '';
       return generatedAt >= startOfTodayIso();
     });
-    const rankedCandidates = (todaysCandidates.length > 0 ? todaysCandidates : candidates).filter((candidate) => {
-      const artifact = extractArtifact(candidate as Record<string, unknown>);
-      return artifact !== undefined && typeof candidate.confidence === 'number' && candidate.confidence >= MIN_PENDING_CONFIDENCE;
-    });
-    const action = rankedCandidates[0];
+    const rankedCandidates = (todaysCandidates.length > 0 ? todaysCandidates : rankingRows).filter(
+      (candidate) => candidate.confidence >= MIN_PENDING_CONFIDENCE,
+    );
+    const selectedCandidate = rankedCandidates[0];
+
+    let action: Record<string, unknown> | null = null;
+    if (selectedCandidate?.id) {
+      const { data: selectedAction, error: selectedActionError } = await supabase
+        .from('tkg_actions')
+        .select(PENDING_PAYLOAD_SELECT)
+        .eq('user_id', userId)
+        .eq('status', 'pending_approval')
+        .eq('id', selectedCandidate.id)
+        .maybeSingle();
+
+      if (selectedActionError) {
+        throw new Error(selectedActionError.message ?? JSON.stringify(selectedActionError));
+      }
+
+      if (selectedAction && extractArtifact(selectedAction as Record<string, unknown>)) {
+        action = selectedAction as Record<string, unknown>;
+      }
+    }
+
+    let contextGreeting: string | null = null;
+    let accountCreatedAt: string | null = null;
 
     if (!action) {
+      try {
+        contextGreeting = await buildContextGreeting(userId);
+      } catch {
+        contextGreeting = 'Today. 0 active commitments. Top priority: None set.';
+      }
+
+      try {
+        const { data: userData, error: authUserError } = await supabase.auth.admin.getUserById(userId);
+        if (!authUserError) {
+          accountCreatedAt = userData.user?.created_at ?? null;
+        }
+      } catch {
+        accountCreatedAt = null;
+      }
+
       return jsonNoStore({
         context_greeting: contextGreeting,
         account_created_at: accountCreatedAt,

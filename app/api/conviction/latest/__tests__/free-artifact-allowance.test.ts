@@ -23,23 +23,56 @@ function buildSupabaseMock(options: SupabaseMockOptions) {
   const inConsumedStatuses = vi.fn().mockResolvedValue({ count: options.consumedCount });
 
   const consumedCountEqUser = vi.fn().mockReturnValue({ in: inConsumedStatuses });
-  const pendingLimit = vi.fn().mockResolvedValue({ data: options.pendingActions, error: null });
+  const pendingRankingRows = options.pendingActions.map((action) => ({
+    id: action.id,
+    confidence: action.confidence,
+    generated_at: action.generated_at,
+    status: action.status,
+  }));
+  const pendingLimit = vi.fn().mockResolvedValue({ data: pendingRankingRows, error: null });
   const pendingOrderGenerated = vi.fn().mockReturnValue({ limit: pendingLimit });
   const pendingOrderConfidence = vi.fn().mockReturnValue({ order: pendingOrderGenerated });
   const pendingEqStatus = vi.fn().mockReturnValue({ order: pendingOrderConfidence });
   const pendingEqUser = vi.fn().mockReturnValue({ eq: pendingEqStatus });
 
+  let selectedPayloadId: unknown;
+  const pendingPayloadMaybeSingle = vi.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: options.pendingActions.find((action) => action.id === selectedPayloadId) ?? null,
+      error: null,
+    }),
+  );
+  const pendingPayloadEqId = vi.fn().mockImplementation((_column: string, value: unknown) => {
+    selectedPayloadId = value;
+    return { maybeSingle: pendingPayloadMaybeSingle };
+  });
+  const pendingPayloadEqStatus = vi.fn().mockReturnValue({ eq: pendingPayloadEqId });
+  const pendingPayloadEqUser = vi.fn().mockReturnValue({ eq: pendingPayloadEqStatus });
+
   const tkgActionsSelect = vi
     .fn()
-    .mockImplementation((_columns: string, config?: { count?: string; head?: boolean }) => {
+    .mockImplementation((columns: string, config?: { count?: string; head?: boolean }) => {
       if (config?.head) {
         return { eq: consumedCountEqUser };
+      }
+      if (columns === 'id, confidence, generated_at, status') {
+        return { eq: pendingEqUser };
+      }
+      if (
+        columns ===
+        'id, action_type, directive_text, reason, confidence, evidence, status, generated_at, approved_at, executed_at, execution_result, artifact'
+      ) {
+        return { eq: pendingPayloadEqUser };
       }
       return { eq: pendingEqUser };
     });
 
   const userSubscriptionUpdateEq = vi.fn().mockResolvedValue({ error: null });
   const userSubscriptionUpdate = vi.fn().mockReturnValue({ eq: userSubscriptionUpdateEq });
+  const getUserById = vi.fn().mockResolvedValue({
+    data: { user: { created_at: options.accountCreatedAt ?? '2026-01-02T00:00:00.000Z' } },
+    error: null,
+  });
 
   const from = vi.fn().mockImplementation((table: string) => {
     if (table === 'tkg_actions') return { select: tkgActionsSelect };
@@ -51,14 +84,15 @@ function buildSupabaseMock(options: SupabaseMockOptions) {
     from,
     auth: {
       admin: {
-        getUserById: vi.fn().mockResolvedValue({
-          data: { user: { created_at: options.accountCreatedAt ?? '2026-01-02T00:00:00.000Z' } },
-          error: null,
-        }),
+        getUserById,
       },
     },
     spies: {
       inConsumedStatuses,
+      pendingLimit,
+      pendingPayloadMaybeSingle,
+      tkgActionsSelect,
+      getUserById,
     },
   };
 }
@@ -118,6 +152,14 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(body.free_artifact_remaining).toBe(true);
     expect(body.artifact_paywall_locked).toBe(false);
     expect(supabase.spies.inConsumedStatuses).toHaveBeenCalledWith('status', ['approved', 'executed', 'skipped']);
+    expect(supabase.spies.tkgActionsSelect).toHaveBeenCalledWith('id, confidence, generated_at, status');
+    expect(supabase.spies.pendingLimit).toHaveBeenCalledWith(5);
+    expect(supabase.spies.tkgActionsSelect).toHaveBeenCalledWith(
+      'id, action_type, directive_text, reason, confidence, evidence, status, generated_at, approved_at, executed_at, execution_result, artifact',
+    );
+    expect(supabase.spies.pendingPayloadMaybeSingle).toHaveBeenCalledTimes(1);
+    expect(mockBuildContextGreeting).not.toHaveBeenCalled();
+    expect(supabase.spies.getUserById).not.toHaveBeenCalled();
   });
 
   it('approved consumes the free artifact for free users', async () => {
@@ -232,5 +274,18 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(body.free_artifact_remaining).toBe(true);
     expect(body.artifact_paywall_locked).toBe(false);
     expect(body.id).toBeUndefined();
+    expect(mockBuildContextGreeting).toHaveBeenCalledWith('u-test');
+    expect(supabase.spies.getUserById).toHaveBeenCalledWith('u-test');
+  });
+
+  it('keeps the latest route on the narrow two-stage query contract', async () => {
+    const source = await import('node:fs/promises').then((fs) =>
+      fs.readFile(new URL('../route.ts', import.meta.url), 'utf8'),
+    );
+
+    expect(source).not.toContain(".select('*')");
+    expect(source).toContain("const PENDING_RANKING_LIMIT = 5");
+    expect(source).toContain("const PENDING_RANKING_SELECT = 'id, confidence, generated_at, status'");
+    expect(source).toContain('const PENDING_PAYLOAD_SELECT =');
   });
 });
