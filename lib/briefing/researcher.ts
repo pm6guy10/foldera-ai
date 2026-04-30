@@ -80,6 +80,24 @@ function getAnthropic(): Anthropic {
   return anthropicClient;
 }
 
+function hasResearchableMetadata(row: Record<string, unknown>): boolean {
+  const fields = [
+    row.recipients,
+    row.extracted_entities,
+    row.extracted_commitments,
+    row.extracted_dates,
+    row.extracted_amounts,
+    row.outcome_label,
+  ];
+
+  return fields.some((field) => {
+    if (Array.isArray(field)) return field.length > 0;
+    if (typeof field === 'string') return field.trim().length > 0;
+    if (field && typeof field === 'object') return Object.keys(field).length > 0;
+    return false;
+  });
+}
+
 /**
  * Load recent signal metadata for a user from the last 30 days.
  * Raw signal content is intentionally excluded from researcher context.
@@ -98,8 +116,12 @@ async function loadRecentSignals(userId: string): Promise<SignalRow[]> {
 
   if (error || !data) return [];
 
+  const researchableRows = (data ?? []).filter((row: Record<string, unknown>) =>
+    hasResearchableMetadata(row),
+  );
+
   return buildSignalMetadataSummaryRows(
-    (data ?? []).map((row: Record<string, unknown>) => ({
+    researchableRows.map((row: Record<string, unknown>) => ({
       ...row,
       id: String(row.id),
       source: String(row.source ?? ''),

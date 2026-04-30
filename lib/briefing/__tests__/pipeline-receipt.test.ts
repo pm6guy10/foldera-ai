@@ -804,7 +804,7 @@ describe('briefing pipeline receipt', () => {
     const scored = await scoreOpenLoops(TEST_USER_ID);
     expect(scored?.winner).toBeTruthy();
     expect(scored?.winner.score ?? 0).toBeGreaterThan(0);
-    expect(runtime.signalSelectColumns.some((columns) => isContentSelectingColumns(columns))).toBe(true);
+    expect(runtime.signalSelectColumns.some((columns) => isContentSelectingColumns(columns))).toBe(false);
 
     runtime.signalSelectColumns = [];
     const directive = await generateDirective(TEST_USER_ID);

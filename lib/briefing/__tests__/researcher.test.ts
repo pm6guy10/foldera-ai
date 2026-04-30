@@ -12,6 +12,15 @@ const mockSignals: Array<{
   source: string;
   created_at: string;
   signal_type: string | null;
+  type?: string | null;
+  occurred_at?: string;
+  author?: string | null;
+  recipients?: unknown;
+  extracted_entities?: unknown;
+  extracted_commitments?: unknown;
+  extracted_dates?: unknown;
+  extracted_amounts?: unknown;
+  outcome_label?: string | null;
 }> = [];
 
 vi.mock('@/lib/db/client', () => ({
@@ -105,7 +114,15 @@ function buildWinner(overrides: Partial<ScoredLoop> = {}): ScoredLoop {
 
 function seedSignals(signals: typeof mockSignals): void {
   mockSignals.length = 0;
-  mockSignals.push(...signals);
+  mockSignals.push(...signals.map((signal) => ({
+    ...signal,
+    type: signal.signal_type,
+    occurred_at: signal.created_at,
+    author: signal.author ?? 'sender@example.com',
+    extracted_commitments: signal.content.startsWith('ENCRYPTED:')
+      ? []
+      : [signal.content],
+  })));
 }
 
 // ---------------------------------------------------------------------------

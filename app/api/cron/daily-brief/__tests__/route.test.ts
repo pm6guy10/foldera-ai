@@ -15,6 +15,7 @@ const isCronDailyBriefPipelineDryRunEnabled = vi.fn();
 
 const inQuery = vi.fn();
 const gteQuery = vi.fn();
+const limitQuery = vi.fn();
 
 vi.mock('@/lib/auth/resolve-user', () => ({
   validateCronAuth,
@@ -61,7 +62,8 @@ describe('daily-brief cron route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    inQuery.mockResolvedValue({ data: [], error: null });
+    limitQuery.mockResolvedValue({ data: [], error: null });
+    inQuery.mockReturnValue({ limit: limitQuery });
     gteQuery.mockReturnValue({ in: inQuery });
 
     createServerClient.mockReturnValue({
@@ -97,6 +99,7 @@ describe('daily-brief cron route', () => {
     expect(response.status).toBe(200);
     expect(ptDayStartIso).toHaveBeenCalledTimes(1);
     expect(gteQuery).toHaveBeenCalledWith('generated_at', '2026-04-25T07:00:00.000Z');
+    expect(limitQuery).toHaveBeenCalledWith(200);
     expect(runBriefLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({
         userIds: ['user-1'],

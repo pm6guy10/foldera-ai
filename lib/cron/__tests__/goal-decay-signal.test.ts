@@ -217,8 +217,13 @@ describe('signalReinforcesGoalKeywords (CE-5)', () => {
       current_priority: true,
     });
     testState.signals.push({
+      id: 'signal-2',
       user_id: 'user-2',
-      content: 'MAS3 role interview moved to Thursday afternoon',
+      type: 'email_received',
+      author: 'hiring@example.com',
+      recipients: ['user-2@example.com'],
+      extracted_entities: ['MAS3 role'],
+      extracted_commitments: ['MAS3 role interview moved to Thursday afternoon'],
       source: 'gmail',
       processed: true,
       occurred_at: new Date().toISOString(),

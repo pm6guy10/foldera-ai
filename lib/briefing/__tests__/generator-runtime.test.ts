@@ -879,7 +879,7 @@ describe('generateDirective runtime failures', () => {
     expect(mockDecryptWithStatus).toHaveBeenCalled();
   });
 
-  it('uses a deeper fallback evidence scan for decay candidates so older thread rows stay reachable', async () => {
+  it('uses a bounded fallback evidence scan for decay candidates so older thread rows stay reachable', async () => {
     const decayCandidate: ScoredLoop = {
       ...buildWinner(),
       id: 'decay-alex',
@@ -951,7 +951,7 @@ describe('generateDirective runtime failures', () => {
     await generateDirective('user-1', { dryRun: true });
 
     expect(signalInCalls).toHaveLength(1);
-    expect(signalLimitCalls).toContain(200);
+    expect(signalLimitCalls).toContain(150);
   });
 
   it('skips top-ranked schedule_conflict write_document winner and falls through to the next viable candidate', async () => {
