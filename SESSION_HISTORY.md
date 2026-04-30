@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-30 — Artifact LLM JSON parse retries before candidate failure
+- MODE: Generator JSON parse retry seam only.
+- Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `SESSION_HISTORY.md`.
+- What changed: Added parse-only retry handling around the existing artifact-generation Anthropic call. When `parseGeneratedPayload()` throws on malformed JSON, the generator now retries the same LLM call up to two times with a 500ms delay and the existing prompt/schema unchanged; after retries are exhausted, the candidate remains a normal JSON-parse failure and can be recorded as `llm_failed` by the existing fallback path.
+- Verification: `npm run health` passed (`RESULT: 0 FAILING`, warnings only); `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts` passed (33 tests); `npm run lint` passed; `npm run build` passed.
+- Unresolved issues: No paid/model-backed live generation was run or needed for this deterministic seam. Pre-existing unrelated dirty cron files were not touched.
+
 ## 2026-04-30 — `/api/conviction/latest` Supabase egress reduced
 - MODE: FOLDERA COST ATTRIBUTION — first concrete Supabase egress reducer only.
 - Files changed: `app/api/conviction/latest/route.ts`, `app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts`, `SESSION_HISTORY.md`.

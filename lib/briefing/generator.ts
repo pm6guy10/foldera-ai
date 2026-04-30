@@ -8988,6 +8988,12 @@ function bucketValidationIssuesForLogs(issues: string[]): string[] {
  */
 const MAX_DIRECTIVE_VALIDATION_RETRIES = 1;
 const MAX_DIRECTIVE_LLM_ATTEMPTS = 1 + MAX_DIRECTIVE_VALIDATION_RETRIES;
+const MAX_JSON_PARSE_RETRIES = 2;
+const JSON_PARSE_RETRY_DELAY_MS = 500;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function extractFirstGroundedDollar(groundingBlob: string): string | null {
   const m = groundingBlob.match(/\$\s*[\d,]+(?:\.\d{2})?/);
@@ -9525,70 +9531,95 @@ async function generatePayload(
   let issuesAttempt0: string[] | null = null;
 
   for (let attempt = 0; attempt < MAX_DIRECTIVE_LLM_ATTEMPTS; attempt++) {
-    const response = await getAnthropic().messages.create({
-      model: GENERATION_MODEL_FAST,
-      max_tokens: 4096,
-      temperature: 0.15,
-      system: SYSTEM_PROMPT,
-      messages: attempts,
-    });
-
-    await trackApiCall({
-      userId,
-      model: GENERATION_MODEL_FAST,
-      inputTokens: response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens,
-      callType: attempt === 0 ? 'directive' : 'directive_retry',
-      persist: !options.dryRun,
-    });
-
-    const raw = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-      .map((block) => block.text)
-      .join('');
-
-    console.error(`[generator] Raw LLM response (attempt ${attempt + 1}):\n${raw.slice(0, 800)}`);
-
+    let raw = '';
     let parsed: GeneratedDirectivePayload | null = null;
     let parseError: string | null = null;
-    try {
-      parsed = parseGeneratedPayload(raw);
-      if (parsed) {
-        const llmDiagnosis = normalizeCausalDiagnosis(parsed.causal_diagnosis);
-        const hasModelDiagnosis = parsed.causal_diagnosis_from_model === true && Boolean(llmDiagnosis);
 
-        let acceptedDiagnosis = ctx.required_causal_diagnosis;
-        let diagnosisSource: 'llm_grounded' | 'llm_ungrounded_fallback' | 'template_fallback' = 'template_fallback';
+    for (let parseRetry = 0; parseRetry <= MAX_JSON_PARSE_RETRIES; parseRetry += 1) {
+      const response = await getAnthropic().messages.create({
+        model: GENERATION_MODEL_FAST,
+        max_tokens: 4096,
+        temperature: 0.15,
+        system: SYSTEM_PROMPT,
+        messages: attempts,
+      });
 
-        if (hasModelDiagnosis && llmDiagnosis) {
-          const groundingIssues = getCausalDiagnosisIssues({
-            actionType: committed,
-            directiveText: parsed.directive ?? '',
-            reason: parsed.why_now ?? '',
-            artifact: parsed.artifact ?? null,
-            causalDiagnosis: llmDiagnosis,
-            candidateTitle: ctx.candidate_title,
-            supportingSignals: ctx.supporting_signals,
-            mode: 'grounding_only',
-            matchedGoalCategory: ctx.matched_goal_category,
-          });
-          if (groundingIssues.length === 0) {
-            acceptedDiagnosis = llmDiagnosis;
-            diagnosisSource = 'llm_grounded';
-          } else {
-            diagnosisSource = 'llm_ungrounded_fallback';
+      await trackApiCall({
+        userId,
+        model: GENERATION_MODEL_FAST,
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+        callType: attempt === 0 && parseRetry === 0 ? 'directive' : 'directive_retry',
+        persist: !options.dryRun,
+      });
+
+      raw = response.content
+        .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+        .map((block) => block.text)
+        .join('');
+
+      console.error(`[generator] Raw LLM response (attempt ${attempt + 1}):\n${raw.slice(0, 800)}`);
+
+      try {
+        parseError = null;
+        parsed = parseGeneratedPayload(raw);
+        if (parsed) {
+          const llmDiagnosis = normalizeCausalDiagnosis(parsed.causal_diagnosis);
+          const hasModelDiagnosis = parsed.causal_diagnosis_from_model === true && Boolean(llmDiagnosis);
+
+          let acceptedDiagnosis = ctx.required_causal_diagnosis;
+          let diagnosisSource: 'llm_grounded' | 'llm_ungrounded_fallback' | 'template_fallback' = 'template_fallback';
+
+          if (hasModelDiagnosis && llmDiagnosis) {
+            const groundingIssues = getCausalDiagnosisIssues({
+              actionType: committed,
+              directiveText: parsed.directive ?? '',
+              reason: parsed.why_now ?? '',
+              artifact: parsed.artifact ?? null,
+              causalDiagnosis: llmDiagnosis,
+              candidateTitle: ctx.candidate_title,
+              supportingSignals: ctx.supporting_signals,
+              mode: 'grounding_only',
+              matchedGoalCategory: ctx.matched_goal_category,
+            });
+            if (groundingIssues.length === 0) {
+              acceptedDiagnosis = llmDiagnosis;
+              diagnosisSource = 'llm_grounded';
+            } else {
+              diagnosisSource = 'llm_ungrounded_fallback';
+            }
           }
-        }
 
-        parsed = {
-          ...parsed,
-          causal_diagnosis: acceptedDiagnosis,
-          causal_diagnosis_source: diagnosisSource,
-        };
+          parsed = {
+            ...parsed,
+            causal_diagnosis: acceptedDiagnosis,
+            causal_diagnosis_source: diagnosisSource,
+          };
+        }
+      } catch (e) {
+        parseError = e instanceof Error ? e.message : String(e);
+        parsed = null;
       }
-    } catch (e) {
-      parseError = e instanceof Error ? e.message : String(e);
-      parsed = null;
+
+      if (!parseError || parseRetry >= MAX_JSON_PARSE_RETRIES) {
+        break;
+      }
+
+      logStructuredEvent({
+        event: 'generation_json_parse_retry',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'retrying_json_parse',
+        details: {
+          scope: 'generator',
+          attempt,
+          parse_retry: parseRetry + 1,
+          max_parse_retries: MAX_JSON_PARSE_RETRIES,
+          parseError,
+        },
+      });
+      await delay(JSON_PARSE_RETRY_DELAY_MS);
     }
 
     // Log raw LLM response for diagnosability (truncated to avoid leaking full content)
@@ -9608,6 +9639,28 @@ async function generatePayload(
           rawResponseSuffix: raw.length > 500 ? raw.slice(-200) : undefined,
         },
       });
+    }
+
+    if (parseError) {
+      const issues = validateGeneratedArtifact(null, ctx, committed, { userIdForLogs: userId });
+      lastIssues = issues;
+      if (attempt === 0) {
+        issuesAttempt0 = [...issues];
+      }
+      logStructuredEvent({
+        event: 'generation_incomplete',
+        level: 'error',
+        userId,
+        artifactType: null,
+        generationStatus: 'generation_incomplete',
+        details: {
+          scope: 'generator',
+          attempt_index: attempt,
+          max_attempts: MAX_DIRECTIVE_LLM_ATTEMPTS,
+          issues,
+        },
+      });
+      break;
     }
 
     // DecisionPayload committed type is validated here — wrong artifact_type fails closed.

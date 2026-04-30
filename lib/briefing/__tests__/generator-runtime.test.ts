@@ -301,6 +301,15 @@ describe('generateDirective runtime failures', () => {
     }
   }
 
+  async function advanceJsonParseRetryTimers(delayCount: number): Promise<void> {
+    for (let i = 0; i < delayCount; i += 1) {
+      for (let spin = 0; spin < 50 && vi.getTimerCount() === 0; spin += 1) {
+        await vi.advanceTimersByTimeAsync(0);
+      }
+      await vi.advanceTimersByTimeAsync(500);
+    }
+  }
+
   it(
     'falls back at generation stage when the LLM request throws',
     async () => {
@@ -1056,6 +1065,61 @@ describe('generateDirective runtime failures', () => {
     errorSpy.mockRestore();
   });
 
+  it('retries malformed JSON responses twice before accepting a valid artifact', async () => {
+    mockScoreOpenLoops.mockResolvedValue(buildScorerResult());
+    const validPayload = {
+      directive: 'Email the MAS3 hiring manager today to confirm the interview timeline before the window closes.',
+      artifact_type: 'send_message',
+      artifact: {
+        to: 'manager@mas3corp.com',
+        subject: 'MAS3 interview timeline confirmation',
+        body: 'Hi,\n\nCan you confirm by Friday whether the MAS3 interview timeline is still on track? If it slips, I lose the scheduling window for the interview follow-through.\n\nThanks,\nBrandon',
+      },
+      evidence: 'The MAS3 hiring manager thread is open and the interview window closes this week.',
+      why_now: 'The interview window closes this week, so confirming the timeline today prevents the process from drifting.',
+      causal_diagnosis: {
+        why_exists_now: 'The thread has not received a confirming reply while the interview window is still active.',
+        mechanism: 'An unanswered hiring timeline question is blocking the next concrete scheduling move.',
+      },
+    };
+    anthropicCreate
+      .mockResolvedValueOnce({
+        usage: { input_tokens: 100, output_tokens: 20 },
+        content: [{ type: 'text', text: '{ "directive": "missing closing brace"' }],
+      })
+      .mockResolvedValueOnce({
+        usage: { input_tokens: 100, output_tokens: 20 },
+        content: [{ type: 'text', text: 'not json at all' }],
+      })
+      .mockResolvedValueOnce({
+        usage: { input_tokens: 100, output_tokens: 100 },
+        content: [{ type: 'text', text: JSON.stringify(validPayload) }],
+      });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { generateDirective } = await import('../generator');
+    const directivePromise = generateDirective('user-1', { dryRun: true });
+    await advanceJsonParseRetryTimers(2);
+    const directive = await directivePromise;
+
+    expect(directive.action_type).toBe('send_message');
+    const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    expectEmailArtifactShape(embeddedArtifact, {
+      expectedRecipient: 'manager@mas3corp.com',
+      minSubjectLength: 12,
+      minBodyLength: 80,
+      requireQuestion: true,
+      requiredRegexes: [/confirm/i, /interview timeline/i],
+    });
+    expect(anthropicCreate).toHaveBeenCalledTimes(3);
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'generation_json_parse_retry',
+      generationStatus: 'retrying_json_parse',
+    }));
+
+    errorSpy.mockRestore();
+  });
+
   it('logs the actual system error before returning the sentinel fallback', async () => {
     mockScoreOpenLoops.mockRejectedValue(new Error('scoreOpenLoops blew up'));
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -1668,7 +1732,9 @@ describe('generateDirective runtime failures', () => {
     });
 
     const { generateDirective } = await import('../generator');
-    const directive = await generateDirective('user-1', { dryRun: true });
+    const directivePromise = generateDirective('user-1', { dryRun: true });
+    await advanceJsonParseRetryTimers(2);
+    const directive = await directivePromise;
 
     expect(directive.directive).not.toBe('__GENERATION_FAILED__');
     expect(directive.action_type).toBe('send_message');
