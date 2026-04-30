@@ -128,6 +128,9 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     const result = await generateArtifact('user-1', directive);
 
     expect(result).not.toBeNull();
+    expect(mockCreate.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ model: 'claude-sonnet-4-20250514' }),
+    );
     const content = (result as any)?.content ?? '';
     expect(content).not.toMatch(/Runner-ups rejected:/);
     expect(content).not.toMatch(/Winning loop:/);

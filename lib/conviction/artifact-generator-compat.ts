@@ -15,7 +15,7 @@ import {
 } from '@/lib/briefing/schedule-conflict-guards';
 import { getDecisionEnforcementIssues } from '@/lib/briefing/decision-enforcement';
 
-const ARTIFACT_MODEL = 'claude-haiku-4-5-20251001';
+const ARTIFACT_MODEL = 'claude-sonnet-4-20250514';
 
 let anthropicClient: Anthropic | null = null;
 

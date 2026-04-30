@@ -730,6 +730,69 @@ describe('generateDirective runtime failures', () => {
     expect(directive.action_type).toBe('send_message');
   });
 
+  it('caps directive candidate generation attempts at three ranked candidates', async () => {
+    const candidates = Array.from({ length: 5 }, (_unused, index) => ({
+      ...buildWinner(),
+      id: `loop-${index + 1}`,
+      title: `External decision thread ${index + 1} needs a yes/no before Friday`,
+      content: `External decision thread ${index + 1} still needs a direct yes/no before Friday.`,
+      relationshipContext: `- Decision Partner ${index + 1} <partner${index + 1}@example.com> (Partner)`,
+      sourceSignals: [
+        {
+          kind: 'signal' as const,
+          id: `sig-${index + 1}`,
+          occurredAt: new Date(FIXED_NOW.getTime() - (index + 1) * 60 * 60 * 1000).toISOString(),
+          summary: `Decision partner ${index + 1} asked for a Friday answer.`,
+        },
+      ],
+      score: 5 - (index * 0.1),
+    }));
+    const scored = asWinnerScored(buildScorerResult());
+    scored.winner = candidates[0]!;
+    scored.topCandidates = candidates;
+    scored.candidateDiscovery = {
+      ...scored.candidateDiscovery,
+      candidateCount: candidates.length,
+      selectionReason: 'Five viable candidates ranked before generator attempt cap.',
+    };
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 100, output_tokens: 80 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Ask the partner to confirm the decision owner by 4 PM PT today.',
+          artifact_type: 'send_message',
+          artifact: {
+            to: 'partner@example.com',
+            subject: 'Decision owner needed today',
+            body: 'Hi,\n\nCan you confirm by 4 PM PT today who owns the approval decision? If we miss Friday, the filing window slips and creates a $999,999 budget risk.\n\nBest,\nBrandon',
+          },
+          evidence: 'The partner asked for a Friday decision owner.',
+          why_now: 'Friday is the decision deadline and no owner is confirmed.',
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(anthropicCreate).toHaveBeenCalledTimes(3);
+    expect(directive.action_type).toBe('do_nothing');
+    expect(directive.generationLog?.reason).toContain('Attempted 3 of 5 candidates');
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'all_candidates_blocked',
+        details: expect.objectContaining({
+          candidate_count: 3,
+          ranked_candidate_count: 5,
+          candidate_attempt_cap: 3,
+        }),
+      }),
+    );
+  });
+
   it('excludes verification-stub rows from RECENT_ACTIONS_7D in the Anthropic prompt', async () => {
     const scored = asWinnerScored(buildScorerResult());
     scored.winner.entityName = 'Jane Smith';

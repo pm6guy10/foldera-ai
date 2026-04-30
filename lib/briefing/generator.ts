@@ -124,17 +124,12 @@ const GENERATION_FAILED_SENTINEL = '__GENERATION_FAILED__';
 export const BUDGET_CAP_DIRECTIVE_SENTINEL = '__BUDGET_CAP_REACHED__';
 /** Main directive JSON + retries — Haiku for cost (structured output from fixed prompt). */
 const GENERATION_MODEL_FAST = 'claude-haiku-4-5-20251001';
-/** Pass-1 anomaly sentence only — Sonnet when quality matters; Haiku when `FOLDERA_ANOMALY_USE_HAIKU=true`. */
-const GENERATION_MODEL_REASON = 'claude-sonnet-4-20250514';
 
-const ANOMALY_PROMPT_CHARS_SONNET = 14_000;
 const ANOMALY_PROMPT_CHARS_HAIKU = 8_000;
+const MAX_DIRECTIVE_CANDIDATE_ATTEMPTS_PER_RUN = 3;
 
 function getAnomalyPassModelAndPromptCap(): { model: string; maxPromptChars: number } {
-  if (process.env.FOLDERA_ANOMALY_USE_HAIKU === 'true') {
-    return { model: GENERATION_MODEL_FAST, maxPromptChars: ANOMALY_PROMPT_CHARS_HAIKU };
-  }
-  return { model: GENERATION_MODEL_REASON, maxPromptChars: ANOMALY_PROMPT_CHARS_SONNET };
+  return { model: GENERATION_MODEL_FAST, maxPromptChars: ANOMALY_PROMPT_CHARS_HAIKU };
 }
 const DEFAULT_DIRECTIVE_CONFIDENCE_THRESHOLD = CONFIDENCE_PERSIST_THRESHOLD;
 const STALE_SIGNAL_THRESHOLD_DAYS = 21;
@@ -9956,6 +9951,7 @@ export async function generateDirective(
       rankedCandidates = reorderRankedCandidatesForVerificationGoldenPathWriteDocument(rankedCandidates);
     }
     console.log(`[generator] ${rankedCandidates.length} candidates ranked for user ${userId.slice(0, 8)}`);
+    const attemptedRankedCandidates = rankedCandidates.slice(0, MAX_DIRECTIVE_CANDIDATE_ATTEMPTS_PER_RUN);
 
     // =====================================================================
     // USER-LEVEL DATA (shared across all candidates — fetch once)
@@ -10127,7 +10123,7 @@ export async function generateDirective(
       }
     }
 
-    for (const { candidate: currentCandidate, disqualified, disqualifyReason } of rankedCandidates) {
+    for (const { candidate: currentCandidate, disqualified, disqualifyReason } of attemptedRankedCandidates) {
       // Skip disqualified candidates (already acted recently, etc.)
       if (disqualified) {
         candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [disqualifyReason ?? 'disqualified'] });
@@ -11153,7 +11149,9 @@ export async function generateDirective(
     const allBlockReasons = candidateBlockLog.map(
       (bl) => `"${bl.title}" → ${bl.reasons.join('; ')}`,
     ).join(' | ');
-    const summaryReason = `All ${rankedCandidates.length} candidates blocked: ${allBlockReasons}`;
+    const summaryReason = rankedCandidates.length > attemptedRankedCandidates.length
+      ? `Attempted ${attemptedRankedCandidates.length} of ${rankedCandidates.length} candidates; all attempted candidates blocked: ${allBlockReasons}`
+      : `All ${attemptedRankedCandidates.length} candidates blocked: ${allBlockReasons}`;
     const proofModeFailureMessage =
       'No thread-backed external send_message candidate cleared proof-mode gates.';
     const blockLogMentionsProofModeGates = candidateBlockLog.some((bl) =>
@@ -11174,7 +11172,9 @@ export async function generateDirective(
       artifactType: null, generationStatus: 'all_candidates_blocked',
       details: {
         scope: 'generator',
-        candidate_count: rankedCandidates.length,
+        candidate_count: attemptedRankedCandidates.length,
+        ranked_candidate_count: rankedCandidates.length,
+        candidate_attempt_cap: MAX_DIRECTIVE_CANDIDATE_ATTEMPTS_PER_RUN,
         block_log: candidateBlockLog,
       },
     });
@@ -11187,7 +11187,9 @@ export async function generateDirective(
         generationStatus: 'proof_mode_all_candidates_failed',
         details: {
           scope: 'generator',
-          candidate_count: rankedCandidates.length,
+          candidate_count: attemptedRankedCandidates.length,
+          ranked_candidate_count: rankedCandidates.length,
+          candidate_attempt_cap: MAX_DIRECTIVE_CANDIDATE_ATTEMPTS_PER_RUN,
           block_log: candidateBlockLog,
           summary_reason: summaryReason,
         },

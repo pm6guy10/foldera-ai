@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-30 — Briefing LLM cost-control model routing
+- MODE: Cost-control fixes only.
+- Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `lib/briefing/__tests__/pipeline-receipt.test.ts`, `lib/conviction/artifact-generator-compat.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `SESSION_HISTORY.md`.
+- What changed: Kept directive rendering/scoring calls on `claude-haiku-4-5-20251001`, made anomaly identification default to `claude-haiku-4-5-20251001`, switched the compat final artifact-generation LLM to `claude-sonnet-4-20250514`, and capped directive candidate generation to at most 3 ranked candidates before the existing no-send fallback path.
+- Verification: `npm run health` passed (`RESULT: 0 FAILING`, warnings only); `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts` passed (34 tests); `npx vitest run lib/conviction/__tests__/artifact-generator.test.ts` passed (18 tests); `npx vitest run lib/briefing/__tests__/pipeline-receipt.test.ts` passed (1 test); `npx vitest run app/api/cron/nightly-ops/__tests__/route.test.ts` passed (5 tests); `npm run build` passed.
+- Unresolved issues: No paid/model-backed generation proof will be run for this deterministic cost-control seam.
+
 ## 2026-04-30 — Signal extraction diagnostics instrumentation
 - MODE: Signal extraction instrumentation only.
 - Files changed: `lib/signals/signal-processor.ts`, `lib/signals/__tests__/signal-processor.test.ts`, `SESSION_HISTORY.md`.

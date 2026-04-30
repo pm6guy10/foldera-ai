@@ -810,6 +810,14 @@ describe('briefing pipeline receipt', () => {
     const directive = await generateDirective(TEST_USER_ID);
     expect(directive.action_type).not.toBe('do_nothing');
     expect((directive as Row).embeddedArtifact).toBeTruthy();
+    const directiveUsageRows = runtime.apiUsage.filter((row) =>
+      row.endpoint === 'directive' || row.endpoint === 'directive_retry',
+    );
+    expect(directiveUsageRows.length).toBeGreaterThan(0);
+    expect(directiveUsageRows.every((row) => row.model === 'claude-haiku-4-5-20251001')).toBe(true);
+    const anomalyUsageRows = runtime.apiUsage.filter((row) => row.endpoint === 'anomaly_identification');
+    expect(anomalyUsageRows.length).toBeGreaterThan(0);
+    expect(anomalyUsageRows.every((row) => row.model === 'claude-haiku-4-5-20251001')).toBe(true);
     const firstContentSelectIndex = runtime.signalSelectColumns.findIndex((columns) =>
       isContentSelectingColumns(columns),
     );
