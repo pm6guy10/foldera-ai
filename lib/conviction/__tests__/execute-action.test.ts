@@ -11,7 +11,8 @@ import { sendGmailEmail } from '@/lib/integrations/gmail-client';
 import { sendOutlookEmail } from '@/lib/integrations/outlook-client';
 import { executeAction } from '../execute-action';
 
-const { sendResendEmail, getVerifiedDailyBriefRecipientEmail } = vi.hoisted(() => ({
+const { buildDocumentReadySubject, sendResendEmail, getVerifiedDailyBriefRecipientEmail } = vi.hoisted(() => ({
+  buildDocumentReadySubject: vi.fn((value: string) => `Your document is ready: ${value}.`),
   sendResendEmail: vi.fn(),
   getVerifiedDailyBriefRecipientEmail: vi.fn(),
 }));
@@ -157,6 +158,7 @@ vi.mock('@/lib/encryption', () => ({
 }));
 
 vi.mock('@/lib/email/resend', () => ({
+  buildDocumentReadySubject,
   renderPlaintextEmailHtml: vi.fn((body: string) => `<p>${body}</p>`),
   renderWriteDocumentReadyEmailHtml: vi.fn(() => '<html>write-doc-ready</html>'),
   sendResendEmail,
@@ -180,6 +182,8 @@ describe('executeAction', () => {
     hasIntegration.mockResolvedValue(true);
     sendResendEmail.mockReset();
     sendResendEmail.mockResolvedValue({ data: { id: 'resend-123' }, error: null });
+    buildDocumentReadySubject.mockClear();
+    buildDocumentReadySubject.mockImplementation((value: string) => `Your document is ready: ${value}.`);
     vi.mocked(sendGmailEmail).mockReset();
     vi.mocked(sendGmailEmail).mockResolvedValue({ success: true });
     vi.mocked(sendOutlookEmail).mockReset();
@@ -334,7 +338,7 @@ describe('executeAction', () => {
     expect(sendResendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         to: 'ready-doc@example.com',
-        subject: 'Test directive',
+        subject: 'Your document is ready: Test directive.',
         tags: expect.arrayContaining([
           { name: 'email_type', value: 'approved_write_document' },
           { name: 'action_id', value: ACTION_ID },

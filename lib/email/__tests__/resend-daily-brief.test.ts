@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildDocumentReadySubject,
   buildDailyDirectiveEmailHtml,
   isInternalFailureText,
   NO_SEND_BODY_TEXT,
   NO_SEND_DIRECTIVE_TEXT,
+  renderWriteDocumentReadyEmailHtml,
 } from '@/lib/email/resend';
 
 const BASE_URL = 'https://foldera.ai';
@@ -151,7 +153,7 @@ describe('daily brief no-send sanitization', () => {
     expect(html).toContain('Skip</a>');
   });
 
-  it('keeps write_document artifact rendering for actionable directives', () => {
+  it('renders write_document artifacts without raw field labels', () => {
     const html = buildDailyDirectiveEmailHtml({
       baseUrl: BASE_URL,
       date: DATE,
@@ -164,14 +166,50 @@ describe('daily brief no-send sanitization', () => {
         artifact: {
           type: 'document',
           title: 'Interview Prep Packet',
-          content: 'Finalize the packet and send it by 5 PM PT.',
+          content: 'Finalize the packet.\nSend it by 5 PM PT.',
         },
       },
     });
 
-    expect(html).toContain('Finished artifact');
     expect(html).toContain('Interview Prep Packet');
-    expect(html).toContain('Finalize the packet and send it by 5 PM PT.');
+    expect(html).toContain('Finalize the packet.');
+    expect(html).toContain('Send it by 5 PM PT.');
+    expect(html).toContain('<br />');
+    expect(html).not.toMatch(/Finished Artifact/i);
+    expect(html).not.toMatch(/>\s*Document\s*</i);
+    expect(html).not.toMatch(/>\s*Title\s*</i);
+    expect(html).not.toMatch(/>\s*Content\s*</i);
+  });
+});
+
+describe('document-ready email rendering', () => {
+  it('renders the title and body without JSON field labels', () => {
+    const html = renderWriteDocumentReadyEmailHtml({
+      documentTitle: 'Interview Prep Packet',
+      documentContent: 'Finalize the packet.\nSend it by 5 PM PT.',
+    });
+
+    expect(html).toContain('Interview Prep Packet');
+    expect(html).toContain('Finalize the packet.');
+    expect(html).toContain('Send it by 5 PM PT.');
+    expect(html).toContain('<br />');
+    expect(html).not.toMatch(/Finished Artifact/i);
+    expect(html).not.toMatch(/>\s*Document\s*</i);
+    expect(html).not.toMatch(/>\s*Title\s*</i);
+    expect(html).not.toMatch(/>\s*Content\s*</i);
+    expect(html).not.toContain('Document title');
+    expect(html).not.toContain('Full document');
+  });
+
+  it('builds a complete capped subject from directive headlines', () => {
+    expect(buildDocumentReadySubject('Test directive')).toBe('Your document is ready: Test directive.');
+
+    const subject = buildDocumentReadySubject(
+      'Finalize the candidate prep packet and send the complete answer bank before the Friday deadline',
+    );
+
+    expect(subject.length).toBeLessThanOrEqual(60);
+    expect(subject).toBe('Your document is ready: Finalize the candidate prep...');
   });
 });
 

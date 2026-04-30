@@ -13,6 +13,7 @@ import { createOutlookCalendarEvent } from '@/lib/integrations/outlook-calendar'
 import { encrypt } from '@/lib/encryption';
 import { truncateSignalContent } from '@/lib/utils/signal-egress';
 import {
+  buildDocumentReadySubject,
   renderPlaintextEmailHtml,
   renderWriteDocumentReadyEmailHtml,
   sendResendEmail,
@@ -433,8 +434,7 @@ async function executeArtifact(
           const userEmail = await getVerifiedDailyBriefRecipientEmail(userId, supabase);
           const docTitle = title;
           const docBody = content.slice(0, 50000);
-          const rawSubject = (options.directiveTitle?.trim() || docTitle).replace(/\s+/g, ' ');
-          const subject = rawSubject.slice(0, 200);
+          const subject = buildDocumentReadySubject(options.directiveTitle?.trim() || docTitle);
           const textBody = [
             'Your document is ready',
             '',

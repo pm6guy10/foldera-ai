@@ -196,6 +196,22 @@ function clipText(value: string, limit: number): string {
   return `${value.slice(0, Math.max(0, limit - 3)).trimEnd()}...`;
 }
 
+export function buildDocumentReadySubject(value: string | null | undefined): string {
+  const headline = (value ?? '').replace(/\s+/g, ' ').trim() || 'your approved document';
+  const prefix = 'Your document is ready: ';
+  const maxLength = 60;
+  const sentence = /[.!?]$/.test(headline) ? `${prefix}${headline}` : `${prefix}${headline}.`;
+  if (sentence.length <= maxLength) return sentence;
+
+  const availableHeadlineLength = Math.max(0, maxLength - prefix.length - 3);
+  let clipped = headline.slice(0, availableHeadlineLength).trimEnd();
+  const lastSpace = clipped.lastIndexOf(' ');
+  if (lastSpace >= Math.floor(availableHeadlineLength * 0.6)) {
+    clipped = clipped.slice(0, lastSpace).trimEnd();
+  }
+  return `${prefix}${clipped}...`;
+}
+
 function renderField(label: string, value: string, opts?: { monospace?: boolean }): string {
   const font = opts?.monospace
     ? 'ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace'
@@ -224,16 +240,20 @@ function renderArtifactHtml(artifact: ConvictionArtifact | null | undefined): st
 
   if (artifact.type === 'document') {
     const content = artifact.content ? clipText(artifact.content, 4000) : '';
-    const contentHtml = content
-      ? `<tr><td style="padding:0 0 10px 0;">
-          <div style="font-family:${EMAIL_FONT_STACK};font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#71717a;margin-bottom:8px;">Content</div>
-          <div style="padding:14px 16px;border-radius:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);">${markdownToEmailHtml(content)}</div>
-        </td></tr>`
-      : '';
+    const title = artifact.title?.trim() ?? '';
     return `
-      ${renderField('Finished Artifact', 'Document')}
-      ${artifact.title ? renderField('Title', artifact.title) : ''}
-      ${contentHtml}
+      <tr><td style="padding:0 0 10px 0;">
+        ${
+          title
+            ? `<p style="margin:0 0 14px 0;font-family:${EMAIL_FONT_STACK};font-size:20px;font-weight:800;color:#ffffff;line-height:1.35;">${escapeHtml(title)}</p>`
+            : ''
+        }
+        ${
+          content
+            ? `<div style="font-family:${EMAIL_FONT_STACK};font-size:14px;color:#e4e4e7;line-height:1.65;word-break:break-word;">${markdownToEmailHtml(content)}</div>`
+            : ''
+        }
+      </td></tr>
     `;
   }
 
@@ -488,10 +508,8 @@ export function renderWriteDocumentReadyEmailHtml(opts: {
           <p style="margin:0 0 8px 0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:${EMAIL_CYAN};">Your document is ready</p>
           <p style="margin:0 0 16px 0;font-family:${EMAIL_FONT_STACK};font-size:18px;font-weight:700;color:#ffffff;line-height:1.35;">You approved this in Foldera</p>
           <p style="margin:0 0 20px 0;font-family:${EMAIL_FONT_STACK};font-size:14px;color:#a1a1aa;line-height:1.65;">Here is the full text. Forward it, copy it, or save it — whatever gets the work done.</p>
-          <p style="margin:0 0 8px 0;font-family:${EMAIL_FONT_STACK};font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#71717a;">Document title</p>
-          <p style="margin:0 0 20px 0;font-family:${EMAIL_FONT_STACK};font-size:15px;font-weight:600;color:#e4e4e7;">${escapeHtml(title)}</p>
           <div style="margin:0;padding:20px 22px;border-radius:${EMAIL_RADIUS_INNER};background:${EMAIL_BG_CYAN_TINT};border:1px solid ${EMAIL_BORDER_CYAN_SOFT};border-left:4px solid ${EMAIL_CYAN_BTN};">
-            <p style="margin:0 0 14px 0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;color:#71717a;">Full document</p>
+            <p style="margin:0 0 16px 0;font-family:${EMAIL_FONT_STACK};font-size:20px;font-weight:800;color:#ffffff;line-height:1.35;">${escapeHtml(title)}</p>
             <div style="font-family:${EMAIL_FONT_STACK};font-size:14px;color:#e4e4e7;line-height:1.65;word-break:break-word;">${markdownToEmailHtml(body)}</div>
           </div>
         </td></tr>
@@ -572,6 +590,7 @@ export function buildDailyDirectiveEmailHtml(opts: {
   const approveHref = directive.id ? `${baseUrl}/dashboard?action=approve&id=${directive.id}` : `${baseUrl}/dashboard`;
   const skipHref = directive.id ? `${baseUrl}/dashboard?action=skip&id=${directive.id}` : `${baseUrl}/dashboard`;
   const artifactHtml = renderArtifactHtml(directive.artifact);
+  const showArtifactHeading = directive.artifact?.type !== 'document';
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -589,9 +608,9 @@ export function buildDailyDirectiveEmailHtml(opts: {
         <tr><td style="padding:0 0 14px 0;">
           <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:700;letter-spacing:0.12em;color:#52525b;">${dateDisplay}</p>
         </td></tr>
-        <tr><td style="padding:10px 0 18px 0;">
+        ${showArtifactHeading ? `<tr><td style="padding:10px 0 18px 0;">
           <p style="margin:0;font-family:${EMAIL_FONT_STACK};font-size:12px;font-weight:900;letter-spacing:0.16em;line-height:1.45;color:${EMAIL_CYAN};text-transform:uppercase;">Finished artifact</p>
-        </td></tr>
+        </td></tr>` : ''}
         <tr><td style="padding:0 0 24px 0;">
           <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${EMAIL_BORDER_CYAN_STRONG};border-radius:${EMAIL_RADIUS_CARD_OUTER};background:${EMAIL_CARD};">
             <tr><td style="padding:20px 18px;">
