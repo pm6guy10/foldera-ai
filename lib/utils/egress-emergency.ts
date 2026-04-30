@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 const EMERGENCY_RETRY_SECONDS = 3600;
 
 export function isEgressEmergencyMode(): boolean {
-  return process.env.FOLDERA_EGRESS_EMERGENCY_MODE === 'true';
+  return process.env.FOLDERA_EGRESS_EMERGENCY_MODE?.trim().toLowerCase() === 'true';
 }
 
 export function isProductionRuntime(): boolean {
