@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react';
 import {
   ArrowRight,
-  CircleDot,
   Clock3,
   Copy,
   FileText,
@@ -187,13 +186,10 @@ export function DailyBriefCard({
       <article className={`foldera-brief-shell relative h-full w-full rounded-[24px] ${className}`}>
         <header className="absolute inset-x-0 top-0 h-[68px] border-b border-white/8 px-[36px]">
           <div className="flex h-full items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <CircleDot className="h-4 w-4 text-accent" strokeWidth={2.4} aria-hidden="true" />
-              <span className="text-[18px] font-semibold uppercase tracking-[0.16em] text-text-primary">Daily Brief</span>
-            </div>
+            <span className="text-[16px] font-semibold uppercase tracking-[0.16em] text-text-muted">Daily Brief</span>
             <div className="flex items-center gap-3">
               <span className="text-[17px] font-semibold uppercase tracking-[0.14em] text-accent">{statusText}</span>
-              <CircleDot className="h-4 w-4 text-accent" strokeWidth={2.4} aria-hidden="true" />
+              <span className="h-4 w-4 rounded-full bg-accent shadow-[0_0_12px_rgba(34,211,238,0.55)]" aria-hidden="true" />
             </div>
           </div>
         </header>
@@ -207,8 +203,8 @@ export function DailyBriefCard({
               <DirectiveIcon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
             </div>
             <div className="min-w-0">
-              <p className="text-[16px] font-semibold uppercase tracking-[0.14em] text-amber-400">Directive</p>
-              <h2 className="mt-2 max-w-[760px] text-[34px] font-semibold leading-[40px] text-text-primary">
+              <p className="text-[14px] font-semibold uppercase tracking-[0.16em] text-text-muted">Directive</p>
+              <h2 className="mt-2 max-w-[820px] text-[28px] font-bold leading-[34px] text-text-primary">
                 {directive}
               </h2>
             </div>
@@ -222,8 +218,8 @@ export function DailyBriefCard({
               <WhyIcon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
             </div>
             <div className="min-w-0">
-              <p className="text-[16px] font-semibold uppercase tracking-[0.14em] text-amber-400">Why This Now</p>
-              <p className="mt-2 max-w-[760px] text-[18px] leading-[30px] text-text-secondary">{whyNow}</p>
+              <p className="text-[14px] font-semibold uppercase tracking-[0.16em] text-amber-400">Why This Now</p>
+              <p className="mt-2 max-w-[820px] text-[18px] leading-[30px] text-text-secondary">{whyNow}</p>
             </div>
           </section>
 
@@ -235,8 +231,8 @@ export function DailyBriefCard({
               <DraftIcon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
             </div>
             <div className="min-w-0">
-              <p className="text-[16px] font-semibold uppercase tracking-[0.14em] text-text-muted">{draftLabel}</p>
-              <div className="mt-2 max-w-[760px] text-[18px] leading-[30px] text-text-primary">{draftBody}</div>
+              <p className="text-[14px] font-semibold uppercase tracking-[0.16em] text-text-muted">{draftLabel}</p>
+              <div className="mt-2 max-w-[820px] text-[18px] leading-[30px] text-text-secondary">{draftBody}</div>
             </div>
           </section>
 
@@ -248,7 +244,7 @@ export function DailyBriefCard({
               <SourceIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
             </div>
             <div className="grid min-w-0 grid-cols-[160px_minmax(0,1fr)] gap-4">
-              <p className="text-[16px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+              <p className="text-[14px] font-semibold uppercase tracking-[0.16em] text-text-muted">
                 Source Basis
               </p>
               <div className="flex flex-wrap gap-2.5">
@@ -289,11 +285,13 @@ export function DailyBriefCard({
                   dashboardCta
                   stageDesktop
                 />
-                <p className="mt-1.5 w-full text-center text-[13px] leading-tight text-text-muted">{nextStep}</p>
               </div>
             ) : null}
           </div>
         </footer>
+        <p className="absolute bottom-[20px] left-0 right-0 text-center text-[14px] leading-tight text-text-muted">
+          {nextStep}
+        </p>
       </article>
     );
   }
@@ -302,13 +300,10 @@ export function DailyBriefCard({
     <article className={`foldera-brief-shell ${compact ? 'rounded-[22px]' : ''} ${className}`}>
       <header className={`${dashboardHeadPad} border-b ${divider}`}>
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <CircleDot className="h-4 w-4 text-accent" strokeWidth={2.4} aria-hidden="true" />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-primary">Daily Brief</span>
-          </div>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Daily Brief</span>
           <div className="flex items-center gap-3">
             <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">{statusText}</span>
-            <CircleDot className="h-4 w-4 text-accent" strokeWidth={2.4} aria-hidden="true" />
+            <span className="h-3 w-3 rounded-full bg-accent shadow-[0_0_10px_rgba(34,211,238,0.55)]" aria-hidden="true" />
           </div>
         </div>
       </header>
@@ -320,7 +315,7 @@ export function DailyBriefCard({
           </div>
           <div>
             <p
-              className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${dashboardCta ? 'text-amber-400' : 'text-text-muted'}`}
+              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted"
             >
               Directive
             </p>
@@ -329,9 +324,9 @@ export function DailyBriefCard({
                 compact
                   ? 'mt-2 text-[24px] leading-[1.18]'
                   : dashboardCta
-                    ? 'mt-1.5 text-[30px] leading-[1.12] sm:text-[34px]'
+                    ? 'mt-1.5 text-[28px] leading-[1.16]'
                     : 'mt-2 text-[42px] leading-[1.14] sm:text-[48px]'
-              } ${dashboardCta ? 'max-w-[18.5ch]' : 'max-w-3xl'} font-semibold tracking-[-0.04em] text-text-primary`}
+              } ${dashboardCta ? 'max-w-3xl' : 'max-w-3xl'} font-bold tracking-[-0.04em] text-text-primary`}
             >
               {directive}
             </h2>
@@ -354,7 +349,7 @@ export function DailyBriefCard({
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">{draftLabel}</p>
-            <div className={`mt-2 text-[15px] text-text-primary ${dashboardCta ? 'leading-6' : 'leading-8'}`}>{draftBody}</div>
+            <div className={`mt-2 text-[15px] text-text-secondary ${dashboardCta ? 'leading-6' : 'leading-8'}`}>{draftBody}</div>
           </div>
         </section>
 
@@ -393,11 +388,11 @@ export function DailyBriefCard({
                 {primaryAction ? (
                   <div className="flex w-full flex-col items-center gap-2 sm:w-auto sm:shrink-0 sm:items-end">
                     <ActionButton action={primaryAction} dashboardCta />
-                    <p className="w-full text-center text-[12px] leading-tight text-text-muted sm:text-right">{nextStep}</p>
                   </div>
                 ) : null}
               </div>
             </div>
+            <p className="w-full text-center text-[12px] leading-tight text-text-muted">{nextStep}</p>
           </div>
         ) : (
           <>

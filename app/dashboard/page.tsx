@@ -6,7 +6,10 @@ import { useSession } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
+  FileText,
+  Layers3,
   Mail,
+  Plane,
   TriangleAlert,
   TrendingUp,
 } from 'lucide-react';
@@ -438,20 +441,6 @@ function getIntegrationMetaLine(integration: IntegrationStatusItem | null | unde
 function asPanelLabel(value: string | null | undefined, fallback: string): string {
   const trimmed = asTrimmedString(value);
   return trimmed ? trimmed.replace(/_/g, ' ') : fallback;
-}
-
-type LoadedGraphStats = GraphStatsPayload & {
-  signalsTotal: number;
-  commitmentsActive: number;
-  patternsActive: number;
-};
-
-function hasDashboardStats(payload: GraphStatsPayload | null): payload is LoadedGraphStats {
-  return (
-    typeof payload?.signalsTotal === 'number' &&
-    typeof payload.commitmentsActive === 'number' &&
-    typeof payload.patternsActive === 'number'
-  );
 }
 
 export default function DashboardPage() {
@@ -896,16 +885,10 @@ export default function DashboardPage() {
   const artifactTitle =
     getDashboardActionHeadline(action);
   const artifactBody = getArtifactBody(action?.artifact);
-  const draftLabel = writeDocument
-    ? 'FINISHED DOCUMENT'
-    : action?.action_type === 'send_message' || action?.artifact?.type === 'email'
-      ? 'FOLLOW-UP EMAIL'
-      : action?.artifact?.type === 'wait_rationale' || action?.action_type === 'do_nothing'
-        ? 'WAIT RATIONALE'
-        : asTrimmedString(action?.artifact?.type)?.replace(/_/g, ' ').toUpperCase() ?? 'ARTIFACT';
-  const copyActionLabel = writeDocument ? 'Copy full text' : 'Copy draft';
-  const skipActionLabel = writeDocument ? 'Skip and adjust' : 'Snooze 24h';
-  const primaryActionLabel = writeDocument ? 'Save document' : 'Approve & send';
+  const draftLabel = 'DRAFT';
+  const copyActionLabel = 'Copy draft';
+  const skipActionLabel = 'Snooze 24h';
+  const primaryActionLabel = 'Approve & send';
   const showOutcomeActions =
     Boolean(executedActionId) &&
     (statusNotice?.id === 'approve_saved_document' || statusNotice?.id === 'approve_sent') &&
@@ -933,29 +916,56 @@ export default function DashboardPage() {
       (integration) => normalizeIntegrationProvider(integration.provider) === 'azure_ad',
     ) ?? null;
   const recentHistory = historyItems.slice(0, 3);
-  const dashboardStats = hasDashboardStats(graphStats)
-    ? [
-        {
-          icon: Mail,
-          value: graphStats.signalsTotal,
-          label: 'signals captured',
-          valueClassName: 'text-text-primary',
-        },
-        {
-          icon: TriangleAlert,
-          value: graphStats.commitmentsActive,
-          label: 'active commitments',
-          valueClassName: graphStats.commitmentsActive > 0 ? 'text-amber-400' : 'text-text-primary',
-        },
-        {
-          icon: TrendingUp,
-          value: graphStats.patternsActive,
-          label: 'patterns tracked',
-          valueClassName: 'text-text-primary',
-        },
-      ]
-    : [];
+  const evidenceCount = Array.isArray(action?.evidence) ? action.evidence.length : 0;
+  const liveSignalFallback = evidenceCount > 0 ? evidenceCount : connectedSourceCount;
+  const openThreadCount =
+    typeof graphStats?.signalsTotal === 'number' ? graphStats.signalsTotal : liveSignalFallback;
+  const attentionCount =
+    typeof graphStats?.commitmentsActive === 'number' ? graphStats.commitmentsActive : evidenceCount;
+  const readyCount =
+    typeof graphStats?.patternsActive === 'number'
+      ? graphStats.patternsActive
+      : action
+        ? 1
+        : 0;
+  const dashboardStats = [
+    {
+      icon: Mail,
+      value: openThreadCount,
+      label: 'open threads',
+      valueClassName: 'text-text-primary',
+    },
+    {
+      icon: TriangleAlert,
+      value: attentionCount,
+      label: 'need attention',
+      valueClassName: attentionCount > 0 ? 'text-amber-400' : 'text-text-primary',
+    },
+    {
+      icon: TrendingUp,
+      value: readyCount,
+      label: 'ready to move',
+      valueClassName: readyCount > 0 ? 'text-success' : 'text-text-primary',
+    },
+  ];
   const hasStats = dashboardStats.length > 0;
+  const briefWorkRows = [
+    {
+      icon: Plane,
+      label: 'Directive',
+      description: 'The single move that matters most right now.',
+    },
+    {
+      icon: FileText,
+      label: 'Draft',
+      description: 'Ready-to-send wording when writing is the bottleneck.',
+    },
+    {
+      icon: Layers3,
+      label: 'Source trail',
+      description: 'The evidence behind the recommendation.',
+    },
+  ];
 
   const artifactBodyContent = showArtifactBlur ? (
     <div
@@ -965,7 +975,7 @@ export default function DashboardPage() {
       <div className="pointer-events-none select-none blur-[5px]">
         <div
           data-testid="dashboard-document-body"
-          className="foldera-dashboard-artifact-body max-h-[340px] overflow-y-auto pr-2 text-[15px] leading-7 text-text-primary"
+          className="foldera-dashboard-artifact-body max-h-[340px] overflow-y-auto pr-2 text-[15px] leading-7 text-text-secondary"
         >
           {writeDocument ? (
             <ReactMarkdown components={DOCUMENT_MARKDOWN_COMPONENTS} remarkPlugins={[remarkGfm]}>
@@ -988,7 +998,7 @@ export default function DashboardPage() {
   ) : (
     <div
       data-testid="dashboard-document-body"
-      className="foldera-dashboard-artifact-body max-h-[340px] overflow-y-auto pr-2 text-[15px] leading-7 text-text-primary"
+      className="foldera-dashboard-artifact-body max-h-[340px] overflow-y-auto pr-2 text-[15px] leading-7 text-text-secondary"
     >
       {writeDocument ? (
         <ReactMarkdown components={DOCUMENT_MARKDOWN_COMPONENTS} remarkPlugins={[remarkGfm]}>
@@ -1474,6 +1484,27 @@ export default function DashboardPage() {
           <div className="absolute" style={{ left: 344, top: 238, width: 1072, height: 850 }}>
             {cardNode}
           </div>
+
+          {isBriefingPanel ? (
+            <aside
+              className="absolute hidden w-[348px] text-text-secondary min-[1440px]:block"
+              data-testid="dashboard-brief-work-panel"
+              style={{ left: 1460, top: 326 }}
+            >
+              <h2 className="text-[16px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+                How this brief works
+              </h2>
+              <div className="mt-5 divide-y divide-white/8 border-t border-white/8">
+                {briefWorkRows.map(({ icon: Icon, label, description }) => (
+                  <div key={label} className="grid grid-cols-[34px_92px_minmax(0,1fr)] gap-5 py-8">
+                    <Icon className="mt-1 h-6 w-6 text-text-muted" strokeWidth={1.8} aria-hidden />
+                    <p className="text-[16px] font-semibold text-text-secondary">{label}</p>
+                    <p className="text-[15px] leading-6 text-text-muted">{description}</p>
+                  </div>
+                ))}
+              </div>
+            </aside>
+          ) : null}
 
           {statusNoticeNode ? (
             <div className="absolute" style={{ left: 344, top: 1094, width: 1072 }}>

@@ -262,6 +262,16 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
       await expect(button).toBeVisible();
       await expect(button).toContainText(item.label);
     }
+
+    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
+    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('need attention');
+    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('ready to move');
+    await expect(page.getByTestId('dashboard-brief-directive-section')).toContainText(/Directive/i);
+    await expect(page.getByTestId('dashboard-brief-why-section')).toContainText(/Why This Now/i);
+    await expect(page.getByTestId('dashboard-brief-draft-section')).toContainText('DRAFT');
+    await expect(page.getByTestId('dashboard-brief-source-section')).toContainText(/Source Basis/i);
+    await expect(page.getByTestId('dashboard-brief-work-panel')).toContainText(/How this brief works/i);
+    await expect(page.getByTestId('dashboard-brief-work-panel')).toContainText('Source trail');
   });
 
   test('clicking each sidebar item keeps the app shell on /dashboard', async ({ page }) => {

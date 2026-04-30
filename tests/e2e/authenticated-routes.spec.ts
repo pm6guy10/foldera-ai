@@ -594,13 +594,13 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/open threads/i)).toHaveCount(0);
+    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
     await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
     await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);
     await expect(page.getByText(/^Upgrade to Pro$/i)).toHaveCount(0);
     await expect(page.getByTestId('dashboard-truth-stats')).toContainText('24');
-    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('signals captured');
+    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
     await expect.poll(async () =>
       page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
     ).toBeLessThanOrEqual(1);
@@ -611,7 +611,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/^FOLLOW-UP EMAIL$/i)).toBeVisible();
+    await expect(page.getByText(/^DRAFT$/i)).toBeVisible();
     await expect(page.getByTestId('dashboard-document-body').getByText(/Hi Keri,/i)).toBeVisible();
     await expect(page.getByText(/Hi Alex -/i)).toHaveCount(0);
   });
@@ -711,23 +711,23 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       headings: ['Situation', 'Blocking risk', 'Recommendation / decision'],
       bodyLines: [DOCUMENT_DIRECTIVE_ASK, DOCUMENT_DIRECTIVE_CONSEQUENCE],
     });
-    await expect(page.getByText(/^FINISHED DOCUMENT$/i)).toBeVisible();
+    await expect(page.getByText(/^DRAFT$/i)).toBeVisible();
     await expect(page.getByTestId('dashboard-truth-stats')).toContainText('24');
-    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('signals captured');
-    await expect(page.getByText(/open threads/i)).toHaveCount(0);
+    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
+    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('need attention');
     await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
     await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);
     await expect(page.getByText(/^Upgrade to Pro$/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /save document/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /skip and adjust/i })).toBeVisible();
-    await expect(page.getByTestId('dashboard-primary-action')).toHaveText(/save document/i);
-    await expect(page.getByRole('button', { name: /skip and adjust/i })).toHaveText(/skip and adjust/i);
+    await expect(page.getByRole('button', { name: /approve & send/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /snooze 24h/i })).toBeVisible();
+    await expect(page.getByTestId('dashboard-primary-action')).toHaveText(/approve & send/i);
+    await expect(page.getByRole('button', { name: /snooze 24h/i })).toHaveText(/snooze 24h/i);
     await page.getByRole('button', { name: /account menu/i }).click();
     await expect(page.getByRole('menuitem', { name: /^Settings$/i })).toBeVisible();
     await expect(page.getByRole('menuitem', { name: /^Sign out$/i })).toBeVisible();
     await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: /copy full text/i }).click();
+    await page.getByRole('button', { name: /copy draft/i }).click();
     await expectDashboardStatus(page, 'copy_succeeded');
     const copiedText = await page.evaluate(() => {
       const writes = (window as Window & { __dashboardClipboardWrites?: string[] })
@@ -799,7 +799,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       page.getByRole('heading', { name: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
     ).toBeVisible({ timeout: 15000 });
 
-    await page.getByRole('button', { name: /skip and adjust/i }).click();
+    await page.getByRole('button', { name: /snooze 24h/i }).click();
     await expectDashboardStatus(page, 'skip_snoozed');
     expect(executeBody).toEqual(
       expect.objectContaining({

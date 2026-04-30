@@ -185,15 +185,15 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
     });
     expect(desktopBodyOverflowHidden).toBe(true);
 
-    await expect(page.getByRole('button', { name: /copy full text/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /save document/i })).toBeVisible();
-    await expect(page.getByText(/open threads/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /copy draft/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /approve & send/i })).toBeVisible();
+    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
     await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
     await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);
     await expect(page.getByText(/^Upgrade to Pro$/i)).toHaveCount(0);
 
-    await page.getByRole('button', { name: /copy full text/i }).click();
+    await page.getByRole('button', { name: /copy draft/i }).click();
     await expect
       .poll(() =>
         page.evaluate(() => {
@@ -206,7 +206,7 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
       'copy_succeeded',
     );
 
-    await page.getByRole('button', { name: /save document/i }).click();
+    await page.getByRole('button', { name: /approve & send/i }).click();
     await expect.poll(() => approveCalls).toBeGreaterThan(0);
     expect(snoozeCalls).toBe(0);
   });
