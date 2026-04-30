@@ -20,6 +20,7 @@ import { NextResponse }      from 'next/server';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { encrypt }          from '@/lib/encryption';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
+import { truncateSignalContent } from '@/lib/utils/signal-egress';
 
 export const dynamic = 'force-dynamic';
 
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
       source:       'user_feedback',
       source_id:    action_id,
       type:         'outcome_feedback',
-      content:      encrypt(signalContent),
+      content:      encrypt(truncateSignalContent(signalContent)),
       content_hash: createHash('sha256').update(`outcome:${action_id}:${outcome}`).digest('hex'),
       author:       'user',
       recipients:   [],

@@ -12,10 +12,11 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
-import { decryptWithStatus } from '@/lib/encryption';
 import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
+import { SIGNAL_CONTEXT_LIMIT, SIGNAL_CONTEXT_SELECT } from '@/lib/utils/signal-egress';
+import { buildSignalMetadataSummaryRows } from '@/lib/briefing/signal-metadata-summary';
 
 let _anthropic: Anthropic | null = null;
 function getAnthropic() {
@@ -58,11 +59,11 @@ export async function summarizeSignals(
 
   const { data: signals, error } = await supabase
     .from('tkg_signals')
-    .select('id, source, content, author, occurred_at, created_at')
+    .select(SIGNAL_CONTEXT_SELECT)
     .eq('user_id', userId)
-    .lt('created_at', sevenDaysAgo)
+    .lt('occurred_at', sevenDaysAgo)
     .order('occurred_at', { ascending: true })
-    .limit(500);
+    .limit(SIGNAL_CONTEXT_LIMIT);
 
   if (error || !signals || signals.length === 0) {
     return 0;
@@ -96,10 +97,20 @@ export async function summarizeSignals(
   // Bucket signals by week (Monday-Sunday)
   const buckets = new Map<string, WeekBucket>();
 
-  let skippedDecryptRows = 0;
+  const metadataSignals = buildSignalMetadataSummaryRows(
+    (signals ?? []).map((signal: Record<string, unknown>) => ({
+      ...signal,
+      id: String(signal.id),
+      source: String(signal.source ?? ''),
+      type: (signal.type as string | null) ?? null,
+      occurred_at: String(signal.occurred_at ?? ''),
+      author: (signal.author as string | null) ?? null,
+      source_id: (signal.source_id as string | null) ?? null,
+    })),
+  );
 
-  for (const signal of signals) {
-    const date = new Date(signal.occurred_at ?? signal.created_at);
+  for (const signal of metadataSignals) {
+    const date = new Date(signal.occurred_at);
     const monday = getMonday(date);
     const sunday = new Date(monday);
     sunday.setDate(sunday.getDate() + 6);
@@ -120,30 +131,11 @@ export async function summarizeSignals(
       });
     }
 
-    const decrypted = decryptWithStatus(signal.content ?? '');
-    if (decrypted.usedFallback) {
-      skippedDecryptRows++;
-      continue;
-    }
     buckets.get(weekKey)!.signals.push({
       source: signal.source ?? 'unknown',
-      content: decrypted.plaintext.slice(0, 500), // Trim for token efficiency
+      content: signal.content.slice(0, 500), // Trim for token efficiency
       author: signal.author ?? null,
-      occurred_at: signal.occurred_at ?? signal.created_at,
-    });
-  }
-
-  if (skippedDecryptRows > 0) {
-    logStructuredEvent({
-      event: 'signal_skip',
-      level: 'warn',
-      userId,
-      artifactType: null,
-      generationStatus: 'decrypt_skip',
-      details: {
-        scope: 'summarizer',
-        skipped_rows: skippedDecryptRows,
-      },
+      occurred_at: signal.occurred_at,
     });
   }
 

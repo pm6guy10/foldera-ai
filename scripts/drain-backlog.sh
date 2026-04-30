@@ -17,6 +17,11 @@ if [ -z "${CRON_SECRET:-}" ]; then
   exit 1
 fi
 
+if [ "${ALLOW_PROD_PROOF:-}" != "true" ]; then
+  echo "ERROR: refusing to hit production without ALLOW_PROD_PROOF=true"
+  exit 1
+fi
+
 echo "Starting backlog drain..."
 echo "URL: $URL"
 echo "Max iterations: $MAX_ITERATIONS"

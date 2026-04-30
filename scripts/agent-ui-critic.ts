@@ -12,6 +12,7 @@ import path from 'node:path';
 import { chromium } from '@playwright/test';
 import Anthropic from '@anthropic-ai/sdk';
 import { assertPaidLlmAllowed, isPaidLlmAllowed } from '../lib/llm/paid-llm-gate';
+import { requireProdProofAllowed } from './prod-proof-guard';
 
 const BASE = (process.env.AGENT_UI_BASE_URL || 'https://foldera.ai').replace(/\/$/, '');
 const PAGES = ['/', '/start', '/login', '/pricing', '/blog'];
@@ -33,6 +34,10 @@ Respond as JSON only:
 If all scores are >= 7, set any_below_7 to false and still give a brief critique.`;
 
 async function main() {
+  if (/^https:\/\/(?:www\.)?foldera\.ai\b/i.test(BASE)) {
+    requireProdProofAllowed('agent-ui-critic');
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) {

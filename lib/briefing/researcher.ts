@@ -13,11 +13,12 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
-import { decryptWithStatus } from '@/lib/encryption';
 import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
+import { SIGNAL_CONTEXT_LIMIT, SIGNAL_CONTEXT_SELECT } from '@/lib/utils/signal-egress';
 import type { ScoredLoop } from './scorer';
+import { buildSignalMetadataSummaryRows } from './signal-metadata-summary';
 
 // ---------------------------------------------------------------------------
 // System-introspection filter — same patterns as pinned-constraints.ts
@@ -79,13 +80,9 @@ function getAnthropic(): Anthropic {
   return anthropicClient;
 }
 
-function isSelfReferentialSignal(content: string): boolean {
-  return content.startsWith('[Foldera Directive') || content.startsWith('[Foldera \u00b7 20');
-}
-
 /**
- * Load all readable signals for a user from the last 30 days.
- * Skips decrypt-fallback rows and self-referential signals.
+ * Load recent signal metadata for a user from the last 30 days.
+ * Raw signal content is intentionally excluded from researcher context.
  */
 async function loadRecentSignals(userId: string): Promise<SignalRow[]> {
   const supabase = createServerClient();
@@ -93,30 +90,31 @@ async function loadRecentSignals(userId: string): Promise<SignalRow[]> {
 
   const { data, error } = await supabase
     .from('tkg_signals')
-    .select('id, content, source, created_at, signal_type')
+    .select(SIGNAL_CONTEXT_SELECT)
     .eq('user_id', userId)
-    .gte('created_at', since)
-    .order('created_at', { ascending: false })
-    .limit(200);
+    .gte('occurred_at', since)
+    .order('occurred_at', { ascending: false })
+    .limit(SIGNAL_CONTEXT_LIMIT);
 
   if (error || !data) return [];
 
-  const readable: SignalRow[] = [];
-  for (const row of data) {
-    if (!row.content || typeof row.content !== 'string') continue;
-    const { plaintext, usedFallback } = decryptWithStatus(row.content);
-    if (usedFallback) continue;
-    if (isSelfReferentialSignal(plaintext)) continue;
-    readable.push({
+  return buildSignalMetadataSummaryRows(
+    (data ?? []).map((row: Record<string, unknown>) => ({
+      ...row,
+      id: String(row.id),
+      source: String(row.source ?? ''),
+      type: (row.type as string | null) ?? null,
+      occurred_at: String(row.occurred_at ?? ''),
+      author: (row.author as string | null) ?? null,
+      source_id: (row.source_id as string | null) ?? null,
+    })),
+  ).map((row) => ({
       id: row.id,
-      content: plaintext.slice(0, 500),
+      content: row.content.slice(0, 500),
       source: row.source ?? 'unknown',
-      created_at: row.created_at,
-      signal_type: row.signal_type ?? null,
-    });
-  }
-
-  return readable;
+      created_at: row.occurred_at,
+      signal_type: row.type ?? null,
+    }));
 }
 
 /**

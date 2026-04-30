@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { OWNER_USER_ID } from '@/lib/auth/constants';
 import { createServerClient } from '@/lib/db/client';
+import { blockDevRouteDuringEgressEmergency } from '@/lib/utils/egress-emergency';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +57,9 @@ async function databaseCheck(): Promise<CheckResult> {
 }
 
 export async function GET(request: Request) {
+  const emergencyBlock = blockDevRouteDuringEgressEmergency(request);
+  if (emergencyBlock) return emergencyBlock;
+
   const auth = await resolveUser(request);
   if (auth instanceof NextResponse) return auth;
   if (auth.userId !== OWNER_USER_ID) {

@@ -45,12 +45,26 @@ vi.mock('@/lib/briefing/generator', () => ({
 
 describe('POST /api/dev/brain-receipt', () => {
   beforeEach(() => {
+    vi.unstubAllEnvs();
     vi.resetModules();
     vi.clearAllMocks();
     mockGetLastScorerDiagnostics.mockReturnValue(null);
     mockIsSendWorthy.mockReturnValue({ worthy: true, reasons: [] });
     mockApiError.mockImplementation((error: unknown) =>
       NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 }));
+  });
+
+  it('hides the dev proof route in production egress emergency mode before auth', async () => {
+    vi.stubEnv('FOLDERA_EGRESS_EMERGENCY_MODE', 'true');
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('CRON_SECRET', 'operator-secret');
+    const { POST } = await import('../route');
+
+    const response = await POST(new Request('http://localhost:3000/api/dev/brain-receipt', { method: 'POST' }));
+
+    expect(response.status).toBe(404);
+    expect(mockResolveUser).not.toHaveBeenCalled();
+    expect(mockRunDailyGenerate).not.toHaveBeenCalled();
   });
 
   it('rejects authenticated non-owner users', async () => {

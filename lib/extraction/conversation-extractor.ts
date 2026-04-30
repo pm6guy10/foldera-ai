@@ -19,6 +19,7 @@ import { createServerClient } from '@/lib/db/client';
 import { createHash } from 'crypto';
 import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
 import { encrypt } from '@/lib/encryption';
+import { truncateSignalContent } from '@/lib/utils/signal-egress';
 import { isNonCommitment } from '@/lib/signals/signal-processor';
 import { assertPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { isOverDailyLimit, trackApiCall } from '@/lib/utils/api-tracker';
@@ -225,7 +226,7 @@ export async function extractFromConversation(
       source: 'uploaded_document',
       source_id: contentHash.slice(0, 16),
       type: 'document_created',
-      content: encrypt(text),
+      content: encrypt(truncateSignalContent(text)),
       content_hash: contentHash,
       author: 'user',
       recipients: [],
@@ -592,13 +593,13 @@ export async function extractFromConversation(
           source: 'extraction',
           source_id: signal.id,
           type: 'outcome_confirmed',
-          content: encrypt(
+          content: encrypt(truncateSignalContent(
             JSON.stringify({
               description: outcome.decision_description,
               result: outcome.result,
               extractedAt: new Date().toISOString(),
             }),
-          ),
+          )),
           processed: true,
         });
       }

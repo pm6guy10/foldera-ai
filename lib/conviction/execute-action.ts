@@ -11,6 +11,7 @@ import { sendOutlookEmail } from '@/lib/integrations/outlook-client';
 import { createGoogleCalendarEvent } from '@/lib/integrations/google-calendar';
 import { createOutlookCalendarEvent } from '@/lib/integrations/outlook-calendar';
 import { encrypt } from '@/lib/encryption';
+import { truncateSignalContent } from '@/lib/utils/signal-egress';
 import {
   renderPlaintextEmailHtml,
   renderWriteDocumentReadyEmailHtml,
@@ -236,7 +237,7 @@ async function insertFeedbackSignalIdempotent(
     source: 'user_feedback',
     source_id: `${kind}-${actionId}`,
     type: kind === 'approve' ? 'approval' : 'rejection',
-    content: encrypt(content),
+    content: encrypt(truncateSignalContent(content)),
     content_hash: contentHash,
     author: 'user',
     occurred_at: new Date().toISOString(),
@@ -409,7 +410,7 @@ async function executeArtifact(
             source: 'artifact',
             source_id: `artifact-doc-${actionId}`,
             type: 'document',
-            content: encrypt(`Document: ${title}\n\n${content.slice(0, 50000)}`),
+      content: encrypt(truncateSignalContent(`Document: ${title}\n\n${content}`)),
             content_hash: contentHash,
             author: 'foldera',
             occurred_at: now,
@@ -512,7 +513,7 @@ async function executeArtifact(
             source: 'artifact',
             source_id: `artifact-research-${actionId}`,
             type: 'research',
-            content: encrypt(`Research: ${recommended}\n\nFindings: ${findings.slice(0, 50000)}`),
+      content: encrypt(truncateSignalContent(`Research: ${recommended}\n\nFindings: ${findings}`)),
             content_hash: contentHash,
             author: 'foldera',
             occurred_at: now,
@@ -540,7 +541,7 @@ async function executeArtifact(
           source: 'artifact',
           source_id: `artifact-decision-${actionId}`,
           type: 'document',
-          content: encrypt(`Decision: ${recommendation}\n\nOptions: ${JSON.stringify(options).slice(0, 4000)}`),
+      content: encrypt(truncateSignalContent(`Decision: ${recommendation}\n\nOptions: ${JSON.stringify(options)}`)),
           content_hash: contentHash,
           author: 'foldera',
           occurred_at: now,
@@ -573,7 +574,7 @@ async function executeArtifact(
           source: 'artifact',
           source_id: `artifact-wait-${actionId}`,
           type: 'document',
-          content: encrypt(waitBody),
+      content: encrypt(truncateSignalContent(waitBody)),
           content_hash: contentHash,
           author: 'foldera',
           occurred_at: now,

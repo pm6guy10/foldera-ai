@@ -8,6 +8,7 @@ import { config as loadEnv } from 'dotenv';
 import fs from 'node:fs';
 import path from 'path';
 import { chromium } from '@playwright/test';
+import { requireProdProofAllowed } from './prod-proof-guard';
 
 loadEnv({ path: path.resolve(process.cwd(), '.env.local') });
 
@@ -30,6 +31,8 @@ function actionPlain(action: string | undefined): string {
 }
 
 async function main() {
+  requireProdProofAllowed('prod-dry-run-plain');
+
   if (!fs.existsSync(statePath)) {
     console.error(`Missing ${statePath}. Run: npm run test:prod:setup`);
     process.exit(1);

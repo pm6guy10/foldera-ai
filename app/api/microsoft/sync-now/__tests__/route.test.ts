@@ -22,6 +22,7 @@ vi.mock('@/lib/utils/rate-limit', () => ({
 
 describe('POST /api/microsoft/sync-now', () => {
   beforeEach(() => {
+    vi.unstubAllEnvs();
     vi.clearAllMocks();
     getServerSession.mockResolvedValue({ user: { id: 'user-1' } });
     rateLimit.mockResolvedValue({
@@ -31,10 +32,47 @@ describe('POST /api/microsoft/sync-now', () => {
     });
   });
 
+  it('blocks manual sync during egress emergency mode without operator secret', async () => {
+    vi.stubEnv('FOLDERA_EGRESS_EMERGENCY_MODE', 'true');
+    vi.stubEnv('CRON_SECRET', 'operator-secret');
+    const { POST } = await import('../route');
+
+    const response = await POST(new Request('http://localhost/api/microsoft/sync-now', { method: 'POST' }));
+
+    expect(response.status).toBe(423);
+    expect(getServerSession).not.toHaveBeenCalled();
+    expect(syncMicrosoft).not.toHaveBeenCalled();
+  });
+
+  it('allows operator-secret sync attempts during egress emergency mode', async () => {
+    vi.stubEnv('FOLDERA_EGRESS_EMERGENCY_MODE', 'true');
+    vi.stubEnv('CRON_SECRET', 'operator-secret');
+    syncMicrosoft.mockResolvedValue({
+      mail_signals: 1,
+      calendar_signals: 0,
+      file_signals: 0,
+      task_signals: 0,
+      mail_total_signals: 1,
+      calendar_total_signals: 0,
+      file_total_signals: 0,
+      task_total_signals: 0,
+      is_first_sync: false,
+    });
+    const { POST } = await import('../route');
+
+    const response = await POST(new Request('http://localhost/api/microsoft/sync-now', {
+      method: 'POST',
+      headers: { 'authorization': 'Bearer operator-secret' },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(syncMicrosoft).toHaveBeenCalled();
+  });
+
   it('returns unauthorized without a session user', async () => {
     getServerSession.mockResolvedValue(null);
     const { POST } = await import('../route');
-    const response = await POST();
+    const response = await POST(new Request('http://localhost/api/microsoft/sync-now', { method: 'POST' }));
     expect(response.status).toBe(401);
   });
 
@@ -51,7 +89,7 @@ describe('POST /api/microsoft/sync-now', () => {
       is_first_sync: false,
     });
     const { POST } = await import('../route');
-    const response = await POST();
+    const response = await POST(new Request('http://localhost/api/microsoft/sync-now', { method: 'POST' }));
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -78,7 +116,7 @@ describe('POST /api/microsoft/sync-now', () => {
       error: 'no_token',
     });
     const { POST } = await import('../route');
-    const response = await POST();
+    const response = await POST(new Request('http://localhost/api/microsoft/sync-now', { method: 'POST' }));
 
     expect(response.status).toBe(400);
   });

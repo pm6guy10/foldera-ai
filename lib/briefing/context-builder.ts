@@ -7,8 +7,9 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
-import { decryptWithStatus } from '@/lib/encryption';
+import { SIGNAL_CONTEXT_SELECT } from '@/lib/utils/signal-egress';
 import { isUsableGoalRow } from './goal-hygiene';
+import { buildSignalMetadataSummaryRows } from './signal-metadata-summary';
 
 type GreetingSnapshot = {
   dayName: string;
@@ -16,10 +17,6 @@ type GreetingSnapshot = {
   activeCommitmentCount: number;
   topGoalText: string | null;
 };
-
-function isSelfReferentialSignal(content: string): boolean {
-  return content.startsWith('[Foldera Directive') || content.startsWith('[Foldera · 20');
-}
 
 // ---------------------------------------------------------------------------
 // Season + time-of-day helpers
@@ -138,7 +135,7 @@ export async function buildContextBlock(userId: string): Promise<string> {
       .maybeSingle(),
     supabase
       .from('tkg_signals')
-      .select('content, source, occurred_at')
+      .select(SIGNAL_CONTEXT_SELECT)
       .eq('user_id', userId)
       .eq('processed', true)
       .gte('occurred_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
@@ -149,21 +146,23 @@ export async function buildContextBlock(userId: string): Promise<string> {
   const goals = (goalsRes.data ?? []).filter((goal) => isUsableGoalRow(goal));
   const commitments = commitmentsRes.data ?? [];
   const lastAction = lastActionRes.data;
-  const recentSignals = (recentSignalsRes.data ?? [])
-    .map((signal) => {
-      const decrypted = decryptWithStatus(signal.content as string ?? '');
-      if (decrypted.usedFallback) return null;
-
-      const plaintext = decrypted.plaintext.trim();
-      if (!plaintext || String(signal.source ?? '').trim() === 'user_feedback' || isSelfReferentialSignal(plaintext)) return null;
-
-      return {
-        source: (signal.source as string | null) ?? 'unknown',
-        occurredAt: (signal.occurred_at as string | null) ?? '',
-        preview: plaintext.replace(/\s+/g, ' ').slice(0, 200),
-      };
-    })
-    .filter((signal): signal is { source: string; occurredAt: string; preview: string } => Boolean(signal));
+  const recentSignals = buildSignalMetadataSummaryRows(
+    (recentSignalsRes.data ?? [])
+      .filter((signal) => String(signal.source ?? '').trim() !== 'user_feedback')
+      .map((signal) => ({
+        ...signal,
+        id: String(signal.id),
+        source: String(signal.source ?? ''),
+        type: (signal.type as string | null) ?? null,
+        occurred_at: String(signal.occurred_at ?? ''),
+        author: (signal.author as string | null) ?? null,
+        source_id: (signal.source_id as string | null) ?? null,
+      })),
+  ).map((signal) => ({
+    source: signal.source,
+    occurredAt: signal.occurred_at,
+    preview: signal.content.replace(/\s+/g, ' ').slice(0, 200),
+  }));
 
   // Active goals summary
   const goalLines = goals.length > 0

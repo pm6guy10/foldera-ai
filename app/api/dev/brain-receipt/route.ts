@@ -23,6 +23,7 @@ import type { ActionType, ConvictionArtifact, ConvictionDirective, GenerationRun
 import { apiError } from '@/lib/utils/api-error';
 import { getRequestId, REQUEST_ID_HEADER } from '@/lib/utils/request-id';
 import { getDeployRevision } from '@/lib/config/deploy-revision';
+import { blockDevRouteDuringEgressEmergency } from '@/lib/utils/egress-emergency';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -46,6 +47,9 @@ function buildProofVerdict(input: {
 }
 
 export async function POST(request: Request) {
+  const emergencyBlock = blockDevRouteDuringEgressEmergency(request);
+  if (emergencyBlock) return emergencyBlock;
+
   const auth = await resolveUser(request);
   if (auth instanceof NextResponse) return auth;
   if (auth.userId !== OWNER_USER_ID) {

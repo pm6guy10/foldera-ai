@@ -13,6 +13,7 @@ import type { gmail_v1 } from 'googleapis';
 import { createServerClient } from '@/lib/db/client';
 import { getUserToken, updateSyncTimestamp, saveUserToken } from '@/lib/auth/user-tokens';
 import { encrypt } from '@/lib/encryption';
+import { truncateSignalContent } from '@/lib/utils/signal-egress';
 import { createHash } from 'crypto';
 import mammoth from 'mammoth';
 import { FIRST_SYNC_LOOKBACK_MS } from '@/lib/config/constants';
@@ -329,7 +330,7 @@ async function syncGmail(
         source: 'gmail',
         source_id: id,
         type: signalType,
-        content: encrypt(content),
+        content: encrypt(truncateSignalContent(content)),
         content_hash: contentHash,
         author: isSent ? 'self' : from,
         occurred_at: occurredAtIso,
@@ -472,7 +473,7 @@ async function syncCalendar(
       source: 'google_calendar',
       source_id: event.id,
       type: 'calendar_event',
-      content: encrypt(content),
+      content: encrypt(truncateSignalContent(content)),
       content_hash: contentHash,
       author: organizer || 'self',
       occurred_at: start ? new Date(start).toISOString() : new Date().toISOString(),
@@ -674,7 +675,7 @@ async function syncDrive(
         source: 'drive',
         source_id: file.id,
         type: 'file_modified',
-        content: encrypt(content),
+        content: encrypt(truncateSignalContent(content)),
         content_hash: contentHash,
         author: owner,
         occurred_at: file.modifiedTime ?? new Date().toISOString(),

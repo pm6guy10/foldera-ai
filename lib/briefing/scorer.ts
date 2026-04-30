@@ -71,6 +71,7 @@ import {
   isChatConversationSignalSource,
 } from './scorer-candidate-sources';
 import { buildSignalMetadataSummaryRows } from './signal-metadata-summary';
+import { SIGNAL_CONTEXT_LIMIT, SIGNAL_CONTEXT_SELECT } from '@/lib/utils/signal-egress';
 import {
   getCommitmentQuarantineReason,
   getGoalQuarantineReason,
@@ -2412,7 +2413,7 @@ export async function inferRevealedGoals(userId: string): Promise<RevealedGoalDi
       .gte('occurred_at', fourteenDaysAgo)
       .eq('processed', true)
       .order('occurred_at', { ascending: false })
-      .limit(500),
+      .limit(SIGNAL_CONTEXT_LIMIT),
     supabase
       .from('tkg_goals')
       .select('goal_text, priority, goal_category, source')
@@ -2571,7 +2572,7 @@ export async function detectAntiPatterns(userId: string): Promise<AntiPattern[]>
         .gte('occurred_at', thirtyDaysAgo)
         .eq('processed', true)
         .order('occurred_at', { ascending: false })
-        .limit(500),
+        .limit(SIGNAL_CONTEXT_LIMIT),
       supabase
         .from('tkg_commitments')
         .select('id, description, status, created_at, due_at, updated_at, trust_class')
@@ -2884,7 +2885,7 @@ export async function detectEmergentPatterns(userId: string): Promise<EmergentPa
         .eq('user_id', userId)
         .gte('occurred_at', thirtyDaysAgo)
         .order('occurred_at', { ascending: false })
-        .limit(500),
+        .limit(SIGNAL_CONTEXT_LIMIT),
     ]);
 
     const actions = actionsRes.data ?? [];
@@ -4492,15 +4493,15 @@ export async function scoreOpenLoops(
       .limit(50),
 
     // Signals (last 180 days — decay applied during scoring)
-    // Load 200 to capture email + calendar + file + task signals
+    // Metadata/extracted fields only: never pull raw signal content for broad scoring context.
     supabase
       .from('tkg_signals')
-      .select('id, source, occurred_at, author, type, source_id, content')
+      .select(SIGNAL_CONTEXT_SELECT)
       .eq('user_id', userId)
       .gte('occurred_at', oneHundredEightyDaysAgo)
       .eq('processed', true)
       .order('occurred_at', { ascending: false })
-      .limit(200),
+      .limit(SIGNAL_CONTEXT_LIMIT),
 
     // Entities — both cooling (>14d) and active relationships
     // Active relationships provide context; cooling ones surface re-engagement
@@ -4581,27 +4582,27 @@ export async function scoreOpenLoops(
     diag.sourceCounts.commitments_after_dedup = commitments.length;
   }
 
-  let skippedDecryptRows = 0;
-  const signals = (signalsRes.data ?? []).flatMap((signal: any) => {
-    if (String(signal.source ?? '').trim() === 'user_feedback') return [];
-    const decrypted = decryptWithStatus(String(signal.content ?? ''));
-    if (decrypted.usedFallback) {
-      skippedDecryptRows++;
-      return [];
-    }
-    const plaintext = decrypted.plaintext.trim();
-    if (!plaintext || isSelfReferentialSignal(plaintext)) return [];
-    return [{
+  const signals = buildSignalMetadataSummaryRows(
+    (signalsRes.data ?? []).flatMap((signal: any) => {
+      if (String(signal.source ?? '').trim() === 'user_feedback') return [];
+      return [{
       id: String(signal.id),
       source: String(signal.source ?? ''),
       occurred_at: String(signal.occurred_at ?? ''),
       author: (signal.author as string | null) ?? null,
       type: (signal.type as string | null) ?? null,
       source_id: (signal.source_id as string | null) ?? null,
-      content: plaintext,
+      user_id: (signal.user_id as string | null) ?? null,
+      recipients: signal.recipients,
+      extracted_entities: signal.extracted_entities,
+      extracted_commitments: signal.extracted_commitments,
+      extracted_dates: signal.extracted_dates,
+      extracted_amounts: signal.extracted_amounts,
+      outcome_label: (signal.outcome_label as string | null) ?? null,
+      processed: Boolean(signal.processed),
     }];
-  });
-  logDecryptSkip(userId, 'score_open_loops', skippedDecryptRows);
+    }),
+  );
   diag.sourceCounts.signals_after_decrypt = signals.length;
 
   const signalSourceByRowId = new Map<string, string>();

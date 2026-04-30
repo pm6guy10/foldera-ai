@@ -4,12 +4,15 @@
  */
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
+import { requireProdProofAllowed } from './prod-proof-guard';
 dotenv.config({ path: '.env.local' });
 
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 const OWNER = process.env.INGEST_USER_ID!;
 
 async function main() {
+  requireProdProofAllowed('debug-trigger-post-fix');
+
   const CRON_SECRET = process.env.CRON_SECRET!;
   
   // Timestamp before trigger

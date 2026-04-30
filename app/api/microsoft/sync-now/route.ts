@@ -3,13 +3,17 @@ import { getServerSession } from "next-auth";
 import { getAuthOptions } from "@/lib/auth/auth-options";
 import { syncMicrosoft } from "@/lib/sync/microsoft-sync";
 import { rateLimit } from "@/lib/utils/rate-limit";
+import { blockManualSyncDuringEgressEmergency } from "@/lib/utils/egress-emergency";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const MANUAL_SYNC_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 
-export async function POST() {
+export async function POST(request: Request) {
+  const emergencyBlock = blockManualSyncDuringEgressEmergency(request, "microsoft");
+  if (emergencyBlock) return emergencyBlock;
+
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

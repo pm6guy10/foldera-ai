@@ -14,6 +14,7 @@ import { createServerClient } from "@/lib/db/client";
 import { getUserToken, updateSyncTimestamp } from "@/lib/auth/user-tokens";
 import { getMicrosoftTokens, forceRefreshMicrosoftTokens } from "@/lib/auth/token-store";
 import { encrypt } from "@/lib/encryption";
+import { truncateSignalContent } from "@/lib/utils/signal-egress";
 import { createHash } from "crypto";
 import mammoth from 'mammoth';
 import { FIRST_SYNC_LOOKBACK_MS } from '@/lib/config/constants';
@@ -407,7 +408,7 @@ async function syncMail(
         source: "outlook",
         source_id: msg.id,
         type: signalType,
-        content: encrypt(content),
+        content: encrypt(truncateSignalContent(content)),
         content_hash: contentHash,
         author: isSent ? "self" : from,
         occurred_at: new Date(date).toISOString(),
@@ -499,7 +500,7 @@ async function syncCalendar(
       source: "outlook_calendar",
       source_id: event.id,
       type: "calendar_event",
-      content: encrypt(content),
+      content: encrypt(truncateSignalContent(content)),
       content_hash: contentHash,
       author: organizer || "self",
       occurred_at: start
@@ -737,7 +738,7 @@ async function syncFiles(
       source: "onedrive",
       source_id: file.id,
       type: "file_modified",
-      content: encrypt(content),
+      content: encrypt(truncateSignalContent(content)),
       content_hash: contentHash,
       author: modifiedBy || "self",
       occurred_at: file.lastModifiedDateTime ?? new Date().toISOString(),
@@ -825,7 +826,7 @@ async function syncTasks(
           source: "microsoft_todo",
           source_id: task.id,
           type: "task",
-          content: encrypt(content),
+          content: encrypt(truncateSignalContent(content)),
           content_hash: contentHash,
           author: "self",
           occurred_at: task.lastModifiedDateTime ?? new Date().toISOString(),

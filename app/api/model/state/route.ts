@@ -41,7 +41,8 @@ export async function GET(request: Request) {
 
     // Run all queries in parallel
     const [
-      signalsRes,
+      signalsCountRes,
+      processedSignalsCountRes,
       entitiesRes,
       goalsRes,
       actionsRes,
@@ -50,8 +51,15 @@ export async function GET(request: Request) {
       // Signal volume
       supabase
         .from('tkg_signals')
-        .select('id, extracted', { count: 'exact' })
+        .select('id', { count: 'exact', head: true })
         .eq('user_id', userId),
+
+      // Processed signal volume
+      supabase
+        .from('tkg_signals')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('extracted', true),
 
       // Top entities by engagement
       supabase
@@ -78,16 +86,16 @@ export async function GET(request: Request) {
         .select('status, confidence, generated_at')
         .eq('user_id', userId)
         .in('status', ['approved', 'skipped'])
-        .gte('generated_at', thirtyDaysAgo),
+        .gte('generated_at', thirtyDaysAgo)
+        .limit(200),
 
       // Account creation date
       supabase.auth.admin.getUserById(userId),
     ]);
 
     // --- Signal volume ---
-    const allSignals = signalsRes.data ?? [];
-    const signal_count = allSignals.length;
-    const signals_processed = allSignals.filter((s) => s.extracted === true).length;
+    const signal_count = signalsCountRes.count ?? 0;
+    const signals_processed = processedSignalsCountRes.count ?? 0;
 
     // --- Account age ---
     let days_active = 0;

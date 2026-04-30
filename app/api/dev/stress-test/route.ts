@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth/auth-options';
 import { generateDirective } from '@/lib/briefing/generator';
 import { scoreOpenLoops, type ScoredLoop } from '@/lib/briefing/scorer';
 import { processUnextractedSignals } from '@/lib/signals/signal-processor';
+import { blockDevRouteDuringEgressEmergency } from '@/lib/utils/egress-emergency';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
@@ -45,6 +46,9 @@ function jsonError(message: string, status: number): NextResponse {
 }
 
 export async function POST(request: Request) {
+  const emergencyBlock = blockDevRouteDuringEgressEmergency(request);
+  if (emergencyBlock) return emergencyBlock;
+
   if (process.env.ALLOW_DEV_ROUTES !== 'true') {
     return jsonError('Dev routes are disabled.', 403);
   }

@@ -7,6 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createHash } from 'crypto';
 import { encrypt } from '@/lib/encryption';
 import { bumpAttentionSalienceForEmails } from '@/lib/signals/entity-attention-runtime';
+import { truncateSignalContent } from '@/lib/utils/signal-egress';
 
 export function normalizeMailSubject(subject: string): string {
   let s = subject.replace(/\s+/g, ' ').trim();
@@ -126,7 +127,7 @@ export async function persistResponsePatternSignals(
         source,
         source_id: `response_pattern:${r.id}`,
         type: 'response_pattern',
-        content: encrypt(content),
+      content: encrypt(truncateSignalContent(content)),
         content_hash: contentHash,
         author: 'foldera-derived',
         occurred_at: new Date(r.dateMs).toISOString(),
@@ -203,7 +204,7 @@ export async function persistCalendarRsvpAvoidanceSignals(
         source,
         source_id: `rsvp_pending:${ev.id}`,
         type: 'response_pattern',
-        content: encrypt(content),
+      content: encrypt(truncateSignalContent(content)),
         content_hash: contentHash,
         author: 'foldera-derived',
         occurred_at: ev.startIso ? new Date(ev.startIso).toISOString() : new Date().toISOString(),

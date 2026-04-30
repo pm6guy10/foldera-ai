@@ -113,6 +113,7 @@ import {
 import { getGoalQuarantineReason, isUsableGoalRow } from './goal-hygiene';
 import { buildSignalMetadataSummaryRows } from './signal-metadata-summary';
 import { evaluateArtifactQualityGate } from './artifact-quality-gate';
+import { SIGNAL_CONTEXT_LIMIT, SIGNAL_CONTEXT_SELECT } from '@/lib/utils/signal-egress';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -816,7 +817,7 @@ async function buildGoalGapAnalysis(userId: string): Promise<GoalGapEntry[]> {
     .eq('processed', true)
     .gte('occurred_at', ninetyDaysAgo)
     .order('occurred_at', { ascending: false })
-    .limit(400);
+    .limit(SIGNAL_CONTEXT_LIMIT);
 
   // 3. Completed actions last 14d
   const { data: actionRows } = await supabase
@@ -5915,6 +5916,25 @@ export const CROSS_SOURCE_LIFE_CONTEXT_SOURCES = Array.from(
   new Set(LIFE_SNAPSHOT_SOURCE_BUCKETS.flat()),
 );
 
+function signalRowToMetadataInput(row: Record<string, unknown>) {
+  return {
+    ...row,
+    id: String(row.id),
+    user_id: (row.user_id as string | null) ?? null,
+    source: String(row.source ?? ''),
+    type: (row.type as string | null) ?? null,
+    occurred_at: String(row.occurred_at ?? ''),
+    author: (row.author as string | null) ?? null,
+    source_id: (row.source_id as string | null) ?? null,
+  };
+}
+
+function signalMetadataRowsToSnippets(rows: ReadonlyArray<Record<string, unknown>>): SignalSnippet[] {
+  return buildSignalMetadataSummaryRows(rows.map(signalRowToMetadataInput))
+    .map((row) => parseSignalSnippet(row.content, row as unknown as Record<string, unknown>))
+    .filter((snippet): snippet is SignalSnippet => Boolean(snippet));
+}
+
 async function ensureMinimumEvidenceSourceDiversity(
   userId: string,
   snippets: SignalSnippet[],
@@ -5937,7 +5957,7 @@ async function ensureMinimumEvidenceSourceDiversity(
     try {
       const res = await supabase
         .from('tkg_signals')
-        .select('id, content, source, occurred_at, author, type')
+        .select(SIGNAL_CONTEXT_SELECT)
         .eq('user_id', userId)
         .eq('processed', true)
         .gte('occurred_at', lookbackIso)
@@ -5949,12 +5969,8 @@ async function ensureMinimumEvidenceSourceDiversity(
       continue;
     }
 
-    for (const row of rows ?? []) {
-      if (isBlockedSender(row.author as string)) continue;
-      const decrypted = decryptWithStatus(String((row as { content?: string }).content ?? ''));
-      if (decrypted.usedFallback) continue;
-      const parsed = parseSignalSnippet(decrypted.plaintext, row as Record<string, unknown>);
-      if (!parsed) continue;
+    for (const parsed of signalMetadataRowsToSnippets(rows ?? [])) {
+      if (isBlockedSender(parsed.author ?? '')) continue;
       const key = signalSnippetDedupeKey(parsed);
       if (used.has(key)) continue;
       used.add(key);
@@ -5997,13 +6013,14 @@ export async function appendCrossSourceLifeContextSnippets(
   const queryLimit = Math.min(
     scanLimit,
     Math.max(maxNew * 3, CROSS_SOURCE_LIFE_CONTEXT_SOURCES.length * 2),
+    SIGNAL_CONTEXT_LIMIT,
   );
 
   const supabase = createServerClient();
   const lookbackIso = new Date(Date.now() - daysMs(90)).toISOString();
   const { data: rows, error } = await supabase
     .from('tkg_signals')
-    .select('id, content, source, occurred_at, author, type')
+    .select(SIGNAL_CONTEXT_SELECT)
     .eq('user_id', userId)
     .eq('processed', true)
     .gte('occurred_at', lookbackIso)
@@ -6038,17 +6055,13 @@ export async function appendCrossSourceLifeContextSnippets(
   const perSource = new Map<string, number>();
   const extra: SignalSnippet[] = [];
 
-  for (const row of rows) {
+  for (const parsed of signalMetadataRowsToSnippets(rows as Array<Record<string, unknown>>)) {
     if (extra.length >= maxNew) break;
-    const src = String((row as { source?: string }).source ?? '');
+    const src = String(parsed.source ?? '');
     if (EVIDENCE_BUNDLE_EMAIL_SOURCES.has(src)) continue;
     const n = perSource.get(src) ?? 0;
     if (n >= MAX_PER_SOURCE) continue;
-    if (isBlockedSender((row as { author?: string }).author as string)) continue;
-    const decrypted = decryptWithStatus(String((row as { content?: string }).content ?? ''));
-    if (decrypted.usedFallback) continue;
-    const parsed = parseSignalSnippet(decrypted.plaintext, row as Record<string, unknown>);
-    if (!parsed) continue;
+    if (isBlockedSender(parsed.author ?? '')) continue;
     const key = signalSnippetDedupeKey(parsed);
     if (used.has(key)) continue;
     used.add(key);
@@ -6139,32 +6152,28 @@ async function fetchWinnerSignalEvidence(
       .filter((entity) => entity.length >= 5);
 
     const fallbackScanBudget = isDecayDiscrepancy
-      ? Math.max(remainingRowBudget, 200)
+      ? Math.max(remainingRowBudget, SIGNAL_CONTEXT_LIMIT)
       : remainingRowBudget;
 
     const { data: fallbackRows } = await supabase
       .from('tkg_signals')
-      .select('id, content, source, occurred_at, author, type')
+      .select(SIGNAL_CONTEXT_SELECT)
       .eq('user_id', userId)
       .eq('processed', true)
       .gte('occurred_at', lookbackIso)
       .order('occurred_at', { ascending: false })
-      .limit(fallbackScanBudget);
+      .limit(Math.min(fallbackScanBudget, SIGNAL_CONTEXT_LIMIT));
 
     scannedRows += fallbackRows?.length ?? 0;
 
-    for (const row of fallbackRows ?? []) {
+    for (const parsed of signalMetadataRowsToSnippets((fallbackRows ?? []) as Array<Record<string, unknown>>)) {
       if (snippets.length >= SNIPPET_CAP) break;
-      if (String(row.source ?? '').trim() === 'user_feedback') continue;
-      if (isBlockedSender(row.author as string)) { senderBlockedCount++; continue; }
-      const decrypted = decryptWithStatus(row.content as string ?? '');
-      if (decrypted.usedFallback) continue;
-      const parsed = parseSignalSnippet(decrypted.plaintext, row);
-      if (!parsed) continue;
+      if (String(parsed.source ?? '').trim() === 'user_feedback') continue;
+      if (isBlockedSender(parsed.author ?? '')) { senderBlockedCount++; continue; }
       const dedupeKey = parsed.snippet.slice(0, 60);
       if (existingTexts.has(dedupeKey)) continue;
 
-      const plainLower = decrypted.plaintext.toLowerCase();
+      const plainLower = parsed.snippet.toLowerCase();
       const matchesFallback = (() => {
         if (anchorEmails.size > 0 && [...anchorEmails].some((email) => plainLower.includes(email))) {
           return true;
@@ -6348,7 +6357,7 @@ async function appendRecentUploadedDocumentsForInterviewEvidence(
   const lookbackIso = new Date(Date.now() - daysMs(365)).toISOString();
   const { data: rows } = await supabase
     .from('tkg_signals')
-    .select('id, content, source, occurred_at, author, type')
+    .select(SIGNAL_CONTEXT_SELECT)
     .eq('user_id', userId)
     .eq('source', 'uploaded_document')
     .eq('processed', true)
@@ -6363,18 +6372,17 @@ async function appendRecentUploadedDocumentsForInterviewEvidence(
   const out = [...snippets];
   let addedDocs = uploadedCount;
 
+  const metadataSnippetsById = new Map(
+    signalMetadataRowsToSnippets((rows ?? []) as Array<Record<string, unknown>>)
+      .map((snippet) => [snippet.signal_id ?? signalSnippetDedupeKey(snippet), snippet]),
+  );
+
   for (const row of rows ?? []) {
     if (addedDocs >= WRITE_DOCUMENT_UPLOADED_DOC_ROW_CAP) break;
     const id = String((row as { id?: string }).id ?? '');
     if (!id || usedIds.has(id)) continue;
     if (isBlockedSender((row as { author?: string }).author as string)) continue;
-    const decrypted = decryptWithStatus(String((row as { content?: string }).content ?? ''));
-    if (decrypted.usedFallback) continue;
-    const parsed = parseSignalSnippetWithFullBody(
-      decrypted.plaintext,
-      row as Record<string, unknown>,
-      WRITE_DOCUMENT_UPLOADED_DOC_MAX_CHARS,
-    );
+    const parsed = metadataSnippetsById.get(id);
     if (!parsed) continue;
     const key = signalSnippetDedupeKey(parsed);
     if (usedKeys.has(key)) continue;

@@ -5,6 +5,7 @@
 import { createHash } from 'crypto';
 import { createServerClient } from '@/lib/db/client';
 import { encrypt } from '@/lib/encryption';
+import { truncateSignalContent } from '@/lib/utils/signal-egress';
 
 let directiveHistorySignalSchemaUnsupported = false;
 
@@ -39,7 +40,7 @@ export async function persistDirectiveHistorySignal(params: {
     source: 'foldera_directive',
     source_id: params.actionId,
     type: 'approval',
-    content: encrypt(content),
+    content: encrypt(truncateSignalContent(content)),
     content_hash: contentHash,
     author: 'foldera-system',
     occurred_at: new Date().toISOString(),

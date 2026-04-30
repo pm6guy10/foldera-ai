@@ -22,15 +22,48 @@ vi.mock('@/lib/utils/rate-limit', () => ({
 
 describe('POST /api/google/sync-now', () => {
   beforeEach(() => {
+    vi.unstubAllEnvs();
     vi.clearAllMocks();
     getServerSession.mockResolvedValue({ user: { id: 'user-1' } });
     rateLimit.mockResolvedValue({ success: true, remaining: 2, resetAt: new Date(Date.now() + 60_000) });
   });
 
+  it('blocks manual sync during egress emergency mode without operator secret', async () => {
+    vi.stubEnv('FOLDERA_EGRESS_EMERGENCY_MODE', 'true');
+    vi.stubEnv('CRON_SECRET', 'operator-secret');
+    const { POST } = await import('../route');
+
+    const response = await POST(new Request('http://localhost/api/google/sync-now', { method: 'POST' }));
+
+    expect(response.status).toBe(423);
+    expect(getServerSession).not.toHaveBeenCalled();
+    expect(syncGoogle).not.toHaveBeenCalled();
+  });
+
+  it('allows operator-secret sync attempts during egress emergency mode', async () => {
+    vi.stubEnv('FOLDERA_EGRESS_EMERGENCY_MODE', 'true');
+    vi.stubEnv('CRON_SECRET', 'operator-secret');
+    syncGoogle.mockResolvedValue({
+      gmail_signals: 1,
+      calendar_signals: 0,
+      drive_signals: 0,
+      is_first_sync: false,
+    });
+    const { POST } = await import('../route');
+
+    const response = await POST(new Request('http://localhost/api/google/sync-now', {
+      method: 'POST',
+      headers: { 'x-cron-secret': 'operator-secret' },
+    }));
+
+    expect(response.status).toBe(200);
+    expect(syncGoogle).toHaveBeenCalled();
+  });
+
   it('returns unauthorized without a session user', async () => {
     getServerSession.mockResolvedValue(null);
     const { POST } = await import('../route');
-    const response = await POST();
+    const response = await POST(new Request('http://localhost/api/google/sync-now', { method: 'POST' }));
     expect(response.status).toBe(401);
   });
 
@@ -42,7 +75,7 @@ describe('POST /api/google/sync-now', () => {
       is_first_sync: false,
     });
     const { POST } = await import('../route');
-    const response = await POST();
+    const response = await POST(new Request('http://localhost/api/google/sync-now', { method: 'POST' }));
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -57,7 +90,7 @@ describe('POST /api/google/sync-now', () => {
       is_first_sync: false,
     });
     const { POST } = await import('../route');
-    const response = await POST();
+    const response = await POST(new Request('http://localhost/api/google/sync-now', { method: 'POST' }));
 
     expect(response.status).toBe(200);
     expect(syncGoogle).toHaveBeenCalledWith(
@@ -77,7 +110,7 @@ describe('POST /api/google/sync-now', () => {
       error: 'no_token',
     });
     const { POST } = await import('../route');
-    const response = await POST();
+    const response = await POST(new Request('http://localhost/api/google/sync-now', { method: 'POST' }));
 
     expect(response.status).toBe(400);
   });

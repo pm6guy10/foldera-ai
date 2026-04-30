@@ -22,27 +22,6 @@ function previewText(text: unknown): string {
   return t.length <= PREVIEW_LEN ? t : `${t.slice(0, PREVIEW_LEN)}…`;
 }
 
-function asObject(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
-}
-
-function extractArtifact(row: Record<string, unknown>): Record<string, unknown> | null {
-  const executionResult = asObject(row.execution_result);
-  const executionArtifact = asObject(executionResult?.artifact);
-  const artifact = asObject(row.artifact);
-  const merged = { ...(executionArtifact ?? {}), ...(artifact ?? {}) };
-  return Object.keys(merged).length > 0 ? merged : null;
-}
-
-function extractArtifactPreview(artifact: Record<string, unknown> | null): string {
-  if (!artifact) return '';
-  const preview = ['body', 'text', 'content', 'markdown', 'summary', 'recommendation']
-    .map((key) => artifact[key])
-    .find((value) => typeof value === 'string' && value.trim().length > 0);
-  return previewText(preview);
-}
-
 export async function GET(request: Request) {
   const auth = await resolveUser(request);
   if (auth instanceof NextResponse) return auth;
@@ -58,7 +37,7 @@ export async function GET(request: Request) {
     const supabase = createServerClient();
     const { data: rows, error } = await supabase
       .from('tkg_actions')
-      .select('id, status, action_type, confidence, generated_at, directive_text, artifact, execution_result')
+      .select('id, status, action_type, confidence, generated_at, directive_text')
       .eq('user_id', userId)
       .order('generated_at', { ascending: false })
       .limit(limit);
@@ -68,8 +47,6 @@ export async function GET(request: Request) {
     }
 
     const items = (rows ?? []).map((r) => {
-      const artifact = extractArtifact(r as Record<string, unknown>);
-      const artifactPreview = extractArtifactPreview(artifact);
       return {
       id: r.id,
       status: r.status,
@@ -77,8 +54,8 @@ export async function GET(request: Request) {
       confidence: r.confidence,
       generated_at: r.generated_at,
       directive_preview: previewText(r.directive_text),
-      has_artifact: Boolean(artifact),
-      artifact_preview: artifactPreview,
+      has_artifact: false,
+      artifact_preview: '',
       };
     });
 

@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 import { createServerClient } from '@/lib/db/client';
 import { encrypt } from '@/lib/encryption';
+import { truncateSignalContent } from '@/lib/utils/signal-egress';
 import { markMlSnapshotEmailEngagement } from '@/lib/ml/directive-ml-snapshot';
 import {
   bumpAttentionSalienceForEntityIds,
@@ -123,7 +124,7 @@ export async function handleResendWebhookPost(request: NextRequest): Promise<Nex
           source: 'resend_webhook',
           source_id: contentHash,
           type: 'daily_brief_opened',
-          content: encrypt(content),
+      content: encrypt(truncateSignalContent(content)),
           content_hash: contentHash,
           author: 'foldera-system',
           occurred_at: openedAt,
@@ -177,7 +178,7 @@ export async function handleResendWebhookPost(request: NextRequest): Promise<Nex
         source: 'resend_webhook',
         source_id: contentHash,
         type: 'daily_brief_clicked',
-        content: encrypt(content),
+      content: encrypt(truncateSignalContent(content)),
         content_hash: contentHash,
         author: 'foldera-system',
         occurred_at: at,

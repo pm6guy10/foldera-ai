@@ -4,6 +4,7 @@
  */
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
+import { requireProdProofAllowed } from './prod-proof-guard';
 dotenv.config({ path: '.env.local' });
 
 const PROD_URL = 'https://foldera.ai';
@@ -12,6 +13,8 @@ const OWNER = process.env.INGEST_USER_ID!;
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 async function main() {
+  requireProdProofAllowed('debug-trigger-run');
+
   console.log('Triggering production pipeline run via nightly-ops...');
   
   // Trigger nightly-ops (which runs the full scoring pipeline)

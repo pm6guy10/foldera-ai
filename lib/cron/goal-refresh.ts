@@ -1,12 +1,25 @@
 import { createServerClient } from '@/lib/db/client';
 import Anthropic from '@anthropic-ai/sdk';
-import { decryptWithStatus } from '@/lib/encryption';
 import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { isOverDailyLimit, trackApiCall } from '@/lib/utils/api-tracker';
+import { SIGNAL_CONTEXT_LIMIT, SIGNAL_CONTEXT_SELECT } from '@/lib/utils/signal-egress';
+import { buildSignalMetadataSummaryRows } from '@/lib/briefing/signal-metadata-summary';
 
 /** CE-5: at least two goal keywords appear in the same decrypted signal snippet (exported for tests). */
 export function signalReinforcesGoalKeywords(keywords: string[], plaintextsLower: string[]): boolean {
   return plaintextsLower.some((text) => keywords.filter((k) => text.includes(k)).length >= 2);
+}
+
+function signalRowsToMetadataRows(rows: ReadonlyArray<Record<string, unknown>>) {
+  return buildSignalMetadataSummaryRows(rows.map((row) => ({
+    ...row,
+    id: String(row.id),
+    source: String(row.source ?? ''),
+    type: (row.type as string | null) ?? null,
+    occurred_at: String(row.occurred_at ?? ''),
+    author: (row.author as string | null) ?? null,
+    source_id: (row.source_id as string | null) ?? null,
+  })));
 }
 
 export async function refreshGoalContext(): Promise<{ ok: boolean; updated: number; skipped: number; decayed: number }> {
@@ -44,7 +57,7 @@ export async function refreshGoalContext(): Promise<{ ok: boolean; updated: numb
     const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
     const { data: signals } = await supabase
       .from('tkg_signals')
-      .select('content, source, occurred_at')
+      .select(SIGNAL_CONTEXT_SELECT)
       .eq('user_id', userId)
       .eq('processed', true)
       .gte('occurred_at', fourteenDaysAgo)
@@ -52,6 +65,7 @@ export async function refreshGoalContext(): Promise<{ ok: boolean; updated: numb
       .limit(100);
 
     if (!signals || signals.length < 5) { skipped++; continue; }
+    const signalMetadata = signalRowsToMetadataRows(signals as Array<Record<string, unknown>>);
 
     if (!isPaidLlmAllowed()) {
       skipped++;
@@ -64,7 +78,7 @@ export async function refreshGoalContext(): Promise<{ ok: boolean; updated: numb
     for (const goal of goals) {
       // Find signals relevant to this goal (keyword overlap)
       const goalWords = (goal.goal_text as string).toLowerCase().split(/\s+/).filter((w: string) => w.length >= 4);
-      const relevantSignals = signals.filter((s: { content: unknown }) => {
+      const relevantSignals = signalMetadata.filter((s) => {
         const content = ((s.content as string) ?? '').toLowerCase();
         return goalWords.some((w: string) => content.includes(w));
       }).slice(0, 10);
@@ -146,19 +160,16 @@ Rewrite the goal text to include specific entity names (people, organizations, j
 
     const { data: recentSignals } = await supabase
       .from('tkg_signals')
-      .select('content')
+      .select(SIGNAL_CONTEXT_SELECT)
       .eq('user_id', userId)
       .eq('processed', true)
       .gte('occurred_at', twentyOneDaysAgoIso)
-      .limit(200);
+      .order('occurred_at', { ascending: false })
+      .limit(SIGNAL_CONTEXT_LIMIT);
 
-    const decryptedRecent: string[] = [];
-    for (const s of recentSignals ?? []) {
-      const dec = decryptWithStatus((s.content as string) ?? '');
-      if (!dec.usedFallback && dec.plaintext.length > 10) {
-        decryptedRecent.push(dec.plaintext.toLowerCase());
-      }
-    }
+    const decryptedRecent = signalRowsToMetadataRows((recentSignals ?? []) as Array<Record<string, unknown>>)
+      .map((row) => row.content.toLowerCase())
+      .filter((text) => text.length > 10);
 
     for (const goal of goalsToCheck) {
       if (goal.source === 'onboarding_stated' && goal.priority <= 3) continue;
@@ -239,23 +250,18 @@ export async function abandonRejectedGoals(): Promise<{ ok: boolean; abandoned: 
   for (const [userId, goals] of byUser) {
     const { data: signals } = await supabase
       .from('tkg_signals')
-      .select('content, occurred_at')
+      .select(SIGNAL_CONTEXT_SELECT)
       .eq('user_id', userId)
       .eq('processed', true)
       .gte('occurred_at', ninetyDaysAgo)
       .order('occurred_at', { ascending: false })
-      .limit(200);
+      .limit(SIGNAL_CONTEXT_LIMIT);
 
     if (!signals || signals.length === 0) continue;
 
-    // Decrypt signals once per user
-    const decrypted: string[] = [];
-    for (const s of signals) {
-      const dec = decryptWithStatus((s.content as string) ?? '');
-      if (!dec.usedFallback && dec.plaintext.length > 20) {
-        decrypted.push(dec.plaintext);
-      }
-    }
+    const decrypted = signalRowsToMetadataRows((signals ?? []) as Array<Record<string, unknown>>)
+      .map((row) => row.content)
+      .filter((text) => text.length > 20);
 
     for (const goal of goals) {
       // Extract meaningful keywords from goal text (4+ chars, skip common words)
@@ -332,7 +338,7 @@ export async function inferGoalsFromBehavior(): Promise<{
     .select('user_id')
     .eq('processed', true)
     .gte('occurred_at', fourteenDaysAgo)
-    .limit(500);
+    .limit(SIGNAL_CONTEXT_LIMIT);
 
   const userIds = [...new Set((userRows ?? []).map((r: { user_id: string }) => r.user_id))];
 
@@ -360,25 +366,21 @@ export async function inferGoalsFromBehavior(): Promise<{
     // Load signals (14d)
     const { data: signalRows } = await supabase
       .from('tkg_signals')
-      .select('content, source, occurred_at')
+      .select(SIGNAL_CONTEXT_SELECT)
       .eq('user_id', userId)
       .eq('processed', true)
       .gte('occurred_at', fourteenDaysAgo)
       .order('occurred_at', { ascending: false })
-      .limit(200);
+      .limit(SIGNAL_CONTEXT_LIMIT);
 
     if (!signalRows || signalRows.length < 10) continue;
 
-    // Decrypt and collect entity/theme tokens from signals
+    // Collect entity/theme tokens from signal metadata/extracted fields.
     const themeBuckets: Record<string, { count: number; recency: number; samples: string[] }> = {};
 
-    for (const s of signalRows) {
-      const decrypted = decryptWithStatus((s.content as string) ?? '');
-      if (decrypted.usedFallback) continue;
-      const text = decrypted.plaintext;
+    for (const s of signalRowsToMetadataRows((signalRows ?? []) as Array<Record<string, unknown>>)) {
+      const text = s.content;
       if (!text || text.length < 30) continue;
-      // Skip self-referential
-      if (text.startsWith('[Foldera Directive') || text.startsWith('[Foldera \u00b7 20')) continue;
 
       // Extract proper noun phrases (2+ capitalized words) as theme candidates
       const properNouns = text.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3}\b/g) ?? [];
@@ -387,7 +389,7 @@ export async function inferGoalsFromBehavior(): Promise<{
 
       const allThemes = [...properNouns, ...themePatterns.map((t) => t.toLowerCase())];
 
-      const signalAge = (Date.now() - new Date((s.occurred_at as string) ?? '').getTime()) / (1000 * 60 * 60 * 24);
+      const signalAge = (Date.now() - new Date(s.occurred_at ?? '').getTime()) / (1000 * 60 * 60 * 24);
 
       for (const theme of allThemes) {
         const key = theme.toLowerCase().trim();

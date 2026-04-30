@@ -1,10 +1,18 @@
 export interface SignalMetadataRow {
   id: string;
+  user_id?: string | null;
   source: string;
   type: string | null;
   occurred_at: string;
   author: string | null;
   source_id?: string | null;
+  recipients?: unknown;
+  extracted_entities?: unknown;
+  extracted_commitments?: unknown;
+  extracted_dates?: unknown;
+  extracted_amounts?: unknown;
+  outcome_label?: string | null;
+  processed?: boolean | null;
 }
 
 export interface SignalMetadataSummaryRow {
@@ -51,6 +59,35 @@ function metadataLabelForRow(row: SignalMetadataRow): string {
   }
 }
 
+function compactValue(value: unknown, maxItems = 8): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (typeof item === 'string') return item.trim();
+        if (item && typeof item === 'object') {
+          const obj = item as Record<string, unknown>;
+          return String(obj.name ?? obj.text ?? obj.description ?? obj.value ?? JSON.stringify(obj)).trim();
+        }
+        return String(item ?? '').trim();
+      })
+      .filter(Boolean)
+      .slice(0, maxItems);
+  }
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      return compactValue(JSON.parse(value), maxItems);
+    } catch {
+      return [value.trim()].slice(0, maxItems);
+    }
+  }
+  if (value && typeof value === 'object') {
+    return Object.values(value as Record<string, unknown>)
+      .flatMap((item) => compactValue(item, maxItems))
+      .slice(0, maxItems);
+  }
+  return [];
+}
+
 export function buildSignalMetadataSummary(
   row: SignalMetadataRow,
   threadSize: number,
@@ -72,6 +109,25 @@ export function buildSignalMetadataSummary(
 
   lines.push(`Source: ${row.source}`);
   lines.push(`Signal type: ${row.type ?? 'unknown'}`);
+
+  const recipients = compactValue(row.recipients, 5);
+  if (recipients.length > 0) lines.push(`Recipients: ${recipients.join(', ')}`);
+
+  const entities = compactValue(row.extracted_entities);
+  if (entities.length > 0) lines.push(`Extracted entities: ${entities.join(', ')}`);
+
+  const commitments = compactValue(row.extracted_commitments, 6);
+  if (commitments.length > 0) lines.push(`Extracted commitments: ${commitments.join('; ')}`);
+
+  const dates = compactValue(row.extracted_dates, 6);
+  if (dates.length > 0) lines.push(`Extracted dates: ${dates.join(', ')}`);
+
+  const amounts = compactValue(row.extracted_amounts, 6);
+  if (amounts.length > 0) lines.push(`Extracted amounts: ${amounts.join(', ')}`);
+
+  if (row.outcome_label) {
+    lines.push(`Outcome: ${row.outcome_label}`);
+  }
 
   if (
     row.type === 'email_received' ||

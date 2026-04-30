@@ -7,6 +7,8 @@ import { resolveUser } from '@/lib/auth/resolve-user';
 import { OWNER_USER_ID } from '@/lib/auth/constants';
 import { createServerClient } from '@/lib/db/client';
 import { encrypt } from '@/lib/encryption';
+import { blockDevRouteDuringEgressEmergency } from '@/lib/utils/egress-emergency';
+import { truncateSignalContent } from '@/lib/utils/signal-egress';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -24,6 +26,9 @@ interface RawSignal {
 const CHUNK_SIZE = 50;
 
 export async function POST(request: Request) {
+  const emergencyBlock = blockDevRouteDuringEgressEmergency(request);
+  if (emergencyBlock) return emergencyBlock;
+
   const auth = await resolveUser(request);
   if (auth instanceof NextResponse) return auth;
   if (auth.userId !== OWNER_USER_ID) {
@@ -53,7 +58,7 @@ export async function POST(request: Request) {
       source: s.source,
       source_id: s.source_id,
       type: s.type,
-      content: encrypt(s.content),
+      content: encrypt(truncateSignalContent(s.content)),
       content_hash: s.content_hash,
       author: s.author,
       occurred_at: s.occurred_at,

@@ -24,6 +24,7 @@ import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import { isOverDailyLimit } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
+import { truncateSignalContent } from '@/lib/utils/signal-egress';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const BATCH_SIZE = 20;
@@ -1358,7 +1359,7 @@ async function recoverAndReencryptMicrosoftSignal(
 
   const updateResult = await supabase
     .from('tkg_signals')
-    .update({ content: encrypt(recoveredContent) })
+        .update({ content: encrypt(truncateSignalContent(recoveredContent)) })
     .eq('id', signal.id)
     .eq('processed', false);
 

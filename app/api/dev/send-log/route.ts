@@ -28,10 +28,14 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth/auth-options';
 import { createServerClient } from '@/lib/db/client';
+import { blockDevRouteDuringEgressEmergency } from '@/lib/utils/egress-emergency';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const emergencyBlock = blockDevRouteDuringEgressEmergency(request);
+  if (emergencyBlock) return emergencyBlock;
+
   if (process.env.ALLOW_DEV_ROUTES !== 'true') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }

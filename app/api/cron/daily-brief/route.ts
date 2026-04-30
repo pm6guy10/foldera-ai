@@ -94,7 +94,8 @@ async function handler(request: NextRequest) {
       .from('tkg_actions')
       .select('user_id, execution_result')
       .gte('generated_at', todayStartIso)
-      .in('user_id', eligibleUserIds);
+      .in('user_id', eligibleUserIds)
+      .limit(200);
 
     const usersAlreadySent = new Set(
       (todayActions ?? [])

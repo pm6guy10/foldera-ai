@@ -5,6 +5,7 @@
 import { createHash } from 'crypto';
 import { createServerClient } from '@/lib/db/client';
 import { encrypt } from '@/lib/encryption';
+import { truncateSignalContent } from '@/lib/utils/signal-egress';
 
 function hash(s: string): string {
   return createHash('sha256').update(s).digest('hex');
@@ -68,7 +69,7 @@ export async function recordUnopenedDailyBriefSignals(): Promise<{ checked: numb
       source: 'resend_webhook',
       source_id: `unopened:${actionId}`,
       type: 'daily_brief_unopened',
-      content: encrypt(content),
+      content: encrypt(truncateSignalContent(content)),
       content_hash: contentHash,
       author: 'foldera-system',
       occurred_at: new Date().toISOString(),

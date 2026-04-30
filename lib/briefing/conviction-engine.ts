@@ -21,9 +21,10 @@
  */
 
 import { createServerClient } from '@/lib/db/client';
-import { decryptWithStatus } from '@/lib/encryption';
 import { daysMs } from '@/lib/config/constants';
 import { estimateMonthlyBurnFromSignalAmounts } from '@/lib/briefing/monthly-burn-inference';
+import { buildSignalMetadataSummaryRows } from './signal-metadata-summary';
+import { SIGNAL_CONTEXT_SELECT } from '@/lib/utils/signal-egress';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -83,6 +84,19 @@ export interface ConvictionDecision {
 const BURN_DOLLAR_PATTERN = /\$\s?([\d,]+(?:\.\d{2})?)/g;
 const BURN_KEYWORDS = /rent|mortgage|utilities|insurance|groceries|monthly|bill|payment|subscription/i;
 
+function signalRowToMetadataInput(row: Record<string, unknown>) {
+  return {
+    ...row,
+    id: String(row.id),
+    user_id: (row.user_id as string | null) ?? null,
+    source: String(row.source ?? ''),
+    type: (row.type as string | null) ?? null,
+    occurred_at: String(row.occurred_at ?? ''),
+    author: (row.author as string | null) ?? null,
+    source_id: (row.source_id as string | null) ?? null,
+  };
+}
+
 /** Re-export for tests and callers that imported from conviction-engine. */
 export { estimateMonthlyBurnFromSignalAmounts } from '@/lib/briefing/monthly-burn-inference';
 
@@ -98,25 +112,24 @@ export async function inferMonthlyBurn(userId: string): Promise<number | null> {
   try {
     const { data: signals } = await supabase
       .from('tkg_signals')
-      .select('content, occurred_at')
+      .select(SIGNAL_CONTEXT_SELECT)
       .eq('user_id', userId)
       .eq('processed', true)
       .gte('occurred_at', sixtyDaysAgo)
+      .order('occurred_at', { ascending: false })
       .limit(100);
 
     if (!signals) return null;
 
     const entries: Array<{ amounts: number[]; dateKey: string }> = [];
 
-    for (const row of signals) {
-      const dec = decryptWithStatus(row.content as string ?? '');
-      if (dec.usedFallback) continue;
-      if (!BURN_KEYWORDS.test(dec.plaintext)) continue;
+    for (const row of buildSignalMetadataSummaryRows((signals ?? []).map(signalRowToMetadataInput))) {
+      if (!BURN_KEYWORDS.test(row.content) && !/Extracted amounts:/i.test(row.content)) continue;
 
       const amounts: number[] = [];
       let match;
       BURN_DOLLAR_PATTERN.lastIndex = 0;
-      while ((match = BURN_DOLLAR_PATTERN.exec(dec.plaintext)) !== null) {
+      while ((match = BURN_DOLLAR_PATTERN.exec(row.content)) !== null) {
         const amount = parseFloat(match[1].replace(',', ''));
         if (amount >= 50 && amount <= 5000) amounts.push(amount);
       }
@@ -184,24 +197,23 @@ export async function inferPrimaryOutcomeProbability(
   try {
     const { data: signals } = await supabase
       .from('tkg_signals')
-      .select('content, occurred_at, type')
+      .select(SIGNAL_CONTEXT_SELECT)
       .eq('user_id', userId)
       .eq('processed', true)
       .gte('occurred_at', thirtyDaysAgo)
+      .order('occurred_at', { ascending: false })
       .limit(50);
 
     if (!signals) return { probability: rawProbability, confidence, signals: positiveSignals };
 
     const goalKeywords = goalText.toLowerCase().split(/\s+/).filter((w) => w.length > 4).slice(0, 5);
 
-    for (const row of signals) {
-      const dec = decryptWithStatus(row.content as string ?? '');
-      if (dec.usedFallback) continue;
-      const text = dec.plaintext.toLowerCase();
+    for (const row of buildSignalMetadataSummaryRows((signals ?? []).map(signalRowToMetadataInput))) {
+      const text = row.content.toLowerCase();
       const isRelevant = goalKeywords.some((kw) => text.includes(kw));
       if (!isRelevant) continue;
 
-      const tier = hiringFunnelTierFromPlaintext(dec.plaintext);
+      const tier = hiringFunnelTierFromPlaintext(row.content);
       if (tier && tier.probability > rawProbability) {
         rawProbability = tier.probability;
         confidence = 0.62;
@@ -251,18 +263,16 @@ async function fetchRecentSignalPlaintexts(userId: string, days: number, limit: 
   const since = new Date(Date.now() - daysMs(days)).toISOString();
   const { data: rows } = await supabase
     .from('tkg_signals')
-    .select('content')
+    .select(SIGNAL_CONTEXT_SELECT)
     .eq('user_id', userId)
     .eq('processed', true)
     .gte('occurred_at', since)
+    .order('occurred_at', { ascending: false })
     .limit(limit);
 
-  const out: string[] = [];
-  for (const row of rows ?? []) {
-    const dec = decryptWithStatus((row.content as string) ?? '');
-    if (!dec.usedFallback && dec.plaintext.length > 15) out.push(dec.plaintext);
-  }
-  return out;
+  return buildSignalMetadataSummaryRows(((rows ?? []) as Array<Record<string, unknown>>).map(signalRowToMetadataInput))
+    .map((row) => row.content)
+    .filter((content) => content.length > 15);
 }
 
 function goalPhraseTokens(goalTexts: string[]): string[] {
@@ -313,10 +323,11 @@ export async function inferHardDeadline(
     const [{ data: signals }, { data: goalRows }] = await Promise.all([
       supabase
         .from('tkg_signals')
-        .select('content, occurred_at')
+        .select(SIGNAL_CONTEXT_SELECT)
         .eq('user_id', userId)
         .eq('processed', true)
         .gte('occurred_at', thirtyDaysAgo)
+        .order('occurred_at', { ascending: false })
         .limit(100),
       supabase.from('tkg_goals').select('goal_text').eq('user_id', userId).eq('status', 'active').limit(12),
     ]);
@@ -349,10 +360,8 @@ export async function inferHardDeadline(
     const datePattern =
       /\b((?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?:st|nd|rd|th)?(?:,?\s*\d{4})?|\d{1,2}\/\d{1,2}(?:\/\d{2,4})?|\d{4}-\d{2}-\d{2})\b/gi;
 
-    for (const row of signals) {
-      const dec = decryptWithStatus(row.content as string ?? '');
-      if (dec.usedFallback) continue;
-      const plain = dec.plaintext;
+    for (const row of buildSignalMetadataSummaryRows((signals ?? []).map(signalRowToMetadataInput))) {
+      const plain = row.content;
       const lower = plain.toLowerCase();
 
       for (const { pattern, label } of hardDeadlinePatterns) {

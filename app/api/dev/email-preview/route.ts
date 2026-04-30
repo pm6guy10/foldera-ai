@@ -21,6 +21,7 @@ import { resolveUser, isValidUuid } from '@/lib/auth/resolve-user';
 import { OWNER_USER_ID } from '@/lib/auth/constants';
 import { createServerClient } from '@/lib/db/client';
 import type { ConvictionArtifact } from '@/lib/briefing/types';
+import { blockDevRouteDuringEgressEmergency } from '@/lib/utils/egress-emergency';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,6 +44,9 @@ function mergeActionArtifact(action: Record<string, unknown>): ConvictionArtifac
 }
 
 export async function GET(request: Request) {
+  const emergencyBlock = blockDevRouteDuringEgressEmergency(request);
+  if (emergencyBlock) return emergencyBlock;
+
   if (process.env.ALLOW_DEV_ROUTES !== 'true') {
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }

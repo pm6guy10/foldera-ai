@@ -16,6 +16,7 @@
     "audit:ux": "npx tsx scripts/ux-audit.ts",
     "audit:all": "npx playwright test --config=playwright.audit.config.ts && npx tsx scripts/ux-audit.ts",
     "audit:supabase:sync-fix": "node scripts/audit-supabase-sync-fix.mjs",
+    "cost:egress-audit": "npx tsx scripts/cost-egress-audit.ts",
     "health": "npx tsx scripts/health.ts",
     "preflight": "npx tsx scripts/preflight.ts",
     "controller:autopilot": "npx tsx scripts/controller-autopilot.ts",
