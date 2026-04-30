@@ -301,6 +301,33 @@ function findHomeworkHandoffReason(value: string): string | null {
   return null;
 }
 
+function hasFinishedHomeworkHandoffContent(value: string): boolean {
+  const text = String(value ?? '');
+  if (text.trim().length === 0) return false;
+
+  const hasFirstPersonStatement =
+    /\bI\s+(?:am|will|would|can|have|bring|led|owned|handled|anchor|work|stay|use|need)\b/i.test(text) ||
+    /\bI['’]m\b/i.test(text);
+  const hasSpecificDate =
+    /\b\d{4}-\d{2}-\d{2}\b/.test(text) ||
+    /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:,\s*\d{4})?\b/i.test(text) ||
+    /\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/.test(text);
+  const hasSpecificAmount = /\$\s*\d[\d,]*(?:\.\d{2})?/.test(text);
+  const hasSpecificName = /\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/.test(text);
+  const hasSpecificGroundedDetail = hasSpecificDate || hasSpecificAmount || hasSpecificName;
+  const hasFinishedWorkShape =
+    /\b(?:Decision required|Ask:|Consequence:|Owner:|answer spine|talking points?|copy-paste|ready-to-(?:send|say)|use one grounded)\b/i.test(text);
+  const hasReadyToSendText =
+    /\b(?:Say this|Send this|Draft email|Subject:)\b/i.test(text) ||
+    /\b(?:Hi|Hello|Dear)\s+[A-Z][A-Za-z'-]{1,40},/.test(text);
+
+  return (
+    hasFirstPersonStatement ||
+    hasReadyToSendText ||
+    (hasSpecificGroundedDetail && hasFinishedWorkShape)
+  );
+}
+
 /**
  * Generic interview "prep pack" / homework shapes that are not finished work.
  * interview-class only — triggers validation failure so the pipeline retries or repairs.
@@ -4846,7 +4873,7 @@ function isUseful(
 
   if (!opts?.skipHomeworkHandoff) {
     const homeworkReason = findHomeworkHandoffReason(`${output.action}\n${output.artifact}`);
-    if (homeworkReason) {
+    if (homeworkReason && !hasFinishedHomeworkHandoffContent(output.artifact)) {
       return { ok: false, reason: `homework_handoff_${homeworkReason}` };
     }
   }
@@ -7356,7 +7383,7 @@ function validateGeneratedArtifact(
         JSON.stringify(payload.artifact ?? {}),
       ].join('\n'),
     );
-    if (homeworkReason) {
+    if (homeworkReason && !hasFinishedHomeworkHandoffContent(JSON.stringify(payload.artifact ?? {}))) {
       issues.push(
         `homework_handoff:${homeworkReason} — artifact hands unfinished prep or research back to the user`,
       );
