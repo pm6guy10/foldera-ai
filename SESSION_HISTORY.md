@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-04-30 — Signal extraction diagnostics instrumentation
+- MODE: Signal extraction instrumentation only.
+- Files changed: `lib/signals/signal-processor.ts`, `lib/signals/__tests__/signal-processor.test.ts`, `SESSION_HISTORY.md`.
+- What changed: Added a content-safe `signal_processor_extraction_diagnostics` structured log for every `processUnextractedSignals(...)` return path. The event reports fetched/LLM-entered/processed signal counts, model-returned entity/commitment counts, persisted non-empty entity/commitment counts, empty signal count, and stable `empty_reason_counts` such as `sensitive_redacted`, `parse_failure`, `junk_email_skipped`, and `model_returned_empty_entities_and_commitments`. Extraction logic, prompts, filters, DB writes, paid gates, and batching behavior were not changed.
+- Verification: `npm run health` passed (`RESULT: 0 FAILING`, warnings only); red test first failed because the diagnostics event was missing; `npx vitest run lib/signals/__tests__/signal-processor.test.ts` passed (16 tests); `npx vitest run app/api/cron/nightly-ops/__tests__/route.test.ts` passed (5 tests); `npm run build` passed.
+- Unresolved issues: `npx vitest run lib/briefing/__tests__/pipeline-receipt.test.ts` failed outside this seam because the pre-existing dirty `lib/cron/daily-brief-send.ts` change makes `runDailySend({ userIds })` suppress a no-send row instead of returning the test's expected `email_sent`. No paid/model-backed extraction run was forced; production validation remains the next normal extraction run plus log check for `signal_processor_extraction_diagnostics`.
+
 ## 2026-04-30 — Artifact LLM JSON parse retries before candidate failure
 - MODE: Generator JSON parse retry seam only.
 - Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `SESSION_HISTORY.md`.

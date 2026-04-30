@@ -321,6 +321,13 @@ function createSupabaseMock({
   };
 }
 
+function latestExtractionDiagnosticsEvent() {
+  const calls = mockLogStructuredEvent.mock.calls
+    .map((call) => call[0])
+    .filter((event) => event?.event === 'signal_processor_extraction_diagnostics');
+  return calls.at(-1);
+}
+
 describe('processUnextractedSignals entity freshness', () => {
   const USER_ID = '22222222-2222-2222-2222-222222222222';
 
@@ -576,6 +583,107 @@ describe('processUnextractedSignals entity freshness', () => {
   });
 });
 
+describe('processUnextractedSignals diagnostics', () => {
+  const USER_ID = '44444444-4444-4444-8444-444444444444';
+
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+    mockIsOverDailyLimit.mockResolvedValue(false);
+    mockTrackApiCall.mockResolvedValue(undefined);
+    mockRecoverMicrosoftSignalContent.mockResolvedValue(null);
+    process.env.ANTHROPIC_API_KEY = 'test-key';
+  });
+
+  it('logs fetched, model-returned, persisted, and empty extraction counts', async () => {
+    const entities: EntityRow[] = [
+      { id: 'self-1', user_id: USER_ID, name: 'self', display_name: 'You', patterns: {} },
+    ];
+    const signals: SignalRow[] = [
+      {
+        id: 'signal-rich',
+        user_id: USER_ID,
+        source: 'gmail',
+        source_id: 'gmail-rich',
+        type: 'email_sent',
+        content: 'To: Alex Morgan <alex@example.com>\nBody: I will send the signed permit appeal draft by Friday.',
+        author: 'self',
+        occurred_at: '2026-04-01T12:00:00.000Z',
+        processed: false,
+      },
+      {
+        id: 'signal-empty',
+        user_id: USER_ID,
+        source: 'gmail',
+        source_id: 'gmail-empty',
+        type: 'email_received',
+        content: 'From: Taylor Lee <taylor@example.com>\nBody: Thanks for the context. I will read this later.',
+        author: 'Taylor Lee <taylor@example.com>',
+        occurred_at: '2026-04-01T13:00:00.000Z',
+        processed: false,
+      },
+    ];
+    const supabase = createSupabaseMock({ entities, signals });
+    vi.doMock('@/lib/db/client', () => ({
+      createServerClient: () => supabase,
+    }));
+
+    mockMessagesCreate.mockResolvedValue({
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify([
+            {
+              signal_id: 'signal-rich',
+              persons: [{ name: 'Alex Morgan', email: 'alex@example.com' }],
+              commitments: [
+                {
+                  description: 'Send the signed permit appeal draft by Friday',
+                  who: 'self',
+                  to_whom: 'Alex Morgan',
+                  category: 'project',
+                  due: '2026-04-03T00:00:00.000Z',
+                },
+              ],
+              topics: [],
+            },
+            {
+              signal_id: 'signal-empty',
+              persons: [],
+              commitments: [],
+              topics: [],
+            },
+          ]),
+        },
+      ],
+      usage: { input_tokens: 10, output_tokens: 20 },
+    });
+
+    const { processUnextractedSignals } = await import('@/lib/signals/signal-processor');
+    await processUnextractedSignals(USER_ID, { maxSignals: 2 });
+
+    expect(latestExtractionDiagnosticsEvent()).toEqual(expect.objectContaining({
+      event: 'signal_processor_extraction_diagnostics',
+      generationStatus: 'signal_extraction_diagnostics',
+      details: expect.objectContaining({
+        scope: 'signal-processor',
+        signals_fetched_for_extraction: 2,
+        signals_entered_llm_extraction: 2,
+        signals_processed: 2,
+        signals_with_model_persons: 1,
+        signals_with_model_commitments: 1,
+        signals_with_persisted_entities: 1,
+        signals_with_persisted_commitments: 1,
+        signals_with_persisted_entities_or_commitments: 1,
+        signals_empty_entities_and_commitments: 1,
+        empty_reason_counts: {
+          model_returned_empty_entities_and_commitments: 1,
+        },
+      }),
+    }));
+  });
+});
+
 describe('processUnextractedSignals commitment due_at', () => {
   const USER_ID = '22222222-2222-2222-2222-222222222222';
 
@@ -805,6 +913,18 @@ describe('processUnextractedSignals sensitive data gate', () => {
       sensitive_flag: true,
       sensitive_types: ['ssn', 'routing_number', 'tax_document'],
     }]);
+    expect(latestExtractionDiagnosticsEvent()).toEqual(expect.objectContaining({
+      event: 'signal_processor_extraction_diagnostics',
+      details: expect.objectContaining({
+        signals_fetched_for_extraction: 1,
+        signals_entered_llm_extraction: 0,
+        signals_processed: 1,
+        signals_empty_entities_and_commitments: 1,
+        empty_reason_counts: {
+          sensitive_redacted: 1,
+        },
+      }),
+    }));
   });
 
   it('ignores attachment-only sensitive content and keeps non-sensitive extraction path', async () => {
@@ -973,6 +1093,18 @@ describe('processUnextractedSignals parse failure quarantine', () => {
     expect(signals.every((s) => s.processed)).toBe(true);
     expect(signals[0].extraction_parse_error).toBeTruthy();
     expect(signals[1].extraction_parse_error).toBeTruthy();
+    expect(latestExtractionDiagnosticsEvent()).toEqual(expect.objectContaining({
+      event: 'signal_processor_extraction_diagnostics',
+      details: expect.objectContaining({
+        signals_fetched_for_extraction: 2,
+        signals_entered_llm_extraction: 2,
+        signals_processed: 2,
+        signals_empty_entities_and_commitments: 2,
+        empty_reason_counts: {
+          parse_failure: 2,
+        },
+      }),
+    }));
   });
 });
 

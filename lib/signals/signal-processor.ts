@@ -92,6 +92,38 @@ interface ProcessResult {
   errors: string[];
 }
 
+type ExtractionEmptyReason =
+  | 'paid_llm_disabled'
+  | 'daily_extraction_spend_cap'
+  | 'decrypt_quarantined'
+  | 'sensitive_redacted'
+  | 'junk_email_skipped'
+  | 'no_decryptable_signals'
+  | 'parse_failure'
+  | 'missing_model_extraction_for_signal'
+  | 'model_returned_empty_entities_and_commitments'
+  | 'foldera_self_email_skipped'
+  | 'entities_filtered_empty_name'
+  | 'commitments_filtered_empty_description'
+  | 'commitments_filtered_non_commitment'
+  | 'commitments_filtered_ineligible'
+  | 'commitments_filtered_user_not_actor'
+  | 'entity_upsert_returned_empty'
+  | 'commitment_insert_returned_empty'
+  | 'signal_processing_error';
+
+interface ExtractionDiagnostics {
+  signals_fetched_for_extraction: number;
+  signals_entered_llm_extraction: number;
+  signals_with_model_persons: number;
+  signals_with_model_commitments: number;
+  signals_with_persisted_entities: number;
+  signals_with_persisted_commitments: number;
+  signals_with_persisted_entities_or_commitments: number;
+  signals_empty_entities_and_commitments: number;
+  empty_reason_counts: Partial<Record<ExtractionEmptyReason, number>>;
+}
+
 export interface ProcessSignalsOptions {
   maxSignals?: number;
   pauseMsBetweenBatches?: number;
@@ -119,6 +151,73 @@ export const HIGH_BACKLOG_SIGNAL_BATCH_SIZE = 100;
 export const HIGH_BACKLOG_MAX_SIGNAL_ROUNDS = 10;
 export const HIGH_BACKLOG_SIGNAL_THRESHOLD = 100;
 export const SENSITIVE_REDACTION_TOKEN = '[REDACTED_SENSITIVE]';
+
+function createExtractionDiagnostics(): ExtractionDiagnostics {
+  return {
+    signals_fetched_for_extraction: 0,
+    signals_entered_llm_extraction: 0,
+    signals_with_model_persons: 0,
+    signals_with_model_commitments: 0,
+    signals_with_persisted_entities: 0,
+    signals_with_persisted_commitments: 0,
+    signals_with_persisted_entities_or_commitments: 0,
+    signals_empty_entities_and_commitments: 0,
+    empty_reason_counts: {},
+  };
+}
+
+function recordExtractionEmptyReason(
+  diagnostics: ExtractionDiagnostics,
+  reason: ExtractionEmptyReason,
+  count = 1,
+): void {
+  diagnostics.empty_reason_counts[reason] = (diagnostics.empty_reason_counts[reason] ?? 0) + count;
+}
+
+function recordExtractionEmptySignal(
+  diagnostics: ExtractionDiagnostics,
+  reason: ExtractionEmptyReason,
+): void {
+  diagnostics.signals_empty_entities_and_commitments += 1;
+  recordExtractionEmptyReason(diagnostics, reason);
+}
+
+function recordExtractionEmptySignals(
+  diagnostics: ExtractionDiagnostics,
+  reason: ExtractionEmptyReason,
+  count: number,
+): void {
+  if (count <= 0) return;
+  diagnostics.signals_empty_entities_and_commitments += count;
+  recordExtractionEmptyReason(diagnostics, reason, count);
+}
+
+function emitExtractionDiagnostics(
+  userId: string,
+  result: ProcessResult,
+  diagnostics: ExtractionDiagnostics,
+): void {
+  logStructuredEvent({
+    event: 'signal_processor_extraction_diagnostics',
+    userId,
+    artifactType: null,
+    generationStatus: 'signal_extraction_diagnostics',
+    details: {
+      scope: 'signal-processor',
+      signals_fetched_for_extraction: diagnostics.signals_fetched_for_extraction,
+      signals_entered_llm_extraction: diagnostics.signals_entered_llm_extraction,
+      signals_processed: result.signals_processed,
+      signals_with_model_persons: diagnostics.signals_with_model_persons,
+      signals_with_model_commitments: diagnostics.signals_with_model_commitments,
+      signals_with_persisted_entities: diagnostics.signals_with_persisted_entities,
+      signals_with_persisted_commitments: diagnostics.signals_with_persisted_commitments,
+      signals_with_persisted_entities_or_commitments:
+        diagnostics.signals_with_persisted_entities_or_commitments,
+      signals_empty_entities_and_commitments: diagnostics.signals_empty_entities_and_commitments,
+      empty_reason_counts: diagnostics.empty_reason_counts,
+    },
+  });
+}
 
 export interface SignalBacklogMode {
   maxSignals: number;
@@ -306,26 +405,32 @@ export async function processUnextractedSignals(
     deferred_signal_ids: [],
     errors: [],
   };
+  const diagnostics = createExtractionDiagnostics();
+  const finish = () => {
+    emitExtractionDiagnostics(userId, result, diagnostics);
+    return result;
+  };
 
   const maxSignals = Math.max(0, Math.floor(options.maxSignals ?? DEFAULT_MAX_SIGNALS));
   const pauseMsBetweenBatches = Math.max(0, Math.floor(options.pauseMsBetweenBatches ?? 0));
 
   if (maxSignals === 0) {
-    return result;
+    return finish();
   }
 
   if (options.skipLlmExtraction === true) {
-    return result;
+    return finish();
   }
 
   // Check daily spend cap before any API calls
   try {
     if (await isOverDailyLimit(userId, 'signal_extraction')) {
-      return result;
+      recordExtractionEmptyReason(diagnostics, 'daily_extraction_spend_cap');
+      return finish();
     }
   } catch (err: unknown) {
     result.errors.push(`spend_cap: ${err instanceof Error ? err.message : String(err)}`);
-    return result;
+    return finish();
   }
 
   const ownerDevPaidBypass =
@@ -334,7 +439,8 @@ export async function processUnextractedSignals(
 
   if (!isPaidLlmAllowed() && !ownerDevPaidBypass) {
     result.errors.push('paid_llm_disabled');
-    return result;
+    recordExtractionEmptyReason(diagnostics, 'paid_llm_disabled');
+    return finish();
   }
 
   const supabase = createServerClient();
@@ -350,7 +456,7 @@ export async function processUnextractedSignals(
 
   if (selfEntityResult.error) {
     result.errors.push(`self_entity_fetch: ${selfEntityResult.error.message}`);
-    return result;
+    return finish();
   }
 
   let selfEntity = selfEntityResult.data;
@@ -363,7 +469,7 @@ export async function processUnextractedSignals(
 
     if (createSelfResult.error) {
       result.errors.push(`self_entity_create: ${createSelfResult.error.message}`);
-      return result;
+      return finish();
     }
 
     selfEntity = createSelfResult.data;
@@ -405,6 +511,7 @@ export async function processUnextractedSignals(
     if (signals.length === 0) {
       break;
     }
+    diagnostics.signals_fetched_for_extraction += signals.length;
 
     try {
       const batchResult = await processBatch(
@@ -415,6 +522,7 @@ export async function processUnextractedSignals(
         selfId,
         selfEntity?.patterns,
         isDryRun,
+        diagnostics,
       );
       const quarantinedDeferredSignalIds = isDryRun
         ? []
@@ -471,6 +579,7 @@ export async function processUnextractedSignals(
     } catch (batchErr: unknown) {
       const message = batchErr instanceof Error ? batchErr.message : String(batchErr);
       result.errors.push(`batch: ${message}`);
+      recordExtractionEmptySignals(diagnostics, 'signal_processing_error', signals.length);
       logStructuredEvent({
         event: 'signal_processor_batch_failed',
         level: 'warn',
@@ -490,7 +599,7 @@ export async function processUnextractedSignals(
     }
   }
 
-  return result;
+  return finish();
 }
 
 /**
@@ -916,7 +1025,8 @@ async function processBatch(
   userId: string,
   selfId: string | undefined,
   selfPatterns: Record<string, any> | undefined,
-  dryRun = false,
+  dryRun: boolean,
+  diagnostics: ExtractionDiagnostics,
 ): Promise<ProcessResult> {
   const result: ProcessResult = {
     signals_processed: 0,
@@ -936,6 +1046,7 @@ async function processBatch(
   // don't need to re-decrypt in the extraction pass.
   const junkSignalIds = new Set<string>();
   let decryptWarningCount = 0;
+  let preLlmSkippedSignals = 0;
 
   for (const s of batch) {
     const decrypted = decryptWithStatus(s.content);
@@ -990,6 +1101,8 @@ async function processBatch(
         }
       }
       result.signals_processed += 1;
+      preLlmSkippedSignals += 1;
+      recordExtractionEmptySignal(diagnostics, 'decrypt_quarantined');
       logStructuredEvent({
         event: 'signal_decrypt_failed_quarantined',
         level: 'warn',
@@ -1031,6 +1144,8 @@ async function processBatch(
       }
 
       result.signals_processed += 1;
+      preLlmSkippedSignals += 1;
+      recordExtractionEmptySignal(diagnostics, 'sensitive_redacted');
       logStructuredEvent({
         event: 'signal_sensitive_redacted',
         level: 'warn',
@@ -1063,6 +1178,8 @@ async function processBatch(
           .eq('id', s.id);
       }
       result.signals_processed += 1;
+      preLlmSkippedSignals += 1;
+      recordExtractionEmptySignal(diagnostics, 'junk_email_skipped');
       continue;
     }
 
@@ -1072,6 +1189,7 @@ async function processBatch(
     );
 
     decryptedBatch.push(s);
+    diagnostics.signals_entered_llm_extraction += 1;
     const trimmed = contentSansAttachments.length > 2000 ? contentSansAttachments.slice(0, 2000) + '...' : contentSansAttachments;
     signalTexts.push(`--- Signal ID: ${s.id} | Source: ${s.source} | Type: ${s.type} ---\n${trimmed}`);
   }
@@ -1080,6 +1198,9 @@ async function processBatch(
   if (decryptedBatch.length === 0) {
     if (sensitiveSignalMap.size === 0) {
       result.errors.push('decrypt: no decryptable signals in batch');
+      if (preLlmSkippedSignals === 0) {
+        recordExtractionEmptySignals(diagnostics, 'no_decryptable_signals', batch.length);
+      }
     }
     return result;
   }
@@ -1141,6 +1262,7 @@ async function processBatch(
       }
     }
     result.signals_processed += decryptedBatch.length;
+    recordExtractionEmptySignals(diagnostics, 'parse_failure', decryptedBatch.length);
     return result;
   }
 
@@ -1166,10 +1288,12 @@ async function processBatch(
         trustClassBySignalId,
         result,
         allTopics,
+        diagnostics,
       });
     } catch (signalErr: unknown) {
       const message = signalErr instanceof Error ? signalErr.message : String(signalErr);
       result.errors.push(`signal ${signal.id}: ${message}`);
+      recordExtractionEmptySignal(diagnostics, 'signal_processing_error');
       logStructuredEvent({
         event: 'signal_processor_single_signal_failed',
         level: 'warn',
@@ -1229,6 +1353,7 @@ async function processSingleExtractedSignal(args: {
   trustClassBySignalId: TrustClassMap;
   result: ProcessResult;
   allTopics: ExtractedTopic[];
+  diagnostics: ExtractionDiagnostics;
 }): Promise<void> {
   const {
     signal,
@@ -1241,11 +1366,13 @@ async function processSingleExtractedSignal(args: {
     trustClassBySignalId,
     result,
     allTopics,
+    diagnostics,
   } = args;
 
   const extraction = extractionMap.get(signal.id);
   const entityIds: string[] = [];
   const commitmentIds: string[] = [];
+  const emptyReasons = new Set<ExtractionEmptyReason>();
 
     // Skip commitment and entity extraction for Foldera's own sent emails.
     // These signals are kept for engagement tracking but must not produce
@@ -1257,15 +1384,38 @@ async function processSingleExtractedSignal(args: {
     const signalIsJunk = junkSignalIds.has(signal.id);
     const signalTrustClass = trustClassBySignalId.get(signal.id) ?? 'unclassified';
 
+    if (!extraction) {
+      emptyReasons.add('missing_model_extraction_for_signal');
+    } else {
+      if ((extraction.persons ?? []).length > 0) {
+        diagnostics.signals_with_model_persons += 1;
+      }
+      if ((extraction.commitments ?? []).length > 0) {
+        diagnostics.signals_with_model_commitments += 1;
+      }
+      if ((extraction.persons ?? []).length === 0 && (extraction.commitments ?? []).length === 0) {
+        emptyReasons.add('model_returned_empty_entities_and_commitments');
+      }
+    }
+
+    if (extraction && isFolderaEmail) {
+      emptyReasons.add('foldera_self_email_skipped');
+    }
+
     if (extraction && !isFolderaEmail) {
       for (const person of extraction.persons ?? []) {
-        if (!person.name?.trim()) continue;
+        if (!person.name?.trim()) {
+          emptyReasons.add('entities_filtered_empty_name');
+          continue;
+        }
         const entityId = dryRun
           ? `dry-run-entity-${entityIds.length + 1}`
           : await upsertEntity(supabase, userId, person, signal.occurred_at, signalTrustClass, signal.source as string | undefined);
         if (entityId) {
           entityIds.push(entityId);
           result.entities_upserted++;
+        } else {
+          emptyReasons.add('entity_upsert_returned_empty');
         }
       }
 
@@ -1274,11 +1424,21 @@ async function processSingleExtractedSignal(args: {
       // but signalIsJunk is kept as a safety net.
       if (!signalIsJunk) {
         for (const commitment of extraction.commitments ?? []) {
-          if (!commitment.description?.trim()) continue;
-          if (isNonCommitment(commitment.description)) continue;
-          if (!isEligibleCommitment(commitment)) continue;
+          if (!commitment.description?.trim()) {
+            emptyReasons.add('commitments_filtered_empty_description');
+            continue;
+          }
+          if (isNonCommitment(commitment.description)) {
+            emptyReasons.add('commitments_filtered_non_commitment');
+            continue;
+          }
+          if (!isEligibleCommitment(commitment)) {
+            emptyReasons.add('commitments_filtered_ineligible');
+            continue;
+          }
           if (!isUserTheActor(commitment, signal.content)) {
             console.log(`[signal-processor] Commitment skipped (user is recipient, not actor): ${commitment.description.substring(0, 80)}`);
+            emptyReasons.add('commitments_filtered_user_not_actor');
             continue;
           }
           const commitmentId = dryRun
@@ -1289,6 +1449,8 @@ async function processSingleExtractedSignal(args: {
           if (commitmentId) {
             commitmentIds.push(commitmentId);
             result.commitments_created++;
+          } else {
+            emptyReasons.add('commitment_insert_returned_empty');
           }
         }
       }
@@ -1297,6 +1459,26 @@ async function processSingleExtractedSignal(args: {
       for (const topic of extraction.topics ?? []) {
         if (topic.name?.trim()) {
           allTopics.push(topic);
+        }
+      }
+    }
+
+    if (!dryRun) {
+      if (entityIds.length > 0) {
+        diagnostics.signals_with_persisted_entities += 1;
+      }
+      if (commitmentIds.length > 0) {
+        diagnostics.signals_with_persisted_commitments += 1;
+      }
+      if (entityIds.length > 0 || commitmentIds.length > 0) {
+        diagnostics.signals_with_persisted_entities_or_commitments += 1;
+      } else {
+        diagnostics.signals_empty_entities_and_commitments += 1;
+        if (emptyReasons.size === 0) {
+          emptyReasons.add('model_returned_empty_entities_and_commitments');
+        }
+        for (const reason of emptyReasons) {
+          recordExtractionEmptyReason(diagnostics, reason);
         }
       }
     }
