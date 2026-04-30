@@ -5496,3 +5496,10 @@ pm run build.
 - What changed: Narrowed the `homework_handoff` check so prep/research language blocks only when the artifact lacks finished-content signals. Grounded finished artifacts with first-person copy, real names/dates, ready-to-say text, or decision/ask/consequence structure can pass even if they mention preparation steps. Pure prep/research handoff artifacts still fail.
 - Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `npx vitest run lib/briefing/__tests__/usefulness-gate.test.ts -t "homework_handoff" --reporter=dot` passed (2 targeted tests); `npx vitest run lib/briefing/__tests__/usefulness-gate.test.ts --reporter=dot` passed (11 tests); `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/artifact-decision-enforcement.test.ts lib/briefing/__tests__/usefulness-gate.test.ts --reporter=dot` passed; `npm run lint` passed; `npm run build` passed.
 - Unresolved issues: None for this validation seam; no paid generation was run.
+
+## 2026-04-30 — Stale dated-event candidates filtered before scoring
+- MODE: Briefing scorer pre-scoring candidate pool seam only.
+- Files changed: `lib/briefing/scorer.ts`, `lib/briefing/__tests__/scorer-stale-dated-event-filter.test.ts`, `SESSION_HISTORY.md`.
+- What changed: Added a pre-scoring filter for assembled candidates so interview, meeting, and deadline candidates are removed when their primary source `occurredAt` or referenced event date is more than 3 days old. The filter runs before `candidatesEnteringScoreLoop`, so stale dated events cannot consume top-10 shortlist slots. Scoring weights, prompts, schemas, and artifact quality gates were not changed.
+- Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `npx vitest run lib/briefing/__tests__/scorer-stale-dated-event-filter.test.ts` first failed before implementation and passed after; `npx vitest run lib/briefing/__tests__/scorer-stale-dated-event-filter.test.ts lib/briefing/__tests__/scorer-metadata-egress.test.ts` passed (3 tests); `npm run lint` passed; `npm run build` passed.
+- Unresolved issues: None for this pre-scoring filter seam; no paid generation was run.

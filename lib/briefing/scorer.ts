@@ -1113,6 +1113,107 @@ type ScorerBaseCandidate = {
   calendarEventStartMs?: number;
 };
 
+type DatedEventKind = 'interview' | 'meeting' | 'deadline';
+
+type StaleDatedEventDrop<T> = {
+  candidate: T;
+  reason: 'primary_signal_occurred_at' | 'referenced_event_date';
+  staleAtMs: number;
+  eventKind: DatedEventKind;
+};
+
+function datedEventKindForCandidate(candidate: Pick<ScorerBaseCandidate, 'title' | 'content'>): DatedEventKind | null {
+  const text = `${candidate.title}\n${candidate.content}`;
+  if (/\b(?:interview|phone screen|screening|panel interview)\b/i.test(text)) return 'interview';
+  if (/\b(?:meeting|meet with|calendar event)\b/i.test(text)) return 'meeting';
+  if (/\bdeadline\b|\bdue\s+(?:date|by|on|at|before|today|tomorrow|\d{4}-\d{2}-\d{2}|[A-Z][a-z]+ \d{1,2})\b/i.test(text)) {
+    return 'deadline';
+  }
+  return null;
+}
+
+function parseFiniteDateMs(value: string | number | null | undefined): number | null {
+  if (value == null) return null;
+  const ms = typeof value === 'number' ? value : Date.parse(value);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function firstSourceOccurredAtMs(sourceSignals: GenerationCandidateSource[]): number | null {
+  for (const signal of sourceSignals) {
+    const ms = parseFiniteDateMs(signal.occurredAt);
+    if (ms != null) return ms;
+  }
+  return null;
+}
+
+function firstReferencedEventDateMs(
+  candidate: Pick<ScorerBaseCandidate, 'title' | 'content' | 'commitmentDueMs' | 'calendarEventStartMs'>,
+): number | null {
+  const explicitDate = parseFiniteDateMs(candidate.calendarEventStartMs) ?? parseFiniteDateMs(candidate.commitmentDueMs);
+  if (explicitDate != null) return explicitDate;
+
+  const parsedCalendar = parseCalendarEventFromContentDiscrepancy(`${candidate.title}\n${candidate.content}`);
+  if (parsedCalendar) return parsedCalendar.startMs;
+
+  const dateMatch = `${candidate.title}\n${candidate.content}`
+    .match(/\b20\d{2}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2})?(?:\.\d{3})?Z?)?\b/);
+  return parseFiniteDateMs(dateMatch?.[0]);
+}
+
+function isMoreThanThreeDaysOld(dateMs: number | null, nowMs: number): boolean {
+  return dateMs != null && nowMs - dateMs > daysMs(3);
+}
+
+export function filterStaleDatedEventCandidatesBeforeScoring<
+  T extends Pick<ScorerBaseCandidate, 'title' | 'content' | 'sourceSignals'>
+    & Partial<Pick<ScorerBaseCandidate, 'commitmentDueMs' | 'calendarEventStartMs'>>,
+>(
+  candidates: readonly T[],
+  nowMs = Date.now(),
+): { passed: T[]; dropped: Array<StaleDatedEventDrop<T>> } {
+  const passed: T[] = [];
+  const dropped: Array<StaleDatedEventDrop<T>> = [];
+
+  for (const candidate of candidates) {
+    const eventKind = datedEventKindForCandidate(candidate);
+    if (!eventKind) {
+      passed.push(candidate);
+      continue;
+    }
+
+    const primaryOccurredAtMs = firstSourceOccurredAtMs(candidate.sourceSignals);
+    if (isMoreThanThreeDaysOld(primaryOccurredAtMs, nowMs)) {
+      dropped.push({
+        candidate,
+        reason: 'primary_signal_occurred_at',
+        staleAtMs: primaryOccurredAtMs as number,
+        eventKind,
+      });
+      continue;
+    }
+
+    const referencedDateMs = firstReferencedEventDateMs({
+      title: candidate.title,
+      content: candidate.content,
+      commitmentDueMs: candidate.commitmentDueMs,
+      calendarEventStartMs: candidate.calendarEventStartMs,
+    });
+    if (isMoreThanThreeDaysOld(referencedDateMs, nowMs)) {
+      dropped.push({
+        candidate,
+        reason: 'referenced_event_date',
+        staleAtMs: referencedDateMs as number,
+        eventKind,
+      });
+      continue;
+    }
+
+    passed.push(candidate);
+  }
+
+  return { passed, dropped };
+}
+
 /** Stable key aligned with `getSuppressedCandidateKeys` extraction from skipped rows. */
 export function scorerCandidateSuppressionKey(candidate: Pick<ScorerBaseCandidate, 'id' | 'sourceSignals'>): string {
   const ss = candidate.sourceSignals ?? [];
@@ -5265,6 +5366,33 @@ export async function scoreOpenLoops(
         .slice(0, 5)
         .map(c => ({ title: c.title.slice(0, 60), entityName: c.entityName ?? null, actionType: c.actionType })),
     }));
+  }
+
+  {
+    const beforeStaleDatedEventFilter = candidates.length;
+    const staleDatedEventResult = filterStaleDatedEventCandidatesBeforeScoring(candidates);
+    if (staleDatedEventResult.dropped.length > 0) {
+      candidates.length = 0;
+      candidates.push(...staleDatedEventResult.passed);
+      console.log(JSON.stringify({
+        event: 'stale_dated_event_filter',
+        before: beforeStaleDatedEventFilter,
+        after: candidates.length,
+        filtered: staleDatedEventResult.dropped.length,
+      }));
+    }
+    diag.filterStages.push({
+      stage: 'stale_dated_event_filter',
+      before: beforeStaleDatedEventFilter,
+      after: candidates.length,
+      dropped: staleDatedEventResult.dropped.map((drop) => ({
+        candidateId: drop.candidate.id,
+        type: drop.candidate.type,
+        title: drop.candidate.title.slice(0, 100),
+        stage: 'stale_dated_event_filter',
+        reason: `${drop.reason}:${drop.eventKind}:${new Date(drop.staleAtMs).toISOString()}`,
+      })),
+    });
   }
 
   if (suppressedCandidateKeys.size > 0) {
