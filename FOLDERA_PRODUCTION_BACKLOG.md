@@ -1,6 +1,6 @@
 # FOLDERA Production Backlog
 
-Last refreshed: 2026-04-29
+Last refreshed: 2026-05-01
 
 ## Current top item
 BL-015 — Owner money-shot artifact is not consistently excellent.
@@ -40,8 +40,8 @@ Required production proof: Trigger one authenticated owner Generate Now run afte
 Done means: Bad owner-shaped artifacts are blocked, one good owner-shaped artifact passes, the artifact is finished work instead of prep, no existing good artifact path breaks, and production proof is complete or explicitly waiting on external capacity.
 Do-not-count: Structural validity alone, a generic checklist, a reminder-only artifact, a static mock, a non-owner proof, a provider/debug no-send, or a local-only proof presented as live product proof.
 Status: WAITING_PAID_PROOF
-Last evidence: 2026-05-01 — unpaid deterministic owner-shaped BL-015 replay passed locally with `npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts lib/briefing/__tests__/generator-runtime.test.ts`. The replay blocks CHC/Alex confirmation sludge, ESB Technician prep homework, generic interview checklist output, stale reminder-only interview output, and the generator fallback path blocks a CHC email-disguised-as-document before selecting a finished CHC decision brief. The passing money-shot fixture is the finished ESB Technician role-fit answer packet grounded in Darlene Craig / recruitment 2026-02344 evidence. No paid call or production mutation was used; BL-015 remains `WAITING_PAID_PROOF`.
-Next blocker: Live paid owner Generate Now proof remains pending until explicit paid-proof approval and model capacity are available; while paid proof is unavailable or unauthorized, the allowed BL-015 step remains unpaid deterministic owner-shaped local replay only.
+Last evidence: 2026-05-01 — one explicitly approved authenticated owner `POST https://www.foldera.ai/api/settings/run-brief?force=true&use_llm=true` attempt was made at `2026-05-01T18:18:37.464Z` against production build `c5da3ca` / deployment `dpl_BQGueFjnECfiUTojL2CwbBgTuYq7`. The client received `ECONNRESET`; follow-up production checks found no owner `tkg_actions`, no `pipeline_runs`, and no confirmed `api_usage` rows after the proof start, and authenticated `/api/conviction/latest` returned no pending artifact. BL-015 did not produce a fresh `pending_approval` artifact and remains `WAITING_PAID_PROOF`; do not mark it closed from this failed proof.
+Next blocker: Stop after the single failed paid-proof attempt. A future BL-015 close still requires a separately approved single owner Generate Now proof that returns or persists one fresh strict-rubric PASS `pending_approval` artifact visible in-product; do not retry automatically.
 
 ### BL-001
 ID: BL-001
