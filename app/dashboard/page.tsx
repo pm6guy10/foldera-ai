@@ -325,7 +325,7 @@ function buildDecisionSuccessNotice(
       id: 'skip_snoozed',
       message: isWriteDocumentAction(action)
         ? 'Skipped. Foldera will adjust the next document.'
-        : 'Snoozed. Foldera will adjust the next directive.',
+        : 'Skipped. Foldera will adjust the next directive.',
     };
   }
 
@@ -887,7 +887,7 @@ export default function DashboardPage() {
   const artifactBody = getArtifactBody(action?.artifact);
   const draftLabel = 'DRAFT';
   const copyActionLabel = 'Copy draft';
-  const skipActionLabel = 'Snooze 24h';
+  const skipActionLabel = 'Skip';
   const primaryActionLabel = 'Approve & send';
   const showOutcomeActions =
     Boolean(executedActionId) &&

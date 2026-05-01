@@ -121,7 +121,7 @@ async function setupDashboardMocks(page: Page, options: SetupOptions): Promise<v
 describeWithAuth('Dashboard pixel-lock live artifact', () => {
   test('shows write_document artifact in frame with type-correct actions and clickable hotspots', async ({ page }) => {
     let approveCalls = 0;
-    let snoozeCalls = 0;
+    let skipCalls = 0;
     await page.addInitScript(() => {
       const copied: string[] = [];
       const clipboard = {
@@ -157,7 +157,7 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
       subscriptionResponse: { plan: 'free', status: 'inactive' },
       onExecute: (decision) => {
         if (decision === 'approve') approveCalls += 1;
-        if (decision === 'skip') snoozeCalls += 1;
+        if (decision === 'skip') skipCalls += 1;
       },
     });
 
@@ -186,6 +186,8 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
     expect(desktopBodyOverflowHidden).toBe(true);
 
     await expect(page.getByRole('button', { name: /copy draft/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^skip$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /snooze 24h/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /approve & send/i })).toBeVisible();
     await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
     await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
@@ -208,7 +210,7 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
 
     await page.getByRole('button', { name: /approve & send/i }).click();
     await expect.poll(() => approveCalls).toBeGreaterThan(0);
-    expect(snoozeCalls).toBe(0);
+    expect(skipCalls).toBe(0);
   });
 
   test('preserves send_message labels and shows upgrade CTA overlay only when artifact is paywall-locked', async ({ page }) => {

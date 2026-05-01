@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-05-01 — BL-015 bad artifact block plus explicit dashboard Skip
+- MODE: FOLDERA BL-015 BAD PAID ARTIFACT + SKIP UX FIX.
+- Files changed: `app/dashboard/page.tsx`, `tests/e2e/authenticated-routes.spec.ts`, `tests/dashboard/live-artifact-pixel-lock.spec.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.
+- What changed: Kept the May 1 Resend/onboarding bad-artifact class blocked by the existing `transactional_sender_decision_pressure` gate and tightened dashboard proof around rejection. The dashboard artifact action now labels rejection as `Skip` instead of `Snooze 24h`, while preserving the existing `decision: "skip"` execute body and local hide/no-resurrection behavior. Source-of-truth docs now restate Brandon's default: no paid tests by default, and every paid proof requires explicit per-run approval.
+- Verification: `npm run health` passed (`RESULT: 0 FAILING`, warnings only). Red Playwright first failed because the write_document journey could not find a `Skip` button while the dashboard still rendered `Snooze 24h`; after the label change, `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "write_document journey"` passed (2 tests). `npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts lib/briefing/__tests__/generator-runtime.test.ts` passed, preserving the Resend/onboarding block and ESB role-fit pass. `npx playwright test tests/dashboard/live-artifact-pixel-lock.spec.ts` passed on rerun after an initial port-collision retry. `npm run preflight` returned `3 pass`, `1 warn`, `0 FAIL`; `npm run lint` passed; `npm run build` passed.
+- Unresolved issues: No paid LLM call was made and no production data was mutated. BL-015 remains `WAITING_PAID_PROOF`; the remaining proof is a separately approved single owner Generate Now run that produces one fresh strict-rubric PASS `pending_approval` artifact visible in-product.
+
 ## 2026-05-01 — BL-015 Resend/onboarding bad artifact regression blocked locally
 - MODE: FOLDERA BL-015 PRODUCTION BAD ARTIFACT REGRESSION — fix real paid-proof failure.
 - Files changed: `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`, `lib/briefing/artifact-quality-gate.ts`, `lib/briefing/__tests__/artifact-quality-gate.test.ts`, `lib/briefing/__tests__/owner-money-shot-artifact.fixture.ts`.
