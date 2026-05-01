@@ -18,6 +18,8 @@ This ladder is the operational definition of production truth.
 - `Broken` means a failed observable condition at the rung being claimed.
 - `Proof` must be a build command, test command, Playwright journey, or explicit manual UI check.
 - A change does not count if it only updates docs, screenshots, visual polish, SEO, refactors, or unrelated tests.
+- Browser/product proof is the closure standard: files changed, tests passed, docs updated, CI green, logs, screenshots, and build output are never product success by themselves.
+- If browser/product proof is missing or fails, the verdict is NOT DONE.
 
 ### 1. Command-center scan completes end-to-end
 

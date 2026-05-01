@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-05-01 — Brandon product-owner doctrine enforced in active docs
+- MODE: FOLDERA BRANDON DOCTRINE — product-owner enforcement layer.
+- Files changed: `AGENTS.md`, `CLAUDE.md`, `ACCEPTANCE_GATE.md`, `SYSTEM_RUNBOOK.md`, `scripts/__tests__/brandon-doctrine.test.ts`, `SESSION_HISTORY.md`.
+- What changed: Added the Brandon Product-Owner Doctrine to the active agent contracts, including the pre-code grill gate, done audit, `WRONG PATH` handling, no-actionable-seam stop language, and completion-word restrictions unless browser/product proof exists. Updated `ACCEPTANCE_GATE.md` to state that browser/product proof is the closure standard and local signals are not product success by themselves. Updated `SYSTEM_RUNBOOK.md` closure states from `FIXED` / `PARTIALLY FIXED` to `DONE` / `NOT DONE` / `BLOCKED` with the proof requirement explicit.
+- Verification: Red doctrine contract test first failed because the active docs did not contain the Brandon doctrine and proof-closure language. Post-patch verification is recorded in this session.
+- Unresolved issues: This is an operator-doctrine seam only. It does not close BL-015, does not run paid Generate Now, does not send email, and does not prove any app runtime path.
+
 ## 2026-05-01 — CI authenticated approve expectation follows send-disabled status
 - MODE: CI-only follow-up for `fix(conviction): disable approval email sends by default`.
 - Files changed: `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`.

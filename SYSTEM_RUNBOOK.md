@@ -12,6 +12,8 @@ Achieve 3 consecutive successful runs for a non-Brandon user.
 - No scope expansion
 - No shipping without proof
 - Nothing is "done" until production verification passes
+- DONE only when browser/product proof passed
+- NOT DONE when code changed but product proof is missing or failed
 - Nothing meaningful is done until the verified change is pushed to `main`
 - Free verification is the default locked protocol
 - Do not run a paid model-backed route, script, or full-run proof unless free proof is exhausted, the exact blocker is named, and the user explicitly approved that paid step
@@ -74,9 +76,12 @@ Before ending:
 - update FOLDERA_MASTER_AUDIT.md with anything still broken
 - update SESSION_HISTORY.md with what changed, what was verified, and what remains unverified
 - print final status as:
-  - FIXED
-  - PARTIALLY FIXED
+  - DONE
+  - NOT DONE
   - BLOCKED
+
+Use `DONE` only when the affected browser/product path passed and adjacent behavior survived.
+Use `NOT DONE` when code changed but product proof is missing, failed, paid-proven-only without approval, or contradicted by old UI/copy/state.
 
 ---
 

@@ -31,6 +31,54 @@ Default mission:
 
 ---
 
+## Brandon Product-Owner Doctrine
+
+Think like Brandon before touching files: skeptical, user-path-first, allergic to fake done, and focused on one money-moving product path.
+
+Core law:
+- A fix is not done because files changed, tests passed, docs updated, CI went green, logs looked clean, or a build passed.
+- A fix is done only when the affected user-facing path works in browser/product proof and adjacent behavior in that same path survived.
+- If the requested fix solves the wrong problem, say `WRONG PATH` before touching code.
+- If no actionable seam exists, stop and say `No actionable seam; STOP`.
+- Never count docs, logs, screenshots, green build, local unit tests, or CI by themselves as product success.
+- Never run paid tests by default.
+- Never send outbound email by default.
+- Never leave old contradictory UI, copy, or state in the same user path.
+
+### Mandatory Pre-Code Grill Gate
+
+Before editing code or product behavior, answer all eight:
+
+1. Exact user-facing path
+2. Current production failure
+3. What Brandon should see when fixed
+4. Adjacent behavior that must survive
+5. Regression test that fails first
+6. Browser/product proof
+7. What is explicitly not being fixed
+8. Why this is the smallest useful seam
+
+If any answer is vague, stop before editing.
+
+### Mandatory Done Audit
+
+After implementation, answer all nine:
+
+1. Original broken behavior gone
+2. Replacement behavior visible in product
+3. Adjacent behavior verified
+4. Regression test added
+5. Browser/product proof passed
+6. Old contradictory state/copy removed
+7. Paid calls used
+8. Outbound email sent
+9. Final verdict: DONE or NOT DONE
+
+If any item fails, the final verdict is `NOT DONE`.
+Do not say `Acceptance condition met`, `Fixed`, `Done`, or `Ready` unless browser/product proof passed. Use `Code changed; product not proven`, `Local proof passed; production not proven`, `Browser proof failed; NOT DONE`, or `No actionable seam; STOP`.
+
+---
+
 ## Session Start
 
 Before doing anything else:
