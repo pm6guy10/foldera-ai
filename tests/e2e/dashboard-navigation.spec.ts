@@ -345,13 +345,16 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByTestId('dashboard-panel-signals')).toBeVisible();
   });
 
-  test('primary action posts approve decision', async ({ page }) => {
+  test('primary action records approve decision without sending email by default', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const refs = await setupDashboardMocks(page);
     await page.goto('/dashboard');
 
     await page.getByTestId('dashboard-primary-action').click();
-    await expect(page.getByTestId('dashboard-status-notice')).toHaveAttribute('data-status-id', 'approve_sent');
+    await expect(page.getByTestId('dashboard-status-notice')).toHaveAttribute(
+      'data-status-id',
+      'approve_recorded',
+    );
     await expect.poll(() => refs.executeDecisions.filter((decision) => decision === 'approve').length).toBe(1);
   });
 

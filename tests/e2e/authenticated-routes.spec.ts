@@ -573,14 +573,22 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupEmptyDashboardMocks(page);
     await page.goto('/dashboard');
     await expect(page.getByTestId('dashboard-empty-state')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('No safe artifact today.')).toBeVisible({ timeout: 15000 });
     await expect(
-      page.getByText(/You&apos;re set until tomorrow morning\.|You're set until tomorrow morning\./i),
-    ).toBeVisible({ timeout: 15000 });
+      page.getByText(/Foldera checked the command-center signals and did not find a safe artifact to show/i),
+    ).toBeVisible();
+    await expect(page.getByText(/You're set until tomorrow morning/i)).toHaveCount(0);
+    await expect(page.getByText(/next read still lands in email/i)).toHaveCount(0);
     await expect(page.getByText(/No live brief is queued right now/i)).toHaveCount(0);
     await expect(page.getByText(/Your Microsoft connection needs a quick refresh/i)).toHaveCount(0);
     await expect(page.getByText(/Foldera will post your next source-backed brief here/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Run first read now/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Run command-center scan/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Reconnect Microsoft/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Save$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Approve$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Approve & send/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Skip$/i })).toHaveCount(0);
+    await expect(page.getByTestId('dashboard-primary-action')).toHaveCount(0);
   });
 
   test('no actionable console errors — desktop', async ({ page }) => {

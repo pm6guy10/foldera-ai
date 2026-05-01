@@ -188,7 +188,8 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
     await expect(page.getByRole('button', { name: /copy draft/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /^skip$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /snooze 24h/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /approve & send/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /approve & send/i })).toHaveCount(0);
     await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
     await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
     await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
@@ -208,7 +209,7 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
       'copy_succeeded',
     );
 
-    await page.getByRole('button', { name: /approve & send/i }).click();
+    await page.getByTestId('dashboard-primary-action').click();
     await expect.poll(() => approveCalls).toBeGreaterThan(0);
     expect(skipCalls).toBe(0);
   });
@@ -243,7 +244,8 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
 
     await expect(page.getByTestId('pixel-lock-frame')).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('button', { name: /copy draft/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /approve & send/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^approve$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /approve & send/i })).toHaveCount(0);
     await expect(page.getByText('Upgrade to Pro to keep receiving finished work.')).toBeVisible();
     await page.getByRole('button', { name: /^Upgrade to Pro$/i }).click();
     await expect.poll(() => checkoutCalls).toBeGreaterThan(0);
