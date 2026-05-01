@@ -2,6 +2,14 @@
 
 # Session History
 
+## 2026-05-01 — BL-015 unpaid transport diagnostic receipt
+- MODE: FOLDERA BL-015 TRANSPORT/PERSISTENCE DIAGNOSTIC — unpaid only.
+- Files changed: `app/api/settings/run-brief/route.ts`, `app/api/settings/run-brief/contract.ts`, `app/api/settings/run-brief/__tests__/route.test.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.
+- What changed: Added a non-paid authenticated `transport_diagnostic=true` path to `POST /api/settings/run-brief` that forces dry-run semantics, records a minimal `pipeline_runs` receipt before lifecycle/model work, reads the receipt back, and returns revision/auth/receipt/spend fields that distinguish route-not-entered from route-entered-before-lifecycle. Normal paid Generate Now behavior remains on the existing lifecycle path.
+- Verification: `npx vitest run app/api/settings/run-brief/__tests__/route.test.ts` passed (16 tests). `npm run health` passed (`RESULT: 0 FAILING`, warnings only). `npm run preflight` passed (`3 pass`, `2 warn`, `0 FAIL`, degraded only by stale Microsoft/local paid-LLM env). `npm run lint` passed. `npm run build` passed. Push hooks also reran the full build and public smoke lane (`40 passed`).
+- Production proof: Production `/api/health` reported build `3005890`, deployment `dpl_8qRsdXiNv9xAMaRVVq3vn7EKPUqP`. Authenticated production `POST https://www.foldera.ai/api/settings/run-brief?transport_diagnostic=true&force=true` returned HTTP 200 with `paid_llm_requested=false`, `paid_llm_effective=false`, `live_generation_executed=false`, and `live_sync_executed=false`; it persisted/read back `pipeline_runs` receipt `37679bb0-5567-40e2-a9b7-b79e02f825fd` with outcome `route_transport_diagnostic_returned`, invocation source `settings_run_brief_transport_diagnostic`, `route_entered=true`, `auth_resolved=true`, `lifecycle_started=false`, and `paid_generation_started=false`.
+- Unresolved issues: This closes only the transport/persistence ambiguity. BL-015 remains `WAITING_PAID_PROOF`; it still requires a separately approved paid owner Generate Now proof that produces one strict-rubric PASS `pending_approval` artifact visible in-product.
+
 ## 2026-05-01 — BL-015 unpaid local replay unblocked in controller
 - MODE: FOLDERA CONTROLLER/BACKLOG INTERCESSION — unpaid BL-015 quality work only.
 - Files changed: `scripts/controller-autopilot.ts`, `scripts/__tests__/controller-autopilot.test.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.
