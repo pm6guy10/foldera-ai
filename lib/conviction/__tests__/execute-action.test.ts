@@ -174,8 +174,8 @@ vi.mock('@/lib/signals/entity-attention-runtime', () => ({
 
 describe('executeAction', () => {
   beforeEach(() => {
-    // Open the email-send safety gate so tests can exercise the full Gmail/Outlook/Resend paths.
-    vi.stubEnv('ALLOW_EMAIL_SEND', 'true');
+    // Open the approval-time email safety gate so tests can exercise send paths explicitly.
+    vi.stubEnv('ALLOW_APPROVAL_EMAIL_SEND', 'true');
     mockSupabase._signalInsertCalls = 0;
     mockSupabase._signalSelectReturn = null;
     hasIntegration.mockReset();
@@ -243,6 +243,38 @@ describe('executeAction', () => {
     });
     expect(sendResendEmail).not.toHaveBeenCalled();
     expect(mockSupabase._signalInsertCalls).toBe(1);
+  });
+
+  it('blocks send_message outbound email by default and records email_send_disabled', async () => {
+    vi.stubEnv('ALLOW_APPROVAL_EMAIL_SEND', 'false');
+    mockSupabase._actionRow = {
+      ...actionWithArtifact({
+        type: 'send_message',
+        recipient: 'a@b.com',
+        subject: 'Subj',
+        body: 'Body',
+      }),
+      action_type: 'send_message',
+    };
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'approve',
+    });
+
+    expect(out.status).toBe('executed');
+    expect(out.result).toEqual(
+      expect.objectContaining({
+        sent: false,
+        sent_via: null,
+        reason: 'email_send_disabled',
+        email_send_disabled: true,
+      }),
+    );
+    expect(hasIntegration).not.toHaveBeenCalled();
+    expect(sendGmailEmail).not.toHaveBeenCalled();
+    expect(sendOutlookEmail).not.toHaveBeenCalled();
+    expect(sendResendEmail).not.toHaveBeenCalled();
   });
 
   it('approve send_message falls back to Resend when no mailbox integration', async () => {
@@ -348,6 +380,30 @@ describe('executeAction', () => {
     expect(out.result?.document_ready_email).toEqual({ sent: true, resend_id: 'resend-123' });
   });
 
+  it('approve write_document saves but blocks document-ready Resend email when approval send is disabled', async () => {
+    vi.stubEnv('ALLOW_APPROVAL_EMAIL_SEND', 'false');
+    mockSupabase._actionRow = actionWithArtifact({
+      type: 'document',
+      title: 'Doc',
+      content: 'Content',
+    });
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'approve',
+    });
+
+    expect(out.status).toBe('executed');
+    expect(out.result?.saved).toBe(true);
+    expect(out.result?.document_ready_email).toEqual({
+      sent: false,
+      reason: 'email_send_disabled',
+      email_send_disabled: true,
+    });
+    expect(getVerifiedDailyBriefRecipientEmail).not.toHaveBeenCalled();
+    expect(sendResendEmail).not.toHaveBeenCalled();
+  });
+
   it('approve write_document skips delivery email when user has no verified email', async () => {
     getVerifiedDailyBriefRecipientEmail.mockResolvedValue(null);
     mockSupabase._actionRow = actionWithArtifact({
@@ -399,6 +455,30 @@ describe('executeAction', () => {
     });
     expect(out.status).toBe('executed');
     expect(out.result?.sent).toBe(true);
+  });
+
+  it('blocks legacy email artifact outbound send when approval send is disabled', async () => {
+    vi.stubEnv('ALLOW_APPROVAL_EMAIL_SEND', 'false');
+    mockSupabase._actionRow = actionWithLegacyDraft('x@y.com', 'Subject', 'Body');
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'approve',
+    });
+
+    expect(out.status).toBe('executed');
+    expect(out.result).toEqual(
+      expect.objectContaining({
+        sent: false,
+        sent_via: null,
+        reason: 'email_send_disabled',
+        email_send_disabled: true,
+      }),
+    );
+    expect(hasIntegration).not.toHaveBeenCalled();
+    expect(sendGmailEmail).not.toHaveBeenCalled();
+    expect(sendOutlookEmail).not.toHaveBeenCalled();
+    expect(sendResendEmail).not.toHaveBeenCalled();
   });
 
   it('feedback signal insert is idempotent: second call skips insert', async () => {

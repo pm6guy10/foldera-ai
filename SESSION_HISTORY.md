@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-05-01 — Approval send kill switch defaults outbound email off
+- MODE: FOLDERA APPROVAL SEND KILL SWITCH — no outbound emails by default.
+- Files changed: `lib/conviction/execute-action.ts`, `lib/conviction/__tests__/execute-action.test.ts`, `app/dashboard/page.tsx`, `tests/e2e/authenticated-routes.spec.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.
+- What changed: Added an approval-time outbound email kill switch. `executeAction()` now requires `ALLOW_APPROVAL_EMAIL_SEND === "true"` before any approval-triggered Gmail, Outlook, or Resend send. When disabled, email artifacts execute safely with `email_send_disabled`, write_document artifacts still save but block the document-ready Resend email with `document_ready_email.email_send_disabled = true`, and the dashboard labels disabled primary approval as `Approve` or `Save` while keeping `Skip` visible.
+- Verification: `npx vitest run lib/conviction/__tests__/execute-action.test.ts` passed (18 tests), covering default-disabled send_message, legacy email artifact, and write_document document-ready Resend paths. `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "write_document journey"` passed (2 tests), proving `Save`, visible `Skip`, and no `Approve & send` for the write_document dashboard path. `npm run health` passed (`RESULT: 0 FAILING`, warnings only). `npm run preflight` returned 3 pass, 1 warn, 0 FAIL, degraded only because local `ALLOW_PAID_LLM` is unset. `npm run lint` passed. `npm run build` passed.
+- Unresolved issues: No paid Generate Now run, no real email send, and no production data mutation were used for this seam. Production proof is read-only deploy/health confirmation only.
+
 ## 2026-05-01 — BL-015 bad artifact block plus explicit dashboard Skip
 - MODE: FOLDERA BL-015 BAD PAID ARTIFACT + SKIP UX FIX.
 - Files changed: `app/dashboard/page.tsx`, `tests/e2e/authenticated-routes.spec.ts`, `tests/dashboard/live-artifact-pixel-lock.spec.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.

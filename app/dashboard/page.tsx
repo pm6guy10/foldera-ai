@@ -319,6 +319,7 @@ function isWriteDocumentAction(action: DashboardAction | null): boolean {
 function buildDecisionSuccessNotice(
   action: DashboardAction | null,
   decision: 'approve' | 'skip',
+  approvalEmailSendEnabled = false,
 ): DashboardStatusNotice {
   if (decision === 'skip') {
     return {
@@ -334,6 +335,11 @@ function buildDecisionSuccessNotice(
         id: 'approve_saved_document',
         message: 'Saved. Your document is in Foldera Signals.',
       }
+    : !approvalEmailSendEnabled
+      ? {
+          id: 'approve_recorded',
+          message: 'Approved. Outbound email is disabled.',
+        }
     : {
         id: 'approve_sent',
         message: 'Sent. Check your outbox.',
@@ -667,6 +673,10 @@ export default function DashboardPage() {
     };
   }, []);
 
+  const approvalEmailSendEnabled =
+    process.env.NEXT_PUBLIC_ALLOW_APPROVAL_EMAIL_SEND === 'true' ||
+    process.env.ALLOW_APPROVAL_EMAIL_SEND === 'true';
+
   const selectPanel = useCallback(
     (panel: DashboardPanelKey) => {
       if (typeof window === 'undefined') return;
@@ -747,7 +757,7 @@ export default function DashboardPage() {
           setExecutedActionId(null);
           setOutcomeRecorded(false);
         }
-        setStatusNotice(buildDecisionSuccessNotice(action, decision));
+        setStatusNotice(buildDecisionSuccessNotice(action, decision, approvalEmailSendEnabled));
         if (decision === 'approve') {
           await load();
         }
@@ -767,7 +777,7 @@ export default function DashboardPage() {
         setExecuting(false);
       }
     },
-    [action, executing, load],
+    [action, approvalEmailSendEnabled, executing, load],
   );
 
   const submitOutcome = useCallback(
@@ -888,10 +898,16 @@ export default function DashboardPage() {
   const draftLabel = 'DRAFT';
   const copyActionLabel = 'Copy draft';
   const skipActionLabel = 'Skip';
-  const primaryActionLabel = 'Approve & send';
+  const primaryActionLabel = writeDocument
+    ? 'Save'
+    : approvalEmailSendEnabled
+      ? 'Approve & send'
+      : 'Approve';
   const showOutcomeActions =
     Boolean(executedActionId) &&
-    (statusNotice?.id === 'approve_saved_document' || statusNotice?.id === 'approve_sent') &&
+    (statusNotice?.id === 'approve_saved_document' ||
+      statusNotice?.id === 'approve_sent' ||
+      statusNotice?.id === 'approve_recorded') &&
     !outcomeRecorded;
   const stageTransform = `translate(${stageMetrics.offsetX}px, ${stageMetrics.offsetY}px) scale(${stageMetrics.scale})`;
   const integrationRows = Array.isArray(integrationStatus?.integrations)

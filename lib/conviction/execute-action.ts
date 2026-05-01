@@ -22,6 +22,8 @@ import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-user
 import { updateMlSnapshotOutcome } from '@/lib/ml/directive-ml-snapshot';
 import { reinforceAttentionForAction } from '@/lib/signals/entity-attention-runtime';
 
+const EMAIL_SEND_DISABLED_REASON = 'email_send_disabled';
+
 export type ExecuteDecision = 'approve' | 'skip' | 'reject';
 
 export type SkipReason = 'not_relevant' | 'already_handled' | 'wrong_approach';
@@ -54,7 +56,7 @@ function executionSucceeded(
 
   switch (artifact.type) {
     case 'email':
-      return executionResult.sent === true;
+      return executionResult.sent === true || executionResult.email_send_disabled === true;
     case 'document':
       return executionResult.saved === true;
     case 'calendar_event':
@@ -69,6 +71,19 @@ function executionSucceeded(
     default:
       return false;
   }
+}
+
+function approvalEmailSendEnabled(): boolean {
+  return process.env.ALLOW_APPROVAL_EMAIL_SEND === 'true';
+}
+
+function disabledEmailSendResult(): Record<string, unknown> {
+  return {
+    sent: false,
+    sent_via: null,
+    reason: EMAIL_SEND_DISABLED_REASON,
+    email_send_disabled: true,
+  };
 }
 
 /**
@@ -291,14 +306,15 @@ async function executeArtifact(
               : undefined;
         const references =
           typeof artifact.references === 'string' ? artifact.references : undefined;
-        if (options?.actionType === 'send_message') {
-          // Safety gate: actual email sending requires ALLOW_EMAIL_SEND=true in env.
-          // Without it, Approve marks the action executed but no email is dispatched.
-          if (process.env.ALLOW_EMAIL_SEND !== 'true') {
-            out = { ...out, sent: false, sent_via: null, reason: 'email_send_disabled' };
-            console.log(`[execute-action] email send skipped for ${actionId} — ALLOW_EMAIL_SEND not set`);
-          } else {
+        if (!approvalEmailSendEnabled()) {
+          out = { ...out, ...disabledEmailSendResult() };
+          console.log(
+            `[execute-action] approval email send skipped for ${actionId} - ALLOW_APPROVAL_EMAIL_SEND not true`,
+          );
+          break;
+        }
 
+        if (options?.actionType === 'send_message') {
           // Prefer the user's mailbox (Gmail / Outlook) so recipients see the customer, not noreply@foldera.ai.
           let sentViaProvider = false;
           let providerError: string | undefined;
@@ -370,7 +386,6 @@ async function executeArtifact(
               console.log(`[execute-action] resend email sent for action ${actionId}`);
             }
           }
-          } // end ALLOW_EMAIL_SEND else
         } else {
           const useGoogle = await hasIntegration(userId, 'google');
           const result = useGoogle
@@ -431,6 +446,18 @@ async function executeArtifact(
         }
 
         if (options?.actionType === 'write_document' && out.saved === true) {
+          if (!approvalEmailSendEnabled()) {
+            out.document_ready_email = {
+              sent: false,
+              reason: EMAIL_SEND_DISABLED_REASON,
+              email_send_disabled: true,
+            };
+            console.log(
+              `[execute-action] write_document delivery email skipped for ${actionId} - ALLOW_APPROVAL_EMAIL_SEND not true`,
+            );
+            break;
+          }
+
           const userEmail = await getVerifiedDailyBriefRecipientEmail(userId, supabase);
           const docTitle = title;
           const docBody = content.slice(0, 50000);

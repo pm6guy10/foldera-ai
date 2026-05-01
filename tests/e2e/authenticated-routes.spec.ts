@@ -558,6 +558,8 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('dashboard-primary-action')).toHaveText(/^Approve$/i);
+    await expect(page.getByRole('button', { name: /approve & send/i })).toHaveCount(0);
     const skipBtn = page.getByRole('button', { name: /^skip$/i });
     await expect(skipBtn).toBeVisible();
     await expect(page.getByRole('button', { name: /snooze 24h/i })).toHaveCount(0);
@@ -720,10 +722,11 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);
     await expect(page.getByText(/^Upgrade to Pro$/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /approve & send/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /approve & send/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^skip$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /snooze 24h/i })).toHaveCount(0);
-    await expect(page.getByTestId('dashboard-primary-action')).toHaveText(/approve & send/i);
+    await expect(page.getByTestId('dashboard-primary-action')).toHaveText(/^Save$/i);
     await expect(page.getByRole('button', { name: /^skip$/i })).toHaveText(/^Skip$/i);
     await page.getByRole('button', { name: /account menu/i }).click();
     await expect(page.getByRole('menuitem', { name: /^Settings$/i })).toBeVisible();
