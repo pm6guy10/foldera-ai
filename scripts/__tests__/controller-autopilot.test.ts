@@ -250,6 +250,35 @@ Next blocker: Current code seam can be tested locally.
     ]);
   });
 
+  it('allows paid-proof-waiting items when the next seam is explicitly unpaid local fixture replay', () => {
+    const items = parseBacklogItems(`
+### BL-015
+ID: BL-015
+Title: Owner money-shot artifact
+Starting route or trigger: Owner paid Generate Now after capacity returns, or deterministic local fixture replay when live capacity is unavailable.
+Required local proof: npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts lib/briefing/__tests__/generator-runtime.test.ts
+Required production proof: Trigger one authenticated owner Generate Now paid/live run after local money-shot proof passes.
+Status: WAITING_PAID_PROOF
+Last evidence: Production proof remains pending; the backlog explicitly allows deterministic local fixture replay when live capacity is unavailable.
+Next blocker: Run unpaid deterministic local owner-shaped money-shot replay first; keep paid owner Generate Now proof pending until local money-shot proof passes.
+
+### BL-016
+ID: BL-016
+Title: Later open seam
+Status: OPEN
+Next blocker: Trace a local code seam.
+`);
+
+    const firstActionable = findFirstActionableBacklogItem(items);
+    const eligibility = items.map(getBacklogEligibility);
+
+    expect(firstActionable?.id).toBe('BL-015');
+    expect(eligibility[0]).toMatchObject({
+      actionable: true,
+      reason: 'paid production proof remains pending, but unpaid deterministic local fixture replay is explicitly allowed',
+    });
+  });
+
   it('keeps existing OPEN behavior when no waiting passive-proof item exists', () => {
     const items = parseBacklogItems(`
 ### BL-003

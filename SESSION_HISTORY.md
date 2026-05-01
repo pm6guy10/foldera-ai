@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-05-01 — BL-015 unpaid local replay unblocked in controller
+- MODE: FOLDERA CONTROLLER/BACKLOG INTERCESSION — unpaid BL-015 quality work only.
+- Files changed: `scripts/controller-autopilot.ts`, `scripts/__tests__/controller-autopilot.test.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.
+- What changed: Added a narrow controller eligibility exception for `WAITING_PAID_PROOF` items only when the backlog explicitly allows deterministic local fixture replay, the next action is unpaid/local-only, and paid production proof remains pending. Updated BL-015/current-state wording so the current next move is unpaid deterministic local owner-shaped money-shot replay first, while live paid owner Generate Now proof remains required later and BL-015 stays not closed.
+- Verification: Red controller test first selected `BL-016` instead of BL-015; after the controller change, `npx vitest run scripts/__tests__/controller-autopilot.test.ts` passed (12 tests). `npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts lib/briefing/__tests__/generator-runtime.test.ts` passed. `npm run health` passed (`RESULT: 0 FAILING`, Outlook/last-generation warnings only). `npm run preflight` returned `3 pass`, `1 warn`, `0 FAIL` with local `ALLOW_PAID_LLM` unset. `npm run lint` passed. `npm run build` passed. Clean post-commit `npm run controller:autopilot` returned `CONTROLLER RESULT: GO` and selected `BL-015`.
+- Unresolved issues: No live Generate Now was run, no paid model call was made, and no production data was mutated. BL-015 remains `WAITING_PAID_PROOF`; the paid production proof must run only after local money-shot replay passes and explicit paid-proof approval/model capacity are available.
+
 ## 2026-04-30 — Briefing LLM cost-control model routing
 - MODE: Cost-control fixes only.
 - Files changed: `lib/briefing/generator.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`, `lib/briefing/__tests__/pipeline-receipt.test.ts`, `lib/conviction/artifact-generator-compat.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `SESSION_HISTORY.md`.

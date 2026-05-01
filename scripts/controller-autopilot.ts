@@ -208,6 +208,37 @@ const BLOCKER_TEXT_RULES: Array<{
   },
 ];
 
+function hasUnpaidDeterministicReplayAllowance(item: BacklogItem): boolean {
+  const status = normalizeStatus(item.status);
+  if (status !== 'WAITING_PAID_PROOF') return false;
+
+  const backlogText = [
+    item.startingTrigger,
+    item.requiredLocalProof,
+    item.requiredProductionProof,
+    item.doneMeans,
+    item.nextBlocker,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  const explicitlyAllowsDeterministicReplay =
+    /\bdeterministic local fixture replay\b/i.test(backlogText) ||
+    /\bunpaid deterministic local\b/i.test(backlogText);
+  const nextActionIsUnpaidLocalReplay =
+    /\bunpaid\b[^.]*\b(local|fixture|replay)\b/i.test(item.nextBlocker ?? '') &&
+    /\b(owner-shaped|money-shot|fixture|replay)\b/i.test(item.nextBlocker ?? '');
+  const paidProductionProofStillPending =
+    /\b(paid|live|production)\b[^.]*\b(proof|generate now)\b/i.test(backlogText) &&
+    /\b(pending|required|remains|later|after)\b/i.test(backlogText);
+
+  return (
+    explicitlyAllowsDeterministicReplay &&
+    nextActionIsUnpaidLocalReplay &&
+    paidProductionProofStillPending
+  );
+}
+
 function normalizeRepoPath(value: string): string {
   return value.replace(/\\/g, '/').replace(/^\.\//, '').trim();
 }
@@ -357,6 +388,17 @@ export function findFirstOpenBacklogItem(items: readonly BacklogItem[]): Backlog
 
 export function getBacklogEligibility(item: BacklogItem): BacklogEligibility {
   const status = normalizeStatus(item.status);
+
+  if (hasUnpaidDeterministicReplayAllowance(item)) {
+    return {
+      item,
+      actionable: true,
+      reason:
+        'paid production proof remains pending, but unpaid deterministic local fixture replay is explicitly allowed',
+      actionableCondition:
+        'Run only the unpaid deterministic local replay seam; keep paid production proof pending until local money-shot proof passes.',
+    };
+  }
 
   if (status !== 'OPEN') {
     const waitingRule = WAITING_STATUS_RULES.get(status);

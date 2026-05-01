@@ -9,6 +9,7 @@ BL-015 — Owner money-shot artifact is not consistently excellent.
 - Every Codex run opens this file first.
 - Execute the first actionable OPEN item only.
 - Autopilot skips any item that is not currently actionable, including `WAITING_EXTERNAL_ACCOUNT`, `WAITING_EXTERNAL_PROOF`, `WAITING_EXTERNAL_QUOTA`, `WAITING_PASSIVE_PROOF`, `WAITING_PAID_PROOF`, `WAITING_MANUAL_AUTH`, `WAITING_REAL_USER`, and `WAITING_TIME_WINDOW`.
+- Exception: a `WAITING_PAID_PROOF` item may still be actionable only when its backlog text explicitly allows deterministic local fixture replay, the next action is unpaid/local-only, and paid production proof remains recorded as pending.
 - Autopilot also skips `OPEN` items when `Next blocker` says the next step requires unavailable external account setup, paid/model quota, passive waiting, manual reauth, real user onboarding, a future natural cron/time window, fabricated production data, or fresh failure evidence that does not currently exist.
 - Skipped blockers remain visible and must not be marked CLOSED until their proof requirement is genuinely satisfied.
 - After shipping, update Status to CLOSED with evidence.
@@ -39,8 +40,8 @@ Required production proof: Trigger one authenticated owner Generate Now run afte
 Done means: Bad owner-shaped artifacts are blocked, one good owner-shaped artifact passes, the artifact is finished work instead of prep, no existing good artifact path breaks, and production proof is complete or explicitly waiting on external capacity.
 Do-not-count: Structural validity alone, a generic checklist, a reminder-only artifact, a static mock, a non-owner proof, a provider/debug no-send, or a local-only proof presented as live product proof.
 Status: WAITING_PAID_PROOF
-Last evidence: 2026-04-29 — deterministic local owner-shaped proof is complete for CHC/Alex confirmation sludge, ESB Technician prep homework, generic interview checklist output, stale reminder-only interview output, and one finished owner-shaped money-shot artifact. `npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts lib/briefing/__tests__/generator-runtime.test.ts`, `npm run lint`, `npm run build`, `npm run health`, and `npm run preflight` passed; production is healthy on build `bb1fee7`. BL-015 is not closed because the remaining proof is one authenticated owner Generate Now paid/live run after external model capacity returns and explicit paid-proof approval is available.
-Next blocker: Complete one live owner Generate Now proof after external model capacity returns and explicit paid-proof approval is available.
+Last evidence: 2026-05-01 — controller/backlog intercession keeps BL-015 at `WAITING_PAID_PROOF` while allowing unpaid deterministic local owner-shaped money-shot replay when live paid/model capacity is unavailable. Earlier deterministic owner-shaped proof covered CHC/Alex confirmation sludge, ESB Technician prep homework, generic interview checklist output, stale reminder-only interview output, and one finished owner-shaped money-shot artifact; paid production proof is still pending.
+Next blocker: Run unpaid deterministic local owner-shaped money-shot replay quality work first; keep the live paid owner Generate Now proof pending until local money-shot proof passes and explicit paid-proof approval is available.
 
 ### BL-001
 ID: BL-001
