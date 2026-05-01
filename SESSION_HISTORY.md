@@ -5610,3 +5610,10 @@ pm run build.
 - What changed: Updated the pipeline receipt expectation for an already-blocked off-wedge artifact so it now expects the command-center gate's additional `outside_command_center_scope` reason alongside `unclassified_artifact`. No product behavior changed.
 - Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); reproduced the failed CI unit seam with `npx vitest run lib/briefing/__tests__/pipeline-receipt.test.ts`; after patch, `npx vitest run lib/briefing/__tests__/pipeline-receipt.test.ts` passed; `npx vitest run --exclude ".claude/worktrees/**"` passed; `npm run build` passed.
 - Unresolved issues: None for the CI unit seam.
+
+## 2026-05-01 — Manual Generate Now send-time gate bypass removed
+- MODE: Manual settings run send-time quality gate seam only.
+- Files changed: `lib/cron/daily-brief-send.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `lib/cron/__tests__/manual-send.test.ts`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.
+- What changed: Removed the explicit-user manual-send bypass by making `shouldAllowExplicitNoSendEmail(...)` always return `false`. The artifact/no-send/interview send-time suppressions now run for manual `settings_run_brief` delivery as well as scheduled cron. Updated focused tests so manual bad gold-set artifacts and manual no-send blockers stay silent, while a real command-center email artifact still sends.
+- Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `git log --oneline -10`; `git status --short --branch`; added a failing regression that reproduced the bug (`manual-bad-artifact-send-1` returned `email_sent` before the predicate change); after patch, `npx vitest run lib/cron/__tests__/daily-brief.test.ts` passed (`38` tests); `npx vitest run lib/cron/__tests__/manual-send.test.ts` passed; `npm run lint` passed; `npm run build` passed.
+- Unresolved issues: No paid Generate Now run was executed and no outbound email was sent. Live owner BL-015 proof remains separately `WAITING_PAID_PROOF` and still requires explicit approval before any paid retry.

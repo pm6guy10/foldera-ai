@@ -284,7 +284,7 @@ function getInterviewDocumentSuppressionReasons(
 }
 
 function shouldAllowExplicitNoSendEmail(options: DailyBriefSignalWindowOptions): boolean {
-  return Boolean(options.userIds?.length) && options.briefInvocationSource !== 'cron_daily_brief';
+  return false;
 }
 
 async function findExistingSameDayEmailDelivery(

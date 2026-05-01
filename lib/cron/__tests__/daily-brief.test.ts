@@ -7,7 +7,7 @@ import { persistDirectiveHistorySignal } from '@/lib/signals/directive-history-s
 import { countUnprocessedSignals, processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { summarizeSignals } from '@/lib/signals/summarizer';
 import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-users';
-import { NO_SEND_DIRECTIVE_TEXT, sanitizeDirectiveForDelivery, sendDailyDirective } from '@/lib/email/resend';
+import { sendDailyDirective } from '@/lib/email/resend';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import {
   BAD_ARTIFACT_GOLD_SET_V1_2,
@@ -2118,9 +2118,72 @@ Decide by 2026-04-24.`,
     expect(updatedExecutionResult?.execution_result?.resend_id).toBeUndefined();
   });
 
-  it('sends generic persisted no-send blocker once for an explicitly scoped manual run', async () => {
+  it('rechecks persisted artifacts for explicit manual settings runs before email delivery', async () => {
+    const bad = BAD_ARTIFACT_GOLD_SET_V1_2.find((item) => item.id === 'bad_named_source_no_outcome');
+    expect(bad).toBeDefined();
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
-    vi.mocked(sendDailyDirective).mockResolvedValue({ data: { id: 'resend-no-send' } } as never);
+    vi.mocked(sendDailyDirective).mockResolvedValue({ data: { id: 'resend-manual-bad-artifact' } } as never);
+    mockSupabase.actionRows = [
+      {
+        id: 'manual-bad-artifact-send-1',
+        user_id: USER_ID,
+        status: 'pending_approval',
+        action_type: bad!.directive.action_type,
+        directive_text: bad!.directive.directive,
+        reason: bad!.directive.reason,
+        evidence: bad!.directive.evidence,
+        confidence: 88,
+        generated_at: new Date().toISOString(),
+        execution_result: {
+          artifact: bad!.artifact,
+        },
+      },
+    ];
+
+    const result = await runDailySend({
+      userIds: [USER_ID],
+      briefInvocationSource: 'settings_run_brief',
+    });
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'no_send_blocker_persisted',
+        detail: 'Persisted artifact suppressed at send time because it failed the artifact quality gate.',
+        success: true,
+        meta: expect.objectContaining({
+          action_id: 'manual-bad-artifact-send-1',
+          artifact_quality_gate_suppressed: true,
+          suppression_code: 'artifact_quality_gate_blocked',
+          suppression_reasons: expect.arrayContaining(['no_concrete_outcome']),
+        }),
+      }),
+    ]);
+    expect(sendDailyDirective).not.toHaveBeenCalled();
+    expect(mockSupabase.updatedActions).toEqual([
+      expect.objectContaining({
+        id: 'manual-bad-artifact-send-1',
+        payload: expect.objectContaining({
+          execution_result: expect.objectContaining({
+            daily_send_suppression: expect.objectContaining({
+              code: 'artifact_quality_gate_blocked',
+              reasons: expect.arrayContaining(['no_concrete_outcome']),
+            }),
+            quiet_hold_receipt: expect.objectContaining({
+              status: 'held_no_finished_artifact',
+              delivery: 'silent',
+              blocked_reasons_summary: expect.arrayContaining([
+                'artifact_quality_gate_blocked',
+                'no_concrete_outcome',
+              ]),
+            }),
+          }),
+        }),
+      }),
+    ]);
+  });
+
+  it('suppresses generic persisted no-send blockers for explicitly scoped manual runs', async () => {
+    vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
     mockSupabase.actionRows = [
       {
         id: 'blocked-1',
@@ -2149,42 +2212,35 @@ Decide by 2026-04-24.`,
 
     expect(result.results).toEqual([
       expect.objectContaining({
-        code: 'email_sent',
+        code: 'no_send_blocker_persisted',
+        detail: 'Generic no-send blocker persisted without email delivery.',
         success: true,
         meta: expect.objectContaining({
           action_id: 'blocked-1',
-          no_send_blocker: true,
-          resend_id: 'resend-no-send',
+          generic_no_send_suppressed: true,
           daily_email_idempotency_key: expect.stringContaining(`daily-brief:${USER_ID}:`),
+          quiet_hold_receipt: expect.objectContaining({
+            status: 'held_no_finished_artifact',
+            delivery: 'silent',
+            blocked_reasons_summary: expect.arrayContaining([
+              'generic_no_send_suppressed',
+              'no_finished_artifact_available',
+            ]),
+          }),
         }),
       }),
     ]);
-    expect(result.message).toContain('Sent briefs for 1 eligible user.');
-    expect(sanitizeDirectiveForDelivery).toHaveBeenCalled();
-    expect(sendDailyDirective).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: 'owner@example.com',
-        userId: USER_ID,
-        subject: 'Foldera: Nothing cleared the bar today',
-        directives: [
-          expect.objectContaining({
-            id: 'blocked-1',
-            action_type: 'do_nothing',
-            directive: 'Nothing cleared the bar today after evaluating 10 candidates.',
-            artifact: expect.objectContaining({ type: 'wait_rationale' }),
-          }),
-        ],
-      }),
-    );
+    expect(sendDailyDirective).not.toHaveBeenCalled();
     expect(mockSupabase.updatedActions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: 'blocked-1',
           payload: expect.objectContaining({
             execution_result: expect.objectContaining({
-              daily_brief_sent_at: expect.any(String),
-              resend_id: 'resend-no-send',
-              daily_email_idempotency_key: expect.stringContaining(`daily-brief:${USER_ID}:`),
+              quiet_hold_receipt: expect.objectContaining({
+                status: 'held_no_finished_artifact',
+                delivery: 'silent',
+              }),
             }),
           }),
         }),
@@ -2192,19 +2248,8 @@ Decide by 2026-04-24.`,
     );
   });
 
-  it('uses sanitized no-send content before sending in explicit manual scope', async () => {
+  it('keeps leaked no-send blocker content silent in explicit manual scope', async () => {
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
-    vi.mocked(sendDailyDirective).mockResolvedValue({ data: { id: 'resend-no-send' } } as never);
-    vi.mocked(sanitizeDirectiveForDelivery).mockImplementationOnce((directive) => ({
-      ...(directive as Record<string, unknown>),
-      directive: NO_SEND_DIRECTIVE_TEXT,
-      reason: '',
-      artifact: {
-        type: 'wait_rationale',
-        context: 'Foldera checked your recent signals and did not find anything worth interrupting you for.',
-        evidence: 'Foldera checked your recent signals and did not find anything worth interrupting you for.',
-      },
-    }));
     const leakedPayload =
       'batch: 400 {"type":"error","error":{"type":"invalid_request_error","message":"You have reached your specified API usage limits. You will regain access on 2026-05-01 at 00:00 UTC."},"request_id":"req_011CaWQh3JawpX84Nqs5uW5o"}';
     mockSupabase.actionRows = [
@@ -2235,20 +2280,33 @@ Decide by 2026-04-24.`,
 
     expect(result.results).toEqual([
       expect.objectContaining({
-        code: 'email_sent',
+        code: 'no_send_blocker_persisted',
+        detail: 'Generic no-send blocker persisted without email delivery.',
         success: true,
-        meta: expect.objectContaining({ action_id: 'blocked-leak-2' }),
+        meta: expect.objectContaining({
+          action_id: 'blocked-leak-2',
+          generic_no_send_suppressed: true,
+          quiet_hold_receipt: expect.objectContaining({
+            status: 'held_no_finished_artifact',
+            delivery: 'silent',
+            blocked_reasons_summary: expect.arrayContaining([
+              'generic_no_send_suppressed',
+              'no_finished_artifact_available',
+            ]),
+          }),
+        }),
       }),
     ]);
-    expect(sendDailyDirective).toHaveBeenCalledTimes(1);
-    const call = vi.mocked(sendDailyDirective).mock.calls[0]?.[0];
-    const sent = JSON.stringify(call);
-    expect(sent).toContain(NO_SEND_DIRECTIVE_TEXT);
-    expect(sent).not.toContain('batch: 400');
-    expect(sent).not.toContain('invalid_request_error');
-    expect(sent).not.toContain('request_id');
-    expect(sent).not.toContain('req_011CaWQh3JawpX84Nqs5uW5o');
-    expect(sent).not.toContain('API usage limits');
+    expect(sendDailyDirective).not.toHaveBeenCalled();
+    const updatedExecutionResult = mockSupabase.updatedActions[0]?.payload as
+      | { execution_result?: Record<string, unknown> }
+      | undefined;
+    const serialized = JSON.stringify(updatedExecutionResult?.execution_result?.quiet_hold_receipt);
+    expect(serialized).not.toContain('batch: 400');
+    expect(serialized).not.toContain('invalid_request_error');
+    expect(serialized).not.toContain('request_id');
+    expect(serialized).not.toContain('req_011CaWQh3JawpX84Nqs5uW5o');
+    expect(serialized).not.toContain('API usage limits');
   });
 
   it('does not send a second generic no-send email when another same-day row already has send evidence', async () => {
@@ -2345,16 +2403,22 @@ Decide by 2026-04-24.`,
         user_id: USER_ID,
         status: 'pending_approval',
         action_type: 'send_message',
-        directive_text: 'Send the update email.',
-        reason: 'Keep momentum.',
+        directive_text: 'Resolve the interview schedule conflict with Alex by 3 PM today.',
+        reason: 'Source Email: Alex asked to keep the Comprehensive Healthcare phone screen moving before today closes.',
+        evidence: [
+          {
+            type: 'signal',
+            description: 'Source Email: Alex asked about the Comprehensive Healthcare phone screen timing today.',
+          },
+        ],
         confidence: 84,
         generated_at: new Date().toISOString(),
         execution_result: {
           artifact: {
             type: 'email',
-            to: 'owner@example.com',
-            subject: 'Update',
-            body: 'Hello',
+            to: 'alex@example.com',
+            subject: 'Comprehensive Healthcare phone screen timing today',
+            body: 'Hi Alex,\n\nCan you confirm by 3 PM PT today whether the Comprehensive Healthcare phone screen should stay on the current time or move to tomorrow morning? I can lock either option as soon as you reply.\n\nThanks,\nBrandon',
             draft_type: 'email_compose',
           },
         },

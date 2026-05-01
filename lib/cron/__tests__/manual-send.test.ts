@@ -164,7 +164,12 @@ vi.mock('@/lib/auth/daily-brief-users', () => ({
 }));
 
 vi.mock('@/lib/email/resend', () => ({
+  NO_SEND_BODY_TEXT: 'Foldera checked your recent signals and did not find anything worth interrupting you for.',
+  NO_SEND_DIRECTIVE_TEXT: 'Nothing cleared the bar today.',
   NO_SEND_SUBJECT: 'Foldera: Nothing cleared the bar today',
+  isInternalFailureText: vi.fn((text: string) =>
+    /\bllm_failed\b|\bstale_date_in_directive\b|all\s+\d+\s+candidates blocked|\ball candidates blocked\b|\bbatch:\s*\d+\b|\binvalid_request_error\b|\brequest_id\b|\breq_[A-Za-z0-9]+\b|\bapi usage limits\b/i.test(text),
+  ),
   sanitizeDirectiveForDelivery: vi.fn((directive: unknown) => directive),
   sendDailyDirective: vi.fn(),
   sendDailyDeliverySkipAlert: vi.fn().mockResolvedValue(undefined),
@@ -214,16 +219,23 @@ describe('runDailySend explicit user scope', () => {
         user_id: USER_ID,
         status: 'pending_approval',
         action_type: 'send_message',
-        directive_text: 'Send the update email.',
-        reason: 'Keep momentum.',
+        directive_text: 'Confirm the Comprehensive Healthcare phone screen timing by 3 PM today.',
+        reason: 'Source Email: Alex asked about the Comprehensive Healthcare phone screen timing today.',
+        evidence: [
+          {
+            type: 'signal',
+            description: 'Source Email: Alex asked about the Comprehensive Healthcare phone screen timing today.',
+          },
+        ],
         confidence: 84,
         generated_at: new Date().toISOString(),
         execution_result: {
           artifact: {
             type: 'email',
             to: 'member@example.com',
-            subject: 'Update',
-            body: 'Hello',
+            subject: 'Comprehensive Healthcare phone screen timing today',
+            body: 'Hi Alex,\n\nCan you confirm by 3 PM PT today whether the Comprehensive Healthcare phone screen should stay on the current time or move to tomorrow morning? I can lock either option as soon as you reply.\n\nThanks,\nBrandon',
+            draft_type: 'email_compose',
           },
         },
       },
