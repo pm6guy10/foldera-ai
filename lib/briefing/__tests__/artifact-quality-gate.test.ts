@@ -103,7 +103,7 @@ describe('owner money-shot artifact suite', () => {
       }),
     }));
 
-    expect(results).toHaveLength(4);
+    expect(results).toHaveLength(5);
     for (const { item, result } of results) {
       expect(result.passes, item.id).toBe(false);
       expect(result.reasons, item.id).toContain(item.expectedReason);

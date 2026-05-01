@@ -21,6 +21,7 @@ export type ArtifactQualityBlockReason =
   | 'stale_event'
   | 'no_concrete_outcome'
   | 'fabricated_claim'
+  | 'transactional_sender_decision_pressure'
   | 'unclassified_artifact';
 
 export interface ArtifactQualityGateInput {
@@ -97,6 +98,13 @@ const REMEDY_PATTERN = /\b(remedy|fix|send|reply|confirm|escalate|resolve|ask|mo
 
 const SUPPRESSION_PATTERN =
   /\b(skip|suppress|suppression|do not send|no send|nothing cleared|not worth interrupting|trust-preserving)\b/i;
+
+const TRANSACTIONAL_SYSTEM_SENDER_PATTERN =
+  /\b(?:onboarding|no-?reply|noreply|notification|notifications|support|security|billing|system|admin|updates?|alerts?)@[a-z0-9.-]+\.[a-z]{2,}\b/i;
+const WEAK_SILENCE_PATTERN =
+  /\b(?:silent|silence|no\s+(?:reply|response)|zero replies|unreplied|has not (?:replied|responded))\b[\s\S]{0,80}\b(?:\d+\s+days?|days?|weeks?)\b|\b\d+\s+days?\b[\s\S]{0,80}\b(?:silent|silence|no\s+(?:reply|response)|unreplied)\b/i;
+const INVENTED_PROFESSIONAL_PRESSURE_PATTERN =
+  /\b(?:employer|vendor|relationship|professional risk|reputational risk|accepting another job|external decision|interview decisions?|moved on|must be addressed|decision map|before [^.]{0,80}(?:final|locked)|closure)\b/i;
 
 const USER_CLAIM_PATTERNS = [
   /\bI (?:worked|work) (?:at|for|with) ([A-Z][A-Za-z0-9&/ -]{2,40})/g,
@@ -180,6 +188,15 @@ function hasFabricatedUserClaim(text: string, evidence: string): boolean {
   }
 
   return false;
+}
+
+function hasTransactionalSenderDecisionPressure(text: string, evidence: string): boolean {
+  const combined = [text, evidence].join('\n');
+  return (
+    TRANSACTIONAL_SYSTEM_SENDER_PATTERN.test(combined) &&
+    WEAK_SILENCE_PATTERN.test(combined) &&
+    INVENTED_PROFESSIONAL_PRESSURE_PATTERN.test(text)
+  );
 }
 
 function classifyDraftEmail(artifact: ConvictionArtifact, text: string): boolean {
@@ -279,6 +296,9 @@ export function evaluateArtifactQualityGate(
     reasons.push('no_concrete_outcome');
   }
   if (hasFabricatedUserClaim(combined, evidence)) reasons.push('fabricated_claim');
+  if (!suppressionDecision && hasTransactionalSenderDecisionPressure(combined, evidence)) {
+    reasons.push('transactional_sender_decision_pressure');
+  }
 
   if (!category) reasons.push('unclassified_artifact');
 

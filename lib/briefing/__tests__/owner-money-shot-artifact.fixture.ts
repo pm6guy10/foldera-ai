@@ -91,6 +91,25 @@ export const OWNER_MONEY_SHOT_BAD_ARTIFACTS: OwnerMoneyShotArtifactCase[] = [
       content: 'Source: calendar. Your ESB Technician interview is tomorrow, 2026-04-21. Prepare accordingly and review your notes.',
     },
   },
+  {
+    id: 'owner_bad_resend_onboarding_decision_pressure',
+    expectedReason: 'transactional_sender_decision_pressure',
+    directive: directive('write_document', 'Create the Resend relationship decision map.', 'onboarding@resend.dev has been silent for 32 days.', [
+      'Source Email: onboarding@resend.dev sent a Resend onboarding message and has been silent for 32 days.',
+      'Interview source: separate owner job-search interviews exist, but no Resend employer, vendor, or relationship obligation is confirmed.',
+    ]),
+    artifact: {
+      type: 'document',
+      title: 'Resend Relationship Status & Interview Decision Map',
+      content: [
+        'Source Email: onboarding@resend.dev has been silent for 32 days after the Resend onboarding message.',
+        'Decision: decide today whether this Resend relationship is still active or whether you have moved on.',
+        'Criteria: because accepting another job may create reputational or professional risk if the Resend silence is not addressed first.',
+        'Next action: resolve the Resend status before any external decision is final.',
+        'This matters now: the silence must be addressed before interview decisions become locked.',
+      ].join('\n'),
+    },
+  },
 ];
 
 export const OWNER_MONEY_SHOT_GOOD_ARTIFACT: OwnerMoneyShotArtifactCase = {
