@@ -1,6 +1,6 @@
-# FOLDERA PRODUCT SPEC — MASTER AUDIT
+# FOLDERA PRODUCT SPEC — BRANDON COMMAND CENTER
 
-Last Updated: April 8, 2026 (**Full surface audit:** [docs/FULL_SURFACE_AUDIT_2026-04-07.md](./docs/FULL_SURFACE_AUDIT_2026-04-07.md); **audit remediation roadmap (Phases D–G pending + tackle):** [docs/AUDIT_REMEDIATION_ROADMAP.md](./docs/AUDIT_REMEDIATION_ROADMAP.md); **outstanding backlog S0–S3 (severity):** first table + **Executor ship contract** in [AUTOMATION_BACKLOG.md](./AUTOMATION_BACKLOG.md) — lint/build/811 vitest/41 CI e2e/61 test:prod green; `npm run health` 0 failing (warnings: duplicate directive shape, last gen `do_nothing`); `pipeline_runs` + related migrations applied by agent (Supabase MCP / `db push`; see `docs/SUPABASE_MIGRATIONS.md`); `npm run scoreboard` expected green on linked DB post-migration. **April 7 remediation:** signal batch isolation + `normalizeInteractionTimestamp` hardening; locked-contact post-LLM scan uses user-facing artifact fields only (`locked-contact-scan.ts`); stale-date gate scans directive + why_now + evidence + insight + slash ISO; `/dashboard/signals` in CI e2e (`authenticated-routes.spec.ts`).) **April 4 code excellence baseline:** production env fail-fast `lib/config/required-env.ts` + `instrumentation.ts`; `apply_commitment_ceiling` RPC + self-heal fallback; `encryption_decrypt_legacy_key_used` structured log (no secrets); CE-2 burn module + weak-recurring heuristic; prod audit Section 4 GET retry.) **April 3 A+ remediation:** `vercel.json` **2 crons** + `runPlatformHealthAlert` after `daily-brief` (`lib/cron/cron-health-alert.ts`); conviction **CE-3–CE-6** (`inferHardDeadline` calendar/goal cross-ref, `hiringFunnelTierFromPlaintext`, signal-based 21d goal decay, `detectReferenceRiskBlindspot`); `npm run test:local:e2e`; clickflow `domcontentloaded`. **Prior slice:** `x-request-id` + `apiErrorForRoute`; `docs/SUPABASE_MIGRATIONS.md`, `ENTITY_DEDUPE`; CE-2 partial burn proxy; root `layout.js` SEO; `/try` CTAs; blog `[slug]` prose. **Prior:** Resend HTML parity — `lib/email/resend.ts` — Inter + tokens aligned to `tailwind.config.js` / landing directive card; April 1, 2026 FLOW brain quality: **`applyScheduleConflictCanonicalUserFacingCopy`** — after LLM parse, `schedule_conflict` winners get `directive`/`why_now` from scorer `title` + `trigger.why_now` (or first sentence of `content`) so the lead matches the calendar winner, not relationship drift; unit test in `generator.test.ts`. **`scheduleConflictDocRelaxed`** also skips **ownership** enforcement (artifacts may say “open calendar app” without “your calendar”). **`buildWaitRationale`** prefers `directive.directive` one-liner for no-send `directive_text` when present. Plus **post-generate quality gate** for `schedule_conflict` + `write_document`: `getDecisionEnforcementIssues` accepts optional `discrepancyClass` and relaxes explicit/time/pressure when ISO date + numbered steps present; expanded `PRESSURE_OR_CONSEQUENCE_PATTERNS` (overlapping, double-book, calendar conflict, trade-off); `OWNERSHIP_PATTERNS` includes `your calendar`; `GenerationCandidateLog.discrepancyClass` populated from scorer; `isSendWorthy` passes `directive.discrepancyClass`; brain-receipt reads class from `generation_log` for gates; artifact-generator deadline prompt block + placeholder rejection (`[phone…]`, `from recent contact`); `PLACEHOLDER_PATTERN` in `daily-brief-generate` aligned; `evaluate-readiness.test.ts` covers schedule_conflict path. **Product chrome / mobile:** settings header 3-col grid (no tap overlap), dashboard `100dvh` + empty-state + Pro blur tap targets, pricing/onboard/login/start mobile padding + safe-area; `mobile-prod-layout.spec.ts` + **`mobile-journey.spec.ts`** in `npm run test:prod` (412×915 / 390×844 journey screenshots). **2026-04-01 mobile hardening:** `env(safe-area-inset-*)` on public nav, login/start minimal nav, landing hero + pricing main padding, dashboard/settings fixed headers + main offset; mobile menu close + body spacing; settings sign-out icon `<sm`.)
+Last Updated: May 1, 2026 (**Product reset:** Foldera is now framed as Brandon's narrow command center for job, interview, benefits, payment, admin deadline, and calendar-conflict signals. Historical notes below may mention prior daily/morning-brief framing; this section supersedes them. Current artifact enforcement lives in `lib/briefing/artifact-quality-gate.ts` and is verified by `lib/briefing/__tests__/artifact-quality-gate.test.ts` plus `lib/briefing/__tests__/generator-runtime.test.ts`.)
 Next Review: Monday March 31, 2026
 
 ## HOW TO USE THIS FILE
@@ -10,6 +10,24 @@ Brandon opens a chat. Drags this file in. Claude reads it, diffs against what CC
 **Multi-session “mega prompt” work:** Use [docs/MEGA_PROMPT_PROGRAM.md](./docs/MEGA_PROMPT_PROGRAM.md) — one Cursor session per row (baseline, local brain, UX sweeps, doc sync). Gate 4 operator receipt steps are linked from [REVENUE_PROOF.md](./REVENUE_PROOF.md). **April 3, 2026:** `npm run test:local:check` fails fast when localhost owner storage state is missing (see `tests/local/README.md`). **Same day (hardening loop):** `npm run lint` (flat ESLint via `cross-env`, ignores `.claude/**`); GitHub Actions runs **Lint** before **Build**; Resend shared handler returns **400** on empty webhook body before Svix verify (`lib/webhooks/resend-webhook.ts` + `lib/webhooks/__tests__/resend-webhook.test.ts`); `playwright.ci.config.ts` honors `PLAYWRIGHT_WEB_PORT`; Dependabot weekly npm (`.github/dependabot.yml`); `FolderaMark` uses `next/image` for the glyph. **A–Z audit + backlog normalization:** [docs/AZ_AUDIT_2026-04.md](docs/AZ_AUDIT_2026-04.md), [docs/LOCAL_E2E_AND_PROD_TESTS.md](docs/LOCAL_E2E_AND_PROD_TESTS.md); **Past directives:** `GET /api/conviction/history`, `/dashboard/briefings` (History icon in dashboard header).
 
 **Operator dashboards + troubleshooting:** [docs/MASTER_PUNCHLIST.md](./docs/MASTER_PUNCHLIST.md) (Supabase, Vercel, run-brief JSON for missing email, Gate 4 paste instructions).
+
+## CURRENT PRODUCT PROMISE
+
+Foldera watches Brandon's real inbox/calendar for job, interview, benefits, payment, and admin deadlines, then gives him one exact ready-to-use artifact he can save or skip.
+
+Foldera is not a generic morning-summary product. It must not create relationship-silence artifacts, prepare/review/research homework, fake obligations, broad-autonomy task lists, or outbound email by default.
+
+Allowed artifact classes:
+
+1. Interview role-fit packet.
+2. Follow-up email draft for review only.
+3. Deadline/risk decision brief.
+4. Benefits/payment/admin action packet.
+5. Calendar conflict resolution brief.
+
+If a candidate does not fit one of those classes, the product outcome is exactly:
+
+`No safe artifact today.`
 
 ## Revenue proof (GTM)
 
@@ -21,7 +39,7 @@ Cross-reference: **[REVENUE_PROOF.md](./REVENUE_PROOF.md)** — locked GTM proof
 
 Everything here must be PROVEN before any user sees the product.
 
-### 1.1 Morning Email Delivery
+### 1.1 Command-Center Outcome Delivery
 
 | Item | Status | Evidence | Blocks |
 |---|---|---|---|

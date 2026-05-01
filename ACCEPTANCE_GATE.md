@@ -1,6 +1,14 @@
 # Acceptance Gate
 
-Product contract checklist. Every directive must pass before it ships.
+Product contract checklist. Every artifact candidate must pass before it ships.
+
+## Product Promise
+
+Foldera is a narrow command center for Brandon's job, interview, benefits, payment, and admin deadlines. It watches real inbox/calendar signals, then produces one exact ready-to-use artifact Brandon can save or skip.
+
+Foldera is not a generic morning-summary product. If a candidate does not fit the command-center wedge, the correct user-visible outcome is:
+
+`No safe artifact today.`
 
 ## Production Ladder: Works / Broken / Proof
 
@@ -11,18 +19,18 @@ This ladder is the operational definition of production truth.
 - `Proof` must be a build command, test command, Playwright journey, or explicit manual UI check.
 - A change does not count if it only updates docs, screenshots, visual polish, SEO, refactors, or unrelated tests.
 
-### 1. Daily Brief run completes end-to-end
+### 1. Command-center scan completes end-to-end
 
-- **Works means:** one real production Daily Brief run reaches a completed product outcome with no manual rescue in the middle.
+- **Works means:** one real production command-center scan reaches a completed product outcome with no manual rescue in the middle.
 - **Broken means:** the run stalls, errors, exits early, or only proves internal progress while the user-observable flow never completes.
-- **Proof command:** explicit manual UI check: trigger one real production Daily Brief run and verify the run reaches a completed user-facing outcome rather than a log-only success.
+- **Proof command:** explicit manual UI check: trigger one real production scan and verify the run reaches either one allowed artifact or `No safe artifact today.` rather than a log-only success.
 - **Do-not-count conditions:** cron 200s, logs, traces, DB rows, or internal stage markers by themselves do not count; docs/screenshots/visual polish/SEO/refactors/unrelated tests also do not count.
 
-### 2. It creates one usable artifact
+### 2. It creates one allowed usable artifact or a safe no-artifact result
 
-- **Works means:** the completed run produces exactly one finished, usable artifact of a valid Foldera type.
-- **Broken means:** the output is null, empty, duplicated, placeholder-filled, scaffold-like, or not usable as shipped.
-- **Proof command:** explicit manual UI check: inspect the produced artifact in the real product surface and confirm it is a single finished artifact, not notes or raw generation sludge.
+- **Works means:** the completed run produces exactly one finished, usable artifact from the allowed command-center classes, or returns `No safe artifact today.` when no candidate fits.
+- **Broken means:** the output is null, empty, duplicated, placeholder-filled, scaffold-like, generic summary, relationship-silence artifact, homework, fake obligation, or not usable as shipped.
+- **Proof command:** explicit manual UI check: inspect the produced artifact in the real product surface and confirm it is a single finished command-center artifact, not notes, prep, raw generation sludge, or a morning summary.
 - **Do-not-count conditions:** "artifact created" in logs, a persisted invalid payload, or a screenshot of static mock content does not count; docs/screenshots/visual polish/SEO/refactors/unrelated tests also do not count.
 
 ### 3. Artifact is visible on /dashboard without manual DB/app inspection
@@ -78,32 +86,33 @@ The controller must skip items whose status or next blocker requires unavailable
 
 ## Permanent Success Criteria
 
-The system passes if and only if ALL of these are true every morning with zero human intervention:
+The system passes if and only if ALL of these are true for the command-center path with zero human intervention:
 
-1. **DELIVERY**: Email arrives by 7am PT. Every morning. `wait_rationale` counts. Silence fails.
-2. **SELF-HEALING**: Tokens, signals, commitments, queue — detected and resolved automatically via `lib/cron/self-heal.ts`.
-3. **SELF-LEARNING**: Skips and approvals change future output. No manual teaching.
-4. **SELF-OPTIMIZING**: Threshold adjusts based on approval rates. System finds its own bar.
-5. **MULTI-USER**: Everything works for someone who is not Brandon.
+1. **SCOPE**: Only job, interview, benefits, payment, admin deadline, or calendar-conflict candidates can produce artifacts.
+2. **OUTPUT**: Exactly one allowed artifact appears, or `No safe artifact today.` appears when nothing qualifies.
+3. **NO OUTBOUND BY DEFAULT**: Follow-up email drafts are for review only unless an explicit send flag is enabled elsewhere.
+4. **SELF-HEALING**: Tokens, signals, commitments, and queue issues are detected and resolved automatically via `lib/cron/self-heal.ts`.
+5. **MULTI-USER READY**: The path remains user-scoped and does not depend on hardcoded Brandon data, even while Brandon is the wedge proof user.
 
 Failure on any criterion = the system is broken. Not "needs improvement." Broken.
 
 ## Core Contract
 
-- [ ] Exactly one directive per email
-- [ ] Exactly one finished artifact attached
-- [ ] If the user has to do work after approving, the feature is broken
-- [ ] Confidence below threshold: send `wait_rationale` (not silence)
-- [ ] A correct "nothing today" with rationale is better than a bad directive
-- [ ] The morning email ALWAYS arrives. Silence is a bug.
+- [ ] Exactly one command-center artifact or exactly one `No safe artifact today.` result
+- [ ] Allowed artifact classes only: interview role-fit packet, follow-up email draft for review only, deadline/risk decision brief, benefits/payment/admin action packet, calendar conflict resolution brief
+- [ ] If the user has to prepare, review, research, or invent missing facts after saving, the artifact is broken
+- [ ] Generic morning summaries, relationship-silence artifacts, homework, fake obligations, and broad autonomy are blocked
+- [ ] A correct `No safe artifact today.` is better than a bad artifact
+- [ ] Outbound email is not part of the default product promise
 
 ## Valid User-Facing Artifact Types
 
-1. **send_message**: real recipient email in `to` (or empty if unavailable), non-empty `subject`, non-empty `body` ready to send as-is
-2. **write_document**: `document_purpose` (brief|plan|summary|proposal|checklist), `target_reader`, `title`, non-empty `content` — finished artifact, not notes
-3. **schedule_block**: `title`, `reason`, `start` or scheduling target, `duration_minutes`
-4. **wait_rationale**: `context` (what was evaluated), `evidence` (why nothing was sent), optional `tripwires` (what unblocks future sends)
-5. **do_nothing**: `exact_reason`, `blocked_by`
+1. **Interview role-fit packet**: grounded from real job/interview/resume signals; gives Brandon finished role-fit language or a ready packet.
+2. **Follow-up email draft for review only**: real recipient, non-empty subject/body, grounded in a real job/interview/admin thread, and not sent by default.
+3. **Deadline/risk decision brief**: one concrete decision, risk, deadline, and next action from real signals.
+4. **Benefits/payment/admin action packet**: exact admin/payment/benefits response packet with source, deadline, required fields, and ready text.
+5. **Calendar conflict resolution brief**: one calendar conflict, decision, tradeoff, deadline, and calendar move.
+6. **No safe artifact today.**: required result for any candidate outside the five allowed classes.
 
 ## Self-Heal Defenses (lib/cron/self-heal.ts)
 

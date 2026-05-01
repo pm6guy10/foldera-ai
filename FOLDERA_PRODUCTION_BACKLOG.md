@@ -24,6 +24,25 @@ BL-015 — Owner money-shot artifact is not consistently excellent.
 
 ## Items
 
+### BL-017
+ID: BL-017
+Rung: 0
+Title: Product reset to Brandon command-center artifact wedge
+User-facing path: Brandon receives exactly one safe ready-to-use artifact from real job, interview, benefits, payment, admin deadline, or calendar-conflict signals, or sees `No safe artifact today.`
+Starting route or trigger: Artifact quality gate during generation, pending-approval persistence, and scheduled send-time recheck.
+Ending success state: Foldera is framed and gated as a narrow command-center product, not a generic morning brief product; all off-wedge artifact classes are blocked.
+Problem: The old product frame kept optimizing morning-brief behavior and allowed relationship-silence, homework, generic summary, and fake-obligation artifacts to look like product progress.
+Protected contracts: No paid tests, no outbound email, no generic morning summaries, no relationship-silence artifacts, no prepare/review/research homework, no fake obligations, no broad autonomy, preserve one-artifact-or-safe-no-artifact rule.
+Allowed files: `FOLDERA_PRODUCT_SPEC.md`, `CURRENT_STATE.md`, `FOLDERA_PRODUCTION_BACKLOG.md`, `ACCEPTANCE_GATE.md`, `lib/briefing/artifact-quality-gate.ts`, `lib/briefing/__tests__/artifact-quality-gate.test.ts`, `lib/briefing/__tests__/generator-runtime.test.ts`
+Forbidden files: product UI, auth/session, billing, provider sync, migrations, outbound email delivery code, broad refactors, paid proof scripts
+Required local proof: `npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts lib/briefing/__tests__/generator-runtime.test.ts`; `npm run health`; `npm run lint`; `npm run build`
+Required production proof: None for this reset unless Brandon separately approves a paid owner proof later. No paid tests and no outbound email are part of this seam.
+Done means: The docs and gate name the five allowed classes, off-wedge candidates return `No safe artifact today.`, suppression/no-send is not counted as a saveable artifact, and a relationship-silence owner-shaped generator candidate is blocked before persistence.
+Do-not-count: Morning-summary copy, generic no-send rationale, relationship silence decision maps, prep checklists, research/review homework, fake admin obligations, or local-only paid/model calls.
+Status: CLOSED
+Last evidence: 2026-05-01 — focused local gate proof passed: `npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts lib/briefing/__tests__/generator-runtime.test.ts`. The suite proves the five command-center artifact classes pass, suppression/no-send and off-wedge artifacts return `No safe artifact today.`, and the owner-shaped CHC relationship-silence decision map is blocked with `artifact_quality_gate_failed` before persistence. `npm run health` returned `RESULT: 0 FAILING` with warnings only; `npm run lint` passed; `npm run build` passed.
+Next blocker: None for this seam. BL-015 remains separately waiting on explicit paid owner proof, but paid proof is not part of BL-017.
+
 ### BL-015
 ID: BL-015
 Rung: 0

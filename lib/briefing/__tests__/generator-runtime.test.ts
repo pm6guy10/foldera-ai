@@ -599,6 +599,80 @@ describe('generateDirective runtime failures', () => {
     }));
   });
 
+  it('blocks owner-shaped relationship-silence decision artifacts instead of persisting fake obligations', async () => {
+    const scored = asWinnerScored(buildScorerResult());
+    scored.winner = {
+      ...buildWinner(),
+      id: 'blocked-chc-relationship-silence-map',
+      type: 'commitment',
+      suggestedActionType: 'write_document',
+      title: 'CHC silence relationship decision map',
+      content: 'CHC has not replied for 19 days, but no current job, interview, benefits, payment, admin deadline, or calendar conflict requires a finished artifact.',
+      entityName: 'CHC',
+      relationshipContext: '- CHC <updates@comphc.org> (Contact)',
+      sourceSignals: [
+        {
+          kind: 'signal',
+          id: 'sig-chc-silence',
+          summary: 'CHC updates@comphc.org has not replied for 19 days after a general relationship thread.',
+          occurredAt: FIXED_NOW.toISOString(),
+        },
+      ],
+    };
+    scored.topCandidates = [scored.winner];
+    scored.candidateDiscovery = {
+      ...scored.candidateDiscovery,
+      candidateCount: 1,
+      selectionReason: 'Selected because CHC relationship silence ranked first.',
+    };
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueEmptyTkgActionsResults(8);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 120, output_tokens: 90 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Create the CHC relationship silence decision map today.',
+          artifact_type: 'write_document',
+          artifact: {
+            document_purpose: 'brief',
+            target_reader: 'Brandon',
+            title: 'CHC relationship silence decision map',
+            content: [
+              'Source Email: CHC has not replied for 19 days after a general update thread.',
+              'Decision: decide today whether this CHC relationship is still active or whether you have moved on.',
+              'Criteria: because silence may create professional risk if the relationship is not addressed before external decisions are final.',
+              'Owner: Brandon owns the decision not to convert this silence into a fake obligation.',
+              'Deadline: today.',
+              'Next action: resolve the CHC status before any external decision is final.',
+            ].join('\n'),
+          },
+          evidence: 'CHC has not replied for 19 days.',
+          why_now: 'The relationship silence is unresolved.',
+          causal_diagnosis: {
+            why_exists_now: 'A general contact has not replied.',
+            mechanism: 'Relationship silence without a real deadline or opportunity.',
+          },
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(directive.directive).toBe('__GENERATION_FAILED__');
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'candidate_blocked',
+      generationStatus: 'artifact_quality_gate_failed',
+      details: expect.objectContaining({
+        candidate_title: 'CHC silence relationship decision map',
+        reasons: expect.arrayContaining(['relationship_silence_artifact']),
+      }),
+    }));
+  });
+
   it('maps scorer no_valid_action to a deterministic blocker (not GENERATION_FAILED)', async () => {
     mockScoreOpenLoops.mockResolvedValue({
       outcome: 'no_valid_action',

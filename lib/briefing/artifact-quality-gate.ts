@@ -8,6 +8,13 @@ export type ArtifactQualityCategory =
   | 'RISK_ALERT'
   | 'SUPPRESSION_DECISION';
 
+export type CommandCenterArtifactClass =
+  | 'INTERVIEW_ROLE_FIT_PACKET'
+  | 'FOLLOW_UP_EMAIL_DRAFT'
+  | 'DEADLINE_RISK_DECISION_BRIEF'
+  | 'BENEFITS_PAYMENT_ADMIN_ACTION_PACKET'
+  | 'CALENDAR_CONFLICT_RESOLUTION_BRIEF';
+
 export type ArtifactQualityBlockReason =
   | 'action_type_mismatch'
   | 'internal_debug_token'
@@ -22,6 +29,8 @@ export type ArtifactQualityBlockReason =
   | 'no_concrete_outcome'
   | 'fabricated_claim'
   | 'transactional_sender_decision_pressure'
+  | 'relationship_silence_artifact'
+  | 'outside_command_center_scope'
   | 'unclassified_artifact';
 
 export interface ArtifactQualityGateInput {
@@ -35,7 +44,9 @@ export interface ArtifactQualityGateInput {
 export interface ArtifactQualityGateResult {
   passes: boolean;
   category: ArtifactQualityCategory | null;
+  commandCenterClass: CommandCenterArtifactClass | null;
   reasons: ArtifactQualityBlockReason[];
+  safeArtifactMessage: string | null;
 }
 
 export type ArtifactQualityFailSafeStatus = 'GREEN' | 'YELLOW' | 'RED';
@@ -45,6 +56,8 @@ export interface ArtifactQualityRunSummary {
   allowed: number;
   delivered: number;
 }
+
+export const NO_SAFE_ARTIFACT_TODAY = 'No safe artifact today.';
 
 const INTERNAL_DEBUG_PATTERN =
   /\b(request_id|provider_error|llm_failed|invalid_request_error|stale_date_in_directive|candidate blocked|all candidates blocked|stack trace|traceback|api usage limits)\b|req_[A-Za-z0-9]+|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
@@ -105,6 +118,21 @@ const WEAK_SILENCE_PATTERN =
   /\b(?:silent|silence|no\s+(?:reply|response)|zero replies|unreplied|has not (?:replied|responded))\b[\s\S]{0,80}\b(?:\d+\s+days?|days?|weeks?)\b|\b\d+\s+days?\b[\s\S]{0,80}\b(?:silent|silence|no\s+(?:reply|response)|unreplied)\b/i;
 const INVENTED_PROFESSIONAL_PRESSURE_PATTERN =
   /\b(?:employer|vendor|relationship|professional risk|reputational risk|accepting another job|external decision|interview decisions?|moved on|must be addressed|decision map|before [^.]{0,80}(?:final|locked)|closure)\b/i;
+
+const RELATIONSHIP_SILENCE_ARTIFACT_PATTERN =
+  /\brelationship\b[\s\S]{0,160}\b(?:silent|silence|no\s+(?:reply|response)|zero replies|has not (?:replied|responded)|unreplied|moved on|closure)\b|\b(?:silent|silence|no\s+(?:reply|response)|zero replies|has not (?:replied|responded)|unreplied|moved on|closure)\b[\s\S]{0,160}\brelationship\b/i;
+
+const INTERVIEW_JOB_PATTERN =
+  /\b(interview|role-fit|role fit|job|posting|recruitment|recruiter|reference|resume|hiring|benefits technician|providerone|hca|esd|dshs|chc|comprehensive healthcare)\b/i;
+
+const BENEFITS_PAYMENT_ADMIN_PATTERN =
+  /\b(benefits?\s+(?:office|payment|deadline|verification|coverage|claim|premium|processing)|payment|invoice|receipt|admin|administrative|verification|eligibility|coverage|claim|premium|account|office|submit|form)\b/i;
+
+const CALENDAR_CONFLICT_PATTERN =
+  /\b(calendar|schedule)\b[\s\S]{0,160}\b(conflict|overlap|double-book|move|reschedule)\b|\b(conflict|overlap|double-book|move|reschedule)\b[\s\S]{0,160}\b(calendar|schedule)\b/i;
+
+const DEADLINE_RISK_PATTERN =
+  /\b(deadline|risk|blocked|blocking|exposure|failure|miss|stale|cutoff|window|before|by \d{1,2}|today|tomorrow|this week)\b/i;
 
 const USER_CLAIM_PATTERNS = [
   /\bI (?:worked|work) (?:at|for|with) ([A-Z][A-Za-z0-9&/ -]{2,40})/g,
@@ -252,6 +280,24 @@ function classifySuppressionDecision(text: string): boolean {
   return SUPPRESSION_PATTERN.test(text) && text.length <= 700;
 }
 
+function classifyCommandCenterArtifact(
+  category: ArtifactQualityCategory | null,
+  text: string,
+): CommandCenterArtifactClass | null {
+  if (!category || category === 'SUPPRESSION_DECISION') return null;
+  if (RELATIONSHIP_SILENCE_ARTIFACT_PATTERN.test(text)) return null;
+  if ((category === 'ROLE_FIT_PACKET' || category === 'ROLE_FIT_LINE') && INTERVIEW_JOB_PATTERN.test(text)) {
+    return 'INTERVIEW_ROLE_FIT_PACKET';
+  }
+  if (category === 'DRAFT_EMAIL') return 'FOLLOW_UP_EMAIL_DRAFT';
+  if (CALENDAR_CONFLICT_PATTERN.test(text)) return 'CALENDAR_CONFLICT_RESOLUTION_BRIEF';
+  if (BENEFITS_PAYMENT_ADMIN_PATTERN.test(text)) return 'BENEFITS_PAYMENT_ADMIN_ACTION_PACKET';
+  if ((category === 'DECISION_BRIEF' || category === 'RISK_ALERT') && DEADLINE_RISK_PATTERN.test(text)) {
+    return 'DEADLINE_RISK_DECISION_BRIEF';
+  }
+  return null;
+}
+
 export function classifyArtifactCategory(
   directive: Pick<ConvictionDirective, 'action_type'>,
   artifact: ConvictionArtifact,
@@ -274,6 +320,7 @@ export function evaluateArtifactQualityGate(
   const evidence = evidenceText(input);
   const reasons: ArtifactQualityBlockReason[] = [];
   const category = classifyArtifactCategory(input.directive, input.artifact, text);
+  const commandCenterClass = classifyCommandCenterArtifact(category, combined);
   const suppressionDecision = category === 'SUPPRESSION_DECISION';
   const draftEmailOnNonEmailAction =
     input.strictActionTypeMatch === true &&
@@ -299,14 +346,19 @@ export function evaluateArtifactQualityGate(
   if (!suppressionDecision && hasTransactionalSenderDecisionPressure(combined, evidence)) {
     reasons.push('transactional_sender_decision_pressure');
   }
+  if (RELATIONSHIP_SILENCE_ARTIFACT_PATTERN.test(combined)) reasons.push('relationship_silence_artifact');
+  if (!commandCenterClass) reasons.push('outside_command_center_scope');
 
   if (!category) reasons.push('unclassified_artifact');
 
   const uniqueReasons = [...new Set(reasons)];
+  const passes = uniqueReasons.length === 0 && commandCenterClass !== null;
   return {
-    passes: uniqueReasons.length === 0,
+    passes,
     category,
+    commandCenterClass,
     reasons: uniqueReasons,
+    safeArtifactMessage: passes ? null : NO_SAFE_ARTIFACT_TODAY,
   };
 }
 
