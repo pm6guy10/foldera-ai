@@ -92,10 +92,11 @@ describe('daily-brief cron route', () => {
   });
 
   it('uses PT day start for the already-ran-today guard query', async () => {
-    const { POST } = await import('../route');
+    const { POST, maxDuration } = await import('../route');
     const response = await POST(new NextRequest('http://localhost/api/cron/daily-brief'));
     const payload = await response.json();
 
+    expect(maxDuration).toBe(300);
     expect(response.status).toBe(200);
     expect(ptDayStartIso).toHaveBeenCalledTimes(1);
     expect(gteQuery).toHaveBeenCalledWith('generated_at', '2026-04-25T07:00:00.000Z');
@@ -106,6 +107,13 @@ describe('daily-brief cron route', () => {
       }),
     );
     expect(runPlatformHealthAlert).toHaveBeenCalledWith({ depth: 'lite' });
+    expect(insertPipelineCronPhase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phase: 'cron_complete',
+        invocationSource: 'daily_brief',
+        outcome: 'success',
+      }),
+    );
     expect(payload.ok).toBe(true);
   });
 });

@@ -25,8 +25,8 @@ import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { insertPipelineCronPhase } from '@/lib/observability/pipeline-run';
 
 export const dynamic = 'force-dynamic';
-/** Hobby ceiling; this route only runs generate+send (not full nightly pipeline). */
-export const maxDuration = 60;
+/** The scheduled brief runs the same paid generation path as manual Generate Now. */
+export const maxDuration = 300;
 
 function resolveSignalCreatedAtGte(request: NextRequest): string | null {
   const raw = request.nextUrl.searchParams.get('signalCreatedAtGte');
@@ -180,7 +180,7 @@ async function handler(request: NextRequest) {
     cronError = error instanceof Error ? error.message : String(error);
     return apiErrorForRoute(error, 'cron/daily-brief');
   } finally {
-    void insertPipelineCronPhase({
+    await insertPipelineCronPhase({
       phase: 'cron_complete',
       invocationSource: 'daily_brief',
       cronInvocationId,

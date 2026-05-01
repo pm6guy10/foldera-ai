@@ -5401,6 +5401,13 @@ Full 8-check system health audit. No code changes. Database queries, pipeline ve
 - Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `npm run preflight` (`INFRASTRUCTURE DEGRADED`, `0 FAIL`); `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts` (pass, 30 tests); `npm run lint` (pass); `npm run build` (pass); `git push origin main` (passes repo hook build + smoke, pushed `4297b16`); `vercel ls foldera-ai --scope brandons-projects-5552f226` (new production deployment entered build); `https://foldera.ai/api/health?depth=full` loop confirmed production build `4297b16` on deployment `dpl_Co3ZVHFkRxXEDENSZUSAQWysyyFm`.
 - Unresolved issues: BL-011 still needs passive next-window production proof. Per backlog rules, this seam cannot be closed until the next normal `daily-send` window proves generic no-send rows persist without sending an email while real artifact emails still deliver once.
 
+## 2026-05-01 — Pipeline cron heartbeat exposes timed-out daily-brief wrapper
+- MODE: Pipeline cron heartbeat CI seam only.
+- Files changed: `app/api/cron/daily-brief/route.ts`, `app/api/cron/daily-brief/__tests__/route.test.ts`, `SESSION_HISTORY.md`.
+- What changed: The scheduled `/api/cron/daily-brief` route now has the same 300-second execution ceiling as the manual brief path instead of the stale 60-second wrapper. The route also awaits the final `pipeline_runs` `cron_complete` insert so a normal return does not race the heartbeat row. Focused coverage now locks the timeout and final heartbeat call.
+- Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); GitHub Actions run `25214605341` log showed `PIPELINE HEARTBEAT FAIL: no daily_brief cron_complete in last 3h`; production `npm run scoreboard` showed a `daily_brief` `cron_start` and `cron_daily_brief` `user_run` from 2026-05-01 04:31-04:32 PT with no finalize/complete row, while later `daily_maintenance` completed; `npx vitest run app/api/cron/daily-brief/__tests__/route.test.ts` passed; `npm run lint` passed; `npm run build` passed.
+- Unresolved issues: The failing scheduled GitHub heartbeat cannot be proven green until this patch is pushed/deployed and the next scheduled daily-brief run writes a fresh `daily_brief` `cron_complete` row. No paid/manual daily-brief generation proof was run.
+
 ## 2026-04-28 — BL-012 manual Generate Now no longer blocks the next scheduled morning daily brief
 - MODE: Execution mode (single production seam only)
 - Files changed: `lib/cron/daily-brief-generate.ts`, `lib/cron/brief-cycle-gate.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `SESSION_HISTORY.md`.
