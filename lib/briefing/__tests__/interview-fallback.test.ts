@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   buildDecisionEnforcedFallbackPayload,
@@ -53,6 +53,10 @@ function makeDiagnosis() {
 }
 
 describe('buildDecisionEnforcedFallbackPayload interview repair', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('builds a hiring fit brief when the signals contain real role evidence', () => {
     const winner = makeWinner({
       title: 'Commitment due in 1d: Care Coordinator role interview',
@@ -210,6 +214,9 @@ describe('buildDecisionEnforcedFallbackPayload interview repair', () => {
   });
 
   it('uses end-of-day PT deadline wording when no canonical interview schedule line is present', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-30T12:00:00-07:00'));
+
     const winner = makeWinner({
       title: 'Commitment due in 3d: Care Coordinator role interview',
       content:

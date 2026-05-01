@@ -5524,3 +5524,10 @@ pm run build.
 - What changed: Added a pre-scoring filter for assembled candidates so interview, meeting, and deadline candidates are removed when their primary source `occurredAt` or referenced event date is more than 3 days old. The filter runs before `candidatesEnteringScoreLoop`, so stale dated events cannot consume top-10 shortlist slots. Scoring weights, prompts, schemas, and artifact quality gates were not changed.
 - Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `npx vitest run lib/briefing/__tests__/scorer-stale-dated-event-filter.test.ts` first failed before implementation and passed after; `npx vitest run lib/briefing/__tests__/scorer-stale-dated-event-filter.test.ts lib/briefing/__tests__/scorer-metadata-egress.test.ts` passed (3 tests); `npm run lint` passed; `npm run build` passed.
 - Unresolved issues: None for this pre-scoring filter seam; no paid generation was run.
+
+## 2026-05-01 — CI interview fallback deadline test made date-stable
+- MODE: CI unit failure seam only.
+- Files changed: `lib/briefing/__tests__/interview-fallback.test.ts`, `SESSION_HISTORY.md`.
+- What changed: Froze the no-canonical-interview-schedule fixture at April 30, 2026 PT so its explicit `candidateDueDate: 2026-04-30` expectation does not drift when CI runs after that date. Production deadline clamping behavior in `buildDecisionEnforcedFallbackPayload` / `resolveDecisionDeadline` was not changed.
+- Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `git log --oneline -10`; `git status --short --branch`; reproduced the failure with `npx vitest run lib/briefing/__tests__/interview-fallback.test.ts`; after patch, the same focused spec passed (4 tests); `npx vitest run --exclude ".claude/worktrees/**"` passed; `npm run build` passed.
+- Unresolved issues: None for this CI unit seam. Live/product proof is not applicable because only deterministic test harness time control changed.
