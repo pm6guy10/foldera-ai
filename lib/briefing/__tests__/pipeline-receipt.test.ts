@@ -829,13 +829,16 @@ describe('briefing pipeline receipt', () => {
     ).toBe(true);
 
     const generateResult = await runDailyGenerate({ userIds: [TEST_USER_ID] });
+    const expectedGateBlockedDetail =
+      'Artifact quality gate blocked: outside_command_center_scope; unclassified_artifact';
+    const expectedGateBlockedReasons = ['outside_command_center_scope', 'unclassified_artifact'];
     expect(generateResult.results).toEqual([
       expect.objectContaining({
         code: 'no_send_persisted',
-        detail: 'Artifact quality gate blocked: unclassified_artifact',
+        detail: expectedGateBlockedDetail,
         meta: expect.objectContaining({
           artifact_quality_fail_safe_status: 'GREEN',
-          artifact_quality_gate_blocked_reasons: ['unclassified_artifact'],
+          artifact_quality_gate_blocked_reasons: expectedGateBlockedReasons,
           outcome_receipt: expect.objectContaining({
             artifact: expect.objectContaining({
               artifact_pass_fail: 'FAIL',
@@ -852,18 +855,18 @@ describe('briefing pipeline receipt', () => {
     );
     expect(savedAction).toBeTruthy();
     expect(savedAction?.action_type).toBe('do_nothing');
-    expect(savedAction?.reason).toBe('Artifact quality gate blocked: unclassified_artifact');
+    expect(savedAction?.reason).toBe(expectedGateBlockedDetail);
     expect(savedAction?.execution_result?.artifact_quality_gate).toEqual(
       expect.objectContaining({
         category: null,
-        reasons: ['unclassified_artifact'],
+        reasons: expectedGateBlockedReasons,
         fail_safe_status: 'GREEN',
       }),
     );
     expect(savedAction?.execution_result?.original_candidate).toEqual(
       expect.objectContaining({
         action_type: 'write_document',
-        blocked_by: 'Artifact quality gate blocked: unclassified_artifact',
+        blocked_by: expectedGateBlockedDetail,
       }),
     );
     expect(

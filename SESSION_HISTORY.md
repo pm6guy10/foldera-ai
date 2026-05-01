@@ -5596,3 +5596,10 @@ pm run build.
 - What changed: Reframed Foldera as Brandon's narrow job/interview/life-admin command center and tightened the artifact quality gate to allow only five artifact classes: interview role-fit packet, follow-up email draft for review only, deadline/risk decision brief, benefits/payment/admin action packet, and calendar conflict resolution brief. Suppression/no-send output, generic morning summaries, relationship-silence artifacts, prepare/review/research homework, fake obligations, and broad autonomy now fail the gate with `No safe artifact today.` / `outside_command_center_scope`.
 - Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); `npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts lib/briefing/__tests__/generator-runtime.test.ts` passed; `npm run lint` passed; `npm run build` passed.
 - Unresolved issues: No paid generation was run and no outbound email was sent. BL-015 remains separately `WAITING_PAID_PROOF`; this reset closes only the deterministic command-center framing/gating seam.
+
+## 2026-05-01 — CI unit pipeline receipt aligned with command-center block reason
+- MODE: FOLDERA CI failure seam only.
+- Files changed: `lib/briefing/__tests__/pipeline-receipt.test.ts`, `SESSION_HISTORY.md`.
+- What changed: Updated the pipeline receipt expectation for an already-blocked off-wedge artifact so it now expects the command-center gate's additional `outside_command_center_scope` reason alongside `unclassified_artifact`. No product behavior changed.
+- Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); reproduced the failed CI unit seam with `npx vitest run lib/briefing/__tests__/pipeline-receipt.test.ts`; after patch, `npx vitest run lib/briefing/__tests__/pipeline-receipt.test.ts` passed; `npx vitest run --exclude ".claude/worktrees/**"` passed; `npm run build` passed.
+- Unresolved issues: None for the CI unit seam.
