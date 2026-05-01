@@ -5,7 +5,9 @@ const mockResolveUser = vi.fn();
 const mockApiError = vi.fn();
 const mockRunBriefLifecycle = vi.fn();
 const mockRateLimit = vi.fn();
+const mockPipelineInsert = vi.fn();
 const mockRecentDryRunMaybeSingle = vi.fn();
+const mockTransportReceiptMaybeSingle = vi.fn();
 const mockPendingApprovalSelect = vi.fn();
 const mockPendingApprovalLimit = vi.fn();
 const mockLatestActionMaybeSingle = vi.fn();
@@ -22,6 +24,7 @@ vi.mock('@/lib/cron/brief-service', () => ({
 function createPipelineRunsChain() {
   const filters: Record<string, string> = {};
   const chain = {
+    insert: mockPipelineInsert,
     select: () => chain,
     eq: (col: string, val: string) => {
       filters[col] = val;
@@ -31,6 +34,9 @@ function createPipelineRunsChain() {
     order: () => chain,
     limit: () => ({
       maybeSingle: () => {
+        if (filters.id) {
+          return mockTransportReceiptMaybeSingle();
+        }
         // `findRecentPipelineDryRun` filters outcome; `findLatestPipelineRun` does not. These run
         // concurrently via `Promise.all` — a sequential call counter is undefined behavior.
         if (filters.outcome === 'pipeline_dry_run_returned') {
@@ -119,7 +125,9 @@ describe('POST /api/settings/run-brief', () => {
       remaining: 1,
       resetAt: new Date(Date.now() + 60_000),
     });
+    mockPipelineInsert.mockResolvedValue({ error: null });
     mockRecentDryRunMaybeSingle.mockResolvedValue({ data: null, error: null });
+    mockTransportReceiptMaybeSingle.mockResolvedValue({ data: null, error: null });
     mockLatestActionMaybeSingle.mockResolvedValue({ data: null, error: null });
     mockLatestPipelineMaybeSingle.mockResolvedValue({ data: null, error: null });
     mockPendingApprovalSelect.mockReset();
@@ -182,6 +190,93 @@ describe('POST /api/settings/run-brief', () => {
     expect(Object.keys(payload.stages)).toEqual([...RUN_BRIEF_CHEAP_DRY_RUN_STAGE_KEYS]);
     expect(mockRateLimit).toHaveBeenCalledWith(`run-brief:${userId}`, { limit: 2, window: 600 });
   }, 45_000);
+
+  it('persists and returns a transport diagnostic receipt before lifecycle work', async () => {
+    const userId = '12121212-1212-1212-1212-121212121212';
+    mockResolveUser.mockResolvedValue({ userId });
+    mockTransportReceiptMaybeSingle.mockImplementation(async () => ({
+      data: {
+        id: mockPipelineInsert.mock.calls[0][0].id,
+        created_at: '2026-05-01T18:30:00.000Z',
+        started_at: '2026-05-01T18:30:00.000Z',
+        completed_at: '2026-05-01T18:30:00.000Z',
+        outcome: 'route_transport_diagnostic_returned',
+        invocation_source: 'settings_run_brief_transport_diagnostic',
+        raw_extras: {
+          receipt_type: 'settings_run_brief_transport_diagnostic',
+          route_entered: true,
+          lifecycle_started: false,
+        },
+      },
+      error: null,
+    }));
+    const { POST } = await import('../route');
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/settings/run-brief?force=true&transport_diagnostic=true', {
+        method: 'POST',
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
+    expect(mockPipelineInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phase: 'user_run',
+        invocation_source: 'settings_run_brief_transport_diagnostic',
+        user_id: userId,
+        completed_at: expect.any(String),
+        outcome: 'route_transport_diagnostic_returned',
+        gate_funnel: expect.objectContaining({
+          status: 'route_entered_before_lifecycle',
+          auth_resolved: true,
+          lifecycle_started: false,
+        }),
+        raw_extras: expect.objectContaining({
+          receipt_type: 'settings_run_brief_transport_diagnostic',
+          route_entered: true,
+          lifecycle_started: false,
+          paid_generation_started: false,
+        }),
+      }),
+    );
+
+    const payload = await response.json();
+    expect(payload.ok).toBe(true);
+    expect(payload.short_circuit).toEqual(
+      expect.objectContaining({
+        reason: 'cheap_dry_run',
+        mode: 'transport_diagnostic',
+      }),
+    );
+    expect(payload.spend_policy).toEqual({
+      pipeline_dry_run: true,
+      paid_llm_requested: false,
+      paid_llm_effective: false,
+    });
+    expect(payload.health).toEqual(
+      expect.objectContaining({
+        mode: 'transport_diagnostic',
+        live_generation_executed: false,
+        live_sync_executed: false,
+      }),
+    );
+    expect(payload.transport_diagnostic).toEqual(
+      expect.objectContaining({
+        route_entered: true,
+        auth_resolved: true,
+        lifecycle_started: false,
+        paid_generation_started: false,
+        receipt_persisted: true,
+        receipt_read_back: true,
+        receipt: expect.objectContaining({
+          id: expect.any(String),
+          outcome: 'route_transport_diagnostic_returned',
+          invocation_source: 'settings_run_brief_transport_diagnostic',
+        }),
+      }),
+    );
+  });
 
   it('includes recent dry-run and latest metadata in the cheap dry-run receipt', async () => {
     const userId = '11111111-1111-1111-1111-111111111111';

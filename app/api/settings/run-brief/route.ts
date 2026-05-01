@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { getDeployRevision } from '@/lib/config/deploy-revision';
 import { resolveSettingsRunBriefPipelineDryRun } from '@/lib/config/prelaunch-spend';
@@ -11,6 +12,9 @@ import { apiErrorForRoute } from '@/lib/utils/api-error';
 import {
   getRunBriefRouteStatus,
   RUN_BRIEF_CHEAP_DRY_RUN_STAGE,
+  RUN_BRIEF_TRANSPORT_DIAGNOSTIC_INVOCATION_SOURCE,
+  RUN_BRIEF_TRANSPORT_DIAGNOSTIC_OUTCOME,
+  RUN_BRIEF_TRANSPORT_DIAGNOSTIC_PARAM,
 } from './contract';
 
 export const dynamic = 'force-dynamic';
@@ -36,6 +40,16 @@ interface LatestActionMetadataRow {
   generated_at: string | null;
   id: string;
   status: string | null;
+}
+
+interface TransportDiagnosticPipelineRow {
+  completed_at: string | null;
+  created_at: string | null;
+  id: string;
+  invocation_source: string | null;
+  outcome: string | null;
+  raw_extras: unknown;
+  started_at: string | null;
 }
 
 interface PendingApprovalReuseRow {
@@ -183,14 +197,151 @@ type CheapDryRunFacts = {
   } | null;
 };
 
+type TransportDiagnosticReceipt = {
+  auth_resolved: true;
+  lifecycle_started: false;
+  paid_generation_started: false;
+  receipt: {
+    completed_at: string | null;
+    created_at: string | null;
+    id: string;
+    invocation_source: string | null;
+    outcome: string | null;
+    started_at: string | null;
+  } | null;
+  receipt_error?: string;
+  receipt_persisted: boolean;
+  receipt_read_back: boolean;
+  route_entered: true;
+};
+
+async function persistTransportDiagnosticReceipt(input: {
+  forceFreshRun: boolean;
+  paidLlmEffective: boolean;
+  paidLlmRequested: boolean;
+  pipelineDryRun: boolean;
+  requestUrl: URL;
+  revision: ReturnType<typeof getDeployRevision>;
+  userId: string;
+}): Promise<TransportDiagnosticReceipt> {
+  const supabase = createServerClient();
+  const receiptId = randomUUID();
+  const receivedAt = new Date().toISOString();
+  const rawExtras = {
+    receipt_type: 'settings_run_brief_transport_diagnostic',
+    route: 'settings/run-brief',
+    route_entered: true,
+    auth_resolved: true,
+    request_received_at: receivedAt,
+    request_path: input.requestUrl.pathname,
+    request_flags: {
+      force: input.forceFreshRun,
+      dry_run: true,
+      transport_diagnostic: true,
+      use_llm_requested: input.paidLlmRequested,
+    },
+    revision: input.revision,
+    spend_policy: {
+      pipeline_dry_run: input.pipelineDryRun,
+      paid_llm_requested: input.paidLlmRequested,
+      paid_llm_effective: input.paidLlmEffective,
+    },
+    lifecycle_started: false,
+    paid_generation_started: false,
+    live_generation_executed: false,
+    live_sync_executed: false,
+  };
+
+  const { error: insertError } = await supabase.from('pipeline_runs').insert({
+    id: receiptId,
+    phase: 'user_run',
+    invocation_source: RUN_BRIEF_TRANSPORT_DIAGNOSTIC_INVOCATION_SOURCE,
+    cron_invocation_id: receiptId,
+    user_id: input.userId,
+    started_at: receivedAt,
+    completed_at: receivedAt,
+    outcome: RUN_BRIEF_TRANSPORT_DIAGNOSTIC_OUTCOME,
+    duration_ms: 0,
+    gate_funnel: {
+      status: 'route_entered_before_lifecycle',
+      auth_resolved: true,
+      lifecycle_started: false,
+      paid_generation_started: false,
+    },
+    delivery: {},
+    raw_extras: rawExtras,
+  });
+
+  if (insertError) {
+    return {
+      route_entered: true,
+      auth_resolved: true,
+      lifecycle_started: false,
+      paid_generation_started: false,
+      receipt_persisted: false,
+      receipt_read_back: false,
+      receipt: null,
+      receipt_error: insertError.message,
+    };
+  }
+
+  const { data, error: readError } = await supabase
+    .from('pipeline_runs')
+    .select('id, created_at, started_at, completed_at, outcome, invocation_source, raw_extras')
+    .eq('id', receiptId)
+    .eq('user_id', input.userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (readError) {
+    return {
+      route_entered: true,
+      auth_resolved: true,
+      lifecycle_started: false,
+      paid_generation_started: false,
+      receipt_persisted: true,
+      receipt_read_back: false,
+      receipt: null,
+      receipt_error: readError.message,
+    };
+  }
+
+  const row = (data as TransportDiagnosticPipelineRow | null) ?? null;
+  return {
+    route_entered: true,
+    auth_resolved: true,
+    lifecycle_started: false,
+    paid_generation_started: false,
+    receipt_persisted: true,
+    receipt_read_back: Boolean(row?.id),
+    receipt: row
+      ? {
+          id: row.id,
+          created_at: row.created_at,
+          started_at: row.started_at,
+          completed_at: row.completed_at,
+          outcome: row.outcome,
+          invocation_source: row.invocation_source,
+        }
+      : null,
+    ...(row?.id ? {} : { receipt_error: 'receipt_inserted_but_not_read_back' }),
+  };
+}
+
 function buildCheapDryRunResponse(input: {
   facts: CheapDryRunFacts;
   paidLlmEffective: boolean;
   paidLlmRequested: boolean;
   pipelineDryRun: boolean;
+  transportDiagnostic?: TransportDiagnosticReceipt | null;
 }) {
+  const diagnosticOk = input.transportDiagnostic
+    ? input.transportDiagnostic.receipt_persisted && input.transportDiagnostic.receipt_read_back
+    : true;
+  const mode = input.transportDiagnostic ? 'transport_diagnostic' : 'status_only';
+
   return NextResponse.json({
-    ok: true,
+    ok: diagnosticOk,
     spend_policy: {
       pipeline_dry_run: input.pipelineDryRun,
       paid_llm_requested: input.paidLlmRequested,
@@ -198,19 +349,22 @@ function buildCheapDryRunResponse(input: {
     },
     short_circuit: {
       reason: 'cheap_dry_run',
-      mode: 'status_only',
+      mode,
     },
     revision: getDeployRevision(),
     health: {
-      mode: 'cheap_dry_run',
+      mode: input.transportDiagnostic ? 'transport_diagnostic' : 'cheap_dry_run',
       live_generation_executed: false,
       live_sync_executed: false,
     },
+    ...(input.transportDiagnostic
+      ? { transport_diagnostic: input.transportDiagnostic }
+      : {}),
     facts: input.facts,
     stages: {
       daily_brief: { ...RUN_BRIEF_CHEAP_DRY_RUN_STAGE },
     },
-  }, { status: 200 });
+  }, { status: getRunBriefRouteStatus(diagnosticOk) });
 }
 
 export async function POST(request: Request) {
@@ -221,7 +375,8 @@ export async function POST(request: Request) {
     const userId = auth.userId;
     const url = new URL(request.url);
     const forceFreshRun = url.searchParams.get('force') === 'true';
-    const explicitDryRun = url.searchParams.get('dry_run') === 'true';
+    const transportDiagnostic = url.searchParams.get(RUN_BRIEF_TRANSPORT_DIAGNOSTIC_PARAM) === 'true';
+    const explicitDryRun = url.searchParams.get('dry_run') === 'true' || transportDiagnostic;
     const useLlm = url.searchParams.get('use_llm') === 'true';
     const spend = resolveSettingsRunBriefPipelineDryRun({
       explicitDryRun,
@@ -240,6 +395,19 @@ export async function POST(request: Request) {
         },
       );
     }
+    const revision = getDeployRevision();
+    const transportDiagnosticReceipt =
+      pipelineDryRun && transportDiagnostic
+        ? await persistTransportDiagnosticReceipt({
+            userId,
+            requestUrl: url,
+            forceFreshRun,
+            pipelineDryRun,
+            paidLlmRequested,
+            paidLlmEffective,
+            revision,
+          })
+        : null;
     const [reusablePendingApproval, recentPipelineDryRun, latestActionMetadata, latestPipelineRun] =
       pipelineDryRun
         ? await Promise.all([
@@ -255,6 +423,7 @@ export async function POST(request: Request) {
         pipelineDryRun,
         paidLlmRequested,
         paidLlmEffective,
+        transportDiagnostic: transportDiagnosticReceipt,
         facts: {
           latest_action: latestActionMetadata,
           latest_pipeline_run: latestPipelineRun,
