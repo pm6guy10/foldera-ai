@@ -29,6 +29,20 @@ Body preview: x`;
     expect(isLikelyAutomatedTransactionalInbound(c)).toBe(true);
   });
 
+  it('detects Resend product onboarding senders as transactional inbound', () => {
+    const dev = `[Email received: 2026-01-01]
+From: Resend <onboarding@resend.dev>
+Subject: Welcome to Resend
+Body preview: Get started with your API key`;
+    const dotCom = `[Email received: 2026-01-01]
+From: Resend <updates@resend.com>
+Subject: Account update
+Body preview: Your account settings changed`;
+
+    expect(isLikelyAutomatedTransactionalInbound(dev)).toBe(true);
+    expect(isLikelyAutomatedTransactionalInbound(dotCom)).toBe(true);
+  });
+
   it('detects subdomain of chase.com', () => {
     const c = `[Email received: 2026-01-01]
 From: Chase <service@secure.chase.com>

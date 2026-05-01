@@ -139,26 +139,12 @@ const ARTIFACT_VIABILITY_PRESSURE_RE =
   /\b(today|tonight|tomorrow|this week|next week|deadline|due|before|by\s+\d|expires?|expiring|final|urgent|window clos|cutoff|overdue|at risk|slip|blocked|blocker)\b/i;
 const ARTIFACT_VIABILITY_ASK_RE =
   /\b(can you|could you|would you|will you|please|reply|confirm|approve|decide|send|schedule|share|name the owner|yes\/no)\b/i;
-const OWNER_MONEY_SHOT_GATE_RE =
-  /\b(?:ESB|ES Benefits|ProviderOne|HCA|ESD|DSHS|CHC|Comprehensive Healthcare|Alex Crisler|Darlene Craig|Care Coordinator|recruitment 2026-02344)\b/i;
-
 function shouldApplyOwnerMoneyShotQualityGate(input: {
   candidate: ScoredLoop;
   directive: Pick<ConvictionDirective, 'action_type' | 'directive' | 'reason'>;
   artifact: ConvictionArtifact;
 }): boolean {
-  if (input.directive.action_type !== 'write_document') return false;
-  const artifactRecord = input.artifact as unknown as Record<string, unknown>;
-  const text = [
-    input.candidate.title,
-    input.candidate.content,
-    input.candidate.entityName ?? '',
-    input.directive.directive,
-    input.directive.reason,
-    typeof artifactRecord.title === 'string' ? artifactRecord.title : '',
-    typeof artifactRecord.content === 'string' ? artifactRecord.content : '',
-  ].join('\n');
-  return OWNER_MONEY_SHOT_GATE_RE.test(text);
+  return input.directive.action_type === 'write_document';
 }
 
 /**
@@ -8758,11 +8744,23 @@ export function buildDecisionEnforcedFallbackPayload(input: {
         target_reader: 'decision owner',
         title: `Decision lock: ${target.slice(0, 90)}`,
         content: [
-          `Decision required for "${safeTarget}": confirm the path, name one owner, and time-bound the commitment.`,
+          `Source: ${target}.`,
+          '',
+          `Decision required: confirm the path for "${safeTarget}" and close the open loop by ${deadline}.`,
+          '',
+          `Deciding criterion: the path is safe only if one accountable owner is named and the commitment is time-bound.`,
+          '',
+          'Owner: assign one accountable owner before this remains open for another cycle.',
+          '',
+          `Next action: ${memoAsk}`,
+          '',
+          `Deadline: ${deadline}.`,
           '',
           copy.ask,
           '',
           copy.consequence,
+          '',
+          `Mechanism: ${input.causalDiagnosis.mechanism}`,
         ].join('\n'),
       },
       why_now: copy.whyNow,

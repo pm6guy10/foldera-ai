@@ -599,6 +599,94 @@ describe('generateDirective runtime failures', () => {
     }));
   });
 
+  it('runs the artifact quality gate for non-owner write_document artifacts', async () => {
+    const scored = asWinnerScored(buildScorerResult());
+    scored.winner = {
+      ...buildWinner(),
+      id: 'blocked-generic-confirmation-doc',
+      type: 'commitment',
+      suggestedActionType: 'write_document',
+      title: 'Vendor onboarding confirmation needs a decision brief',
+      content: 'The vendor onboarding handoff still needs a finished decision brief before the Friday cutoff.',
+      entityName: 'Morgan Lee',
+      matchedGoal: {
+        text: 'Close vendor onboarding without loose ends',
+        priority: 5,
+        category: 'operations',
+      },
+      relationshipContext: '- Morgan Lee <morgan@example.com> (Vendor)',
+      sourceSignals: [
+        {
+          kind: 'signal',
+          id: 'sig-vendor-onboarding',
+          summary: 'Morgan Lee asked Brandon to confirm whether vendor onboarding can proceed before Friday.',
+          occurredAt: FIXED_NOW.toISOString(),
+        },
+      ],
+    };
+    scored.topCandidates = [scored.winner];
+    scored.candidateDiscovery = {
+      ...scored.candidateDiscovery,
+      candidateCount: 1,
+      selectionReason: 'Selected because the vendor onboarding confirmation ranked first.',
+    };
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueEmptyTkgActionsResults(8);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 120, output_tokens: 90 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Create the vendor onboarding decision brief before Friday.',
+          artifact_type: 'write_document',
+          artifact: {
+            document_purpose: 'brief',
+            target_reader: 'Brandon',
+            title: 'Confirmation Email to Morgan Lee - vendor onboarding',
+            content: [
+              'Source Email: Morgan Lee asked Brandon to confirm whether vendor onboarding can proceed before Friday.',
+              'Decision: send the vendor onboarding confirmation before the Friday cutoff.',
+              'Deciding criterion: Morgan needs a clear yes/no so the vendor handoff does not stall.',
+              'Owner: Brandon owns the final onboarding confirmation.',
+              'Next action: send the confirmation note today.',
+              'Consequence: if unresolved by Friday, the vendor handoff stalls before owners can act.',
+              'Mechanism: decision latency is now larger than the remaining execution window, so the decision has to close before the handoff expands by default.',
+              'To: morgan@example.com',
+              'Subject: Vendor onboarding confirmation',
+              'Hi Morgan,',
+              '',
+              'Can you confirm the vendor onboarding packet is ready to proceed before Friday? If the packet is not ready, please name the remaining blocker and owner so I can close the loop today.',
+              '',
+              'Thanks,',
+              'Brandon',
+            ].join('\n'),
+          },
+          evidence: 'Morgan Lee asked Brandon to confirm vendor onboarding before Friday.',
+          why_now: 'The vendor onboarding cutoff is this week.',
+          causal_diagnosis: {
+            why_exists_now: 'The handoff is waiting on Brandon to confirm the path.',
+            mechanism: 'A Friday cutoff creates decision pressure.',
+          },
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(directive.directive).toBe('__GENERATION_FAILED__');
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'candidate_blocked',
+      generationStatus: 'artifact_quality_gate_failed',
+      details: expect.objectContaining({
+        candidate_title: 'Vendor onboarding confirmation needs a decision brief',
+        reasons: expect.arrayContaining(['action_type_mismatch']),
+      }),
+    }));
+  });
+
   it('blocks owner-shaped relationship-silence decision artifacts instead of persisting fake obligations', async () => {
     const scored = asWinnerScored(buildScorerResult());
     scored.winner = {

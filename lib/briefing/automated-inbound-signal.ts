@@ -8,6 +8,8 @@ export const AUTOMATED_TRANSACTIONAL_EMAIL_DOMAINS: readonly string[] = [
   'venmo.com',
   'americanexpress.com',
   'chase.com',
+  'resend.dev',
+  'resend.com',
   'spectrumemails.com',
   'teladochealth.com',
 ];
