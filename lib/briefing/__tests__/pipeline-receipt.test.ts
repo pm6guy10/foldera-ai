@@ -8,6 +8,7 @@ type RuntimeState = {
   entities: Row[];
   commitments: Row[];
   signals: Row[];
+  signalSummaries: Row[];
   signalSelectColumns: string[];
   goals: Row[];
   actions: Row[];
@@ -34,6 +35,7 @@ function createRuntime(): RuntimeState {
     entities: [],
     commitments: [],
     signals: [],
+    signalSummaries: [],
     signalSelectColumns: [],
     goals: [],
     actions: [],
@@ -47,6 +49,7 @@ function createRuntime(): RuntimeState {
       entity: 0,
       commitment: 0,
       signal: 0,
+      signal_summary: 0,
       goal: 0,
       action: 0,
       api_usage: 0,
@@ -317,9 +320,11 @@ class InsertQuery {
               ? 'ml_snapshot'
               : this.table === 'mlGlobalPriors'
                 ? 'ml_global_prior'
-                : this.table === 'entities'
-                  ? 'entity'
-                  : this.table.slice(0, -1);
+                : this.table === 'signalSummaries'
+                  ? 'signal_summary'
+                  : this.table === 'entities'
+                    ? 'entity'
+                    : this.table.slice(0, -1);
         row.id = nextId(prefix as keyof RuntimeState['ids']);
       }
       if (this.table === 'apiUsage' && !row.created_at) {
@@ -449,6 +454,15 @@ function createSupabaseMock() {
             },
             insert: (payload: Row | Row[]) => new InsertQuery('signals', runtime.signals, payload),
             update: (payload: Row) => new UpdateQuery(runtime.signals, payload),
+          };
+        case 'signal_summaries':
+          return {
+            select: (columns?: string, options?: { count?: string; head?: boolean }) =>
+              new SelectQuery(runtime.signalSummaries, columns, options),
+            insert: (payload: Row | Row[]) =>
+              new InsertQuery('signalSummaries', runtime.signalSummaries, payload),
+            upsert: (payload: Row | Row[]) =>
+              new InsertQuery('signalSummaries', runtime.signalSummaries, payload),
           };
         case 'tkg_goals':
           return {
@@ -808,8 +822,11 @@ describe('briefing pipeline receipt', () => {
 
     runtime.signalSelectColumns = [];
     const directive = await generateDirective(TEST_USER_ID);
-    expect(directive.action_type).not.toBe('do_nothing');
-    expect((directive as Row).embeddedArtifact).toBeTruthy();
+    expect(directive.action_type).toBe('do_nothing');
+    expect(directive.reason).toContain(
+      'artifact_quality:outside_command_center_scope; artifact_quality:unclassified_artifact',
+    );
+    expect((directive as Row).embeddedArtifact).toBeUndefined();
     const directiveUsageRows = runtime.apiUsage.filter((row) =>
       row.endpoint === 'directive' || row.endpoint === 'directive_retry',
     );
@@ -829,21 +846,16 @@ describe('briefing pipeline receipt', () => {
     ).toBe(true);
 
     const generateResult = await runDailyGenerate({ userIds: [TEST_USER_ID] });
-    const expectedGateBlockedDetail =
-      'Artifact quality gate blocked: outside_command_center_scope; unclassified_artifact';
-    const expectedGateBlockedReasons = ['outside_command_center_scope', 'unclassified_artifact'];
+    const expectedPublicNoSendDetail = 'Nothing cleared the bar today after evaluating 1 candidate.';
+    const expectedInternalBlockedReason =
+      'artifact_quality:outside_command_center_scope; artifact_quality:unclassified_artifact';
     expect(generateResult.results).toEqual([
       expect.objectContaining({
         code: 'no_send_persisted',
-        detail: expectedGateBlockedDetail,
+        detail: expectedPublicNoSendDetail,
         meta: expect.objectContaining({
-          artifact_quality_fail_safe_status: 'GREEN',
-          artifact_quality_gate_blocked_reasons: expectedGateBlockedReasons,
-          outcome_receipt: expect.objectContaining({
-            artifact: expect.objectContaining({
-              artifact_pass_fail: 'FAIL',
-            }),
-          }),
+          candidate_count: 1,
+          top_candidate_count: 1,
         }),
         success: true,
         userId: TEST_USER_ID,
@@ -855,18 +867,12 @@ describe('briefing pipeline receipt', () => {
     );
     expect(savedAction).toBeTruthy();
     expect(savedAction?.action_type).toBe('do_nothing');
-    expect(savedAction?.reason).toBe(expectedGateBlockedDetail);
-    expect(savedAction?.execution_result?.artifact_quality_gate).toEqual(
-      expect.objectContaining({
-        category: null,
-        reasons: expectedGateBlockedReasons,
-        fail_safe_status: 'GREEN',
-      }),
-    );
+    expect(savedAction?.reason).toBe(expectedPublicNoSendDetail);
+    expect(savedAction?.execution_result?.artifact_quality_gate).toBeUndefined();
     expect(savedAction?.execution_result?.original_candidate).toEqual(
       expect.objectContaining({
-        action_type: 'write_document',
-        blocked_by: expectedGateBlockedDetail,
+        action_type: 'do_nothing',
+        blocked_by: expect.stringContaining(expectedInternalBlockedReason),
       }),
     );
     expect(
@@ -876,21 +882,35 @@ describe('briefing pipeline receipt', () => {
     const sendResult = await runDailySend({ userIds: [TEST_USER_ID] });
     expect(sendResult.results).toEqual([
       expect.objectContaining({
-        code: 'email_sent',
+        code: 'no_send_blocker_persisted',
+        detail: 'Generic no-send blocker persisted without email delivery.',
         success: true,
         userId: TEST_USER_ID,
         meta: expect.objectContaining({
           action_id: savedAction?.id,
-          artifact_type: 'wait_rationale',
-          no_send_blocker: true,
-          resend_id: 're_12345',
+          daily_email_idempotency_key: expect.stringContaining(`daily-brief:${TEST_USER_ID}:`),
+          generic_no_send_suppressed: true,
+          quiet_hold_receipt: expect.objectContaining({
+            status: 'held_no_finished_artifact',
+            delivery: 'silent',
+            blocked_reasons_summary: expect.arrayContaining([
+              'generic_no_send_suppressed',
+              'no_finished_artifact_available',
+            ]),
+          }),
         }),
       }),
     ]);
-    expect(mockResendSend).toHaveBeenCalledTimes(1);
+    expect(mockResendSend).not.toHaveBeenCalled();
 
     const sentAction = runtime.actions.find((action) => action.id === savedAction?.id);
-    expect(sentAction?.execution_result?.daily_brief_sent_at).toEqual(expect.any(String));
-    expect(sentAction?.execution_result?.resend_id).toBe('re_12345');
+    expect(sentAction?.execution_result?.daily_brief_sent_at).toBeUndefined();
+    expect(sentAction?.execution_result?.resend_id).toBeUndefined();
+    expect(sentAction?.execution_result?.quiet_hold_receipt).toEqual(
+      expect.objectContaining({
+        status: 'held_no_finished_artifact',
+        delivery: 'silent',
+      }),
+    );
   }, 30000);
 });

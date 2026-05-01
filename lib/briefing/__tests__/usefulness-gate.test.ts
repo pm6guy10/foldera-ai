@@ -567,25 +567,28 @@ describe('usefulness gate — execution proof', () => {
     const writeWinner = {
       ...buildWinner(),
       type: 'commitment' as const,
+      title: 'Benefits payment verification packet is due before the processing deadline',
+      content: 'The benefits office requested payment verification before the deadline, and the confirmation packet still needs a receipt and owner.',
+      matchedGoal: { text: 'Keep benefits payment processing current', priority: 5, category: 'admin' },
       suggestedActionType: 'write_document' as const,
     };
     mockScoreOpenLoops.mockResolvedValue(buildScorerResult(writeWinner));
 
     anthropicCreate.mockResolvedValue(anthropicResponse({
-      directive: 'Send the Acme integration status report to their stakeholders before Thursday.',
+      directive: 'Save the benefits payment verification action packet before the processing deadline.',
       artifact_type: 'write_document',
       artifact: {
-        document_purpose: 'Update Acme stakeholders on integration scope, timeline, and open blockers',
-        target_reader: 'Acme stakeholders',
-        title: 'Acme Integration — Status Report',
-        content: `Decision required: confirm by 4 PM PT today whether we proceed with ${GO_LIVE_LABEL} go-live and assign the accountable security sign-off owner.\n\nAsk: approve path A or B and name the owner before today's cutoff.\n\nConsequence: if unresolved, integration launch slips to next week and customer onboarding is blocked.`,
+        document_purpose: 'Benefits payment verification action packet',
+        target_reader: 'Brandon Kapp',
+        title: 'Benefits payment verification action packet',
+        content: `Source Email: benefits office requested payment verification before ${GO_LIVE_LABEL}. Admin action: submit the payment confirmation number and attach the receipt. Deadline: 4 PM PT today, before ${GO_LIVE_LABEL}. Risk: missing the deadline can pause benefit processing. Exact message: I am attaching the receipt and confirmation number for review. Next action: save the receipt, send the verification, and mark the benefits payment deadline closed.`,
       },
       causal_diagnosis: {
-        why_exists_now: 'Slack thread left sign-off owner undefined.',
-        mechanism: 'Unowned security gate blocks go-live date.',
+        why_exists_now: 'Benefits payment verification is waiting on receipt and owner assignment.',
+        mechanism: 'Unowned admin payment gate blocks benefits processing.',
       },
-      evidence: `Slack shows the security sign-off blocker is still unresolved; go-live target is ${GO_LIVE_LABEL}.`,
-      why_now: 'Security sign-off is due within 48 hours and the accountable owner is still undefined.',
+      evidence: `Source Email: benefits office requested payment verification before ${GO_LIVE_LABEL}.`,
+      why_now: 'Benefits payment verification is due within 48 hours and the accountable owner is still undefined.',
     }));
 
     const { generateDirective } = await import('../generator');
