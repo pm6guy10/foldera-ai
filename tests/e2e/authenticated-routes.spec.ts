@@ -550,8 +550,8 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     const approveBtn = page.getByRole('button', { name: /approve/i });
     await expect(approveBtn).toBeVisible();
     await approveBtn.click();
-    await expectDashboardStatus(page, 'approve_sent');
-    await expect(page.getByText(/sent|check your outbox/i).first()).toBeVisible({ timeout: 5000 });
+    await expectDashboardStatus(page, 'approve_recorded');
+    await expect(page.getByText(/approved|outbound email is disabled/i).first()).toBeVisible({ timeout: 5000 });
   });
 
   test('skip button is clickable', async ({ page }) => {

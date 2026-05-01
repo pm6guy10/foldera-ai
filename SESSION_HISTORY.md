@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-05-01 — CI authenticated approve expectation follows send-disabled status
+- MODE: CI-only follow-up for `fix(conviction): disable approval email sends by default`.
+- Files changed: `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`.
+- What changed: Updated the authenticated dashboard `approve button is clickable` Playwright expectation from the old sent status to the new default send-disabled approval status. The test now proves the click records `approve_recorded` and shows the disabled-send approval message instead of implying outbound email was sent.
+- Verification: Reproduced the CI failure locally with `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "approve button is clickable"` (`Expected "approve_sent"; Received "approve_recorded"`). After the test correction, that focused test passed, and the full failing CI lane `npm run test:ci:e2e:flow` passed (31 tests).
+- Unresolved issues: No product behavior changed, no paid Generate Now run was used, no real email was sent, and no production data was mutated.
+
 ## 2026-05-01 — Approval send kill switch defaults outbound email off
 - MODE: FOLDERA APPROVAL SEND KILL SWITCH — no outbound emails by default.
 - Files changed: `lib/conviction/execute-action.ts`, `lib/conviction/__tests__/execute-action.test.ts`, `app/dashboard/page.tsx`, `tests/e2e/authenticated-routes.spec.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.
