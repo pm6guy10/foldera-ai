@@ -15,7 +15,7 @@ Following up on the update from yesterday.
 I pulled the latest status and can send the finalized version by noon unless you want one adjustment first.
 
 Best,
-Brandon`;
+Jordan`;
 
 const heroBullets = [
   'One directive, not another task list',
@@ -105,7 +105,7 @@ export function LandingPage() {
                         actions={[
                           { label: 'Copy draft', kind: 'secondary' },
                           { label: 'Snooze 24h', kind: 'amber' },
-                          { label: 'Approve & send', kind: 'primary' },
+                          { label: 'Approve', kind: 'primary' },
                         ]}
                       />
                     </div>

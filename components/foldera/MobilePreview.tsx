@@ -63,7 +63,7 @@ export function MobilePreview({ className = '' }: MobilePreviewProps) {
               className="flex w-full items-center justify-center gap-1.5 rounded-[12px] border border-cyan-300/25 bg-accent px-3 py-2.5 text-[12.5px] font-semibold text-slate-950 shadow-[0_8px_24px_-10px_rgba(14,165,233,0.55)]"
             >
               <Zap className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
-              Approve &amp; send
+              Approve
             </button>
             <button
               type="button"

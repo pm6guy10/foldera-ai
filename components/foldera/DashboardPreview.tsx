@@ -9,7 +9,7 @@ Following up on the update from yesterday.
 I pulled the latest status and can send the finalized version by noon unless you want one adjustment first.
 
 Best,
-Brandon`;
+Jordan`;
 
 export function DashboardPreview() {
   return (
@@ -33,7 +33,7 @@ export function DashboardPreview() {
         </div>
 
         <div className="grid min-h-[860px] lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)_296px]">
-          <DashboardSidebar activeLabel="Executive Briefing" userName="Brandon" preview />
+          <DashboardSidebar activeLabel="Executive Briefing" userName="Jordan" preview />
 
           <main className="min-w-0 bg-[linear-gradient(180deg,rgba(7,10,15,0.74),rgba(4,7,11,0.84))]">
             <div className="flex items-center justify-between gap-4 border-b border-border/60 px-8 py-5">
@@ -42,7 +42,7 @@ export function DashboardPreview() {
                   Saturday, September 13
                 </div>
                 <h2 className="mt-1 text-[24px] font-semibold tracking-[-0.02em] text-text-primary">
-                  Good afternoon, Brandon.
+                  Good afternoon, Jordan.
                 </h2>
               </div>
 
@@ -88,7 +88,7 @@ export function DashboardPreview() {
                 actions={[
                   { label: 'Copy draft', kind: 'secondary' },
                   { label: 'Snooze 24h', kind: 'amber' },
-                  { label: 'Approve & send', kind: 'primary' },
+                  { label: 'Approve', kind: 'primary' },
                 ]}
               />
             </div>

@@ -13,7 +13,7 @@ export const metadata = {
     template: "%s — Foldera",
   },
   description:
-    "AI email assistant that turns your inbox into one clear daily directive with a finished draft—approve or skip. Connect Gmail or Outlook.",
+    "Foldera turns scattered inboxes, calendar holds, stale drafts, and unresolved threads into one directive, draft, and source trail every morning.",
   keywords: [
     "AI email assistant",
     "email productivity",
@@ -30,7 +30,7 @@ export const metadata = {
   openGraph: {
     title: "Foldera — Finished work, every morning",
     description:
-      "AI email assistant that turns your inbox into one clear daily directive with a finished draft—approve or skip.",
+      "Foldera turns scattered inboxes, calendar holds, stale drafts, and unresolved threads into one directive, draft, and source trail every morning.",
     url: siteOrigin,
     siteName: "Foldera",
     locale: "en_US",
@@ -48,7 +48,7 @@ export const metadata = {
     card: 'summary_large_image',
     title: "Foldera — Finished work, every morning",
     description:
-      "AI email assistant that turns your inbox into one clear daily directive with a finished draft—approve or skip.",
+      "Foldera turns scattered inboxes, calendar holds, stale drafts, and unresolved threads into one directive, draft, and source trail every morning.",
     images: [`${siteOrigin}/foldera-logo.png`],
   },
 };

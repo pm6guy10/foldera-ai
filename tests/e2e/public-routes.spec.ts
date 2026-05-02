@@ -88,6 +88,30 @@ test.describe('Landing page /', () => {
     await expect(page.getByText('Foldera').first()).toBeVisible();
   });
 
+  test('landing demo uses neutral public copy and default approve language', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+    await expect(page.getByText(/Brandon/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Approve & send/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Approve$/i }).first()).toBeVisible();
+  });
+
+  test('landing demo stays neutral on mobile preview', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+    await expect(page.getByText(/Brandon/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Approve & send/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Approve$/i }).first()).toBeVisible();
+  });
+
+  test('root metadata description matches the finished-work positioning', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute(
+      'content',
+      /finished move|directive, draft, and source trail|finished work/i,
+    );
+  });
+
   test('no actionable console errors — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const errors = collectConsoleErrors(page);
