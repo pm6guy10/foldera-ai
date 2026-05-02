@@ -112,7 +112,7 @@ import {
 } from './stakes-gate';
 import { getGoalQuarantineReason, isUsableGoalRow } from './goal-hygiene';
 import { buildSignalMetadataSummaryRows } from './signal-metadata-summary';
-import { evaluateArtifactQualityGate } from './artifact-quality-gate';
+import { evaluateArtifactQualityGate, evaluateCommandCenterCandidateGate } from './artifact-quality-gate';
 import { SIGNAL_CONTEXT_LIMIT, SIGNAL_CONTEXT_SELECT } from '@/lib/utils/signal-egress';
 
 // ---------------------------------------------------------------------------
@@ -7457,14 +7457,10 @@ function validateGeneratedArtifact(
     issues.push('directive uses coaching/advice language');
   }
 
-  // Discrepancy candidates (relationship decay, risk, engagement collapse, etc.) produce
-  // warm reconnect or relationship-maintenance artifacts, not commitment decision memos.
-  // These artifacts will never have explicit deadlines, consequence language, or
-  // mechanism-targeted diagnostic anchors — that's correct behaviour, not a failure.
-  // Skip the decision enforcement and causal diagnosis gates for discrepancy candidates.
-  const isDiscrepancyCandidate = ctx.candidate_class === 'discrepancy';
-
-  if (!isDiscrepancyCandidate) {
+  // Discrepancy/insight candidates still have to satisfy the same action-quality gates.
+  // Approved command-center documents carry their own deadline/risk/next-action language;
+  // off-wedge relationship-maintenance output must fall through to no-send.
+  {
     // write_document forcing function check: must contain a concrete next action
     if (canonicalArtifactType === 'write_document') {
       const content = String((payload.artifact as Record<string, unknown>).content ?? '');
@@ -7513,8 +7509,10 @@ function validateGeneratedArtifact(
     }
   }
 
-  // Discrepancy/insight paths skip full decision-enforcement above — still ban task-manager lines on documents.
-  if (isDiscrepancyCandidate && canonicalArtifactType === 'write_document') {
+  // Discrepancy/insight documents get extra protection against task-manager labels.
+  const isDiscrepancyOrInsightCandidate =
+    ctx.candidate_class === 'discrepancy' || ctx.candidate_class === 'insight';
+  if (isDiscrepancyOrInsightCandidate && canonicalArtifactType === 'write_document') {
     issues.push(...getWriteDocumentTaskManagerLabelIssues(payload.artifact as Record<string, unknown>));
   }
 
@@ -7666,23 +7664,23 @@ export function validateDirectiveForPersistence(input: {
     artifact: input.artifact as Record<string, unknown>,
   });
 
-  // Discrepancy candidates (relationship decay, risk, etc.) produce warm reconnect or
-  // relationship-maintenance artifacts. These naturally have no explicit asks, deadlines,
-  // or consequence language — skip decision enforcement for them.
-  if (input.candidateType !== 'discrepancy' && input.candidateType !== 'insight') {
-    issues.push(
-      ...getDecisionEnforcementIssues({
-        actionType: input.directive.action_type,
-        directiveText: input.directive.directive,
-        reason: input.directive.reason,
-        artifact: input.artifact,
-        discrepancyClass: effectiveDiscrepancyClassForGates(input.directive),
-        matchedGoalCategory: input.matchedGoalCategory ?? null,
-        candidateTitle: persistenceEnforcementCtx.candidateTitle,
-        supportingContext: persistenceEnforcementCtx.supportingContext,
-      }),
-    );
-  } else if (normalizeDecisionActionType(input.directive.action_type) === 'write_document') {
+  issues.push(
+    ...getDecisionEnforcementIssues({
+      actionType: input.directive.action_type,
+      directiveText: input.directive.directive,
+      reason: input.directive.reason,
+      artifact: input.artifact,
+      discrepancyClass: effectiveDiscrepancyClassForGates(input.directive),
+      matchedGoalCategory: input.matchedGoalCategory ?? null,
+      candidateTitle: persistenceEnforcementCtx.candidateTitle,
+      supportingContext: persistenceEnforcementCtx.supportingContext,
+    }),
+  );
+
+  if (
+    (input.candidateType === 'discrepancy' || input.candidateType === 'insight') &&
+    normalizeDecisionActionType(input.directive.action_type) === 'write_document'
+  ) {
     issues.push(...getWriteDocumentTaskManagerLabelIssues(input.artifact as Record<string, unknown>));
     if (effectiveDiscrepancyClassForGates(input.directive) === 'behavioral_pattern') {
       const selectedCandidate =
@@ -9949,7 +9947,6 @@ export async function generateDirective(
       rankedCandidates = reorderRankedCandidatesForVerificationGoldenPathWriteDocument(rankedCandidates);
     }
     console.log(`[generator] ${rankedCandidates.length} candidates ranked for user ${userId.slice(0, 8)}`);
-    const attemptedRankedCandidates = rankedCandidates.slice(0, MAX_DIRECTIVE_CANDIDATE_ATTEMPTS_PER_RUN);
 
     // =====================================================================
     // USER-LEVEL DATA (shared across all candidates — fetch once)
@@ -10049,6 +10046,7 @@ export async function generateDirective(
     // =====================================================================
 
     const candidateBlockLog: Array<{ title: string; reasons: string[] }> = [];
+    let modelBackedCandidateAttempts = 0;
 
     // Hoist self-name tokens fetch — called once for all candidates, not once per candidate.
     // If this returns empty (auth metadata missing name), entity suppression is skipped
@@ -10121,7 +10119,7 @@ export async function generateDirective(
       }
     }
 
-    for (const { candidate: currentCandidate, disqualified, disqualifyReason } of attemptedRankedCandidates) {
+    for (const { candidate: currentCandidate, disqualified, disqualifyReason } of rankedCandidates) {
       // Skip disqualified candidates (already acted recently, etc.)
       if (disqualified) {
         candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [disqualifyReason ?? 'disqualified'] });
@@ -10253,6 +10251,50 @@ export async function generateDirective(
             discrepancy_class: currentCandidate.discrepancyClass,
             recommended_action: decisionPayload.recommended_action,
             blocker: 'schedule_conflict write_document is memo-only and below product bar',
+          },
+        });
+        continue;
+      }
+
+      const candidateGate = evaluateCommandCenterCandidateGate({
+        recommendedAction: decisionPayload.recommended_action,
+        suggestedActionType: hydratedWinner.suggestedActionType,
+        hasRealRecipient: preflightCtx.has_real_recipient,
+        discrepancyClass: hydratedWinner.discrepancyClass ?? null,
+        candidateText: [
+          hydratedWinner.title,
+          hydratedWinner.content,
+          hydratedWinner.entityName ?? '',
+          hydratedWinner.relationshipContext ?? '',
+          hydratedWinner.matchedGoal?.text ?? '',
+          ...hydratedWinner.relatedSignals.slice(0, 5),
+          ...hydratedWinner.sourceSignals.map((signal) => signal.summary ?? ''),
+        ].filter(Boolean).join('\n'),
+        sourceFacts: [
+          preflightCtx.selected_candidate,
+          preflightCtx.candidate_title,
+          ...preflightCtx.surgical_raw_facts,
+          ...preflightCtx.supporting_signals.map((signal) => signal.summary),
+        ].filter((fact): fact is string => typeof fact === 'string' && fact.trim().length > 0),
+      });
+      if (!candidateGate.passes) {
+        const candidateIndex = rankedCandidates.findIndex((entry) => entry.candidate === currentCandidate);
+        candidateBlockLog.push({
+          title: currentCandidate.title.slice(0, 80),
+          reasons: candidateGate.reasons,
+        });
+        logStructuredEvent({
+          event: 'candidate_blocked',
+          level: 'info',
+          userId,
+          artifactType: decisionPayload.recommended_action,
+          generationStatus: 'command_center_candidate_gate_failed',
+          details: {
+            scope: 'generator',
+            candidate_title: currentCandidate.title.slice(0, 80),
+            candidate_index: candidateIndex,
+            command_center_class: candidateGate.commandCenterClass,
+            reasons: candidateGate.reasons,
           },
         });
         continue;
@@ -10394,6 +10436,15 @@ export async function generateDirective(
       // THIS CANDIDATE PASSED — proceed with LLM generation.
       // Log the fallback path so we can see which candidates were skipped.
       // =====================================================================
+
+      if (modelBackedCandidateAttempts >= MAX_DIRECTIVE_CANDIDATE_ATTEMPTS_PER_RUN) {
+        candidateBlockLog.push({
+          title: currentCandidate.title.slice(0, 80),
+          reasons: [`candidate_attempt_cap:${MAX_DIRECTIVE_CANDIDATE_ATTEMPTS_PER_RUN}`],
+        });
+        break;
+      }
+      modelBackedCandidateAttempts += 1;
 
       if (candidateBlockLog.length > 0) {
         console.log(`[generator] candidate fallback: skipped ${candidateBlockLog.length} candidate(s) before finding viable #${rankedCandidates.indexOf(rankedCandidates.find(r => r.candidate === currentCandidate)!) + 1}`);
@@ -11147,9 +11198,10 @@ export async function generateDirective(
     const allBlockReasons = candidateBlockLog.map(
       (bl) => `"${bl.title}" → ${bl.reasons.join('; ')}`,
     ).join(' | ');
-    const summaryReason = rankedCandidates.length > attemptedRankedCandidates.length
-      ? `Attempted ${attemptedRankedCandidates.length} of ${rankedCandidates.length} candidates; all attempted candidates blocked: ${allBlockReasons}`
-      : `All ${attemptedRankedCandidates.length} candidates blocked: ${allBlockReasons}`;
+    const blockedCandidateCount = candidateBlockLog.length;
+    const summaryReason = rankedCandidates.length > blockedCandidateCount
+      ? `Blocked ${blockedCandidateCount} of ${rankedCandidates.length} ranked candidates after ${modelBackedCandidateAttempts} model-backed attempt(s): ${allBlockReasons}`
+      : `All ${blockedCandidateCount} ranked candidates blocked after ${modelBackedCandidateAttempts} model-backed attempt(s): ${allBlockReasons}`;
     const proofModeFailureMessage =
       'No thread-backed external send_message candidate cleared proof-mode gates.';
     const blockLogMentionsProofModeGates = candidateBlockLog.some((bl) =>
@@ -11170,9 +11222,10 @@ export async function generateDirective(
       artifactType: null, generationStatus: 'all_candidates_blocked',
       details: {
         scope: 'generator',
-        candidate_count: attemptedRankedCandidates.length,
+        candidate_count: blockedCandidateCount,
         ranked_candidate_count: rankedCandidates.length,
         candidate_attempt_cap: MAX_DIRECTIVE_CANDIDATE_ATTEMPTS_PER_RUN,
+        model_backed_candidate_attempts: modelBackedCandidateAttempts,
         block_log: candidateBlockLog,
       },
     });
@@ -11185,9 +11238,10 @@ export async function generateDirective(
         generationStatus: 'proof_mode_all_candidates_failed',
         details: {
           scope: 'generator',
-          candidate_count: attemptedRankedCandidates.length,
+          candidate_count: blockedCandidateCount,
           ranked_candidate_count: rankedCandidates.length,
           candidate_attempt_cap: MAX_DIRECTIVE_CANDIDATE_ATTEMPTS_PER_RUN,
+          model_backed_candidate_attempts: modelBackedCandidateAttempts,
           block_log: candidateBlockLog,
           summary_reason: summaryReason,
         },

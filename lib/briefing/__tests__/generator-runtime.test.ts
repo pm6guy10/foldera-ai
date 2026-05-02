@@ -438,10 +438,10 @@ describe('generateDirective runtime failures', () => {
     );
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_blocked',
-      generationStatus: 'persistence_validation_failed',
+      generationStatus: 'command_center_candidate_gate_failed',
       details: expect.objectContaining({
         candidate_title: 'High-value relationship at risk: onboarding@resend.dev',
-        issues: expect.arrayContaining(['decision_enforcement:recursive_directive_template_sludge']),
+        reasons: expect.arrayContaining(['transactional_sender_decision_pressure']),
       }),
     }));
   });
@@ -753,10 +753,116 @@ describe('generateDirective runtime failures', () => {
     expect(directive.directive).toBe('__GENERATION_FAILED__');
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_blocked',
-      generationStatus: 'artifact_quality_gate_failed',
+      generationStatus: 'command_center_candidate_gate_failed',
       details: expect.objectContaining({
         candidate_title: 'CHC silence relationship decision map',
         reasons: expect.arrayContaining(['relationship_silence_artifact']),
+      }),
+    }));
+  });
+
+  it('does not spend the generation attempt cap on pre-generation command-center rejects', async () => {
+    const scored = asWinnerScored(buildScorerResult());
+    const makeBlocked = (index: number): ScoredLoop => ({
+      ...buildWinner(),
+      id: `blocked-resend-silence-${index}`,
+      type: 'commitment',
+      suggestedActionType: 'write_document',
+      title: `Resend relationship status decision map ${index}`,
+      content: 'From: Resend <onboarding@resend.dev>. Resend has been silent for 19 days and may create professional risk before interview decisions are final.',
+      entityName: 'Resend',
+      matchedGoal: null,
+      relationshipContext: '- Resend <onboarding@resend.dev> (System)',
+      score: 5 - index * 0.1,
+      sourceSignals: [
+        {
+          kind: 'signal',
+          id: `sig-resend-${index}`,
+          summary: 'From: Resend <onboarding@resend.dev>. Subject: Welcome to Resend.',
+          occurredAt: FIXED_NOW.toISOString(),
+        },
+      ],
+    });
+    const viable: ScoredLoop = {
+      ...buildWinner(),
+      id: 'viable-benefits-packet-fourth',
+      type: 'commitment',
+      suggestedActionType: 'write_document',
+      title: 'Benefits payment verification action packet is due before the processing deadline',
+      content: 'Source Email: benefits office requested payment verification before May 5 and the receipt packet needs a finished response.',
+      entityName: 'Benefits Office',
+      matchedGoal: {
+        text: 'Keep benefits payment processing current',
+        priority: 5,
+        category: 'admin',
+      },
+      relationshipContext: '- Benefits Office <benefits@example.com> (Admin)',
+      score: 4.1,
+      sourceSignals: [
+        {
+          kind: 'signal',
+          id: 'sig-benefits-payment',
+          summary: 'Source Email: benefits office requested payment verification before May 5.',
+          occurredAt: FIXED_NOW.toISOString(),
+        },
+      ],
+    };
+
+    scored.winner = makeBlocked(1);
+    scored.topCandidates = [makeBlocked(1), makeBlocked(2), makeBlocked(3), viable];
+    scored.candidateDiscovery = {
+      ...scored.candidateDiscovery,
+      candidateCount: 4,
+      selectionReason: 'Selected from four ranked candidates.',
+    };
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueEmptyTkgActionsResults(10);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 120, output_tokens: 90 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Save the benefits payment verification packet before the May 5 processing deadline.',
+          artifact_type: 'write_document',
+          artifact: {
+            document_purpose: 'Benefits payment verification action packet',
+            target_reader: 'Brandon Kapp',
+            title: 'Benefits payment verification action packet',
+            content: [
+              'Source Email: benefits office requested payment verification before May 5.',
+              'Hidden leverage: the processing pause is not the payment itself; it is the missing receipt and owner confirmation.',
+              'Admin action: submit the payment confirmation number and attach the receipt.',
+              'Deadline: May 5 before 5 PM PT.',
+              'Risk: missing the deadline can pause benefits processing.',
+              'Exact message: I am attaching the receipt and confirmation number for review.',
+              'Next action: save the receipt, send the verification, and mark the benefits payment deadline closed.',
+            ].join('\n'),
+          },
+          evidence: 'Source Email: benefits office requested payment verification before May 5.',
+          why_now: 'The benefits payment verification deadline is May 5 and the receipt packet must be closed before processing pauses.',
+          causal_diagnosis: {
+            why_exists_now: 'The benefits office is waiting on receipt verification.',
+            mechanism: 'Missing owner confirmation blocks payment processing.',
+          },
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(anthropicCreate).toHaveBeenCalledTimes(1);
+    expect(directive.directive).not.toBe('__GENERATION_FAILED__');
+    expect((directive as { winnerSelectionTrace?: { finalWinnerId: string } }).winnerSelectionTrace?.finalWinnerId)
+      .toBe('viable-benefits-packet-fourth');
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'candidate_blocked',
+      generationStatus: 'command_center_candidate_gate_failed',
+      details: expect.objectContaining({
+        candidate_title: 'Resend relationship status decision map 1',
+        reasons: expect.arrayContaining(['transactional_sender_decision_pressure']),
       }),
     }));
   });
@@ -942,14 +1048,15 @@ describe('generateDirective runtime failures', () => {
 
     expect(anthropicCreate).toHaveBeenCalledTimes(3);
     expect(directive.action_type).toBe('do_nothing');
-    expect(directive.generationLog?.reason).toContain('Attempted 3 of 5 candidates');
+    expect(directive.generationLog?.reason).toContain('3 model-backed attempt(s)');
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         event: 'all_candidates_blocked',
         details: expect.objectContaining({
-          candidate_count: 3,
+          candidate_count: 4,
           ranked_candidate_count: 5,
           candidate_attempt_cap: 3,
+          model_backed_candidate_attempts: 3,
         }),
       }),
     );
@@ -1649,29 +1756,9 @@ describe('generateDirective runtime failures', () => {
     const directive = await generateDirective('user-1', { dryRun: true });
 
     expect(anthropicCreate).toHaveBeenCalledTimes(2);
-    expect(directive.action_type).toBe('write_document');
-    expectDirectiveShape(directive.directive, {
-      minLength: 40,
-      requiredRegexes: [/reopen/i, /next-step signal/i],
-    });
-    const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
-    const { title } = expectDocumentArtifactShape(embeddedArtifact, {
-      minTitleLength: 16,
-      minLength: 220,
-      minParagraphs: 6,
-      requiredTerms: ['pilot decision', 'Pat Lee'],
-      requiredRegexes: [
-        /Execution move:/i,
-        /Why this beats the alternatives:/i,
-        /Deprioritize:/i,
-        /Reopen trigger:/i,
-      ],
-    });
-    expect(title).toContain('pilot decision');
-    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
-      event: 'candidate_repaired',
-      generationStatus: 'decision_enforcement_repaired',
-    }));
+    expect(directive.action_type).toBe('do_nothing');
+    expect(directive.directive).toBe('__GENERATION_FAILED__');
+    expect(directive.reason).toContain('artifact_quality');
   });
 
   it('uses the grounded thread label for MAS3-style behavioral-pattern repairs instead of echoing the generated directive', async () => {
@@ -1734,18 +1821,9 @@ describe('generateDirective runtime failures', () => {
     const { generateDirective } = await import('../generator');
     const directive = await generateDirective('user-1', { dryRun: true });
 
-    expect(directive.directive).toContain('Waiting on MAS3 (HCA) hiring decision');
-    const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
-    expectDocumentArtifactShape(embeddedArtifact, {
-      minTitleLength: 16,
-      minLength: 220,
-      minParagraphs: 6,
-      requiredTerms: ['Waiting on MAS3 (HCA) hiring decision'],
-      forbiddenPatterns: [
-        'means Stop holding live bandwidth open for',
-        'for Stop holding live bandwidth open for',
-      ],
-    });
+    expect(directive.directive).toBe('__GENERATION_FAILED__');
+    expect(directive.action_type).toBe('do_nothing');
+    expect(directive.reason).toContain('Generation validation failed');
   });
 
   it('rejects behavioral-pattern documents that echo the full directive into the artifact body and repairs them', async () => {
@@ -1808,22 +1886,9 @@ describe('generateDirective runtime failures', () => {
     const { generateDirective } = await import('../generator');
     const directive = await generateDirective('user-1', { dryRun: true });
 
-    expect(directive.directive).toContain('Waiting on MAS3 (HCA) hiring decision');
-    const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
-    expectDocumentArtifactShape(embeddedArtifact, {
-      minTitleLength: 16,
-      minLength: 220,
-      minParagraphs: 6,
-      requiredTerms: ['Waiting on MAS3 (HCA) hiring decision'],
-      forbiddenPatterns: [
-        'means Stop holding live bandwidth open for',
-        'for Stop holding live bandwidth open for',
-      ],
-    });
-    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
-      event: 'candidate_repaired',
-      generationStatus: 'decision_enforcement_repaired',
-    }));
+    expect(directive.directive).toBe('__GENERATION_FAILED__');
+    expect(directive.action_type).toBe('do_nothing');
+    expect(directive.reason).toContain('Generation validation failed');
   });
 
   it('repairs send_message fallback with an explicit ask that passes enforcement', async () => {

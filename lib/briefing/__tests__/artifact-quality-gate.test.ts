@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  evaluateCommandCenterCandidateGate,
   evaluateArtifactQualityFailSafe,
   evaluateArtifactQualityGate,
   summarizeArtifactQualityRun,
@@ -114,6 +115,69 @@ describe('artifact quality gold set v1.2', () => {
 });
 
 describe('Brandon command-center artifact wedge', () => {
+  it('blocks off-wedge candidates before generation when no approved artifact class is visible', () => {
+    const result = evaluateCommandCenterCandidateGate({
+      recommendedAction: 'write_document',
+      suggestedActionType: 'write_document',
+      hasRealRecipient: false,
+      candidateText: [
+        'Resend relationship status and interview decision map',
+        'From: Resend <onboarding@resend.dev>',
+        'Subject: Welcome to Resend',
+        'The sender has been silent for 19 days and may create professional risk before interview decisions are final.',
+      ].join('\n'),
+      sourceFacts: ['From: Resend <onboarding@resend.dev>', 'Subject: Welcome to Resend'],
+    });
+
+    expect(result.passes).toBe(false);
+    expect(result.reasons).toEqual(expect.arrayContaining([
+      'transactional_sender_decision_pressure',
+      'outside_command_center_scope',
+    ]));
+    expect(result.commandCenterClass).toBeNull();
+  });
+
+  it('allows pre-generation document candidates only when they map to an approved command-center class', () => {
+    const result = evaluateCommandCenterCandidateGate({
+      recommendedAction: 'write_document',
+      suggestedActionType: 'write_document',
+      hasRealRecipient: false,
+      candidateText: [
+        'Benefits payment verification action packet',
+        'Source Email: benefits office requested payment verification before May 5.',
+        'Admin action: submit the payment confirmation number and attach the receipt.',
+        'Deadline: May 5 before 5 PM PT.',
+      ].join('\n'),
+      sourceFacts: ['Source Email: benefits office requested payment verification before May 5.'],
+    });
+
+    expect(result.passes).toBe(true);
+    expect(result.commandCenterClass).toBe('BENEFITS_PAYMENT_ADMIN_ACTION_PACKET');
+    expect(result.reasons).toEqual([]);
+  });
+
+  it('fails write_document artifacts that fit a class label but still hand homework back to the user', () => {
+    const result = evaluateArtifactQualityGate({
+      directive: {
+        action_type: 'write_document',
+        directive: 'Save the benefits payment admin action packet.',
+        reason: 'A benefits payment deadline needs tracking.',
+        evidence: [{ description: 'Source Email: benefits office requested payment verification before May 5.' }],
+      },
+      artifact: {
+        type: 'document',
+        title: 'Benefits payment verification action packet',
+        content: 'Source Email: benefits office requested payment verification before May 5. Admin action: review the benefits payment note, prepare the receipt, and consider what to submit before the deadline. Deadline: May 5 before 5 PM PT. Risk: processing could pause.',
+      },
+      sourceFacts: ['Source Email: benefits office requested payment verification before May 5.'],
+    });
+
+    expect(result.passes).toBe(false);
+    expect(result.reasons).toEqual(expect.arrayContaining([
+      'prepare_instead_of_finished_work',
+    ]));
+  });
+
   it('allows only the five command-center artifact classes', () => {
     const cases = [
       {

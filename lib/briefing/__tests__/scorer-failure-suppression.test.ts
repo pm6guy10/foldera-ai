@@ -232,6 +232,45 @@ function createSupabaseMock(rows: unknown[], eqSpy?: (col: string, val: string) 
 }
 
 describe('collectActiveFailureSuppressionKeys', () => {
+  it('suppresses keys from artifact-quality no-send rows so bad candidates do not keep winning', async () => {
+    vi.useFakeTimers();
+    const now = new Date('2026-05-01T16:00:00.000Z').getTime();
+    vi.setSystemTime(now);
+
+    const rows = [
+      {
+        generated_at: new Date(now).toISOString(),
+        status: 'skipped',
+        action_type: 'do_nothing',
+        execution_result: {
+          generation_log: {
+            outcome: 'no_send',
+            candidateDiscovery: {
+              topCandidates: [
+                {
+                  decision: 'selected',
+                  sourceSignals: [{ kind: 'signal', id: 'sig-resend-onboarding' }],
+                },
+              ],
+            },
+          },
+          original_candidate: {
+            action_type: 'write_document',
+            candidate_description: 'Resend relationship status and interview decision map',
+            blocked_by: 'artifact_quality:transactional_sender_decision_pressure; artifact_quality:outside_command_center_scope',
+          },
+        },
+      },
+    ];
+
+    const supabase = createSupabaseMock(rows) as never;
+
+    const keys = await collectActiveFailureSuppressionKeys(supabase, 'user-aaa-111');
+    expect(keys.has('signal:sig-resend-onboarding')).toBe(true);
+
+    vi.useRealTimers();
+  });
+
   it('suppresses keys from user-skipped selected directives for 48h', async () => {
     vi.useFakeTimers();
     const now = new Date('2026-04-07T12:00:00.000Z').getTime();

@@ -26,16 +26,17 @@ const STOP_WORDS = new Set([
 const GENERIC_ADVICE_PATTERN =
   /\b(you should|it may help|try to|best practice|generally|in general|one approach|it might be useful|consider)\b/i;
 
-const HOMEWORK_PATTERN = /\b(consider|prepare|review)\b/i;
+const HOMEWORK_PATTERN =
+  /\b(consider|prepare examples|prepare accordingly|review (?:the|your|website|job description|materials)|research (?:the|your|options|company)|practice questions|think about|reflect on)\b/i;
 
 const CHECKLIST_PATTERN =
   /(?:^|\n)\s*(?:\d+[\).]|[-*])\s+/m;
 
 const HIDDEN_LEVERAGE_PATTERN =
-  /\b(hidden leverage|leverage point|bottleneck|root cause|unlock|single move|constraint that matters)\b/i;
+  /\b(hidden leverage|leverage point|bottleneck|root cause|unlock|single move|constraint that matters|why this beats the alternatives|deciding criterion|criteria:|criterion:|mechanism:|risk:|role-fit|first-person answer:|I am strongest|I bring|the actual blocker|processing pause is not|missing owner confirmation)\b/i;
 
 const FINISHED_WORK_PATTERN =
-  /\b(final draft|send this|copy\/paste|subject:|body:|packet|as-is)\b/i;
+  /\b(final draft|send this|use this|copy\/paste|subject:|body:|packet|as-is|exact message:|next action:|first-person answer:|finished answer:|admin action:|decision:)\b/i;
 
 function tokenize(input: string): string[] {
   return input
@@ -67,11 +68,27 @@ function hasSourceFactAnchor(artifactText: string, sourceFacts?: string[]): bool
   });
 }
 
+function hasLeverageMarker(artifactText: string): boolean {
+  return (
+    HIDDEN_LEVERAGE_PATTERN.test(artifactText) ||
+    /\b(criteria|criterion|decision|risk|deadline|next action|exact message|quotable line|use when|answer packet|accuracy answer|executive brief|finished answer|one-page|I handled|I use|I have)\b/i.test(artifactText)
+  );
+}
+
+function hasFinishedWorkMarker(artifactText: string): boolean {
+  return (
+    FINISHED_WORK_PATTERN.test(artifactText) ||
+    /\b(next action|exact message|first-person answer|quotable line|use when|submit|send|save)\b/i.test(artifactText)
+  );
+}
+
 export function evaluateGoldStandardArtifact(
   input: GoldStandardArtifactEvaluationInput,
 ): GoldStandardArtifactEvaluationResult {
   const artifactText = input.artifactText.trim();
   const genericFailureReasons: string[] = [];
+  const hasLeverage = hasLeverageMarker(artifactText);
+  const hasFinishedWork = hasFinishedWorkMarker(artifactText);
 
   if (GENERIC_ADVICE_PATTERN.test(artifactText)) {
     genericFailureReasons.push('generic_advice');
@@ -85,7 +102,7 @@ export function evaluateGoldStandardArtifact(
     genericFailureReasons.push('checklist_instead_of_finished_asset');
   }
 
-  if (!HIDDEN_LEVERAGE_PATTERN.test(artifactText)) {
+  if (!hasLeverage) {
     genericFailureReasons.push('user_must_figure_out_angle');
   }
 
@@ -103,11 +120,11 @@ export function evaluateGoldStandardArtifact(
     missing.push('uses_real_source_facts');
   }
 
-  if (!HIDDEN_LEVERAGE_PATTERN.test(artifactText)) {
+  if (!hasLeverage) {
     missing.push('identifies_hidden_leverage_point');
   }
 
-  if (!FINISHED_WORK_PATTERN.test(artifactText)) {
+  if (!hasFinishedWork) {
     missing.push('produces_usable_finished_work');
   }
 

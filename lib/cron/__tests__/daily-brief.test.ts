@@ -786,7 +786,7 @@ describe('runDailyGenerate candidate logging', () => {
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates[1].decisionReason).toContain('Rejected because');
   });
 
-  it('writes the actual fallback winner into the outcome receipt when winnerSelectionTrace displaces scorer-top', async () => {
+  it('writes the actual fallback winner into the no-send receipt when broad behavioral artifacts fail closed', async () => {
     const directive = buildDirective({
       directive: 'Stop holding live bandwidth open for Waiting on MAS3 (HCA) hiring decision; reopen only if a concrete next-step signal arrives by 5:00 PM PT tomorrow.',
       action_type: 'write_document',
@@ -874,13 +874,14 @@ describe('runDailyGenerate candidate logging', () => {
     const result = await runDailyGenerate({ userIds: [USER_ID] });
 
     expect(result.results).toEqual([
-      expect.objectContaining({ code: 'pending_approval_persisted', success: true }),
+      expect.objectContaining({
+        code: 'no_send_persisted',
+        detail: expect.stringContaining('Artifact quality gate blocked: no_concrete_outcome'),
+        success: true,
+      }),
     ]);
     const saved = mockSupabase.insertedActions.at(-1);
-    expect(saved.status).toBe('pending_approval');
-    expect((saved.execution_result as Record<string, any>).inspection.winner_selection_trace).toEqual(
-      directive.winnerSelectionTrace,
-    );
+    expect(saved.status).toBe('skipped');
     expect((saved.execution_result as Record<string, any>).outcome_receipt.winner).toEqual(
       expect.objectContaining({
         winner_candidate_id: 'discrepancy-behavioral-mas3',
@@ -893,9 +894,10 @@ describe('runDailyGenerate candidate logging', () => {
       expect.objectContaining({
         artifact_changes_probability_now: true,
         artifact_requires_more_thinking: false,
-        artifact_pass_fail: 'PASS',
+        artifact_pass_fail: 'FAIL',
       }),
     );
+    expect(mockSupabase.insertedActions.some((row) => row.status === 'pending_approval')).toBe(false);
   });
 
   it('passes the traced final selected fallback winner into persistence validation instead of scorer-top', async () => {
@@ -1123,7 +1125,7 @@ describe('runDailyGenerate candidate logging', () => {
     expect(mockSupabase.insertedActions.some((row) => row.status === 'pending_approval')).toBe(false);
   });
 
-  it('hydrates legacy interview write_document metadata before pending_approval persistence', async () => {
+  it('fails closed when a legacy interview write_document is only a confirmation email', async () => {
     vi.mocked(generateDirective).mockResolvedValue(buildDirective({
       action_type: 'write_document',
       directive: 'Interview is 0 days out with no calendar acceptance or confirmation sent.',
@@ -1201,25 +1203,26 @@ describe('runDailyGenerate candidate logging', () => {
 
     expect(result.results).toEqual([
       expect.objectContaining({
-        code: 'pending_approval_persisted',
+        code: 'no_send_persisted',
+        detail: expect.stringContaining('Artifact quality gate blocked: no_concrete_outcome'),
         success: true,
       }),
     ]);
     const saved = mockSupabase.insertedActions[0];
-    expect(saved.status).toBe('pending_approval');
-    expect(saved.artifact).toEqual(
+    expect(saved.status).toBe('skipped');
+    expect((saved.execution_result as Record<string, any>).outcome_receipt.artifact_quality_receipt).toEqual(
       expect.objectContaining({
-        type: 'document',
-        document_purpose: 'brief',
-        target_reader: 'user',
+        final_artifact_bar_passed: false,
+        blocker_bucket: 'artifact_fallback_degradation',
       }),
     );
     expect((saved.execution_result as Record<string, any>).artifact).toEqual(
       expect.objectContaining({
-        document_purpose: 'brief',
-        target_reader: 'user',
+        type: 'wait_rationale',
+        evidence: 'Artifact quality gate blocked: no_concrete_outcome',
       }),
     );
+    expect(mockSupabase.insertedActions.some((row) => row.status === 'pending_approval')).toBe(false);
   });
 
   it('does not persist pending_approval when artifact structural validation fails', async () => {

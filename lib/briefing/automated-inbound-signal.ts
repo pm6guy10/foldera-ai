@@ -14,6 +14,9 @@ export const AUTOMATED_TRANSACTIONAL_EMAIL_DOMAINS: readonly string[] = [
   'teladochealth.com',
 ];
 
+const GENERIC_TRANSACTIONAL_DOMAIN_PATTERN =
+  /\b(?:accounts?|billing|security|support|notifications?|alerts?|updates?|mail|email|app|system|id|login|auth|verify|verification|onboarding)\.[a-z0-9.-]+\.[a-z]{2,}\b/i;
+
 const FROM_LINE_RE = /^From:\s*(.+)$/im;
 const SUBJECT_LINE_RE = /^Subject:\s*(.+)$/im;
 
@@ -26,6 +29,13 @@ const AUTOMATED_FROM_SUBSTRINGS = [
   'notification',
   'notifications',
   'welcome',
+  'onboarding',
+  'support',
+  'security',
+  'billing',
+  'system',
+  'admin',
+  'updates',
   'newsletter',
   'mailer',
   'dmarc aggregate report',
@@ -35,6 +45,7 @@ const AUTOMATED_FROM_SUBSTRINGS = [
 const AUTOMATED_SUBJECT_PATTERNS = [
   /\bdmarc\s+aggregate\s+report\b/i,
   /\breport domain:\b.*\bsubmitter:\b/i,
+  /\b(welcome|getting started|verify|verification code|confirm your email|security alert|billing|invoice|receipt|payment received|password reset|product update|account update)\b/i,
 ] as const;
 
 /** Narrow booking / verification flows that look human but are machine-generated. */
@@ -104,6 +115,7 @@ export function isLikelyAutomatedTransactionalInbound(content: string): boolean 
   if (at <= 0 || at >= email.length - 1) return false;
   const local = email.slice(0, at);
   const domain = email.slice(at + 1);
-  if (/(?:^|[-_.])dmarc(?:$|[-_.]|report)/i.test(local)) return true;
+  if (/(?:^|[-_.])(?:dmarc|onboarding|welcome|support|security|billing|system|admin|alerts?|updates?|notifications?|mailer|verify|verification)(?:$|[-_.]|report)/i.test(local)) return true;
+  if (GENERIC_TRANSACTIONAL_DOMAIN_PATTERN.test(domain)) return true;
   return domainMatchesList(domain, AUTOMATED_TRANSACTIONAL_EMAIL_DOMAINS);
 }

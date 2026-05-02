@@ -1,4 +1,6 @@
 import type { ConvictionArtifact, ConvictionDirective } from './types';
+import { isLikelyAutomatedTransactionalInbound } from './automated-inbound-signal';
+import { evaluateGoldStandardArtifact } from './gold-standard-artifact-evaluator';
 
 export type ArtifactQualityCategory =
   | 'DRAFT_EMAIL'
@@ -47,6 +49,21 @@ export interface ArtifactQualityGateResult {
   commandCenterClass: CommandCenterArtifactClass | null;
   reasons: ArtifactQualityBlockReason[];
   safeArtifactMessage: string | null;
+}
+
+export interface CommandCenterCandidateGateInput {
+  recommendedAction: string;
+  suggestedActionType?: string | null;
+  hasRealRecipient?: boolean;
+  candidateText: string;
+  sourceFacts?: string[];
+  discrepancyClass?: string | null;
+}
+
+export interface CommandCenterCandidateGateResult {
+  passes: boolean;
+  commandCenterClass: CommandCenterArtifactClass | null;
+  reasons: ArtifactQualityBlockReason[];
 }
 
 export type ArtifactQualityFailSafeStatus = 'GREEN' | 'YELLOW' | 'RED';
@@ -298,6 +315,67 @@ function classifyCommandCenterArtifact(
   return null;
 }
 
+function classifyCandidateCommandCenterClass(text: string): CommandCenterArtifactClass | null {
+  if (RELATIONSHIP_SILENCE_ARTIFACT_PATTERN.test(text)) return null;
+  if (INTERVIEW_JOB_PATTERN.test(text)) return 'INTERVIEW_ROLE_FIT_PACKET';
+  if (CALENDAR_CONFLICT_PATTERN.test(text)) return 'CALENDAR_CONFLICT_RESOLUTION_BRIEF';
+  if (BENEFITS_PAYMENT_ADMIN_PATTERN.test(text)) return 'BENEFITS_PAYMENT_ADMIN_ACTION_PACKET';
+  if (DEADLINE_RISK_PATTERN.test(text) && (DECISION_PATTERN.test(text) || NEXT_ACTION_PATTERN.test(text) || /\b(decision|action|packet|brief)\b/i.test(text))) {
+    return 'DEADLINE_RISK_DECISION_BRIEF';
+  }
+  return null;
+}
+
+export function evaluateCommandCenterCandidateGate(
+  input: CommandCenterCandidateGateInput,
+): CommandCenterCandidateGateResult {
+  const combined = [
+    input.candidateText,
+    ...(input.sourceFacts ?? []),
+    input.discrepancyClass ? `discrepancy_class:${input.discrepancyClass}` : '',
+  ].filter(Boolean).join('\n');
+  const reasons: ArtifactQualityBlockReason[] = [];
+  const recommendedAction = input.recommendedAction;
+  const suggestedAction = input.suggestedActionType ?? recommendedAction;
+  const hasRealRecipient = input.hasRealRecipient === true;
+  const commandCenterClass = classifyCandidateCommandCenterClass(combined);
+  const automatedTransactional =
+    isLikelyAutomatedTransactionalInbound(combined) ||
+    TRANSACTIONAL_SYSTEM_SENDER_PATTERN.test(combined);
+
+  if (automatedTransactional && (WEAK_SILENCE_PATTERN.test(combined) || INVENTED_PROFESSIONAL_PRESSURE_PATTERN.test(combined))) {
+    reasons.push('transactional_sender_decision_pressure');
+  }
+  if (RELATIONSHIP_SILENCE_ARTIFACT_PATTERN.test(combined)) {
+    reasons.push('relationship_silence_artifact');
+  }
+  if (
+    suggestedAction === 'send_message' &&
+    !hasRealRecipient &&
+    recommendedAction !== 'send_message' &&
+    !commandCenterClass
+  ) {
+    reasons.push('action_type_mismatch');
+  }
+  if (recommendedAction === 'write_document' && !commandCenterClass) {
+    reasons.push('outside_command_center_scope');
+    reasons.push('unclassified_artifact');
+  }
+  if (recommendedAction === 'send_message' && !hasRealRecipient) {
+    reasons.push('action_type_mismatch');
+  }
+  if (!commandCenterClass && !reasons.includes('outside_command_center_scope')) {
+    reasons.push('outside_command_center_scope');
+  }
+
+  const uniqueReasons = [...new Set(reasons)];
+  return {
+    passes: uniqueReasons.length === 0,
+    commandCenterClass,
+    reasons: uniqueReasons,
+  };
+}
+
 export function classifyArtifactCategory(
   directive: Pick<ConvictionDirective, 'action_type'>,
   artifact: ConvictionArtifact,
@@ -343,6 +421,33 @@ export function evaluateArtifactQualityGate(
     reasons.push('no_concrete_outcome');
   }
   if (hasFabricatedUserClaim(combined, evidence)) reasons.push('fabricated_claim');
+  if (input.directive.action_type === 'write_document' && !suppressionDecision) {
+    const gold = evaluateGoldStandardArtifact({
+      artifactText: [text, evidence].filter(Boolean).join('\n'),
+      situation: [input.directive.directive, input.directive.reason].filter(Boolean).join('\n'),
+      sourceFacts: input.sourceFacts?.length ? input.sourceFacts : [evidence].filter(Boolean),
+    });
+    if (!gold.passes) {
+      if (
+        gold.missing.includes('identifies_hidden_leverage_point') ||
+        gold.missing.includes('produces_usable_finished_work')
+      ) {
+        reasons.push('no_concrete_outcome');
+      }
+      if (
+        gold.genericFailureReasons.includes('homework_language') ||
+        gold.genericFailureReasons.includes('checklist_instead_of_finished_asset')
+      ) {
+        reasons.push('prepare_instead_of_finished_work');
+      }
+      if (
+        gold.genericFailureReasons.includes('generic_advice') ||
+        gold.genericFailureReasons.includes('generic_chatbot_quality')
+      ) {
+        reasons.push('generic_coaching');
+      }
+    }
+  }
   if (!suppressionDecision && hasTransactionalSenderDecisionPressure(combined, evidence)) {
     reasons.push('transactional_sender_decision_pressure');
   }
