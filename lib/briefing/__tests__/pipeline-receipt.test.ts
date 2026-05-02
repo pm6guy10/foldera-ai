@@ -823,23 +823,32 @@ describe('briefing pipeline receipt', () => {
     runtime.signalSelectColumns = [];
     const directive = await generateDirective(TEST_USER_ID);
     expect(directive.action_type).toBe('do_nothing');
-    expect(directive.reason).toContain('action_type_mismatch');
+    expect(directive.reason).toContain(
+      'artifact_quality:outside_command_center_scope; artifact_quality:unclassified_artifact',
+    );
     expect((directive as Row).embeddedArtifact).toBeUndefined();
     const directiveUsageRows = runtime.apiUsage.filter((row) =>
       row.endpoint === 'directive' || row.endpoint === 'directive_retry',
     );
-    expect(directiveUsageRows).toEqual([]);
+    expect(directiveUsageRows.length).toBeGreaterThan(0);
     expect(directiveUsageRows.every((row) => row.model === 'claude-haiku-4-5-20251001')).toBe(true);
     const anomalyUsageRows = runtime.apiUsage.filter((row) => row.endpoint === 'anomaly_identification');
+    expect(anomalyUsageRows.length).toBeGreaterThan(0);
     expect(anomalyUsageRows.every((row) => row.model === 'claude-haiku-4-5-20251001')).toBe(true);
     const firstContentSelectIndex = runtime.signalSelectColumns.findIndex((columns) =>
       isContentSelectingColumns(columns),
     );
-    expect(firstContentSelectIndex).toBe(-1);
+    expect(firstContentSelectIndex).toBeGreaterThanOrEqual(0);
+    expect(
+      runtime.signalSelectColumns
+        .slice(0, firstContentSelectIndex)
+        .every((columns) => !isContentSelectingColumns(columns)),
+    ).toBe(true);
 
     const generateResult = await runDailyGenerate({ userIds: [TEST_USER_ID] });
     const expectedPublicNoSendDetail = 'Nothing cleared the bar today after evaluating 1 candidate.';
-    const expectedInternalBlockedReason = 'action_type_mismatch';
+    const expectedInternalBlockedReason =
+      'artifact_quality:outside_command_center_scope; artifact_quality:unclassified_artifact';
     expect(generateResult.results).toEqual([
       expect.objectContaining({
         code: 'no_send_persisted',

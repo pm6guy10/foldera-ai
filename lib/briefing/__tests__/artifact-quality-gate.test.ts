@@ -15,22 +15,8 @@ import {
   OWNER_MONEY_SHOT_GOOD_ARTIFACT,
 } from './owner-money-shot-artifact.fixture';
 
-const SOFT_WARNING_REASONS = new Set([
-  'no_source_grounding',
-  'reminder_only',
-  'summary_only',
-  'generic_coaching',
-  'prepare_instead_of_finished_work',
-  'only_follow_up_check_in_or_monitor',
-  'no_concrete_outcome',
-]);
-
-function isSoftWarning(reason: string | undefined): boolean {
-  return Boolean(reason && SOFT_WARNING_REASONS.has(reason));
-}
-
 describe('artifact quality gold set v1.2', () => {
-  it('keeps hard safety failures blocking while demoting quality failures to soft warnings', () => {
+  it('rejects every bad fixture with a deterministic reason', () => {
     const results = BAD_ARTIFACT_GOLD_SET_V1_2.map((item) => ({
       item,
       result: evaluateArtifactQualityGate({
@@ -43,21 +29,16 @@ describe('artifact quality gold set v1.2', () => {
 
     expect(results).toHaveLength(18);
     for (const { item, result } of results) {
-      if (isSoftWarning(item.expectedReason)) {
-        expect(result.passes, item.id).toBe(true);
-        expect(result.reasons, item.id).toEqual([]);
-        expect(result.soft_warnings, item.id).toContain(item.expectedReason);
-        expect(result.safeArtifactMessage, item.id).toBeNull();
-      } else {
-        expect(result.passes, item.id).toBe(false);
-        expect(result.reasons, item.id).toContain(item.expectedReason);
-        expect(result.safeArtifactMessage, item.id).toBe('No safe artifact today.');
-      }
+      expect(result.passes, item.id).toBe(false);
+      expect(result.reasons, item.id).toContain(item.expectedReason);
     }
   });
 
-  it('allows every good fixture without requiring a command-center class', () => {
-    const results = GOOD_ARTIFACT_GOLD_SET_V1_2.map((item) => ({
+  it('allows every good fixture that still fits the command-center wedge', () => {
+    const allowedFixtures = GOOD_ARTIFACT_GOLD_SET_V1_2.filter((item) => (
+      item.id !== 'good_skip_suppression_decision'
+    ));
+    const results = allowedFixtures.map((item) => ({
       item,
       result: evaluateArtifactQualityGate({
         directive: item.directive,
@@ -67,16 +48,35 @@ describe('artifact quality gold set v1.2', () => {
       }),
     }));
 
-    expect(results).toHaveLength(10);
+    expect(results).toHaveLength(9);
     for (const { item, result } of results) {
       expect(result.passes, `${item.id}: ${result.reasons.join(',')}`).toBe(true);
       expect(result.category, item.id).toBe(item.expectedCategory);
-      expect(result.reasons, item.id).toEqual([]);
-      expect(result.safeArtifactMessage, item.id).toBeNull();
+      expect(result.commandCenterClass, item.id).not.toBeNull();
+      expect(result.reasons).toEqual([]);
     }
   });
 
-  it('treats stale interview prep as a hard safety block', () => {
+  it('does not count suppression output as a saveable artifact', () => {
+    const suppressionCase = GOOD_ARTIFACT_GOLD_SET_V1_2.find((item) => (
+      item.id === 'good_skip_suppression_decision'
+    ));
+    expect(suppressionCase).toBeDefined();
+
+    const result = evaluateArtifactQualityGate({
+      directive: suppressionCase!.directive,
+      artifact: suppressionCase!.artifact,
+      sourceFacts: suppressionCase!.sourceFacts,
+      now: suppressionCase!.now ?? new Date('2026-04-28T12:00:00.000Z'),
+    });
+
+    expect(result.passes).toBe(false);
+    expect(result.commandCenterClass).toBeNull();
+    expect(result.safeArtifactMessage).toBe('No safe artifact today.');
+    expect(result.reasons).toContain('outside_command_center_scope');
+  });
+
+  it('treats stale interview prep as suppression behavior, not a good artifact', () => {
     const result = evaluateArtifactQualityGate({
       directive: STALE_INTERVIEW_SUPPRESSION_FIXTURE.directive,
       artifact: STALE_INTERVIEW_SUPPRESSION_FIXTURE.artifact,
@@ -85,20 +85,19 @@ describe('artifact quality gold set v1.2', () => {
 
     expect(result.passes).toBe(false);
     expect(result.reasons).toContain('stale_event');
-    expect(result.soft_warnings.length).toBeGreaterThan(0);
     expect(result.category).not.toBe('ROLE_FIT_PACKET');
   });
 
   it('keeps fail-safe alerts separate from artifact unblocking', () => {
     const current = summarizeArtifactQualityRun([
-      { passes: true, category: null, reasons: [], soft_warnings: ['generic_coaching'], safeArtifactMessage: null },
-      { passes: true, category: null, reasons: [], soft_warnings: ['summary_only'], safeArtifactMessage: null },
+      { passes: false, category: null, reasons: ['generic_coaching'] },
+      { passes: false, category: null, reasons: ['summary_only'] },
     ]);
 
     expect(evaluateArtifactQualityFailSafe({ current, deliveredLast24h: 0 })).toEqual({
-      status: 'GREEN',
-      rejectRate: 0,
-      reason: null,
+      status: 'RED',
+      rejectRate: 1,
+      reason: 'all_artifacts_rejected_and_zero_delivered_24h',
     });
 
     expect(
@@ -115,25 +114,8 @@ describe('artifact quality gold set v1.2', () => {
   });
 });
 
-describe('safety-only pre-generation candidate gate', () => {
-  it('does not scope-lock off-wedge candidates before the LLM sees them', () => {
-    const result = evaluateCommandCenterCandidateGate({
-      recommendedAction: 'write_document',
-      suggestedActionType: 'write_document',
-      hasRealRecipient: false,
-      candidateText: [
-        'Morning summary for unrelated inbox and calendar signals',
-        'Summary: three emails arrived, one calendar event is coming up, and several tasks may need review later.',
-      ].join('\n'),
-      sourceFacts: ['Inbox summary: several unrelated messages arrived.'],
-    });
-
-    expect(result.passes).toBe(true);
-    expect(result.reasons).toEqual([]);
-    expect(result.soft_warnings).toEqual(expect.arrayContaining(['summary_only']));
-  });
-
-  it('still blocks transactional sender decision pressure before generation', () => {
+describe('Brandon command-center artifact wedge', () => {
+  it('blocks off-wedge candidates before generation when no approved artifact class is visible', () => {
     const result = evaluateCommandCenterCandidateGate({
       recommendedAction: 'write_document',
       suggestedActionType: 'write_document',
@@ -150,24 +132,12 @@ describe('safety-only pre-generation candidate gate', () => {
     expect(result.passes).toBe(false);
     expect(result.reasons).toEqual(expect.arrayContaining([
       'transactional_sender_decision_pressure',
-      'relationship_silence_artifact',
+      'outside_command_center_scope',
     ]));
+    expect(result.commandCenterClass).toBeNull();
   });
 
-  it('still blocks send_message candidates without a real recipient', () => {
-    const result = evaluateCommandCenterCandidateGate({
-      recommendedAction: 'send_message',
-      suggestedActionType: 'send_message',
-      hasRealRecipient: false,
-      candidateText: 'Follow up with someone about the open decision by today.',
-      sourceFacts: ['No grounded recipient email exists.'],
-    });
-
-    expect(result.passes).toBe(false);
-    expect(result.reasons).toEqual(['action_type_mismatch']);
-  });
-
-  it('allows grounded pre-generation document candidates with no scope classification', () => {
+  it('allows pre-generation document candidates only when they map to an approved command-center class', () => {
     const result = evaluateCommandCenterCandidateGate({
       recommendedAction: 'write_document',
       suggestedActionType: 'write_document',
@@ -182,12 +152,11 @@ describe('safety-only pre-generation candidate gate', () => {
     });
 
     expect(result.passes).toBe(true);
+    expect(result.commandCenterClass).toBe('BENEFITS_PAYMENT_ADMIN_ACTION_PACKET');
     expect(result.reasons).toEqual([]);
   });
-});
 
-describe('safety-only post-generation artifact gate', () => {
-  it('demotes homework and unfinished-work quality failures to soft warnings', () => {
+  it('fails write_document artifacts that fit a class label but still hand homework back to the user', () => {
     const result = evaluateArtifactQualityGate({
       directive: {
         action_type: 'write_document',
@@ -203,57 +172,166 @@ describe('safety-only post-generation artifact gate', () => {
       sourceFacts: ['Source Email: benefits office requested payment verification before May 5.'],
     });
 
-    expect(result.passes).toBe(true);
-    expect(result.reasons).toEqual([]);
-    expect(result.soft_warnings).toEqual(expect.arrayContaining([
+    expect(result.passes).toBe(false);
+    expect(result.reasons).toEqual(expect.arrayContaining([
       'prepare_instead_of_finished_work',
     ]));
   });
 
-  it('does not turn off-wedge generated artifacts into hard no-send results', () => {
-    const result = evaluateArtifactQualityGate({
-      directive: {
-        action_type: 'write_document',
-        directive: 'Create the morning summary.',
-        reason: 'Daily overview.',
-        evidence: [{ description: 'Inbox summary: several unrelated messages arrived.' }],
+  it('allows only the five command-center artifact classes', () => {
+    const cases = [
+      {
+        expectedClass: 'INTERVIEW_ROLE_FIT_PACKET',
+        directive: {
+          action_type: 'write_document' as const,
+          directive: 'Save the role-fit packet for the ES Benefits Technician interview.',
+          reason: 'The interview thread and resume facts support a ready answer.',
+          evidence: [{ description: 'Source Email: ES Benefits Technician interview details from Darlene Craig.' }],
+        },
+        artifact: {
+          type: 'document',
+          title: 'ES Benefits Technician role-fit packet',
+          content: 'Source Email: Darlene Craig sent ES Benefits Technician interview details. Resume source: eligibility documentation, customer service, and compliance follow-through. First-person answer: I am strongest where accuracy and calm service both matter. I have handled customer questions, documented eligibility outcomes, and followed compliance steps without losing the person on the other side. Use this answer as-is for the role-fit question.',
+        },
       },
-      artifact: {
-        type: 'document',
-        title: 'Morning summary',
-        content: 'Source: inbox. Summary: three emails arrived, one calendar event is coming up, and several tasks may need review later.',
+      {
+        expectedClass: 'FOLLOW_UP_EMAIL_DRAFT',
+        directive: {
+          action_type: 'send_message' as const,
+          directive: 'Draft the follow-up email to Darlene for review only.',
+          reason: 'The recruiter asked for confirmation before the interview deadline.',
+          evidence: [{ description: 'Source Email: Darlene Craig requested ES Benefits Technician interview confirmation.' }],
+        },
+        artifact: {
+          type: 'email',
+          to: 'darlene@example.com',
+          subject: 'Confirming ES Benefits Technician interview',
+          body: 'Hi Darlene,\n\nThank you for the ES Benefits Technician interview details. Could you confirm whether the May 2 at 10 AM PT slot is still the right time and whether there is anything specific you want me to have ready?\n\nThanks,\nBrandon',
+        },
       },
-    });
+      {
+        expectedClass: 'DEADLINE_RISK_DECISION_BRIEF',
+        directive: {
+          action_type: 'write_document' as const,
+          directive: 'Save the deadline risk decision brief.',
+          reason: 'A job-search decision has to close before the Friday deadline.',
+          evidence: [{ description: 'Source Email: CHC availability request competes with ES Benefits interview preparation by Friday.' }],
+        },
+        artifact: {
+          type: 'document',
+          title: 'CHC availability deadline decision brief',
+          content: 'Source Email: CHC asked for availability this week. Calendar source: ES Benefits interview preparation window closes Friday. Decision: decline any CHC shift that overlaps the interview window. Criteria: preserve the higher-upside interview while keeping CHC warm. Deadline: reply before Friday noon. Next action: send availability after the interview window closes.',
+        },
+      },
+      {
+        expectedClass: 'BENEFITS_PAYMENT_ADMIN_ACTION_PACKET',
+        directive: {
+          action_type: 'write_document' as const,
+          directive: 'Save the benefits payment admin action packet.',
+          reason: 'A benefits payment deadline needs a concrete response packet.',
+          evidence: [{ description: 'Source Email: benefits office requested payment verification before May 5.' }],
+        },
+        artifact: {
+          type: 'document',
+          title: 'Benefits payment verification action packet',
+          content: 'Source Email: benefits office requested payment verification before May 5. Admin action: submit the payment confirmation number and attach the receipt. Deadline: May 5 before 5 PM PT. Risk: missing the deadline can pause benefit processing. Exact message: I am attaching the receipt and confirmation number for review. Next action: save the receipt, send the verification, and mark the deadline closed.',
+        },
+      },
+      {
+        expectedClass: 'CALENDAR_CONFLICT_RESOLUTION_BRIEF',
+        directive: {
+          action_type: 'write_document' as const,
+          directive: 'Save the calendar conflict resolution brief.',
+          reason: 'Two calendar events overlap today and require one resolved move.',
+          evidence: [{ description: 'Calendar source: Comprehensive Healthcare phone screen overlaps with ES Benefits prep block today.' }],
+        },
+        artifact: {
+          type: 'document',
+          title: 'Calendar conflict resolution brief',
+          content: 'Calendar source: Comprehensive Healthcare phone screen overlaps with ES Benefits prep block today. Conflict: the two calendar blocks overlap at 3 PM PT. Decision: keep the interview phone screen and move the prep block after 4 PM PT. Criteria: external interview time beats movable prep time. Deadline: resolve before 2 PM PT today. Next action: move the prep block and keep the phone screen unchanged.',
+        },
+      },
+    ];
 
-    expect(result.passes).toBe(true);
-    expect(result.reasons).toEqual([]);
-    expect(result.soft_warnings).toContain('summary_only');
-    expect(result.safeArtifactMessage).toBeNull();
+    for (const item of cases) {
+      const result = evaluateArtifactQualityGate(item);
+      expect(result.passes, `${item.expectedClass}: ${result.reasons.join(',')}`).toBe(true);
+      expect(result.commandCenterClass).toBe(item.expectedClass);
+      expect(result.safeArtifactMessage).toBeNull();
+    }
   });
 
-  it('still blocks relationship-silence artifacts as hard failures', () => {
-    const result = evaluateArtifactQualityGate({
-      directive: {
-        action_type: 'write_document',
-        directive: 'Create the relationship silence decision map.',
-        reason: 'Jane has not replied for 19 days.',
-        evidence: [{ description: 'Source Email: Jane has not replied for 19 days after a personal catch-up thread.' }],
+  it('returns the safe no-artifact message for everything outside the wedge', () => {
+    const blockedCases = [
+      {
+        name: 'generic morning summary',
+        directive: {
+          action_type: 'write_document' as const,
+          directive: 'Create the morning summary.',
+          reason: 'Daily overview.',
+          evidence: [{ description: 'Inbox summary: several unrelated messages arrived.' }],
+        },
+        artifact: {
+          type: 'document',
+          title: 'Morning summary',
+          content: 'Source: inbox. Summary: three emails arrived, one calendar event is coming up, and several tasks may need review later.',
+        },
       },
-      artifact: {
-        type: 'document',
-        title: 'Relationship silence decision map',
-        content: 'Source Email: Jane has not replied for 19 days. Decision: decide whether the relationship is still active. Criteria: silence may mean the relationship needs closure. Deadline: today. Next action: resolve whether to move on.',
+      {
+        name: 'relationship silence artifact',
+        directive: {
+          action_type: 'write_document' as const,
+          directive: 'Create the relationship silence decision map.',
+          reason: 'Jane has not replied for 19 days.',
+          evidence: [{ description: 'Source Email: Jane has not replied for 19 days after a personal catch-up thread.' }],
+        },
+        artifact: {
+          type: 'document',
+          title: 'Relationship silence decision map',
+          content: 'Source Email: Jane has not replied for 19 days. Decision: decide whether the relationship is still active. Criteria: silence may mean the relationship needs closure. Deadline: today. Next action: resolve whether to move on.',
+        },
       },
-    });
+      {
+        name: 'homework artifact',
+        directive: {
+          action_type: 'write_document' as const,
+          directive: 'Prepare for the interview.',
+          reason: 'Interview is upcoming.',
+          evidence: [{ description: 'Calendar source: job interview is tomorrow.' }],
+        },
+        artifact: {
+          type: 'document',
+          title: 'Interview prep homework',
+          content: 'Source: calendar. Prepare STAR examples, review the website, research the company, and practice questions before the interview.',
+        },
+      },
+      {
+        name: 'broad autonomy artifact',
+        directive: {
+          action_type: 'write_document' as const,
+          directive: 'Create an autonomous weekly plan.',
+          reason: 'Many unrelated signals exist.',
+          evidence: [{ description: 'Signals include inbox, calendar, and tasks.' }],
+        },
+        artifact: {
+          type: 'document',
+          title: 'Autonomous weekly operating plan',
+          content: 'Source: inbox and calendar. Decision: monitor all inboxes, research options, schedule time, draft replies, and decide which life areas need attention this week.',
+        },
+      },
+    ];
 
-    expect(result.passes).toBe(false);
-    expect(result.reasons).toContain('relationship_silence_artifact');
-    expect(result.safeArtifactMessage).toBe('No safe artifact today.');
+    for (const item of blockedCases) {
+      const result = evaluateArtifactQualityGate(item);
+      expect(result.passes, item.name).toBe(false);
+      expect(result.commandCenterClass, item.name).toBeNull();
+      expect(result.safeArtifactMessage, item.name).toBe('No safe artifact today.');
+    }
   });
 });
 
 describe('owner money-shot artifact suite', () => {
-  it('blocks hard owner-shaped failures and softens quality-only failures', () => {
+  it('blocks owner-shaped failures before they can become demo artifacts', () => {
     const results = OWNER_MONEY_SHOT_BAD_ARTIFACTS.map((item) => ({
       item,
       result: evaluateArtifactQualityGate({
@@ -267,14 +345,8 @@ describe('owner money-shot artifact suite', () => {
 
     expect(results).toHaveLength(5);
     for (const { item, result } of results) {
-      if (isSoftWarning(item.expectedReason)) {
-        expect(result.passes, item.id).toBe(true);
-        expect(result.reasons, item.id).toEqual([]);
-        expect(result.soft_warnings, item.id).toContain(item.expectedReason);
-      } else {
-        expect(result.passes, item.id).toBe(false);
-        expect(result.reasons, item.id).toContain(item.expectedReason);
-      }
+      expect(result.passes, item.id).toBe(false);
+      expect(result.reasons, item.id).toContain(item.expectedReason);
     }
   });
 

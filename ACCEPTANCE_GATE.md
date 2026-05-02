@@ -4,11 +4,11 @@ Product contract checklist. Every artifact candidate must pass before it ships.
 
 ## Product Promise
 
-Foldera is focused on Brandon's job, interview, benefits, payment, admin deadlines, and calendar conflicts. It watches real inbox/calendar signals, then produces one exact ready-to-use artifact Brandon can save or skip.
+Foldera is a narrow command center for Brandon's job, interview, benefits, payment, and admin deadlines. It watches real inbox/calendar signals, then produces one exact ready-to-use artifact Brandon can save or skip.
 
-Foldera is not a generic morning-summary product. Command-center category is diagnostic, not a hard allowlist. The artifact gates block only safety, fabrication, stale-event, and action-contract failures; quality-only concerns persist as `soft_warnings` and must not stop generation, pending approval, or send-time success.
+Foldera is not a generic morning-summary product. If a candidate does not fit the command-center wedge, the correct user-visible outcome is:
 
-`No safe artifact today.` is valid only when no viable candidate exists or a hard safety/action failure remains.
+`No safe artifact today.`
 
 ## Production Ladder: Works / Broken / Proof
 
@@ -30,9 +30,9 @@ This ladder is the operational definition of production truth.
 
 ### 2. It creates one allowed usable artifact or a safe no-artifact result
 
-- **Works means:** the completed run produces exactly one finished artifact or returns `No safe artifact today.` when no viable candidate exists or a hard safety/action failure blocks all candidates.
-- **Broken means:** the output is null, empty, duplicated, placeholder-filled, fabricated, stale, action-mismatched, a relationship-silence artifact, or not usable as shipped.
-- **Proof command:** explicit manual UI check: inspect the produced artifact in the real product surface and confirm it is a single finished artifact, with any quality-only concerns visible in receipts as soft warnings rather than hidden hard suppression.
+- **Works means:** the completed run produces exactly one finished, usable artifact from the allowed command-center classes, or returns `No safe artifact today.` when no candidate fits.
+- **Broken means:** the output is null, empty, duplicated, placeholder-filled, scaffold-like, generic summary, relationship-silence artifact, homework, fake obligation, or not usable as shipped.
+- **Proof command:** explicit manual UI check: inspect the produced artifact in the real product surface and confirm it is a single finished command-center artifact, not notes, prep, raw generation sludge, or a morning summary.
 - **Do-not-count conditions:** "artifact created" in logs, a persisted invalid payload, or a screenshot of static mock content does not count; docs/screenshots/visual polish/SEO/refactors/unrelated tests also do not count.
 
 ### 3. Artifact is visible on /dashboard without manual DB/app inspection
@@ -90,8 +90,8 @@ The controller must skip items whose status or next blocker requires unavailable
 
 The system passes if and only if ALL of these are true for the command-center path with zero human intervention:
 
-1. **SCOPE**: Job, interview, benefits, payment, admin deadline, and calendar-conflict candidates remain the product focus, but unrecognized category/scope is not a hard block by itself.
-2. **OUTPUT**: Exactly one artifact appears, or `No safe artifact today.` appears when no viable candidate exists or a hard safety/action failure blocks all candidates.
+1. **SCOPE**: Only job, interview, benefits, payment, admin deadline, or calendar-conflict candidates can produce artifacts.
+2. **OUTPUT**: Exactly one allowed artifact appears, or `No safe artifact today.` appears when nothing qualifies.
 3. **NO OUTBOUND BY DEFAULT**: Follow-up email drafts are for review only unless an explicit send flag is enabled elsewhere.
 4. **SELF-HEALING**: Tokens, signals, commitments, and queue issues are detected and resolved automatically via `lib/cron/self-heal.ts`.
 5. **MULTI-USER READY**: The path remains user-scoped and does not depend on hardcoded Brandon data, even while Brandon is the wedge proof user.
@@ -100,23 +100,21 @@ Failure on any criterion = the system is broken. Not "needs improvement." Broken
 
 ## Core Contract
 
-- [ ] Exactly one artifact or exactly one `No safe artifact today.` result
-- [ ] Artifact categories are diagnostic only; no recognized command-center class is required to pass
+- [ ] Exactly one command-center artifact or exactly one `No safe artifact today.` result
+- [ ] Allowed artifact classes only: interview role-fit packet, follow-up email draft for review only, deadline/risk decision brief, benefits/payment/admin action packet, calendar conflict resolution brief
 - [ ] If the user has to prepare, review, research, or invent missing facts after saving, the artifact is broken
-- [ ] Generic morning summaries, homework, and broad autonomy are soft-warning quality failures unless they also contain a hard safety/action failure
-- [ ] Relationship-silence artifacts, fake obligations, placeholders, fabricated claims, stale-event artifacts, and action-type mismatches are blocked
-- [ ] A correct `No safe artifact today.` is better than an unsafe or fabricated artifact
+- [ ] Generic morning summaries, relationship-silence artifacts, homework, fake obligations, and broad autonomy are blocked
+- [ ] A correct `No safe artifact today.` is better than a bad artifact
 - [ ] Outbound email is not part of the default product promise
 
-## Primary User-Facing Artifact Categories
+## Valid User-Facing Artifact Types
 
 1. **Interview role-fit packet**: grounded from real job/interview/resume signals; gives Brandon finished role-fit language or a ready packet.
 2. **Follow-up email draft for review only**: real recipient, non-empty subject/body, grounded in a real job/interview/admin thread, and not sent by default.
 3. **Deadline/risk decision brief**: one concrete decision, risk, deadline, and next action from real signals.
 4. **Benefits/payment/admin action packet**: exact admin/payment/benefits response packet with source, deadline, required fields, and ready text.
 5. **Calendar conflict resolution brief**: one calendar conflict, decision, tradeoff, deadline, and calendar move.
-6. **Other grounded artifact**: allowed to proceed when it has no hard safety/action failure; category gaps are diagnostics and soft warnings.
-7. **No safe artifact today.**: required result only when no viable candidate exists or hard safety/action failures block all candidates.
+6. **No safe artifact today.**: required result for any candidate outside the five allowed classes.
 
 ## Self-Heal Defenses (lib/cron/self-heal.ts)
 
@@ -132,7 +130,7 @@ Failure on any criterion = the system is broken. Not "needs improvement." Broken
 - [ ] Null artifact is never success
 - [ ] Empty artifact fields for the type is never success
 - [ ] Placeholder values ([NAME], [Company], [Date], TBD, TODO) is never success
-- [ ] Coaching/advice language is recorded as a quality warning and judged by approve/skip unless it also carries a hard safety/action failure
+- [ ] Coaching/advice language (consider, reflect, explore, think about, take a break) is never success
 - [ ] Silence without logged candidate failure reasons is never success
 - [ ] A pending_approval with invalid artifact is FAIL
 - [ ] A candidate that fails evidence gating is never sent to the LLM

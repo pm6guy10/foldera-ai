@@ -1,6 +1,6 @@
 # FOLDERA Production Backlog
 
-Last refreshed: 2026-05-02
+Last refreshed: 2026-05-01
 
 ## Current top item
 BL-015 — Owner money-shot artifact is not consistently excellent.
@@ -41,7 +41,6 @@ Done means: The docs and gate name the five allowed classes, off-wedge candidate
 Do-not-count: Morning-summary copy, generic no-send rationale, relationship silence decision maps, prep checklists, research/review homework, fake admin obligations, or local-only paid/model calls.
 Status: CLOSED
 Last evidence: 2026-05-01 — focused local gate proof passed: `npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts lib/briefing/__tests__/generator-runtime.test.ts`. The suite proves the five command-center artifact classes pass, suppression/no-send and off-wedge artifacts return `No safe artifact today.`, and the owner-shaped CHC relationship-silence decision map is blocked with `artifact_quality_gate_failed` before persistence. `npm run health` returned `RESULT: 0 FAILING` with warnings only; `npm run lint` passed; `npm run build` passed.
-Policy superseded: 2026-05-02 safety-hard / quality-soft reset removes command-center category as a hard allowlist. BL-017 remains historical evidence for the earlier wedge reset and must not be used as current gate policy.
 Next blocker: None for this seam. BL-015 remains separately waiting on explicit paid owner proof, but paid proof is not part of BL-017.
 
 ### BL-015
@@ -288,8 +287,7 @@ Required production proof: Verify production deploy advanced to the fix commit a
 Done means: Scheduled daily-send suppresses interview `write_document` artifacts that fail the current finished-work quality bar. The ESB Technician prep-sheet class is regression-tested and cannot email again.
 Do-not-count: Prompt-only quality fixes, generator proof blocked by quota, deleting rows manually, local-only unpushed code, or sending a garbage email to prove the guard.
 Status: CLOSED
-Last evidence: 2026-04-28 — pushed `cafddf9`; Vercel production deployment `dpl_UcHEa2jELu29M3qZ3pqvEjL3LctN` is `Ready`, and `https://foldera.ai/api/health` reports build `cafddf9`. At that time, `runDailySend` applied a deterministic scheduled-send guard for interview `write_document` artifacts, and the ESB Technician prep-sheet class was regression-tested as suppressed with no `daily_brief_sent_at` or `resend_id`. Local focused proof passed with `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts` (`35` tests), plus `npm run lint`, `npm run build`, `npm run health`, and `npm run preflight`.
-Policy update: 2026-05-02 safety-hard / quality-soft policy supersedes this closed send-time quality guard. Prep/checklist/coaching artifacts are no longer suppressed solely for quality; they send with artifact-quality `soft_warnings` unless a hard safety/action failure is present.
+Last evidence: 2026-04-28 — pushed `cafddf9`; Vercel production deployment `dpl_UcHEa2jELu29M3qZ3pqvEjL3LctN` is `Ready`, and `https://foldera.ai/api/health` reports build `cafddf9`. `runDailySend` now applies a deterministic scheduled-send guard for interview `write_document` artifacts. The exact ESB Technician prep-sheet class is regression-tested: scheduled daily-send returns `no_send_blocker_persisted`, records `daily_send_suppression.code = interview_write_document_quality_blocked` in `execution_result`, does not call Resend, and does not stamp `daily_brief_sent_at` or `resend_id`. Local focused proof passed with `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts` (`35` tests), plus `npm run lint`, `npm run build`, `npm run health`, and `npm run preflight`.
 Next blocker: BL-006 remains the current top OPEN backlog item; it requires a real connected non-owner account and must not be faked.
 
 ### BL-005

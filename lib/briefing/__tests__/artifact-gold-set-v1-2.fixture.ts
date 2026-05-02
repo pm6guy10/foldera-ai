@@ -53,7 +53,7 @@ export const BAD_ARTIFACT_GOLD_SET_V1_2: ArtifactGoldCase[] = [
   },
   {
     id: 'bad_generic_thank_you',
-    expectedReason: 'no_concrete_outcome',
+    expectedReason: 'unclassified_artifact',
     directive: directive('send_message', 'Send thank you note.', 'No specific thread or role anchor was provided.', [
       'Interview email from recruiter.',
     ]),
