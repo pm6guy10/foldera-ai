@@ -95,6 +95,8 @@ type LoadLatestResult = {
   loaded: boolean;
 };
 
+type DashboardLoadIssue = 'latest' | 'integrations' | 'graph' | 'history';
+
 type StageMetrics = {
   isDesktop: boolean;
   scale: number;
@@ -468,9 +470,22 @@ export default function DashboardPage() {
   const [executedActionId, setExecutedActionId] = useState<string | null>(null);
   const [outcomeRecorded, setOutcomeRecorded] = useState(false);
   const [locallyHiddenActionIds, setLocallyHiddenActionIds] = useState<Set<string>>(() => new Set());
+  const [loadIssues, setLoadIssues] = useState<Set<DashboardLoadIssue>>(() => new Set());
 
   const loadAbortRef = useRef<AbortController | null>(null);
   const checkoutResumeAttemptedRef = useRef(false);
+
+  const setLoadIssue = useCallback((issue: DashboardLoadIssue, failed: boolean) => {
+    setLoadIssues((current) => {
+      const next = new Set(current);
+      if (failed) {
+        next.add(issue);
+      } else {
+        next.delete(issue);
+      }
+      return next;
+    });
+  }, []);
 
   const load = useCallback(async (): Promise<LoadLatestResult> => {
     loadAbortRef.current?.abort();
@@ -490,6 +505,7 @@ export default function DashboardPage() {
       if (!latestRes.ok) {
         setAction(null);
         setArtifactPaywallLocked(false);
+        setLoadIssue('latest', true);
         return { action: null, loaded: false };
       }
 
@@ -503,6 +519,7 @@ export default function DashboardPage() {
         visibleAction && !locallyHiddenActionIds.has(visibleAction.id) ? visibleAction : null;
       setAction(action);
       setArtifactPaywallLocked(action ? latest?.artifact_paywall_locked === true : false);
+      setLoadIssue('latest', false);
       return { action, loaded: true };
     } catch {
       if (controller.signal.aborted) {
@@ -510,13 +527,14 @@ export default function DashboardPage() {
       }
       setAction(null);
       setArtifactPaywallLocked(false);
+      setLoadIssue('latest', true);
       return { action: null, loaded: false };
     } finally {
       if (!controller.signal.aborted) {
         setLoadingLatest(false);
       }
     }
-  }, [locallyHiddenActionIds]);
+  }, [locallyHiddenActionIds, setLoadIssue]);
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -557,18 +575,27 @@ export default function DashboardPage() {
   useEffect(() => {
     if (status !== 'authenticated') {
       setIntegrationStatus(null);
+      setLoadIssue('integrations', false);
       return;
     }
 
     let cancelled = false;
     void fetch('/api/integrations/status', { cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : null))
+      .then((response) => {
+        if (!response.ok) {
+          setLoadIssue('integrations', true);
+          return null;
+        }
+        return response.json();
+      })
       .then((payload: IntegrationStatusPayload | null) => {
         if (cancelled) return;
+        setLoadIssue('integrations', payload === null);
         setIntegrationStatus(payload);
       })
       .catch(() => {
         if (!cancelled) {
+          setLoadIssue('integrations', true);
           setIntegrationStatus(null);
         }
       });
@@ -576,24 +603,33 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [status]);
+  }, [setLoadIssue, status]);
 
   useEffect(() => {
     if (status !== 'authenticated') {
       setGraphStats(null);
+      setLoadIssue('graph', false);
       return;
     }
 
     let cancelled = false;
     void fetch('/api/graph/stats', { cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : null))
+      .then((response) => {
+        if (!response.ok) {
+          setLoadIssue('graph', true);
+          return null;
+        }
+        return response.json();
+      })
       .then((payload: GraphStatsPayload | null) => {
         if (!cancelled) {
+          setLoadIssue('graph', payload === null);
           setGraphStats(payload);
         }
       })
       .catch(() => {
         if (!cancelled) {
+          setLoadIssue('graph', true);
           setGraphStats(null);
         }
       });
@@ -601,26 +637,35 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [status]);
+  }, [setLoadIssue, status]);
 
   useEffect(() => {
     if (status !== 'authenticated') {
       setHistoryItems([]);
       setHistoryLoaded(false);
+      setLoadIssue('history', false);
       return;
     }
 
     let cancelled = false;
     setHistoryLoaded(false);
     void fetch('/api/conviction/history?limit=5', { cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : null))
+      .then((response) => {
+        if (!response.ok) {
+          setLoadIssue('history', true);
+          return null;
+        }
+        return response.json();
+      })
       .then((payload: DashboardHistoryPayload | null) => {
         if (cancelled) return;
+        setLoadIssue('history', payload === null);
         const nextItems = Array.isArray(payload?.items) ? payload.items : [];
         setHistoryItems(nextItems);
       })
       .catch(() => {
         if (!cancelled) {
+          setLoadIssue('history', true);
           setHistoryItems([]);
         }
       })
@@ -633,7 +678,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [status]);
+  }, [setLoadIssue, status]);
 
   useEffect(() => {
     const updateStage = () => {
@@ -800,14 +845,29 @@ export default function DashboardPage() {
       if (!executedActionId || outcomeSubmitting || outcomeRecorded) return;
       setOutcomeSubmitting(outcome);
       try {
-        await fetch('/api/conviction/outcome', {
+        const response = await fetch('/api/conviction/outcome', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action_id: executedActionId, outcome }),
         });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          setStatusNotice({
+            id: 'outcome_record_failed',
+            message:
+              typeof payload?.error === 'string'
+                ? payload.error
+                : 'Could not record feedback right now.',
+          });
+          return;
+        }
         setOutcomeRecorded(true);
       } catch (error) {
         console.error(error);
+        setStatusNotice({
+          id: 'outcome_record_failed',
+          message: 'Could not record feedback right now.',
+        });
       } finally {
         setOutcomeSubmitting(null);
       }
@@ -845,8 +905,9 @@ export default function DashboardPage() {
     );
   }, [action]);
 
-  const sessionName = session?.user?.name?.trim() || 'Brandon Kapp';
-  const firstName = sessionName.split(' ')[0] || 'Brandon';
+  const sessionName = asTrimmedString(session?.user?.name) ?? 'Foldera workspace';
+  const firstName = asTrimmedString(session?.user?.name)?.split(' ')[0] ?? null;
+  const sidebarUserName = firstName ?? sessionName;
   const writeDocument = isWriteDocumentAction(action);
   const showArtifactBlur = Boolean(action?.artifact) && artifactPaywallLocked;
   const artifactTitle =
@@ -864,7 +925,8 @@ export default function DashboardPage() {
     Boolean(executedActionId) &&
     (statusNotice?.id === 'approve_saved_document' ||
       statusNotice?.id === 'approve_sent' ||
-      statusNotice?.id === 'approve_recorded') &&
+      statusNotice?.id === 'approve_recorded' ||
+      statusNotice?.id === 'outcome_record_failed') &&
     !outcomeRecorded;
   const stageTransform = `translate(${stageMetrics.offsetX}px, ${stageMetrics.offsetY}px) scale(${stageMetrics.scale})`;
   const integrationRows = Array.isArray(integrationStatus?.integrations)
@@ -880,6 +942,11 @@ export default function DashboardPage() {
       ? `Mail · ${formatRelativeTime(integrationStatus?.newest_mail_signal_at)}`
       : 'No signal yet';
   const sourceSummaryRows = connectedSources.slice(0, 3);
+  const hasLatestIssue = loadIssues.has('latest');
+  const hasIntegrationIssue = loadIssues.has('integrations');
+  const hasGraphIssue = loadIssues.has('graph');
+  const hasHistoryIssue = loadIssues.has('history');
+  const connectedSourcesValue = hasIntegrationIssue ? 'Unavailable' : String(connectedSourceCount);
   const googleIntegration =
     integrationRows.find(
       (integration) => normalizeIntegrationProvider(integration.provider) === 'google',
@@ -939,6 +1006,12 @@ export default function DashboardPage() {
       description: 'The evidence behind the recommendation.',
     },
   ];
+  const degradedIssueLabels = [
+    hasLatestIssue ? 'Latest briefing unavailable.' : null,
+    hasIntegrationIssue ? 'Connected source status unavailable.' : null,
+    hasGraphIssue ? 'Signal summary unavailable.' : null,
+    hasHistoryIssue ? 'Recent history unavailable.' : null,
+  ].filter((value): value is string => Boolean(value));
 
   const artifactBodyContent = showArtifactBlur ? (
     <div
@@ -1032,6 +1105,42 @@ export default function DashboardPage() {
     </div>
   );
 
+  const degradedStateNode = degradedIssueLabels.length > 0 ? (
+    <div
+      className="rounded-[14px] border border-amber-400/30 bg-amber-400/10 px-4 py-3"
+      data-testid="dashboard-degraded-state"
+    >
+      <p className="text-sm font-semibold text-text-primary">Dashboard is partially unavailable.</p>
+      <p className="mt-1 text-sm text-text-secondary">
+        Foldera is still loading what it can, but some live data is unavailable right now.
+      </p>
+      <ul className="mt-3 space-y-1 text-sm text-text-secondary">
+        {degradedIssueLabels.map((label) => (
+          <li key={label}>{label}</li>
+        ))}
+      </ul>
+    </div>
+  ) : null;
+
+  const briefingUnavailableCard = (
+    <div
+      className="foldera-dashboard-brief-card foldera-brief-shell flex h-full w-full items-center justify-center px-8 py-10 text-center"
+      data-testid="dashboard-briefing-unavailable"
+    >
+      <div className="max-w-[520px]">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
+          Briefing unavailable
+        </p>
+        <h2 className="mt-4 text-[32px] font-semibold tracking-[-0.04em] text-text-primary sm:text-[38px]">
+          Latest briefing unavailable
+        </h2>
+        <p className="mt-4 text-[15px] leading-7 text-text-secondary">
+          Foldera couldn&apos;t load your latest briefing right now. Refresh to retry.
+        </p>
+      </div>
+    </div>
+  );
+
   const secondaryPanelNode = !isBriefingPanel ? (
     <section
       className="foldera-dashboard-brief-card foldera-brief-shell flex h-full w-full flex-col gap-5 p-6 sm:p-8"
@@ -1060,10 +1169,12 @@ export default function DashboardPage() {
                 Connected sources
               </p>
               <p className="mt-2 text-[34px] font-semibold leading-none text-text-primary" data-testid="dashboard-signals-connected-count">
-                {connectedSourceCount}
+                {connectedSourcesValue}
               </p>
               <p className="mt-2 text-sm text-text-secondary">
-                {connectedSourceCount > 0
+                {hasIntegrationIssue
+                  ? 'Connected source status unavailable right now.'
+                  : connectedSourceCount > 0
                   ? `${connectedSourceCount} active source${connectedSourceCount === 1 ? '' : 's'}`
                   : 'No active sources connected yet.'}
               </p>
@@ -1076,7 +1187,9 @@ export default function DashboardPage() {
                 {latestSignalLabel}
               </p>
               <p className="mt-2 text-sm text-text-secondary">
-                {typeof graphStats?.signalsTotal === 'number'
+                {hasGraphIssue
+                  ? 'Signal summary unavailable right now.'
+                  : typeof graphStats?.signalsTotal === 'number'
                   ? `${graphStats.signalsTotal} total signals captured`
                   : 'Signal totals unavailable right now.'}
               </p>
@@ -1087,7 +1200,11 @@ export default function DashboardPage() {
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
               Source status
             </p>
-            {sourceSummaryRows.length === 0 ? (
+            {hasIntegrationIssue ? (
+              <p className="mt-3 text-sm text-text-secondary" data-testid="dashboard-signals-source-status">
+                Connected source status is unavailable right now. Open settings to retry.
+              </p>
+            ) : sourceSummaryRows.length === 0 ? (
               <p className="mt-3 text-sm text-text-secondary" data-testid="dashboard-signals-source-status">
                 No active source status yet. Connect Gmail or Microsoft to populate this panel.
               </p>
@@ -1115,18 +1232,18 @@ export default function DashboardPage() {
 
           <div className="mt-auto flex flex-wrap gap-3">
             <Link
-              href="/dashboard/signals"
+              href="/dashboard/settings#connected-accounts"
               className="foldera-button-primary"
               data-testid="dashboard-panel-open-signals"
             >
-              Open full signals
+              Open connected accounts
             </Link>
             <Link
-              href="/dashboard/settings#connected-accounts"
+              href="/dashboard/settings"
               className="foldera-button-secondary"
               data-testid="dashboard-panel-secondary-signals"
             >
-              Open connected accounts
+              Open full settings
             </Link>
           </div>
         </>
@@ -1158,11 +1275,13 @@ export default function DashboardPage() {
                 <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
                   {providerDisplayName(key)}
                 </p>
-                <p className={`mt-2 text-base font-semibold ${getIntegrationStateClass(data)}`}>
-                  {getIntegrationStateLabel(data)}
+                <p className={`mt-2 text-base font-semibold ${hasIntegrationIssue ? 'text-text-primary' : getIntegrationStateClass(data)}`}>
+                  {hasIntegrationIssue ? 'Unavailable' : getIntegrationStateLabel(data)}
                 </p>
                 <p className="mt-2 min-h-[38px] break-all text-sm text-text-secondary">
-                  {getIntegrationMetaLine(data)}
+                  {hasIntegrationIssue
+                    ? 'Connected source status unavailable right now.'
+                    : getIntegrationMetaLine(data)}
                 </p>
               </article>
             ))}
@@ -1170,18 +1289,18 @@ export default function DashboardPage() {
 
           <div className="mt-auto flex flex-wrap gap-3">
             <Link
-              href="/dashboard/integrations"
+              href="/dashboard/settings#connected-accounts"
               className="foldera-button-primary"
               data-testid="dashboard-panel-open-integrations"
             >
-              Open full integrations
+              Manage connected accounts
             </Link>
             <Link
-              href="/dashboard/settings#connected-accounts"
+              href="/dashboard/settings"
               className="foldera-button-secondary"
               data-testid="dashboard-panel-secondary-integrations"
             >
-              Manage connected accounts
+              Open full settings
             </Link>
           </div>
         </>
@@ -1214,8 +1333,10 @@ export default function DashboardPage() {
             </article>
             <article className="rounded-[14px] border border-border bg-panel-raised p-4">
               <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">Connected accounts</p>
-              <p className="mt-2 text-[30px] font-semibold leading-none text-text-primary">{connectedSourceCount}</p>
-              <p className="mt-2 text-sm text-text-secondary">{latestSignalLabel}</p>
+              <p className="mt-2 text-[30px] font-semibold leading-none text-text-primary">{connectedSourcesValue}</p>
+              <p className="mt-2 text-sm text-text-secondary">
+                {hasIntegrationIssue ? 'Connected source status unavailable right now.' : latestSignalLabel}
+              </p>
             </article>
           </div>
 
@@ -1261,6 +1382,10 @@ export default function DashboardPage() {
             </p>
             {!historyLoaded ? (
               <p className="mt-3 text-sm text-text-secondary">Loading recent directives...</p>
+            ) : hasHistoryIssue ? (
+              <p className="mt-3 text-sm text-text-secondary" data-testid="dashboard-audit-empty-state">
+                Recent history is unavailable right now. Open briefings history to retry.
+              </p>
             ) : recentHistory.length === 0 ? (
               <p className="mt-3 text-sm text-text-secondary" data-testid="dashboard-audit-empty-state">
                 No recent directives yet. Open the full audit log for the complete timeline.
@@ -1294,11 +1419,11 @@ export default function DashboardPage() {
 
           <div className="mt-auto flex flex-wrap gap-3">
             <Link
-              href="/dashboard/audit-log"
+              href="/dashboard/briefings"
               className="foldera-button-primary"
               data-testid="dashboard-panel-open-audit-log"
             >
-              Open full audit log
+              Open briefings history
             </Link>
           </div>
         </>
@@ -1324,17 +1449,17 @@ export default function DashboardPage() {
           <article className="rounded-[14px] border border-border bg-panel-raised p-4">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">Current state</p>
             <p className="mt-2 text-sm text-text-secondary">
-              Use the full playbooks route for updates while this in-shell card stays compact.
+              Use briefings history while reusable playbooks are still being folded into the shell.
             </p>
           </article>
 
           <div className="mt-auto flex flex-wrap gap-3">
             <Link
-              href="/dashboard/playbooks"
+              href="/dashboard/briefings"
               className="foldera-button-primary"
               data-testid="dashboard-panel-open-playbooks"
             >
-              Open full playbooks
+              Open briefings history
             </Link>
           </div>
         </>
@@ -1364,6 +1489,8 @@ export default function DashboardPage() {
     </div>
   ) : loadingLatest ? (
     loadingCard
+  ) : hasLatestIssue ? (
+    briefingUnavailableCard
   ) : (
     emptyStateCard
   );
@@ -1411,7 +1538,7 @@ export default function DashboardPage() {
         >
           <DashboardSidebar
             activeLabel={activeSidebarLabel}
-            userName={firstName}
+            userName={sidebarUserName}
             variant="stage"
             appShell
             activePanel={activePanel}
@@ -1426,8 +1553,14 @@ export default function DashboardPage() {
             className="absolute text-[56px] font-semibold leading-[64px] tracking-[-0.045em] text-text-secondary"
             style={{ left: 350, top: 86, width: 700, height: 64 }}
           >
-            {getGreetingLabel()},{' '}
-            <strong className="font-semibold text-text-primary">{firstName}.</strong>
+            {getGreetingLabel()}
+            {firstName ? (
+              <>
+                , <strong className="font-semibold text-text-primary">{firstName}.</strong>
+              </>
+            ) : (
+              '.'
+            )}
           </h1>
 
           {hasStats ? (
@@ -1479,6 +1612,12 @@ export default function DashboardPage() {
             </div>
           ) : null}
 
+          {degradedStateNode ? (
+            <div className="absolute" style={{ left: 1460, top: 130, width: 348 }}>
+              {degradedStateNode}
+            </div>
+          ) : null}
+
           {isBriefingPanel && showOutcomeActions ? (
             <div className="absolute flex justify-center gap-3" style={{ left: 722, top: 1096, width: 430 }}>
               <button
@@ -1512,7 +1651,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[252px_minmax(0,1fr)] 2xl:gap-8">
           <DashboardSidebar
             activeLabel={activeSidebarLabel}
-            userName={firstName}
+            userName={sidebarUserName}
             appShell
             activePanel={activePanel}
             onSelectPanel={selectPanel}
@@ -1533,8 +1672,14 @@ export default function DashboardPage() {
 
             <header className="pb-7 pt-3 lg:pb-8 lg:pt-1">
               <h1 className="text-[clamp(2rem,4vw,3.1rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-text-secondary">
-                {getGreetingLabel()},{' '}
-                <strong className="font-semibold text-text-primary">{firstName}.</strong>
+                {getGreetingLabel()}
+                {firstName ? (
+                  <>
+                    , <strong className="font-semibold text-text-primary">{firstName}.</strong>
+                  </>
+                ) : (
+                  '.'
+                )}
               </h1>
               {hasStats ? (
                 <div
@@ -1554,6 +1699,7 @@ export default function DashboardPage() {
               ) : null}
             </header>
 
+            {degradedStateNode ? <div className="mx-auto mb-4 w-full max-w-[860px]">{degradedStateNode}</div> : null}
             {statusNoticeNode ? <div className="mx-auto mb-4 w-full max-w-[860px]">{statusNoticeNode}</div> : null}
 
             <div className="mx-auto w-full max-w-[940px] pb-12">
@@ -1579,6 +1725,8 @@ export default function DashboardPage() {
                   </div>
                 ) : loadingLatest ? (
                   loadingCard
+                ) : hasLatestIssue ? (
+                  <div className="min-h-[420px]">{briefingUnavailableCard}</div>
                 ) : (
                   <div className="min-h-[420px]">{emptyStateCard}</div>
                 )

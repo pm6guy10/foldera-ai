@@ -10,8 +10,8 @@ export function EmptyStateCard() {
           No safe artifact today.
         </h2>
         <p className="mt-4 text-[15px] leading-7 text-text-secondary">
-          Foldera checked your job, interview, benefits, payment, admin deadline, and
-          calendar-conflict signals. Nothing was safe enough to save.
+          Foldera did not find a move that cleared today&apos;s safety and action checks.
+          If a draft is useful but imperfect, it still shows up here with warnings.
         </p>
       </div>
     </div>

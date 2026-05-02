@@ -347,6 +347,7 @@ async function attachCheckoutGuards(
 async function setupDashboardMocks(
   page: Page,
   options: {
+    sessionResponse?: Record<string, unknown>;
     latestResponse?: Record<string, unknown>;
     subscriptionResponse?: Record<string, unknown>;
     checkoutGuardOptions?: {
@@ -359,7 +360,10 @@ async function setupDashboardMocks(
   await seedAuthenticatedSession(page);
   await attachCheckoutGuards(page, options.checkoutGuardOptions);
   // NextAuth session + CSRF
-  await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+  await page.route(
+    matchApiPath('/api/auth/session'),
+    fulfillJson(options.sessionResponse ?? SESSION_RESPONSE),
+  );
   await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
   await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
   await page.route(
@@ -645,7 +649,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByText('No safe artifact today.')).toBeVisible({ timeout: 15000 });
     await expect(
       page.getByText(
-        /Foldera checked your job, interview, benefits, payment, admin deadline, and calendar-conflict signals\. Nothing was safe enough to save\./i,
+        /Foldera did not find a move that cleared today'?s safety and action checks\. If a draft is useful but imperfect, it still shows up here with warnings\./i,
       ),
     ).toBeVisible();
     await expect(page.getByText(/You're set until tomorrow morning/i)).toHaveCount(0);
@@ -666,6 +670,27 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByTestId('dashboard-primary-action')).toHaveCount(0);
     await page.waitForLoadState('networkidle');
     expect(runBriefCalls).toBe(0);
+  });
+
+  test('shows a degraded dashboard state when critical mount fetches fail', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await setupDashboardMocks(page);
+    const failureResponse = { status: 500, contentType: 'application/json', body: json({ error: 'forced_failure' }) };
+    await page.route(matchApiPath('/api/conviction/latest'), (route) => route.fulfill(failureResponse));
+    await page.route(matchApiPath('/api/integrations/status'), (route) => route.fulfill(failureResponse));
+    await page.route(matchApiPath('/api/graph/stats'), (route) => route.fulfill(failureResponse));
+    await page.route(matchApiPath('/api/conviction/history'), (route) => route.fulfill(failureResponse));
+
+    await page.goto('/dashboard');
+
+    await expect(page.getByTestId('dashboard-degraded-state')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('dashboard-briefing-unavailable')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Latest briefing unavailable/i })).toBeVisible();
+    const degradedState = page.getByTestId('dashboard-degraded-state');
+    await expect(degradedState.getByText(/Connected source status unavailable/i)).toBeVisible();
+    await expect(degradedState.getByText(/Signal summary unavailable/i)).toBeVisible();
+    await expect(degradedState.getByText(/Recent history unavailable/i)).toBeVisible();
+    await expect(page.getByTestId('dashboard-empty-state')).toHaveCount(0);
   });
 
   test('no actionable console errors — desktop', async ({ page }) => {
@@ -745,6 +770,46 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       page.getByText('Upgrade to Pro to keep receiving finished work.'),
     ).toBeVisible();
     await expect(page.getByRole('button', { name: /upgrade to pro/i })).toBeVisible();
+  });
+
+  test('outcome feedback stays retryable when the outcome API rejects the write', async ({ page }) => {
+    await setupDashboardMocks(page);
+    await page.route(matchApiPath('/api/conviction/outcome'), async (route) => {
+      if (route.request().method() !== 'POST') return route.continue();
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: json({ error: 'Could not record feedback right now.' }),
+      });
+    });
+
+    await page.goto('/dashboard');
+    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
+    await page.getByTestId('dashboard-primary-action').click();
+    await expectDashboardStatus(page, 'approve_recorded');
+
+    await page.getByRole('button', { name: /it worked/i }).click();
+
+    await expectDashboardStatus(page, 'outcome_record_failed');
+    await expect(page.getByText(/Could not record feedback right now\./i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /it worked/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /didn't work/i })).toBeVisible();
+  });
+
+  test('missing profile data shows neutral dashboard shell copy for non-owner sessions', async ({ page }) => {
+    await setupDashboardMocks(page, {
+      sessionResponse: {
+        user: { id: MOCK_USER_ID, email: 'test@foldera.ai', name: '' },
+        expires: future,
+      },
+    });
+
+    await page.goto('/dashboard');
+
+    await expect(page.getByText(/Workspace Owner/i)).toHaveCount(0);
+    await expect(page.getByText(/Brandon Kapp/i)).toHaveCount(0);
+    await expect(page.getByText(/^Signed in$/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Good (morning|afternoon|evening)\.$/i })).toBeVisible();
   });
 
   test('resumes pending Pro checkout after authenticated dashboard handoff', async ({ page }) => {

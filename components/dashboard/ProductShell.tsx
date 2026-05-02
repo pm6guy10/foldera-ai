@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { FolderaMark } from '@/components/nav/FolderaMark';
@@ -19,6 +20,32 @@ export function ProductShell({
 }) {
   const pathname = usePathname();
   const activePath = pathname ?? '';
+  const [activePanel, setActivePanel] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || activePath !== '/dashboard') {
+      setActivePanel(null);
+      return;
+    }
+
+    setActivePanel(new URLSearchParams(window.location.search).get('panel'));
+  }, [activePath]);
+
+  const isNavItemActive = (panel: string) => {
+    if (panel === 'briefing') {
+      return activePath === '/dashboard' && (activePanel === null || activePanel === 'briefing');
+    }
+
+    if (panel === 'settings') {
+      return (
+        activePath === '/dashboard/settings' ||
+        (activePath === '/dashboard' && activePanel === 'settings')
+      );
+    }
+
+    const legacyPanelPath = `/dashboard/${panel}`;
+    return activePath === legacyPanelPath || (activePath === '/dashboard' && activePanel === panel);
+  };
 
   return (
     <div className="min-h-[100dvh] bg-bg text-text-primary">
@@ -35,9 +62,7 @@ export function ProductShell({
                 href={item.href}
                 className={cn(
                   'inline-flex min-h-[38px] shrink-0 items-center whitespace-nowrap rounded-button px-2.5 text-[11px] font-black uppercase tracking-[0.12em] transition-colors',
-                  (item.href === '/dashboard' && activePath === '/dashboard') ||
-                    (item.href !== '/dashboard' &&
-                      (activePath === item.href || activePath.startsWith(`${item.href}/`)))
+                  isNavItemActive(item.panel)
                     ? 'bg-panel-raised text-text-primary'
                     : 'text-text-secondary hover:text-text-primary',
                 )}

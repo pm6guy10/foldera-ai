@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-05-02 — Dashboard failures surface honestly and stub nav is de-primaried
+- MODE: Dashboard trust and product-state honesty seam only.
+- Files changed: `app/dashboard/page.tsx`, `components/foldera/EmptyStateCard.tsx`, `components/foldera/DashboardSidebar.tsx`, `components/dashboard/ProductShell.tsx`, `tests/e2e/authenticated-routes.spec.ts`, `tests/e2e/dashboard-navigation.spec.ts`, `SESSION_HISTORY.md`.
+- What changed: `/dashboard` now surfaces a visible degraded-state banner when mount fetches fail, shows a dedicated latest-briefing unavailable card instead of silently falling through to `No safe artifact today.`, and keeps outcome feedback retryable when `/api/conviction/outcome` rejects the write. The empty-state copy now matches the safety-hard / quality-soft gate, shell fallback copy is neutral (`Signed in` / no Brandon fallback), and primary dashboard nav no longer promotes the in-progress Playbooks surface or routes legacy header nav back into stub pages for Signals, Audit Log, and Integrations.
+- Verification: `npm run health` passed at start and finish (`RESULT: 0 FAILING`, Outlook freshness warning only); `npm run build` passed after replacing a `useSearchParams` build trap in `ProductShell`; `npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list` passed (`11` tests); `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "Dashboard /dashboard — authenticated" --reporter=list` passed (`18` tests); fresh-port targeted Playwright also passed for degraded fetch state, outcome-write failure, neutral non-owner shell copy, empty-state copy, and legacy-header-nav de-primarying.
+- Unresolved issues: This seam was proven with deterministic browser mocks rather than live production API failures. No paid model calls were made and no outbound email was sent.
+
 ## 2026-05-02 — Pro checkout resumes after auth/onboarding and free tier honors 3 finished artifacts
 - MODE: Revenue signup and pricing truth seam only.
 - Files changed: `app/start/page.tsx`, `app/onboard/page.tsx`, `app/dashboard/page.tsx`, `lib/billing/pending-checkout.ts`, `app/api/conviction/latest/route.ts`, `app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts`, `app/api/stripe/checkout/__tests__/route.test.ts`, `tests/e2e/public-routes.spec.ts`, `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`.

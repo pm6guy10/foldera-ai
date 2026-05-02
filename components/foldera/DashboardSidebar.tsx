@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import {
   ChevronDown,
-  LayoutGrid,
   Link2,
   LogOut,
   Mail,
@@ -34,10 +33,9 @@ export type DashboardNavItem = {
 
 export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
   { panel: 'briefing', label: 'Executive Briefing', href: '/dashboard', icon: Mail },
-  { panel: 'playbooks', label: 'Playbooks', href: '/dashboard/playbooks', icon: LayoutGrid },
-  { panel: 'signals', label: 'Signals', href: '/dashboard/signals', icon: Radar },
-  { panel: 'audit-log', label: 'Audit Log', href: '/dashboard/audit-log', icon: ScrollText },
-  { panel: 'integrations', label: 'Integrations', href: '/dashboard/integrations', icon: Link2 },
+  { panel: 'signals', label: 'Signals', href: '/dashboard?panel=signals', icon: Radar },
+  { panel: 'audit-log', label: 'Audit Log', href: '/dashboard?panel=audit-log', icon: ScrollText },
+  { panel: 'integrations', label: 'Integrations', href: '/dashboard?panel=integrations', icon: Link2 },
   { panel: 'settings', label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
@@ -61,7 +59,7 @@ export function DashboardSidebar({
   onSelectPanel,
 }: DashboardSidebarProps) {
   const [accountOpen, setAccountOpen] = useState(false);
-  const initial = userName.trim().charAt(0).toUpperCase() || 'B';
+  const initial = userName.trim().charAt(0).toUpperCase() || 'F';
   const sidebarUsesPanelButtons = appShell && typeof onSelectPanel === 'function';
 
   if (variant === 'stage') {
@@ -120,7 +118,7 @@ export function DashboardSidebar({
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-text-primary">{userName}</p>
-              <p className="mt-0.5 text-xs text-text-muted">Workspace Owner</p>
+              <p className="mt-0.5 text-xs text-text-muted">Signed in</p>
             </div>
             <button
               type="button"
@@ -219,7 +217,7 @@ export function DashboardSidebar({
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-text-primary">{userName}</p>
-              <p className="mt-0.5 text-xs text-text-muted">Workspace Owner</p>
+              <p className="mt-0.5 text-xs text-text-muted">Signed in</p>
             </div>
             <button
               type="button"

@@ -64,7 +64,6 @@ const HISTORY_RESPONSE = {
 
 const NAV_CONTRACT = [
   { panel: 'briefing', label: 'Executive Briefing' },
-  { panel: 'playbooks', label: 'Playbooks' },
   { panel: 'signals', label: 'Signals' },
   { panel: 'audit-log', label: 'Audit Log' },
   { panel: 'integrations', label: 'Integrations' },
@@ -252,7 +251,7 @@ async function setupDashboardMocks(
 }
 
 describeAuthMocked('Dashboard navigation and action wiring', () => {
-  test('sidebar exposes all six labels on /dashboard desktop shell', async ({ page }) => {
+  test('sidebar exposes the live dashboard labels on /dashboard desktop shell', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
@@ -262,6 +261,7 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
       await expect(button).toBeVisible();
       await expect(button).toContainText(item.label);
     }
+    await expect(page.getByTestId('dashboard-sidebar-item-playbooks')).toHaveCount(0);
 
     await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
     await expect(page.getByTestId('dashboard-truth-stats')).toContainText('need attention');
@@ -312,17 +312,35 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByText(/Source status summary/i)).toBeVisible();
     await expect(page.getByTestId('dashboard-signals-source-status')).toBeVisible();
     await expect(page.getByTestId('dashboard-signals-connected-count')).toHaveText('1');
-    await expect(page.getByRole('link', { name: /Open full signals/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open connected accounts/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open full settings/i })).toBeVisible();
 
     await page.getByTestId('dashboard-sidebar-item-audit-log').click();
     await expect(page.getByTestId('dashboard-panel-audit-log')).toBeVisible();
     await expect(page.getByText(/Recent directives history/i)).toBeVisible();
     await expect(page.getByText(/Confirm launch timeline with Alex/i)).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open briefings history/i })).toBeVisible();
+  });
 
-    await page.getByTestId('dashboard-sidebar-item-playbooks').click();
-    await expect(page.getByTestId('dashboard-panel-playbooks')).toBeVisible();
-    await expect(page.getByText(/Playbook library in progress/i)).toBeVisible();
-    await expect(page.getByRole('link', { name: /Open full playbooks/i })).toBeVisible();
+  test('legacy product-shell routes point primary nav back into the live dashboard shell', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setupDashboardMocks(page);
+    await page.goto('/dashboard/signals');
+
+    const headerNav = page.locator('header nav');
+    await expect(headerNav.getByRole('link', { name: 'Signals' })).toHaveAttribute(
+      'href',
+      '/dashboard?panel=signals',
+    );
+    await expect(headerNav.getByRole('link', { name: 'Audit Log' })).toHaveAttribute(
+      'href',
+      '/dashboard?panel=audit-log',
+    );
+    await expect(headerNav.getByRole('link', { name: 'Integrations' })).toHaveAttribute(
+      'href',
+      '/dashboard?panel=integrations',
+    );
+    await expect(headerNav.getByRole('link', { name: 'Playbooks' })).toHaveCount(0);
   });
 
   test('deep-link /dashboard?panel=settings opens settings shell panel', async ({ page }) => {
