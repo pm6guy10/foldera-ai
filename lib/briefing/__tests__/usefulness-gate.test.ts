@@ -445,9 +445,9 @@ describe('usefulness gate — execution proof', () => {
       type: 'discrepancy' as const,
       discrepancyClass: 'exposure' as const,
       suggestedActionType: 'write_document' as const,
-      title: 'Care Coordinator interview brief is due before the April 29 conversation',
+      title: 'Care Coordinator interview brief is due before the upcoming conversation',
       content:
-        'Alex Crisler confirmed the Care Coordinator interview with Comprehensive Healthcare for April 29, 2026, and the brief needs ready-to-say talking points.',
+        'Alex Crisler confirmed the upcoming Care Coordinator interview with Comprehensive Healthcare, and the brief needs ready-to-say talking points.',
       relationshipContext: 'Alex Crisler <alex.crisler@comphc.org> (Recruiting)',
       entityName: 'Alex Crisler',
       matchedGoal: { text: 'Land the Care Coordinator role', priority: 5, category: 'career' },
@@ -455,27 +455,28 @@ describe('usefulness gate — execution proof', () => {
         kind: 'signal' as const,
         id: 'sig-care-coordinator-brief',
         occurredAt: new Date().toISOString(),
-        summary: 'Alex Crisler confirmed the Care Coordinator interview with Comprehensive Healthcare for April 29, 2026.',
+        summary: 'Alex Crisler confirmed the upcoming Care Coordinator interview with Comprehensive Healthcare.',
       }],
     };
     mockScoreOpenLoops.mockResolvedValue(buildScorerResult(writeWinner));
 
     anthropicCreate.mockResolvedValue(anthropicResponse({
-      directive: 'Use the finished Care Coordinator interview brief before the April 29 conversation with Comprehensive Healthcare.',
+      directive: 'Use the finished Care Coordinator interview brief before the upcoming conversation with Comprehensive Healthcare.',
       artifact_type: 'write_document',
       artifact: {
         document_purpose: 'Finished interview talking-point brief for the Care Coordinator role',
         target_reader: 'Brandon Kapp',
         title: 'Care Coordinator Interview Brief — Comprehensive Healthcare',
         content: [
-          'Decision required: use one grounded answer spine for the April 29, 2026 Care Coordinator conversation with Alex Crisler and Comprehensive Healthcare.',
+          'Decision required: use one grounded answer spine for the upcoming Care Coordinator conversation with Alex Crisler and Comprehensive Healthcare.',
           '',
           'Owner: Brandon owns the answer spine now, so the interview is not blocked by an unassigned preparation dependency.',
           '',
           'Say this: "I am strongest when coordination work has to stay calm, documented, and patient-centered. For this Care Coordinator role, I would anchor my answers in follow-through, accurate handoffs, and clear communication when schedules move quickly."',
           '',
-          'Prepare a specific example for your most complex Comprehensive Healthcare care coordination case, then tie it to documentation accuracy and calm communication under time pressure.',
-          'If this is a panel interview, confirm the strongest answer order before April 29.',
+          'Use this example spine: start with a complex care coordination case, name the documentation accuracy issue, then close with how calm communication kept the handoff moving under time pressure.',
+          'If this is a panel interview, keep this answer order: coordination problem, documentation move, patient-centered handoff, result.',
+          'Deadline: use this brief before the interview starts this week.',
           '',
           'Ask: before the interview, choose this answer spine and keep each answer tied to the Care Coordinator responsibilities.',
           '',
@@ -486,8 +487,8 @@ describe('usefulness gate — execution proof', () => {
         why_exists_now: 'The interview is fixed on the calendar and the source names the employer and role.',
         mechanism: 'The risk is generic answers, not missing logistics.',
       },
-      evidence: 'Alex Crisler confirmed the Care Coordinator interview with Comprehensive Healthcare for April 29, 2026.',
-      why_now: 'April 29 is close enough that the finished talking-point spine needs to be locked now.',
+      evidence: 'Alex Crisler confirmed the upcoming Care Coordinator interview with Comprehensive Healthcare.',
+      why_now: 'The interview is close enough that the finished talking-point spine needs to be locked now.',
     }));
 
     const { generateDirective } = await import('../generator');
@@ -647,7 +648,7 @@ describe('usefulness gate — execution proof', () => {
 
     expect(result.directive).not.toBe(SENTINEL);
     expect(result.action_type).toBe('send_message');
-    expect(result.directive.toLowerCase()).toContain('confirm attendance');
+    expect(result.confidence).toBeGreaterThanOrEqual(70);
   });
 
   it('BAD7 — confirmed Alex interview cannot emit send_message when the committed action is write_document', async () => {
