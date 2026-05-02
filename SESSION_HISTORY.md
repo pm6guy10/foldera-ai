@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-05-02 — Pro checkout resumes after auth/onboarding and free tier honors 3 finished artifacts
+- MODE: Revenue signup and pricing truth seam only.
+- Files changed: `app/start/page.tsx`, `app/onboard/page.tsx`, `app/dashboard/page.tsx`, `lib/billing/pending-checkout.ts`, `app/api/conviction/latest/route.ts`, `app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts`, `app/api/stripe/checkout/__tests__/route.test.ts`, `tests/e2e/public-routes.spec.ts`, `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`.
+- What changed: `/start?plan=pro` still records a pending Pro checkout intent, and that intent is now resumed after authenticated handoff on `/dashboard` and after first-run setup on `/onboard` instead of dying on the dashboard landing. Free-tier gating now matches public pricing by allowing the first 3 finished artifacts before the artifact blur/paywall starts on artifact 4.
+- Verification: `npm run health` passed at start and end (`RESULT: 0 FAILING`, Outlook freshness warning only); added failing regression coverage first, then `npx vitest run app/api/stripe/checkout/__tests__/route.test.ts app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts` passed (`11` tests); `npm run build` passed twice after the final scope-trim; fresh-port Playwright proof passed for `tests/e2e/public-routes.spec.ts --grep "stores pending checkout intent|redirects to /start\\?plan=pro"` (`2` tests) and `tests/e2e/authenticated-routes.spec.ts --grep "resumes pending Pro checkout|connected first-run user resumes pending Pro checkout"` (`2` tests).
+- Unresolved issues: This seam was proven with deterministic browser mocks, not live Stripe/OAuth. No paid model calls were made and no outbound email was sent.
+
 ## 2026-05-02 — First-run onboarding requires one connected source
 - MODE: P0 connector onboarding seam after safety-hard policy restore.
 - Files changed: `app/onboard/page.tsx`, `tests/e2e/authenticated-routes.spec.ts`, `FOLDERA_PRODUCT_SPEC.md`, `CURRENT_STATE.md`, `FOLDERA_PRODUCTION_BACKLOG.md`, `SESSION_HISTORY.md`.

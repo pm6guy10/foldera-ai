@@ -162,7 +162,7 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(supabase.spies.getUserById).not.toHaveBeenCalled();
   });
 
-  it('approved consumes the free artifact for free users', async () => {
+  it('the first finished artifact still leaves free access for free users', async () => {
     const supabase = buildSupabaseMock({
       pendingActions: [buildPendingAction({ id: 'action-approved' })],
       consumedCount: 1,
@@ -174,14 +174,14 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     const body = (await res.json()) as Record<string, unknown>;
 
     expect(body.approved_count).toBe(1);
-    expect(body.free_artifact_remaining).toBe(false);
-    expect(body.artifact_paywall_locked).toBe(true);
+    expect(body.free_artifact_remaining).toBe(true);
+    expect(body.artifact_paywall_locked).toBe(false);
   });
 
-  it('executed consumes the free artifact for free users', async () => {
+  it('the second finished artifact still leaves free access for free users', async () => {
     const supabase = buildSupabaseMock({
       pendingActions: [buildPendingAction({ id: 'action-executed' })],
-      consumedCount: 1,
+      consumedCount: 2,
     });
     mockCreateServerClient.mockReturnValue(supabase);
     mockGetSubscriptionStatus.mockResolvedValue({ status: 'none' });
@@ -189,14 +189,15 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     const res = await callLatest();
     const body = (await res.json()) as Record<string, unknown>;
 
-    expect(body.free_artifact_remaining).toBe(false);
-    expect(body.artifact_paywall_locked).toBe(true);
+    expect(body.approved_count).toBe(2);
+    expect(body.free_artifact_remaining).toBe(true);
+    expect(body.artifact_paywall_locked).toBe(false);
   });
 
-  it('skipped consumes the free artifact for free users', async () => {
+  it('the fourth artifact is paywalled after three finished artifacts for free users', async () => {
     const supabase = buildSupabaseMock({
       pendingActions: [buildPendingAction({ id: 'action-skipped' })],
-      consumedCount: 1,
+      consumedCount: 3,
     });
     mockCreateServerClient.mockReturnValue(supabase);
     mockGetSubscriptionStatus.mockResolvedValue({ status: 'none' });
@@ -204,6 +205,7 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     const res = await callLatest();
     const body = (await res.json()) as Record<string, unknown>;
 
+    expect(body.approved_count).toBe(3);
     expect(body.free_artifact_remaining).toBe(false);
     expect(body.artifact_paywall_locked).toBe(true);
   });

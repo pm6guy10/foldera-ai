@@ -20,6 +20,10 @@ import {
 } from '@/components/foldera/DashboardSidebar';
 import { EmptyStateCard } from '@/components/foldera/EmptyStateCard';
 import { FolderaLogo } from '@/components/foldera/FolderaLogo';
+import {
+  clearPendingCheckoutPlan,
+  resumePendingCheckout,
+} from '@/lib/billing/pending-checkout';
 import { formatRelativeTime, providerDisplayName } from '@/lib/ui/provider-display';
 
 type DashboardArtifact = {
@@ -466,6 +470,7 @@ export default function DashboardPage() {
   const [locallyHiddenActionIds, setLocallyHiddenActionIds] = useState<Set<string>>(() => new Set());
 
   const loadAbortRef = useRef<AbortController | null>(null);
+  const checkoutResumeAttemptedRef = useRef(false);
 
   const load = useCallback(async (): Promise<LoadLatestResult> => {
     loadAbortRef.current?.abort();
@@ -522,6 +527,32 @@ export default function DashboardPage() {
       loadAbortRef.current?.abort();
     };
   }, [load, status]);
+
+  useEffect(() => {
+    if (status !== 'authenticated' || typeof window === 'undefined') {
+      return;
+    }
+
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get('upgraded') === 'true') {
+      clearPendingCheckoutPlan();
+      checkoutResumeAttemptedRef.current = true;
+      return;
+    }
+
+    if (checkoutResumeAttemptedRef.current) {
+      return;
+    }
+
+    checkoutResumeAttemptedRef.current = true;
+    void resumePendingCheckout({
+      onError: (message) =>
+        setStatusNotice({ id: 'checkout_resume_failed', message }),
+      onUnauthorized: () => {
+        checkoutResumeAttemptedRef.current = false;
+      },
+    });
+  }, [status]);
 
   useEffect(() => {
     if (status !== 'authenticated') {

@@ -17,6 +17,7 @@ import { getSubscriptionStatus } from '@/lib/auth/subscription';
 export const dynamic = 'force-dynamic';
 const MIN_PENDING_CONFIDENCE = CONFIDENCE_SEND_THRESHOLD;
 const PENDING_RANKING_LIMIT = 5;
+const FREE_ARTIFACT_ALLOWANCE = 3;
 const PENDING_RANKING_SELECT = 'id, confidence, generated_at, status';
 const PENDING_PAYLOAD_SELECT =
   'id, action_type, directive_text, reason, confidence, evidence, status, generated_at, approved_at, executed_at, execution_result, artifact';
@@ -132,7 +133,7 @@ export async function GET(request: Request) {
     }
 
     const consumedFreeArtifactCount = await getConsumedFreeArtifactCount(supabase, userId);
-    const freeArtifactRemaining = consumedFreeArtifactCount < 1;
+    const freeArtifactRemaining = consumedFreeArtifactCount < FREE_ARTIFACT_ALLOWANCE;
 
     let subscriptionStatus: string | null = null;
     try {

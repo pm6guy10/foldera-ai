@@ -221,6 +221,17 @@ test.describe('Start page /start', () => {
     expect(signInPath).toBe('/api/auth/signin/google');
   });
 
+  test('plan=pro stores pending checkout intent before OAuth', async ({ page }) => {
+    await page.goto('/start?plan=pro');
+    await page.waitForLoadState('networkidle');
+
+    const pendingPlan = await page.evaluate(() =>
+      window.sessionStorage.getItem('foldera_pending_checkout'),
+    );
+
+    expect(pendingPlan).toBe('pro');
+  });
+
   test('no actionable console errors — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const errors = collectConsoleErrors(page);
@@ -326,6 +337,22 @@ test.describe('Pricing page /pricing', () => {
   test('shows "No credit card required"', async ({ page }) => {
     await page.goto('/pricing');
     await expect(page.getByText(/no credit card required/i).first()).toBeVisible();
+  });
+
+  test('unauthenticated Pro checkout redirects to /start?plan=pro', async ({ page }) => {
+    await page.route(matchApiPath('/api/stripe/checkout'), (route) =>
+      route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: 'Unauthorized' }),
+      }),
+    );
+
+    await page.goto('/pricing');
+    await Promise.all([
+      page.waitForURL(/\/start\?plan=pro$/),
+      page.getByRole('button', { name: /^upgrade to pro$/i }).click(),
+    ]);
   });
 
   test('no actionable console errors', async ({ page }) => {

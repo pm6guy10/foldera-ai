@@ -5,8 +5,10 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Lock } from 'lucide-react';
 import { NavAuthMinimal } from '@/components/nav/NavPublic';
-
-const PENDING_CHECKOUT_KEY = 'foldera_pending_checkout';
+import {
+  clearPendingCheckoutPlan,
+  writePendingCheckoutPlan,
+} from '@/lib/billing/pending-checkout';
 const SIGN_IN_TIMEOUT_MS = 7000;
 
 function OAuthButton({
@@ -53,9 +55,9 @@ function StartContent() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (searchParams?.get('plan') === 'pro') {
-      sessionStorage.setItem(PENDING_CHECKOUT_KEY, 'pro');
+      writePendingCheckoutPlan('pro');
     } else {
-      sessionStorage.removeItem(PENDING_CHECKOUT_KEY);
+      clearPendingCheckoutPlan();
     }
   }, [searchParams]);
 
@@ -169,4 +171,3 @@ function MicrosoftIcon() {
     </svg>
   );
 }
-

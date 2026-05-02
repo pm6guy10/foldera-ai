@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
+import { resumePendingCheckout } from '@/lib/billing/pending-checkout';
 
 const focusPills: Array<{ label: string; bucket: string }> = [
   { label: 'Career', bucket: 'Career growth' },
@@ -118,6 +119,14 @@ function OnboardContent() {
         return;
       }
       await update();
+      if (!isEdit) {
+        const resumedCheckout = await resumePendingCheckout({
+          onError: (message) => setSubmitError(message),
+        });
+        if (resumedCheckout) {
+          return;
+        }
+      }
       router.push(isEdit ? '/dashboard/settings' : '/dashboard');
     } catch {
       setSubmitError('Could not save. Try again.');

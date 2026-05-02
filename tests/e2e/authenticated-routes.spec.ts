@@ -24,6 +24,7 @@ const HAS_NEXTAUTH_SECRET = Boolean(process.env.NEXTAUTH_SECRET?.trim());
 const describeAuthMocked = HAS_NEXTAUTH_SECRET ? test.describe : test.describe.skip;
 
 const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
+const PENDING_CHECKOUT_KEY = 'foldera_pending_checkout';
 const E2E_PORT = process.env.PLAYWRIGHT_WEB_PORT?.trim() || '3000';
 /** Must match Playwright `use.baseURL`. Empty `PLAYWRIGHT_TEST_BASE_URL` must not win — addCookies requires a valid url. */
 const E2E_ORIGIN =
@@ -294,20 +295,42 @@ async function seedAuthenticatedSession(
 }
 
 /** Prevent dashboard post-auth Stripe redirect from hijacking Playwright when .env has real Stripe keys. */
-async function attachCheckoutGuards(page: Page) {
-  await page.addInitScript(() => {
-    try {
-      sessionStorage.removeItem('foldera_pending_checkout');
-    } catch {
-      /* ignore */
-    }
-  });
+async function seedPendingCheckoutIntent(page: Page, plan = 'pro') {
+  await page.addInitScript(
+    ({ key, nextPlan }) => {
+      try {
+        sessionStorage.setItem(key, nextPlan);
+      } catch {
+        /* ignore */
+      }
+    },
+    { key: PENDING_CHECKOUT_KEY, nextPlan: plan },
+  );
+}
+
+async function attachCheckoutGuards(
+  page: Page,
+  options: {
+    clearPendingCheckout?: boolean;
+    checkoutStatus?: number;
+    checkoutResponse?: Record<string, unknown>;
+  } = {},
+) {
+  if (options.clearPendingCheckout ?? true) {
+    await page.addInitScript((key) => {
+      try {
+        sessionStorage.removeItem(key);
+      } catch {
+        /* ignore */
+      }
+    }, PENDING_CHECKOUT_KEY);
+  }
   await page.route(matchApiPath('/api/stripe/checkout'), (route) => {
     if (route.request().method() !== 'POST') return route.continue();
     return route.fulfill({
-      status: 200,
+      status: options.checkoutStatus ?? 200,
       contentType: 'application/json',
-      body: json({ error: 'mock_checkout_disabled' }),
+      body: json(options.checkoutResponse ?? { error: 'mock_checkout_disabled' }),
     });
   });
   await page.route(matchApiPath('/api/stripe/portal'), (route) => {
@@ -326,10 +349,15 @@ async function setupDashboardMocks(
   options: {
     latestResponse?: Record<string, unknown>;
     subscriptionResponse?: Record<string, unknown>;
+    checkoutGuardOptions?: {
+      clearPendingCheckout?: boolean;
+      checkoutStatus?: number;
+      checkoutResponse?: Record<string, unknown>;
+    };
   } = {},
 ) {
   await seedAuthenticatedSession(page);
-  await attachCheckoutGuards(page);
+  await attachCheckoutGuards(page, options.checkoutGuardOptions);
   // NextAuth session + CSRF
   await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
   await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
@@ -485,10 +513,17 @@ async function setupSettingsManageBillingMocks(page: Page) {
 
 async function setupOnboardingMocks(
   page: Page,
-  options: { integrationsResponse?: Record<string, unknown> } = {},
+  options: {
+    integrationsResponse?: Record<string, unknown>;
+    checkoutGuardOptions?: {
+      clearPendingCheckout?: boolean;
+      checkoutStatus?: number;
+      checkoutResponse?: Record<string, unknown>;
+    };
+  } = {},
 ) {
   await seedAuthenticatedSession(page, { hasOnboarded: false });
-  await attachCheckoutGuards(page);
+  await attachCheckoutGuards(page, options.checkoutGuardOptions);
   await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
   await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
   await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
@@ -682,7 +717,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupDashboardMocks(page, {
       latestResponse: {
         ...DIRECTIVE_RESPONSE,
-        approved_count: 3,
+        approved_count: 2,
         is_subscribed: false,
       },
       subscriptionResponse: FREE_SUBSCRIPTION_RESPONSE,
@@ -697,7 +732,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupDashboardMocks(page, {
       latestResponse: {
         ...DIRECTIVE_RESPONSE,
-        approved_count: 4,
+        approved_count: 3,
         is_subscribed: false,
         artifact_paywall_locked: true,
       },
@@ -710,6 +745,37 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       page.getByText('Upgrade to Pro to keep receiving finished work.'),
     ).toBeVisible();
     await expect(page.getByRole('button', { name: /upgrade to pro/i })).toBeVisible();
+  });
+
+  test('resumes pending Pro checkout after authenticated dashboard handoff', async ({ page }) => {
+    await seedPendingCheckoutIntent(page);
+    let checkoutCalls = 0;
+    await setupDashboardMocks(page, {
+      checkoutGuardOptions: {
+        clearPendingCheckout: false,
+        checkoutResponse: { url: 'https://checkout.stripe.com/c/pay/cs_test_resume_dashboard' },
+      },
+    });
+    await page.route(matchApiPath('/api/stripe/checkout'), (route) => {
+      if (route.request().method() !== 'POST') return route.continue();
+      checkoutCalls += 1;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: json({ url: 'https://checkout.stripe.com/c/pay/cs_test_resume_dashboard' }),
+      });
+    });
+    await page.route('https://checkout.stripe.com/**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: '<html><body>Mock Stripe checkout</body></html>',
+      }),
+    );
+
+    await page.goto('/dashboard');
+    await expect.poll(() => checkoutCalls).toBe(1);
+    await expect(page).toHaveURL(/https:\/\/checkout\.stripe\.com\/c\/pay\/cs_test_resume_dashboard/);
   });
 
   test('write_document journey: document preview, save action, saved status', async ({ page }) => {
@@ -1169,6 +1235,52 @@ describeAuthMocked('Onboarding /onboard — connector step', () => {
     const response = await googleConnectResponse;
     expect(response.status()).toBe(307);
     expect(response.headers()['location']).toContain('https://accounts.google.com/o/oauth2/v2/auth');
+  });
+
+  test('connected first-run user resumes pending Pro checkout after setup', async ({ page }) => {
+    await seedPendingCheckoutIntent(page);
+    let checkoutCalls = 0;
+    await setupOnboardingMocks(page, {
+      integrationsResponse: {
+        integrations: [
+          {
+            provider: 'google',
+            is_active: true,
+            sync_email: 'test@gmail.com',
+            needs_reauth: false,
+          },
+        ],
+      },
+      checkoutGuardOptions: {
+        clearPendingCheckout: false,
+        checkoutResponse: { url: 'https://checkout.stripe.com/c/pay/cs_test_resume_onboard' },
+      },
+    });
+    await page.route(matchApiPath('/api/stripe/checkout'), (route) => {
+      if (route.request().method() !== 'POST') return route.continue();
+      checkoutCalls += 1;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: json({ url: 'https://checkout.stripe.com/c/pay/cs_test_resume_onboard' }),
+      });
+    });
+    await page.route('https://checkout.stripe.com/**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: '<html><body>Mock Stripe checkout</body></html>',
+      }),
+    );
+
+    await page.goto('/onboard');
+    await expect(page.getByRole('button', { name: /continue to dashboard/i })).toBeEnabled({
+      timeout: 15000,
+    });
+    await page.getByRole('button', { name: /continue to dashboard/i }).click();
+
+    await expect.poll(() => checkoutCalls).toBe(1);
+    await expect(page).toHaveURL(/https:\/\/checkout\.stripe\.com\/c\/pay\/cs_test_resume_onboard/);
   });
 });
 
