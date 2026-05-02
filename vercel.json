@@ -29,16 +29,8 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/nightly-ops",
+      "path": "/api/cron/morning-pipeline",
       "schedule": "0 11 * * *"
-    },
-    {
-      "path": "/api/cron/daily-brief",
-      "schedule": "10 11 * * *"
-    },
-    {
-      "path": "/api/cron/daily-maintenance",
-      "schedule": "20 11 * * *"
     }
   ]
 }

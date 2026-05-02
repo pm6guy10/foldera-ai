@@ -1,15 +1,16 @@
 /**
  * GET /api/cron/nightly-ops
  *
- * Nightly orchestrator — delivery-critical ingest only:
+ * Nightly ingest/sync stage for the orchestrated morning cron pipeline:
  *   token refresh, commitment ceiling, Microsoft/Google sync, connector health,
  *   signal processing, passive rejection.
  *
- * Daily brief generate + send runs in a separate cron: /api/cron/daily-brief (11:10 UTC).
- * Post-delivery maintenance runs in /api/cron/daily-maintenance (11:20 UTC).
+ * Scheduled production invocations now arrive through /api/cron/morning-pipeline,
+ * which calls this route first and then runs daily-brief and daily-maintenance.
+ * This route remains callable directly for manual/operator use.
  *
  * Auth: CRON_SECRET Bearer token.
- * Schedule: 0 11 * * * (4am PT / 11:00 UTC)
+ * Scheduled via /api/cron/morning-pipeline at 0 11 * * * (4am PT / 11:00 UTC)
  */
 
 import * as Sentry from '@sentry/nextjs';

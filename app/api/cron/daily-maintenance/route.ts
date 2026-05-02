@@ -1,11 +1,12 @@
 /**
  * GET /api/cron/daily-maintenance
  *
- * Post-delivery maintenance cron. Runs non-critical upkeep after nightly ingest
- * and daily brief delivery so no single request owns the full pipeline.
+ * Post-delivery maintenance stage for the orchestrated morning cron pipeline.
+ * Scheduled production invocations now arrive through /api/cron/morning-pipeline
+ * after nightly-ops and daily-brief. This route remains callable directly for manual/operator use.
  *
  * Auth: CRON_SECRET Bearer token.
- * Schedule: 20 11 * * * (4:20am PT / 11:20 UTC)
+ * Scheduled via /api/cron/morning-pipeline after daily-brief.
  */
 
 import * as Sentry from '@sentry/nextjs';

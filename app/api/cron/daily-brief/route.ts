@@ -1,11 +1,12 @@
 /**
  * GET/POST /api/cron/daily-brief
  *
- * Dedicated cron for daily brief generate + send so LLM work gets a full serverless
- * window (separate from nightly-ops ingest/sync).
+ * Daily brief generate + send stage for the orchestrated morning cron pipeline.
+ * Scheduled production invocations now arrive through /api/cron/morning-pipeline
+ * after nightly-ops completes. This route remains callable directly for manual/operator use.
  *
  * Auth: CRON_SECRET Bearer token.
- * Schedule: 10 11 * * * (4:10am PT / 11:10 UTC), 10 minutes after nightly-ops.
+ * Scheduled via /api/cron/morning-pipeline after nightly-ops.
  */
 
 import * as Sentry from '@sentry/nextjs';
