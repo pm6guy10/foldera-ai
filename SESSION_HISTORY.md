@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-05-02 — First-run onboarding requires one connected source
+- MODE: P0 connector onboarding seam after safety-hard policy restore.
+- Files changed: `app/onboard/page.tsx`, `tests/e2e/authenticated-routes.spec.ts`, `FOLDERA_PRODUCT_SPEC.md`, `CURRENT_STATE.md`, `FOLDERA_PRODUCTION_BACKLOG.md`, `SESSION_HISTORY.md`.
+- What changed: `/onboard` now reads `/api/integrations/status`; if no active Google or Microsoft source is present, first-run setup shows Connect Google / Connect Microsoft actions and disables Continue/Skip until one source is connected. The focus-area save path, existing connector routes, settings connector cards, billing, dashboard, and auth contracts are otherwise unchanged.
+- Verification: Red Playwright first failed because `/onboard` did not render `Connect one source`; after the patch, focused `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "requires a connected source"` passed. `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "Onboarding|Settings|Beta loop"` passed (15 tests); full `npx playwright test tests/e2e/authenticated-routes.spec.ts` passed (30 tests); `npm run health` passed (`RESULT: 0 FAILING`, Outlook freshness warning only); `npm run lint` passed; `npm run build` passed.
+- Unresolved issues: Real non-owner depth still requires Christian or another real non-owner to complete live auth/provider consent and produce token rows; no paid proof and no outbound email were run in this seam.
+
 ## 2026-05-02 — Safety-hard quality-soft gate relaxation restored after conflicting revert
 - MODE: Conflict repair only — revert the unintended fail-closed revert.
 - Files changed: `ACCEPTANCE_GATE.md`, `CURRENT_STATE.md`, `FOLDERA_PRODUCTION_BACKLOG.md`, `FOLDERA_PRODUCT_SPEC.md`, `SESSION_HISTORY.md`, `lib/briefing/artifact-quality-gate.ts`, `lib/briefing/generator.ts`, `lib/briefing/scorer-failure-suppression.ts`, `lib/briefing/types.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cron/daily-brief-send.ts`, focused briefing/cron tests and fixtures.

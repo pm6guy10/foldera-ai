@@ -327,8 +327,8 @@ Required production proof: Connect one real non-owner account through the produc
 Done means: One real non-owner user completes the production loop and the acceptance gate no longer fails `NON_OWNER_DEPTH`.
 Do-not-count: Synthetic user rows, owner-only runs, logs alone, or manual DB fabrication.
 Status: WAITING_EXTERNAL_ACCOUNT
-Last evidence: 2026-04-29 — production check found zero connected non-owner token users after excluding owner and synthetic test IDs; `NON_OWNER_DEPTH` remains blocked by missing real account/data, not a code path.
-Next blocker: Provision and connect one real non-owner user with live auth and token rows.
+Last evidence: 2026-05-02 — first-run `/onboard` now checks `/api/integrations/status`, shows Connect Google / Connect Microsoft when no active provider token exists, and keeps Continue/Skip disabled until a source is connected. Previous production check still found zero connected non-owner token users after excluding owner and synthetic test IDs, so `NON_OWNER_DEPTH` remains blocked by missing real account/data, not synthetic rows.
+Next blocker: Provision and connect one real non-owner user with live auth and token rows, then run the normal non-owner depth proof.
 
 ### BL-007
 ID: BL-007

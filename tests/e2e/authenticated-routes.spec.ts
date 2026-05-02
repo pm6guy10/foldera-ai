@@ -258,7 +258,10 @@ function matchApiPath(apiPath: string) {
   };
 }
 
-async function seedAuthenticatedSession(page: Page) {
+async function seedAuthenticatedSession(
+  page: Page,
+  options: { hasOnboarded?: boolean } = {},
+) {
   const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) {
     throw new Error('NEXTAUTH_SECRET is required for authenticated route tests.');
@@ -271,7 +274,7 @@ async function seedAuthenticatedSession(page: Page) {
       userId: MOCK_USER_ID,
       email: SESSION_RESPONSE.user.email,
       name: SESSION_RESPONSE.user.name,
-      hasOnboarded: true,
+      hasOnboarded: options.hasOnboarded ?? true,
     },
   });
 
@@ -478,6 +481,28 @@ async function setupSettingsManageBillingMocks(page: Page) {
       body: json({ error: 'mock_checkout_disabled' }),
     });
   });
+}
+
+async function setupOnboardingMocks(
+  page: Page,
+  options: { integrationsResponse?: Record<string, unknown> } = {},
+) {
+  await seedAuthenticatedSession(page, { hasOnboarded: false });
+  await attachCheckoutGuards(page);
+  await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+  await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+  await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+  await page.route(
+    matchApiPath('/api/integrations/status'),
+    fulfillJson(
+      options.integrationsResponse ?? {
+        integrations: [],
+        newest_mail_signal_at: null,
+        mail_ingest_looks_stale: false,
+      },
+    ),
+  );
+  await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ ok: true, count: 2 }));
 }
 
 /** Past directives list — mocks `GET /api/conviction/history`. */
@@ -1104,6 +1129,46 @@ test.describe('Beta loop /start smoke', () => {
     await expect(page.getByRole('button', { name: /continue with google/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /continue with microsoft/i })).toBeVisible();
     await expect(page.getByText(/first read arrives tomorrow morning/i)).toBeVisible();
+  });
+});
+
+describeAuthMocked('Onboarding /onboard — connector step', () => {
+  test('requires a connected source before first-run dashboard handoff', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupOnboardingMocks(page);
+    await page.route(matchApiPath('/api/google/connect'), (route) =>
+      route.fulfill({
+        status: 307,
+        headers: {
+          location:
+            'https://accounts.google.com/o/oauth2/v2/auth?client_id=mock-client&redirect_uri=https%3A%2F%2Fwww.foldera.ai%2Fapi%2Fgoogle%2Fcallback',
+        },
+      }),
+    );
+
+    await page.goto('/onboard');
+
+    await expect(page.getByRole('heading', { name: /connect one source/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Foldera needs one connected mailbox or calendar before it can prepare a first read/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /continue to dashboard/i })).toBeDisabled();
+    await expect(page.getByRole('button', { name: /skip for now/i })).toBeDisabled();
+    await expect(page.getByRole('link', { name: /connect google/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /connect microsoft/i })).toBeVisible();
+
+    const googleConnectResponse = page.waitForResponse(
+      (response) => {
+        try {
+          return new URL(response.url()).pathname === '/api/google/connect';
+        } catch {
+          return false;
+        }
+      },
+      { timeout: 15000 },
+    );
+    await page.getByRole('link', { name: /connect google/i }).click({ noWaitAfter: true });
+    const response = await googleConnectResponse;
+    expect(response.status()).toBe(307);
+    expect(response.headers()['location']).toContain('https://accounts.google.com/o/oauth2/v2/auth');
   });
 });
 
