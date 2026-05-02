@@ -1,6 +1,6 @@
 # FOLDERA PRODUCT SPEC — BRANDON COMMAND CENTER
 
-Last Updated: May 1, 2026 (**Product reset:** Foldera is now framed as Brandon's narrow command center for job, interview, benefits, payment, admin deadline, and calendar-conflict signals. Historical notes below may mention prior daily/morning-brief framing; this section supersedes them. Current artifact enforcement lives in `lib/briefing/artifact-quality-gate.ts` and is verified by `lib/briefing/__tests__/artifact-quality-gate.test.ts` plus `lib/briefing/__tests__/generator-runtime.test.ts`.)
+Last Updated: May 2, 2026 (**Product reset update:** Foldera stays focused on Brandon's job, interview, benefits, payment, admin deadline, and calendar-conflict signals, but command-center category is no longer a hard blocking allowlist. Historical notes below may mention prior daily/morning-brief or five-class fail-closed framing; this section supersedes them. Current artifact enforcement lives in `lib/briefing/artifact-quality-gate.ts` and is verified by `lib/briefing/__tests__/artifact-quality-gate.test.ts` plus `lib/briefing/__tests__/generator-runtime.test.ts`.)
 Next Review: Monday March 31, 2026
 
 ## HOW TO USE THIS FILE
@@ -15,9 +15,9 @@ Brandon opens a chat. Drags this file in. Claude reads it, diffs against what CC
 
 Foldera watches Brandon's real inbox/calendar for job, interview, benefits, payment, and admin deadlines, then gives him one exact ready-to-use artifact he can save or skip.
 
-Foldera is not a generic morning-summary product. It must not create relationship-silence artifacts, prepare/review/research homework, fake obligations, broad-autonomy task lists, or outbound email by default.
+Foldera is not a generic morning-summary product. It must not create fabricated obligations, transactional-sender pressure, relationship-silence artifacts, stale-event artifacts, placeholders, action-type mismatches, or outbound email by default.
 
-Allowed artifact classes:
+Primary artifact categories:
 
 1. Interview role-fit packet.
 2. Follow-up email draft for review only.
@@ -25,7 +25,11 @@ Allowed artifact classes:
 4. Benefits/payment/admin action packet.
 5. Calendar conflict resolution brief.
 
-If a candidate does not fit one of those classes, the product outcome is exactly:
+These categories are diagnostic, not a pass/fail interface. A candidate must not die before the LLM or before send solely because it is outside the old command-center wedge. Quality-only problems such as weak grounding, reminders, summaries, generic coaching, prep/review/research language, monitor/check-in actions, or no concrete outcome are persisted as `soft_warnings` in existing execution receipts and evaluated through approve/skip.
+
+The hard block list is safety and action-contract only: action type mismatch, internal debug/provider tokens, placeholders, stale-event artifacts, fabricated claims, transactional sender decision pressure, and relationship-silence artifacts.
+
+If no viable candidate remains or a hard failure blocks all candidates, the product outcome is exactly:
 
 `No safe artifact today.`
 

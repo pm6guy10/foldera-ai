@@ -10,30 +10,23 @@ export type ArtifactQualityCategory =
   | 'RISK_ALERT'
   | 'SUPPRESSION_DECISION';
 
-export type CommandCenterArtifactClass =
-  | 'INTERVIEW_ROLE_FIT_PACKET'
-  | 'FOLLOW_UP_EMAIL_DRAFT'
-  | 'DEADLINE_RISK_DECISION_BRIEF'
-  | 'BENEFITS_PAYMENT_ADMIN_ACTION_PACKET'
-  | 'CALENDAR_CONFLICT_RESOLUTION_BRIEF';
-
 export type ArtifactQualityBlockReason =
   | 'action_type_mismatch'
   | 'internal_debug_token'
   | 'placeholder_content'
+  | 'stale_event'
+  | 'fabricated_claim'
+  | 'transactional_sender_decision_pressure'
+  | 'relationship_silence_artifact';
+
+export type ArtifactQualitySoftWarning =
   | 'no_source_grounding'
   | 'reminder_only'
   | 'summary_only'
   | 'generic_coaching'
   | 'prepare_instead_of_finished_work'
   | 'only_follow_up_check_in_or_monitor'
-  | 'stale_event'
-  | 'no_concrete_outcome'
-  | 'fabricated_claim'
-  | 'transactional_sender_decision_pressure'
-  | 'relationship_silence_artifact'
-  | 'outside_command_center_scope'
-  | 'unclassified_artifact';
+  | 'no_concrete_outcome';
 
 export interface ArtifactQualityGateInput {
   directive: Pick<ConvictionDirective, 'action_type' | 'directive' | 'reason' | 'evidence'>;
@@ -46,8 +39,8 @@ export interface ArtifactQualityGateInput {
 export interface ArtifactQualityGateResult {
   passes: boolean;
   category: ArtifactQualityCategory | null;
-  commandCenterClass: CommandCenterArtifactClass | null;
   reasons: ArtifactQualityBlockReason[];
+  soft_warnings: ArtifactQualitySoftWarning[];
   safeArtifactMessage: string | null;
 }
 
@@ -62,8 +55,8 @@ export interface CommandCenterCandidateGateInput {
 
 export interface CommandCenterCandidateGateResult {
   passes: boolean;
-  commandCenterClass: CommandCenterArtifactClass | null;
   reasons: ArtifactQualityBlockReason[];
+  soft_warnings: ArtifactQualitySoftWarning[];
 }
 
 export type ArtifactQualityFailSafeStatus = 'GREEN' | 'YELLOW' | 'RED';
@@ -104,6 +97,8 @@ const ONLY_MONITOR_PATTERN =
   /\b(monitor (?:the )?inbox|watch (?:the )?inbox|check in with|follow up with|touch base with)\b/i;
 
 const GENERIC_NO_SEND_PATTERN = /\bnothing cleared the bar today\b/i;
+const GENERIC_THANK_YOU_PATTERN =
+  /\bthank you for (?:your )?(?:time|opportunity)\b[\s\S]{0,160}\blook forward to hearing\b/i;
 
 const OUTCOME_PATTERN =
   /\b(confirm|send|decide|choose|reply|schedule|resolve|approve|decline|ask|request|escalate|submit|use this|next action|remedy|deadline|trigger|by \d{1,2}(?::\d{2})?\s*(?:am|pm)?|today|tomorrow|this week|before|after)\b/i;
@@ -138,18 +133,6 @@ const INVENTED_PROFESSIONAL_PRESSURE_PATTERN =
 
 const RELATIONSHIP_SILENCE_ARTIFACT_PATTERN =
   /\brelationship\b[\s\S]{0,160}\b(?:silent|silence|no\s+(?:reply|response)|zero replies|has not (?:replied|responded)|unreplied|moved on|closure)\b|\b(?:silent|silence|no\s+(?:reply|response)|zero replies|has not (?:replied|responded)|unreplied|moved on|closure)\b[\s\S]{0,160}\brelationship\b/i;
-
-const INTERVIEW_JOB_PATTERN =
-  /\b(interview|role-fit|role fit|job|posting|recruitment|recruiter|reference|resume|hiring|benefits technician|providerone|hca|esd|dshs|chc|comprehensive healthcare)\b/i;
-
-const BENEFITS_PAYMENT_ADMIN_PATTERN =
-  /\b(benefits?\s+(?:office|payment|deadline|verification|coverage|claim|premium|processing)|payment|invoice|receipt|admin|administrative|verification|eligibility|coverage|claim|premium|account|office|submit|form)\b/i;
-
-const CALENDAR_CONFLICT_PATTERN =
-  /\b(calendar|schedule)\b[\s\S]{0,160}\b(conflict|overlap|double-book|move|reschedule)\b|\b(conflict|overlap|double-book|move|reschedule)\b[\s\S]{0,160}\b(calendar|schedule)\b/i;
-
-const DEADLINE_RISK_PATTERN =
-  /\b(deadline|risk|blocked|blocking|exposure|failure|miss|stale|cutoff|window|before|by \d{1,2}|today|tomorrow|this week)\b/i;
 
 const USER_CLAIM_PATTERNS = [
   /\bI (?:worked|work) (?:at|for|with) ([A-Z][A-Za-z0-9&/ -]{2,40})/g,
@@ -297,33 +280,39 @@ function classifySuppressionDecision(text: string): boolean {
   return SUPPRESSION_PATTERN.test(text) && text.length <= 700;
 }
 
-function classifyCommandCenterArtifact(
-  category: ArtifactQualityCategory | null,
-  text: string,
-): CommandCenterArtifactClass | null {
-  if (!category || category === 'SUPPRESSION_DECISION') return null;
-  if (RELATIONSHIP_SILENCE_ARTIFACT_PATTERN.test(text)) return null;
-  if ((category === 'ROLE_FIT_PACKET' || category === 'ROLE_FIT_LINE') && INTERVIEW_JOB_PATTERN.test(text)) {
-    return 'INTERVIEW_ROLE_FIT_PACKET';
-  }
-  if (category === 'DRAFT_EMAIL') return 'FOLLOW_UP_EMAIL_DRAFT';
-  if (CALENDAR_CONFLICT_PATTERN.test(text)) return 'CALENDAR_CONFLICT_RESOLUTION_BRIEF';
-  if (BENEFITS_PAYMENT_ADMIN_PATTERN.test(text)) return 'BENEFITS_PAYMENT_ADMIN_ACTION_PACKET';
-  if ((category === 'DECISION_BRIEF' || category === 'RISK_ALERT') && DEADLINE_RISK_PATTERN.test(text)) {
-    return 'DEADLINE_RISK_DECISION_BRIEF';
-  }
-  return null;
+function unique<T>(items: T[]): T[] {
+  return [...new Set(items)];
 }
 
-function classifyCandidateCommandCenterClass(text: string): CommandCenterArtifactClass | null {
-  if (RELATIONSHIP_SILENCE_ARTIFACT_PATTERN.test(text)) return null;
-  if (INTERVIEW_JOB_PATTERN.test(text)) return 'INTERVIEW_ROLE_FIT_PACKET';
-  if (CALENDAR_CONFLICT_PATTERN.test(text)) return 'CALENDAR_CONFLICT_RESOLUTION_BRIEF';
-  if (BENEFITS_PAYMENT_ADMIN_PATTERN.test(text)) return 'BENEFITS_PAYMENT_ADMIN_ACTION_PACKET';
-  if (DEADLINE_RISK_PATTERN.test(text) && (DECISION_PATTERN.test(text) || NEXT_ACTION_PATTERN.test(text) || /\b(decision|action|packet|brief)\b/i.test(text))) {
-    return 'DEADLINE_RISK_DECISION_BRIEF';
+function collectSoftWarnings(input: {
+  text: string;
+  evidence: string;
+  category?: ArtifactQualityCategory | null;
+  includeSourceGrounding?: boolean;
+  now?: Date;
+}): ArtifactQualitySoftWarning[] {
+  const warnings: ArtifactQualitySoftWarning[] = [];
+  const suppressionDecision = input.category === 'SUPPRESSION_DECISION';
+  if (suppressionDecision) return warnings;
+
+  if (input.includeSourceGrounding !== false && !hasSourceGrounding(input.text, input.evidence)) {
+    warnings.push('no_source_grounding');
   }
-  return null;
+  if (REMINDER_ONLY_PATTERN.test(input.text)) warnings.push('reminder_only');
+  if (isSummaryOnly(input.text)) warnings.push('summary_only');
+  if (GENERIC_COACHING_PATTERN.test(input.text)) warnings.push('generic_coaching');
+  if (!input.category && PREP_INSTEAD_PATTERN.test(input.text) && !FINISHED_LANGUAGE_PATTERN.test(input.text)) {
+    warnings.push('prepare_instead_of_finished_work');
+  }
+  if (onlyLowValueAction(input.text)) warnings.push('only_follow_up_check_in_or_monitor');
+  if (
+    GENERIC_NO_SEND_PATTERN.test(input.text) ||
+    GENERIC_THANK_YOU_PATTERN.test(input.text) ||
+    (!OUTCOME_PATTERN.test(input.text) && !FINISHED_LANGUAGE_PATTERN.test(input.text))
+  ) {
+    warnings.push('no_concrete_outcome');
+  }
+  return unique(warnings);
 }
 
 export function evaluateCommandCenterCandidateGate(
@@ -335,44 +324,36 @@ export function evaluateCommandCenterCandidateGate(
     input.discrepancyClass ? `discrepancy_class:${input.discrepancyClass}` : '',
   ].filter(Boolean).join('\n');
   const reasons: ArtifactQualityBlockReason[] = [];
+  const softWarnings = collectSoftWarnings({
+    text: combined,
+    evidence: (input.sourceFacts ?? []).join('\n'),
+  });
   const recommendedAction = input.recommendedAction;
   const suggestedAction = input.suggestedActionType ?? recommendedAction;
   const hasRealRecipient = input.hasRealRecipient === true;
-  const commandCenterClass = classifyCandidateCommandCenterClass(combined);
   const automatedTransactional =
     isLikelyAutomatedTransactionalInbound(combined) ||
     TRANSACTIONAL_SYSTEM_SENDER_PATTERN.test(combined);
 
+  if (INTERNAL_DEBUG_PATTERN.test(combined)) reasons.push('internal_debug_token');
+  if (PLACEHOLDER_PATTERN.test(combined)) reasons.push('placeholder_content');
+  if (staleEventPrep(combined, new Date())) reasons.push('stale_event');
+  if (hasFabricatedUserClaim(combined, (input.sourceFacts ?? []).join('\n'))) reasons.push('fabricated_claim');
   if (automatedTransactional && (WEAK_SILENCE_PATTERN.test(combined) || INVENTED_PROFESSIONAL_PRESSURE_PATTERN.test(combined))) {
     reasons.push('transactional_sender_decision_pressure');
   }
   if (RELATIONSHIP_SILENCE_ARTIFACT_PATTERN.test(combined)) {
     reasons.push('relationship_silence_artifact');
   }
-  if (
-    suggestedAction === 'send_message' &&
-    !hasRealRecipient &&
-    recommendedAction !== 'send_message' &&
-    !commandCenterClass
-  ) {
+  if ((suggestedAction === 'send_message' || recommendedAction === 'send_message') && !hasRealRecipient) {
     reasons.push('action_type_mismatch');
-  }
-  if (recommendedAction === 'write_document' && !commandCenterClass) {
-    reasons.push('outside_command_center_scope');
-    reasons.push('unclassified_artifact');
-  }
-  if (recommendedAction === 'send_message' && !hasRealRecipient) {
-    reasons.push('action_type_mismatch');
-  }
-  if (!commandCenterClass && !reasons.includes('outside_command_center_scope')) {
-    reasons.push('outside_command_center_scope');
   }
 
-  const uniqueReasons = [...new Set(reasons)];
+  const uniqueReasons = unique(reasons);
   return {
     passes: uniqueReasons.length === 0,
-    commandCenterClass,
     reasons: uniqueReasons,
+    soft_warnings: softWarnings,
   };
 }
 
@@ -397,8 +378,8 @@ export function evaluateArtifactQualityGate(
   const combined = [input.directive.directive, input.directive.reason, text].filter(Boolean).join('\n');
   const evidence = evidenceText(input);
   const reasons: ArtifactQualityBlockReason[] = [];
+  const softWarnings: ArtifactQualitySoftWarning[] = [];
   const category = classifyArtifactCategory(input.directive, input.artifact, text);
-  const commandCenterClass = classifyCommandCenterArtifact(category, combined);
   const suppressionDecision = category === 'SUPPRESSION_DECISION';
   const draftEmailOnNonEmailAction =
     input.strictActionTypeMatch === true &&
@@ -408,18 +389,13 @@ export function evaluateArtifactQualityGate(
   if (draftEmailOnNonEmailAction) reasons.push('action_type_mismatch');
   if (INTERNAL_DEBUG_PATTERN.test(combined)) reasons.push('internal_debug_token');
   if (PLACEHOLDER_PATTERN.test(combined)) reasons.push('placeholder_content');
-  if (!hasSourceGrounding(combined, evidence)) reasons.push('no_source_grounding');
-  if (!suppressionDecision && REMINDER_ONLY_PATTERN.test(combined)) reasons.push('reminder_only');
-  if (!suppressionDecision && isSummaryOnly(combined)) reasons.push('summary_only');
-  if (!suppressionDecision && GENERIC_COACHING_PATTERN.test(combined)) reasons.push('generic_coaching');
-  if (!suppressionDecision && !category && PREP_INSTEAD_PATTERN.test(combined) && !FINISHED_LANGUAGE_PATTERN.test(combined)) {
-    reasons.push('prepare_instead_of_finished_work');
-  }
-  if (!suppressionDecision && onlyLowValueAction(combined)) reasons.push('only_follow_up_check_in_or_monitor');
+  softWarnings.push(...collectSoftWarnings({
+    text: combined,
+    evidence,
+    category,
+    now: input.now,
+  }));
   if (!suppressionDecision && staleEventPrep(combined, input.now ?? new Date())) reasons.push('stale_event');
-  if (!suppressionDecision && (GENERIC_NO_SEND_PATTERN.test(combined) || (!OUTCOME_PATTERN.test(combined) && !FINISHED_LANGUAGE_PATTERN.test(combined)))) {
-    reasons.push('no_concrete_outcome');
-  }
   if (hasFabricatedUserClaim(combined, evidence)) reasons.push('fabricated_claim');
   if (input.directive.action_type === 'write_document' && !suppressionDecision) {
     const gold = evaluateGoldStandardArtifact({
@@ -432,19 +408,19 @@ export function evaluateArtifactQualityGate(
         gold.missing.includes('identifies_hidden_leverage_point') ||
         gold.missing.includes('produces_usable_finished_work')
       ) {
-        reasons.push('no_concrete_outcome');
+        softWarnings.push('no_concrete_outcome');
       }
       if (
         gold.genericFailureReasons.includes('homework_language') ||
         gold.genericFailureReasons.includes('checklist_instead_of_finished_asset')
       ) {
-        reasons.push('prepare_instead_of_finished_work');
+        softWarnings.push('prepare_instead_of_finished_work');
       }
       if (
         gold.genericFailureReasons.includes('generic_advice') ||
         gold.genericFailureReasons.includes('generic_chatbot_quality')
       ) {
-        reasons.push('generic_coaching');
+        softWarnings.push('generic_coaching');
       }
     }
   }
@@ -452,17 +428,14 @@ export function evaluateArtifactQualityGate(
     reasons.push('transactional_sender_decision_pressure');
   }
   if (RELATIONSHIP_SILENCE_ARTIFACT_PATTERN.test(combined)) reasons.push('relationship_silence_artifact');
-  if (!commandCenterClass) reasons.push('outside_command_center_scope');
 
-  if (!category) reasons.push('unclassified_artifact');
-
-  const uniqueReasons = [...new Set(reasons)];
-  const passes = uniqueReasons.length === 0 && commandCenterClass !== null;
+  const uniqueReasons = unique(reasons);
+  const passes = uniqueReasons.length === 0;
   return {
     passes,
     category,
-    commandCenterClass,
     reasons: uniqueReasons,
+    soft_warnings: unique(softWarnings),
     safeArtifactMessage: passes ? null : NO_SAFE_ARTIFACT_TODAY,
   };
 }
