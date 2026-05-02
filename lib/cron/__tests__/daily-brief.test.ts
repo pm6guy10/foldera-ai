@@ -786,7 +786,7 @@ describe('runDailyGenerate candidate logging', () => {
     expect((saved.execution_result as Record<string, any>).generation_log.candidateDiscovery.topCandidates[1].decisionReason).toContain('Rejected because');
   });
 
-  it('writes the actual fallback winner into the no-send receipt when broad behavioral artifacts fail closed', async () => {
+  it('writes the actual fallback winner into the pending receipt when broad behavioral artifacts are non-dangerous', async () => {
     const directive = buildDirective({
       directive: 'Stop holding live bandwidth open for Waiting on MAS3 (HCA) hiring decision; reopen only if a concrete next-step signal arrives by 5:00 PM PT tomorrow.',
       action_type: 'write_document',
@@ -875,13 +875,12 @@ describe('runDailyGenerate candidate logging', () => {
 
     expect(result.results).toEqual([
       expect.objectContaining({
-        code: 'no_send_persisted',
-        detail: expect.stringContaining('Artifact quality gate blocked: no_concrete_outcome'),
+        code: 'pending_approval_persisted',
         success: true,
       }),
     ]);
     const saved = mockSupabase.insertedActions.at(-1);
-    expect(saved.status).toBe('skipped');
+    expect(saved.status).toBe('pending_approval');
     expect((saved.execution_result as Record<string, any>).outcome_receipt.winner).toEqual(
       expect.objectContaining({
         winner_candidate_id: 'discrepancy-behavioral-mas3',
@@ -894,10 +893,10 @@ describe('runDailyGenerate candidate logging', () => {
       expect.objectContaining({
         artifact_changes_probability_now: true,
         artifact_requires_more_thinking: false,
-        artifact_pass_fail: 'FAIL',
+        artifact_pass_fail: 'PASS',
       }),
     );
-    expect(mockSupabase.insertedActions.some((row) => row.status === 'pending_approval')).toBe(false);
+    expect(mockSupabase.insertedActions.some((row) => row.status === 'skipped')).toBe(false);
   });
 
   it('passes the traced final selected fallback winner into persistence validation instead of scorer-top', async () => {
@@ -1125,7 +1124,7 @@ describe('runDailyGenerate candidate logging', () => {
     expect(mockSupabase.insertedActions.some((row) => row.status === 'pending_approval')).toBe(false);
   });
 
-  it('fails closed when a legacy interview write_document is only a confirmation email', async () => {
+  it('persists a legacy interview write_document confirmation artifact when it has no hard safety failure', async () => {
     vi.mocked(generateDirective).mockResolvedValue(buildDirective({
       action_type: 'write_document',
       directive: 'Interview is 0 days out with no calendar acceptance or confirmation sent.',
@@ -1203,26 +1202,25 @@ describe('runDailyGenerate candidate logging', () => {
 
     expect(result.results).toEqual([
       expect.objectContaining({
-        code: 'no_send_persisted',
-        detail: expect.stringContaining('Artifact quality gate blocked: no_concrete_outcome'),
+        code: 'pending_approval_persisted',
         success: true,
       }),
     ]);
     const saved = mockSupabase.insertedActions[0];
-    expect(saved.status).toBe('skipped');
+    expect(saved.status).toBe('pending_approval');
     expect((saved.execution_result as Record<string, any>).outcome_receipt.artifact_quality_receipt).toEqual(
       expect.objectContaining({
-        final_artifact_bar_passed: false,
-        blocker_bucket: 'artifact_fallback_degradation',
+        final_artifact_bar_passed: true,
+        blocker_bucket: null,
       }),
     );
     expect((saved.execution_result as Record<string, any>).artifact).toEqual(
       expect.objectContaining({
-        type: 'wait_rationale',
-        evidence: 'Artifact quality gate blocked: no_concrete_outcome',
+        type: 'document',
+        title: 'Confirmation Email to Alex Crisler — Care Coordinator Interview, April 29, 9 PM',
       }),
     );
-    expect(mockSupabase.insertedActions.some((row) => row.status === 'pending_approval')).toBe(false);
+    expect(mockSupabase.insertedActions.some((row) => row.status === 'skipped')).toBe(false);
   });
 
   it('does not persist pending_approval when artifact structural validation fails', async () => {
@@ -1295,8 +1293,53 @@ describe('runDailyGenerate candidate logging', () => {
     expect(mockSupabase.insertedActions.some((row) => row.status === 'skipped')).toBe(true);
   });
 
-  it('does not persist pending_approval when the gold-set artifact quality gate rejects the artifact', async () => {
-    const bad = BAD_ARTIFACT_GOLD_SET_V1_2.find((item) => item.id === 'bad_generic_follow_up_darlene');
+  it('persists pending_approval with artifact-quality soft warnings for quality-only failures', async () => {
+    vi.mocked(generateDirective).mockResolvedValue(buildDirective({
+      action_type: 'write_document',
+      directive: 'Save the interview answer packet by 4 PM PT today.',
+      reason: 'The interview answer packet has a same-day preparation deadline and needs a usable draft.',
+      evidence: [
+        { type: 'signal', description: 'Source Email: Darlene Craig sent ESB Technician recruitment 2026-02344 interview details.' },
+      ],
+    }));
+    vi.mocked(generateArtifact).mockResolvedValue({
+      type: 'document',
+      title: 'ESB Technician interview answer packet',
+      content: [
+        'Source Email: Darlene Craig sent ESB Technician recruitment 2026-02344 interview details.',
+        'Decision: use the finished answer packet below for the ESB Technician interview.',
+        'Owner: Brandon owns saving this answer and using it in the ESB Technician interview.',
+        'Ask for Darlene Craig: please send the confirmed interview time and panel by 4 PM PT today.',
+        'Next action: save this answer and use it as the opening response by 4 PM PT today.',
+        'Deadline: 4 PM PT today.',
+        'Consequence: if this stays unresolved, interview preparation turns into generic notes instead of a usable answer.',
+        'Use STAR framework examples after this, but use this answer first: I keep eligibility work reliable by pairing accurate documentation with calm customer service under volume.',
+      ].join('\n'),
+    });
+
+    const result = await runDailyGenerate();
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'pending_approval_persisted',
+        success: true,
+      }),
+    ]);
+    const saved = mockSupabase.insertedActions[0];
+    expect(saved.status).toBe('pending_approval');
+    expect((saved.execution_result as Record<string, any>).artifact_quality_gate).toEqual(
+      expect.objectContaining({
+        reasons: [],
+        soft_warnings: expect.arrayContaining(['generic_coaching']),
+      }),
+    );
+    expect(logStructuredEvent).not.toHaveBeenCalledWith(expect.objectContaining({
+      event: 'artifact_quality_gate_blocked',
+    }));
+  });
+
+  it('does not persist pending_approval when the artifact quality gate finds a hard safety failure', async () => {
+    const bad = BAD_ARTIFACT_GOLD_SET_V1_2.find((item) => item.id === 'bad_internal_debug_sludge');
     expect(bad).toBeDefined();
 
     vi.mocked(generateDirective).mockResolvedValue({
@@ -1315,17 +1358,13 @@ describe('runDailyGenerate candidate logging', () => {
         success: true,
         meta: expect.objectContaining({
           artifact_quality_gate_blocked_reasons: expect.arrayContaining([
-            'only_follow_up_check_in_or_monitor',
+            'internal_debug_token',
           ]),
         }),
       }),
     ]);
     expect(mockSupabase.insertedActions.some((row) => row.status === 'pending_approval')).toBe(false);
     expect(mockSupabase.insertedActions.some((row) => row.status === 'skipped')).toBe(true);
-    expect(logStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
-      event: 'artifact_quality_gate_blocked',
-      generationStatus: 'artifact_quality_gate_blocked',
-    }));
   });
 
   it('persists no_send instead of pending_approval for schedule_conflict write_document memo artifacts', async () => {
@@ -1935,7 +1974,7 @@ Decide by 2026-04-24.`,
     expect(serialized).not.toContain('API usage limits');
   });
 
-  it('suppresses stale interview prep write_document artifacts during scheduled daily-send', async () => {
+  it('sends interview prep write_document artifacts with soft warnings during scheduled daily-send', async () => {
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
     mockSupabase.actionRows = [
       {
@@ -1983,34 +2022,16 @@ Decide by 2026-04-24.`,
 
     expect(result.results).toEqual([
       expect.objectContaining({
-        code: 'no_send_blocker_persisted',
-        detail: 'Interview write_document suppressed at send time because it failed the finished-work email bar.',
+        code: 'email_sent',
         success: true,
         meta: expect.objectContaining({
           action_id: 'esb-interview-prep-1',
-          interview_write_document_suppressed: true,
-          suppression_code: 'interview_write_document_quality_blocked',
           daily_email_idempotency_key: expect.stringContaining(`daily-brief:${USER_ID}:`),
-          quiet_hold_receipt: expect.objectContaining({
-            status: 'held_no_finished_artifact',
-            delivery: 'silent',
-            next_retry_trigger: 'next_scheduled_daily_send',
-            blocked_reasons_summary: expect.arrayContaining([
-              'interview_write_document_quality_blocked',
-              'interview_prep_marker',
-              'missing_finished_interview_document_purpose',
-              'missing_usable_first_person_answer',
-            ]),
-          }),
-          suppression_reasons: expect.arrayContaining([
-            expect.stringContaining('blocked_marker:'),
-            'missing_finished_interview_document_purpose',
-            'missing_usable_first_person_answer',
-          ]),
+          artifact_type: 'document',
         }),
       }),
     ]);
-    expect(sendDailyDirective).not.toHaveBeenCalled();
+    expect(sendDailyDirective).toHaveBeenCalledTimes(1);
     expect(mockSupabase.updatedActions).toEqual([
       expect.objectContaining({
         id: 'esb-interview-prep-1',
@@ -2019,21 +2040,11 @@ Decide by 2026-04-24.`,
             artifact: expect.objectContaining({
               title: 'ESB Technician Interview Prep — Recruitment 2026-02344',
             }),
-            daily_send_suppression: expect.objectContaining({
-              code: 'interview_write_document_quality_blocked',
-              reasons: expect.arrayContaining([
-                expect.stringContaining('blocked_marker:'),
-                'missing_finished_interview_document_purpose',
-                'missing_usable_first_person_answer',
-              ]),
-            }),
-            quiet_hold_receipt: expect.objectContaining({
-              status: 'held_no_finished_artifact',
-              delivery: 'silent',
-              blocked_reasons_summary: expect.arrayContaining([
-                'interview_write_document_quality_blocked',
-                'interview_prep_marker',
-                'missing_finished_interview_document_purpose',
+            daily_brief_sent_at: expect.any(String),
+            daily_send_receipt: expect.objectContaining({
+              soft_warnings: expect.arrayContaining([
+                'generic_coaching',
+                'prepare_instead_of_finished_work',
               ]),
             }),
           }),
@@ -2043,11 +2054,10 @@ Decide by 2026-04-24.`,
     const updatedExecutionResult = mockSupabase.updatedActions[0]?.payload as
       | { execution_result?: Record<string, unknown> }
       | undefined;
-    expect(updatedExecutionResult?.execution_result?.daily_brief_sent_at).toBeUndefined();
-    expect(updatedExecutionResult?.execution_result?.resend_id).toBeUndefined();
+    expect(updatedExecutionResult?.execution_result?.daily_send_suppression).toBeUndefined();
   });
 
-  it('rechecks persisted artifacts at send time and suppresses failed gold-set artifacts', async () => {
+  it('rechecks persisted artifacts at send time and sends soft-warning artifacts', async () => {
     const bad = BAD_ARTIFACT_GOLD_SET_V1_2.find((item) => item.id === 'bad_named_source_no_outcome');
     expect(bad).toBeDefined();
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
@@ -2072,43 +2082,23 @@ Decide by 2026-04-24.`,
 
     expect(result.results).toEqual([
       expect.objectContaining({
-        code: 'no_send_blocker_persisted',
-        detail: 'Persisted artifact suppressed at send time because it failed the artifact quality gate.',
+        code: 'email_sent',
         success: true,
         meta: expect.objectContaining({
           action_id: 'bad-artifact-send-1',
-          artifact_quality_gate_suppressed: true,
-          suppression_code: 'artifact_quality_gate_blocked',
-          suppression_reasons: expect.arrayContaining(['no_concrete_outcome']),
-          quiet_hold_receipt: expect.objectContaining({
-            status: 'held_no_finished_artifact',
-            delivery: 'silent',
-            next_retry_trigger: 'next_scheduled_daily_send',
-            blocked_reasons_summary: expect.arrayContaining([
-              'artifact_quality_gate_blocked',
-              'no_concrete_outcome',
-            ]),
-          }),
+          artifact_type: 'document',
         }),
       }),
     ]);
-    expect(sendDailyDirective).not.toHaveBeenCalled();
+    expect(sendDailyDirective).toHaveBeenCalledTimes(1);
     expect(mockSupabase.updatedActions).toEqual([
       expect.objectContaining({
         id: 'bad-artifact-send-1',
         payload: expect.objectContaining({
           execution_result: expect.objectContaining({
-            daily_send_suppression: expect.objectContaining({
-              code: 'artifact_quality_gate_blocked',
-              reasons: expect.arrayContaining(['no_concrete_outcome']),
-            }),
-            quiet_hold_receipt: expect.objectContaining({
-              status: 'held_no_finished_artifact',
-              delivery: 'silent',
-              blocked_reasons_summary: expect.arrayContaining([
-                'artifact_quality_gate_blocked',
-                'no_concrete_outcome',
-              ]),
+            daily_brief_sent_at: expect.any(String),
+            daily_send_receipt: expect.objectContaining({
+              soft_warnings: expect.arrayContaining(['no_concrete_outcome']),
             }),
           }),
         }),
@@ -2117,11 +2107,11 @@ Decide by 2026-04-24.`,
     const updatedExecutionResult = mockSupabase.updatedActions[0]?.payload as
       | { execution_result?: Record<string, unknown> }
       | undefined;
-    expect(updatedExecutionResult?.execution_result?.daily_brief_sent_at).toBeUndefined();
-    expect(updatedExecutionResult?.execution_result?.resend_id).toBeUndefined();
+    expect(updatedExecutionResult?.execution_result?.daily_send_suppression).toBeUndefined();
+    expect(updatedExecutionResult?.execution_result?.daily_brief_sent_at).toEqual(expect.any(String));
   });
 
-  it('rechecks persisted artifacts for explicit manual settings runs before email delivery', async () => {
+  it('rechecks persisted artifacts for explicit manual settings runs and sends soft-warning artifacts', async () => {
     const bad = BAD_ARTIFACT_GOLD_SET_V1_2.find((item) => item.id === 'bad_named_source_no_outcome');
     expect(bad).toBeDefined();
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
@@ -2150,34 +2140,24 @@ Decide by 2026-04-24.`,
 
     expect(result.results).toEqual([
       expect.objectContaining({
-        code: 'no_send_blocker_persisted',
-        detail: 'Persisted artifact suppressed at send time because it failed the artifact quality gate.',
+        code: 'email_sent',
         success: true,
         meta: expect.objectContaining({
           action_id: 'manual-bad-artifact-send-1',
-          artifact_quality_gate_suppressed: true,
-          suppression_code: 'artifact_quality_gate_blocked',
-          suppression_reasons: expect.arrayContaining(['no_concrete_outcome']),
+          resend_id: 'resend-manual-bad-artifact',
         }),
       }),
     ]);
-    expect(sendDailyDirective).not.toHaveBeenCalled();
+    expect(sendDailyDirective).toHaveBeenCalledTimes(1);
     expect(mockSupabase.updatedActions).toEqual([
       expect.objectContaining({
         id: 'manual-bad-artifact-send-1',
         payload: expect.objectContaining({
           execution_result: expect.objectContaining({
-            daily_send_suppression: expect.objectContaining({
-              code: 'artifact_quality_gate_blocked',
-              reasons: expect.arrayContaining(['no_concrete_outcome']),
-            }),
-            quiet_hold_receipt: expect.objectContaining({
-              status: 'held_no_finished_artifact',
-              delivery: 'silent',
-              blocked_reasons_summary: expect.arrayContaining([
-                'artifact_quality_gate_blocked',
-                'no_concrete_outcome',
-              ]),
+            daily_brief_sent_at: expect.any(String),
+            resend_id: 'resend-manual-bad-artifact',
+            daily_send_receipt: expect.objectContaining({
+              soft_warnings: expect.arrayContaining(['no_concrete_outcome']),
             }),
           }),
         }),

@@ -785,6 +785,7 @@ function buildArtifactQualityReceipt(input: {
       bottomGateReasons: input.bottomGateReasons,
       artifact: input.artifact,
     }) ?? existing?.blocker_bucket ?? null,
+    soft_warnings: existing?.soft_warnings ?? [],
   };
 }
 
@@ -2877,6 +2878,16 @@ export async function runDailyGenerate(
           deliveredLast24h: 1,
         });
         const blockDetail = `Artifact quality gate blocked: ${artifactQualityGate.reasons.join('; ')}`;
+        const artifactQualityGateReceipt = {
+          category: artifactQualityGate.category,
+          reasons: artifactQualityGate.reasons,
+          ...(artifactQualityGate.soft_warnings.length > 0
+            ? { soft_warnings: artifactQualityGate.soft_warnings }
+            : {}),
+          fail_safe_status: failSafe.status,
+          fail_safe_reason: failSafe.reason,
+          reject_rate: failSafe.rejectRate,
+        };
         const qualityGateReceipt = buildBlockedOutcomeReceipt(
           directive,
           artifact,
@@ -2893,6 +2904,7 @@ export async function runDailyGenerate(
             scope: 'daily-generate',
             category: artifactQualityGate.category,
             reasons: artifactQualityGate.reasons,
+            soft_warnings: artifactQualityGate.soft_warnings,
             reject_rate: failSafe.rejectRate,
             fail_safe_status: failSafe.status,
             fail_safe_reason: failSafe.reason,
@@ -2907,13 +2919,7 @@ export async function runDailyGenerate(
           {
             outcome_receipt: qualityGateReceipt,
             artifact_quality_receipt: qualityGateReceipt.artifact_quality_receipt,
-            artifact_quality_gate: {
-              category: artifactQualityGate.category,
-              reasons: artifactQualityGate.reasons,
-              fail_safe_status: failSafe.status,
-              fail_safe_reason: failSafe.reason,
-              reject_rate: failSafe.rejectRate,
-            },
+            artifact_quality_gate: artifactQualityGateReceipt,
           },
         );
         if (!savedNoSend) {
@@ -2941,6 +2947,13 @@ export async function runDailyGenerate(
         });
         continue;
       }
+      const artifactQualityGateReceipt = {
+        category: artifactQualityGate.category,
+        reasons: artifactQualityGate.reasons,
+        ...(artifactQualityGate.soft_warnings.length > 0
+          ? { soft_warnings: artifactQualityGate.soft_warnings }
+          : {}),
+      };
 
       // Post-generation quality gate — block outputs that are not worth sending.
       const sendWorthiness = isSendWorthy(directive, artifact, userEmails);
@@ -3112,6 +3125,9 @@ export async function runDailyGenerate(
             }),
             approve: null,
             outcome_receipt: outcomeReceipt,
+            ...(artifactQualityGate.soft_warnings.length > 0
+              ? { artifact_quality_gate: artifactQualityGateReceipt }
+              : {}),
           },
         })
         .select('id')

@@ -257,7 +257,7 @@ describe('collectActiveFailureSuppressionKeys', () => {
           original_candidate: {
             action_type: 'write_document',
             candidate_description: 'Resend relationship status and interview decision map',
-            blocked_by: 'artifact_quality:transactional_sender_decision_pressure; artifact_quality:outside_command_center_scope',
+            blocked_by: 'artifact_quality:transactional_sender_decision_pressure',
           },
         },
       },

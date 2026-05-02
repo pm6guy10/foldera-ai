@@ -1703,7 +1703,7 @@ describe('generateDirective runtime failures', () => {
     }));
   });
 
-  it('repairs weak behavioral_pattern write_document into a long-horizon internal decision move', async () => {
+  it('lets weak behavioral_pattern write_document output proceed with artifact-quality warnings', async () => {
     const scored = asWinnerScored(buildScorerResult());
     scored.winner.type = 'discrepancy';
     scored.winner.discrepancyClass = 'behavioral_pattern' as import('../../briefing/discrepancy-detector').DiscrepancyClass;
@@ -1756,9 +1756,10 @@ describe('generateDirective runtime failures', () => {
     const directive = await generateDirective('user-1', { dryRun: true });
 
     expect(anthropicCreate).toHaveBeenCalledTimes(2);
-    expect(directive.action_type).toBe('do_nothing');
-    expect(directive.directive).toBe('__GENERATION_FAILED__');
-    expect(directive.reason).toContain('artifact_quality');
+    expect(directive.action_type).toBe('write_document');
+    expect(directive.directive).not.toBe('__GENERATION_FAILED__');
+    expect(directive.artifactQualityReceipt?.final_artifact_bar_passed).toBe(true);
+    expect(directive.artifactQualityReceipt?.soft_warnings).toEqual(expect.any(Array));
   });
 
   it('uses the grounded thread label for MAS3-style behavioral-pattern repairs instead of echoing the generated directive', async () => {

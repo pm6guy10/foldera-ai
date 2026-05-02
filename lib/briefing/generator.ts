@@ -10293,8 +10293,8 @@ export async function generateDirective(
             scope: 'generator',
             candidate_title: currentCandidate.title.slice(0, 80),
             candidate_index: candidateIndex,
-            command_center_class: candidateGate.commandCenterClass,
             reasons: candidateGate.reasons,
+            soft_warnings: candidateGate.soft_warnings,
           },
         });
         continue;
@@ -10897,6 +10897,7 @@ export async function generateDirective(
       fallback_class: payloadResult.fallbackClass ?? null,
       final_artifact_bar_passed: null,
       blocker_bucket: null,
+      soft_warnings: [],
     };
 
     const directive = {
@@ -11075,6 +11076,7 @@ export async function generateDirective(
           ...receipt,
           final_artifact_bar_passed: false,
           blocker_bucket: 'artifact_quality_gate',
+          soft_warnings: artifactQualityGate.soft_warnings,
         };
         const artifactQualityReasons = artifactQualityGate.reasons.map((reason) => `artifact_quality:${reason}`);
         candidateBlockLog.push({
@@ -11092,6 +11094,7 @@ export async function generateDirective(
             candidate_title: currentCandidate.title.slice(0, 80),
             category: artifactQualityGate.category,
             reasons: artifactQualityGate.reasons,
+            soft_warnings: artifactQualityGate.soft_warnings,
           },
         });
         continue;
@@ -11101,6 +11104,7 @@ export async function generateDirective(
         ...receipt,
         final_artifact_bar_passed: true,
         blocker_bucket: null,
+        soft_warnings: artifactQualityGate.soft_warnings,
       };
     }
 

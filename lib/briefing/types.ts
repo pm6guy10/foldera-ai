@@ -24,6 +24,7 @@ export interface ArtifactQualityReceipt {
   fallback_class: string | null;
   final_artifact_bar_passed: boolean | null;
   blocker_bucket: string | null;
+  soft_warnings: string[];
 }
 
 /**

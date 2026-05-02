@@ -16,7 +16,7 @@ export const FAILURE_SUPPRESSION_WINDOW_DAYS = 7;
 export const USER_SKIP_SUPPRESSION_WINDOW_MS = 48 * 60 * 60 * 1000;
 
 const FAILURE_REASON_PATTERN =
-  /duplicate_|usefulness:|llm_failed:|trigger_lock:|ungrounded_currency|artifact_quality:|outside_command_center_scope|unclassified_artifact|transactional_sender_decision_pressure|relationship_silence_artifact|all_candidates_blocked|Selected candidate blocked|stale_date_in_directive|GENERATION_LOOP_DETECTED/i;
+  /duplicate_|usefulness:|llm_failed:|trigger_lock:|ungrounded_currency|artifact_quality:|transactional_sender_decision_pressure|relationship_silence_artifact|all_candidates_blocked|Selected candidate blocked|stale_date_in_directive|GENERATION_LOOP_DETECTED/i;
 
 const MONTH_NAME_TO_INDEX: Record<string, number> = {
   january: 0,
