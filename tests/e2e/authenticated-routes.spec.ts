@@ -571,24 +571,41 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
   test('loads dashboard contract card when no directive — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupEmptyDashboardMocks(page);
+    let runBriefCalls = 0;
+    await page.route(matchApiPath('/api/settings/run-brief'), async (route) => {
+      runBriefCalls += 1;
+      await route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: json({ error: 'run_brief_must_not_be_called_from_empty_dashboard' }),
+      });
+    });
     await page.goto('/dashboard');
     await expect(page.getByTestId('dashboard-empty-state')).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('No safe artifact today.')).toBeVisible({ timeout: 15000 });
     await expect(
-      page.getByText(/Foldera checked the command-center signals and did not find a safe artifact to show/i),
+      page.getByText(
+        /Foldera checked your job, interview, benefits, payment, admin deadline, and calendar-conflict signals\. Nothing was safe enough to save\./i,
+      ),
     ).toBeVisible();
     await expect(page.getByText(/You're set until tomorrow morning/i)).toHaveCount(0);
     await expect(page.getByText(/next read still lands in email/i)).toHaveCount(0);
+    await expect(page.getByText(/No directive cleared the bar/i)).toHaveCount(0);
     await expect(page.getByText(/No live brief is queued right now/i)).toHaveCount(0);
     await expect(page.getByText(/Your Microsoft connection needs a quick refresh/i)).toHaveCount(0);
     await expect(page.getByText(/Foldera will post your next source-backed brief here/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Run command-center scan/i })).toBeVisible();
+    await expect(page.getByText(/first read/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Run command-center scan/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Check command center/i })).toHaveCount(0);
+    await expect(page.getByTestId('dashboard-run-first-read')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Reconnect Microsoft/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Save$/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Approve$/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Approve & send/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Skip$/i })).toHaveCount(0);
     await expect(page.getByTestId('dashboard-primary-action')).toHaveCount(0);
+    await page.waitForLoadState('networkidle');
+    expect(runBriefCalls).toBe(0);
   });
 
   test('no actionable console errors — desktop', async ({ page }) => {
@@ -762,7 +779,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByText(/It worked/i)).toBeVisible();
   });
 
-  test('write_document journey: skip sends reason and first read does not resurrect skipped artifact', async ({ page }) => {
+  test('write_document journey: skip sends reason and empty state does not expose paid scan', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await seedAuthenticatedSession(page);
     await attachCheckoutGuards(page);
@@ -791,19 +808,13 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
         }),
       });
     });
+    let runBriefCalls = 0;
     await page.route(matchApiPath('/api/settings/run-brief'), async (route) => {
+      runBriefCalls += 1;
       await route.fulfill({
-        status: 200,
+        status: 500,
         contentType: 'application/json',
-        body: json({
-          ok: true,
-          stages: {
-            daily_brief: {
-              ok: true,
-              generate: { results: [{ code: 'pending_approval_reused', success: true }] },
-            },
-          },
-        }),
+        body: json({ error: 'run_brief_must_not_be_called_from_empty_dashboard' }),
       });
     });
 
@@ -821,10 +832,11 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       }),
     );
     await expect(page.getByTestId('dashboard-empty-state')).toBeVisible();
-
-    await page.getByTestId('dashboard-run-first-read').click();
-    await expectDashboardStatus(page, 'first_read_no_visible_action');
+    await expect(page.getByTestId('dashboard-run-first-read')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Run command-center scan/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Check command center/i })).toHaveCount(0);
     await expect(page.getByText(DOCUMENT_DIRECTIVE_ASK)).toHaveCount(0);
+    expect(runBriefCalls).toBe(0);
   });
 
   test('stale skip action reconciles after execute 404', async ({ page }) => {

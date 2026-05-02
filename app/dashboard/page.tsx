@@ -117,10 +117,7 @@ const DASHBOARD_PANEL_LABELS: Record<DashboardPanelKey, string> = {
   settings: 'Settings',
 };
 
-const FIRST_READ_NO_VISIBLE_ACTION_MESSAGE =
-  'No directive cleared the bar. Foldera checked your signals and found nothing ready to act on.';
-const FIRST_READ_FAILURE_MESSAGE = 'Could not run your first read right now.';
-const FIRST_READ_INTERNAL_FAILURE_PATTERNS = [
+const INTERNAL_FAILURE_PATTERNS = [
   /\bllm_failed\b/i,
   /\bstale_date_in_directive\b/i,
   /\bINFINITE_LOOP\b/i,
@@ -258,7 +255,7 @@ function getArtifactBody(artifact: DashboardArtifact | null | undefined): string
 
 function hasInternalFailureText(value: string | null | undefined): boolean {
   if (!value) return false;
-  return FIRST_READ_INTERNAL_FAILURE_PATTERNS.some((pattern) => pattern.test(value));
+  return INTERNAL_FAILURE_PATTERNS.some((pattern) => pattern.test(value));
 }
 
 function getDashboardActionArtifact(
@@ -305,11 +302,6 @@ function isVisibleDashboardAction(value: unknown): value is DashboardAction {
     getDashboardActionHeadline(action).length > 0 ||
     getArtifactBody(getDashboardActionArtifact(action)).length > 0
   );
-}
-
-function sanitizeFirstReadFailureMessage(message: string | null | undefined): string {
-  if (hasInternalFailureText(message)) return FIRST_READ_FAILURE_MESSAGE;
-  return asTrimmedString(message) ?? FIRST_READ_FAILURE_MESSAGE;
 }
 
 function isWriteDocumentAction(action: DashboardAction | null): boolean {
@@ -457,14 +449,12 @@ export default function DashboardPage() {
 
   const [action, setAction] = useState<DashboardAction | null>(null);
   const [loadingLatest, setLoadingLatest] = useState(true);
-  const [hasActiveIntegration, setHasActiveIntegration] = useState(false);
   const [integrationStatus, setIntegrationStatus] = useState<IntegrationStatusPayload | null>(null);
   const [graphStats, setGraphStats] = useState<GraphStatsPayload | null>(null);
   const [historyItems, setHistoryItems] = useState<DashboardHistoryItem[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [artifactPaywallLocked, setArtifactPaywallLocked] = useState(false);
   const [executing, setExecuting] = useState(false);
-  const [firstReadRunning, setFirstReadRunning] = useState(false);
   const [statusNotice, setStatusNotice] = useState<DashboardStatusNotice | null>(null);
   const [outcomeSubmitting, setOutcomeSubmitting] = useState<null | 'worked' | 'didnt_work'>(
     null,
@@ -535,7 +525,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (status !== 'authenticated') {
-      setHasActiveIntegration(false);
       setIntegrationStatus(null);
       return;
     }
@@ -546,14 +535,9 @@ export default function DashboardPage() {
       .then((payload: IntegrationStatusPayload | null) => {
         if (cancelled) return;
         setIntegrationStatus(payload);
-        const integrations = Array.isArray(payload?.integrations) ? payload.integrations : [];
-        setHasActiveIntegration(
-          integrations.some((integration) => integration?.is_active === true),
-        );
       })
       .catch(() => {
         if (!cancelled) {
-          setHasActiveIntegration(false);
           setIntegrationStatus(null);
         }
       });
@@ -830,64 +814,6 @@ export default function DashboardPage() {
     );
   }, [action]);
 
-  const runFirstReadNow = useCallback(async () => {
-    if (firstReadRunning) return;
-    setFirstReadRunning(true);
-    setStatusNotice(null);
-
-    try {
-      const response = await fetch('/api/settings/run-brief?force=true&use_llm=true', {
-        method: 'POST',
-      });
-      const payload = await response.json().catch(() => ({}));
-      const spend = payload?.spend_policy as
-        | { paid_llm_requested?: boolean; pipeline_dry_run?: boolean }
-        | undefined;
-
-      if (spend?.paid_llm_requested && spend?.pipeline_dry_run) {
-        setStatusNotice({
-          id: 'first_read_dry_run_disabled',
-          message: 'First read is unavailable on this deployment right now.',
-        });
-        return;
-      }
-
-      if (!response.ok && !payload?.stages) {
-        throw new Error(
-          sanitizeFirstReadFailureMessage(
-            typeof payload?.error === 'string' ? payload.error : null,
-          ),
-        );
-      }
-
-      const latestResult = await load();
-      if (!latestResult.loaded) {
-        setStatusNotice({
-          id: 'first_read_failed',
-          message: FIRST_READ_FAILURE_MESSAGE,
-        });
-        return;
-      }
-
-      setStatusNotice({
-        id: latestResult.action ? 'first_read_generated' : 'first_read_no_visible_action',
-        message: latestResult.action
-          ? 'First read generated.'
-          : FIRST_READ_NO_VISIBLE_ACTION_MESSAGE,
-      });
-    } catch (error) {
-      setStatusNotice({
-        id: 'first_read_failed',
-        message:
-          error instanceof Error
-            ? sanitizeFirstReadFailureMessage(error.message)
-            : FIRST_READ_FAILURE_MESSAGE,
-      });
-    } finally {
-      setFirstReadRunning(false);
-    }
-  }, [firstReadRunning, load]);
-
   const sessionName = session?.user?.name?.trim() || 'Brandon Kapp';
   const firstName = sessionName.split(' ')[0] || 'Brandon';
   const writeDocument = isWriteDocumentAction(action);
@@ -1060,13 +986,7 @@ export default function DashboardPage() {
       ]
     : [];
 
-  const emptyStateCard = (
-    <EmptyStateCard
-      hasActiveIntegration={hasActiveIntegration}
-      firstReadRunning={firstReadRunning}
-      onRunFirstRead={() => void runFirstReadNow()}
-    />
-  );
+  const emptyStateCard = <EmptyStateCard />;
 
   const loadingCard = (
     <div className="foldera-dashboard-brief-card foldera-brief-shell flex h-full w-full items-center justify-center px-8 py-10 text-center">

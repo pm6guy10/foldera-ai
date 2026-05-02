@@ -1,14 +1,4 @@
-type EmptyStateCardProps = {
-  hasActiveIntegration: boolean;
-  firstReadRunning: boolean;
-  onRunFirstRead: () => void;
-};
-
-export function EmptyStateCard({
-  hasActiveIntegration,
-  firstReadRunning,
-  onRunFirstRead,
-}: EmptyStateCardProps) {
+export function EmptyStateCard() {
   return (
     <div
       data-testid="dashboard-empty-state"
@@ -20,22 +10,9 @@ export function EmptyStateCard({
           No safe artifact today.
         </h2>
         <p className="mt-4 text-[15px] leading-7 text-text-secondary">
-          Foldera checked the command-center signals and did not find a safe artifact to show.
-          The dashboard stays empty until a job, interview, benefits, payment, admin, or
-          calendar-conflict artifact clears the bar.
-          {!hasActiveIntegration ? ' Connect accounts in Settings if you want deeper context.' : ''}
+          Foldera checked your job, interview, benefits, payment, admin deadline, and
+          calendar-conflict signals. Nothing was safe enough to save.
         </p>
-        {hasActiveIntegration ? (
-          <button
-            type="button"
-            onClick={onRunFirstRead}
-            disabled={firstReadRunning}
-            data-testid="dashboard-run-first-read"
-            className="foldera-button-primary mt-7"
-          >
-            {firstReadRunning ? 'Running command-center scan' : 'Run command-center scan'}
-          </button>
-        ) : null}
       </div>
     </div>
   );

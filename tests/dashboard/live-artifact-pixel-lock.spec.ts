@@ -13,8 +13,24 @@ const WEB_ORIGIN =
   process.env.PLAYWRIGHT_TEST_BASE_URL?.trim() ||
   process.env.BASE_URL?.trim() ||
   `http://127.0.0.1:${WEB_PORT}`;
-const LONG_DOCUMENT_DIRECTIVE =
-  'Darlene Craig (darlene.craig@esd.wa.gov) sent you interview questions for ESB Technician (2026-02344) on April 21. Here is your completed prep sheet built from those questions, your resume, and the job posting.';
+const GOLDEN_DOCUMENT_DIRECTIVE =
+  'Save the ESB Technician role-fit packet for Recruitment 2026-02344 before the Darlene Craig interview loop closes.';
+const GOLDEN_DOCUMENT_TITLE = 'ESB Technician Role-Fit Packet - Recruitment 2026-02344';
+const GOLDEN_DOCUMENT_BODY = [
+  '## Source basis',
+  'Darlene Craig sent the ESB Technician interview questions for Recruitment 2026-02344 on April 21.',
+  '',
+  '## Ready role-fit answer',
+  'I help people through benefits and eligibility problems by keeping the facts organized, explaining next steps clearly, and protecting sensitive information. In ProviderOne and claims work, I verified eligibility, reconciled records, and kept documentation audit-ready while people were stressed or waiting on answers.',
+  '',
+  '## Why this fits',
+  '- The role needs accurate unemployment-insurance decisions and calm caller support.',
+  '- Brandon has public-service, eligibility, claims, and documentation experience that maps directly to that work.',
+  '- The interview loop is active now, so this packet is worth saving before the next conversation.',
+  '',
+  '## Decision',
+  'Use this role-fit packet as the saved interview answer base. If Darlene asks about fit, lead with accuracy, empathy, and remote documentation discipline.',
+].join('\n');
 
 const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 const SESSION_RESPONSE = {
@@ -140,15 +156,15 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
     await setupDashboardMocks(page, {
       latestResponse: {
         id: 'action-pixel-lock-001',
-        directive: LONG_DOCUMENT_DIRECTIVE,
+        directive: GOLDEN_DOCUMENT_DIRECTIVE,
         action_type: 'write_document',
         confidence: 87,
-        reason: 'Darlene Craig sent interview questions for 2026-02344 directly to you.',
+        reason: 'Darlene Craig sent interview questions for Recruitment 2026-02344 directly to you.',
         status: 'pending_approval',
         artifact: {
           type: 'document',
-          title: 'MAS3 interview packet resolution',
-          content: 'Assign Holly as final packet owner and confirm reference bundle by 4 PM PT.',
+          title: GOLDEN_DOCUMENT_TITLE,
+          content: GOLDEN_DOCUMENT_BODY,
         },
         free_artifact_remaining: true,
         artifact_paywall_locked: false,
@@ -165,8 +181,12 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
     await page.goto('/dashboard');
 
     await expect(page.getByTestId('pixel-lock-frame')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('pixel-lock-artifact-title')).toHaveText(LONG_DOCUMENT_DIRECTIVE);
-    await expect(page.getByTestId('pixel-lock-artifact-body')).toContainText('Assign Holly as final packet owner');
+    await expect(page.getByTestId('pixel-lock-artifact-title')).toHaveText(GOLDEN_DOCUMENT_DIRECTIVE);
+    await expect(page.getByTestId('pixel-lock-artifact-body')).toContainText('Ready role-fit answer');
+    await expect(page.getByTestId('dashboard-document-body')).toContainText('Ready role-fit answer');
+    await expect(page.getByTestId('dashboard-document-body')).toContainText(
+      'Use this role-fit packet as the saved interview answer base.',
+    );
 
     const directiveBox = await requiredBox(page, 'dashboard-brief-directive-section');
     const whyBox = await requiredBox(page, 'dashboard-brief-why-section');
@@ -212,6 +232,44 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
     await page.getByTestId('dashboard-primary-action').click();
     await expect.poll(() => approveCalls).toBeGreaterThan(0);
     expect(skipCalls).toBe(0);
+  });
+
+  test('keeps golden write_document artifact readable without mobile overflow', async ({ page }) => {
+    await setupDashboardMocks(page, {
+      latestResponse: {
+        id: 'action-pixel-lock-mobile-001',
+        directive: GOLDEN_DOCUMENT_DIRECTIVE,
+        action_type: 'write_document',
+        confidence: 87,
+        reason: 'Darlene Craig sent interview questions for Recruitment 2026-02344 directly to you.',
+        status: 'pending_approval',
+        artifact: {
+          type: 'document',
+          title: GOLDEN_DOCUMENT_TITLE,
+          content: GOLDEN_DOCUMENT_BODY,
+        },
+        free_artifact_remaining: true,
+        artifact_paywall_locked: false,
+        approved_count: 0,
+      },
+      subscriptionResponse: { plan: 'free', status: 'inactive' },
+    });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/dashboard');
+
+    await expect(page.getByRole('heading', { name: GOLDEN_DOCUMENT_DIRECTIVE })).toBeVisible({
+      timeout: 15000,
+    });
+    await expect(page.getByTestId('dashboard-document-body')).toContainText('Ready role-fit answer');
+    await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^skip$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /approve & send/i })).toHaveCount(0);
+    await expect
+      .poll(() =>
+        page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
+      )
+      .toBeLessThanOrEqual(1);
   });
 
   test('preserves send_message labels and shows upgrade CTA overlay only when artifact is paywall-locked', async ({ page }) => {

@@ -32,49 +32,42 @@ config({ path: resolve(process.cwd(), '.env.local') });
 const OWNER_USER_ID = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
 
 const DIRECTIVE_TEXT =
-  'Darlene Craig (darlene.craig@esd.wa.gov) sent you interview questions for ESB Technician (2026-02344) on April 21. Here is your completed prep sheet built from those questions, your resume, and the job posting.';
+  'Save the ESB Technician role-fit packet for Recruitment 2026-02344 before the Darlene Craig interview loop closes.';
 
-const ARTIFACT_TITLE = 'ESB Technician Interview Prep — Recruitment 2026-02344';
+const ARTIFACT_TITLE = 'ESB Technician Role-Fit Packet - Recruitment 2026-02344';
 
 const ARTIFACT_CONTENT = `SOURCE
-Email: Darlene Craig (darlene.craig@esd.wa.gov), April 21 — interview questions attached
+Email: Darlene Craig (darlene.craig@esd.wa.gov), April 21 - interview questions attached
 Job posting: ES Benefits Technician, Recruitment 2026-02344, Employment Security Department
 Resume: Brandon_Kapp_Resume_GOV.pdf
 
-ESB TECHNICIAN INTERVIEW PREP
+ESB TECHNICIAN ROLE-FIT PACKET
 Recruitment 2026-02344 | ESD | Brandon Kapp
 
-OPENING
+READY OPENING ANSWER
 
 I come from public-service work where accuracy and documentation matter. I have done eligibility verification in ProviderOne, claims reconciliation, and high-volume coordination helping people who needed clear answers. I stay calm, learn systems quickly, and take accuracy seriously.
 
-Q1: UI KNOWLEDGE AND FIT
-- UI = temporary support for eligible workers + program integrity through accurate determinations.
-- FISH: verified Medicaid eligibility in ProviderOne, reconciled services, kept compliant records.
-- J&R: reviewed claims data, found discrepancies, maintained audit-ready docs.
-- Honest: no direct UI experience, but the transferable skills line up closely.
+ROLE-FIT POINTS
 
-Q2: 85% INCOMING CALLS, PRESSURE ENVIRONMENT
-- People call stressed or scared. My job is to stay calm and move the issue forward.
-- I listen for the real issue, explain next steps clearly, and do not take it personally.
-- I have done this with veterans, seniors, and families in healthcare and benefits settings.
+1. Unemployment-insurance mission fit
+I understand the role as a balance of temporary support for eligible workers and program integrity through accurate determinations. My benefits and claims work maps to that balance: verify the record, explain the next step, and leave documentation that another reviewer can trust.
 
-Q3: VIRTUAL COLLABORATION
-- Be reliable, responsive, and easy to work with. Ask early when unclear. Document well.
-- Share patterns with the team. Leave clean notes so the next person can follow the case.
-- Trust = consistency. Show up, communicate, do what you say.
+2. High-volume caller environment
+People call stressed, scared, or frustrated. My job is to stay calm, identify the real issue, and move the case forward without losing accuracy. I have done that with veterans, seniors, and families in healthcare and benefits settings.
 
-Q4: TECH CONFIDENCE
-- Devices: Very confident. Multiple screens and tools at once.
-- Software: Very confident. MS Office daily, Excel for tracking, learn new systems fast.
-- Internet: Very confident. Web portals, shared drives, ProviderOne.
-- Troubleshooting: Confident. Fix what I can, describe clearly when I escalate.
-- Security: Very confident. Strict with protected info, follow access rules, flag discrepancies.
+3. Remote team reliability
+I build trust remotely by being responsive, documenting clearly, asking early when something is unclear, and making the next handoff easy for the team.
 
-Q5: LANGUAGES
-English only.
+4. Technical readiness
+I am confident with multi-screen workflows, MS Office, Excel tracking, web portals, ProviderOne-style systems, and careful handling of protected information. When something breaks, I troubleshoot what I can and escalate with a clear description.
 
-Q6: CLOSING + QUESTIONS
+DECISION / HOW TO USE THIS
+
+Save this as the answer base for the ESB Technician interview. Lead with accuracy, empathy, and documentation discipline; use the role-fit points above when Darlene asks why this role fits now.
+
+QUESTIONS TO ASK
+
 This role combines public service, accuracy, and helping people in tough financial moments. That is what I want to do.
 
 Ask them:
@@ -114,7 +107,7 @@ async function main() {
     action_type: 'write_document' as const,
     confidence: 95,
     reason:
-      'Darlene Craig sent interview questions for 2026-02344 directly to you — the prep sheet is the finished work.',
+      'Darlene Craig sent interview questions for Recruitment 2026-02344 directly to you; the role-fit packet is the safe command-center artifact to save.',
     evidence: [
       {
         type: 'signal',
