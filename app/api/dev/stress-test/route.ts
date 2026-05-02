@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth/auth-options';
+import { OWNER_USER_ID } from '@/lib/auth/constants';
+import { resolveUser } from '@/lib/auth/resolve-user';
 import { generateDirective } from '@/lib/briefing/generator';
 import { scoreOpenLoops, type ScoredLoop } from '@/lib/briefing/scorer';
 import { processUnextractedSignals } from '@/lib/signals/signal-processor';
@@ -53,9 +53,10 @@ export async function POST(request: Request) {
     return jsonError('Dev routes are disabled.', 403);
   }
 
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return jsonError('Authentication required.', 401);
+  const auth = await resolveUser(request);
+  if (auth instanceof NextResponse) return auth;
+  if (auth.userId !== OWNER_USER_ID) {
+    return jsonError('Forbidden', 403);
   }
 
   let body: StressTestRequest = {};
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
   const rounds = clampRounds(body.rounds);
   const userId = typeof body.user_id === 'string' && body.user_id.trim().length > 0
     ? body.user_id.trim()
-    : session.user.id;
+    : auth.userId;
 
   const results: Array<{
     round: number;
