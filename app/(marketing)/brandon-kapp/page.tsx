@@ -68,7 +68,7 @@ export default function BrandonKappPage() {
                       href={link.href}
                       target={link.href.startsWith('mailto:') ? undefined : '_blank'}
                       rel={link.href.startsWith('mailto:') ? undefined : 'noreferrer'}
-                      className="inline-flex min-h-[44px] items-center justify-center rounded-button border border-border px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary transition-colors hover:border-border-strong"
+                      className="inline-flex min-h-[44px] items-center justify-center foldera-button-radius border border-border px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary transition-colors hover:border-border-strong"
                     >
                       {link.label}
                     </a>
@@ -76,7 +76,7 @@ export default function BrandonKappPage() {
                     <Link
                       key={link.href}
                       href={link.href}
-                      className="inline-flex min-h-[44px] items-center justify-center rounded-button border border-border px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary transition-colors hover:border-border-strong"
+                      className="inline-flex min-h-[44px] items-center justify-center foldera-button-radius border border-border px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary transition-colors hover:border-border-strong"
                     >
                       {link.label}
                     </Link>

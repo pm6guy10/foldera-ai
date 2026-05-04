@@ -1,3 +1,4 @@
+import { OWNER_USER_ID } from '../lib/auth/constants';
 /**
  * Force one golden pending_approval artifact into production tkg_actions.
  *
@@ -28,8 +29,6 @@ import { config } from 'dotenv';
 import { resolve } from 'path';
 
 config({ path: resolve(process.cwd(), '.env.local') });
-
-const OWNER_USER_ID = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
 
 const DIRECTIVE_TEXT =
   'Save the ESB Technician role-fit packet for Recruitment 2026-02344 before the Darlene Craig interview loop closes.';

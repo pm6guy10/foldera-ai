@@ -1,3 +1,4 @@
+import { OWNER_USER_ID } from '../lib/auth/constants';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
@@ -31,7 +32,7 @@ async function main() {
   const { data: entities } = await supabase
     .from('tkg_entities')
     .select('id, name, primary_email, last_interaction, interaction_count')
-    .eq('user_id', 'e40b7cd8-4925-42f7-bc99-5022969f1d22')
+    .eq('user_id', OWNER_USER_ID)
     .order('interaction_count', { ascending: false })
     .limit(20);
 

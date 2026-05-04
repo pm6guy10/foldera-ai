@@ -1,3 +1,4 @@
+import { OWNER_USER_ID } from '../lib/auth/constants';
 /**
  * Run the scorer locally against production DB to see post-fix candidates.
  * This exercises the exact same code path as a real pipeline run.
@@ -11,7 +12,7 @@ process.env.ALLOW_PAID_LLM = 'false';
 async function main() {
   const { scoreOpenLoops } = await import('../lib/briefing/scorer');
   
-  const OWNER = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
+  const OWNER = OWNER_USER_ID;
   
   console.log('Running scoreOpenLoops for owner...');
   const result = await scoreOpenLoops(OWNER);

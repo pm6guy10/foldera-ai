@@ -1,0 +1,22 @@
+{
+  "name": "Foldera",
+  "short_name": "Foldera",
+  "description": "Finished work, every morning.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
+  "icons": [
+    {
+      "src": "/foldera-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/foldera-glyph.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

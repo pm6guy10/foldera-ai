@@ -80,7 +80,7 @@ export default function BriefingsHistoryPage() {
         <button
           type="button"
           onClick={() => signOut({ callbackUrl: SIGN_OUT_CALLBACK_URL })}
-          className="inline-flex min-h-[40px] items-center gap-2 rounded-button border border-border px-3 text-xs font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
+          className="inline-flex min-h-[40px] items-center gap-2 foldera-button-radius border border-border px-3 text-xs font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
           aria-label="Sign out"
         >
           <LogOut className="h-4 w-4" aria-hidden="true" />
@@ -106,13 +106,13 @@ export default function BriefingsHistoryPage() {
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <a
               href="/dashboard"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.12em] text-bg transition-colors hover:bg-accent-hover"
+              className="inline-flex min-h-[44px] items-center justify-center foldera-button-radius bg-accent px-4 text-xs font-black uppercase tracking-[0.12em] text-bg transition-colors hover:bg-accent-hover"
             >
               Open today
             </a>
             <a
               href="/dashboard/settings#connected-accounts"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-button border border-border px-4 text-xs font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
+              className="inline-flex min-h-[44px] items-center justify-center foldera-button-radius border border-border px-4 text-xs font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
             >
               Review sources
             </a>

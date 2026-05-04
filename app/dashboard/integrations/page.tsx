@@ -17,13 +17,13 @@ export default function IntegrationsPage() {
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             href="/dashboard/settings#connected-accounts"
-            className="inline-flex min-h-[44px] items-center rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover"
+            className="inline-flex min-h-[44px] items-center foldera-button-radius bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover"
           >
             Open connected accounts
           </Link>
           <Link
             href="/dashboard/settings"
-            className="inline-flex min-h-[44px] items-center rounded-button border border-border px-4 text-xs font-black uppercase tracking-[0.14em] text-text-secondary transition-colors hover:text-text-primary"
+            className="inline-flex min-h-[44px] items-center foldera-button-radius border border-border px-4 text-xs font-black uppercase tracking-[0.14em] text-text-secondary transition-colors hover:text-text-primary"
           >
             Open settings
           </Link>

@@ -14,6 +14,7 @@ export const metadata = {
   },
   description:
     "Foldera turns scattered inboxes, calendar holds, stale drafts, and unresolved threads into one directive, draft, and source trail every morning.",
+  manifest: '/manifest.json',
   keywords: [
     "AI email assistant",
     "email productivity",

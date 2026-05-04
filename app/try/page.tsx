@@ -106,7 +106,7 @@ export default function TryPage() {
               <button
                 type="submit"
                 disabled={loading || text.trim().length < 20}
-                className="mt-4 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-4 inline-flex foldera-touch-height w-full items-center justify-center gap-2 foldera-button-radius bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? 'Analyzing…' : 'Analyze'}
               </button>
@@ -132,13 +132,13 @@ export default function TryPage() {
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <Link
                   href="/pricing"
-                  className="inline-flex min-h-[44px] items-center justify-center rounded-button border border-border px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary"
+                  className="inline-flex min-h-[44px] items-center justify-center foldera-button-radius border border-border px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary"
                 >
                   See pricing
                 </Link>
                 <Link
                   href="/start"
-                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg"
+                  className="inline-flex min-h-[44px] items-center justify-center gap-2 foldera-button-radius bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg"
                 >
                   Get started free
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />

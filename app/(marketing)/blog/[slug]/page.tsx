@@ -78,7 +78,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         <article className="mx-auto max-w-4xl px-4 sm:px-6">
           <Link
             href="/blog"
-            className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-button px-2 text-xs font-black uppercase tracking-[0.14em] text-text-secondary transition-colors hover:text-text-primary"
+            className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2 foldera-button-radius px-2 text-xs font-black uppercase tracking-[0.14em] text-text-secondary transition-colors hover:text-text-primary"
           >
             <ChevronLeft className="h-4 w-4" aria-hidden="true" />
             Back to blog
@@ -113,7 +113,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             <p className="text-lg font-semibold text-text-primary">Finished work, every morning.</p>
             <Link
               href="/start"
-              className="mt-6 inline-flex min-h-[48px] items-center justify-center rounded-button bg-accent px-6 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover"
+              className="mt-6 inline-flex foldera-touch-height items-center justify-center foldera-button-radius bg-accent px-6 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover"
             >
               Get started free
             </Link>

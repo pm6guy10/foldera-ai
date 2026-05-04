@@ -71,6 +71,36 @@ test.describe('Public API', () => {
     });
     expect(body.build).toBe('local');
   });
+
+  test('/robots.txt exposes the canonical sitemap', async ({ request }) => {
+    const res = await request.get('/robots.txt');
+    expect(res.status()).toBe(200);
+    const body = await res.text();
+    expect(body).toContain('User-agent: *');
+    expect(body).toContain('Allow: /');
+    expect(body).toContain('Sitemap: https://foldera.ai/sitemap.xml');
+  });
+
+  test('/manifest.json exposes Foldera install metadata', async ({ request }) => {
+    const res = await request.get('/manifest.json');
+    expect(res.status()).toBe(200);
+    const body = await res.json();
+    expect(body).toMatchObject({
+      name: 'Foldera',
+      short_name: 'Foldera',
+      start_url: '/',
+      display: 'standalone',
+    });
+  });
+
+  test('/sitemap.xml includes active public routes', async ({ request }) => {
+    const res = await request.get('/sitemap.xml');
+    expect(res.status()).toBe(200);
+    const body = await res.text();
+    for (const routePath of ['/about', '/status', '/security']) {
+      expect(body).toContain(`https://foldera.ai${routePath}`);
+    }
+  });
 });
 
 // ── Landing page (/) ────────────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+import { OWNER_USER_ID } from '../lib/auth/constants';
 /**
  * Show exactly which hunt candidates are injected into the scoring pool,
  * and what the final winner is after all filters.
@@ -9,7 +10,7 @@ process.env.ALLOW_PAID_LLM = 'false';
 
 async function main() {
   const { scoreOpenLoops } = await import('../lib/briefing/scorer');
-  const OWNER = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
+  const OWNER = OWNER_USER_ID;
   
   const result = await scoreOpenLoops(OWNER) as any;
   

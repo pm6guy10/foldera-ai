@@ -51,7 +51,7 @@ export function ProductShell({
     <div className="min-h-[100dvh] bg-bg text-text-primary">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-border-subtle bg-bg/95 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <Link href="/dashboard" className="inline-flex min-h-[44px] min-w-[44px] items-center gap-3 rounded-button px-1">
+          <Link href="/dashboard" className="inline-flex min-h-[44px] min-w-[44px] items-center gap-3 foldera-button-radius px-1">
             <FolderaMark size="sm" decorative />
             <span className="text-sm font-black uppercase tracking-[0.12em]">Foldera</span>
           </Link>
@@ -61,7 +61,7 @@ export function ProductShell({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'inline-flex min-h-[38px] shrink-0 items-center whitespace-nowrap rounded-button px-2.5 text-[11px] font-black uppercase tracking-[0.12em] transition-colors',
+                  'inline-flex min-h-[38px] shrink-0 items-center whitespace-nowrap foldera-button-radius px-2.5 text-[11px] font-black uppercase tracking-[0.12em] transition-colors',
                   isNavItemActive(item.panel)
                     ? 'bg-panel-raised text-text-primary'
                     : 'text-text-secondary hover:text-text-primary',

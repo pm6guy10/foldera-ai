@@ -1,3 +1,4 @@
+import { OWNER_USER_ID } from '../lib/auth/constants';
 /**
  * Check if Yadira's email is being picked up by the hunt as unreplied inbound.
  */
@@ -6,7 +7,7 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-const OWNER = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
+const OWNER = OWNER_USER_ID;
 const YADIRA_EMAIL = 'yadira.clapper@hca.wa.gov';
 const KERI_EMAIL = 'keri.nopens@dshs.wa.gov';
 const CHERYL_EMAIL = 'cheryl.anderson1@dshs.wa.gov';

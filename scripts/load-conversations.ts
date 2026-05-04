@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import { OWNER_USER_ID } from '../lib/auth/constants';
 
 import { config as loadEnv } from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
@@ -7,7 +8,7 @@ import * as path from 'path';
 
 loadEnv({ path: '.env.local' });
 
-const USER_ID = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
+const USER_ID = OWNER_USER_ID;
 const BATCH_SIZE = 10;
 const LOG_EVERY = 25;
 

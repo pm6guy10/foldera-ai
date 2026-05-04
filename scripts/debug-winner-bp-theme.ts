@@ -1,3 +1,4 @@
+import { OWNER_USER_ID } from '../lib/auth/constants';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
@@ -12,7 +13,7 @@ async function main() {
   const { data: actions } = await supabase
     .from('tkg_actions')
     .select('id, action_type, confidence, status, artifact_type, candidate_reason, generated_at, generation_log')
-    .eq('user_id', 'e40b7cd8-4925-42f7-bc99-5022969f1d22')
+    .eq('user_id', OWNER_USER_ID)
     .order('generated_at', { ascending: false })
     .limit(5);
 
@@ -25,7 +26,7 @@ async function main() {
   const { data: commitments } = await supabase
     .from('tkg_commitments')
     .select('id, description, type, status, due_date, suppressed_at')
-    .eq('user_id', 'e40b7cd8-4925-42f7-bc99-5022969f1d22')
+    .eq('user_id', OWNER_USER_ID)
     .is('suppressed_at', null)
     .not('due_date', 'is', null)
     .order('due_date', { ascending: true })

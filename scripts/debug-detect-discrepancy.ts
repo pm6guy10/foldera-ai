@@ -1,3 +1,4 @@
+import { OWNER_USER_ID } from '../lib/auth/constants';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import * as crypto from 'crypto';
@@ -28,7 +29,7 @@ async function main() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const userId = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
+  const userId = OWNER_USER_ID;
   const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000).toISOString();
 
   // Fetch data exactly as scorer does

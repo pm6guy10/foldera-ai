@@ -180,13 +180,13 @@ function OnboardContent() {
                   <div className="mt-5 grid gap-3 sm:grid-cols-2">
                     <Link
                       href="/api/google/connect"
-                      className="inline-flex min-h-[48px] items-center justify-center rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover"
+                      className="inline-flex foldera-touch-height items-center justify-center foldera-button-radius bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover"
                     >
                       Connect Google
                     </Link>
                     <Link
                       href="/api/microsoft/connect"
-                      className="inline-flex min-h-[48px] items-center justify-center rounded-button border border-border bg-panel px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary transition-colors hover:border-border-strong"
+                      className="inline-flex foldera-touch-height items-center justify-center foldera-button-radius border border-border bg-panel px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary transition-colors hover:border-border-strong"
                     >
                       Connect Microsoft
                     </Link>
@@ -211,7 +211,7 @@ function OnboardContent() {
                   key={bucket}
                   type="button"
                   onClick={() => toggle(bucket)}
-                  className={`inline-flex min-h-[48px] items-center justify-center rounded-pill border px-4 text-xs font-black uppercase tracking-[0.12em] transition-colors ${
+                  className={`inline-flex foldera-touch-height items-center justify-center rounded-pill border px-4 text-xs font-black uppercase tracking-[0.12em] transition-colors ${
                     active
                       ? 'border-accent-dim bg-accent-dim/20 text-accent-hover'
                       : 'border-border bg-panel-raised text-text-secondary hover:border-border-strong hover:text-text-primary'
@@ -229,14 +229,14 @@ function OnboardContent() {
               type="button"
               onClick={() => submit(false)}
               disabled={saving || selected.size === 0 || !connectorReady}
-              className="inline-flex min-h-[48px] flex-1 items-center justify-center rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex foldera-touch-height flex-1 items-center justify-center foldera-button-radius bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
               {saving ? 'Saving…' : isEdit ? 'Save' : 'Continue to dashboard'}
             </button>
             {isEdit ? (
               <Link
                 href="/dashboard/settings"
-                className="inline-flex min-h-[48px] items-center justify-center rounded-button border border-border px-6 text-xs font-black uppercase tracking-[0.14em] text-text-secondary transition-colors hover:text-text-primary"
+                className="inline-flex foldera-touch-height items-center justify-center foldera-button-radius border border-border px-6 text-xs font-black uppercase tracking-[0.14em] text-text-secondary transition-colors hover:text-text-primary"
               >
                 Cancel
               </Link>
@@ -245,7 +245,7 @@ function OnboardContent() {
                 type="button"
                 onClick={() => submit(true)}
                 disabled={saving || !connectorReady}
-                className="inline-flex min-h-[48px] items-center justify-center rounded-button border border-border px-6 text-xs font-black uppercase tracking-[0.14em] text-text-secondary transition-colors hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex foldera-touch-height items-center justify-center foldera-button-radius border border-border px-6 text-xs font-black uppercase tracking-[0.14em] text-text-secondary transition-colors hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Skip for now
               </button>

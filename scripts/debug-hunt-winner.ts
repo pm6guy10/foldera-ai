@@ -1,9 +1,10 @@
+import { OWNER_USER_ID } from '../lib/auth/constants';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-const OWNER = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
+const OWNER = OWNER_USER_ID;
 
 async function main() {
   // hunt_unreplied_08b906c3-3e54-4981-b541-1ad868bfd43e

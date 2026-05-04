@@ -68,7 +68,7 @@ export default function SignalsPage() {
         </p>
         <Link
           href="/dashboard/settings#connected-accounts"
-          className="mt-5 inline-flex min-h-[44px] items-center rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover"
+          className="mt-5 inline-flex min-h-[44px] items-center foldera-button-radius bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover"
         >
           Open connected accounts
         </Link>

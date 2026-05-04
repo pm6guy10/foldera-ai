@@ -54,7 +54,7 @@ function ProCheckoutButton() {
         type="button"
         onClick={handleCheckout}
         disabled={loading}
-        className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60"
+        className="inline-flex foldera-touch-height w-full items-center justify-center gap-2 foldera-button-radius bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60"
       >
         {loading ? 'Loading…' : 'Upgrade to Pro'}
       </button>
@@ -142,7 +142,7 @@ export default function PricingPage() {
               </ul>
               <Link
                 href="/start"
-                className="mt-8 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-button border border-border bg-panel-raised px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary transition-colors hover:border-border-strong"
+                className="mt-8 inline-flex foldera-touch-height w-full items-center justify-center gap-2 foldera-button-radius border border-border bg-panel-raised px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary transition-colors hover:border-border-strong"
               >
                 Get started free
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />

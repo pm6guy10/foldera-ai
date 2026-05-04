@@ -1,3 +1,4 @@
+import { OWNER_USER_ID } from '../lib/auth/constants';
 /**
  * Bounded live read: rebuild hunt StructuredContext from DB signal + contaminated relationshipContext.
  * npm run verify:hunt-allowlist (optional package.json)
@@ -16,7 +17,7 @@ import type { ScoredLoop } from '../lib/briefing/scorer';
 
 config({ path: resolve(process.cwd(), '.env.local') });
 
-const OWNER = (process.env.AUDIT_USER_ID || process.env.OWNER_USER_ID || 'e40b7cd8-4925-42f7-bc99-5022969f1d22').trim();
+const OWNER = (process.env.AUDIT_USER_ID || process.env.OWNER_USER_ID || OWNER_USER_ID).trim();
 const HUNT_SIGNAL_ID = '08b906c3-3e54-4981-b541-1ad868bfd43e';
 const CONTAMINATED_RC =
   'Synthetic <wfe-6921e4b356ccff5a5f336b22@outlier.ai> | vendor | outlier';

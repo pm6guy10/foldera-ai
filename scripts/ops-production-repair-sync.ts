@@ -1,3 +1,4 @@
+import { OWNER_USER_ID } from '../lib/auth/constants';
 /**
  * Production E2E repair (operator machine with .env.local):
  * 1) Rewind user_tokens.last_synced_at for gap backfill
@@ -14,7 +15,7 @@ import { resolve } from 'path';
 
 config({ path: resolve(process.cwd(), '.env.local') });
 
-const OWNER = process.env.REPAIR_USER_ID || 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
+const OWNER = process.env.REPAIR_USER_ID || OWNER_USER_ID;
 /** End of 2026-03-27 UTC — Gmail list uses after:yyyy/mm/dd from this instant */
 const REWIND_ISO = process.env.REPAIR_REWIND_ISO || '2026-03-27T23:59:59.999Z';
 

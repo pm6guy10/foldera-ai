@@ -92,7 +92,7 @@ export default function SystemClient() {
                 setRunMessage('Network error during dry run.');
               }
             }}
-            className="inline-flex min-h-[48px] items-center justify-center rounded-button bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg disabled:opacity-60"
+            className="inline-flex foldera-touch-height items-center justify-center foldera-button-radius bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg disabled:opacity-60"
           >
             {runState === 'loading' ? 'Running dry run…' : 'Run pipeline (dry run)'}
           </button>
@@ -133,7 +133,7 @@ export default function SystemClient() {
                 setAiRunMessage('Network error during AI generate.');
               }
             }}
-            className="inline-flex min-h-[48px] items-center justify-center rounded-button border border-border px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary disabled:opacity-60"
+            className="inline-flex foldera-touch-height items-center justify-center foldera-button-radius border border-border px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary disabled:opacity-60"
           >
             {aiRunState === 'loading' ? 'Running AI generate…' : 'Generate with AI'}
           </button>

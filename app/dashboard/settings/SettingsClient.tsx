@@ -301,7 +301,7 @@ export default function SettingsClient() {
         <button
           type="button"
           onClick={handleSignOut}
-          className="inline-flex min-h-[40px] items-center gap-2 rounded-button border border-border px-3 text-xs font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
+          className="inline-flex min-h-[40px] items-center gap-2 foldera-button-radius border border-border px-3 text-xs font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
         >
           <LogOut className="h-4 w-4" aria-hidden="true" />
           <span className="hidden sm:inline">Sign out</span>
@@ -313,7 +313,7 @@ export default function SettingsClient() {
         <div>
           <Link
             href="/dashboard"
-            className="inline-flex min-h-[40px] items-center rounded-button border border-border px-3 text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
+            className="inline-flex min-h-[40px] items-center foldera-button-radius border border-border px-3 text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
           >
             Back to dashboard
           </Link>
@@ -379,7 +379,7 @@ export default function SettingsClient() {
               </div>
               <Link
                 href="/dashboard/signals"
-                className="inline-flex min-h-[40px] items-center rounded-button border border-border px-3 text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
+                className="inline-flex min-h-[40px] items-center foldera-button-radius border border-border px-3 text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
               >
                 Open legacy signals view
               </Link>
@@ -437,7 +437,7 @@ export default function SettingsClient() {
                       type="button"
                       onClick={startGoogleOAuth}
                       disabled={connectingProvider === 'google'}
-                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-3 py-2 rounded-button transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                      className="w-full md:w-auto foldera-touch-height text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-3 py-2 foldera-button-radius transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                     >
                       {connectingProvider === 'google' ? 'Opening…' : 'Reconnect'}
                     </button>
@@ -463,7 +463,7 @@ export default function SettingsClient() {
                         }
                       }}
                       disabled={disconnecting === 'google'}
-                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] border border-border hover:border-border-strong text-text-secondary hover:text-text-primary px-3 py-2 rounded-button transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                      className="w-full md:w-auto foldera-touch-height text-[10px] font-black uppercase tracking-[0.12em] border border-border hover:border-border-strong text-text-secondary hover:text-text-primary px-3 py-2 foldera-button-radius transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                     >
                       {disconnecting === 'google' ? 'Disconnecting…' : 'Disconnect'}
                     </button>
@@ -472,7 +472,7 @@ export default function SettingsClient() {
                       type="button"
                       onClick={startGoogleOAuth}
                       disabled={connectingProvider === 'google'}
-                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-4 py-2 rounded-button transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                      className="w-full md:w-auto foldera-touch-height text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-4 py-2 foldera-button-radius transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                     >
                       {connectingProvider === 'google' ? 'Connecting…' : 'Connect'}
                     </button>
@@ -486,7 +486,7 @@ export default function SettingsClient() {
                     type="button"
                     onClick={startGoogleOAuth}
                     disabled={connectingProvider === 'google'}
-                    className="shrink-0 min-h-[40px] text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-4 py-2 rounded-button disabled:opacity-40"
+                    className="shrink-0 min-h-[40px] text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-4 py-2 foldera-button-radius disabled:opacity-40"
                   >
                     Try again
                   </button>
@@ -546,7 +546,7 @@ export default function SettingsClient() {
                       type="button"
                       onClick={startMicrosoftOAuth}
                       disabled={connectingProvider === 'microsoft'}
-                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-3 py-2 rounded-button transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                      className="w-full md:w-auto foldera-touch-height text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-3 py-2 foldera-button-radius transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                     >
                       {connectingProvider === 'microsoft' ? 'Opening…' : 'Reconnect'}
                     </button>
@@ -574,7 +574,7 @@ export default function SettingsClient() {
                         }
                       }}
                       disabled={disconnecting === 'microsoft'}
-                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] border border-border hover:border-border-strong text-text-secondary hover:text-text-primary px-3 py-2 rounded-button transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                      className="w-full md:w-auto foldera-touch-height text-[10px] font-black uppercase tracking-[0.12em] border border-border hover:border-border-strong text-text-secondary hover:text-text-primary px-3 py-2 foldera-button-radius transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                     >
                       {disconnecting === 'microsoft' ? 'Disconnecting…' : 'Disconnect'}
                     </button>
@@ -583,7 +583,7 @@ export default function SettingsClient() {
                       type="button"
                       onClick={startMicrosoftOAuth}
                       disabled={connectingProvider === 'microsoft'}
-                      className="w-full md:w-auto min-h-[48px] text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-4 py-2 rounded-button transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+                      className="w-full md:w-auto foldera-touch-height text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-4 py-2 foldera-button-radius transition-colors disabled:opacity-40 disabled:cursor-wait focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                     >
                       {connectingProvider === 'microsoft' ? 'Connecting…' : 'Connect'}
                     </button>
@@ -597,7 +597,7 @@ export default function SettingsClient() {
                     type="button"
                     onClick={startMicrosoftOAuth}
                     disabled={connectingProvider === 'microsoft'}
-                    className="shrink-0 min-h-[40px] text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-4 py-2 rounded-button disabled:opacity-40"
+                    className="shrink-0 min-h-[40px] text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-4 py-2 foldera-button-radius disabled:opacity-40"
                   >
                     Try again
                   </button>
@@ -614,7 +614,7 @@ export default function SettingsClient() {
           </div>
           <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
             <div className="flex items-center gap-3">
-              <div className={`px-3 py-1 rounded-button text-[10px] font-black uppercase tracking-[0.15em] ${isPro ? 'bg-accent-dim/20 text-accent border border-accent-dim' : 'bg-panel-raised text-text-secondary border border-border'}`}>
+              <div className={`px-3 py-1 foldera-button-radius text-[10px] font-black uppercase tracking-[0.15em] ${isPro ? 'bg-accent-dim/20 text-accent border border-accent-dim' : 'bg-panel-raised text-text-secondary border border-border'}`}>
                 {planLabel}
               </div>
               <div>
@@ -650,7 +650,7 @@ export default function SettingsClient() {
                     }
                   }}
                   disabled={portalLoading}
-                  className="text-[10px] font-black uppercase tracking-[0.12em] bg-panel-raised text-text-primary hover:bg-panel border border-border rounded-button px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                  className="text-[10px] font-black uppercase tracking-[0.12em] bg-panel-raised text-text-primary hover:bg-panel border border-border foldera-button-radius px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-wait"
                 >
                   {portalLoading ? 'Loading…' : 'Manage subscription'}
                 </button>
@@ -682,7 +682,7 @@ export default function SettingsClient() {
                     }
                   }}
                   disabled={upgrading}
-                  className="text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover rounded-button px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                  className="text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover foldera-button-radius px-4 py-2 transition-colors disabled:opacity-50 disabled:cursor-wait"
                 >
                   {upgrading ? 'Loading…' : 'Upgrade'}
                 </button>
@@ -706,7 +706,7 @@ export default function SettingsClient() {
             <button
               type="button"
               onClick={handleSignOut}
-              className="w-full min-h-[48px] flex items-center justify-center gap-2 rounded-card border border-border bg-panel-raised hover:bg-panel text-text-primary py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+              className="w-full foldera-touch-height flex items-center justify-center gap-2 rounded-card border border-border bg-panel-raised hover:bg-panel text-text-primary py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
             >
               <LogOut className="w-4 h-4 shrink-0" aria-hidden="true" />
               Sign out
@@ -723,7 +723,7 @@ export default function SettingsClient() {
             <button
               type="button"
               onClick={handleDeleteAccount}
-              className="w-full min-h-[48px] border border-border-strong hover:border-border-strong bg-transparent hover:bg-panel text-text-primary hover:text-text-primary rounded-card py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors"
+              className="w-full foldera-touch-height border border-border-strong hover:border-border-strong bg-transparent hover:bg-panel text-text-primary hover:text-text-primary rounded-card py-3 text-xs font-black uppercase tracking-[0.12em] transition-colors"
             >
               {deleteConfirm ? 'Tap again to confirm deletion' : 'Delete account'}
             </button>
@@ -741,7 +741,7 @@ export default function SettingsClient() {
             </p>
             <Link
               href="/dashboard/system"
-              className="mt-3 inline-flex min-h-[40px] items-center rounded-button border border-border px-3 text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
+              className="mt-3 inline-flex min-h-[40px] items-center foldera-button-radius border border-border px-3 text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
             >
               Open system tools
             </Link>

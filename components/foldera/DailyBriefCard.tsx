@@ -64,7 +64,7 @@ function ActionButton({
     }
 
     const Icon = action.icon ?? Plane;
-    const marketingPrimary = 'foldera-button-primary min-h-[48px] px-5 text-sm';
+    const marketingPrimary = 'foldera-button-primary foldera-touch-height px-5 text-sm';
     if (action.href) {
       return (
         <a href={action.href} className={`${marketingPrimary} inline-flex items-center justify-center gap-2`} data-testid={action.dataTestId}>

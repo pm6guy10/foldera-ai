@@ -129,7 +129,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
                   key={link.label}
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
-                  className="inline-flex min-h-[48px] items-center rounded-[14px] px-3 text-sm font-medium text-text-primary"
+                  className="inline-flex foldera-touch-height items-center rounded-[14px] px-3 text-sm font-medium text-text-primary"
                 >
                   {link.label}
                 </a>
@@ -138,7 +138,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
               <a
                 href="/login"
                 onClick={() => setMenuOpen(false)}
-                className="inline-flex min-h-[48px] items-center rounded-[14px] px-3 text-sm font-medium text-text-primary"
+                className="inline-flex foldera-touch-height items-center rounded-[14px] px-3 text-sm font-medium text-text-primary"
               >
                 Sign in
               </a>
@@ -146,7 +146,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
               <a
                 href="/start"
                 onClick={() => setMenuOpen(false)}
-                className="mt-2 inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[14px] bg-accent px-4 text-sm font-semibold text-slate-950"
+                className="mt-2 inline-flex foldera-touch-height items-center justify-center gap-2 rounded-[14px] bg-accent px-4 text-sm font-semibold text-slate-950"
               >
                 Start free
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />

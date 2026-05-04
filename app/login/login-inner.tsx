@@ -93,7 +93,7 @@ function OAuthButton({
       type="button"
       onClick={() => onClick(provider)}
       disabled={Boolean(loadingProvider)}
-      className={`inline-flex min-h-[48px] w-full items-center justify-center gap-3 rounded-button px-4 text-xs font-black uppercase tracking-[0.14em] transition-colors disabled:cursor-wait disabled:opacity-60 ${
+      className={`inline-flex foldera-touch-height w-full items-center justify-center gap-3 foldera-button-radius px-4 text-xs font-black uppercase tracking-[0.14em] transition-colors disabled:cursor-wait disabled:opacity-60 ${
         provider === 'google'
           ? 'bg-accent text-bg hover:bg-accent-hover'
           : 'bg-panel-raised text-text-primary hover:bg-panel'

@@ -21,11 +21,15 @@ Achieve 3 consecutive successful runs for a non-Brandon user.
 - If code is pushed but not proven, mark it incomplete
 - If any source-of-truth file is stale, update it before closing the session
 
-## Source of Truth
-- FOLDERA_MASTER_AUDIT.md = what is broken
-- ACCEPTANCE_GATE.md = what done means
-- BRANDON.md = what the product should feel like
-- SYSTEM_RUNBOOK.md = current operating plan
+## Source-of-Truth Boundaries
+- `AGENTS.md` and `CLAUDE.md` define active agent execution behavior.
+- `ACCEPTANCE_GATE.md` defines product done criteria and browser/product proof requirements.
+- `CURRENT_STATE.md` defines current working/broken runtime truth.
+- `SYSTEM_RUNBOOK.md` defines the current operating plan and source-of-truth boundaries.
+- `FOLDERA_MASTER_AUDIT.md` is historical/open audit and backlog evidence; prefer current `OPEN` or `NEEDS_REVIEW` rows over archived status.
+- FULL_AUDIT_RESULTS.md is audit evidence, not a mutable checklist; closure receipts belong in `SESSION_HISTORY.md`.
+- `SESSION_HISTORY.md is append-only receipt history`; do not use it as the current done/next selector.
+- `BRANDON.md` defines product feel and taste when a seam needs product-language judgment.
 
 ## Execution Order
 1. Build

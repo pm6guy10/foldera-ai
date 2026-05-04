@@ -61,21 +61,3 @@ export function StatusIndicator({
   );
 }
 
-// Status badge with background
-export function StatusBadge({ status, children }: { status: StatusType; children: React.ReactNode }) {
-  const statusColors = colors.status[status];
-  
-  return (
-    <span className={cn(
-      'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
-      statusColors.bg,
-      statusColors.text,
-      'border',
-      statusColors.border
-    )}>
-      <span className={cn('h-1.5 w-1.5 rounded-full', statusColors.dot)} />
-      {children}
-    </span>
-  );
-}
-

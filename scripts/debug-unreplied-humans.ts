@@ -1,3 +1,4 @@
+import { OWNER_USER_ID } from '../lib/auth/constants';
 /**
  * Show which unreplied inbound signals actually involve REAL humans
  * (as evidenced by their entity being in tkg_entities with trust_class=trusted)
@@ -7,7 +8,7 @@ import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
-const OWNER = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
+const OWNER = OWNER_USER_ID;
 
 // Target signal IDs from the hunt winner
 const HUNT_WINNER_SIGNAL = '16cbbc4f-d82e-4eb3-a63e-502ff25571ed';

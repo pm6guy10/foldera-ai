@@ -1,3 +1,4 @@
+import { OWNER_USER_ID } from '../lib/auth/constants';
 import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
@@ -33,7 +34,7 @@ async function main() {
   const { data: actions } = await supabase
     .from('tkg_actions')
     .select('id, action_type, confidence, status, candidate_reason, artifact_type, generated_at')
-    .eq('user_id', 'e40b7cd8-4925-42f7-bc99-5022969f1d22')
+    .eq('user_id', OWNER_USER_ID)
     .order('generated_at', { ascending: false })
     .limit(5);
 
