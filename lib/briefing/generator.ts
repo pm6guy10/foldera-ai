@@ -1349,20 +1349,6 @@ export function selectRankedCandidates(
       POSITIVE_CONTRACT_HARD_BLOCKERS.has(reason),
     );
 
-    if (positiveHardBlocker) {
-      return {
-        candidate,
-        viabilityScore: 0,
-        note: '',
-        disqualified: true,
-        disqualifyReason: `positive_winner_contract:${positiveHardBlocker}`,
-        shadowUrgent,
-        emergencyOverride,
-        longHorizonLeverage: false,
-        ungroundedCareerStatusOutbound,
-      };
-    }
-
     // 0. Hard disqualifiers — top slots must be SEND/WRITE capable, non-generic finished-work candidates.
     if (!SEND_WRITE_ACTIONS.has(candidate.suggestedActionType)) {
       return {
@@ -1510,6 +1496,20 @@ export function selectRankedCandidates(
           };
         }
       }
+    }
+
+    if (positiveHardBlocker) {
+      return {
+        candidate,
+        viabilityScore: 0,
+        note: '',
+        disqualified: true,
+        disqualifyReason: `positive_winner_contract:${positiveHardBlocker}`,
+        shadowUrgent,
+        emergencyOverride,
+        longHorizonLeverage: false,
+        ungroundedCareerStatusOutbound,
+      };
     }
 
     // 2. Viability multipliers applied to raw scorer score.

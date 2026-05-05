@@ -26,7 +26,14 @@ function makeCandidate(overrides: Partial<ScoredLoop> & { score: number }): Scor
     score: overrides.score,
     breakdown: overrides.breakdown ?? BASE_BREAKDOWN,
     relatedSignals: overrides.relatedSignals ?? [],
-    sourceSignals: overrides.sourceSignals ?? [],
+    sourceSignals: overrides.sourceSignals ?? [
+      {
+        kind: 'signal',
+        source: 'test',
+        summary: 'Current source fact with enough concrete context to build the artifact.',
+        occurredAt: new Date().toISOString(),
+      },
+    ],
     ...overrides,
   };
 }
@@ -191,13 +198,27 @@ describe('selectFinalWinner', () => {
       id: 'fresh',
       score: 2.0,
       title: 'Act on recent message',
-      sourceSignals: [{ kind: 'signal', occurredAt: new Date(freshMs).toISOString() }],
+      sourceSignals: [
+        {
+          kind: 'signal',
+          source: 'gmail',
+          summary: 'Recent permit message with concrete source facts.',
+          occurredAt: new Date(freshMs).toISOString(),
+        },
+      ],
     });
     const staleCand = makeCandidate({
       id: 'stale',
       score: 2.2,
       title: 'Old unresolved thing',
-      sourceSignals: [{ kind: 'signal', occurredAt: new Date(staleMs).toISOString() }],
+      sourceSignals: [
+        {
+          kind: 'signal',
+          source: 'gmail',
+          summary: 'Old permit message with concrete source facts.',
+          occurredAt: new Date(staleMs).toISOString(),
+        },
+      ],
     });
 
     // fresh: 2.0 * 1.08 = 2.16; stale: 2.2 * 0.88 = 1.936 — fresh wins
@@ -290,8 +311,9 @@ describe('selectFinalWinner', () => {
       entityName: 'Keri Nopens',
       title: 'Send outreach email to Keri Nopens',
       content: 'Concrete reference and timeline thread with Keri Nopens regarding MAS3 role.',
+      relationshipContext: '- Keri Nopens <keri@example.com> (reference coordination)',
       relatedSignals: ['Email thread with Keri about references'],
-      sourceSignals: [{ kind: 'signal', summary: 'Keri reference coordination', occurredAt: new Date().toISOString() }],
+      sourceSignals: [{ kind: 'signal', summary: 'Keri reference coordination for MAS3 role', source: 'gmail', occurredAt: new Date().toISOString() }],
     });
     const discrepancy = makeCandidate({
       id: 'goal-drift',

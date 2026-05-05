@@ -168,7 +168,7 @@ describe('scorer metadata-first tkg_signals reads', () => {
       'id, source, occurred_at, author, type, source_id',
       'id, source, type, occurred_at, author, source_id',
       'id, occurred_at, source, type',
-      'id, user_id, source, source_id, type, author, recipients, occurred_at, extracted_entities, extracted_commitments, extracted_dates, extracted_amounts, outcome_label, processed',
+      'id, user_id, source, source_id, type, author, recipients, occurred_at, created_at, extracted_entities, extracted_commitments, extracted_dates, extracted_amounts, outcome_label, processed',
     ]));
   });
 });

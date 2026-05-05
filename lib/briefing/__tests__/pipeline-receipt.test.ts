@@ -823,7 +823,7 @@ describe('briefing pipeline receipt', () => {
     runtime.signalSelectColumns = [];
     const directive = await generateDirective(TEST_USER_ID);
     expect(directive.action_type).toBe('do_nothing');
-    expect(directive.reason).toContain('action_type_mismatch');
+    expect(directive.reason).toContain('positive_winner_contract:stale_status_without_current_artifact_facts');
     expect((directive as Row).embeddedArtifact).toBeUndefined();
     const directiveUsageRows = runtime.apiUsage.filter((row) =>
       row.endpoint === 'directive' || row.endpoint === 'directive_retry',
@@ -839,7 +839,7 @@ describe('briefing pipeline receipt', () => {
 
     const generateResult = await runDailyGenerate({ userIds: [TEST_USER_ID] });
     const expectedPublicNoSendDetail = 'Nothing cleared the bar today after evaluating 1 candidate.';
-    const expectedInternalBlockedReason = 'action_type_mismatch';
+    const expectedInternalBlockedReason = 'positive_winner_contract:stale_status_without_current_artifact_facts';
     expect(generateResult.results).toEqual([
       expect.objectContaining({
         code: 'no_send_persisted',
