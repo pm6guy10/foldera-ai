@@ -257,7 +257,8 @@ export function formatTasteRailsForPrompt(input: {
 }
 
 function sourceFactsFor(candidate: ScoredLoop): string[] {
-  return [
+  const seen = new Set<string>();
+  const facts = [
     ...(candidate.sourceSignals ?? []).map((signal) =>
       [signal.summary, signal.source].filter(Boolean).join(' - '),
     ),
@@ -267,7 +268,13 @@ function sourceFactsFor(candidate: ScoredLoop): string[] {
   ]
     .map((fact) => fact.trim())
     .filter(Boolean)
-    .slice(0, 8);
+    .filter((fact) => {
+      const normalized = fact.toLowerCase().replace(/\s+/g, ' ').trim();
+      if (!normalized || seen.has(normalized)) return false;
+      seen.add(normalized);
+      return true;
+    });
+  return facts.slice(0, 8);
 }
 
 function requiredFieldsFor(family: ArtifactTasteFamily, actionType: ActionType): string[] {
@@ -359,6 +366,23 @@ export function evaluateCandidateArtifactability(
   if (GENERIC_PREP_RE.test(searchText)) {
     blockers.push('generic_prep_shape_risk');
     modelRiskFlags.push('generic_prep_shape_risk');
+  }
+  if (
+    taste.family === 'other_grounded_artifact' &&
+    currentnessDays == null &&
+    !CURRENT_ARTIFACT_ANCHOR_RE.test(searchText)
+  ) {
+    blockers.push('missing_current_artifact_anchor');
+  }
+  if (taste.family === 'interview_role_fit_packet' && facts.length < 2) {
+    blockers.push('missing_role_fit_source_bundle');
+  }
+  if (
+    taste.family === 'calendar_conflict_brief' &&
+    /\bno matching calendar block\b/i.test(searchText) &&
+    /\bkeyword overlap\b[\s\S]{0,40}\bonly 0\b/i.test(searchText)
+  ) {
+    blockers.push('missing_schedule_resolution_context');
   }
 
   const tier = tierFor(taste.family, facts.length);

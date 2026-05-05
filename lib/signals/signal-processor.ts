@@ -25,6 +25,11 @@ import { trackApiCall } from '@/lib/utils/api-tracker';
 import { isOverDailyLimit } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { truncateSignalContent } from '@/lib/utils/signal-egress';
+import {
+  classifyEntityTrustClass,
+  mergeTrustClass,
+  type TrustClass,
+} from '@/lib/signals/entity-trust';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const BATCH_SIZE = 20;
@@ -75,8 +80,6 @@ interface SignalExtraction {
   commitments: ExtractedCommitment[];
   topics: ExtractedTopic[];
 }
-
-export type TrustClass = 'trusted' | 'junk' | 'transactional' | 'personal' | 'unclassified';
 
 interface SensitiveDetectionResult {
   isSensitive: boolean;
@@ -870,50 +873,6 @@ export function classifySignalTrustClass(
   return 'trusted';
 }
 
-/**
- * Classify entity trust based on the entity's own email address and interaction count.
- * This runs AFTER the signal-level classifySignalTrustClass and provides entity-level overrides.
- *
- * Precedence (high → low): transactional pattern > gov/org domain > interaction-based > junk
- */
-export function classifyEntityTrustClass(
-  email: string | null | undefined,
-  totalInteractions: number,
-): TrustClass {
-  const e = (email ?? '').toLowerCase();
-  const domain = e.includes('@') ? e.split('@')[1] ?? '' : e;
-
-  // Transactional/bulk senders — email address itself is a noreply pattern
-  if (/noreply|no-reply|donotreply|newsletter|marketing/.test(e)) {
-    return 'transactional';
-  }
-
-  // Government or nonprofit domains = trusted regardless of interaction count
-  if (domain.endsWith('.gov') || domain.endsWith('.org')) {
-    return 'trusted';
-  }
-
-  // Has email address + at least 1 real interaction = trusted contact
-  if (email && totalInteractions >= 1) return 'trusted';
-
-  // No email but multiple interactions = verified known contact
-  if (!email && totalInteractions >= 2) return 'trusted';
-
-  // Zero interactions = not yet meaningful, classify as junk so noise doesn't pollute scoring
-  if (totalInteractions === 0) return 'junk';
-
-  return 'unclassified';
-}
-
-function mergeTrustClass(existing: TrustClass | null | undefined, incoming: TrustClass): TrustClass {
-  const current: TrustClass = existing ?? 'unclassified';
-  if (current === incoming) return current;
-  if (current === 'trusted' || incoming === 'trusted') return 'trusted';
-  if (current === 'unclassified') return incoming;
-  if (incoming === 'unclassified') return current;
-  return 'unclassified';
-}
-
 // ---------------------------------------------------------------------------
 // Commitment eligibility gate — hard requirements before any commitment is
 // inserted into tkg_commitments, regardless of source or signal type.
@@ -1616,7 +1575,10 @@ async function upsertEntity(
           ? updates.total_interactions
           : (match.total_interactions ?? 0);
         const resolvedEmail = updates.emails?.[0] ?? match.primary_email ?? person.email ?? null;
-        const entityTrustClass = classifyEntityTrustClass(resolvedEmail, newInteractions);
+        const entityTrustClass = classifyEntityTrustClass(resolvedEmail, newInteractions, {
+          displayName: person.name,
+          company: person.company,
+        });
         const signalMerged = mergeTrustClass((match.trust_class as TrustClass | null | undefined), signalTrustClass);
         updates.trust_class = mergeTrustClass(signalMerged, entityTrustClass);
       }
@@ -1641,7 +1603,14 @@ async function upsertEntity(
   // Insert new entity — passive sources start at 0 interactions with no last_interaction
   // so they don't pollute relationship scoring with mention-only counts.
   const newInteractionsOnInsert = isRealInteraction ? 1 : 0;
-  const entityTrustClassOnInsert = classifyEntityTrustClass(person.email, newInteractionsOnInsert);
+  const entityTrustClassOnInsert = classifyEntityTrustClass(
+    person.email,
+    newInteractionsOnInsert,
+    {
+      displayName: person.name,
+      company: person.company,
+    },
+  );
   const finalTrustClassOnInsert = mergeTrustClass(signalTrustClass, entityTrustClassOnInsert);
 
   const createEntityResult = await supabase

@@ -142,6 +142,52 @@ describe('positive winner contract', () => {
     );
   });
 
+  it('blocks weak goal drift, thin interview packets, and fake calendar conflicts before they count as viable winners', () => {
+    const goalDrift = makeCandidate({
+      id: 'goal-drift-weak',
+      type: 'discrepancy',
+      title: 'Goal drift: Build Foldera into a revenue-generating product.',
+      content: 'Build Foldera into a revenue-generating product.',
+      suggestedActionType: 'make_decision',
+      matchedGoal: {
+        id: 'goal-foldera',
+        text: 'Build Foldera into a revenue-generating product.',
+        priority: 1,
+      },
+      sourceSignals: [],
+      relatedSignals: [],
+    });
+
+    const thinInterview = makeCandidate({
+      id: 'thin-cwu',
+      type: 'discrepancy',
+      title: 'Deadline closing: CWU interview #2',
+      content: 'Build the finished CWU interview role-fit packet.',
+      suggestedActionType: 'write_document',
+      sourceSignals: [],
+      relatedSignals: ['CWU interview #2'],
+    });
+
+    const fakeCalendarConflict = makeCandidate({
+      id: 'calendar-gap-only',
+      type: 'hunt',
+      title: 'Commitment due 2026-05-13 with no matching calendar block',
+      content:
+        'Commitment due 2026-05-13 with no matching calendar block. Commitment id 41a7: Virtual event to announce new Developer Platform primitives and capabilities. Nearest calendar event keyword overlap with commitment was only 0.',
+      suggestedActionType: 'schedule',
+      sourceSignals: [],
+      relatedSignals: [
+        'Commitment due 2026-05-13 with no matching calendar block',
+        'Commitment id 41a7: Virtual event to announce new Developer Platform primitives and capabilities',
+        'Nearest calendar event (by time): "Metadata only" — keyword overlap with commitment was only 0',
+      ],
+    });
+
+    expect(evaluateCandidateArtifactability(goalDrift, { now }).blockers).toContain('missing_current_artifact_anchor');
+    expect(evaluateCandidateArtifactability(thinInterview, { now }).blockers).toContain('missing_role_fit_source_bundle');
+    expect(evaluateCandidateArtifactability(fakeCalendarConflict, { now }).blockers).toContain('missing_schedule_resolution_context');
+  });
+
   it('does not let stale interview-status decay masquerade as a current role-fit packet', () => {
     const staleInterviewStatus = makeCandidate({
       id: 'accepted-macsc-stale-status',
@@ -268,5 +314,57 @@ describe('positive winner contract', () => {
         expect(result.winnerQualityTrace?.positive_winner_contract.verdict).toBe('all_candidates_blocked');
       }
     }
+  });
+
+  it('returns no safe artifact when every remaining candidate is weak, thin, or missing current context', () => {
+    const result = selectRankedCandidates(
+      [
+        makeCandidate({
+          id: 'goal-drift-weak',
+          type: 'discrepancy',
+          title: 'Goal drift: Build Foldera into a revenue-generating product.',
+          content: 'Build Foldera into a revenue-generating product.',
+          score: 999,
+          suggestedActionType: 'make_decision',
+          matchedGoal: {
+            id: 'goal-foldera',
+            text: 'Build Foldera into a revenue-generating product.',
+            priority: 1,
+          },
+          sourceSignals: [],
+          relatedSignals: [],
+        }),
+        makeCandidate({
+          id: 'thin-cwu',
+          type: 'discrepancy',
+          title: 'Deadline closing: CWU interview #2',
+          content: 'Build the finished CWU interview role-fit packet.',
+          score: 998,
+          suggestedActionType: 'write_document',
+          sourceSignals: [],
+          relatedSignals: ['CWU interview #2'],
+        }),
+        makeCandidate({
+          id: 'calendar-gap-only',
+          type: 'hunt',
+          title: 'Commitment due 2026-05-13 with no matching calendar block',
+          content:
+            'Commitment due 2026-05-13 with no matching calendar block. Commitment id 41a7: Virtual event to announce new Developer Platform primitives and capabilities. Nearest calendar event keyword overlap with commitment was only 0.',
+          score: 997,
+          suggestedActionType: 'schedule',
+          sourceSignals: [],
+          relatedSignals: [
+            'Commitment due 2026-05-13 with no matching calendar block',
+            'Commitment id 41a7: Virtual event to announce new Developer Platform primitives and capabilities',
+            'Nearest calendar event (by time): "Metadata only" — keyword overlap with commitment was only 0',
+          ],
+        }),
+      ],
+      { approvedRecently: [] },
+      { now },
+    );
+
+    expect(result.ranked.every((entry) => entry.disqualified)).toBe(true);
+    expect(result.winnerQualityTrace?.positive_winner_contract.verdict).toBe('all_candidates_blocked');
   });
 });

@@ -723,6 +723,11 @@ export interface ScorerDiagnostics {
       urgency: number;
       title: string;
     }>;
+    graph_stale_guard?: {
+      latest_processed_signal_at: string;
+      oldest_patterns_updated_at: string;
+      blocked_relationship_discrepancies: number;
+    };
   };
   /** Structural discrepancies skipped before entering the scored pool. */
   discrepancyInjectionSkips?: {
@@ -4608,7 +4613,7 @@ export async function scoreOpenLoops(
     // Active relationships provide context; cooling ones surface re-engagement
     supabase
       .from('tkg_entities')
-      .select('id, name, last_interaction, total_interactions, patterns, trust_class, primary_email, emails')
+      .select('id, name, last_interaction, total_interactions, patterns, patterns_updated_at, trust_class, primary_email, emails')
       .eq('user_id', userId)
       .in('trust_class', ['trusted', 'unclassified'])
       .neq('name', 'self')
@@ -4637,7 +4642,7 @@ export async function scoreOpenLoops(
 
     supabase
       .from('tkg_entities')
-      .select('id, name, patterns, trust_class, primary_email, emails')
+      .select('id, name, patterns, patterns_updated_at, trust_class, primary_email, emails')
       .eq('user_id', userId)
       .neq('name', 'self')
       .eq('type', 'person')
@@ -6484,7 +6489,7 @@ export async function scoreOpenLoops(
   // same scored pool — discrepancies win because their stakes/urgency values
   // reflect structural importance, not signal recency.
   // -----------------------------------------------------------------------
-  const discrepancies = detectDiscrepancies({
+  const rawDiscrepancies = detectDiscrepancies({
     commitments,
     entities,
     goals,
@@ -6494,6 +6499,32 @@ export async function scoreOpenLoops(
     selfEmails,
     selfNameTokens: selfNameTokens.length > 0 ? selfNameTokens : undefined,
   });
+  const latestProcessedSignalMs = structuredSignals.reduce((latest, signal) => {
+    const signalWithFreshness = signal as typeof signal & {
+      created_at?: string | null;
+    };
+    const freshestIso =
+      signalWithFreshness.created_at ??
+      signalWithFreshness.occurred_at;
+    const freshestAt = new Date(freshestIso).getTime();
+    if (!Number.isFinite(freshestAt)) return latest;
+    return Math.max(latest, freshestAt);
+  }, 0);
+  const hasMissingGraphUpdate = (entities as Array<{ patterns_updated_at?: string | null }>)
+    .some((entity) => !entity.patterns_updated_at);
+  const oldestGraphUpdateMs = (entities as Array<{ patterns_updated_at?: string | null }>)
+    .reduce<number | null>((oldest, entity) => {
+      const updatedAt = entity.patterns_updated_at ? new Date(entity.patterns_updated_at).getTime() : NaN;
+      if (!Number.isFinite(updatedAt)) return oldest;
+      if (oldest == null) return updatedAt;
+      return Math.min(oldest, updatedAt);
+    }, null);
+  const relationshipGraphStale =
+    latestProcessedSignalMs > 0 &&
+    (hasMissingGraphUpdate || (oldestGraphUpdateMs != null && latestProcessedSignalMs > oldestGraphUpdateMs));
+  const discrepancies = relationshipGraphStale
+    ? rawDiscrepancies.filter((discrepancy) => discrepancy.trigger?.outcome_class !== 'relationship')
+    : rawDiscrepancies;
   {
     const previewCap = 8;
     const cls = [...new Set(discrepancies.map((x) => x.class))];
@@ -6506,8 +6537,18 @@ export async function scoreOpenLoops(
         stakes: x.stakes,
         urgency: x.urgency,
         title: x.title.slice(0, 80),
-      })),
-    };
+        })),
+        ...(relationshipGraphStale
+          ? {
+              graph_stale_guard: {
+                latest_processed_signal_at: new Date(latestProcessedSignalMs).toISOString(),
+                oldest_patterns_updated_at:
+                  oldestGraphUpdateMs != null ? new Date(oldestGraphUpdateMs).toISOString() : 'missing',
+                blocked_relationship_discrepancies: rawDiscrepancies.length - discrepancies.length,
+              },
+            }
+          : {}),
+      };
   }
   console.log(JSON.stringify({
     event: 'discrepancy_detection_debug',

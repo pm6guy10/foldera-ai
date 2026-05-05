@@ -1150,6 +1150,9 @@ export function selectRankedCandidates(
     'stale_evidence_over_14d',
     'stale_status_without_current_artifact_facts',
     'generic_prep_shape_risk',
+    'missing_current_artifact_anchor',
+    'missing_role_fit_source_bundle',
+    'missing_schedule_resolution_context',
   ]);
   const artifactabilityById = new Map(
     topCandidates.map((candidate) => [
@@ -2007,6 +2010,9 @@ function buildWinnerQualityTrace(input: {
           'stale_evidence_over_14d',
           'stale_status_without_current_artifact_facts',
           'generic_prep_shape_risk',
+          'missing_current_artifact_anchor',
+          'missing_role_fit_source_bundle',
+          'missing_schedule_resolution_context',
         ].some((marker) => reason.includes(marker)),
       );
       return {
@@ -2084,6 +2090,15 @@ function smallestNextMoveForWinnerBlockers(blockers: string[]): string {
   }
   if (text.includes('generic_prep_shape_risk')) {
     return 'Convert the candidate into a finished artifact skeleton before using a model attempt.';
+  }
+  if (text.includes('missing_current_artifact_anchor')) {
+    return 'Require a fresh date, deadline, or live thread anchor before treating this as a grounded artifact.';
+  }
+  if (text.includes('missing_role_fit_source_bundle')) {
+    return 'Require at least one current anchor plus one role/system fact before allowing an interview packet.';
+  }
+  if (text.includes('missing_schedule_resolution_context')) {
+    return 'Require a real conflicting slot or grounded reschedule option before allowing a calendar brief.';
   }
   if (text.includes('missing_source_facts')) {
     return 'Attach source facts to the candidate or return No safe artifact today.';

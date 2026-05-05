@@ -1,11 +1,5 @@
 #!/usr/bin/env node
 
-/**
- * Read-only winner truth report.
- *
- * Uses current Supabase state plus the local scorer/generator ranking path.
- * It never calls paid models, sends email, or mutates production data.
- */
 import { config } from 'dotenv';
 import { resolve } from 'path';
 
@@ -18,16 +12,9 @@ process.env.ALLOW_PROD_PAID_LLM = 'false';
 
 async function main() {
   const userId = (process.env.AUDIT_USER_ID || process.env.OWNER_USER_ID || OWNER_USER_ID || '').trim();
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY || !userId) {
-    console.error('Missing NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, or owner user id.');
-    process.exit(1);
-  }
-
   const report = await getWinnerTruthReport(userId);
-  console.log(JSON.stringify(report, null, 2));
-
-  const currentBlocker = report.future_findings.some((finding) => finding.classification === 'current_blocker');
-  if (currentBlocker || report.three_day_consistency.passes === false) {
+  console.log(JSON.stringify(report.three_day_consistency, null, 2));
+  if (!report.three_day_consistency.passes) {
     process.exit(1);
   }
 }

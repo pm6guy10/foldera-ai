@@ -163,12 +163,60 @@ describeAuthMocked('CPU reduction surfaces', () => {
         { provider: 'google', is_active: true, sync_email: 'owner@gmail.com', last_synced_at: null, missing_scopes: [] },
       ],
     }));
+    await page.route(matchApiPath('/api/system/winner-truth'), fulfillJson({
+      current_winner: {
+        verdict: 'no_safe_artifact_today',
+        title: null,
+        tier: null,
+        artifact_family: null,
+        note: null,
+      },
+      sync_health: {
+        providers: [
+          { provider: 'google', stale: false, age_hours: 2 },
+          { provider: 'microsoft', stale: true, age_hours: 80 },
+        ],
+        graph: {
+          graph_stale: false,
+          stale_entity_count: 0,
+        },
+        decrypt_fallback_count: 0,
+      },
+      top_viable_candidates: [],
+      blocked_candidates: [
+        {
+          candidate_id: 'cwu-thin',
+          title: 'Deadline closing: CWU interview #2',
+          blockers: ['missing_role_fit_source_bundle'],
+        },
+      ],
+      graph_drift: [],
+      polluted_entities: [],
+      three_day_consistency: {
+        passes: false,
+        days: [
+          { day: '2026-05-05', classification: 'garbage_regression', summary: 'Old stale MACSC output' },
+        ],
+      },
+      action_needed: ['Refresh stale provider sync before trusting silence or deadline pressure from that source.'],
+      future_findings: [
+        {
+          classification: 'future_backlog',
+          finding: 'mail_sync_stores_preview_not_full_raw_body',
+          evidence: 'Current mail sync persists headers plus body preview text.',
+          smallest_next_move: 'Add artifact-family-specific evidence hydration where preview-only context is too thin.',
+        },
+      ],
+    }));
     await page.route(matchApiPath('/api/conviction/latest'), fulfillJson({}));
 
     await page.goto('/dashboard/system');
     await expect(page.getByRole('heading', { name: /System tools/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: /Winner truth/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Good candidates present/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Deeper findings/i)).toBeVisible({ timeout: 15000 });
     await page.getByRole('button', { name: /Run pipeline \(dry run\)/i }).click();
-    await page.waitForURL(/\/dashboard\?generated=true/, { timeout: 15000 });
+    await expect(page.getByText(/Dry run finished\./i)).toBeVisible({ timeout: 15000 });
 
     expect(runBriefRequests).toBe(1);
   });

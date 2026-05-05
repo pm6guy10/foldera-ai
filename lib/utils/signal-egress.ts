@@ -1,7 +1,7 @@
 export const SIGNAL_CONTEXT_LIMIT = 150;
 
 export const SIGNAL_CONTEXT_SELECT =
-  'id, user_id, source, source_id, type, author, recipients, occurred_at, extracted_entities, extracted_commitments, extracted_dates, extracted_amounts, outcome_label, processed';
+  'id, user_id, source, source_id, type, author, recipients, occurred_at, created_at, extracted_entities, extracted_commitments, extracted_dates, extracted_amounts, outcome_label, processed';
 
 export const MAX_SIGNAL_CONTENT_CHARS = 15_000;
 

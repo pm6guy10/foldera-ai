@@ -15,6 +15,10 @@ const autoSkipStaleApprovals = vi.fn();
 const runCommitmentCeilingDefense = vi.fn();
 const runTokenWatchdog = vi.fn();
 const checkConnectorHealth = vi.fn();
+const listSignalRetentionUserIds = vi.fn();
+const resolveSelfIdentity = vi.fn();
+const runBehavioralGraph = vi.fn();
+const repairPollutedTrustedEntities = vi.fn();
 const logStructuredEvent = vi.fn();
 const mockSupabase = {
   staleSignalIds: [] as string[],
@@ -209,6 +213,22 @@ vi.mock('@/lib/cron/connector-health', () => ({
   checkConnectorHealth,
 }));
 
+vi.mock('@/lib/cron/daily-maintenance', () => ({
+  listSignalRetentionUserIds,
+}));
+
+vi.mock('@/lib/auth/self-identity', () => ({
+  resolveSelfIdentity,
+}));
+
+vi.mock('@/lib/signals/behavioral-graph', () => ({
+  runBehavioralGraph,
+}));
+
+vi.mock('@/lib/signals/entity-trust-repair', () => ({
+  repairPollutedTrustedEntities,
+}));
+
 vi.mock('@/lib/cron/brief-engagement-signals', () => ({
   recordUnopenedDailyBriefSignals: vi.fn().mockResolvedValue({ checked: 0, inserted: 0 }),
 }));
@@ -249,6 +269,24 @@ describe('nightly-ops route', () => {
       alerts_sent: 0,
       flagged_sources: 0,
       skipped_recent_alerts: 0,
+    });
+    listSignalRetentionUserIds.mockResolvedValue(['user-1']);
+    resolveSelfIdentity.mockResolvedValue({ selfEmails: new Set<string>(), selfNameTokens: [] });
+    runBehavioralGraph.mockResolvedValue({
+      ok: true,
+      users: 1,
+      total_entities_updated: 4,
+      total_silent_entities: 0,
+      total_signals_scanned: 120,
+      total_pages_fetched: 1,
+      skipped_users: 0,
+      freshness: [],
+    });
+    repairPollutedTrustedEntities.mockResolvedValue({
+      ok: true,
+      scanned: 6,
+      repaired: 1,
+      polluted_entities: [{ id: 'entity-1', name: 'onboarding@resend.dev', primary_email: 'onboarding@resend.dev', trust_class: 'trusted', reason: 'system_sender_email' }],
     });
     logStructuredEvent.mockReset();
     mockSupabase.staleSignalIds = [];
@@ -293,8 +331,12 @@ describe('nightly-ops route', () => {
     }));
     expect(runCommitmentCeilingDefense).toHaveBeenCalledTimes(1);
     expect(checkConnectorHealth).toHaveBeenCalledTimes(1);
+    expect(runBehavioralGraph).toHaveBeenCalledWith(['user-1']);
+    expect(repairPollutedTrustedEntities).toHaveBeenCalledTimes(1);
     expect(Object.keys(payload.stages)).toEqual([...NIGHTLY_OPS_INGEST_STAGE_ORDER]);
     expect(payload.stages.passive_rejection).toEqual({ ok: true, skipped: 0 });
+    expect(payload.stages.behavioral_graph).toMatchObject({ ok: true, users: 1 });
+    expect(payload.stages.entity_trust_repair).toMatchObject({ ok: true, repaired: 1 });
     expect(payload.stages.self_heal).toBeUndefined();
     expect(payload.stages.acceptance_gate).toBeUndefined();
   });

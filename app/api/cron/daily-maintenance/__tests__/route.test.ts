@@ -119,7 +119,7 @@ describe('daily-maintenance cron route', () => {
     expect(listSignalRetentionUserIds).toHaveBeenCalledTimes(1);
     expect(purgeOldExtractedSignals).toHaveBeenCalledWith(['user-1']);
     expect(recordUnopenedDailyBriefSignals).toHaveBeenCalledTimes(1);
-    expect(runBehavioralGraph).toHaveBeenCalledWith(['user-1']);
+    expect(runBehavioralGraph).toHaveBeenCalledWith(['user-1'], { onlyIfStale: true });
     expect(runAttentionDecay).toHaveBeenCalledWith(['user-1']);
     expect(completeSuppressedCommitments).toHaveBeenCalledTimes(1);
     expect(trackReplyOutcomes).toHaveBeenCalledTimes(1);

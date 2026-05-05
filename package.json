@@ -25,6 +25,7 @@
     "scoreboard": "npx tsx scripts/scoreboard.ts",
     "peek:pipeline-winner": "npx tsx scripts/peek-pipeline-winner.ts",
     "winner:autopsy": "npx tsx scripts/winner-autopsy.ts",
+    "winner:replay:3day": "npx tsx scripts/winner-replay-3day.ts",
     "prod:dry-run-plain": "npx tsx scripts/prod-dry-run-plain.ts",
     "check:pipeline-heartbeat": "npx tsx scripts/pipeline-cron-heartbeat-check.ts",
     "test:prod:setup": "npx tsx tests/production/setup-auth.ts",

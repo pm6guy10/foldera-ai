@@ -6,5 +6,7 @@ export const NIGHTLY_OPS_INGEST_STAGE_ORDER = [
   'connector_health',
   'sync_staleness',
   'signal_processing',
+  'behavioral_graph',
+  'entity_trust_repair',
   'passive_rejection',
 ] as const;

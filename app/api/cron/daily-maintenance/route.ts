@@ -76,7 +76,7 @@ async function handler(request: NextRequest) {
     }
 
     try {
-      const bxResult = await runBehavioralGraph(retentionUserIds);
+      const bxResult = await runBehavioralGraph(retentionUserIds, { onlyIfStale: true });
       stages.behavioral_graph = bxResult;
       console.log(JSON.stringify({ event: 'daily_maintenance_stage', stage: 'behavioral_graph', ...bxResult }));
     } catch (err: any) {

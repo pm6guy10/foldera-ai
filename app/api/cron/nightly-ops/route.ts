@@ -32,11 +32,15 @@ import {
 import { autoSkipStaleApprovals } from '@/lib/cron/daily-brief';
 import { runCommitmentCeilingDefense } from '@/lib/cron/self-heal';
 import { checkConnectorHealth } from '@/lib/cron/connector-health';
+import { listSignalRetentionUserIds } from '@/lib/cron/daily-maintenance';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { TEST_USER_ID, NIGHTLY_OPS_SIGNAL_BATCH_MULTIPLIER } from '@/lib/config/constants';
 import { logApiBudgetStatusToSystemHealth } from '@/lib/cron/api-budget';
 import { computeAndPersistHealthVerdict } from '@/lib/cron/health-verdict';
 import { insertPipelineCronPhase } from '@/lib/observability/pipeline-run';
+import { resolveSelfIdentity } from '@/lib/auth/self-identity';
+import { runBehavioralGraph } from '@/lib/signals/behavioral-graph';
+import { repairPollutedTrustedEntities } from '@/lib/signals/entity-trust-repair';
 import { NIGHTLY_OPS_INGEST_STAGE_ORDER } from './contract';
 
 export const dynamic = 'force-dynamic';
@@ -413,7 +417,57 @@ async function handler(request: NextRequest) {
       console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'signal_processing', error: err.message }));
     }
 
-    // Stage 7: Passive rejection (auto-skip stale pending_approval > 24h)
+    // Stage 7: Behavioral graph refresh after signal processing and before briefing
+    try {
+      const retentionUserIds = await listSignalRetentionUserIds(TEST_USER_ID);
+      const behavioralGraph = await runBehavioralGraph(retentionUserIds);
+      stages.behavioral_graph = behavioralGraph;
+      console.log(JSON.stringify({ event: 'nightly_ops_stage', stage: 'behavioral_graph', ...behavioralGraph }));
+    } catch (err: any) {
+      Sentry.captureException(err);
+      stages.behavioral_graph = { ok: false, error: err.message };
+      console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'behavioral_graph', error: err.message }));
+    }
+
+    // Stage 8: Repair proven polluted trusted entities before briefing reads them
+    try {
+      const retentionUserIds = await listSignalRetentionUserIds(TEST_USER_ID);
+      let scanned = 0;
+      let repaired = 0;
+      const pollutedEntities: Array<Record<string, unknown>> = [];
+      for (const userId of retentionUserIds) {
+        const identity = await resolveSelfIdentity(userId);
+        const result = await repairPollutedTrustedEntities(userId, {
+          selfEmails: identity.selfEmails,
+        });
+        scanned += result.scanned;
+        repaired += result.repaired;
+        pollutedEntities.push(
+          ...result.polluted_entities.map((entity) => ({
+            user_id: userId,
+            ...entity,
+          })),
+        );
+      }
+      stages.entity_trust_repair = {
+        ok: true,
+        scanned,
+        repaired,
+        polluted_entities: pollutedEntities.slice(0, 25),
+      };
+      console.log(JSON.stringify({
+        event: 'nightly_ops_stage',
+        stage: 'entity_trust_repair',
+        scanned,
+        repaired,
+      }));
+    } catch (err: any) {
+      Sentry.captureException(err);
+      stages.entity_trust_repair = { ok: false, error: err.message };
+      console.error(JSON.stringify({ event: 'nightly_ops_stage_error', stage: 'entity_trust_repair', error: err.message }));
+    }
+
+    // Stage 9: Passive rejection (auto-skip stale pending_approval > 24h)
     try {
       const passive = await autoSkipStaleApprovals();
       stages.passive_rejection = { ok: true, ...passive };
