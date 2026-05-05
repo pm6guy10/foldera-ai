@@ -252,6 +252,20 @@ export interface GenerationRunLog {
   pipeline_dry_run?: PipelineDryRunReceipt;
   /** Cross-source evidence audit: distinct signal sources in the generator bundle. */
   evidence_bundle?: EvidenceBundleReceipt;
+  /** Winner-quality metadata: current/decrypt/provider health known before generation. */
+  data_health?: unknown;
+  /** Winner-quality metadata: per-candidate positive contract/artifactability receipts. */
+  candidate_artifactability?: unknown[];
+  /** Winner-quality metadata: taste examples used as rails, not templates. */
+  taste_examples_used?: unknown;
+  /** Winner-quality metadata: final positive winner contract verdict. */
+  positive_winner_contract?: unknown;
+  /** Winner-quality metadata: attempt slots spent or reserved by candidate. */
+  attempt_slot_trace?: unknown[];
+  /** Winner-quality metadata: good candidates or risky candidates blocked before paid/model attempts. */
+  good_candidate_blockers?: unknown[];
+  /** Winner-quality metadata: investigation lane findings intentionally not fixed in this slice. */
+  future_findings?: unknown[];
   /** True when the scorer returned no_valid_action and the generator built a deterministic blocker artifact. */
   no_valid_action_blocker?: boolean;
 }

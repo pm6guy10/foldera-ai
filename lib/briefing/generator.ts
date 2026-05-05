@@ -113,6 +113,12 @@ import {
 import { getGoalQuarantineReason, isUsableGoalRow } from './goal-hygiene';
 import { buildSignalMetadataSummaryRows } from './signal-metadata-summary';
 import { evaluateArtifactQualityGate, evaluateCommandCenterCandidateGate } from './artifact-quality-gate';
+import {
+  evaluateCandidateArtifactability,
+  selectArtifactTasteExamples,
+  type CandidateArtifactabilityReceipt,
+  type PositiveWinnerContractReceipt,
+} from './artifact-taste-pack';
 import { SIGNAL_CONTEXT_LIMIT, SIGNAL_CONTEXT_SELECT } from '@/lib/utils/signal-egress';
 
 // ---------------------------------------------------------------------------
@@ -1084,10 +1090,43 @@ async function buildAvoidanceObservations(
  * Returns the final winner plus a competition context string injected into the
  * generation prompt so the LLM knows why this candidate beat the others.
  */
+export interface RankedCandidateSelectionEntry {
+  candidate: import('./scorer').ScoredLoop;
+  note: string;
+  disqualified: boolean;
+  disqualifyReason: string | null;
+}
+
+export interface WinnerQualityTrace {
+  candidate_artifactability: CandidateArtifactabilityReceipt[];
+  taste_examples_used: {
+    selected_candidate_id: string | null;
+    family: string | null;
+    good: Array<{ id: string; label: string }>;
+    bad: Array<{ id: string; label: string; failureClass?: string }>;
+  };
+  positive_winner_contract: PositiveWinnerContractReceipt;
+  good_candidate_blockers: Array<{
+    candidate_id: string;
+    title: string;
+    tier: CandidateArtifactabilityReceipt['tier'];
+    family: CandidateArtifactabilityReceipt['artifact_family'];
+    blockers: string[];
+    classification: 'current_blocker' | 'adjacent_risk';
+    evidence: string;
+    smallest_next_move: string;
+  }>;
+}
+
 export function selectRankedCandidates(
   topCandidates: import('./scorer').ScoredLoop[],
   guardrails: { approvedRecently: RecentActionRow[]; skippedRecently?: RecentSkippedActionRow[] },
-): { ranked: Array<{ candidate: import('./scorer').ScoredLoop; note: string; disqualified: boolean; disqualifyReason: string | null }>; competitionContext: string } {
+  options: { now?: Date } = {},
+): {
+  ranked: RankedCandidateSelectionEntry[];
+  competitionContext: string;
+  winnerQualityTrace?: WinnerQualityTrace;
+} {
   if (topCandidates.length === 0) throw new Error('selectRankedCandidates: empty candidate list');
 
   const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
@@ -1103,6 +1142,21 @@ export function selectRankedCandidates(
     /\bacross (?:\d+|multiple)\b|\btheme\b|\bcluster\b|\bpattern\b|\bseveral\b.*\bthreads?\b|\bdeadline appears\b/i;
   const SCHEDULING_ADMIN_RE =
     /\boverlap|double[-\s]?book|calendar|same window|conflict|slot|reschedul|\bschedule\b/i;
+  const POSITIVE_CONTRACT_HARD_BLOCKERS = new Set([
+    'transactional_sender_candidate',
+    'relationship_silence_without_command_center_artifact',
+    'missing_source_facts',
+    'missing_grounded_recipient_for_send_message',
+    'stale_evidence_over_14d',
+    'stale_status_without_current_artifact_facts',
+    'generic_prep_shape_risk',
+  ]);
+  const artifactabilityById = new Map(
+    topCandidates.map((candidate) => [
+      candidate.id,
+      evaluateCandidateArtifactability(candidate, { now: options.now }),
+    ]),
+  );
 
   function getCandidateSearchText(candidate: import('./scorer').ScoredLoop): string {
     return [
@@ -1287,6 +1341,24 @@ export function selectRankedCandidates(
     const broadClusterWithoutSingleMove = isBroadClusterWithoutSingleMove(candidate, searchText);
     const emergencyOverride = isTrueEmergencyOverrideCandidate(candidate, searchText);
     const ungroundedCareerStatusOutbound = isUngroundedCareerStatusOutbound(candidate, searchText, emailHits.length);
+    const positiveArtifactability = artifactabilityById.get(candidate.id);
+    const positiveHardBlocker = positiveArtifactability?.blockers.find((reason) =>
+      POSITIVE_CONTRACT_HARD_BLOCKERS.has(reason),
+    );
+
+    if (positiveHardBlocker) {
+      return {
+        candidate,
+        viabilityScore: 0,
+        note: '',
+        disqualified: true,
+        disqualifyReason: `positive_winner_contract:${positiveHardBlocker}`,
+        shadowUrgent,
+        emergencyOverride,
+        longHorizonLeverage: false,
+        ungroundedCareerStatusOutbound,
+      };
+    }
 
     // 0. Hard disqualifiers — top slots must be SEND/WRITE capable, non-generic finished-work candidates.
     if (!SEND_WRITE_ACTIONS.has(candidate.suggestedActionType)) {
@@ -1440,6 +1512,16 @@ export function selectRankedCandidates(
     // 2. Viability multipliers applied to raw scorer score.
     let mult = 1.0;
     const notes: string[] = [];
+    if (positiveArtifactability?.artifactable && positiveArtifactability.tier === 'tier_1') {
+      mult *= 1.5;
+      notes.push(`positive winner contract tier-1 ${positiveArtifactability.artifact_family}`);
+    } else if (positiveArtifactability?.artifactable && positiveArtifactability.tier === 'tier_2') {
+      mult *= 1.18;
+      notes.push(`positive winner contract tier-2 ${positiveArtifactability.artifact_family}`);
+    } else if (positiveArtifactability?.tier === 'tier_3') {
+      mult *= 0.45;
+      notes.push('tier-3 relationship/risk held behind artifact candidates');
+    }
 
     // Discrepancy priority invariant: if discrepancy candidates exist, tasks lose
     // unless they are unusually strong, evidence-dense commitments.
@@ -1782,9 +1864,53 @@ export function selectRankedCandidates(
     top = rated[0];
   }
 
+  const positiveEntry = rated
+    .filter((entry) => {
+      const artifactability = artifactabilityById.get(entry.candidate.id);
+      return (
+        !entry.disqualified &&
+        artifactability?.artifactable === true &&
+        (artifactability.tier === 'tier_1' || artifactability.tier === 'tier_2')
+      );
+    })
+    .sort((a, b) => {
+      const aArtifactability = artifactabilityById.get(a.candidate.id);
+      const bArtifactability = artifactabilityById.get(b.candidate.id);
+      const aTierBonus = aArtifactability?.tier === 'tier_1' ? 2 : 1;
+      const bTierBonus = bArtifactability?.tier === 'tier_1' ? 2 : 1;
+      if (aTierBonus !== bTierBonus) return bTierBonus - aTierBonus;
+      return b.viabilityScore - a.viabilityScore;
+    })[0];
+  const topArtifactability = artifactabilityById.get(top.candidate.id);
+  if (
+    positiveEntry &&
+    !top.disqualified &&
+    topArtifactability?.tier === 'tier_3' &&
+    positiveEntry.candidate.id !== top.candidate.id
+  ) {
+    positiveEntry.viabilityScore = Math.max(positiveEntry.viabilityScore, top.viabilityScore + 0.001);
+    positiveEntry.note = [
+      positiveEntry.note,
+      'positive winner contract forced tier-1/2 artifact above tier-3 risk/silence',
+    ].filter(Boolean).join('; ');
+    rated.sort((a, b) => {
+      if (a.disqualified !== b.disqualified) return a.disqualified ? 1 : -1;
+      return b.viabilityScore - a.viabilityScore;
+    });
+    top = rated[0];
+  }
+
   // Pathological fallback: all disqualified → still return ranked list so fallback loop can try
   if (top.disqualified) {
-    return { ranked: rated.map(r => ({ candidate: r.candidate, note: r.note, disqualified: r.disqualified, disqualifyReason: r.disqualifyReason })), competitionContext: '' };
+    return {
+      ranked: rated.map(r => ({ candidate: r.candidate, note: r.note, disqualified: r.disqualified, disqualifyReason: r.disqualifyReason })),
+      competitionContext: '',
+      winnerQualityTrace: buildWinnerQualityTrace({
+        rated,
+        artifactabilityById,
+        selectedCandidateId: null,
+      }),
+    };
   }
 
   // Build competition context for the generation prompt.
@@ -1810,12 +1936,235 @@ export function selectRankedCandidates(
     );
   }
 
+  const tasteSelection = selectArtifactTasteExamples({
+    actionType: top.candidate.suggestedActionType,
+    title: top.candidate.title,
+    content: top.candidate.content,
+    text: getCandidateSearchText(top.candidate),
+  });
+
   const competitionContext =
     `CANDIDATE_COMPETITION (${rated.length} candidate${rated.length !== 1 ? 's' : ''} evaluated — final winner selected on execution viability, not just scorer rank):\n` +
     lines.join('\n') + '\n' +
-    `This context proves why you are generating for this candidate today. Use it to write a specific, grounded artifact — not a generic follow-up.`;
+    `This context proves why you are generating for this candidate today. Use it to write a specific, grounded artifact — not a generic follow-up.\n\n` +
+    tasteSelection.promptGuidance;
 
-  return { ranked: rated.map(r => ({ candidate: r.candidate, note: r.note, disqualified: r.disqualified, disqualifyReason: r.disqualifyReason })), competitionContext };
+  return {
+    ranked: rated.map(r => ({ candidate: r.candidate, note: r.note, disqualified: r.disqualified, disqualifyReason: r.disqualifyReason })),
+    competitionContext,
+    winnerQualityTrace: buildWinnerQualityTrace({
+      rated,
+      artifactabilityById,
+      selectedCandidateId: top.candidate.id,
+    }),
+  };
+}
+
+function buildWinnerQualityTrace(input: {
+  rated: Array<{
+    candidate: ScoredLoop;
+    disqualified: boolean;
+    disqualifyReason: string | null;
+  }>;
+  artifactabilityById: Map<string, CandidateArtifactabilityReceipt>;
+  selectedCandidateId: string | null;
+}): WinnerQualityTrace {
+  const candidateArtifactability = input.rated
+    .map((entry) => input.artifactabilityById.get(entry.candidate.id))
+    .filter((entry): entry is CandidateArtifactabilityReceipt => Boolean(entry));
+  const selected = input.selectedCandidateId
+    ? input.artifactabilityById.get(input.selectedCandidateId) ?? null
+    : null;
+  const selectedCandidate = input.rated.find((entry) => entry.candidate.id === input.selectedCandidateId)?.candidate ?? null;
+  const taste = selectedCandidate
+    ? selectArtifactTasteExamples({
+        actionType: selectedCandidate.suggestedActionType,
+        title: selectedCandidate.title,
+        content: selectedCandidate.content,
+        text: candidateTasteSummaryForTrace(selectedCandidate),
+      })
+    : null;
+  const viablePositiveCount = candidateArtifactability.filter(
+    (entry) => entry.artifactable && (entry.tier === 'tier_1' || entry.tier === 'tier_2'),
+  ).length;
+  const selectedTier = selected?.tier ?? null;
+  const selectedFamily = selected?.artifact_family ?? null;
+  const allBlocked = input.rated.every((entry) => entry.disqualified);
+  const blockers = input.rated
+    .map((entry) => {
+      const artifactability = input.artifactabilityById.get(entry.candidate.id);
+      const blockerList = [
+        ...(artifactability?.blockers ?? []),
+        ...(entry.disqualified && entry.disqualifyReason ? [entry.disqualifyReason] : []),
+      ];
+      if (blockerList.length === 0 || !artifactability) return null;
+      const currentBlocker = blockerList.some((reason) =>
+        [
+          'transactional_sender_candidate',
+          'relationship_silence_without_command_center_artifact',
+          'missing_source_facts',
+          'missing_grounded_recipient_for_send_message',
+          'stale_evidence_over_14d',
+          'stale_status_without_current_artifact_facts',
+          'generic_prep_shape_risk',
+        ].some((marker) => reason.includes(marker)),
+      );
+      return {
+        candidate_id: entry.candidate.id,
+        title: entry.candidate.title,
+        tier: artifactability.tier,
+        family: artifactability.artifact_family,
+        blockers: blockerList,
+        classification: currentBlocker ? 'current_blocker' as const : 'adjacent_risk' as const,
+        evidence: artifactability.source_facts[0] ?? entry.candidate.content.slice(0, 160),
+        smallest_next_move: smallestNextMoveForWinnerBlockers(blockerList),
+      };
+    })
+    .filter((entry): entry is WinnerQualityTrace['good_candidate_blockers'][number] => Boolean(entry));
+  const tier3BlockedByPositive = blockers.some((entry) =>
+    entry.tier === 'tier_3' && viablePositiveCount > 0,
+  );
+  const positiveWinnerContract: PositiveWinnerContractReceipt = {
+    selected_candidate_id: input.selectedCandidateId,
+    selected_tier: selectedTier,
+    selected_family: selectedFamily,
+    viable_tier_1_or_2_count: viablePositiveCount,
+    tier_3_blocked_by_positive_candidate: tier3BlockedByPositive,
+    verdict: selected
+      ? 'positive_candidate_selected'
+      : allBlocked
+        ? 'all_candidates_blocked'
+        : 'no_viable_positive_candidate',
+    reason: selected
+      ? `Selected ${selected.tier} ${selected.artifact_family} after positive winner contract.`
+      : 'No tier-1/tier-2 artifactable candidate survived positive winner contract.',
+  };
+
+  return {
+    candidate_artifactability: candidateArtifactability,
+    taste_examples_used: {
+      selected_candidate_id: input.selectedCandidateId,
+      family: taste?.family ?? null,
+      good: taste?.good.map((example) => ({ id: example.id, label: example.label })) ?? [],
+      bad: taste?.bad.map((example) => ({
+        id: example.id,
+        label: example.label,
+        failureClass: example.failureClass,
+      })) ?? [],
+    },
+    positive_winner_contract: positiveWinnerContract,
+    good_candidate_blockers: blockers,
+  };
+}
+
+function candidateTasteSummaryForTrace(candidate: ScoredLoop): string {
+  return [
+    candidate.relationshipContext ?? '',
+    candidate.entityName ?? '',
+    ...(candidate.relatedSignals ?? []),
+    ...(candidate.sourceSignals ?? []).map((signal) =>
+      [signal.summary, signal.source, signal.occurredAt].filter(Boolean).join(' '),
+    ),
+  ].join(' ');
+}
+
+function smallestNextMoveForWinnerBlockers(blockers: string[]): string {
+  const text = blockers.join(' ');
+  if (text.includes('transactional_sender_candidate')) {
+    return 'Repair sender/entity trust pollution only for the proven transactional sender and replay selection.';
+  }
+  if (text.includes('stale_evidence_over_14d')) {
+    return 'Refresh provider sync or require newer source facts before treating the candidate as urgent.';
+  }
+  if (text.includes('stale_status_without_current_artifact_facts')) {
+    return 'Require a current deadline, schedule field, or new source fact before ranking this as an artifact candidate.';
+  }
+  if (text.includes('missing_grounded_recipient_for_send_message')) {
+    return 'Require a grounded recipient/thread before allowing a follow-up draft.';
+  }
+  if (text.includes('generic_prep_shape_risk')) {
+    return 'Convert the candidate into a finished artifact skeleton before using a model attempt.';
+  }
+  if (text.includes('missing_source_facts')) {
+    return 'Attach source facts to the candidate or return No safe artifact today.';
+  }
+  return 'Inspect this candidate blocker in the winner autopsy trace before widening scope.';
+}
+
+function positiveContractReasonAliases(reason: string): string[] {
+  const reasons = [reason];
+  if (reason.includes('transactional_sender_candidate')) {
+    reasons.push('transactional_sender_decision_pressure');
+  }
+  if (reason.includes('relationship_silence_without_command_center_artifact')) {
+    reasons.push('relationship_silence_artifact');
+  }
+  if (reason.includes('missing_grounded_recipient_for_send_message')) {
+    reasons.push('missing_grounded_recipient_for_send_message');
+  }
+  if (reason.includes('stale_status_without_current_artifact_facts')) {
+    reasons.push('stale_status_without_current_artifact_facts');
+  }
+  return Array.from(new Set(reasons));
+}
+
+function buildGenerationDataHealthTrace(
+  candidateDiscovery: GenerationCandidateDiscoveryLog | null,
+  trace: WinnerQualityTrace | undefined,
+): Record<string, unknown> {
+  const sourceSignals = (candidateDiscovery?.topCandidates ?? []).flatMap((candidate) => candidate.sourceSignals ?? []);
+  const datedSources = sourceSignals
+    .map((source) => source.occurredAt)
+    .filter((value): value is string => Boolean(value))
+    .map((value) => new Date(value).getTime())
+    .filter((value) => !Number.isNaN(value));
+  const newestSourceAt = datedSources.length > 0 ? new Date(Math.max(...datedSources)).toISOString() : null;
+  const staleArtifactabilityCount =
+    trace?.candidate_artifactability.filter((entry) =>
+      typeof entry.currentness_days === 'number' && entry.currentness_days > 14,
+    ).length ?? 0;
+
+  return {
+    measured_at: new Date().toISOString(),
+    scope: 'candidate_input',
+    candidate_count: candidateDiscovery?.candidateCount ?? null,
+    top_candidate_count: candidateDiscovery?.topCandidates?.length ?? null,
+    source_signal_count: sourceSignals.length,
+    newest_source_at: newestSourceAt,
+    stale_candidate_count: staleArtifactabilityCount,
+    decrypt_fallback_count: null,
+    decrypt_quarantine_count: null,
+    decrypt_health_note: 'Runtime generator trace records candidate-level health; run the winner autopsy harness for direct Supabase decrypt fallback/quarantine counts.',
+  };
+}
+
+function buildGenerationFutureFindingsTrace(
+  trace: WinnerQualityTrace | undefined,
+): Array<Record<string, unknown>> {
+  const findings: Array<Record<string, unknown>> = [];
+  const staleCandidates = trace?.candidate_artifactability.filter((entry) =>
+    typeof entry.currentness_days === 'number' && entry.currentness_days > 2,
+  ) ?? [];
+  if (staleCandidates.length > 0) {
+    findings.push({
+      classification: 'adjacent_risk',
+      finding: 'stale_candidate_inputs_present',
+      evidence: staleCandidates
+        .slice(0, 3)
+        .map((entry) => `${entry.candidate_id}:${entry.currentness_days}d`)
+        .join(', '),
+      smallest_next_move: 'Inspect provider sync freshness in the winner autopsy before approving paid live proof.',
+    });
+  }
+  if (!trace?.candidate_artifactability?.length) {
+    findings.push({
+      classification: 'future_backlog',
+      finding: 'candidate_artifactability_trace_missing',
+      evidence: 'No candidate artifactability receipts were available on this path.',
+      smallest_next_move: 'Keep the positive winner contract in the ranking path for all scorer outcomes.',
+    });
+  }
+  return findings;
 }
 
 function scoredLoopSearchTextForGeneratorCareerPriority(candidate: import('./scorer').ScoredLoop): string {
@@ -5458,6 +5807,13 @@ function buildSelectedGenerationLog(
     active_goals?: string[];
     pipeline_dry_run?: PipelineDryRunReceipt;
     evidence_bundle?: EvidenceBundleReceipt;
+    data_health?: Record<string, unknown>;
+    candidate_artifactability?: CandidateArtifactabilityReceipt[];
+    taste_examples_used?: WinnerQualityTrace['taste_examples_used'];
+    positive_winner_contract?: PositiveWinnerContractReceipt;
+    attempt_slot_trace?: Array<Record<string, unknown>>;
+    good_candidate_blockers?: WinnerQualityTrace['good_candidate_blockers'];
+    future_findings?: Array<Record<string, unknown>>;
   },
 ): GenerationRunLog {
   return {
@@ -5499,6 +5855,13 @@ function buildSelectedGenerationLog(
     ),
     ...(extras?.pipeline_dry_run ? { pipeline_dry_run: extras.pipeline_dry_run } : {}),
     ...(extras?.evidence_bundle ? { evidence_bundle: extras.evidence_bundle } : {}),
+    ...(extras?.data_health ? { data_health: extras.data_health } : {}),
+    ...(extras?.candidate_artifactability ? { candidate_artifactability: extras.candidate_artifactability } : {}),
+    ...(extras?.taste_examples_used ? { taste_examples_used: extras.taste_examples_used } : {}),
+    ...(extras?.positive_winner_contract ? { positive_winner_contract: extras.positive_winner_contract } : {}),
+    ...(extras?.attempt_slot_trace ? { attempt_slot_trace: extras.attempt_slot_trace } : {}),
+    ...(extras?.good_candidate_blockers ? { good_candidate_blockers: extras.good_candidate_blockers } : {}),
+    ...(extras?.future_findings ? { future_findings: extras.future_findings } : {}),
   };
 }
 
@@ -9936,7 +10299,7 @@ export async function generateDirective(
     }
 
     // Part 2b: Rank all candidates by viability before trying each one.
-    let { ranked: rankedCandidates, competitionContext } = selectRankedCandidates(
+    let { ranked: rankedCandidates, competitionContext, winnerQualityTrace } = selectRankedCandidates(
       scored.topCandidates ?? [scored.winner],
       guardrails,
     );
@@ -9946,6 +10309,8 @@ export async function generateDirective(
     if (goldenPathReorder) {
       rankedCandidates = reorderRankedCandidatesForVerificationGoldenPathWriteDocument(rankedCandidates);
     }
+    const dataHealthTrace = buildGenerationDataHealthTrace(scored.candidateDiscovery, winnerQualityTrace);
+    const futureFindingsTrace = buildGenerationFutureFindingsTrace(winnerQualityTrace);
     console.log(`[generator] ${rankedCandidates.length} candidates ranked for user ${userId.slice(0, 8)}`);
 
     // =====================================================================
@@ -10046,7 +10411,46 @@ export async function generateDirective(
     // =====================================================================
 
     const candidateBlockLog: Array<{ title: string; reasons: string[] }> = [];
+    const attemptSlotTrace: Array<Record<string, unknown>> = [];
+    const preLoggedDisqualifiedCandidateIds = new Set<string>();
     let modelBackedCandidateAttempts = 0;
+
+    function recordPreModelBlockedCandidate(candidate: ScoredLoop, reason: string | null | undefined): void {
+      if (preLoggedDisqualifiedCandidateIds.has(candidate.id)) return;
+      const blockReasons = positiveContractReasonAliases(reason ?? 'disqualified');
+      candidateBlockLog.push({ title: candidate.title.slice(0, 80), reasons: blockReasons });
+      attemptSlotTrace.push({
+        candidate_id: candidate.id,
+        title: candidate.title.slice(0, 120),
+        slot: null,
+        attempted_model: false,
+        result: 'pre_model_blocked',
+        reasons: blockReasons,
+      });
+      logStructuredEvent({
+        event: 'candidate_blocked',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: reason?.startsWith('positive_winner_contract:')
+          ? 'command_center_candidate_gate_failed'
+          : 'candidate_disqualified',
+        details: {
+          scope: 'generator',
+          candidate_title: candidate.title.slice(0, 80),
+          candidate_id: candidate.id,
+          reasons: blockReasons,
+          positive_winner_contract: reason?.startsWith('positive_winner_contract:') === true,
+        },
+      });
+      preLoggedDisqualifiedCandidateIds.add(candidate.id);
+    }
+
+    for (const entry of rankedCandidates) {
+      if (entry.disqualified) {
+        recordPreModelBlockedCandidate(entry.candidate, entry.disqualifyReason);
+      }
+    }
 
     // Hoist self-name tokens fetch — called once for all candidates, not once per candidate.
     // If this returns empty (auth metadata missing name), entity suppression is skipped
@@ -10122,7 +10526,7 @@ export async function generateDirective(
     for (const { candidate: currentCandidate, disqualified, disqualifyReason } of rankedCandidates) {
       // Skip disqualified candidates (already acted recently, etc.)
       if (disqualified) {
-        candidateBlockLog.push({ title: currentCandidate.title.slice(0, 80), reasons: [disqualifyReason ?? 'disqualified'] });
+        recordPreModelBlockedCandidate(currentCandidate, disqualifyReason);
         continue;
       }
 
@@ -10442,9 +10846,25 @@ export async function generateDirective(
           title: currentCandidate.title.slice(0, 80),
           reasons: [`candidate_attempt_cap:${MAX_DIRECTIVE_CANDIDATE_ATTEMPTS_PER_RUN}`],
         });
+        attemptSlotTrace.push({
+          candidate_id: currentCandidate.id,
+          title: currentCandidate.title.slice(0, 120),
+          slot: null,
+          attempted_model: false,
+          result: 'attempt_cap_starved',
+          reasons: [`candidate_attempt_cap:${MAX_DIRECTIVE_CANDIDATE_ATTEMPTS_PER_RUN}`],
+        });
         break;
       }
       modelBackedCandidateAttempts += 1;
+      attemptSlotTrace.push({
+        candidate_id: currentCandidate.id,
+        title: currentCandidate.title.slice(0, 120),
+        slot: modelBackedCandidateAttempts,
+        attempted_model: true,
+        result: 'model_attempt_reserved',
+        reasons: [],
+      });
 
       if (candidateBlockLog.length > 0) {
         console.log(`[generator] candidate fallback: skipped ${candidateBlockLog.length} candidate(s) before finding viable #${rankedCandidates.indexOf(rankedCandidates.find(r => r.candidate === currentCandidate)!) + 1}`);
@@ -10939,6 +11359,13 @@ export async function generateDirective(
       generationLog: buildSelectedGenerationLog(scored.candidateDiscovery, {
         active_goals: ctx.active_goals,
         evidence_bundle: evidenceBundleReceipt,
+        data_health: dataHealthTrace,
+        candidate_artifactability: winnerQualityTrace?.candidate_artifactability,
+        taste_examples_used: winnerQualityTrace?.taste_examples_used,
+        positive_winner_contract: winnerQualityTrace?.positive_winner_contract,
+        attempt_slot_trace: attemptSlotTrace,
+        good_candidate_blockers: winnerQualityTrace?.good_candidate_blockers,
+        future_findings: futureFindingsTrace,
         ...(options.pipelineDryRun && payloadResult.assembledPrompt
           ? {
               pipeline_dry_run: {
@@ -11251,9 +11678,17 @@ export async function generateDirective(
         },
       });
     }
+    const noSendLog = buildNoSendGenerationLog(summaryReason, 'validation', scored.candidateDiscovery);
+    noSendLog.data_health = dataHealthTrace;
+    noSendLog.candidate_artifactability = winnerQualityTrace?.candidate_artifactability;
+    noSendLog.taste_examples_used = winnerQualityTrace?.taste_examples_used;
+    noSendLog.positive_winner_contract = winnerQualityTrace?.positive_winner_contract;
+    noSendLog.attempt_slot_trace = attemptSlotTrace;
+    noSendLog.good_candidate_blockers = winnerQualityTrace?.good_candidate_blockers;
+    noSendLog.future_findings = futureFindingsTrace;
     return emptyDirective(
       failureUserReason,
-      buildNoSendGenerationLog(summaryReason, 'validation', scored.candidateDiscovery),
+      noSendLog,
     );
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
