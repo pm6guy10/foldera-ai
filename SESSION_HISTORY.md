@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-05-05 — Supabase unused-index advisor cleanup
+- MODE: Supabase performance-advisor seam only.
+- Files changed: `supabase/migrations/20260505083000_drop_safe_unused_advisor_indexes.sql`, `docs/SUPABASE_MIGRATIONS.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.
+- What changed: Added and applied one exact DDL cleanup migration that drops five zero-scan, non-protective advisor indexes: `idx_system_health_failure`, `idx_ml_snapshots_outcome`, `idx_ml_priors_bucket`, `idx_user_brief_cycle_gates_last_cycle`, and `idx_tkg_signals_outcome_label`. Preserved `idx_ml_snapshots_user` and `idx_tkg_goals_entity_id` because they protect FK paths despite low-traffic unused-index INFO rows. Left `auth_db_connections_absolute` unresolved because it is an external Supabase Auth project setting, not SQL DDL.
+- Verification: `npm run health` passed (`RESULT: 0 FAILING`, Outlook/mail cursor warnings only); `git log --oneline -10`; `git status --short --branch`; `npx supabase db lint --linked` returned `No schema errors found`; `npx supabase inspect db index-stats --linked` confirmed the seven supplied indexes were zero-scan before cleanup; `npm run build` passed; `npx supabase db query --linked -f supabase/migrations/20260505083000_drop_safe_unused_advisor_indexes.sql` applied the migration to production; post-apply `pg_indexes` query returned only `idx_ml_snapshots_user` and `idx_tkg_goals_entity_id` from the original DB index set; `npx supabase db advisors --linked --level info --type performance -o json` now reports only those two intentional DB exceptions plus `auth_db_connections_absolute`.
+- Unresolved issues: The Auth DB connection strategy still needs a Supabase project Auth configuration change to percentage-based allocation. Full migration reconciliation remains separate; `supabase db push --linked --dry-run` is still blocked by remote-only migration history drift, so this cleanup was applied with the exact committed SQL file instead of broad `db push`.
+
 ## 2026-05-04 — Schema reconciliation proof refreshed without DB mutation
 - MODE: P1-3 schema operations read-only follow-up.
 - Files changed: `MIGRATION_RECONCILIATION_REPORT.md`, `SESSION_HISTORY.md`.
