@@ -1,4 +1,4 @@
-# Migration Reconciliation Report — 2026-05-02
+# Migration Reconciliation Report — 2026-05-04
 
 ## Scope
 
@@ -172,16 +172,17 @@ npx supabase db lint --linked
 20260430151722
 ```
 
-## `db lint --linked` Blocker
+## `db lint --linked` Result
 
-`npx supabase db lint --linked` did not complete. The linked remote requires a valid `SUPABASE_DB_PASSWORD`, and the current shell does not have working credentials.
-
-Observed error excerpt:
+`npx supabase db lint --linked` completed successfully on 2026-05-04.
 
 ```text
-failed SASL auth (FATAL: password authentication failed for user "cli_login_postgres")
-FATAL: Circuit breaker open: Too many authentication errors
-Connect to your database by setting the env var correctly: SUPABASE_DB_PASSWORD
+Initialising login role...
+Connecting to remote database...
+Linting schema: extensions
+Linting schema: public
+
+No schema errors found
 ```
 
 ## Interpretation
@@ -191,13 +192,15 @@ Connect to your database by setting the env var correctly: SUPABASE_DB_PASSWORD
 - The remote contains a large set of versions that are not represented in local source control.
 - The local repo contains a large set of migration files that are not represented in the linked remote history.
 - `20260314000002` is duplicated locally across two filenames, which is an additional reconciliation hazard even before any apply step.
-- Because `db lint --linked` could not authenticate, the live schema contract is not yet validated.
+- The linked remote schema lints cleanly, but migration history still diverges sharply.
 
 ## Next Required Move
 
-1. Provide a valid `SUPABASE_DB_PASSWORD` for the linked project.
-2. Re-run:
-   - `npx supabase migration list --linked`
-   - `npx supabase db lint --linked`
-3. Choose an explicit reconciliation strategy for the remote-only and local-only history.
-4. Only after that strategy is approved should any DB mutation be attempted.
+Choose an explicit reconciliation strategy for the remote-only and local-only history. Only after that strategy is approved should any DB mutation be attempted.
+
+Recommended strategy for approval:
+
+1. Create a no-op baseline reconciliation migration that records the current live schema as canonical without replaying historical local-only files into production.
+2. Archive remote-only migration identifiers into a committed reconciliation note so future audits do not rediscover them as missing source.
+3. Rename or squash the duplicated local `20260314000002` pair before any future migration apply workflow depends on local ordering.
+4. After approval, run Supabase migration repair/apply steps in a separately verified schema seam with before/after `migration list` proof.

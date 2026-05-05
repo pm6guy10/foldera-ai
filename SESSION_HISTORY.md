@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-05-04 — Schema reconciliation proof refreshed without DB mutation
+- MODE: P1-3 schema operations read-only follow-up.
+- Files changed: `MIGRATION_RECONCILIATION_REPORT.md`, `SESSION_HISTORY.md`.
+- What changed: Re-ran the linked Supabase read-only checks after access recovered. `migration list --linked` still shows the migration-history divergence, while `db lint --linked` now completes cleanly with no schema errors. The report now names the remaining blocker as reconciliation-strategy approval rather than missing DB credentials.
+- Verification: `npx supabase migration list --linked` completed and showed only `20260412161045` and `20260427000000` matched between local and remote; `npx supabase db lint --linked` completed with `No schema errors found`.
+- Unresolved issues: No Supabase mutation was attempted. P1-3 is not fully closed until Brandon approves the migration reconciliation strategy and a separate before/after schema seam runs the repair/apply step.
+
 ## 2026-05-04 — Dashboard large-file split seam closed
 - MODE: P2-8 large-file complexity follow-up after full-audit cleanup.
 - Files changed: `app/dashboard/page.tsx`, `app/dashboard/dashboard-page-model.tsx`, `components/dashboard/DashboardSecondaryPanel.tsx`, `components/dashboard/DashboardBriefWorkPanel.tsx`, `components/dashboard/DashboardStatsStrip.tsx`, `tests/config/__tests__/large-file-splits.test.ts`, `SESSION_HISTORY.md`.
