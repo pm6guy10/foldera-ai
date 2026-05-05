@@ -1,18 +1,16 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import Link from 'next/link';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
-  FileText,
-  Layers3,
   Mail,
-  Plane,
   TriangleAlert,
   TrendingUp,
 } from 'lucide-react';
+import { DashboardBriefWorkPanel } from '@/components/dashboard/DashboardBriefWorkPanel';
+import { DashboardStatsStrip } from '@/components/dashboard/DashboardStatsStrip';
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
 import {
   DashboardSidebar,
@@ -20,433 +18,41 @@ import {
 } from '@/components/foldera/DashboardSidebar';
 import { EmptyStateCard } from '@/components/foldera/EmptyStateCard';
 import { FolderaLogo } from '@/components/foldera/FolderaLogo';
+import { DashboardSecondaryPanel } from '@/components/dashboard/DashboardSecondaryPanel';
 import {
   clearPendingCheckoutPlan,
   resumePendingCheckout,
 } from '@/lib/billing/pending-checkout';
 import { formatRelativeTime, providerDisplayName } from '@/lib/ui/provider-display';
-
-type DashboardArtifact = {
-  type?: string;
-  to?: string;
-  recipient?: string;
-  subject?: string;
-  title?: string;
-  body?: string;
-  text?: string;
-  content?: string;
-  context?: string;
-  [key: string]: unknown;
-};
-
-type DashboardAction = {
-  id: string;
-  directive?: string;
-  action_type?: string;
-  reason?: string;
-  evidence?: unknown[];
-  artifact?: DashboardArtifact | null;
-};
-
-type DashboardStatusNotice = {
-  id: string;
-  message: string;
-};
-
-type IntegrationStatusPayload = {
-  integrations?: IntegrationStatusItem[];
-  newest_mail_signal_at?: string | null;
-  mail_ingest_looks_stale?: boolean;
-};
-
-type IntegrationStatusItem = {
-  provider?: string;
-  is_active?: boolean;
-  sync_email?: string | null;
-  last_synced_at?: string | null;
-  needs_reconnect?: boolean;
-  needs_reauth?: boolean;
-  sync_stale?: boolean;
-};
-
-type GraphStatsPayload = {
-  signalsTotal?: number;
-  commitmentsActive?: number;
-  patternsActive?: number;
-  lastSignalAt?: string | null;
-  lastSignalSource?: string | null;
-};
-
-type DashboardHistoryItem = {
-  id: string;
-  status?: string | null;
-  action_type?: string | null;
-  generated_at?: string | null;
-  directive_preview?: string | null;
-  artifact_preview?: string | null;
-};
-
-type DashboardHistoryPayload = {
-  items?: DashboardHistoryItem[];
-};
-
-type LoadLatestResult = {
-  action: DashboardAction | null;
-  loaded: boolean;
-};
-
-type DashboardLoadIssue = 'latest' | 'integrations' | 'graph' | 'history';
-
-type StageMetrics = {
-  isDesktop: boolean;
-  scale: number;
-  offsetX: number;
-  offsetY: number;
-};
-
-const DESIGN_W = 2048;
-const DESIGN_H = 1152;
-const DESKTOP_STAGE_MIN_WIDTH = 1440;
-const DEFAULT_STAGE_METRICS: StageMetrics = {
-  isDesktop: false,
-  scale: 1,
-  offsetX: 0,
-  offsetY: 0,
-};
-
-const DASHBOARD_PANEL_LABELS: Record<DashboardPanelKey, string> = {
-  briefing: 'Executive Briefing',
-  playbooks: 'Playbooks',
-  signals: 'Signals',
-  'audit-log': 'Audit Log',
-  integrations: 'Integrations',
-  settings: 'Settings',
-};
-
-const INTERNAL_FAILURE_PATTERNS = [
-  /\bllm_failed\b/i,
-  /\bstale_date_in_directive\b/i,
-  /\bINFINITE_LOOP\b/i,
-  /\bAll \d+ candidates blocked\b/i,
-  /\bDirective rejected by persistence validation\b/i,
-  /\bOutput blocked by quality gate\b/i,
-  /\bHard bottom gate blocked\b/i,
-] as const;
-
-function normalizeDashboardPanel(value: string | null): DashboardPanelKey {
-  switch (value) {
-    case 'playbooks':
-    case 'signals':
-    case 'audit-log':
-    case 'integrations':
-    case 'settings':
-    case 'briefing':
-      return value;
-    default:
-      return 'briefing';
-  }
-}
-
-const DOCUMENT_MARKDOWN_COMPONENTS = {
-  h1: ({ children }: { children?: ReactNode }) => (
-    <h1 className="mb-3 text-base font-semibold text-text-primary first:mt-0">{children}</h1>
-  ),
-  h2: ({ children }: { children?: ReactNode }) => (
-    <h2 className="mb-3 mt-4 text-sm font-semibold uppercase tracking-[0.14em] text-text-secondary first:mt-0">
-      {children}
-    </h2>
-  ),
-  h3: ({ children }: { children?: ReactNode }) => (
-    <h3 className="mb-2 mt-4 text-sm font-semibold text-text-primary first:mt-0">{children}</h3>
-  ),
-  p: ({ children }: { children?: ReactNode }) => (
-    <p className="mb-3 text-[15px] leading-7 text-text-primary last:mb-0">{children}</p>
-  ),
-  ul: ({ children }: { children?: ReactNode }) => (
-    <ul className="mb-3 list-disc space-y-2 pl-6 text-[15px] leading-7 text-text-primary marker:text-accent">
-      {children}
-    </ul>
-  ),
-  ol: ({ children }: { children?: ReactNode }) => (
-    <ol className="mb-3 list-decimal space-y-2 pl-6 text-[15px] leading-7 text-text-primary marker:text-accent">
-      {children}
-    </ol>
-  ),
-  li: ({ children }: { children?: ReactNode }) => <li>{children}</li>,
-  strong: ({ children }: { children?: ReactNode }) => (
-    <strong className="font-semibold text-text-primary">{children}</strong>
-  ),
-};
-
-function shouldReconcileExecuteFailure(res: Response | null, errorMessage: string): boolean {
-  if (res && res.status === 404) return true;
-  const message = errorMessage.toLowerCase();
-  return message.includes('already claimed') || message.includes('not found');
-}
-
-function asTrimmedString(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : null;
-}
-
-function artifactClipboardText(action: DashboardAction | null): string {
-  if (!action?.artifact || typeof action.artifact !== 'object') return '';
-  const artifact = action.artifact;
-  const lines: string[] = [];
-  const to = asTrimmedString(artifact.to ?? artifact.recipient);
-  const subject = asTrimmedString(artifact.subject);
-  const title = asTrimmedString(artifact.title);
-  const body =
-    asTrimmedString(artifact.body) ??
-    asTrimmedString(artifact.text) ??
-    asTrimmedString(artifact.content) ??
-    asTrimmedString(artifact.context) ??
-    '';
-
-  if (to) lines.push(`To: ${to}`);
-  if (subject) lines.push(`Subject: ${subject}`);
-  if (title && !to && !subject) lines.push(title);
-  if (lines.length > 0 && body) lines.push('');
-  if (body) lines.push(body);
-
-  if (lines.length > 0) return lines.join('\n');
-
-  try {
-    return JSON.stringify(artifact, null, 2);
-  } catch {
-    return '';
-  }
-}
-
-async function writeClipboardText(text: string): Promise<boolean> {
-  if (!text) return false;
-
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    // Fall through to the textarea copy path for browsers that block clipboard writes.
-  }
-
-  try {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.setAttribute('readonly', 'true');
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    textarea.style.top = '0';
-    document.body.appendChild(textarea);
-    textarea.focus();
-    textarea.select();
-    const copied = document.execCommand('copy');
-    document.body.removeChild(textarea);
-    return copied;
-  } catch {
-    return false;
-  }
-}
-
-function getArtifactBody(artifact: DashboardArtifact | null | undefined): string {
-  return (
-    asTrimmedString(artifact?.body) ??
-    asTrimmedString(artifact?.text) ??
-    asTrimmedString(artifact?.content) ??
-    asTrimmedString(artifact?.context) ??
-    ''
-  );
-}
-
-function hasInternalFailureText(value: string | null | undefined): boolean {
-  if (!value) return false;
-  return INTERNAL_FAILURE_PATTERNS.some((pattern) => pattern.test(value));
-}
-
-function getDashboardActionArtifact(
-  action: DashboardAction | null | undefined,
-): DashboardArtifact | null {
-  return action?.artifact && typeof action.artifact === 'object' ? action.artifact : null;
-}
-
-function getDashboardActionHeadline(action: DashboardAction | null | undefined): string {
-  const artifact = getDashboardActionArtifact(action);
-  return (
-    asTrimmedString(action?.directive) ??
-    asTrimmedString(artifact?.title) ??
-    asTrimmedString(artifact?.subject) ??
-    asTrimmedString(artifact?.type) ??
-    ''
-  );
-}
-
-function dashboardActionContainsInternalFailureText(
-  action: DashboardAction | null | undefined,
-): boolean {
-  const artifact = getDashboardActionArtifact(action);
-  const userFacingFields = [
-    asTrimmedString(action?.directive),
-    asTrimmedString(action?.reason),
-    asTrimmedString(artifact?.title),
-    asTrimmedString(artifact?.subject),
-    asTrimmedString(artifact?.body),
-    asTrimmedString(artifact?.text),
-    asTrimmedString(artifact?.content),
-    asTrimmedString(artifact?.context),
-  ];
-  return userFacingFields.some((field) => hasInternalFailureText(field));
-}
-
-function isVisibleDashboardAction(value: unknown): value is DashboardAction {
-  if (!value || typeof value !== 'object') return false;
-  const action = value as DashboardAction;
-  if (!asTrimmedString((value as Record<string, unknown>).id)) return false;
-  if (!getDashboardActionArtifact(action)) return false;
-  if (dashboardActionContainsInternalFailureText(action)) return false;
-  return (
-    getDashboardActionHeadline(action).length > 0 ||
-    getArtifactBody(getDashboardActionArtifact(action)).length > 0
-  );
-}
-
-function isWriteDocumentAction(action: DashboardAction | null): boolean {
-  return action?.action_type === 'write_document' || action?.artifact?.type === 'document';
-}
-
-function buildDecisionSuccessNotice(
-  action: DashboardAction | null,
-  decision: 'approve' | 'skip',
-  approvalEmailSendEnabled = false,
-): DashboardStatusNotice {
-  if (decision === 'skip') {
-    return {
-      id: 'skip_snoozed',
-      message: isWriteDocumentAction(action)
-        ? 'Skipped. Foldera will adjust the next document.'
-        : 'Skipped. Foldera will adjust the next directive.',
-    };
-  }
-
-  return isWriteDocumentAction(action)
-    ? {
-        id: 'approve_saved_document',
-        message: 'Saved. Your document is in Foldera Signals.',
-      }
-    : !approvalEmailSendEnabled
-      ? {
-          id: 'approve_recorded',
-          message: 'Approved. Outbound email is disabled.',
-        }
-    : {
-        id: 'approve_sent',
-        message: 'Sent. Check your outbox.',
-      };
-}
-
-function getDateLabel(): string {
-  return new Date()
-    .toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-    })
-    .toUpperCase();
-}
-
-function getGreetingLabel(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
-function computeStageMetrics(): StageMetrics {
-  if (typeof window === 'undefined') {
-    return { isDesktop: false, scale: 1, offsetX: 0, offsetY: 0 };
-  }
-
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-  if (viewportWidth < DESKTOP_STAGE_MIN_WIDTH) {
-    return { isDesktop: false, scale: 1, offsetX: 0, offsetY: 0 };
-  }
-
-  const scale = Math.min(viewportWidth / DESIGN_W, viewportHeight / DESIGN_H);
-  const offsetX = (viewportWidth - DESIGN_W * scale) / 2;
-  const offsetY = (viewportHeight - DESIGN_H * scale) / 2;
-  return { isDesktop: true, scale, offsetX, offsetY };
-}
-
-function inferSourcePills(action: DashboardAction | null): string[] {
-  if (isWriteDocumentAction(action)) {
-    return ['Prepared document', 'Decision basis', 'Connected sources'];
-  }
-
-  if (action?.artifact?.type === 'wait_rationale' || action?.action_type === 'do_nothing') {
-    return ['Current context', 'Source trail'];
-  }
-
-  const evidenceText = JSON.stringify(action?.evidence ?? []).toLowerCase();
-  const pills = new Set<string>();
-  if (
-    action?.action_type === 'send_message' ||
-    action?.artifact?.type === 'email' ||
-    action?.artifact?.type === 'drafted_email' ||
-    evidenceText.includes('email')
-  ) {
-    pills.add('Email thread');
-  }
-  if (evidenceText.includes('calendar')) {
-    pills.add('Calendar hold');
-  }
-  pills.add('Last draft');
-  pills.add('Connected inbox');
-  return Array.from(pills);
-}
-
-function normalizeIntegrationProvider(provider: string | null | undefined): string {
-  const normalized = (provider ?? '').trim().toLowerCase();
-  if (normalized === 'microsoft' || normalized === 'azure-ad') return 'azure_ad';
-  return normalized;
-}
-
-function getIntegrationStateLabel(integration: IntegrationStatusItem | null | undefined): string {
-  if (!integration?.is_active) return 'Not connected';
-  if (integration.needs_reauth) return 'Needs re-auth';
-  if (integration.needs_reconnect) return 'Needs reconnect';
-  if (integration.sync_stale) return 'Sync stale';
-  return 'Connected';
-}
-
-function getIntegrationStateClass(integration: IntegrationStatusItem | null | undefined): string {
-  if (!integration?.is_active) return 'text-text-muted';
-  if (integration.needs_reauth || integration.needs_reconnect || integration.sync_stale) {
-    return 'text-amber-300';
-  }
-  return 'text-emerald-300';
-}
-
-function getIntegrationMetaLine(integration: IntegrationStatusItem | null | undefined): string {
-  if (!integration?.is_active) return 'Connect from Settings';
-  const meta: string[] = [];
-  const syncEmail = asTrimmedString(integration.sync_email);
-  if (syncEmail) {
-    meta.push(syncEmail);
-  } else {
-    meta.push('Connected');
-  }
-  if (asTrimmedString(integration.last_synced_at)) {
-    meta.push(formatRelativeTime(integration.last_synced_at));
-  }
-  return meta.join(' · ');
-}
-
-function asPanelLabel(value: string | null | undefined, fallback: string): string {
-  const trimmed = asTrimmedString(value);
-  return trimmed ? trimmed.replace(/_/g, ' ') : fallback;
-}
-
+import {
+  DASHBOARD_PANEL_LABELS,
+  DEFAULT_STAGE_METRICS,
+  DOCUMENT_MARKDOWN_COMPONENTS,
+  artifactClipboardText,
+  asTrimmedString,
+  buildDecisionSuccessNotice,
+  computeStageMetrics,
+  getArtifactBody,
+  getDashboardActionHeadline,
+  getDateLabel,
+  getGreetingLabel,
+  inferSourcePills,
+  isVisibleDashboardAction,
+  isWriteDocumentAction,
+  normalizeDashboardPanel,
+  normalizeIntegrationProvider,
+  shouldReconcileExecuteFailure,
+  writeClipboardText,
+  type DashboardAction,
+  type DashboardHistoryItem,
+  type DashboardHistoryPayload,
+  type DashboardLoadIssue,
+  type DashboardStatusNotice,
+  type GraphStatsPayload,
+  type IntegrationStatusPayload,
+  type LoadLatestResult,
+  type StageMetrics,
+} from './dashboard-page-model';
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const [activePanel, setActivePanel] = useState<DashboardPanelKey>('briefing');
@@ -989,23 +595,6 @@ export default function DashboardPage() {
     },
   ];
   const hasStats = dashboardStats.length > 0;
-  const briefWorkRows = [
-    {
-      icon: Plane,
-      label: 'Directive',
-      description: 'The single move that matters most right now.',
-    },
-    {
-      icon: FileText,
-      label: 'Draft',
-      description: 'Ready-to-send wording when writing is the bottleneck.',
-    },
-    {
-      icon: Layers3,
-      label: 'Source trail',
-      description: 'The evidence behind the recommendation.',
-    },
-  ];
   const degradedIssueLabels = [
     hasLatestIssue ? 'Latest briefing unavailable.' : null,
     hasIntegrationIssue ? 'Connected source status unavailable.' : null,
@@ -1142,329 +731,23 @@ export default function DashboardPage() {
   );
 
   const secondaryPanelNode = !isBriefingPanel ? (
-    <section
-      className="foldera-dashboard-brief-card foldera-brief-shell flex h-full w-full flex-col gap-5 p-6 sm:p-8"
-      data-testid={`dashboard-panel-${activePanel}`}
-    >
-      {activePanel === 'signals' ? (
-        <>
-          <div>
-            <p
-              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted"
-              data-testid="dashboard-active-panel-label"
-            >
-              Signals
-            </p>
-            <h2 className="mt-3 text-[clamp(1.8rem,3.5vw,2.2rem)] font-semibold leading-[1.12] tracking-[-0.04em] text-text-primary">
-              Source status summary
-            </h2>
-            <p className="mt-3 max-w-[64ch] text-[15px] leading-7 text-text-secondary">
-              Live source health and recent signal activity from connected accounts.
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <article className="rounded-[14px] border border-border bg-panel-raised p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
-                Connected sources
-              </p>
-              <p className="mt-2 text-[34px] font-semibold leading-none text-text-primary" data-testid="dashboard-signals-connected-count">
-                {connectedSourcesValue}
-              </p>
-              <p className="mt-2 text-sm text-text-secondary">
-                {hasIntegrationIssue
-                  ? 'Connected source status unavailable right now.'
-                  : connectedSourceCount > 0
-                  ? `${connectedSourceCount} active source${connectedSourceCount === 1 ? '' : 's'}`
-                  : 'No active sources connected yet.'}
-              </p>
-            </article>
-            <article className="rounded-[14px] border border-border bg-panel-raised p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
-                Latest signal
-              </p>
-              <p className="mt-2 text-base font-semibold text-text-primary" data-testid="dashboard-signals-latest-label">
-                {latestSignalLabel}
-              </p>
-              <p className="mt-2 text-sm text-text-secondary">
-                {hasGraphIssue
-                  ? 'Signal summary unavailable right now.'
-                  : typeof graphStats?.signalsTotal === 'number'
-                  ? `${graphStats.signalsTotal} total signals captured`
-                  : 'Signal totals unavailable right now.'}
-              </p>
-            </article>
-          </div>
-
-          <article className="rounded-[14px] border border-border bg-panel-raised p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
-              Source status
-            </p>
-            {hasIntegrationIssue ? (
-              <p className="mt-3 text-sm text-text-secondary" data-testid="dashboard-signals-source-status">
-                Connected source status is unavailable right now. Open settings to retry.
-              </p>
-            ) : sourceSummaryRows.length === 0 ? (
-              <p className="mt-3 text-sm text-text-secondary" data-testid="dashboard-signals-source-status">
-                No active source status yet. Connect Gmail or Microsoft to populate this panel.
-              </p>
-            ) : (
-              <ul className="mt-3 space-y-2" data-testid="dashboard-signals-source-status">
-                {sourceSummaryRows.map((integration) => (
-                  <li
-                    key={`${integration.provider ?? 'unknown'}-${integration.sync_email ?? 'connected'}`}
-                    className="flex flex-wrap items-center gap-2 text-sm"
-                  >
-                    <span className="font-semibold text-text-primary">
-                      {providerDisplayName(integration.provider)}
-                    </span>
-                    <span className={`font-medium ${getIntegrationStateClass(integration)}`}>
-                      {getIntegrationStateLabel(integration)}
-                    </span>
-                    <span className="min-w-0 break-all text-text-secondary">
-                      {getIntegrationMetaLine(integration)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </article>
-
-          <div className="mt-auto flex flex-wrap gap-3">
-            <Link
-              href="/dashboard/settings#connected-accounts"
-              className="foldera-button-primary"
-              data-testid="dashboard-panel-open-signals"
-            >
-              Open connected accounts
-            </Link>
-            <Link
-              href="/dashboard/settings"
-              className="foldera-button-secondary"
-              data-testid="dashboard-panel-secondary-signals"
-            >
-              Open full settings
-            </Link>
-          </div>
-        </>
-      ) : null}
-
-      {activePanel === 'integrations' ? (
-        <>
-          <div>
-            <p
-              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted"
-              data-testid="dashboard-active-panel-label"
-            >
-              Integrations
-            </p>
-            <h2 className="mt-3 text-[clamp(1.8rem,3.5vw,2.2rem)] font-semibold leading-[1.12] tracking-[-0.04em] text-text-primary">
-              Connected account health
-            </h2>
-            <p className="mt-3 max-w-[64ch] text-[15px] leading-7 text-text-secondary">
-              Snapshot of Google and Microsoft connection status with direct access to account management.
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              { key: 'google', data: googleIntegration },
-              { key: 'azure_ad', data: microsoftIntegration },
-            ].map(({ key, data }) => (
-              <article key={key} className="rounded-[14px] border border-border bg-panel-raised p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
-                  {providerDisplayName(key)}
-                </p>
-                <p className={`mt-2 text-base font-semibold ${hasIntegrationIssue ? 'text-text-primary' : getIntegrationStateClass(data)}`}>
-                  {hasIntegrationIssue ? 'Unavailable' : getIntegrationStateLabel(data)}
-                </p>
-                <p className="mt-2 min-h-[38px] break-all text-sm text-text-secondary">
-                  {hasIntegrationIssue
-                    ? 'Connected source status unavailable right now.'
-                    : getIntegrationMetaLine(data)}
-                </p>
-              </article>
-            ))}
-          </div>
-
-          <div className="mt-auto flex flex-wrap gap-3">
-            <Link
-              href="/dashboard/settings#connected-accounts"
-              className="foldera-button-primary"
-              data-testid="dashboard-panel-open-integrations"
-            >
-              Manage connected accounts
-            </Link>
-            <Link
-              href="/dashboard/settings"
-              className="foldera-button-secondary"
-              data-testid="dashboard-panel-secondary-integrations"
-            >
-              Open full settings
-            </Link>
-          </div>
-        </>
-      ) : null}
-
-      {activePanel === 'settings' ? (
-        <>
-          <div>
-            <p
-              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted"
-              data-testid="dashboard-active-panel-label"
-            >
-              Settings
-            </p>
-            <h2 className="mt-3 text-[clamp(1.8rem,3.5vw,2.2rem)] font-semibold leading-[1.12] tracking-[-0.04em] text-text-primary">
-              Account and control summary
-            </h2>
-            <p className="mt-3 max-w-[64ch] text-[15px] leading-7 text-text-secondary">
-              Quick account context in-shell, with full controls still available on the settings route.
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <article className="rounded-[14px] border border-border bg-panel-raised p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">Account</p>
-              <p className="mt-2 text-base font-semibold text-text-primary">{sessionName}</p>
-              <p className="mt-2 break-all text-sm text-text-secondary">
-                {asTrimmedString(session?.user?.email) ?? 'Signed-in session'}
-              </p>
-            </article>
-            <article className="rounded-[14px] border border-border bg-panel-raised p-4">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">Connected accounts</p>
-              <p className="mt-2 text-[30px] font-semibold leading-none text-text-primary">{connectedSourcesValue}</p>
-              <p className="mt-2 text-sm text-text-secondary">
-                {hasIntegrationIssue ? 'Connected source status unavailable right now.' : latestSignalLabel}
-              </p>
-            </article>
-          </div>
-
-          <div className="mt-auto flex flex-wrap gap-3">
-            <Link
-              href="/dashboard/settings"
-              className="foldera-button-primary"
-              data-testid="dashboard-panel-open-settings"
-            >
-              Open full settings
-            </Link>
-            <Link
-              href="/dashboard/settings#connected-accounts"
-              className="foldera-button-secondary"
-              data-testid="dashboard-panel-secondary-settings"
-            >
-              Open connected accounts
-            </Link>
-          </div>
-        </>
-      ) : null}
-
-      {activePanel === 'audit-log' ? (
-        <>
-          <div>
-            <p
-              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted"
-              data-testid="dashboard-active-panel-label"
-            >
-              Audit Log
-            </p>
-            <h2 className="mt-3 text-[clamp(1.8rem,3.5vw,2.2rem)] font-semibold leading-[1.12] tracking-[-0.04em] text-text-primary">
-              Recent directives history
-            </h2>
-            <p className="mt-3 max-w-[64ch] text-[15px] leading-7 text-text-secondary">
-              Compact summary of recent directives from briefings history.
-            </p>
-          </div>
-
-          <article className="rounded-[14px] border border-border bg-panel-raised p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
-              Recent directives
-            </p>
-            {!historyLoaded ? (
-              <p className="mt-3 text-sm text-text-secondary">Loading recent directives...</p>
-            ) : hasHistoryIssue ? (
-              <p className="mt-3 text-sm text-text-secondary" data-testid="dashboard-audit-empty-state">
-                Recent history is unavailable right now. Open briefings history to retry.
-              </p>
-            ) : recentHistory.length === 0 ? (
-              <p className="mt-3 text-sm text-text-secondary" data-testid="dashboard-audit-empty-state">
-                No recent directives yet. Open the full audit log for the complete timeline.
-              </p>
-            ) : (
-              <ul className="mt-3 space-y-3" data-testid="dashboard-audit-history-list">
-                {recentHistory.map((item) => (
-                  <li key={item.id} className="rounded-[12px] border border-border-subtle bg-panel px-3 py-2">
-                    <p className="text-xs uppercase tracking-[0.1em] text-text-muted">
-                      {asPanelLabel(item.status, 'status unknown')} · {asPanelLabel(item.action_type, 'action')}
-                    </p>
-                    <p className="mt-1 text-sm text-text-primary">
-                      {asTrimmedString(item.directive_preview) ?? 'No directive preview available.'}
-                    </p>
-                    {asTrimmedString(item.artifact_preview) ? (
-                      <p className="mt-1 text-xs text-text-secondary">{item.artifact_preview}</p>
-                    ) : null}
-                    {asTrimmedString(item.generated_at) ? (
-                      <p className="mt-1 text-xs text-text-muted">
-                        {new Date(item.generated_at as string).toLocaleString(undefined, {
-                          dateStyle: 'medium',
-                          timeStyle: 'short',
-                        })}
-                      </p>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </article>
-
-          <div className="mt-auto flex flex-wrap gap-3">
-            <Link
-              href="/dashboard/briefings"
-              className="foldera-button-primary"
-              data-testid="dashboard-panel-open-audit-log"
-            >
-              Open briefings history
-            </Link>
-          </div>
-        </>
-      ) : null}
-
-      {activePanel === 'playbooks' ? (
-        <>
-          <div>
-            <p
-              className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted"
-              data-testid="dashboard-active-panel-label"
-            >
-              Playbooks
-            </p>
-            <h2 className="mt-3 text-[clamp(1.8rem,3.5vw,2.2rem)] font-semibold leading-[1.12] tracking-[-0.04em] text-text-primary">
-              Playbook library in progress
-            </h2>
-            <p className="mt-3 max-w-[64ch] text-[15px] leading-7 text-text-secondary">
-              Reusable execution playbooks are still being folded into this shell.
-            </p>
-          </div>
-
-          <article className="rounded-[14px] border border-border bg-panel-raised p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">Current state</p>
-            <p className="mt-2 text-sm text-text-secondary">
-              Use briefings history while reusable playbooks are still being folded into the shell.
-            </p>
-          </article>
-
-          <div className="mt-auto flex flex-wrap gap-3">
-            <Link
-              href="/dashboard/briefings"
-              className="foldera-button-primary"
-              data-testid="dashboard-panel-open-playbooks"
-            >
-              Open briefings history
-            </Link>
-          </div>
-        </>
-      ) : null}
-    </section>
+    <DashboardSecondaryPanel
+      activePanel={activePanel as Exclude<DashboardPanelKey, 'briefing'>}
+      connectedSourcesValue={connectedSourcesValue}
+      hasIntegrationIssue={hasIntegrationIssue}
+      connectedSourceCount={connectedSourceCount}
+      latestSignalLabel={latestSignalLabel}
+      hasGraphIssue={hasGraphIssue}
+      graphStats={graphStats}
+      sourceSummaryRows={sourceSummaryRows}
+      googleIntegration={googleIntegration}
+      microsoftIntegration={microsoftIntegration}
+      sessionName={sessionName}
+      sessionEmail={asTrimmedString(session?.user?.email)}
+      historyLoaded={historyLoaded}
+      hasHistoryIssue={hasHistoryIssue}
+      recentHistory={recentHistory}
+    />
   ) : null;
 
   const briefingCardNode = action ? (
@@ -1563,48 +846,13 @@ export default function DashboardPage() {
             )}
           </h1>
 
-          {hasStats ? (
-            <div
-              className="absolute flex items-center justify-between text-[28px] text-text-secondary"
-              data-testid="dashboard-truth-stats"
-              style={{ left: 400, top: 176, width: 900, height: 44 }}
-            >
-              {dashboardStats.map(({ icon: Icon, value, label, valueClassName }) => (
-                <div key={label} className="flex items-center gap-3">
-                  <Icon className="h-5 w-5 text-text-muted" aria-hidden />
-                  <span className={`text-[36px] font-semibold tracking-[-0.045em] ${valueClassName}`}>
-                    {value}
-                  </span>
-                  <span className="text-[32px] font-normal">{label}</span>
-                </div>
-              ))}
-            </div>
-          ) : null}
+          {hasStats ? <DashboardStatsStrip stats={dashboardStats} variant="stage" /> : null}
 
           <div className="absolute" style={{ left: 344, top: 238, width: 1072, height: 850 }}>
             {cardNode}
           </div>
 
-          {isBriefingPanel ? (
-            <aside
-              className="absolute hidden w-[348px] text-text-secondary min-[1440px]:block"
-              data-testid="dashboard-brief-work-panel"
-              style={{ left: 1460, top: 326 }}
-            >
-              <h2 className="text-[16px] font-semibold uppercase tracking-[0.14em] text-text-muted">
-                How this brief works
-              </h2>
-              <div className="mt-5 divide-y divide-white/8 border-t border-white/8">
-                {briefWorkRows.map(({ icon: Icon, label, description }) => (
-                  <div key={label} className="grid grid-cols-[34px_92px_minmax(0,1fr)] gap-5 py-8">
-                    <Icon className="mt-1 h-6 w-6 text-text-muted" strokeWidth={1.8} aria-hidden />
-                    <p className="text-[16px] font-semibold text-text-secondary">{label}</p>
-                    <p className="text-[15px] leading-6 text-text-muted">{description}</p>
-                  </div>
-                ))}
-              </div>
-            </aside>
-          ) : null}
+          {isBriefingPanel ? <DashboardBriefWorkPanel /> : null}
 
           {statusNoticeNode ? (
             <div className="absolute" style={{ left: 344, top: 1094, width: 1072 }}>
@@ -1681,22 +929,7 @@ export default function DashboardPage() {
                   '.'
                 )}
               </h1>
-              {hasStats ? (
-                <div
-                  className="mt-6 flex flex-wrap gap-x-10 gap-y-4 text-sm text-text-secondary"
-                  data-testid="dashboard-truth-stats"
-                >
-                  {dashboardStats.map(({ icon: Icon, value, label, valueClassName }) => (
-                    <div key={label} className="flex items-center gap-3">
-                      <Icon className="h-4 w-4 text-text-muted" aria-hidden />
-                      <span className={`text-[28px] font-semibold tracking-[-0.04em] sm:text-[32px] ${valueClassName}`}>
-                        {value}
-                      </span>
-                      <span>{label}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
+              {hasStats ? <DashboardStatsStrip stats={dashboardStats} variant="mobile" /> : null}
             </header>
 
             {degradedStateNode ? <div className="mx-auto mb-4 w-full max-w-[860px]">{degradedStateNode}</div> : null}

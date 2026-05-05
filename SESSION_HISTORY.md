@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-05-04 — Dashboard large-file split seam closed
+- MODE: P2-8 large-file complexity follow-up after full-audit cleanup.
+- Files changed: `app/dashboard/page.tsx`, `app/dashboard/dashboard-page-model.tsx`, `components/dashboard/DashboardSecondaryPanel.tsx`, `components/dashboard/DashboardBriefWorkPanel.tsx`, `components/dashboard/DashboardStatsStrip.tsx`, `tests/config/__tests__/large-file-splits.test.ts`, `SESSION_HISTORY.md`.
+- What changed: Split dashboard route model/helpers, secondary shell panels, the desktop brief-work aside, and stats rendering out of `app/dashboard/page.tsx`. The dashboard route now stays at or below the audit threshold while preserving the same URL, fetches, approval/outcome behavior, and dashboard panel UI contract.
+- Verification: `npm run health` passed at start (`RESULT: 0 FAILING`, Gmail stale / no Microsoft mailbox / last generation `do_nothing` warnings); `npx vitest run tests/config/__tests__/large-file-splits.test.ts` passed; `npm run lint` passed; `npm run build` passed; `npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list` passed (`11` tests).
+- Unresolved issues: This closes the actionable dashboard split from P2-8. The very large briefing/scoring backend files remain legacy complexity and should only be split when their natural product seams are already under active test; no paid model calls or outbound email were run.
+
 ## 2026-05-04 — Full-audit cleanup seam closed for public presence, dead surface, design primitives, and docs boundaries
 - MODE: Full audit cleanup continuation after missed line items.
 - Files changed: public presence (`app/sitemap.ts`, `app/layout.js`, `public/robots.txt`, `public/manifest.json`, `tests/e2e/public-routes.spec.ts`); dead surface/API cleanup (`app/api/drafts/propose/route.ts`, `app/api/waitlist/route.ts`, `app/api/priorities/update/**`, `app/api/model/state/route.ts`, `tests/config/__tests__/active-api-surface.test.ts`); UI cleanup (`components/ui/glass-card.tsx`, `components/ui/metric-card.tsx`, `components/ui/skeleton.tsx`, `components/ui/status-indicator.tsx`, `tests/config/__tests__/component-surface.test.ts`); design primitive guard (`app/globals.css`, touched TSX button classes, `tests/config/__tests__/design-system-buttons.test.ts`); owner UUID cleanup (`scripts/debug-*.ts`, `scripts/force-golden-artifact.ts`, `scripts/import-claude-export.ts`, `scripts/load-conversations.ts`, `scripts/ops-production-repair-sync.ts`, `scripts/verify-hunt-allowlist-receipt.ts`, `tests/config/__tests__/owner-user-id-boundary.test.ts`); docs boundary (`SYSTEM_RUNBOOK.md`, `tests/config/__tests__/docs-source-of-truth.test.ts`); public/config regression tests.
