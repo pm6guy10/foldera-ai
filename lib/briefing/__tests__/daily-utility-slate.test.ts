@@ -85,4 +85,20 @@ describe('Daily Utility Slate', () => {
     expect(serialized).not.toContain('missing_schedule_resolution_context');
     expect(serialized).not.toContain('calendar-gap-1');
   });
+
+  it('does not leak production candidate-count language', () => {
+    const slate = buildDailyUtilitySlateFromReceipts([
+      {
+        action_type: 'do_nothing',
+        reason: 'Nothing cleared the bar today after evaluating 9 candidates.',
+        status: 'skipped',
+        generated_at: '2026-05-06T14:43:52.405Z',
+        execution_result: { outcome_type: 'no_send' },
+      },
+    ]);
+    const serialized = JSON.stringify(slate);
+
+    expect(serialized).toContain('Nothing cleared the bar today.');
+    expect(serialized).not.toMatch(/candidates?/i);
+  });
 });

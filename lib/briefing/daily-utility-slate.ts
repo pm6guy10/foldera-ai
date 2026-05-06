@@ -55,6 +55,7 @@ const INTERNAL_TOKEN_PATTERNS = [
   /\bweak_[a-z_]+\b/i,
   /\bmissing_[a-z_]+\b/i,
   /\bartifact_viability\b/i,
+  /\bcandidates?\b/i,
   /\bcandidate family\b/i,
   /\bpriority tier\b/i,
   /^candidate:/i,
@@ -98,8 +99,11 @@ function humanizeBlocker(blocker: string): string {
       return 'It looked like a reminder, not a risk-backed intervention.';
     default:
       return clean
+        .replace(/\s+after evaluating(?: \d+)? candidates?\.?/i, '.')
+        .replace(/^Selected candidate failed[^:]*:?/i, '')
         .replace(/_/g, ' ')
         .replace(/\s+/g, ' ')
+        .trim()
         .replace(/^./, (letter) => letter.toUpperCase());
   }
 }

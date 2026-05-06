@@ -5744,6 +5744,13 @@ pm run build.
 - Verification: `npm run health` returned `RESULT: 0 FAILING`; red tests first failed on missing AGENTS hierarchy and winner-truth import; after patch, focused Vitest for slate/latest/docs passed (`16` tests); focused Playwright for artifact dashboard and Daily Utility Slate passed (`2` tests). Full build and production/deploy proof still pending in this session.
 - Unresolved issues: No paid generation was run and no outbound email was sent. This slice does not fix the deeper three-day consistency or stronger-winner problem; it makes the no-finished-artifact dashboard path bounded and truthful.
 
+## 2026-05-06 — Production slate wording sanitizer
+- MODE: Live browser proof correction.
+- Files changed: `lib/briefing/daily-utility-slate.ts`, `lib/briefing/__tests__/daily-utility-slate.test.ts`, `SESSION_HISTORY.md`.
+- What changed: Live production proof showed the slate was visible but still leaked `evaluating 9 candidates` wording from a persisted receipt. Added a sanitizer and regression test so persisted no-send reasons keep the human outcome while dropping candidate-count language.
+- Verification: Focused Vitest for slate/latest/docs passed (`17` tests). Full build, push, and production re-proof are pending in this session.
+- Unresolved issues: No paid generation was run and no outbound email was sent.
+
 ## 2026-05-02 — Artifact gates relaxed to safety-only hard blocking
 - MODE: FOLDERA PRODUCT POLICY REVERSAL — relax both artifact gates without paid proof.
 - Files changed: `lib/briefing/artifact-quality-gate.ts`, `lib/briefing/generator.ts`, `lib/briefing/types.ts`, `lib/briefing/scorer-failure-suppression.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cron/daily-brief-send.ts`, focused briefing/cron tests, `ACCEPTANCE_GATE.md`, `FOLDERA_PRODUCT_SPEC.md`, `CURRENT_STATE.md`, `FOLDERA_PRODUCTION_BACKLOG.md`, `SESSION_HISTORY.md`.
