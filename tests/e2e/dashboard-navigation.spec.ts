@@ -30,6 +30,22 @@ const DIRECTIVE_RESPONSE = {
   approved_count: 1,
   is_subscribed: true,
   evidence: [{ type: 'signal', description: 'Email thread with Alex Morgan' }],
+  discrepancy_card: {
+    claim: 'Send the follow-up to Alex Morgan before noon.',
+    contradiction:
+      'The Alex Morgan thread still has no reply, but the calendar hold makes the ask time-bound today.',
+    risk:
+      'The noon window may slip and leave the approval blocked if Brandon waits for another cycle.',
+    evidence: [
+      'Email thread with Alex Morgan is still awaiting Brandon response.',
+      'Calendar hold creates a noon decision window.',
+    ],
+    next_action: 'Send the prepared follow-up to Alex Morgan before noon.',
+    why_now: 'The open thread and calendar hold are both active today.',
+    source_refs: ['email:alex-morgan-thread', 'calendar:noon-hold'],
+    confidence: 0.85,
+    pattern_keys: ['discrepancy:meeting_open_thread', 'action:send_message'],
+  },
   artifact: {
     type: 'email',
     to: 'alex.morgan@example.com',
@@ -64,6 +80,7 @@ const HISTORY_RESPONSE = {
 
 const NAV_CONTRACT = [
   { panel: 'briefing', label: 'Executive Briefing' },
+  { panel: 'playbooks', label: 'Playbooks' },
   { panel: 'signals', label: 'Signals' },
   { panel: 'audit-log', label: 'Audit Log' },
   { panel: 'integrations', label: 'Integrations' },
@@ -261,7 +278,6 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
       await expect(button).toBeVisible();
       await expect(button).toContainText(item.label);
     }
-    await expect(page.getByTestId('dashboard-sidebar-item-playbooks')).toHaveCount(0);
 
     await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
     await expect(page.getByTestId('dashboard-truth-stats')).toContainText('need attention');
@@ -272,6 +288,8 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByTestId('dashboard-brief-source-section')).toContainText(/Source Basis/i);
     await expect(page.getByTestId('dashboard-brief-work-panel')).toContainText(/How this brief works/i);
     await expect(page.getByTestId('dashboard-brief-work-panel')).toContainText('Source trail');
+    const figmaFrame = await page.getByTestId('dashboard-figma-card-frame').boundingBox();
+    expect(figmaFrame?.width).toBeGreaterThan(830);
   });
 
   test('clicking each sidebar item keeps the app shell on /dashboard', async ({ page }) => {
@@ -320,6 +338,10 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByText(/Recent directives history/i)).toBeVisible();
     await expect(page.getByText(/Confirm launch timeline with Alex/i)).toBeVisible();
     await expect(page.getByRole('link', { name: /Open briefings history/i })).toBeVisible();
+
+    await page.getByTestId('dashboard-sidebar-item-playbooks').click();
+    await expect(page.getByTestId('dashboard-panel-playbooks')).toBeVisible();
+    await expect(page.getByText(/Playbook library in progress/i)).toBeVisible();
   });
 
   test('legacy product-shell routes point primary nav back into the live dashboard shell', async ({ page }) => {
@@ -340,7 +362,10 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
       'href',
       '/dashboard?panel=integrations',
     );
-    await expect(headerNav.getByRole('link', { name: 'Playbooks' })).toHaveCount(0);
+    await expect(headerNav.getByRole('link', { name: 'Playbooks' })).toHaveAttribute(
+      'href',
+      '/dashboard?panel=playbooks',
+    );
   });
 
   test('deep-link /dashboard?panel=settings opens settings shell panel', async ({ page }) => {

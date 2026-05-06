@@ -23,11 +23,14 @@ export function DashboardBriefWorkPanel() {
     <aside
       className="absolute hidden w-[348px] text-text-secondary min-[1440px]:block"
       data-testid="dashboard-brief-work-panel"
-      style={{ left: 1460, top: 326 }}
+      style={{ left: 1650, top: 326 }}
     >
-      <h2 className="text-[16px] font-semibold uppercase tracking-[0.14em] text-text-muted">
-        How this brief works
-      </h2>
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-[16px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+          How this brief works
+        </h2>
+        <span className="text-[14px] font-medium text-text-muted">{'Learn more ->'}</span>
+      </div>
       <div className="mt-5 divide-y divide-white/8 border-t border-white/8">
         {BRIEF_WORK_ROWS.map(({ icon: Icon, label, description }) => (
           <div key={label} className="grid grid-cols-[34px_92px_minmax(0,1fr)] gap-5 py-8">

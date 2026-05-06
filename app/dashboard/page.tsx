@@ -541,7 +541,7 @@ export default function DashboardPage() {
     asTrimmedString(action?.reason) ??
     'Foldera surfaced the single move that matters most right now.';
   const artifactBody = getArtifactBody(action?.artifact);
-  const draftLabel = 'Risk / evidence / next action';
+  const draftLabel = 'DRAFT';
   const copyActionLabel = 'Copy draft';
   const skipActionLabel = 'Skip';
   const primaryActionLabel = writeDocument
@@ -771,13 +771,13 @@ export default function DashboardPage() {
         stageDesktop={stageMetrics.isDesktop}
         directive={artifactTitle}
         whyNow={artifactContradiction}
-        eyebrowLabel="Discrepancy card"
-        directiveLabel="Claim"
-        whyLabel="Contradiction"
+        eyebrowLabel="Daily Brief"
+        directiveLabel="Directive"
+        whyLabel="Why This Now"
         draftLabel={draftLabel}
         draftBody={draftBody}
         sourcePills={inferSourcePills(action)}
-        sourceLabel="Source refs"
+        sourceLabel="Source Basis"
         nextStep={writeDocument ? 'Next: Save to record' : 'Next: Await response'}
         statusText={writeDocument ? 'READY TO FILE' : 'READY TO SEND'}
         footerText="Grounded in connected sources"
@@ -827,13 +827,13 @@ export default function DashboardPage() {
             onSelectPanel={selectPanel}
           />
 
-          <p className="foldera-eyebrow absolute" style={{ left: 350, top: 52 }}>
+          <p className="foldera-eyebrow absolute" style={{ left: 388, top: 52 }}>
             {getDateLabel()}
           </p>
 
           <h1
-            className="absolute text-[56px] font-semibold leading-[64px] tracking-[-0.045em] text-text-secondary"
-            style={{ left: 350, top: 86, width: 700, height: 64 }}
+            className="absolute text-[50px] font-semibold leading-[58px] text-text-secondary"
+            style={{ left: 388, top: 86, width: 700, height: 64 }}
           >
             {getGreetingLabel()}
             {firstName ? (
@@ -847,26 +847,26 @@ export default function DashboardPage() {
 
           {hasStats ? <DashboardStatsStrip stats={dashboardStats} variant="stage" /> : null}
 
-          <div className="absolute" style={{ left: 344, top: 238, width: 1072, height: 850 }}>
+          <div className="absolute" data-testid="dashboard-figma-card-frame" style={{ left: 388, top: 240, width: 1200, height: 862 }}>
             {cardNode}
           </div>
 
           {isBriefingPanel ? <DashboardBriefWorkPanel /> : null}
 
           {statusNoticeNode ? (
-            <div className="absolute" style={{ left: 344, top: 1094, width: 1072 }}>
+            <div className="absolute" style={{ left: 388, top: 1116, width: 1200 }}>
               {statusNoticeNode}
             </div>
           ) : null}
 
           {degradedStateNode ? (
-            <div className="absolute" style={{ left: 1460, top: 130, width: 348 }}>
+            <div className="absolute" style={{ left: 1650, top: 130, width: 348 }}>
               {degradedStateNode}
             </div>
           ) : null}
 
           {isBriefingPanel && showOutcomeActions ? (
-            <div className="absolute flex justify-center gap-3" style={{ left: 722, top: 1096, width: 430 }}>
+            <div className="absolute flex justify-center gap-3" style={{ left: 772, top: 1118, width: 430 }}>
               <button
                 type="button"
                 onClick={() => void submitOutcome('worked')}
@@ -943,13 +943,13 @@ export default function DashboardPage() {
                       dashboardCta
                       directive={artifactTitle}
                       whyNow={artifactContradiction}
-                      eyebrowLabel="Discrepancy card"
-                      directiveLabel="Claim"
-                      whyLabel="Contradiction"
+                      eyebrowLabel="Daily Brief"
+                      directiveLabel="Directive"
+                      whyLabel="Why This Now"
                       draftLabel={draftLabel}
                       draftBody={draftBody}
                       sourcePills={inferSourcePills(action)}
-                      sourceLabel="Source refs"
+                      sourceLabel="Source Basis"
                       nextStep={writeDocument ? 'Next: Save to record' : 'Next: Await response'}
                       statusText={writeDocument ? 'READY TO FILE' : 'READY TO SEND'}
                       footerText="Grounded in connected sources"

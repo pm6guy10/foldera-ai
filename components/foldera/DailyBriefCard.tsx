@@ -212,7 +212,7 @@ export function DailyBriefCard({
             </div>
             <div className="min-w-0">
               <p className="text-[14px] font-semibold uppercase tracking-[0.16em] text-text-muted">{directiveLabel}</p>
-              <h2 className="mt-2 max-w-[820px] text-[28px] font-bold leading-[34px] text-text-primary">
+              <h2 className="mt-2 max-w-[880px] text-[40px] font-semibold leading-[50px] text-text-primary">
                 {directive}
               </h2>
             </div>
@@ -227,7 +227,7 @@ export function DailyBriefCard({
             </div>
             <div className="min-w-0">
               <p className="text-[14px] font-semibold uppercase tracking-[0.16em] text-amber-400">{whyLabel}</p>
-              <p className="mt-2 max-w-[820px] text-[18px] leading-[30px] text-text-secondary">{whyNow}</p>
+              <p className="mt-2 max-w-[880px] text-[20px] leading-[34px] text-text-secondary">{whyNow}</p>
             </div>
           </section>
 
@@ -240,7 +240,7 @@ export function DailyBriefCard({
             </div>
             <div className="min-w-0">
               <p className="text-[14px] font-semibold uppercase tracking-[0.16em] text-text-muted">{draftLabel}</p>
-              <div className="mt-2 max-w-[820px] text-[18px] leading-[30px] text-text-secondary">{draftBody}</div>
+              <div className="mt-2 max-w-[880px] text-[18px] leading-[30px] text-text-secondary">{draftBody}</div>
             </div>
           </section>
 

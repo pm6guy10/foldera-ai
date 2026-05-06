@@ -33,6 +33,7 @@ export type DashboardNavItem = {
 
 export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
   { panel: 'briefing', label: 'Executive Briefing', href: '/dashboard', icon: Mail },
+  { panel: 'playbooks', label: 'Playbooks', href: '/dashboard?panel=playbooks', icon: ScrollText },
   { panel: 'signals', label: 'Signals', href: '/dashboard?panel=signals', icon: Radar },
   { panel: 'audit-log', label: 'Audit Log', href: '/dashboard?panel=audit-log', icon: ScrollText },
   { panel: 'integrations', label: 'Integrations', href: '/dashboard?panel=integrations', icon: Link2 },
@@ -69,21 +70,21 @@ export function DashboardSidebar({
           <FolderaLogo href="/dashboard" markSize="sm" />
         </div>
 
-        <nav className="absolute left-[20px] top-[128px] w-[264px] space-y-1.5">
+        <nav className="absolute left-[24px] top-[138px] w-[260px] space-y-4">
           {DASHBOARD_NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive = sidebarUsesPanelButtons
               ? item.panel === activePanel
               : item.label === activeLabel;
-            const classes = `foldera-dashboard-nav-item ${isActive ? 'is-active' : ''} flex w-full items-center gap-3 rounded-[14px] px-4 text-[18px] leading-none transition-colors ${
+            const classes = `foldera-dashboard-nav-item ${isActive ? 'is-active' : ''} flex w-full items-center gap-5 rounded-[12px] px-5 text-[20px] leading-none transition-colors ${
               isActive
-                ? 'h-[52px] border border-white/12 bg-white/[0.055] text-text-primary'
-                : 'h-[44px] border border-transparent text-text-secondary hover:bg-white/[0.03] hover:text-text-primary'
+                ? 'h-[60px] border border-white/12 bg-white/[0.055] text-text-primary'
+                : 'h-[52px] border border-transparent text-text-secondary hover:bg-white/[0.03] hover:text-text-primary'
             }`;
 
             return preview ? (
               <div key={item.label} className={classes}>
-                <Icon className={`h-[16px] w-[16px] ${isActive ? 'text-text-primary' : 'text-text-muted'}`} aria-hidden="true" />
+                <Icon className={`h-[28px] w-[28px] ${isActive ? 'text-text-primary' : 'text-text-muted'}`} aria-hidden="true" />
                 <span>{item.label}</span>
               </div>
             ) : sidebarUsesPanelButtons ? (
@@ -96,12 +97,12 @@ export function DashboardSidebar({
                 aria-current={isActive ? 'page' : undefined}
                 onClick={() => onSelectPanel(item.panel)}
               >
-                <Icon className={`h-[16px] w-[16px] ${isActive ? 'text-text-primary' : 'text-text-muted'}`} aria-hidden="true" />
+                <Icon className={`h-[28px] w-[28px] ${isActive ? 'text-text-primary' : 'text-text-muted'}`} aria-hidden="true" />
                 <span>{item.label}</span>
               </button>
             ) : (
               <Link key={item.label} href={item.href} className={classes}>
-                <Icon className={`h-[16px] w-[16px] ${isActive ? 'text-text-primary' : 'text-text-muted'}`} aria-hidden="true" />
+                <Icon className={`h-[28px] w-[28px] ${isActive ? 'text-text-primary' : 'text-text-muted'}`} aria-hidden="true" />
                 <span>{item.label}</span>
               </Link>
             );

@@ -16,17 +16,17 @@ export function DashboardStatsStrip({ stats, variant }: DashboardStatsStripProps
   if (variant === 'stage') {
     return (
       <div
-        className="absolute flex items-center justify-between text-[28px] text-text-secondary"
+        className="absolute flex items-center justify-between text-text-secondary"
         data-testid="dashboard-truth-stats"
-        style={{ left: 400, top: 176, width: 900, height: 44 }}
+        style={{ left: 446, top: 176, width: 840, height: 44 }}
       >
         {stats.map(({ icon: Icon, value, label, valueClassName }) => (
-          <div key={label} className="flex items-center gap-3">
-            <Icon className="h-5 w-5 text-text-muted" aria-hidden />
-            <span className={`text-[36px] font-semibold tracking-[-0.045em] ${valueClassName}`}>
+          <div key={label} className="flex items-center gap-4">
+            <Icon className="h-[23px] w-[23px] text-text-muted" aria-hidden />
+            <span className={`text-[30px] font-semibold leading-none ${valueClassName}`}>
               {value}
             </span>
-            <span className="text-[32px] font-normal">{label}</span>
+            <span className="text-[24px] font-medium leading-none">{label}</span>
           </div>
         ))}
       </div>

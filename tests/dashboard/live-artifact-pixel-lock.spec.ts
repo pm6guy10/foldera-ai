@@ -31,6 +31,38 @@ const GOLDEN_DOCUMENT_BODY = [
   '## Decision',
   'Use this role-fit packet as the saved interview answer base. If Darlene asks about fit, lead with accuracy, empathy, and remote documentation discipline.',
 ].join('\n');
+const GOLDEN_DOCUMENT_DISCREPANCY_CARD = {
+  claim: GOLDEN_DOCUMENT_DIRECTIVE,
+  contradiction:
+    'The Darlene Craig interview loop is active, but the role-fit answer packet is not saved in the dashboard yet.',
+  risk:
+    'The interview window may close before Brandon has a finished answer base ready to use.',
+  evidence: [
+    'Darlene Craig sent the ESB Technician interview questions for Recruitment 2026-02344.',
+    'The role-fit packet contains a ready answer and decision line.',
+  ],
+  next_action: 'Save the ESB Technician role-fit packet before the interview loop closes.',
+  why_now: 'The interview loop is active and the packet is ready to file.',
+  source_refs: ['email:darlene-craig', 'artifact:role-fit-packet'],
+  confidence: 0.87,
+  pattern_keys: ['discrepancy:interview_week_cluster', 'action:write_document'],
+};
+const SEND_MESSAGE_DISCREPANCY_CARD = {
+  claim: 'Send follow-up email.',
+  contradiction:
+    'The packet owner confirmation is still unresolved, but the 4 PM PT window is active today.',
+  risk:
+    'The owner handoff may miss the decision window if Brandon waits for another brief.',
+  evidence: [
+    'Holly packet owner confirmation is still unresolved.',
+    'The follow-up body asks for ownership by 4 PM PT.',
+  ],
+  next_action: 'Send the prepared packet-owner confirmation follow-up.',
+  why_now: 'The ask is time-bound today.',
+  source_refs: ['email:holly-packet-thread', 'artifact:follow-up-draft'],
+  confidence: 0.84,
+  pattern_keys: ['discrepancy:document_followup_gap', 'action:send_message'],
+};
 
 const future = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 const SESSION_RESPONSE = {
@@ -166,6 +198,7 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
           title: GOLDEN_DOCUMENT_TITLE,
           content: GOLDEN_DOCUMENT_BODY,
         },
+        discrepancy_card: GOLDEN_DOCUMENT_DISCREPANCY_CARD,
         free_artifact_remaining: true,
         artifact_paywall_locked: false,
         approved_count: 0,
@@ -248,6 +281,7 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
           title: GOLDEN_DOCUMENT_TITLE,
           content: GOLDEN_DOCUMENT_BODY,
         },
+        discrepancy_card: GOLDEN_DOCUMENT_DISCREPANCY_CARD,
         free_artifact_remaining: true,
         artifact_paywall_locked: false,
         approved_count: 0,
@@ -287,6 +321,7 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
           subject: 'Follow-up on packet owner confirmation',
           body: 'Hi Holly, can you confirm ownership by 4 PM PT?',
         },
+        discrepancy_card: SEND_MESSAGE_DISCREPANCY_CARD,
         free_artifact_remaining: false,
         artifact_paywall_locked: true,
         approved_count: 4,
