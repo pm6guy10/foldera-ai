@@ -227,6 +227,27 @@ async function expectRenderedDocumentMarkdown(
   }
 }
 
+async function expectDiscrepancyFrame(
+  page: Page,
+  opts: { risk: string; evidence: string[]; nextAction: string },
+): Promise<void> {
+  const riskSection = page.locator('p').filter({ hasText: /^Risk$/i }).locator('xpath=ancestor::section[1]');
+  const evidenceSection = page.locator('p').filter({ hasText: /^Evidence$/i }).locator('xpath=ancestor::section[1]');
+  const nextActionSection = page
+    .locator('p')
+    .filter({ hasText: /^Next action$/i })
+    .locator('xpath=ancestor::section[1]');
+
+  await expect(riskSection).toBeVisible();
+  await expect(riskSection.getByText(opts.risk)).toBeVisible();
+  await expect(evidenceSection).toBeVisible();
+  for (const item of opts.evidence) {
+    await expect(evidenceSection.getByText(item)).toBeVisible();
+  }
+  await expect(nextActionSection).toBeVisible();
+  await expect(nextActionSection.getByText(opts.nextAction)).toBeVisible();
+}
+
 async function expectDashboardStatus(page: Page, expectedStatusId: string): Promise<void> {
   const notice = page.getByTestId('dashboard-status-notice');
   await expect(notice).toBeVisible({ timeout: 8000 });
@@ -815,8 +836,13 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/^Risk \/ evidence \/ next action$/i)).toBeVisible();
-    await expect(page.getByTestId('dashboard-document-body').getByText(/Hi Keri,/i)).toBeVisible();
+    const documentBody = page.getByTestId('dashboard-document-body');
+    await expectDiscrepancyFrame(page, {
+      risk: DIRECTIVE_RESPONSE.discrepancy_card.risk,
+      evidence: DIRECTIVE_RESPONSE.discrepancy_card.evidence,
+      nextAction: DIRECTIVE_RESPONSE.discrepancy_card.next_action,
+    });
+    await expect(documentBody.getByText(/Hi Keri,/i)).toBeVisible();
     await expect(page.getByText(/Hi Alex -/i)).toHaveCount(0);
   });
 
@@ -986,7 +1012,11 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       headings: ['Situation', 'Blocking risk', 'Recommendation / decision'],
       bodyLines: [DOCUMENT_DIRECTIVE_ASK, DOCUMENT_DIRECTIVE_CONSEQUENCE],
     });
-    await expect(page.getByText(/^Risk \/ evidence \/ next action$/i)).toBeVisible();
+    await expectDiscrepancyFrame(page, {
+      risk: DOCUMENT_DIRECTIVE_RESPONSE.discrepancy_card.risk,
+      evidence: DOCUMENT_DIRECTIVE_RESPONSE.discrepancy_card.evidence,
+      nextAction: DOCUMENT_DIRECTIVE_RESPONSE.discrepancy_card.next_action,
+    });
     await expect(page.getByTestId('dashboard-truth-stats')).toContainText('24');
     await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
     await expect(page.getByTestId('dashboard-truth-stats')).toContainText('need attention');

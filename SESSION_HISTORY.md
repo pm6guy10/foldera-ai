@@ -5813,3 +5813,10 @@ pm run build.
 - What changed: Aligned the authenticated `/dashboard` shell to the supplied dark Foldera design reference: larger glowing daily-brief frame, Figma-language section labels, left rail with Playbooks restored, stats strip placement, right "How this brief works" rail, desktop/card geometry guard, and current discrepancy-card-safe test fixtures.
 - Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); focused dashboard model/split Vitest passed (`3` tests); `npm run build` passed; `CI=true npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list` passed (`11` tests); `CI=true npx playwright test tests/dashboard/live-artifact-pixel-lock.spec.ts --reporter=list` passed (`3` tests); local Playwright screenshot proof captured desktop and mobile `/dashboard` renderings with mocked safe API responses.
 - Unresolved issues: Direct Figma node inspection was not possible because no Figma `fileKey`/`nodeId` was provided; implementation used the supplied Figma reference images/assets. No production deploy proof, paid generation, or outbound email was run.
+
+## 2026-05-06 — Authenticated dashboard CI assertion repaired after Figma shell
+- MODE: CI delivery blocker seam only.
+- Files changed: `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`.
+- What changed: Replaced the stale authenticated-dashboard assertions for the removed combined `Risk / evidence / next action` label with a helper that verifies the current rendered discrepancy-frame sections and their mocked risk, evidence, and next-action text.
+- Verification: `npm run health` (`RESULT: 0 FAILING`, warnings only); reproduced the GitHub failure locally with the two failing Playwright cases; after patch, the same two-test CI slice passed (`2` tests); the full authenticated route spec passed (`36` tests); `npm run test:ci:e2e:lint` passed; `npm run build` passed.
+- Unresolved issues: Remote GitHub CI, Vercel deployment, and live `/dashboard` proof still pending until this commit is pushed and the deployment settles. No paid generation was run and no outbound email was sent.
