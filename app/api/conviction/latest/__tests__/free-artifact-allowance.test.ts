@@ -268,9 +268,9 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(body.daily_utility_slate).toEqual(
       expect.objectContaining({
         finished_artifact_verdict: 'no_finished_artifact',
-        blocked_but_real: expect.objectContaining({
-          title: 'Commitment due 2026-05-14 with no matching calendar block',
-          status: 'blocked_but_real',
+        blocked_but_real: null,
+        watch_item: expect.objectContaining({
+          title: 'No safe finished action today',
         }),
       }),
     );
@@ -392,8 +392,9 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(body.finished_artifact_verdict).toBe('no_finished_artifact');
     expect(body.daily_utility_slate).toEqual(
       expect.objectContaining({
-        blocked_but_real: expect.objectContaining({
-          title: 'Commitment due 2026-05-14 with no matching calendar block',
+        blocked_but_real: null,
+        watch_item: expect.objectContaining({
+          title: 'No safe finished action today',
         }),
       }),
     );

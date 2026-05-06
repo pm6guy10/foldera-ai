@@ -54,21 +54,24 @@ const baseReport = {
 };
 
 describe('Daily Utility Slate', () => {
-  it('turns a blocked real candidate into user-facing utility without making it an artifact', () => {
+  it('suppresses speculative calendar-gap candidates with missing schedule context', () => {
     const slate = buildDailyUtilitySlateFromWinnerTruth(baseReport as never);
 
     expect(slate).not.toBeNull();
     expect(slate?.finished_artifact_verdict).toBe('no_finished_artifact');
-    expect(slate?.blocked_but_real).toEqual(
+    expect(slate?.blocked_but_real).toBeNull();
+    expect(slate?.watch_item).toEqual(
       expect.objectContaining({
-        title: 'Commitment due 2026-05-14 with no matching calendar block',
-        status: 'blocked_but_real',
+        title: 'No safe finished action today',
         evidence: expect.arrayContaining([
-          'Blocked because: missing_schedule_resolution_context',
+          'Sources are current enough to trust this no-action verdict.',
         ]),
-        no_action_reason: 'missing_schedule_resolution_context',
       }),
     );
+    expect(JSON.stringify(slate)).not.toContain('missing_schedule_resolution_context');
+    expect(JSON.stringify(slate)).not.toContain('positive_winner_contract');
+    expect(JSON.stringify(slate)).not.toContain('Candidate family');
+    expect(JSON.stringify(slate)).not.toContain('Priority tier');
   });
 
   it('prefers concrete command-center blocked candidates over vague goal drift', () => {
@@ -86,9 +89,7 @@ describe('Daily Utility Slate', () => {
       ],
     } as never);
 
-    expect(slate?.blocked_but_real?.title).toBe(
-      'Commitment due 2026-05-14 with no matching calendar block',
-    );
+    expect(slate?.blocked_but_real).toBeNull();
   });
 
   it('refuses to create a slate from empty truth with no evidence-backed item', () => {
@@ -136,5 +137,29 @@ describe('Daily Utility Slate', () => {
           'Stale source data can support context, but it cannot safely manufacture urgency.',
       }),
     );
+  });
+
+  it('translates no-safe artifact reasons without leaking internal gate codes', () => {
+    const slate = buildDailyUtilitySlateFromWinnerTruth({
+      ...baseReport,
+      blocked_candidates: [],
+      current_winner: {
+        ...baseReport.current_winner,
+        no_safe_artifact_reason:
+          'Selected candidate failed discrepancy-card quality: weak_risk; weak_next_action; reminder_without_risk',
+      },
+    } as never);
+
+    expect(slate?.watch_item).toEqual(
+      expect.objectContaining({
+        title: 'No safe finished action today',
+        evidence: expect.arrayContaining([
+          'Why Foldera stopped: The strongest possible action did not prove a concrete consequence. It did not prove one safe next step. It looked like a reminder, not a risk-backed intervention.',
+        ]),
+      }),
+    );
+    expect(JSON.stringify(slate)).not.toContain('weak_risk');
+    expect(JSON.stringify(slate)).not.toContain('weak_next_action');
+    expect(JSON.stringify(slate)).not.toContain('reminder_without_risk');
   });
 });

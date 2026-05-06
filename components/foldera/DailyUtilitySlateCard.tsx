@@ -12,7 +12,7 @@ const SECTION_LABELS = {
   primary_move: 'Primary move',
   open_loops: 'Open loops',
   changed_since_yesterday: 'Changed since yesterday',
-  blocked_but_real: 'Blocked but real',
+  blocked_but_real: 'Possible issue',
   watch_item: 'Watch item',
 } as const;
 
@@ -52,7 +52,7 @@ function SlateItemCard({
         </p>
       ) : item.no_action_reason ? (
         <p className="mt-4 text-sm leading-6 text-amber-200">
-          <span className="font-semibold">No finished action yet:</span> {item.no_action_reason}
+          <span className="font-semibold">Why it stopped:</span> {item.no_action_reason}
         </p>
       ) : null}
     </article>
@@ -70,14 +70,14 @@ export function DailyUtilitySlateCard({ slate }: { slate: DailyUtilitySlateCardP
     >
       <div className="mx-auto flex h-full max-w-[820px] flex-col">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
-          Daily utility slate
+          Today&apos;s read
         </p>
         <h2 className="mt-3 text-[30px] font-semibold leading-[1.05] tracking-[-0.03em] text-text-primary sm:text-[36px]">
-          No finished artifact cleared the bar.
+          No safe finished action today.
         </h2>
         <p className="mt-3 max-w-[680px] text-[15px] leading-7 text-text-secondary">
-          Foldera kept the artifact gate strict, but it still found source-backed operational
-          signal worth seeing today.
+          Foldera did not find a piece of finished work it can stand behind. This is the
+          safest useful read from the source trail, not a task to blindly execute.
         </p>
 
         <div className="mt-6 grid gap-4">

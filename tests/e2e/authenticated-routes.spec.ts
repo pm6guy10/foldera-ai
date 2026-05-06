@@ -173,19 +173,19 @@ const DAILY_UTILITY_SLATE_RESPONSE = {
     primary_move: null,
     open_loops: [],
     changed_since_yesterday: [],
-    blocked_but_real: {
-      title: 'Commitment due 2026-05-14 with no matching calendar block',
-      status: 'blocked_but_real',
+    blocked_but_real: null,
+    watch_item: {
+      title: 'No safe finished action today',
+      status: 'watch_item',
       evidence: [
-        'Candidate: Commitment due 2026-05-14 with no matching calendar block',
-        'Blocked because: missing_schedule_resolution_context',
+        'Sources are current enough to trust this no-action verdict.',
+        'Why Foldera stopped: It did not prove one safe next step.',
       ],
       why_it_matters:
-        'Foldera saw this as real, but it is not safe to turn into a finished artifact yet.',
-      no_action_reason: 'missing_schedule_resolution_context',
-      source_refs: ['candidate:hunt-calgap-1'],
+        'The safest answer is to avoid handing you a weak task that sounds useful but cannot prove its value.',
+      no_action_reason: 'It did not prove one safe next step.',
+      source_refs: ['winner_truth:no_safe_artifact'],
     },
-    watch_item: null,
   },
 };
 
@@ -750,13 +750,14 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await page.goto('/dashboard');
 
     await expect(page.getByTestId('dashboard-daily-utility-slate')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('Daily utility slate')).toBeVisible();
-    await expect(
-      page.getByRole('heading', {
-        name: 'Commitment due 2026-05-14 with no matching calendar block',
-      }),
-    ).toBeVisible();
-    await expect(page.getByText('Blocked because: missing_schedule_resolution_context')).toBeVisible();
+    await expect(page.getByText("Today's read")).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'No safe finished action today.' })).toBeVisible();
+    await expect(page.getByText('Sources are current enough to trust this no-action verdict.')).toBeVisible();
+    await expect(page.getByText('Why Foldera stopped: It did not prove one safe next step.')).toBeVisible();
+    await expect(page.getByText(/positive_winner_contract/i)).toHaveCount(0);
+    await expect(page.getByText(/missing_schedule_resolution_context/i)).toHaveCount(0);
+    await expect(page.getByText(/Candidate family/i)).toHaveCount(0);
+    await expect(page.getByText(/calendar block/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Approve$/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Save$/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Skip$/i })).toHaveCount(0);
