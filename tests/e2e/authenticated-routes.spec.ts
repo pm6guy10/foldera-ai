@@ -159,6 +159,36 @@ const STALE_EMAIL_DIRECTIVE = {
   id: 'stale-action-for-skip-test',
 };
 
+const DAILY_UTILITY_SLATE_RESPONSE = {
+  context_greeting: 'Today. 0 active commitments. Top priority: None set.',
+  approved_count: 1,
+  is_subscribed: true,
+  free_artifact_remaining: true,
+  artifact_paywall_locked: false,
+  finished_artifact_verdict: 'no_finished_artifact',
+  no_safe_artifact_reason: 'Selected candidate failed discrepancy-card quality: weak_next_action',
+  daily_utility_slate: {
+    generated_at: '2026-05-06T13:43:52.405Z',
+    finished_artifact_verdict: 'no_finished_artifact',
+    primary_move: null,
+    open_loops: [],
+    changed_since_yesterday: [],
+    blocked_but_real: {
+      title: 'Commitment due 2026-05-14 with no matching calendar block',
+      status: 'blocked_but_real',
+      evidence: [
+        'Candidate: Commitment due 2026-05-14 with no matching calendar block',
+        'Blocked because: missing_schedule_resolution_context',
+      ],
+      why_it_matters:
+        'Foldera saw this as real, but it is not safe to turn into a finished artifact yet.',
+      no_action_reason: 'missing_schedule_resolution_context',
+      source_refs: ['candidate:hunt-calgap-1'],
+    },
+    watch_item: null,
+  },
+};
+
 function findDocumentLine(body: string, prefix: string): string {
   const line = body.split('\n').find((entry) => entry.startsWith(prefix));
   if (!line) throw new Error(`Missing document line with prefix: ${prefix}`);
@@ -712,6 +742,24 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByTestId('dashboard-primary-action')).toHaveCount(0);
     await page.waitForLoadState('networkidle');
     expect(runBriefCalls).toBe(0);
+  });
+
+  test('renders daily utility slate when no finished artifact survives', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await setupDashboardMocks(page, { latestResponse: DAILY_UTILITY_SLATE_RESPONSE });
+    await page.goto('/dashboard');
+
+    await expect(page.getByTestId('dashboard-daily-utility-slate')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Daily utility slate')).toBeVisible();
+    await expect(
+      page.getByRole('heading', {
+        name: 'Commitment due 2026-05-14 with no matching calendar block',
+      }),
+    ).toBeVisible();
+    await expect(page.getByText('Blocked because: missing_schedule_resolution_context')).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Approve$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Save$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Skip$/i })).toHaveCount(0);
   });
 
   test('shows a degraded dashboard state when critical mount fetches fail', async ({ page }) => {

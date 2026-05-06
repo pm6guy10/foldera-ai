@@ -35,6 +35,26 @@ export type DashboardAction = {
   executionResult?: Record<string, unknown>;
 };
 
+export type DailyUtilitySlateItem = {
+  title: string;
+  status: 'primary_move' | 'open_loop' | 'changed_since_yesterday' | 'blocked_but_real' | 'watch_item';
+  evidence: string[];
+  why_it_matters: string;
+  next_action?: string;
+  no_action_reason?: string;
+  source_refs: string[];
+};
+
+export type DailyUtilitySlate = {
+  generated_at?: string;
+  finished_artifact_verdict?: 'strict_artifact_selected' | 'no_finished_artifact';
+  primary_move?: DailyUtilitySlateItem | null;
+  open_loops?: DailyUtilitySlateItem[];
+  changed_since_yesterday?: DailyUtilitySlateItem[];
+  blocked_but_real?: DailyUtilitySlateItem | null;
+  watch_item?: DailyUtilitySlateItem | null;
+};
+
 export type DashboardStatusNotice = {
   id: string;
   message: string;
@@ -79,6 +99,7 @@ export type DashboardHistoryPayload = {
 
 export type LoadLatestResult = {
   action: DashboardAction | null;
+  dailyUtilitySlate: DailyUtilitySlate | null;
   loaded: boolean;
 };
 
@@ -307,6 +328,31 @@ export function isVisibleDashboardAction(value: unknown): value is DashboardActi
   return (
     getDashboardActionHeadline(action).length > 0 ||
     getArtifactBody(getDashboardActionArtifact(action)).length > 0
+  );
+}
+
+function isDailyUtilitySlateItem(value: unknown): value is DailyUtilitySlateItem {
+  if (!value || typeof value !== 'object') return false;
+  const item = value as DailyUtilitySlateItem;
+  return (
+    asTrimmedString(item.title) !== null &&
+    asTrimmedString(item.status) !== null &&
+    Array.isArray(item.evidence) &&
+    item.evidence.some((entry) => asTrimmedString(entry) !== null) &&
+    asTrimmedString(item.why_it_matters) !== null
+  );
+}
+
+export function isDailyUtilitySlate(value: unknown): value is DailyUtilitySlate {
+  if (!value || typeof value !== 'object') return false;
+  const slate = value as DailyUtilitySlate;
+  return Boolean(
+    isDailyUtilitySlateItem(slate.primary_move) ||
+      (Array.isArray(slate.open_loops) && slate.open_loops.some(isDailyUtilitySlateItem)) ||
+      (Array.isArray(slate.changed_since_yesterday) &&
+        slate.changed_since_yesterday.some(isDailyUtilitySlateItem)) ||
+      isDailyUtilitySlateItem(slate.blocked_but_real) ||
+      isDailyUtilitySlateItem(slate.watch_item),
   );
 }
 

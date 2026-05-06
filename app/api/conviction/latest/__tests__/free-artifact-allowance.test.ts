@@ -6,12 +6,14 @@ const mockCreateServerClient = vi.fn();
 const mockApiErrorForRoute = vi.fn();
 const mockBuildContextGreeting = vi.fn();
 const mockGetSubscriptionStatus = vi.fn();
+const mockGetWinnerTruthReport = vi.fn();
 
 vi.mock('@/lib/auth/resolve-user', () => ({ resolveUser: mockResolveUser }));
 vi.mock('@/lib/db/client', () => ({ createServerClient: mockCreateServerClient }));
 vi.mock('@/lib/utils/api-error', () => ({ apiErrorForRoute: mockApiErrorForRoute }));
 vi.mock('@/lib/briefing/context-builder', () => ({ buildContextGreeting: mockBuildContextGreeting }));
 vi.mock('@/lib/auth/subscription', () => ({ getSubscriptionStatus: mockGetSubscriptionStatus }));
+vi.mock('@/lib/system/winner-truth', () => ({ getWinnerTruthReport: mockGetWinnerTruthReport }));
 
 type SupabaseMockOptions = {
   pendingActions: Record<string, unknown>[];
@@ -33,6 +35,51 @@ const VALID_DISCREPANCY_CARD = {
   source_refs: ['signal:owner-confirmation', 'artifact:packet-metadata'],
   confidence: 0.88,
   pattern_keys: ['discrepancy:admin_deadline', 'action:write_document'],
+};
+
+const WINNER_TRUTH_WITH_BLOCKED_CANDIDATE = {
+  generated_at: '2026-05-06T13:43:52.405Z',
+  user_id: 'u-test',
+  sync_health: {
+    providers: [
+      {
+        provider: 'google',
+        last_synced_at: '2026-05-06T11:04:26.669+00:00',
+        age_hours: 3,
+        disconnected: false,
+        stale: false,
+        scoring_effect: 'fresh enough for currentness support',
+      },
+    ],
+    graph: { graph_stale: false },
+    decrypt_sample_count: 250,
+    decrypt_fallback_count: 0,
+  },
+  current_winner: {
+    verdict: 'no_safe_artifact_today',
+    title: null,
+    tier: null,
+    artifact_family: null,
+    note: null,
+    discrepancy_card: null,
+    no_safe_artifact_reason:
+      'Selected candidate failed discrepancy-card quality: weak_next_action',
+  },
+  top_viable_candidates: [],
+  blocked_candidates: [
+    {
+      candidate_id: 'calendar-gap-1',
+      title: 'Commitment due 2026-05-14 with no matching calendar block',
+      tier: 'tier_1',
+      family: 'calendar_conflict_brief',
+      blockers: ['missing_schedule_resolution_context'],
+    },
+  ],
+  graph_drift: [],
+  polluted_entities: [],
+  three_day_consistency: { passes: false, days: [] },
+  action_needed: [],
+  future_findings: [],
 };
 
 function buildSupabaseMock(options: SupabaseMockOptions) {
@@ -157,6 +204,7 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     );
     mockResolveUser.mockResolvedValue({ userId: 'u-test' });
     mockBuildContextGreeting.mockResolvedValue('Today. 0 active commitments. Top priority: None set.');
+    mockGetWinnerTruthReport.mockResolvedValue(WINNER_TRUTH_WITH_BLOCKED_CANDIDATE);
   });
 
   it('pending_approval alone does not consume the free artifact', async () => {
@@ -216,6 +264,16 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
       }),
     );
     expect(body.artifact_paywall_locked).toBe(false);
+    expect(body.finished_artifact_verdict).toBe('no_finished_artifact');
+    expect(body.daily_utility_slate).toEqual(
+      expect.objectContaining({
+        finished_artifact_verdict: 'no_finished_artifact',
+        blocked_but_real: expect.objectContaining({
+          title: 'Commitment due 2026-05-14 with no matching calendar block',
+          status: 'blocked_but_real',
+        }),
+      }),
+    );
   });
 
   it('the first finished artifact still leaves free access for free users', async () => {
@@ -331,8 +389,17 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(body.is_subscribed).toBe(false);
     expect(body.free_artifact_remaining).toBe(true);
     expect(body.artifact_paywall_locked).toBe(false);
+    expect(body.finished_artifact_verdict).toBe('no_finished_artifact');
+    expect(body.daily_utility_slate).toEqual(
+      expect.objectContaining({
+        blocked_but_real: expect.objectContaining({
+          title: 'Commitment due 2026-05-14 with no matching calendar block',
+        }),
+      }),
+    );
     expect(body.id).toBeUndefined();
     expect(mockBuildContextGreeting).toHaveBeenCalledWith('u-test');
+    expect(mockGetWinnerTruthReport).toHaveBeenCalledWith('u-test');
     expect(supabase.spies.getUserById).toHaveBeenCalledWith('u-test');
   });
 

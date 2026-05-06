@@ -4,14 +4,20 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import {
-  Mail,
-  TriangleAlert,
-  TrendingUp,
-} from 'lucide-react';
+import { Mail, TriangleAlert, TrendingUp } from 'lucide-react';
 import { DashboardBriefWorkPanel } from '@/components/dashboard/DashboardBriefWorkPanel';
+import {
+  DashboardStatusNoticeCard,
+  HiddenDashboardArtifact,
+} from '@/components/dashboard/DashboardChromeExtras';
 import { DashboardStatsStrip } from '@/components/dashboard/DashboardStatsStrip';
+import {
+  DashboardBriefingUnavailableCard,
+  DashboardDegradedState,
+  DashboardLoadingCard,
+} from '@/components/dashboard/DashboardStateCards';
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
+import { DailyUtilitySlateCard } from '@/components/foldera/DailyUtilitySlateCard';
 import {
   DashboardSidebar,
   type DashboardPanelKey,
@@ -38,6 +44,7 @@ import {
   getDateLabel,
   getGreetingLabel,
   inferSourcePills,
+  isDailyUtilitySlate,
   isVisibleDashboardAction,
   isWriteDocumentAction,
   normalizeDashboardPanel,
@@ -49,6 +56,7 @@ import {
   type DashboardHistoryPayload,
   type DashboardLoadIssue,
   type DashboardStatusNotice,
+  type DailyUtilitySlate,
   type GraphStatsPayload,
   type IntegrationStatusPayload,
   type LoadLatestResult,
@@ -61,6 +69,7 @@ export default function DashboardPage() {
   const activeSidebarLabel = DASHBOARD_PANEL_LABELS[activePanel];
 
   const [action, setAction] = useState<DashboardAction | null>(null);
+  const [dailyUtilitySlate, setDailyUtilitySlate] = useState<DailyUtilitySlate | null>(null);
   const [loadingLatest, setLoadingLatest] = useState(true);
   const [integrationStatus, setIntegrationStatus] = useState<IntegrationStatusPayload | null>(null);
   const [graphStats, setGraphStats] = useState<GraphStatsPayload | null>(null);
@@ -106,36 +115,43 @@ export default function DashboardPage() {
         cache: 'no-store',
       });
       if (controller.signal.aborted) {
-        return { action: null, loaded: false };
+        return { action: null, dailyUtilitySlate: null, loaded: false };
       }
 
       if (!latestRes.ok) {
         setAction(null);
+        setDailyUtilitySlate(null);
         setArtifactPaywallLocked(false);
         setLoadIssue('latest', true);
-        return { action: null, loaded: false };
+        return { action: null, dailyUtilitySlate: null, loaded: false };
       }
 
       const latest = await latestRes.json().catch(() => ({}));
       if (controller.signal.aborted) {
-        return { action: null, loaded: false };
+        return { action: null, dailyUtilitySlate: null, loaded: false };
       }
 
       const visibleAction = isVisibleDashboardAction(latest) ? (latest as DashboardAction) : null;
       const action =
         visibleAction && !locallyHiddenActionIds.has(visibleAction.id) ? visibleAction : null;
+      const slate =
+        !action && isDailyUtilitySlate(latest?.daily_utility_slate)
+          ? latest.daily_utility_slate
+          : null;
       setAction(action);
+      setDailyUtilitySlate(slate);
       setArtifactPaywallLocked(action ? latest?.artifact_paywall_locked === true : false);
       setLoadIssue('latest', false);
-      return { action, loaded: true };
+      return { action, dailyUtilitySlate: slate, loaded: true };
     } catch {
       if (controller.signal.aborted) {
-        return { action: null, loaded: false };
+        return { action: null, dailyUtilitySlate: null, loaded: false };
       }
       setAction(null);
+      setDailyUtilitySlate(null);
       setArtifactPaywallLocked(false);
       setLoadIssue('latest', true);
-      return { action: null, loaded: false };
+      return { action: null, dailyUtilitySlate: null, loaded: false };
     } finally {
       if (!controller.signal.aborted) {
         setLoadingLatest(false);
@@ -718,56 +734,14 @@ export default function DashboardPage() {
       ]
     : [];
 
-  const emptyStateCard = <EmptyStateCard />;
-
-  const loadingCard = (
-    <div className="foldera-dashboard-brief-card foldera-brief-shell flex h-full w-full items-center justify-center px-8 py-10 text-center">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
-          Loading
-        </p>
-        <p className="mt-4 text-[18px] leading-8 text-text-secondary">
-          Loading your latest Foldera brief.
-        </p>
-      </div>
-    </div>
+  const emptyStateCard = dailyUtilitySlate ? (
+    <DailyUtilitySlateCard slate={dailyUtilitySlate} />
+  ) : (
+    <EmptyStateCard />
   );
-
-  const degradedStateNode = degradedIssueLabels.length > 0 ? (
-    <div
-      className="rounded-[14px] border border-amber-400/30 bg-amber-400/10 px-4 py-3"
-      data-testid="dashboard-degraded-state"
-    >
-      <p className="text-sm font-semibold text-text-primary">Dashboard is partially unavailable.</p>
-      <p className="mt-1 text-sm text-text-secondary">
-        Foldera is still loading what it can, but some live data is unavailable right now.
-      </p>
-      <ul className="mt-3 space-y-1 text-sm text-text-secondary">
-        {degradedIssueLabels.map((label) => (
-          <li key={label}>{label}</li>
-        ))}
-      </ul>
-    </div>
-  ) : null;
-
-  const briefingUnavailableCard = (
-    <div
-      className="foldera-dashboard-brief-card foldera-brief-shell flex h-full w-full items-center justify-center px-8 py-10 text-center"
-      data-testid="dashboard-briefing-unavailable"
-    >
-      <div className="max-w-[520px]">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
-          Briefing unavailable
-        </p>
-        <h2 className="mt-4 text-[32px] font-semibold tracking-[-0.04em] text-text-primary sm:text-[38px]">
-          Latest briefing unavailable
-        </h2>
-        <p className="mt-4 text-[15px] leading-7 text-text-secondary">
-          Foldera couldn&apos;t load your latest briefing right now. Refresh to retry.
-        </p>
-      </div>
-    </div>
-  );
+  const loadingCard = <DashboardLoadingCard />;
+  const degradedStateNode = <DashboardDegradedState issueLabels={degradedIssueLabels} />;
+  const briefingUnavailableCard = <DashboardBriefingUnavailableCard />;
 
   const secondaryPanelNode = !isBriefingPanel ? (
     <DashboardSecondaryPanel
@@ -821,24 +795,9 @@ export default function DashboardPage() {
   const cardNode = isBriefingPanel ? briefingCardNode : secondaryPanelNode;
 
   const statusNoticeNode = isBriefingPanel && statusNotice ? (
-    <div
-      className="rounded-[14px] border border-border bg-panel-raised px-4 py-3"
-      data-testid="dashboard-status-notice"
-      data-status-id={statusNotice.id}
-    >
-      <p className="text-sm text-text-primary">{statusNotice.message}</p>
-    </div>
+    <DashboardStatusNoticeCard notice={statusNotice} />
   ) : null;
-
-  const hiddenArtifactNode = (
-    <div
-      aria-hidden
-      className="pointer-events-none absolute left-0 top-0 opacity-0"
-    >
-      {artifactTitle ? <p data-testid="pixel-lock-artifact-title">{artifactTitle}</p> : null}
-      {artifactBody ? <p data-testid="pixel-lock-artifact-body">{artifactBody}</p> : null}
-    </div>
-  );
+  const hiddenArtifactNode = <HiddenDashboardArtifact title={artifactTitle} body={artifactBody} />;
 
   if (!stageMeasured) {
     return (

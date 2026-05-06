@@ -17,6 +17,8 @@ import {
   buildDiscrepancyFrameFromActionPayload,
   evaluateDiscrepancyCardFrame,
 } from '@/lib/briefing/discrepancy-card-frame';
+import { buildDailyUtilitySlateFromWinnerTruth } from '@/lib/briefing/daily-utility-slate';
+import { getWinnerTruthReport } from '@/lib/system/winner-truth';
 
 export const dynamic = 'force-dynamic';
 const MIN_PENDING_CONFIDENCE = CONFIDENCE_SEND_THRESHOLD;
@@ -70,6 +72,19 @@ async function getConsumedFreeArtifactCount(
     return count ?? 0;
   } catch {
     return 0;
+  }
+}
+
+async function buildDailyUtilitySlatePayload(userId: string) {
+  try {
+    const report = await getWinnerTruthReport(userId);
+    return buildDailyUtilitySlateFromWinnerTruth(report);
+  } catch (error) {
+    console.warn(
+      '[conviction/latest] daily utility slate unavailable:',
+      error instanceof Error ? error.message : String(error),
+    );
+    return null;
   }
 }
 
@@ -196,6 +211,8 @@ export async function GET(request: Request) {
         accountCreatedAt = null;
       }
 
+      const dailyUtilitySlate = await buildDailyUtilitySlatePayload(userId);
+
       return jsonNoStore({
         context_greeting: contextGreeting,
         account_created_at: accountCreatedAt,
@@ -203,6 +220,8 @@ export async function GET(request: Request) {
         is_subscribed: proUnlocked,
         free_artifact_remaining: freeArtifactRemaining,
         artifact_paywall_locked: false,
+        finished_artifact_verdict: 'no_finished_artifact',
+        daily_utility_slate: dailyUtilitySlate,
       });
     }
 
@@ -221,6 +240,8 @@ export async function GET(request: Request) {
         contextGreeting = 'Today. 0 active commitments. Top priority: None set.';
       }
 
+      const dailyUtilitySlate = await buildDailyUtilitySlatePayload(userId);
+
       return jsonNoStore({
         context_greeting: contextGreeting,
         account_created_at: accountCreatedAt,
@@ -228,6 +249,8 @@ export async function GET(request: Request) {
         is_subscribed: proUnlocked,
         free_artifact_remaining: freeArtifactRemaining,
         artifact_paywall_locked: false,
+        finished_artifact_verdict: 'no_finished_artifact',
+        daily_utility_slate: dailyUtilitySlate,
         no_safe_artifact_reason: discrepancyQuality.rejection_reason ?? 'missing_discrepancy_card',
         blocked_latest_action: {
           id: action.id,
@@ -255,6 +278,8 @@ export async function GET(request: Request) {
       artifact,
       discrepancy_card: discrepancyCard,
       discrepancy_quality: discrepancyQuality,
+      finished_artifact_verdict: 'strict_artifact_selected',
+      daily_utility_slate: null,
       context_greeting: contextGreeting,
       account_created_at: accountCreatedAt,
       approved_count: consumedFreeArtifactCount,
