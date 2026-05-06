@@ -14,6 +14,18 @@ interface WinnerTruthReport {
     tier: string | null;
     artifact_family: string | null;
     note: string | null;
+    discrepancy_card: {
+      claim: string;
+      contradiction: string;
+      risk: string;
+      evidence: string[];
+      next_action: string;
+      why_now: string;
+      source_refs: string[];
+      confidence: number;
+      pattern_keys: string[];
+    } | null;
+    no_safe_artifact_reason: string | null;
   };
   sync_health: {
     providers: Array<{
@@ -195,15 +207,64 @@ export default function SystemClient() {
         {winnerTruth && (
           <div className="mt-6 grid gap-4 xl:grid-cols-2">
             <article className="rounded-card border border-border bg-panel-raised p-4">
-              <h3 className="text-xs font-black uppercase tracking-[0.12em] text-text-secondary">What Foldera knows now</h3>
+              <h3 className="text-xs font-black uppercase tracking-[0.12em] text-text-secondary">What Foldera believes</h3>
               <p className="mt-3 text-sm text-text-primary">
-                {winnerTruth.current_winner.verdict === 'selected' && winnerTruth.current_winner.title
+                {winnerTruth.current_winner.discrepancy_card?.claim ??
+                (winnerTruth.current_winner.verdict === 'selected' && winnerTruth.current_winner.title
                   ? winnerTruth.current_winner.title
-                  : 'No safe artifact today'}
+                  : 'No safe artifact today')}
               </p>
               <p className="mt-2 text-xs text-text-secondary">
-                {winnerTruth.top_viable_candidates.length} viable Tier 1 or Tier 2 candidate{winnerTruth.top_viable_candidates.length === 1 ? '' : 's'} are present right now.
+                {winnerTruth.current_winner.verdict === 'selected'
+                  ? `${winnerTruth.top_viable_candidates.length} viable Tier 1 or Tier 2 candidate${winnerTruth.top_viable_candidates.length === 1 ? '' : 's'} are present right now.`
+                  : (winnerTruth.current_winner.no_safe_artifact_reason ?? 'No current candidate could prove every trust condition.')}
               </p>
+            </article>
+
+            <article className="rounded-card border border-border bg-panel-raised p-4">
+              <h3 className="text-xs font-black uppercase tracking-[0.12em] text-text-secondary">What contradicted it</h3>
+              <p className="mt-3 text-sm text-text-primary">
+                {winnerTruth.current_winner.discrepancy_card?.contradiction ??
+                  winnerTruth.blocked_candidates[0]?.blockers.join(' · ') ??
+                  'No current contradiction was strong enough to trust.'}
+              </p>
+              <p className="mt-2 text-xs text-text-secondary">
+                {winnerTruth.current_winner.discrepancy_card?.why_now ??
+                  winnerTruth.current_winner.no_safe_artifact_reason ??
+                  'Foldera is holding the card until the evidence is stronger.'}
+              </p>
+            </article>
+
+            <article className="rounded-card border border-border bg-panel-raised p-4">
+              <h3 className="text-xs font-black uppercase tracking-[0.12em] text-text-secondary">Why it matters</h3>
+              <p className="mt-3 text-sm text-text-primary">
+                {winnerTruth.current_winner.discrepancy_card?.risk ??
+                  winnerTruth.action_needed[0] ??
+                  'No risk strong enough to show today.'}
+              </p>
+              <p className="mt-2 text-xs text-text-secondary">
+                {winnerTruth.current_winner.discrepancy_card
+                  ? `Confidence ${Math.round(winnerTruth.current_winner.discrepancy_card.confidence * 100)}%`
+                  : 'No safe artifact today'}
+              </p>
+            </article>
+
+            <article className="rounded-card border border-border bg-panel-raised p-4">
+              <h3 className="text-xs font-black uppercase tracking-[0.12em] text-text-secondary">Evidence and next action</h3>
+              <div className="mt-3 space-y-2 text-sm text-text-primary">
+                {winnerTruth.current_winner.discrepancy_card ? (
+                  <>
+                    {winnerTruth.current_winner.discrepancy_card.evidence.slice(0, 3).map((entry) => (
+                      <p key={entry}>{entry}</p>
+                    ))}
+                    <p className="pt-2 text-xs text-text-secondary">
+                      Next action: {winnerTruth.current_winner.discrepancy_card.next_action}
+                    </p>
+                  </>
+                ) : (
+                  <p>{winnerTruth.current_winner.no_safe_artifact_reason ?? 'No safe artifact today'}</p>
+                )}
+              </div>
             </article>
 
             <article className="rounded-card border border-border bg-panel-raised p-4">
@@ -221,21 +282,6 @@ export default function SystemClient() {
                 </p>
                 <p>Decrypt fallbacks: {winnerTruth.sync_health.decrypt_fallback_count}</p>
               </div>
-            </article>
-
-            <article className="rounded-card border border-border bg-panel-raised p-4">
-              <h3 className="text-xs font-black uppercase tracking-[0.12em] text-text-secondary">What won today</h3>
-              <p className="mt-3 text-sm text-text-primary">
-                {winnerTruth.current_winner.verdict === 'selected'
-                  ? winnerTruth.current_winner.title
-                  : 'No safe artifact today'}
-              </p>
-              <p className="mt-2 text-xs text-text-secondary">
-                {winnerTruth.current_winner.tier ?? 'no tier'} {winnerTruth.current_winner.artifact_family ? `· ${winnerTruth.current_winner.artifact_family}` : ''}
-              </p>
-              {winnerTruth.current_winner.note && (
-                <p className="mt-2 text-xs text-text-secondary">{winnerTruth.current_winner.note}</p>
-              )}
             </article>
 
             <article className="rounded-card border border-border bg-panel-raised p-4">

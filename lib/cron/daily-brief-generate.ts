@@ -3099,6 +3099,81 @@ export async function runDailyGenerate(
       const outcomeReceipt = buildOutcomeReceipt(directive, artifact, bottomGate);
 
       const artifactForRow = normalizeArtifactForPersistence(directive, artifact);
+      const pendingExecutionResult: Record<string, unknown> = {
+        ...buildDirectiveExecutionResult({
+          directive,
+          artifact: artifactForRow ?? artifact,
+          briefOrigin: 'daily_cron',
+          extras: {
+            inspection: inspectionMeta,
+            ...(runOpts.verificationStubPersist ? { verification_stub_persist: true } : {}),
+          },
+        }),
+        approve: null,
+        outcome_receipt: outcomeReceipt,
+        ...(artifactQualityGate.soft_warnings.length > 0
+          ? { artifact_quality_gate: artifactQualityGateReceipt }
+          : {}),
+      };
+      const discrepancyQuality =
+        pendingExecutionResult.discrepancy_quality &&
+        typeof pendingExecutionResult.discrepancy_quality === 'object'
+          ? (pendingExecutionResult.discrepancy_quality as { passes?: unknown; rejection_reason?: unknown; blocked_by?: unknown })
+          : null;
+      if (discrepancyQuality?.passes !== true) {
+        const rejectionReason =
+          typeof discrepancyQuality?.rejection_reason === 'string'
+            ? discrepancyQuality.rejection_reason
+            : 'missing_discrepancy_card';
+        const blockDetail = `Discrepancy card rejected before dashboard: ${rejectionReason}`;
+        logStructuredEvent({
+          event: 'daily_generate_failed',
+          level: 'warn',
+          userId,
+          artifactType: artifactTypeForAction(directive.action_type),
+          generationStatus: 'discrepancy_card_gate_failed',
+          details: {
+            scope: 'daily-generate',
+            directive_text: directive.directive,
+            blocked_by: Array.isArray(discrepancyQuality?.blocked_by) ? discrepancyQuality.blocked_by : [],
+            rejection_reason: rejectionReason,
+          },
+        });
+        const savedNoSend = await persistNoSendOutcome(
+          supabase,
+          userId,
+          directive,
+          blockDetail,
+          'validation',
+          {
+            discrepancy_card: pendingExecutionResult.discrepancy_card ?? null,
+            discrepancy_quality: pendingExecutionResult.discrepancy_quality ?? null,
+            outcome_receipt: outcomeReceipt,
+          },
+        );
+        if (!savedNoSend) {
+          results.push({
+            code: 'directive_persist_failed',
+            detail: 'Failed to persist discrepancy-card no-send outcome.',
+            meta: cleanupMeta,
+            success: false,
+            userId,
+          });
+          continue;
+        }
+        results.push({
+          code: 'no_send_persisted',
+          detail: blockDetail,
+          meta: buildNoSendResultMeta(cleanupMeta, savedNoSend, {
+            discrepancy_quality: pendingExecutionResult.discrepancy_quality ?? null,
+            outcome_receipt: outcomeReceipt,
+            ...extractThresholdValues(directive),
+          }),
+          success: true,
+          userId,
+        });
+        continue;
+      }
 
       const { data: saved, error: saveErr } = await supabase
         .from('tkg_actions')
@@ -3113,22 +3188,7 @@ export async function runDailyGenerate(
           generated_at: new Date().toISOString(),
           generation_attempts: 1,
           artifact: artifactForRow,
-          execution_result: {
-            ...buildDirectiveExecutionResult({
-              directive,
-              artifact: artifactForRow ?? artifact,
-              briefOrigin: 'daily_cron',
-              extras: {
-                inspection: inspectionMeta,
-                ...(runOpts.verificationStubPersist ? { verification_stub_persist: true } : {}),
-              },
-            }),
-            approve: null,
-            outcome_receipt: outcomeReceipt,
-            ...(artifactQualityGate.soft_warnings.length > 0
-              ? { artifact_quality_gate: artifactQualityGateReceipt }
-              : {}),
-          },
+          execution_result: pendingExecutionResult,
         })
         .select('id')
         .single();

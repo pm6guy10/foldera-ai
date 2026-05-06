@@ -34,6 +34,7 @@ import {
   computeStageMetrics,
   getArtifactBody,
   getDashboardActionHeadline,
+  getDashboardDiscrepancyFrame,
   getDateLabel,
   getGreetingLabel,
   inferSourcePills,
@@ -516,10 +517,15 @@ export default function DashboardPage() {
   const sidebarUserName = firstName ?? sessionName;
   const writeDocument = isWriteDocumentAction(action);
   const showArtifactBlur = Boolean(action?.artifact) && artifactPaywallLocked;
+  const discrepancyFrame = getDashboardDiscrepancyFrame(action);
   const artifactTitle =
-    getDashboardActionHeadline(action);
+    discrepancyFrame?.claim ?? getDashboardActionHeadline(action);
+  const artifactContradiction =
+    discrepancyFrame?.contradiction ??
+    asTrimmedString(action?.reason) ??
+    'Foldera surfaced the single move that matters most right now.';
   const artifactBody = getArtifactBody(action?.artifact);
-  const draftLabel = 'DRAFT';
+  const draftLabel = 'Risk / evidence / next action';
   const copyActionLabel = 'Copy draft';
   const skipActionLabel = 'Skip';
   const primaryActionLabel = writeDocument
@@ -645,7 +651,40 @@ export default function DashboardPage() {
     </div>
   );
 
-  const draftBody = artifactBody ? (
+  const draftBody = discrepancyFrame ? (
+    <div className="space-y-5">
+      <section>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+          Risk
+        </p>
+        <p className="mt-2 text-text-secondary">{discrepancyFrame.risk}</p>
+      </section>
+      <section>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+          Evidence
+        </p>
+        <ul className="mt-2 list-disc space-y-2 pl-5">
+          {discrepancyFrame.evidence.slice(0, 4).map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </section>
+      <section>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+          Next action
+        </p>
+        <p className="mt-2 text-text-primary">{discrepancyFrame.next_action}</p>
+      </section>
+      {artifactBody ? (
+        <section>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+            Finished work
+          </p>
+          <div className="mt-2">{artifactBodyContent}</div>
+        </section>
+      ) : null}
+    </div>
+  ) : artifactBody ? (
     artifactBodyContent
   ) : (
     <div
@@ -757,13 +796,14 @@ export default function DashboardPage() {
         dashboardCta
         stageDesktop={stageMetrics.isDesktop}
         directive={artifactTitle}
-        whyNow={
-          asTrimmedString(action.reason) ??
-          'Foldera surfaced the single move that matters most right now.'
-        }
+        whyNow={artifactContradiction}
+        eyebrowLabel="Discrepancy card"
+        directiveLabel="Claim"
+        whyLabel="Contradiction"
         draftLabel={draftLabel}
         draftBody={draftBody}
         sourcePills={inferSourcePills(action)}
+        sourceLabel="Source refs"
         nextStep={writeDocument ? 'Next: Save to record' : 'Next: Await response'}
         statusText={writeDocument ? 'READY TO FILE' : 'READY TO SEND'}
         footerText="Grounded in connected sources"
@@ -943,13 +983,14 @@ export default function DashboardPage() {
                       className="foldera-dashboard-brief-card foldera-dashboard-money-shot foldera-dashboard-current-brief w-full"
                       dashboardCta
                       directive={artifactTitle}
-                      whyNow={
-                        asTrimmedString(action.reason) ??
-                        'Foldera surfaced the single move that matters most right now.'
-                      }
+                      whyNow={artifactContradiction}
+                      eyebrowLabel="Discrepancy card"
+                      directiveLabel="Claim"
+                      whyLabel="Contradiction"
                       draftLabel={draftLabel}
                       draftBody={draftBody}
                       sourcePills={inferSourcePills(action)}
+                      sourceLabel="Source refs"
                       nextStep={writeDocument ? 'Next: Save to record' : 'Next: Await response'}
                       statusText={writeDocument ? 'READY TO FILE' : 'READY TO SEND'}
                       footerText="Grounded in connected sources"

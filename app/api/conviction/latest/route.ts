@@ -13,6 +13,10 @@ import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { buildContextGreeting } from '@/lib/briefing/context-builder';
 import { CONFIDENCE_SEND_THRESHOLD } from '@/lib/config/constants';
 import { getSubscriptionStatus } from '@/lib/auth/subscription';
+import {
+  buildDiscrepancyFrameFromActionPayload,
+  evaluateDiscrepancyCardFrame,
+} from '@/lib/briefing/discrepancy-card-frame';
 
 export const dynamic = 'force-dynamic';
 const MIN_PENDING_CONFIDENCE = CONFIDENCE_SEND_THRESHOLD;
@@ -204,6 +208,35 @@ export async function GET(request: Request) {
 
     const artifact = extractArtifact(action as Record<string, unknown>);
     const artifactPaywallLocked = Boolean(artifact) && !proUnlocked && !freeArtifactRemaining;
+    const discrepancyCard = buildDiscrepancyFrameFromActionPayload({
+      ...action,
+      artifact,
+      executionResult: action.execution_result,
+    });
+    const discrepancyQuality = evaluateDiscrepancyCardFrame(discrepancyCard);
+    if (!discrepancyCard || !discrepancyQuality.passes) {
+      try {
+        contextGreeting = await buildContextGreeting(userId);
+      } catch {
+        contextGreeting = 'Today. 0 active commitments. Top priority: None set.';
+      }
+
+      return jsonNoStore({
+        context_greeting: contextGreeting,
+        account_created_at: accountCreatedAt,
+        approved_count: consumedFreeArtifactCount,
+        is_subscribed: proUnlocked,
+        free_artifact_remaining: freeArtifactRemaining,
+        artifact_paywall_locked: false,
+        no_safe_artifact_reason: discrepancyQuality.rejection_reason ?? 'missing_discrepancy_card',
+        blocked_latest_action: {
+          id: action.id,
+          title: action.directive_text,
+          blocked_by: discrepancyQuality.blocked_by,
+          rejection_reason: discrepancyQuality.rejection_reason ?? 'missing_discrepancy_card',
+        },
+      });
+    }
 
     // Map DB row → ConvictionAction shape
     return jsonNoStore({
@@ -220,6 +253,8 @@ export async function GET(request: Request) {
       executedAt:      action.executed_at ?? undefined,
       executionResult: action.execution_result ?? undefined,
       artifact,
+      discrepancy_card: discrepancyCard,
+      discrepancy_quality: discrepancyQuality,
       context_greeting: contextGreeting,
       account_created_at: accountCreatedAt,
       approved_count: consumedFreeArtifactCount,

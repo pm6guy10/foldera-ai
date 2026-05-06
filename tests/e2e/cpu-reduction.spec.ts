@@ -170,6 +170,8 @@ describeAuthMocked('CPU reduction surfaces', () => {
         tier: null,
         artifact_family: null,
         note: null,
+        discrepancy_card: null,
+        no_safe_artifact_reason: 'No current candidate could prove every trust condition.',
       },
       sync_health: {
         providers: [
@@ -213,6 +215,8 @@ describeAuthMocked('CPU reduction surfaces', () => {
     await page.goto('/dashboard/system');
     await expect(page.getByRole('heading', { name: /System tools/i })).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('heading', { name: /Winner truth/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/What Foldera believes/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/What contradicted it/i)).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/Good candidates present/i)).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/Deeper findings/i)).toBeVisible({ timeout: 15000 });
     await page.getByRole('button', { name: /Run pipeline \(dry run\)/i }).click();

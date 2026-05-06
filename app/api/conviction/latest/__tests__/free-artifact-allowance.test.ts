@@ -19,6 +19,22 @@ type SupabaseMockOptions = {
   accountCreatedAt?: string | null;
 };
 
+const VALID_DISCREPANCY_CARD = {
+  claim: 'Packet owner confirmation is ready for review.',
+  contradiction:
+    'The owner confirmation is due today, but the packet still has no confirmed owner in the source trail.',
+  risk: 'The packet may miss today\'s same-day handoff window if the owner is not confirmed.',
+  evidence: [
+    'Source trail: owner confirmation due today.',
+    'Packet metadata: confirmed owner is still missing.',
+  ],
+  next_action: 'Confirm the packet owner before 4 PM PT today.',
+  why_now: 'The same-day handoff window closes today.',
+  source_refs: ['signal:owner-confirmation', 'artifact:packet-metadata'],
+  confidence: 0.88,
+  pattern_keys: ['discrepancy:admin_deadline', 'action:write_document'],
+};
+
 function buildSupabaseMock(options: SupabaseMockOptions) {
   const inConsumedStatuses = vi.fn().mockResolvedValue({ count: options.consumedCount });
 
@@ -108,7 +124,16 @@ function buildPendingAction(overrides?: Partial<Record<string, unknown>>): Recor
     generated_at: new Date().toISOString(),
     evidence: [],
     artifact: { type: 'document', title: 'Packet owner confirmation', content: 'Owner must confirm by 4 PM PT.' },
-    execution_result: {},
+    execution_result: {
+      discrepancy_card: VALID_DISCREPANCY_CARD,
+      discrepancy_quality: {
+        passes: true,
+        quality_score: 0.92,
+        blocked_by: [],
+        pattern_keys: VALID_DISCREPANCY_CARD.pattern_keys,
+        rejection_reason: null,
+      },
+    },
     ...(overrides ?? {}),
   };
 }
@@ -160,6 +185,37 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(supabase.spies.pendingPayloadMaybeSingle).toHaveBeenCalledTimes(1);
     expect(mockBuildContextGreeting).not.toHaveBeenCalled();
     expect(supabase.spies.getUserById).not.toHaveBeenCalled();
+  });
+
+  it('hides a pending artifact that cannot prove a discrepancy card frame', async () => {
+    const supabase = buildSupabaseMock({
+      pendingActions: [
+        buildPendingAction({
+          id: 'weak-action',
+          directive_text: 'Follow up with Keri.',
+          reason: 'It has been a while.',
+          evidence: [],
+          artifact: { type: 'email', subject: 'Checking in', body: 'Hi Keri, just checking in.' },
+          execution_result: {},
+        }),
+      ],
+      consumedCount: 0,
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'none' });
+
+    const res = await callLatest();
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(body.id).toBeUndefined();
+    expect(body.no_safe_artifact_reason).toContain('missing_contradiction');
+    expect(body.blocked_latest_action).toEqual(
+      expect.objectContaining({
+        id: 'weak-action',
+        rejection_reason: expect.stringContaining('missing_contradiction'),
+      }),
+    );
+    expect(body.artifact_paywall_locked).toBe(false);
   });
 
   it('the first finished artifact still leaves free access for free users', async () => {

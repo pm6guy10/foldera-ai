@@ -21,6 +21,7 @@ import {
 import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-users';
 import { updateMlSnapshotOutcome } from '@/lib/ml/directive-ml-snapshot';
 import { reinforceAttentionForAction } from '@/lib/signals/entity-attention-runtime';
+import { buildDiscrepancyFrameFromActionPayload } from '@/lib/briefing/discrepancy-card-frame';
 
 const EMAIL_SEND_DISABLED_REASON = 'email_send_disabled';
 
@@ -262,6 +263,18 @@ async function insertFeedbackSignalIdempotent(
   if (error) {
     console.warn(`[execute-action] feedback signal insert (${kind}):`, error.message);
   }
+}
+
+function buildDiscrepancyOutcomeMemoryLine(action: Record<string, unknown>): string {
+  const frame = buildDiscrepancyFrameFromActionPayload(action);
+  if (!frame) return '';
+  const lines = [
+    `Pattern keys: ${frame.pattern_keys.join(', ')}`,
+    `Claim: ${frame.claim}`,
+    `Contradiction: ${frame.contradiction}`,
+    `Risk: ${frame.risk}`,
+  ];
+  return `\n${lines.join('\n')}`;
 }
 
 type ExecuteArtifactOptions = {
@@ -671,9 +684,10 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
   }
 
   if (isReject) {
+    const outcomeMemory = buildDiscrepancyOutcomeMemoryLine(action);
     const skipContent = skipReason
-      ? `Skipped (${skipReason}): ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}`
-      : `Skipped: ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}`;
+      ? `Skipped (${skipReason}): ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}${outcomeMemory}`
+      : `Skipped: ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}${outcomeMemory}`;
 
     await insertFeedbackSignalIdempotent(supabase, userId, actionId, 'skip', skipContent);
     await suppressCommitmentsForSkippedAction(supabase, action);
@@ -757,7 +771,10 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
     throw new Error(executionUpdateError.message);
   }
 
-  const approvalContent = `Approved: ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}`;
+  const approvalContent = `Approved: ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}${buildDiscrepancyOutcomeMemoryLine({
+    ...action,
+    execution_result: executionResult,
+  })}`;
   await insertFeedbackSignalIdempotent(supabase, userId, actionId, 'approve', approvalContent);
 
   void updateMlSnapshotOutcome(supabase, { actionId, outcomeLabel: 'executed' });

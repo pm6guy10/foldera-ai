@@ -121,8 +121,12 @@ function ActionButton({
 type DailyBriefCardProps = {
   directive: string;
   whyNow: string;
+  eyebrowLabel?: string;
+  directiveLabel?: string;
+  whyLabel?: string;
   draftLabel?: string;
   draftBody: ReactNode;
+  sourceLabel?: string;
   sourcePills: string[];
   nextStep?: string;
   statusText?: string;
@@ -143,8 +147,12 @@ type DailyBriefCardProps = {
 export function DailyBriefCard({
   directive,
   whyNow,
+  eyebrowLabel = 'Daily Brief',
+  directiveLabel = 'Directive',
+  whyLabel = 'Why This Now',
   draftLabel = 'DRAFT',
   draftBody,
+  sourceLabel = 'Source Basis',
   sourcePills,
   nextStep = 'Next: Await response',
   statusText = 'READY TO SEND',
@@ -186,7 +194,7 @@ export function DailyBriefCard({
       <article className={`foldera-brief-shell relative h-full w-full rounded-[24px] ${className}`}>
         <header className="absolute inset-x-0 top-0 h-[68px] border-b border-white/8 px-[36px]">
           <div className="flex h-full items-center justify-between gap-3">
-            <span className="text-[16px] font-semibold uppercase tracking-[0.16em] text-text-muted">Daily Brief</span>
+            <span className="text-[16px] font-semibold uppercase tracking-[0.16em] text-text-muted">{eyebrowLabel}</span>
             <div className="flex items-center gap-3">
               <span className="text-[17px] font-semibold uppercase tracking-[0.14em] text-accent">{statusText}</span>
               <span className="h-4 w-4 rounded-full bg-accent shadow-[0_0_12px_rgba(34,211,238,0.55)]" aria-hidden="true" />
@@ -203,7 +211,7 @@ export function DailyBriefCard({
               <DirectiveIcon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
             </div>
             <div className="min-w-0">
-              <p className="text-[14px] font-semibold uppercase tracking-[0.16em] text-text-muted">Directive</p>
+              <p className="text-[14px] font-semibold uppercase tracking-[0.16em] text-text-muted">{directiveLabel}</p>
               <h2 className="mt-2 max-w-[820px] text-[28px] font-bold leading-[34px] text-text-primary">
                 {directive}
               </h2>
@@ -218,7 +226,7 @@ export function DailyBriefCard({
               <WhyIcon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
             </div>
             <div className="min-w-0">
-              <p className="text-[14px] font-semibold uppercase tracking-[0.16em] text-amber-400">Why This Now</p>
+              <p className="text-[14px] font-semibold uppercase tracking-[0.16em] text-amber-400">{whyLabel}</p>
               <p className="mt-2 max-w-[820px] text-[18px] leading-[30px] text-text-secondary">{whyNow}</p>
             </div>
           </section>
@@ -245,7 +253,7 @@ export function DailyBriefCard({
             </div>
             <div className="grid min-w-0 grid-cols-[160px_minmax(0,1fr)] gap-4">
               <p className="text-[14px] font-semibold uppercase tracking-[0.16em] text-text-muted">
-                Source Basis
+                {sourceLabel}
               </p>
               <div className="flex flex-wrap gap-2.5">
                 {sourcePills.map((pill) => (
@@ -300,7 +308,7 @@ export function DailyBriefCard({
     <article className={`foldera-brief-shell ${compact ? 'rounded-[22px]' : ''} ${className}`}>
       <header className={`${dashboardHeadPad} border-b ${divider}`}>
         <div className="flex items-center justify-between gap-3">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Daily Brief</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">{eyebrowLabel}</span>
           <div className="flex items-center gap-3">
             <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">{statusText}</span>
             <span className="h-3 w-3 rounded-full bg-accent shadow-[0_0_10px_rgba(34,211,238,0.55)]" aria-hidden="true" />
@@ -317,7 +325,7 @@ export function DailyBriefCard({
             <p
               className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted"
             >
-              Directive
+              {directiveLabel}
             </p>
             <h2
               className={`${
@@ -338,7 +346,7 @@ export function DailyBriefCard({
             <WhyIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
           </div>
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400">Why This Now</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400">{whyLabel}</p>
             <p className={`mt-2 max-w-3xl text-[15px] text-text-secondary ${dashboardCta ? 'leading-6' : 'leading-8'}`}>{whyNow}</p>
           </div>
         </section>
@@ -356,7 +364,7 @@ export function DailyBriefCard({
         <section className={`border-t ${divider} ${dashboardSectionTop}`}>
           <div className="flex items-center gap-3">
             <SourceIcon className="h-5 w-5 text-text-secondary" strokeWidth={2} aria-hidden="true" />
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">Source Basis</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">{sourceLabel}</p>
           </div>
           <div className={`flex flex-wrap gap-2 ${dashboardCta ? 'mt-3' : 'mt-4'}`}>
             {sourcePills.map((pill) => (

@@ -14,6 +14,11 @@ import {
   findPollutedTrustedEntities,
   type PollutedEntityFinding,
 } from '@/lib/signals/entity-trust-repair';
+import {
+  deriveDiscrepancyPatternKeys,
+  evaluateDiscrepancyCardFrame,
+  type DiscrepancyCardFrame,
+} from '@/lib/briefing/discrepancy-card-frame';
 
 type FindingClass = 'current_blocker' | 'adjacent_risk' | 'future_backlog';
 
@@ -56,6 +61,8 @@ export interface WinnerTruthReport {
     tier: string | null;
     artifact_family: string | null;
     note: string | null;
+    discrepancy_card: DiscrepancyCardFrame | null;
+    no_safe_artifact_reason: string | null;
   };
   top_viable_candidates: Array<{
     candidate_id: string;
@@ -79,6 +86,10 @@ export interface WinnerTruthReport {
   };
   action_needed: string[];
   future_findings: WinnerTruthFinding[];
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
 }
 
 function ageHours(iso: string | null | undefined, now = Date.now()): number | null {
@@ -116,7 +127,32 @@ function toPacificDay(iso: string): string {
   }).format(new Date(iso));
 }
 
-function classifyRecentAction(row: {
+function noSafeBlockerSummary(executionResult: unknown): string | null {
+  const root = asRecord(executionResult);
+  if (!root) return null;
+
+  const generationLog = asRecord(root.generation_log);
+  const candidateDiscovery = asRecord(generationLog?.candidateDiscovery);
+  const outcomeReceipt = asRecord(root.outcome_receipt);
+  const persistence = asRecord(outcomeReceipt?.persistence);
+  const artifactQualityGate = asRecord(root.artifact_quality_gate);
+
+  const reasons = [
+    root.no_send === true || root.outcome_type === 'no_send' ? 'no_send' : null,
+    typeof root.failure_reason === 'string' ? root.failure_reason : null,
+    typeof candidateDiscovery?.failureReason === 'string' ? candidateDiscovery.failureReason : null,
+    typeof persistence?.blocked_reason === 'string' ? persistence.blocked_reason : null,
+    Array.isArray(artifactQualityGate?.reasons) ? artifactQualityGate.reasons.map(String).join('; ') : null,
+    root.protective_duplicate_block ? 'protective_duplicate_block' : null,
+  ]
+    .map((reason) => (typeof reason === 'string' ? reason.trim() : null))
+    .filter((reason): reason is string => Boolean(reason));
+
+  if (!reasons.some((reason) => reason !== 'no_send')) return null;
+  return reasons.slice(0, 2).join(' - ').slice(0, 180);
+}
+
+export function classifyRecentAction(row: {
   action_type: string | null;
   directive_text: string | null;
   skip_reason: string | null;
@@ -131,7 +167,11 @@ function classifyRecentAction(row: {
   if (typeof row.execution_result === 'string') executionText = row.execution_result.toLowerCase();
   else if (row.execution_result && typeof row.execution_result === 'object') executionText = JSON.stringify(row.execution_result).toLowerCase();
 
-  const looksNoSafe = lower.includes('no safe artifact today') || executionText.includes('no_safe_artifact_today');
+  const noSafeSummary = noSafeBlockerSummary(row.execution_result);
+  const looksNoSafe =
+    lower.includes('no safe artifact today') ||
+    executionText.includes('no_safe_artifact_today') ||
+    (actionType === 'do_nothing' && noSafeSummary != null);
   const forbidden =
     /\b(?:dev\s*notes?|internal\s+homework|homework\s+assignment|generic\s+prep|prep\s+checklist)\b/i.test(lower) ||
     /\bdiscrepancy_(?:risk|decay|dropout)|relationship(?:_|\s)(?:risk|silence|drop)/i.test(executionText);
@@ -143,11 +183,11 @@ function classifyRecentAction(row: {
       generated_at: row.generated_at,
       action_type: actionType,
       classification: 'no_safe_artifact',
-      summary: 'Explicit no-safe-artifact outcome with blockers.',
+      summary: noSafeSummary ? `Explicit no-safe-artifact outcome: ${noSafeSummary}` : 'Explicit no-safe-artifact outcome with blockers.',
     };
   }
 
-  if (usefulAction && !forbidden) {
+  if (usefulAction && !forbidden && skipReason !== 'not_relevant') {
     return {
       day: toPacificDay(row.generated_at),
       generated_at: row.generated_at,
@@ -163,6 +203,65 @@ function classifyRecentAction(row: {
     action_type: actionType,
     classification: 'garbage_regression',
     summary: directiveText.slice(0, 140) || skipReason.slice(0, 140) || actionType,
+  };
+}
+
+function buildWinnerDiscrepancyCard(
+  selected: ReturnType<typeof selectRankedCandidates>['ranked'][number] | null,
+): DiscrepancyCardFrame | null {
+  if (!selected) return null;
+  const candidate = selected.candidate;
+  const sourceFacts = (candidate.sourceSignals ?? [])
+    .map((source) =>
+      [source.source, source.summary, source.occurredAt]
+        .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+        .join(': '),
+    )
+    .filter((entry) => entry.trim().length > 0);
+  const evidence = [
+    ...sourceFacts,
+    ...(candidate.relatedSignals ?? []),
+    candidate.discrepancyEvidence ?? '',
+    candidate.content ?? '',
+  ].filter((entry) => typeof entry === 'string' && entry.trim().length > 0);
+  const trigger = candidate.trigger;
+  const contradiction = trigger
+    ? [
+        trigger.baseline_state ? `Expected: ${trigger.baseline_state}` : null,
+        trigger.current_state ? `Current: ${trigger.current_state}` : null,
+        trigger.delta ? `But changed by: ${trigger.delta}` : null,
+      ].filter(Boolean).join(' ')
+    : candidate.content;
+  const risk =
+    trigger?.why_now ??
+    candidate.discrepancyEvidence ??
+    candidate.content ??
+    selected.note ??
+    'The current evidence could not prove a safer intervention.';
+  const sourceRefs = (candidate.sourceSignals ?? [])
+    .map((source, index) =>
+      [source.source ?? source.kind, source.id ?? `source-${index + 1}`]
+        .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+        .join(':'),
+    )
+    .filter((entry) => entry.trim().length > 0);
+
+  return {
+    claim: candidate.title,
+    contradiction,
+    risk,
+    evidence: evidence.slice(0, 5),
+    next_action: candidate.title,
+    why_now: trigger?.why_now ?? selected.note ?? candidate.content,
+    source_refs: sourceRefs.length > 0 ? sourceRefs : [`candidate:${candidate.id}`],
+    confidence: Math.max(0, Math.min(1, candidate.confidence_prior / 100)),
+    pattern_keys: deriveDiscrepancyPatternKeys({
+      actionType: candidate.suggestedActionType,
+      discrepancyClass: candidate.discrepancyClass,
+      candidateType: candidate.type,
+      title: candidate.title,
+      content: candidate.content,
+    }),
   };
 }
 
@@ -244,6 +343,9 @@ export async function getWinnerTruthReport(userId = OWNER_USER_ID): Promise<Winn
     ? selectRankedCandidates(scored.topCandidates ?? [scored.winner], guardrails, { now: new Date() })
     : null;
   const selected = selection?.ranked.find((entry) => !entry.disqualified) ?? null;
+  const selectedDiscrepancyCard = buildWinnerDiscrepancyCard(selected);
+  const selectedDiscrepancyQuality = evaluateDiscrepancyCardFrame(selectedDiscrepancyCard);
+  const selectedForTruth = selectedDiscrepancyQuality.passes ? selected : null;
   const candidateArtifactability = selection?.winnerQualityTrace?.candidate_artifactability ?? [];
   const topViableCandidates = candidateArtifactability
     .filter((candidate: any) => candidate.viable === true && ['tier_1', 'tier_2'].includes(candidate.tier))
@@ -255,9 +357,17 @@ export async function getWinnerTruthReport(userId = OWNER_USER_ID): Promise<Winn
       artifact_family: String(candidate.artifact_family),
       missing_blockers: Array.isArray(candidate.missing_blockers) ? candidate.missing_blockers.map(String) : [],
     }));
-  const selectedArtifactability = selected
-    ? candidateArtifactability.find((candidate: any) => String(candidate.candidate_id) === String(selected.candidate.id))
+  const selectedArtifactability = selectedForTruth
+    ? candidateArtifactability.find((candidate: any) => String(candidate.candidate_id) === String(selectedForTruth.candidate.id))
     : null;
+  const currentGeneratedAt = new Date().toISOString();
+  const currentNoSafeReason = selectedForTruth
+    ? null
+    : selected && selectedDiscrepancyCard
+      ? `Selected candidate failed discrepancy-card quality: ${selectedDiscrepancyQuality.rejection_reason ?? 'quality score too low'}`
+    : providerFreshness.some((provider) => provider.stale)
+      ? 'Refresh stale provider sync before trusting silence or deadline pressure from that source.'
+      : 'No current Tier 1 or Tier 2 candidate proved a fresh, grounded discrepancy.';
   const blockedCandidates = (selection?.winnerQualityTrace?.good_candidate_blockers ?? [])
     .slice(0, 8)
     .map((candidate) => ({
@@ -269,6 +379,13 @@ export async function getWinnerTruthReport(userId = OWNER_USER_ID): Promise<Winn
     }));
 
   const byPacificDay = new Map<string, ThreeDayConsistencyDay>();
+  byPacificDay.set(toPacificDay(currentGeneratedAt), {
+    day: toPacificDay(currentGeneratedAt),
+    generated_at: currentGeneratedAt,
+    action_type: selectedForTruth ? selectedForTruth.candidate.suggestedActionType : 'no_safe_artifact_today',
+    classification: selectedForTruth ? 'useful_artifact' : 'no_safe_artifact',
+    summary: selectedForTruth?.candidate.title ?? currentNoSafeReason ?? 'No safe artifact today',
+  });
   for (const row of actionRows ?? []) {
     if (!row.generated_at) continue;
     const classified = classifyRecentAction({
@@ -360,11 +477,13 @@ export async function getWinnerTruthReport(userId = OWNER_USER_ID): Promise<Winn
       decrypt_fallback_count: decryptFallbackRows.length,
     },
     current_winner: {
-      verdict: selected ? 'selected' : 'no_safe_artifact_today',
-      title: selected?.candidate.title ?? null,
-      tier: selection?.winnerQualityTrace?.positive_winner_contract?.selected_tier ?? null,
+      verdict: selectedForTruth ? 'selected' : 'no_safe_artifact_today',
+      title: selectedForTruth?.candidate.title ?? null,
+      tier: selectedForTruth ? selection?.winnerQualityTrace?.positive_winner_contract?.selected_tier ?? null : null,
       artifact_family: selectedArtifactability ? String(selectedArtifactability.artifact_family ?? '') || null : null,
-      note: selected?.note ?? null,
+      note: selectedForTruth?.note ?? null,
+      discrepancy_card: selectedForTruth ? selectedDiscrepancyCard : null,
+      no_safe_artifact_reason: currentNoSafeReason,
     },
     top_viable_candidates: topViableCandidates,
     blocked_candidates: blockedCandidates,

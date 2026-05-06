@@ -119,6 +119,12 @@ import {
   type CandidateArtifactabilityReceipt,
   type PositiveWinnerContractReceipt,
 } from './artifact-taste-pack';
+import {
+  buildDiscrepancyFrameFromDirective,
+  deriveDiscrepancyPatternKeys,
+  deriveDiscrepancyPatternMemory,
+  evaluateDiscrepancyCardFrame,
+} from './discrepancy-card-frame';
 import { SIGNAL_CONTEXT_LIMIT, SIGNAL_CONTEXT_SELECT } from '@/lib/utils/signal-egress';
 
 // ---------------------------------------------------------------------------
@@ -1160,6 +1166,10 @@ export function selectRankedCandidates(
       evaluateCandidateArtifactability(candidate, { now: options.now }),
     ]),
   );
+  const discrepancyPatternMemory = deriveDiscrepancyPatternMemory([
+    ...guardrails.approvedRecently,
+    ...(guardrails.skippedRecently ?? []),
+  ]);
 
   function getCandidateSearchText(candidate: import('./scorer').ScoredLoop): string {
     return [
@@ -1348,6 +1358,16 @@ export function selectRankedCandidates(
     const positiveHardBlocker = positiveArtifactability?.blockers.find((reason) =>
       POSITIVE_CONTRACT_HARD_BLOCKERS.has(reason),
     );
+    const patternKeys = deriveDiscrepancyPatternKeys({
+      actionType: candidate.suggestedActionType,
+      discrepancyClass: candidate.discrepancyClass,
+      candidateType: candidate.type,
+      title: candidate.title,
+      content: searchText,
+    });
+    const noisyPatternKey = patternKeys.find((key) =>
+      discrepancyPatternMemory.blockedPatternKeys.includes(key),
+    );
 
     // 0. Hard disqualifiers — top slots must be SEND/WRITE capable, non-generic finished-work candidates.
     if (!SEND_WRITE_ACTIONS.has(candidate.suggestedActionType)) {
@@ -1511,6 +1531,19 @@ export function selectRankedCandidates(
         ungroundedCareerStatusOutbound,
       };
     }
+    if (noisyPatternKey) {
+      return {
+        candidate,
+        viabilityScore: 0,
+        note: '',
+        disqualified: true,
+        disqualifyReason: `discrepancy_pattern_memory:noisy_pattern:${noisyPatternKey}`,
+        shadowUrgent,
+        emergencyOverride,
+        longHorizonLeverage: false,
+        ungroundedCareerStatusOutbound,
+      };
+    }
 
     // 2. Viability multipliers applied to raw scorer score.
     let mult = 1.0;
@@ -1581,6 +1614,20 @@ export function selectRankedCandidates(
         // Penalise so a rival candidate with a real recipient can win.
         mult *= 0.80;
         notes.push('send_message — no email in signals, will downgrade');
+      }
+    }
+
+    const memoryWeights = patternKeys
+      .map((key) => discrepancyPatternMemory.weights[key])
+      .filter((weight): weight is number => typeof weight === 'number' && Number.isFinite(weight));
+    if (memoryWeights.length > 0) {
+      const memoryWeight = Math.max(
+        0.55,
+        Math.min(1.16, memoryWeights.reduce((sum, weight) => sum + weight, 0) / memoryWeights.length),
+      );
+      if (memoryWeight !== 1) {
+        mult *= memoryWeight;
+        notes.push(memoryWeight > 1 ? 'learned accepted pattern boost' : 'learned skipped pattern penalty');
       }
     }
 
@@ -10239,10 +10286,17 @@ export function buildDirectiveExecutionResult(input: {
     ? normalizeEmailArtifactContentField(input.artifact as Record<string, unknown>) ??
       (input.artifact as Record<string, unknown>)
     : undefined;
+  const discrepancyCard = buildDiscrepancyFrameFromDirective(
+    input.directive,
+    normalizedArtifact ?? input.artifact ?? null,
+  );
+  const discrepancyQuality = evaluateDiscrepancyCardFrame(discrepancyCard);
   return {
     ...(normalizedArtifact ? { artifact: normalizedArtifact } : {}),
     brief_origin: input.briefOrigin,
     ...(input.directive.generationLog ? { generation_log: input.directive.generationLog } : {}),
+    ...(discrepancyCard ? { discrepancy_card: discrepancyCard } : {}),
+    discrepancy_quality: discrepancyQuality,
     ...(typeof input.directive.anomaly_identification === 'string' &&
     input.directive.anomaly_identification.trim().length > 0
       ? { anomaly_identification: input.directive.anomaly_identification.trim() }

@@ -76,6 +76,25 @@ const DIRECTIVE_RESPONSE = {
     body: 'Hi Keri,\n\nI wanted to follow up on the MAS3 timeline.\n\nBest,\nBrandon',
     draft_type: 'email_compose',
   },
+  discrepancy_card: {
+    claim: 'Send a follow-up email to Keri Nopens about the MAS3 timeline.',
+    contradiction:
+      'The MAS3 thread shows the timeline closes next week, but no current reply is recorded from Brandon.',
+    risk: 'The hiring window may slip if the timeline question stays unanswered this week.',
+    evidence: ['Email from Keri on March 14', 'MAS3 timeline closes next week'],
+    next_action: 'Send Keri the grounded MAS3 timeline follow-up today.',
+    why_now: 'The hiring window closes next week.',
+    source_refs: ['gmail:keri-mas3-thread'],
+    confidence: 0.85,
+    pattern_keys: ['discrepancy:deadline_followup', 'action:send_message'],
+  },
+  discrepancy_quality: {
+    passes: true,
+    quality_score: 0.9,
+    blocked_by: [],
+    pattern_keys: ['discrepancy:deadline_followup', 'action:send_message'],
+    rejection_reason: null,
+  },
 };
 
 /** write_document-style pending row — dashboard must render document body (not an empty artifact panel). */
@@ -109,6 +128,29 @@ const DOCUMENT_DIRECTIVE_RESPONSE = {
       '## Timing / deadline',
       'Decide by 4 PM PT on 2026-04-02 so the packet can still go out the same day.',
     ].join('\n'),
+  },
+  discrepancy_card: {
+    claim: 'Finalize the MAS3 interview packet owner by 2026-04-02.',
+    contradiction:
+      'The MAS3 interview packet is needed today, but the final reference bundle still has no committed owner.',
+    risk: 'If ownership stays unresolved through 2026-04-02, the packet slips and the interview loop loses momentum.',
+    evidence: [
+      'The MAS3 interview packet is missing a committed owner for the final reference bundle.',
+      'The same-day handoff depends on confirmation by 4 PM PT on 2026-04-02.',
+    ],
+    next_action:
+      'Assign Holly as final packet owner and have her confirm the missing reference talking points by 4 PM PT.',
+    why_now: 'The 2026-04-02 handoff window closes today.',
+    source_refs: ['gmail:mas3-thread', 'document:reference-bundle'],
+    confidence: 0.74,
+    pattern_keys: ['discrepancy:interview_role_fit', 'action:write_document'],
+  },
+  discrepancy_quality: {
+    passes: true,
+    quality_score: 0.92,
+    blocked_by: [],
+    pattern_keys: ['discrepancy:interview_role_fit', 'action:write_document'],
+    rejection_reason: null,
   },
 };
 
@@ -724,7 +766,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/^DRAFT$/i)).toBeVisible();
+    await expect(page.getByText(/^Risk \/ evidence \/ next action$/i)).toBeVisible();
     await expect(page.getByTestId('dashboard-document-body').getByText(/Hi Keri,/i)).toBeVisible();
     await expect(page.getByText(/Hi Alex -/i)).toHaveCount(0);
   });
@@ -895,7 +937,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       headings: ['Situation', 'Blocking risk', 'Recommendation / decision'],
       bodyLines: [DOCUMENT_DIRECTIVE_ASK, DOCUMENT_DIRECTIVE_CONSEQUENCE],
     });
-    await expect(page.getByText(/^DRAFT$/i)).toBeVisible();
+    await expect(page.getByText(/^Risk \/ evidence \/ next action$/i)).toBeVisible();
     await expect(page.getByTestId('dashboard-truth-stats')).toContainText('24');
     await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
     await expect(page.getByTestId('dashboard-truth-stats')).toContainText('need attention');

@@ -3,6 +3,12 @@
 import type { ReactNode } from 'react';
 import { formatRelativeTime } from '@/lib/ui/provider-display';
 import type { DashboardPanelKey } from '@/components/foldera/DashboardSidebar';
+import {
+  buildDiscrepancyFrameFromActionPayload,
+  evaluateDiscrepancyCardFrame,
+  type DiscrepancyCardFrame,
+  type DiscrepancyCardQualityResult,
+} from '@/lib/briefing/discrepancy-card-frame';
 
 export type DashboardArtifact = {
   type?: string;
@@ -24,6 +30,9 @@ export type DashboardAction = {
   reason?: string;
   evidence?: unknown[];
   artifact?: DashboardArtifact | null;
+  discrepancy_card?: DiscrepancyCardFrame | null;
+  discrepancy_quality?: DiscrepancyCardQualityResult | null;
+  executionResult?: Record<string, unknown>;
 };
 
 export type DashboardStatusNotice = {
@@ -249,6 +258,17 @@ function getDashboardActionArtifact(
   return action?.artifact && typeof action.artifact === 'object' ? action.artifact : null;
 }
 
+export function getDashboardDiscrepancyFrame(
+  action: DashboardAction | null | undefined,
+): DiscrepancyCardFrame | null {
+  if (!action) return null;
+  const directFrame = action.discrepancy_card ?? null;
+  const frame = directFrame ?? buildDiscrepancyFrameFromActionPayload(action as Record<string, unknown>);
+  if (!frame) return null;
+  const quality = action.discrepancy_quality ?? evaluateDiscrepancyCardFrame(frame);
+  return quality.passes ? frame : null;
+}
+
 export function getDashboardActionHeadline(action: DashboardAction | null | undefined): string {
   const artifact = getDashboardActionArtifact(action);
   return (
@@ -283,6 +303,7 @@ export function isVisibleDashboardAction(value: unknown): value is DashboardActi
   if (!asTrimmedString((value as Record<string, unknown>).id)) return false;
   if (!getDashboardActionArtifact(action)) return false;
   if (dashboardActionContainsInternalFailureText(action)) return false;
+  if (!getDashboardDiscrepancyFrame(action)) return false;
   return (
     getDashboardActionHeadline(action).length > 0 ||
     getArtifactBody(getDashboardActionArtifact(action)).length > 0
@@ -358,6 +379,11 @@ export function computeStageMetrics(): StageMetrics {
 }
 
 export function inferSourcePills(action: DashboardAction | null): string[] {
+  const frame = getDashboardDiscrepancyFrame(action);
+  if (frame?.source_refs.length) {
+    return frame.source_refs.slice(0, 4);
+  }
+
   if (isWriteDocumentAction(action)) {
     return ['Prepared document', 'Decision basis', 'Connected sources'];
   }

@@ -498,6 +498,60 @@ describe('selectFinalWinner', () => {
     expect(genericEntry?.disqualifyReason).toBe('career_status_outbound_requires_grounded_recipient_and_next_step');
   });
 
+  it('learned skip memory blocks repeated generic follow-up patterns before they can win', () => {
+    const genericFollowUp = makeCandidate({
+      id: 'generic-follow-up',
+      score: 20,
+      type: 'relationship',
+      suggestedActionType: 'send_message',
+      title: 'Follow up with Keri about the timeline',
+      content: 'keri@example.com is in the thread, but this is still only a status check.',
+      relationshipContext: '- Keri <keri@example.com>',
+      entityName: 'Keri',
+    });
+    const discrepancy = makeCandidate({
+      id: 'packet-owner',
+      score: 8,
+      type: 'discrepancy',
+      discrepancyClass: 'behavioral_pattern',
+      suggestedActionType: 'write_document',
+      title: 'Packet owner missing while deadline window closes',
+      content: 'The packet is marked ready, but the owner field is still blank before the deadline window closes.',
+    });
+
+    const guardrails = {
+      approvedRecently: [],
+      skippedRecently: [
+        {
+          directive_text: 'Follow up with Keri',
+          action_type: 'send_message',
+          generated_at: new Date().toISOString(),
+          skip_reason: 'not_relevant',
+          execution_result: {
+            discrepancy_quality: { pattern_keys: ['generic:follow_up'] },
+          },
+        },
+        {
+          directive_text: 'Check in with Keri',
+          action_type: 'send_message',
+          generated_at: new Date().toISOString(),
+          skip_reason: 'not_relevant',
+          execution_result: {
+            discrepancy_card: { pattern_keys: ['generic:follow_up'] },
+          },
+        },
+      ],
+    };
+
+    const { ranked } = selectRankedCandidates([genericFollowUp, discrepancy], guardrails);
+    expect(ranked[0]?.candidate.id).toBe('packet-owner');
+    const blocked = ranked.find((entry) => entry.candidate.id === 'generic-follow-up');
+    expect(blocked?.disqualified).toBe(true);
+    expect(blocked?.disqualifyReason).toBe(
+      'discrepancy_pattern_memory:noisy_pattern:generic:follow_up',
+    );
+  });
+
   it('true emergency still outranks the long-horizon candidate', () => {
     const emergency = makeCandidate({
       id: 'interview-slot-emergency',
