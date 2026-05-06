@@ -1,5 +1,3 @@
-import type { WinnerTruthReport } from '@/lib/system/winner-truth';
-
 export type DailyUtilitySlateItemStatus =
   | 'primary_move'
   | 'open_loop'
@@ -26,6 +24,24 @@ export type DailyUtilitySlate = {
   blocked_but_real: DailyUtilitySlateItem | null;
   watch_item: DailyUtilitySlateItem | null;
 };
+
+export type DailyUtilitySlateReceipt = {
+  id?: unknown;
+  action_type?: unknown;
+  directive_text?: unknown;
+  reason?: unknown;
+  status?: unknown;
+  generated_at?: unknown;
+  execution_result?: unknown;
+};
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
 
 function asEvidence(entries: Array<string | null | undefined>): string[] {
   return entries
@@ -102,181 +118,71 @@ function humanizeNoSafeReason(reason: string): string {
   return translated.join(' ');
 }
 
-function displayProviderName(provider: string): string {
-  const normalized = provider.trim().toLowerCase();
-  if (normalized === 'azure_ad' || normalized === 'microsoft') return 'Microsoft';
-  if (normalized === 'google') return 'Google';
-  if (!normalized) return 'Connected source';
-  return normalized.replace(/(^|[_\s-])(\w)/g, (_match, prefix: string, letter: string) =>
-    `${prefix === '_' ? ' ' : prefix}${letter.toUpperCase()}`,
+function getGenerationLog(receipt: DailyUtilitySlateReceipt): Record<string, unknown> | null {
+  const executionResult = asRecord(receipt.execution_result);
+  return asRecord(executionResult?.generation_log);
+}
+
+function extractNoSafeReason(receipt: DailyUtilitySlateReceipt): string | null {
+  const executionResult = asRecord(receipt.execution_result);
+  const generationLog = getGenerationLog(receipt);
+  const noSend = asRecord(executionResult?.no_send);
+  const candidateDiscovery = asRecord(generationLog?.candidateDiscovery);
+
+  const candidates = [
+    readString(receipt.reason),
+    readString(generationLog?.reason),
+    readString(candidateDiscovery?.failureReason),
+    readString(noSend?.reason),
+  ];
+
+  return candidates.find(Boolean) ?? null;
+}
+
+function hasNoSendOutcome(receipt: DailyUtilitySlateReceipt): boolean {
+  const executionResult = asRecord(receipt.execution_result);
+  const generationLog = getGenerationLog(receipt);
+  return (
+    readString(receipt.action_type) === 'do_nothing' ||
+    executionResult?.outcome_type === 'no_send' ||
+    generationLog?.outcome === 'no_send'
   );
 }
 
-function buildPrimaryMove(report: WinnerTruthReport): DailyUtilitySlateItem | null {
-  const card = report.current_winner.discrepancy_card;
-  if (!card || report.current_winner.verdict !== 'selected') return null;
-
-  return {
-    title: report.current_winner.title ?? card.claim,
-    status: 'primary_move',
-    evidence: asEvidence(card.evidence),
-    why_it_matters: card.risk,
-    next_action: card.next_action,
-    source_refs: card.source_refs,
-  };
-}
-
-function buildOpenLoop(report: WinnerTruthReport): DailyUtilitySlateItem | null {
-  const candidate = report.top_viable_candidates[0];
-  if (!candidate?.title) return null;
-  const blockers = humanizeBlockers(candidate.missing_blockers);
-  const evidence = asEvidence([
-    `Possible useful work: ${candidate.title}`,
-  ]);
-
-  return {
-    title: candidate.title,
-    status: 'open_loop',
-    evidence,
-    why_it_matters:
-      candidate.missing_blockers.length > 0
-        ? 'This looks like useful work, but the missing fields still decide whether Foldera can safely finish it.'
-        : 'This remains a viable current candidate if the finished-artifact layer can prove the full discrepancy frame.',
-    no_action_reason:
-      blockers.length > 0
-        ? blockers.join(' ')
-        : 'Waiting for finished-artifact validation.',
-    source_refs: [`candidate:${candidate.candidate_id}`],
-  };
-}
-
-const COMMAND_CENTER_FAMILIES = new Set([
-  'admin_deadline_packet',
-  'calendar_conflict_brief',
-  'deadline_decision_packet',
-  'grounded_followup_draft',
-  'interview_role_fit_packet',
-  'job_admin_payment_deadline_decision_packet',
-]);
-
-function blockedCandidateScore(candidate: WinnerTruthReport['blocked_candidates'][number]): number {
-  let score = 0;
-  if (COMMAND_CENTER_FAMILIES.has(candidate.family)) score += 40;
-  if (candidate.tier === 'tier_1') score += 20;
-  if (candidate.tier === 'tier_2') score += 8;
-  if (candidate.blockers.length > 0) score += 4;
-  if (/^goal drift:/i.test(candidate.title)) score -= 30;
-  if (candidate.family === 'other_grounded_artifact') score -= 12;
-  if (candidate.blockers.includes('missing_current_artifact_anchor')) score -= 10;
-  return score;
-}
-
-const THIN_BLOCKED_CANDIDATE_REASONS = new Set([
-  'missing_current_artifact_anchor',
-  'missing_grounded_recipient_for_send_message',
-  'missing_role_fit_source_bundle',
-  'missing_schedule_resolution_context',
-  'no_grounded_recipient_for_send_message',
-  'stale_status_without_current_artifact_facts',
-]);
-
-function shouldSurfaceBlockedCandidate(
-  candidate: WinnerTruthReport['blocked_candidates'][number],
-): boolean {
-  if (/^goal drift:/i.test(candidate.title)) return false;
-  return !candidate.blockers.some((blocker) =>
-    THIN_BLOCKED_CANDIDATE_REASONS.has(
-      blocker.replace(/^positive_winner_contract:/, '').replace(/^artifact_viability:/, ''),
-    ),
-  );
-}
-
-function selectBlockedUtilityCandidate(report: WinnerTruthReport) {
-  return [...report.blocked_candidates]
-    .filter(shouldSurfaceBlockedCandidate)
-    .sort((left, right) => blockedCandidateScore(right) - blockedCandidateScore(left))[0];
-}
-
-function buildBlockedButReal(report: WinnerTruthReport): DailyUtilitySlateItem | null {
-  const candidate = selectBlockedUtilityCandidate(report);
-  if (!candidate?.title) return null;
-  const blockers = humanizeBlockers(candidate.blockers);
-  const evidence = asEvidence([
-    `Possible mismatch: ${candidate.title}`,
-  ]);
-
-  return {
-    title: candidate.title,
-    status: 'blocked_but_real',
-    evidence,
-    why_it_matters:
-      'This may matter, but Foldera does not have enough proof to turn it into a safe finished action.',
-    no_action_reason: blockers.join(' ') || 'Finished-artifact proof was incomplete.',
-    source_refs: [`candidate:${candidate.candidate_id}`],
-  };
-}
-
-function buildWatchItem(report: WinnerTruthReport): DailyUtilitySlateItem | null {
-  const provider = report.sync_health.providers.find((entry) => entry.stale || entry.disconnected);
-  if (provider) {
-    const ageLabel =
-      typeof provider.age_hours === 'number'
-        ? `${provider.age_hours}h ago`
-        : 'unknown freshness';
-    return {
-      title: `${displayProviderName(provider.provider)} source freshness needs attention`,
-      status: 'watch_item',
-      evidence: asEvidence([
-        `${displayProviderName(provider.provider)} last synced ${ageLabel}`,
-        provider.scoring_effect,
-      ]),
-      why_it_matters:
-        'Stale source data can hide current work and can also make old signals look more important than they are.',
-      no_action_reason:
-        'Stale source data can support context, but it cannot safely manufacture urgency.',
-      source_refs: [`provider:${provider.provider}`],
-    };
-  }
-
-  const noSafeReason = report.current_winner.no_safe_artifact_reason;
+function buildWatchItem(receipt: DailyUtilitySlateReceipt): DailyUtilitySlateItem | null {
+  if (!hasNoSendOutcome(receipt)) return null;
+  const noSafeReason = extractNoSafeReason(receipt);
   if (!noSafeReason) return null;
   const readableReason = humanizeNoSafeReason(noSafeReason);
-  const freshProviders = report.sync_health.providers.filter(
-    (provider) => !provider.stale && !provider.disconnected,
-  );
-  const sourceHealth =
-    freshProviders.length > 0
-      ? `Sources are current enough to trust this no-action verdict.`
-      : null;
+
   return {
     title: 'No safe finished action today',
     status: 'watch_item',
-    evidence: asEvidence([sourceHealth, `Why Foldera stopped: ${readableReason}`]),
+    evidence: asEvidence([
+      'Latest run stopped before a finished action was safe.',
+      `Why Foldera stopped: ${readableReason}`,
+    ]),
     why_it_matters:
       'The safest answer is to avoid handing you a weak task that sounds useful but cannot prove its value.',
     no_action_reason: readableReason,
-    source_refs: ['winner_truth:no_safe_artifact'],
+    source_refs: ['persisted:no_send_receipt'],
   };
 }
 
-export function buildDailyUtilitySlateFromWinnerTruth(
-  report: WinnerTruthReport,
+export function buildDailyUtilitySlateFromReceipts(
+  receipts: DailyUtilitySlateReceipt[],
 ): DailyUtilitySlate | null {
-  const primaryMove = buildPrimaryMove(report);
-  const openLoop = buildOpenLoop(report);
-  const blockedButReal = buildBlockedButReal(report);
-  const watchItem = buildWatchItem(report);
+  const latestNoSend = receipts.find(hasNoSendOutcome);
+  if (!latestNoSend) return null;
+  const watchItem = buildWatchItem(latestNoSend);
 
   const slate: DailyUtilitySlate = {
-    generated_at: report.generated_at,
-    finished_artifact_verdict:
-      report.current_winner.verdict === 'selected'
-        ? 'strict_artifact_selected'
-        : 'no_finished_artifact',
-    primary_move: isUtilityItem(primaryMove) ? primaryMove : null,
-    open_loops: isUtilityItem(openLoop) ? [openLoop] : [],
+    generated_at: readString(latestNoSend.generated_at) ?? new Date().toISOString(),
+    finished_artifact_verdict: 'no_finished_artifact',
+    primary_move: null,
+    open_loops: [],
     changed_since_yesterday: [],
-    blocked_but_real: isUtilityItem(blockedButReal) ? blockedButReal : null,
+    blocked_but_real: null,
     watch_item: isUtilityItem(watchItem) ? watchItem : null,
   };
 

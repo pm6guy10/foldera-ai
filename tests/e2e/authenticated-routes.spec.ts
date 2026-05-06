@@ -178,13 +178,13 @@ const DAILY_UTILITY_SLATE_RESPONSE = {
       title: 'No safe finished action today',
       status: 'watch_item',
       evidence: [
-        'Sources are current enough to trust this no-action verdict.',
+        'Latest run stopped before a finished action was safe.',
         'Why Foldera stopped: It did not prove one safe next step.',
       ],
       why_it_matters:
         'The safest answer is to avoid handing you a weak task that sounds useful but cannot prove its value.',
       no_action_reason: 'It did not prove one safe next step.',
-      source_refs: ['winner_truth:no_safe_artifact'],
+      source_refs: ['persisted:no_send_receipt'],
     },
   },
 };
@@ -752,7 +752,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByTestId('dashboard-daily-utility-slate')).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("Today's read")).toBeVisible();
     await expect(page.getByRole('heading', { name: 'No safe finished action today.' })).toBeVisible();
-    await expect(page.getByText('Sources are current enough to trust this no-action verdict.')).toBeVisible();
+    await expect(page.getByText('Latest run stopped before a finished action was safe.')).toBeVisible();
     await expect(page.getByText('Why Foldera stopped: It did not prove one safe next step.')).toBeVisible();
     await expect(page.getByText(/positive_winner_contract/i)).toHaveCount(0);
     await expect(page.getByText(/missing_schedule_resolution_context/i)).toHaveCount(0);

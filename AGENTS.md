@@ -16,6 +16,17 @@ Historical notes, long-form ops procedures, and legacy rules belong in `docs/**`
 
 ---
 
+## Source-of-Truth Loading Hierarchy
+
+When docs conflict, active hierarchy wins:
+- `AGENTS.md` controls agent behavior
+- `ACCEPTANCE_GATE.md` controls product proof
+- `CURRENT_STATE.md` controls current blockers and runtime truth
+- `SESSION_HISTORY.md` is recent receipt history only
+- Specs, audits, backlog, runbooks, and taste docs are reference only; load them only when the seam touches them
+
+---
+
 ## Core Role
 
 The agent is an autonomous executor.
@@ -235,6 +246,21 @@ For mobile/browser-sensitive frontend work, use Browserstack when Playwright/loc
 If a task touches deploys, production data, production errors, mobile layout, browser-specific behavior, or OAuth/browser flow issues, the final receipt must name which relevant tool(s) were used.
 
 Do not call a task complete with local-only reasoning when Playwright, Vercel, Supabase, Sentry, or Browserstack could provide the truth directly.
+
+---
+
+## Required Tool Availability Declaration
+
+Before patching any user-facing, production, dashboard, data, deploy, or runtime behavior, declare:
+- relevant truth tools for the seam
+- which tools are available in the current session
+- which relevant tools are unavailable
+- what proof each available tool must provide
+- the first proof rung that would fail if the fix were fake
+
+If a relevant tool is unavailable, say so explicitly and downgrade the final verdict to the strongest proven state: `Local proof only`, `Browser proof only`, `Production not proven`, `Data not proven`, or `Runtime not proven`.
+
+Never claim `DONE` unless every relevant available truth tool was used or explicitly ruled out as not applicable.
 
 ---
 

@@ -6,14 +6,12 @@ const mockCreateServerClient = vi.fn();
 const mockApiErrorForRoute = vi.fn();
 const mockBuildContextGreeting = vi.fn();
 const mockGetSubscriptionStatus = vi.fn();
-const mockGetWinnerTruthReport = vi.fn();
 
 vi.mock('@/lib/auth/resolve-user', () => ({ resolveUser: mockResolveUser }));
 vi.mock('@/lib/db/client', () => ({ createServerClient: mockCreateServerClient }));
 vi.mock('@/lib/utils/api-error', () => ({ apiErrorForRoute: mockApiErrorForRoute }));
 vi.mock('@/lib/briefing/context-builder', () => ({ buildContextGreeting: mockBuildContextGreeting }));
 vi.mock('@/lib/auth/subscription', () => ({ getSubscriptionStatus: mockGetSubscriptionStatus }));
-vi.mock('@/lib/system/winner-truth', () => ({ getWinnerTruthReport: mockGetWinnerTruthReport }));
 
 type SupabaseMockOptions = {
   pendingActions: Record<string, unknown>[];
@@ -37,49 +35,29 @@ const VALID_DISCREPANCY_CARD = {
   pattern_keys: ['discrepancy:admin_deadline', 'action:write_document'],
 };
 
-const WINNER_TRUTH_WITH_BLOCKED_CANDIDATE = {
+const LATEST_NO_SEND_RECEIPT = {
+  id: 'no-send-1',
+  action_type: 'do_nothing',
+  directive_text: 'Nothing cleared the bar today after evaluating 2 candidates.',
+  reason: 'Selected candidate failed discrepancy-card quality: weak_next_action',
+  status: 'skipped',
   generated_at: '2026-05-06T13:43:52.405Z',
-  user_id: 'u-test',
-  sync_health: {
-    providers: [
-      {
-        provider: 'google',
-        last_synced_at: '2026-05-06T11:04:26.669+00:00',
-        age_hours: 3,
-        disconnected: false,
-        stale: false,
-        scoring_effect: 'fresh enough for currentness support',
+  execution_result: {
+    outcome_type: 'no_send',
+    generation_log: {
+      outcome: 'no_send',
+      stage: 'validation',
+      reason: 'Selected candidate failed discrepancy-card quality: weak_next_action',
+      candidateDiscovery: {
+        candidateCount: 2,
+        suppressedCandidateCount: 0,
+        selectionMargin: null,
+        selectionReason: null,
+        failureReason: 'Selected candidate failed discrepancy-card quality: weak_next_action',
+        topCandidates: [],
       },
-    ],
-    graph: { graph_stale: false },
-    decrypt_sample_count: 250,
-    decrypt_fallback_count: 0,
-  },
-  current_winner: {
-    verdict: 'no_safe_artifact_today',
-    title: null,
-    tier: null,
-    artifact_family: null,
-    note: null,
-    discrepancy_card: null,
-    no_safe_artifact_reason:
-      'Selected candidate failed discrepancy-card quality: weak_next_action',
-  },
-  top_viable_candidates: [],
-  blocked_candidates: [
-    {
-      candidate_id: 'calendar-gap-1',
-      title: 'Commitment due 2026-05-14 with no matching calendar block',
-      tier: 'tier_1',
-      family: 'calendar_conflict_brief',
-      blockers: ['missing_schedule_resolution_context'],
     },
-  ],
-  graph_drift: [],
-  polluted_entities: [],
-  three_day_consistency: { passes: false, days: [] },
-  action_needed: [],
-  future_findings: [],
+  },
 };
 
 function buildSupabaseMock(options: SupabaseMockOptions) {
@@ -126,6 +104,20 @@ function buildSupabaseMock(options: SupabaseMockOptions) {
         'id, action_type, directive_text, reason, confidence, evidence, status, generated_at, approved_at, executed_at, execution_result, artifact'
       ) {
         return { eq: pendingPayloadEqUser };
+      }
+      if (
+        columns ===
+        'id, action_type, directive_text, reason, status, generated_at, execution_result'
+      ) {
+        return {
+          eq: vi.fn().mockReturnValue({
+            in: vi.fn().mockReturnValue({
+              order: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({ data: [LATEST_NO_SEND_RECEIPT], error: null }),
+              }),
+            }),
+          }),
+        };
       }
       return { eq: pendingEqUser };
     });
@@ -204,7 +196,6 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     );
     mockResolveUser.mockResolvedValue({ userId: 'u-test' });
     mockBuildContextGreeting.mockResolvedValue('Today. 0 active commitments. Top priority: None set.');
-    mockGetWinnerTruthReport.mockResolvedValue(WINNER_TRUTH_WITH_BLOCKED_CANDIDATE);
   });
 
   it('pending_approval alone does not consume the free artifact', async () => {
@@ -400,7 +391,6 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     );
     expect(body.id).toBeUndefined();
     expect(mockBuildContextGreeting).toHaveBeenCalledWith('u-test');
-    expect(mockGetWinnerTruthReport).toHaveBeenCalledWith('u-test');
     expect(supabase.spies.getUserById).toHaveBeenCalledWith('u-test');
   });
 
@@ -413,5 +403,14 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(source).toContain("const PENDING_RANKING_LIMIT = 5");
     expect(source).toContain("const PENDING_RANKING_SELECT = 'id, confidence, generated_at, status'");
     expect(source).toContain('const PENDING_PAYLOAD_SELECT =');
+  });
+
+  it('does not run winner-truth diagnostics on the normal dashboard latest route', async () => {
+    const source = await import('node:fs/promises').then((fs) =>
+      fs.readFile(new URL('../route.ts', import.meta.url), 'utf8'),
+    );
+
+    expect(source).not.toContain('@/lib/system/winner-truth');
+    expect(source).not.toContain('getWinnerTruthReport');
   });
 });

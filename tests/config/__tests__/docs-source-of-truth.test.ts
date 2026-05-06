@@ -14,4 +14,15 @@ describe('documentation source-of-truth boundaries', () => {
     expect(runbook).toContain('SESSION_HISTORY.md is append-only receipt history');
     expect(runbook).toContain('FULL_AUDIT_RESULTS.md is audit evidence, not a mutable checklist');
   });
+
+  it('keeps AGENTS as the active controller for source-of-truth loading order', () => {
+    const agents = fs.readFileSync(path.join(process.cwd(), 'AGENTS.md'), 'utf8');
+
+    expect(agents).toContain('## Source-of-Truth Loading Hierarchy');
+    expect(agents).toContain('`AGENTS.md` controls agent behavior');
+    expect(agents).toContain('`ACCEPTANCE_GATE.md` controls product proof');
+    expect(agents).toContain('`CURRENT_STATE.md` controls current blockers and runtime truth');
+    expect(agents).toContain('`SESSION_HISTORY.md` is recent receipt history only');
+    expect(agents).toContain('reference only; load them only when the seam touches them');
+  });
 });

@@ -17,8 +17,7 @@ import {
   buildDiscrepancyFrameFromActionPayload,
   evaluateDiscrepancyCardFrame,
 } from '@/lib/briefing/discrepancy-card-frame';
-import { buildDailyUtilitySlateFromWinnerTruth } from '@/lib/briefing/daily-utility-slate';
-import { getWinnerTruthReport } from '@/lib/system/winner-truth';
+import { buildDailyUtilitySlateFromReceipts } from '@/lib/briefing/daily-utility-slate';
 
 export const dynamic = 'force-dynamic';
 const MIN_PENDING_CONFIDENCE = CONFIDENCE_SEND_THRESHOLD;
@@ -27,7 +26,10 @@ const FREE_ARTIFACT_ALLOWANCE = 3;
 const PENDING_RANKING_SELECT = 'id, confidence, generated_at, status';
 const PENDING_PAYLOAD_SELECT =
   'id, action_type, directive_text, reason, confidence, evidence, status, generated_at, approved_at, executed_at, execution_result, artifact';
+const SLATE_RECEIPT_SELECT =
+  'id, action_type, directive_text, reason, status, generated_at, execution_result';
 const CONSUMED_FREE_ARTIFACT_STATUSES = ['approved', 'executed', 'skipped'] as const;
+const SLATE_RECEIPT_STATUSES = ['skipped', 'executed', 'approved'] as const;
 const NO_STORE_HEADERS = {
   'Cache-Control': 'private, no-store, max-age=0, must-revalidate',
   Pragma: 'no-cache',
@@ -75,10 +77,24 @@ async function getConsumedFreeArtifactCount(
   }
 }
 
-async function buildDailyUtilitySlatePayload(userId: string) {
+async function buildDailyUtilitySlatePayload(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+) {
   try {
-    const report = await getWinnerTruthReport(userId);
-    return buildDailyUtilitySlateFromWinnerTruth(report);
+    const { data, error } = await supabase
+      .from('tkg_actions')
+      .select(SLATE_RECEIPT_SELECT)
+      .eq('user_id', userId)
+      .in('status', [...SLATE_RECEIPT_STATUSES])
+      .order('generated_at', { ascending: false })
+      .limit(5);
+
+    if (error) {
+      throw new Error(error.message ?? JSON.stringify(error));
+    }
+
+    return buildDailyUtilitySlateFromReceipts(Array.isArray(data) ? data : []);
   } catch (error) {
     console.warn(
       '[conviction/latest] daily utility slate unavailable:',
@@ -211,7 +227,7 @@ export async function GET(request: Request) {
         accountCreatedAt = null;
       }
 
-      const dailyUtilitySlate = await buildDailyUtilitySlatePayload(userId);
+      const dailyUtilitySlate = await buildDailyUtilitySlatePayload(supabase, userId);
 
       return jsonNoStore({
         context_greeting: contextGreeting,
@@ -240,7 +256,7 @@ export async function GET(request: Request) {
         contextGreeting = 'Today. 0 active commitments. Top priority: None set.';
       }
 
-      const dailyUtilitySlate = await buildDailyUtilitySlatePayload(userId);
+      const dailyUtilitySlate = await buildDailyUtilitySlatePayload(supabase, userId);
 
       return jsonNoStore({
         context_greeting: contextGreeting,
