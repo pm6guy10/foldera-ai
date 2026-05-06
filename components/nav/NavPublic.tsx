@@ -40,27 +40,27 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
 
   const shellClass =
     scrolled || menuOpen
-      ? 'bg-[#06080cc7] border-b border-border backdrop-blur-xl'
-      : 'bg-[#06080ca8] border-b border-transparent';
+      ? 'border-b border-white/10 bg-[#03060bd9] shadow-[0_1px_0_rgba(34,211,238,0.08)] backdrop-blur-xl'
+      : 'border-b border-white/[0.04] bg-[#03060bc4] backdrop-blur-md';
 
   return (
     <nav className={`fixed inset-x-0 top-0 z-[60] pt-[env(safe-area-inset-top,0px)] transition-colors ${shellClass}`}>
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-[1500px] items-center justify-between gap-5 px-4 sm:px-6 lg:px-8">
         <a
           href="/"
-          className="inline-flex min-h-[44px] min-w-[44px] items-center gap-3 rounded-[14px] px-1 text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2.5 rounded-[12px] px-1 text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           aria-label="Foldera"
         >
           <FolderaMark size="sm" decorative />
-          <span className="hidden text-[17px] font-semibold tracking-[-0.04em] sm:inline">Foldera</span>
+          <span className="text-[16px] font-semibold tracking-[-0.025em] text-white">Foldera</span>
         </a>
 
-        <div className="hidden items-center gap-8 lg:flex">
+        <div className="hidden items-center gap-7 lg:flex">
           {links.map((link) => (
             <a
               key={link.label}
               href={link.href}
-              className="text-[13px] text-text-muted transition-colors hover:text-text-primary"
+              className="text-[12px] font-medium text-slate-400 transition-colors hover:text-white"
             >
               {link.label}
             </a>
@@ -70,54 +70,64 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
         <div className="hidden items-center gap-3 sm:flex">
           <a
             href="/login"
-            className="text-[13px] text-text-muted transition-colors hover:text-text-primary"
+            className="text-[12px] font-medium text-slate-400 transition-colors hover:text-white"
           >
             Sign in
           </a>
           <a
             href="/start"
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-[14px] border border-cyan-300/25 bg-accent px-4 text-[13px] font-semibold text-slate-950 transition-colors hover:bg-accent-hover"
+            className="inline-flex min-h-[42px] items-center gap-2 rounded-[9px] border border-cyan-200/30 bg-accent px-4 text-[12px] font-semibold text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.18)] transition-colors hover:bg-accent-hover"
           >
             Start free
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </a>
         </div>
 
-        <button
-          type="button"
-          data-testid="nav-mobile-menu-toggle"
-          onClick={() => setMenuOpen((value) => !value)}
-          className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[14px] border border-border bg-panel text-text-primary lg:hidden"
-          aria-label={menuOpen ? 'Close menu (toggle)' : 'Open menu'}
-          aria-expanded={menuOpen}
-        >
-          <span className="relative block h-4 w-4">
-            <span
-              className={`absolute left-0 top-1 h-0.5 w-4 bg-current transition-transform ${menuOpen ? 'translate-y-1.5 rotate-45' : ''}`}
-            />
-            <span className={`absolute left-0 top-2.5 h-0.5 w-4 bg-current transition-opacity ${menuOpen ? 'opacity-0' : 'opacity-100'}`} />
-            <span
-              className={`absolute left-0 top-4 h-0.5 w-4 bg-current transition-transform ${menuOpen ? '-translate-y-1 rotate-[-45deg]' : ''}`}
-            />
-          </span>
-        </button>
+        <div className="flex items-center gap-2 lg:hidden">
+          <a
+            href="/dashboard"
+            className="inline-flex min-h-[38px] items-center rounded-[9px] bg-accent px-3 text-[12px] font-semibold text-slate-950 shadow-[0_0_16px_rgba(34,211,238,0.16)] sm:hidden"
+          >
+            Dashboard
+          </a>
+
+          <button
+            type="button"
+            data-testid="nav-mobile-menu-toggle"
+            onClick={() => setMenuOpen((value) => !value)}
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[10px] border border-white/10 bg-white/[0.04] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+            aria-label={menuOpen ? 'Close menu (toggle)' : 'Open menu'}
+            aria-expanded={menuOpen}
+          >
+            <span className="relative block h-4 w-4">
+              <span
+                className={`absolute left-0 top-1 h-0.5 w-4 bg-current transition-transform ${menuOpen ? 'translate-y-1.5 rotate-45' : ''}`}
+              />
+              <span className={`absolute left-0 top-2.5 h-0.5 w-4 bg-current transition-opacity ${menuOpen ? 'opacity-0' : 'opacity-100'}`} />
+              <span
+                className={`absolute left-0 top-4 h-0.5 w-4 bg-current transition-transform ${menuOpen ? '-translate-y-1 rotate-[-45deg]' : ''}`}
+              />
+            </span>
+          </button>
+        </div>
       </div>
 
       {menuOpen && (
         <div className="fixed inset-0 z-[70] lg:hidden" role="dialog" aria-modal="true" aria-label="Site menu">
           <button
             type="button"
-            className="absolute inset-0 bg-bg/90 backdrop-blur-sm"
+            className="absolute inset-0 bg-[#01040a]/95 backdrop-blur-xl"
             role="presentation"
             onClick={() => setMenuOpen(false)}
             aria-label="Dismiss overlay"
           />
-          <div className="relative mx-4 mt-[calc(4rem+env(safe-area-inset-top,0px))] rounded-[24px] border border-border bg-panel p-6">
+          <div className="relative mx-4 mt-[calc(4rem+env(safe-area-inset-top,0px))] overflow-hidden rounded-[18px] border border-cyan-300/18 bg-[#03070d] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.72)]">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/60 to-transparent" aria-hidden />
             <button
               type="button"
               data-testid="nav-mobile-overlay-close"
               onClick={() => setMenuOpen(false)}
-              className="absolute right-4 top-4 inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[14px] border border-border bg-panel-raised text-text-secondary"
+              className="absolute right-4 top-4 inline-flex min-h-[42px] min-w-[42px] items-center justify-center rounded-[10px] border border-white/10 bg-white/[0.04] text-slate-300"
               aria-label="Close menu"
             >
               <X className="h-4 w-4" aria-hidden="true" />
@@ -129,7 +139,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
                   key={link.label}
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
-                  className="inline-flex foldera-touch-height items-center rounded-[14px] px-3 text-sm font-medium text-text-primary"
+                  className="inline-flex foldera-touch-height items-center rounded-[10px] px-3 text-sm font-medium text-slate-100 transition-colors hover:bg-white/[0.045]"
                 >
                   {link.label}
                 </a>
@@ -138,7 +148,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
               <a
                 href="/login"
                 onClick={() => setMenuOpen(false)}
-                className="inline-flex foldera-touch-height items-center rounded-[14px] px-3 text-sm font-medium text-text-primary"
+                className="inline-flex foldera-touch-height items-center rounded-[10px] px-3 text-sm font-medium text-slate-100 transition-colors hover:bg-white/[0.045]"
               >
                 Sign in
               </a>
@@ -146,7 +156,7 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
               <a
                 href="/start"
                 onClick={() => setMenuOpen(false)}
-                className="mt-2 inline-flex foldera-touch-height items-center justify-center gap-2 rounded-[14px] bg-accent px-4 text-sm font-semibold text-slate-950"
+                className="mt-2 inline-flex foldera-touch-height items-center justify-center gap-2 rounded-[10px] bg-accent px-4 text-sm font-semibold text-slate-950"
               >
                 Start free
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
