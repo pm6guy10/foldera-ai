@@ -739,12 +739,8 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     });
     await page.goto('/dashboard');
     await expect(page.getByTestId('dashboard-empty-state')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('No safe artifact today.')).toBeVisible({ timeout: 15000 });
-    await expect(
-      page.getByText(
-        /Foldera did not find a move that cleared today'?s safety and action checks\. If a draft is useful but imperfect, it still shows up here with warnings\./i,
-      ),
-    ).toBeVisible();
+    await expect(page.getByText('No safe finished work today.')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Foldera did not find a piece of finished work it can stand behind today/i)).toBeVisible();
     await expect(page.getByText(/You're set until tomorrow morning/i)).toHaveCount(0);
     await expect(page.getByText(/next read still lands in email/i)).toHaveCount(0);
     await expect(page.getByText(/No directive cleared the bar/i)).toHaveCount(0);
@@ -771,8 +767,9 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await page.goto('/dashboard');
 
     await expect(page.getByTestId('dashboard-daily-utility-slate')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText("Today's read")).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'No safe finished action today.' })).toBeVisible();
+    await expect(page.getByText('One thing Foldera needs')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'What outcome should this change?' })).toBeVisible();
+    await expect(page.getByText(/Foldera needs one concrete consequence or desired outcome/i)).toBeVisible();
     await expect(page.getByText('Latest run stopped before a finished action was safe.')).toBeVisible();
     await expect(page.getByText('Why Foldera stopped: It did not prove one safe next step.')).toBeVisible();
     await expect(page.getByText(/positive_winner_contract/i)).toHaveCount(0);
@@ -797,7 +794,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
 
     await expect(page.getByTestId('dashboard-degraded-state')).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId('dashboard-briefing-unavailable')).toBeVisible();
-    await expect(page.getByRole('heading', { name: /Latest briefing unavailable/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Latest work unavailable/i })).toBeVisible();
     const degradedState = page.getByTestId('dashboard-degraded-state');
     await expect(degradedState.getByText(/Connected source status unavailable/i)).toBeVisible();
     await expect(degradedState.getByText(/Signal summary unavailable/i)).toBeVisible();
@@ -819,13 +816,14 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
+    await expect(page.getByTestId('dashboard-truth-stats')).toHaveCount(0);
+    await expect(page.getByText('open threads')).toHaveCount(0);
+    await expect(page.getByText('need attention')).toHaveCount(0);
+    await expect(page.getByText('ready to move')).toHaveCount(0);
     await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
     await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);
     await expect(page.getByText(/^Upgrade to Pro$/i)).toHaveCount(0);
-    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('24');
-    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
     await expect.poll(async () =>
       page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
     ).toBeLessThanOrEqual(1);
@@ -1017,9 +1015,10 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       evidence: DOCUMENT_DIRECTIVE_RESPONSE.discrepancy_card.evidence,
       nextAction: DOCUMENT_DIRECTIVE_RESPONSE.discrepancy_card.next_action,
     });
-    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('24');
-    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
-    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('need attention');
+    await expect(page.getByTestId('dashboard-truth-stats')).toHaveCount(0);
+    await expect(page.getByText('open threads')).toHaveCount(0);
+    await expect(page.getByText('need attention')).toHaveCount(0);
+    await expect(page.getByText('ready to move')).toHaveCount(0);
     await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
     await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);

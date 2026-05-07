@@ -1,4 +1,5 @@
 import type { DailyUtilitySlateItem } from '@/lib/briefing/daily-utility-slate';
+import Link from 'next/link';
 import { CircleSlash2, ListChecks, ShieldCheck } from 'lucide-react';
 
 type DailyUtilitySlateCardPayload = {
@@ -13,6 +14,14 @@ type SlateEntry = {
   item: DailyUtilitySlateItem;
   sectionLabel: string;
   key: string;
+};
+
+type MissingInputPrompt = {
+  heading: string;
+  prompt: string;
+  detail: string;
+  actionHref?: string;
+  actionLabel?: string;
 };
 
 const SECTION_LABELS = {
@@ -79,7 +88,13 @@ function SlateItemCard({
   );
 }
 
-export function DailyUtilitySlateCard({ slate }: { slate: DailyUtilitySlateCardPayload }) {
+export function DailyUtilitySlateCard({
+  slate,
+  missingInputPrompt,
+}: {
+  slate: DailyUtilitySlateCardPayload;
+  missingInputPrompt?: MissingInputPrompt | null;
+}) {
   const openLoops = slate.open_loops ?? [];
   const changedSinceYesterday = slate.changed_since_yesterday ?? [];
   const items: SlateEntry[] = [];
@@ -126,15 +141,22 @@ export function DailyUtilitySlateCard({ slate }: { slate: DailyUtilitySlateCardP
         <section className="min-w-0">
           <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
             <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-            Today&apos;s read
+            {missingInputPrompt?.heading ?? 'Today'}
           </div>
           <h2 className="mt-5 max-w-[700px] text-[34px] font-semibold leading-[1.02] tracking-[-0.02em] text-text-primary sm:text-[46px] lg:text-[54px]">
-            No safe finished action today.
+            {missingInputPrompt?.prompt ?? 'No safe finished work today.'}
           </h2>
           <p className="mt-5 max-w-[620px] text-[16px] leading-7 text-text-secondary sm:text-[17px] sm:leading-8">
-            Foldera did not find a piece of finished work it can stand behind. This is the
-            safest useful read from the source trail, not a task to blindly execute.
+            {missingInputPrompt?.detail ??
+              'Foldera did not find a piece of finished work it can stand behind today.'}
           </p>
+          {missingInputPrompt?.actionHref && missingInputPrompt.actionLabel ? (
+            <div className="mt-6">
+              <Link href={missingInputPrompt.actionHref} className="foldera-button-secondary">
+                {missingInputPrompt.actionLabel}
+              </Link>
+            </div>
+          ) : null}
 
           <div className="mt-8 grid gap-3 text-sm text-text-secondary sm:grid-cols-3 lg:max-w-[660px]">
             <div className="border-t border-white/10 pt-3">
@@ -145,15 +167,17 @@ export function DailyUtilitySlateCard({ slate }: { slate: DailyUtilitySlateCardP
             </div>
             <div className="border-t border-white/10 pt-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
-                Guardrail
+                State
               </p>
-              <p className="mt-1.5 text-text-primary">Safe stop</p>
+              <p className="mt-1.5 text-text-primary">Waiting for stronger source truth</p>
             </div>
             <div className="border-t border-white/10 pt-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
-                Action
+                Next
               </p>
-              <p className="mt-1.5 text-text-primary">Do not send</p>
+              <p className="mt-1.5 text-text-primary">
+                {missingInputPrompt ? 'Complete the missing input' : 'Nothing to send'}
+              </p>
             </div>
           </div>
         </section>

@@ -7,10 +7,6 @@ import {
   DashboardSidebar,
   type DashboardPanelKey,
 } from '@/components/foldera/DashboardSidebar';
-import {
-  DashboardStatsStrip,
-  type DashboardStat,
-} from '@/components/dashboard/DashboardStatsStrip';
 
 type DailyBriefActions = NonNullable<ComponentProps<typeof DailyBriefCard>['actions']>;
 type OutcomeValue = 'worked' | 'didnt_work';
@@ -23,11 +19,9 @@ type DashboardMobileLayoutProps = {
   dateLabel: string;
   greetingLabel: string;
   firstName: string | null;
-  hasStats: boolean;
-  dashboardStats: DashboardStat[];
   degradedStateNode: ReactNode;
   statusNoticeNode: ReactNode;
-  isBriefingPanel: boolean;
+  isTodayPanel: boolean;
   hasAction: boolean;
   artifactTitle: string;
   artifactContradiction: string;
@@ -56,11 +50,9 @@ export function DashboardMobileLayout({
   dateLabel,
   greetingLabel,
   firstName,
-  hasStats,
-  dashboardStats,
   degradedStateNode,
   statusNoticeNode,
-  isBriefingPanel,
+  isTodayPanel,
   hasAction,
   artifactTitle,
   artifactContradiction,
@@ -121,30 +113,29 @@ export function DashboardMobileLayout({
                   '.'
                 )}
               </h1>
-              {hasStats ? <DashboardStatsStrip stats={dashboardStats} variant="mobile" /> : null}
             </header>
 
             {degradedStateNode ? <div className="mx-auto mb-4 w-full max-w-[860px]">{degradedStateNode}</div> : null}
             {statusNoticeNode ? <div className="mx-auto mb-4 w-full max-w-[860px]">{statusNoticeNode}</div> : null}
 
             <div className="mx-auto w-full max-w-[940px] pb-12">
-              {isBriefingPanel ? (
+              {isTodayPanel ? (
                 hasAction ? (
-                  <div data-testid="dashboard-panel-briefing">
+                  <div data-testid="dashboard-panel-today">
                     <DailyBriefCard
                       className="foldera-dashboard-brief-card foldera-dashboard-money-shot foldera-dashboard-current-brief w-full"
                       dashboardCta
                       directive={artifactTitle}
                       whyNow={artifactContradiction}
-                      eyebrowLabel="Daily Brief"
-                      directiveLabel="Directive"
-                      whyLabel="Why This Now"
+                      eyebrowLabel="Finished work"
+                      directiveLabel="Finished work"
+                      whyLabel="Why it matters"
                       draftLabel={draftLabel}
                       draftBody={draftBody}
                       sourcePills={sourcePills}
-                      sourceLabel="Source Basis"
+                      sourceLabel="Source trail"
                       nextStep={writeDocument ? 'Next: Save to record' : 'Next: Await response'}
-                      statusText={writeDocument ? 'READY TO FILE' : 'READY TO SEND'}
+                      statusText={writeDocument ? 'READY TO SAVE' : 'READY TO APPROVE'}
                       footerText="Grounded in connected sources"
                       actions={cardActions}
                     />
@@ -160,7 +151,7 @@ export function DashboardMobileLayout({
                 <div className="min-h-[420px]">{secondaryPanelNode}</div>
               )}
 
-              {isBriefingPanel && showOutcomeActions ? (
+              {isTodayPanel && showOutcomeActions ? (
                 <div className="mt-4 flex flex-wrap justify-center gap-3">
                   <button
                     type="button"

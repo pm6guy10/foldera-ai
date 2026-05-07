@@ -124,12 +124,9 @@ export const DEFAULT_STAGE_METRICS: StageMetrics = {
 };
 
 export const DASHBOARD_PANEL_LABELS: Record<DashboardPanelKey, string> = {
-  briefing: 'Executive Briefing',
-  playbooks: 'Playbooks',
-  signals: 'Signals',
-  'audit-log': 'Audit Log',
-  integrations: 'Integrations',
-  settings: 'Settings',
+  today: 'Today',
+  history: 'History',
+  sources: 'Sources',
 };
 
 const INTERNAL_FAILURE_PATTERNS = [
@@ -144,16 +141,127 @@ const INTERNAL_FAILURE_PATTERNS = [
 
 export function normalizeDashboardPanel(value: string | null): DashboardPanelKey {
   switch (value) {
-    case 'playbooks':
-    case 'signals':
+    case 'briefing':
+    case 'today':
+    case '':
+    case null:
+      return 'today';
     case 'audit-log':
+    case 'playbooks':
+    case 'history':
+      return 'history';
+    case 'signals':
     case 'integrations':
     case 'settings':
-    case 'briefing':
-      return value;
+    case 'sources':
+      return 'sources';
     default:
-      return 'briefing';
+      return 'today';
   }
+}
+
+export type DashboardMissingInputPrompt = {
+  kind: 'recipient' | 'source' | 'freshness' | 'outcome';
+  heading: string;
+  prompt: string;
+  detail: string;
+  actionHref?: string;
+  actionLabel?: string;
+};
+
+const INTERNAL_MISSING_INPUT_PATTERNS = [
+  /\bmissing_[a-z0-9_]+\b/i,
+  /\bweak_[a-z0-9_]+\b/i,
+  /\bcandidate\b/i,
+  /\bgate\b/i,
+  /\bblocker\b/i,
+  /\bwinner\b/i,
+  /\bvalidation\b/i,
+  /\bpersistence\b/i,
+] as const;
+
+function collectSlateReasonText(slate: DailyUtilitySlate | null | undefined): string {
+  if (!slate) return '';
+  const items = [
+    slate.primary_move,
+    ...(slate.open_loops ?? []),
+    ...(slate.changed_since_yesterday ?? []),
+    slate.blocked_but_real,
+    slate.watch_item,
+  ].filter(Boolean) as DailyUtilitySlateItem[];
+  return items
+    .flatMap((item) => [
+      item.title,
+      item.why_it_matters,
+      item.next_action ?? '',
+      item.no_action_reason ?? '',
+      ...(item.evidence ?? []),
+      ...(item.source_refs ?? []),
+    ])
+    .join(' ');
+}
+
+export function buildMissingInputPrompt(
+  slate: DailyUtilitySlate | null | undefined,
+  options: {
+    hasIntegrationIssue?: boolean;
+    mailIngestLooksStale?: boolean;
+  } = {},
+): DashboardMissingInputPrompt | null {
+  const text = collectSlateReasonText(slate);
+  const normalized = text.toLowerCase();
+  const matchText = normalized.replace(/[_-]+/g, ' ');
+  const leaksInternalLanguage = INTERNAL_MISSING_INPUT_PATTERNS.some((pattern) => pattern.test(text));
+
+  if (/\bgrounded recipient\b|\bno grounded recipient\b|\bwho should\b|\brecipient\b/.test(matchText)) {
+    return {
+      kind: 'recipient',
+      heading: 'One thing Foldera needs',
+      prompt: 'Who should this go to?',
+      detail: 'Foldera needs a grounded recipient before it can finish a safe message.',
+    };
+  }
+
+  if (options.hasIntegrationIssue || options.mailIngestLooksStale || /\bstale\b|\bfresher\b/.test(matchText)) {
+    return {
+      kind: 'freshness',
+      heading: 'One thing Foldera needs',
+      prompt: 'Can Foldera get fresher source data?',
+      detail: 'The current evidence is too stale to finish safely.',
+      actionHref: '/dashboard?panel=sources',
+      actionLabel: 'Check sources',
+    };
+  }
+
+  if (
+    /\bsource artifact\b|\bcurrent artifact\b|\bsource bundle\b|\bsource trail\b|\banchor\b|\btoo thin\b/.test(
+      matchText,
+    )
+  ) {
+    return {
+      kind: 'source',
+      heading: 'One thing Foldera needs',
+      prompt: 'Which source has the current facts?',
+      detail: 'Connect or sync the source that contains the current facts before Foldera finishes this.',
+      actionHref: '/dashboard?panel=sources',
+      actionLabel: 'Check sources',
+    };
+  }
+
+  if (/\bconsequence\b|\bdesired outcome\b|\bsafe next step\b|\bnext step\b|\bnext action\b|\brisk\b/.test(matchText)) {
+    return {
+      kind: 'outcome',
+      heading: 'One thing Foldera needs',
+      prompt: 'What outcome should this change?',
+      detail: 'Foldera needs one concrete consequence or desired outcome before turning this into finished work.',
+    };
+  }
+
+  if (leaksInternalLanguage) {
+    return null;
+  }
+
+  return null;
 }
 
 export const DOCUMENT_MARKDOWN_COMPONENTS = {

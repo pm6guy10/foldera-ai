@@ -243,7 +243,10 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
     await expect(page.getByRole('button', { name: /snooze 24h/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /approve & send/i })).toHaveCount(0);
-    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
+    await expect(page.getByTestId('dashboard-truth-stats')).toHaveCount(0);
+    await expect(page.getByText('open threads')).toHaveCount(0);
+    await expect(page.getByText('need attention')).toHaveCount(0);
+    await expect(page.getByText('ready to move')).toHaveCount(0);
     await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
     await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);

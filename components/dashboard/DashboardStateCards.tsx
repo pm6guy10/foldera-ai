@@ -6,7 +6,7 @@ export function DashboardLoadingCard() {
           Loading
         </p>
         <p className="mt-4 text-[18px] leading-8 text-text-secondary">
-          Loading your latest Foldera brief.
+          Loading your finished work inbox.
         </p>
       </div>
     </div>
@@ -21,13 +21,13 @@ export function DashboardBriefingUnavailableCard() {
     >
       <div className="max-w-[520px]">
         <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
-          Briefing unavailable
+          Inbox unavailable
         </p>
         <h2 className="mt-4 text-[32px] font-semibold tracking-[-0.04em] text-text-primary sm:text-[38px]">
-          Latest briefing unavailable
+          Latest work unavailable
         </h2>
         <p className="mt-4 text-[15px] leading-7 text-text-secondary">
-          Foldera couldn&apos;t load your latest briefing right now. Refresh to retry.
+          Foldera couldn&apos;t load your latest work right now. Refresh to retry.
         </p>
       </div>
     </div>

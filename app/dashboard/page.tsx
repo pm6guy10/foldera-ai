@@ -4,13 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Mail, TriangleAlert, TrendingUp } from 'lucide-react';
 import {
   DashboardStatusNoticeCard,
   HiddenDashboardArtifact,
 } from '@/components/dashboard/DashboardChromeExtras';
 import { DashboardMobileLayout } from '@/components/dashboard/DashboardMobileLayout';
-import { DashboardStatsStrip } from '@/components/dashboard/DashboardStatsStrip';
 import {
   DashboardBriefingUnavailableCard,
   DashboardDegradedState,
@@ -35,6 +33,7 @@ import {
   DOCUMENT_MARKDOWN_COMPONENTS,
   artifactClipboardText,
   asTrimmedString,
+  buildMissingInputPrompt,
   buildDecisionSuccessNotice,
   computeStageMetrics,
   getArtifactBody,
@@ -63,8 +62,8 @@ import {
 } from './dashboard-page-model';
 export default function DashboardPage() {
   const { data: session, status } = useSession();
-  const [activePanel, setActivePanel] = useState<DashboardPanelKey>('briefing');
-  const isBriefingPanel = activePanel === 'briefing';
+  const [activePanel, setActivePanel] = useState<DashboardPanelKey>('today');
+  const isTodayPanel = activePanel === 'today';
   const activeSidebarLabel = DASHBOARD_PANEL_LABELS[activePanel];
 
   const [action, setAction] = useState<DashboardAction | null>(null);
@@ -366,7 +365,7 @@ export default function DashboardPage() {
       if (!currentPath.startsWith('/dashboard')) return;
 
       const nextParams = new URLSearchParams(window.location.search);
-      if (panel === 'briefing') {
+      if (panel === 'today') {
         nextParams.delete('panel');
       } else {
         nextParams.set('panel', panel);
@@ -540,7 +539,7 @@ export default function DashboardPage() {
     asTrimmedString(action?.reason) ??
     'Foldera surfaced the single move that matters most right now.';
   const artifactBody = getArtifactBody(action?.artifact);
-  const draftLabel = 'DRAFT';
+  const draftLabel = writeDocument ? 'Document' : 'Ready text';
   const copyActionLabel = 'Copy draft';
   const skipActionLabel = 'Skip';
   const primaryActionLabel = writeDocument
@@ -583,41 +582,8 @@ export default function DashboardPage() {
       (integration) => normalizeIntegrationProvider(integration.provider) === 'azure_ad',
     ) ?? null;
   const recentHistory = historyItems.slice(0, 3);
-  const evidenceCount = Array.isArray(action?.evidence) ? action.evidence.length : 0;
-  const liveSignalFallback = evidenceCount > 0 ? evidenceCount : connectedSourceCount;
-  const openThreadCount =
-    typeof graphStats?.signalsTotal === 'number' ? graphStats.signalsTotal : liveSignalFallback;
-  const attentionCount =
-    typeof graphStats?.commitmentsActive === 'number' ? graphStats.commitmentsActive : evidenceCount;
-  const readyCount =
-    typeof graphStats?.patternsActive === 'number'
-      ? graphStats.patternsActive
-      : action
-        ? 1
-        : 0;
-  const dashboardStats = [
-    {
-      icon: Mail,
-      value: openThreadCount,
-      label: 'open threads',
-      valueClassName: 'text-text-primary',
-    },
-    {
-      icon: TriangleAlert,
-      value: attentionCount,
-      label: 'need attention',
-      valueClassName: attentionCount > 0 ? 'text-amber-400' : 'text-text-primary',
-    },
-    {
-      icon: TrendingUp,
-      value: readyCount,
-      label: 'ready to move',
-      valueClassName: readyCount > 0 ? 'text-success' : 'text-text-primary',
-    },
-  ];
-  const hasStats = dashboardStats.length > 0;
   const degradedIssueLabels = [
-    hasLatestIssue ? 'Latest briefing unavailable.' : null,
+    hasLatestIssue ? 'Latest work unavailable.' : null,
     hasIntegrationIssue ? 'Connected source status unavailable.' : null,
     hasGraphIssue ? 'Signal summary unavailable.' : null,
     hasHistoryIssue ? 'Recent history unavailable.' : null,
@@ -733,8 +699,13 @@ export default function DashboardPage() {
       ]
     : [];
 
+  const missingInputPrompt = buildMissingInputPrompt(dailyUtilitySlate, {
+    hasIntegrationIssue,
+    mailIngestLooksStale: integrationStatus?.mail_ingest_looks_stale === true,
+  });
+
   const emptyStateCard = dailyUtilitySlate ? (
-    <DailyUtilitySlateCard slate={dailyUtilitySlate} />
+    <DailyUtilitySlateCard slate={dailyUtilitySlate} missingInputPrompt={missingInputPrompt} />
   ) : (
     <EmptyStateCard />
   );
@@ -742,20 +713,16 @@ export default function DashboardPage() {
   const degradedStateNode = <DashboardDegradedState issueLabels={degradedIssueLabels} />;
   const briefingUnavailableCard = <DashboardBriefingUnavailableCard />;
 
-  const secondaryPanelNode = !isBriefingPanel ? (
+  const secondaryPanelNode = !isTodayPanel ? (
     <DashboardSecondaryPanel
-      activePanel={activePanel as Exclude<DashboardPanelKey, 'briefing'>}
+      activePanel={activePanel as Exclude<DashboardPanelKey, 'today'>}
       connectedSourcesValue={connectedSourcesValue}
       hasIntegrationIssue={hasIntegrationIssue}
       connectedSourceCount={connectedSourceCount}
       latestSignalLabel={latestSignalLabel}
-      hasGraphIssue={hasGraphIssue}
-      graphStats={graphStats}
       sourceSummaryRows={sourceSummaryRows}
       googleIntegration={googleIntegration}
       microsoftIntegration={microsoftIntegration}
-      sessionName={sessionName}
-      sessionEmail={asTrimmedString(session?.user?.email)}
       historyLoaded={historyLoaded}
       hasHistoryIssue={hasHistoryIssue}
       recentHistory={recentHistory}
@@ -763,22 +730,22 @@ export default function DashboardPage() {
   ) : null;
 
   const briefingCardNode = action ? (
-    <div data-testid="dashboard-panel-briefing" className="h-full w-full">
+    <div data-testid="dashboard-panel-today" className="h-full w-full">
       <DailyBriefCard
         className="foldera-dashboard-brief-card foldera-dashboard-money-shot h-full w-full"
         dashboardCta
         stageDesktop={stageMetrics.isDesktop}
         directive={artifactTitle}
         whyNow={artifactContradiction}
-        eyebrowLabel="Daily Brief"
-        directiveLabel="Directive"
-        whyLabel="Why This Now"
+        eyebrowLabel="Finished work"
+        directiveLabel="Finished work"
+        whyLabel="Why it matters"
         draftLabel={draftLabel}
         draftBody={draftBody}
         sourcePills={inferSourcePills(action)}
-        sourceLabel="Source Basis"
+        sourceLabel="Source trail"
         nextStep={writeDocument ? 'Next: Save to record' : 'Next: Await response'}
-        statusText={writeDocument ? 'READY TO FILE' : 'READY TO SEND'}
+        statusText={writeDocument ? 'READY TO SAVE' : 'READY TO APPROVE'}
         footerText="Grounded in connected sources"
         actions={cardActions}
       />
@@ -791,9 +758,9 @@ export default function DashboardPage() {
     emptyStateCard
   );
 
-  const cardNode = isBriefingPanel ? briefingCardNode : secondaryPanelNode;
+  const cardNode = isTodayPanel ? briefingCardNode : secondaryPanelNode;
 
-  const statusNoticeNode = isBriefingPanel && statusNotice ? (
+  const statusNoticeNode = isTodayPanel && statusNotice ? (
     <DashboardStatusNoticeCard notice={statusNotice} />
   ) : null;
   const hiddenArtifactNode = <HiddenDashboardArtifact title={artifactTitle} body={artifactBody} />;
@@ -844,14 +811,12 @@ export default function DashboardPage() {
             )}
           </h1>
 
-          {hasStats ? <DashboardStatsStrip stats={dashboardStats} variant="stage" /> : null}
-
-          <div className="absolute" data-testid="dashboard-figma-card-frame" style={{ left: 388, top: 240, width: 1580, height: 862 }}>
+          <div className="absolute" data-testid="dashboard-figma-card-frame" style={{ left: 388, top: 218, width: 1580, height: 884 }}>
             {cardNode}
           </div>
 
           {statusNoticeNode ? (
-            <div className="absolute" style={{ left: 388, top: 1116, width: 1580 }}>
+            <div className="absolute" style={{ left: 388, top: 1118, width: 1580 }}>
               {statusNoticeNode}
             </div>
           ) : null}
@@ -862,7 +827,7 @@ export default function DashboardPage() {
             </div>
           ) : null}
 
-          {isBriefingPanel && showOutcomeActions ? (
+          {isTodayPanel && showOutcomeActions ? (
             <div className="absolute flex justify-center gap-3" style={{ left: 772, top: 1118, width: 430 }}>
               <button
                 type="button"
@@ -898,11 +863,9 @@ export default function DashboardPage() {
       dateLabel={getDateLabel()}
       greetingLabel={getGreetingLabel()}
       firstName={firstName}
-      hasStats={hasStats}
-      dashboardStats={dashboardStats}
       degradedStateNode={degradedStateNode}
       statusNoticeNode={statusNoticeNode}
-      isBriefingPanel={isBriefingPanel}
+      isTodayPanel={isTodayPanel}
       hasAction={Boolean(action)}
       artifactTitle={artifactTitle}
       artifactContradiction={artifactContradiction}

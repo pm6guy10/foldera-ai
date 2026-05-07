@@ -5,12 +5,11 @@ import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import {
   ChevronDown,
+  History,
+  Inbox,
   Link2,
   LogOut,
-  Mail,
   Menu,
-  Radar,
-  ScrollText,
   Settings,
   X,
   type LucideIcon,
@@ -19,12 +18,9 @@ import { SIGN_OUT_CALLBACK_URL } from '@/lib/auth/constants';
 import { FolderaLogo } from '@/components/foldera/FolderaLogo';
 
 export type DashboardPanelKey =
-  | 'briefing'
-  | 'playbooks'
-  | 'signals'
-  | 'audit-log'
-  | 'integrations'
-  | 'settings';
+  | 'today'
+  | 'history'
+  | 'sources';
 
 export type DashboardNavItem = {
   panel: DashboardPanelKey;
@@ -34,12 +30,9 @@ export type DashboardNavItem = {
 };
 
 export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
-  { panel: 'briefing', label: 'Executive Briefing', href: '/dashboard', icon: Mail },
-  { panel: 'playbooks', label: 'Playbooks', href: '/dashboard?panel=playbooks', icon: ScrollText },
-  { panel: 'signals', label: 'Signals', href: '/dashboard?panel=signals', icon: Radar },
-  { panel: 'audit-log', label: 'Audit Log', href: '/dashboard?panel=audit-log', icon: ScrollText },
-  { panel: 'integrations', label: 'Integrations', href: '/dashboard?panel=integrations', icon: Link2 },
-  { panel: 'settings', label: 'Settings', href: '/dashboard/settings', icon: Settings },
+  { panel: 'today', label: 'Today', href: '/dashboard', icon: Inbox },
+  { panel: 'history', label: 'History', href: '/dashboard?panel=history', icon: History },
+  { panel: 'sources', label: 'Sources', href: '/dashboard?panel=sources', icon: Link2 },
 ];
 
 type DashboardSidebarProps = {
@@ -68,7 +61,7 @@ export function DashboardMobileNav({
   const [open, setOpen] = useState(false);
   const initial = userName.trim().charAt(0).toUpperCase() || 'F';
   const activeItem = DASHBOARD_NAV_ITEMS.find((item) => item.panel === activePanel);
-  const ActiveIcon = activeItem?.icon ?? Mail;
+  const ActiveIcon = activeItem?.icon ?? Inbox;
 
   return (
     <div className="lg:hidden">

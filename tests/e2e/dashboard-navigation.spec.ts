@@ -79,12 +79,9 @@ const HISTORY_RESPONSE = {
 };
 
 const NAV_CONTRACT = [
-  { panel: 'briefing', label: 'Executive Briefing' },
-  { panel: 'playbooks', label: 'Playbooks' },
-  { panel: 'signals', label: 'Signals' },
-  { panel: 'audit-log', label: 'Audit Log' },
-  { panel: 'integrations', label: 'Integrations' },
-  { panel: 'settings', label: 'Settings' },
+  { panel: 'today', label: 'Today' },
+  { panel: 'history', label: 'History' },
+  { panel: 'sources', label: 'Sources' },
 ] as const;
 
 function json(data: unknown) {
@@ -268,7 +265,7 @@ async function setupDashboardMocks(
 }
 
 describeAuthMocked('Dashboard navigation and action wiring', () => {
-  test('sidebar exposes the live dashboard labels on /dashboard desktop shell', async ({ page }) => {
+  test('sidebar exposes the finished-work inbox labels on /dashboard desktop shell', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
@@ -279,13 +276,17 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
       await expect(button).toContainText(item.label);
     }
 
-    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('open threads');
-    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('need attention');
-    await expect(page.getByTestId('dashboard-truth-stats')).toContainText('ready to move');
-    await expect(page.getByTestId('dashboard-brief-directive-section')).toContainText(/Directive/i);
-    await expect(page.getByTestId('dashboard-brief-why-section')).toContainText(/Why This Now/i);
-    await expect(page.getByTestId('dashboard-brief-draft-section')).toContainText('DRAFT');
-    await expect(page.getByTestId('dashboard-brief-source-section')).toContainText(/Source Basis/i);
+    await expect(page.getByTestId('dashboard-sidebar-item-playbooks')).toHaveCount(0);
+    await expect(page.getByTestId('dashboard-sidebar-item-signals')).toHaveCount(0);
+    await expect(page.getByTestId('dashboard-sidebar-item-audit-log')).toHaveCount(0);
+    await expect(page.getByTestId('dashboard-truth-stats')).toHaveCount(0);
+    await expect(page.getByText('open threads')).toHaveCount(0);
+    await expect(page.getByText('need attention')).toHaveCount(0);
+    await expect(page.getByText('ready to move')).toHaveCount(0);
+    await expect(page.getByTestId('dashboard-brief-directive-section')).toContainText(/Finished work/i);
+    await expect(page.getByTestId('dashboard-brief-why-section')).toContainText(/Why it matters/i);
+    await expect(page.getByTestId('dashboard-brief-draft-section')).toContainText('Ready text');
+    await expect(page.getByTestId('dashboard-brief-source-section')).toContainText(/Source trail/i);
     const figmaFrame = await page.getByTestId('dashboard-figma-card-frame').boundingBox();
     expect(figmaFrame?.width).toBeGreaterThan(1080);
     await expect(page.getByText(/How this brief works/i)).toHaveCount(0);
@@ -299,9 +300,9 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     for (const item of NAV_CONTRACT) {
       await page.getByTestId(`dashboard-sidebar-item-${item.panel}`).click();
       await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
-      if (item.panel === 'briefing') {
+      if (item.panel === 'today') {
         await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBeNull();
-        await expect(page.getByTestId('dashboard-panel-briefing')).toBeVisible();
+        await expect(page.getByTestId('dashboard-panel-today')).toBeVisible();
       } else {
         await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBe(item.panel);
         await expect(page.getByTestId(`dashboard-panel-${item.panel}`)).toBeVisible();
@@ -309,38 +310,24 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     }
   });
 
-  test('shell panels render panel-specific compact card content', async ({ page }) => {
+  test('History and Sources render focused inbox panels', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
 
-    await page.getByTestId('dashboard-sidebar-item-settings').click();
-    await expect(page.getByTestId('dashboard-panel-settings')).toBeVisible();
-    await expect(page.getByRole('link', { name: /Open full settings/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /Open connected accounts/i })).toBeVisible();
-
-    await page.getByTestId('dashboard-sidebar-item-integrations').click();
-    await expect(page.getByTestId('dashboard-panel-integrations')).toBeVisible();
-    await expect(page.getByText(/Connected account health/i)).toBeVisible();
+    await page.getByTestId('dashboard-sidebar-item-sources').click();
+    await expect(page.getByTestId('dashboard-panel-sources')).toBeVisible();
+    await expect(page.getByText(/Connected source health/i)).toBeVisible();
+    await expect(page.getByTestId('dashboard-sources-source-status')).toBeVisible();
+    await expect(page.getByTestId('dashboard-sources-connected-count')).toHaveText('1');
     await expect(page.getByRole('link', { name: /Manage connected accounts/i })).toBeVisible();
-
-    await page.getByTestId('dashboard-sidebar-item-signals').click();
-    await expect(page.getByTestId('dashboard-panel-signals')).toBeVisible();
-    await expect(page.getByText(/Source status summary/i)).toBeVisible();
-    await expect(page.getByTestId('dashboard-signals-source-status')).toBeVisible();
-    await expect(page.getByTestId('dashboard-signals-connected-count')).toHaveText('1');
-    await expect(page.getByRole('link', { name: /Open connected accounts/i })).toBeVisible();
     await expect(page.getByRole('link', { name: /Open full settings/i })).toBeVisible();
 
-    await page.getByTestId('dashboard-sidebar-item-audit-log').click();
-    await expect(page.getByTestId('dashboard-panel-audit-log')).toBeVisible();
-    await expect(page.getByText(/Recent directives history/i)).toBeVisible();
+    await page.getByTestId('dashboard-sidebar-item-history').click();
+    await expect(page.getByTestId('dashboard-panel-history')).toBeVisible();
+    await expect(page.getByText(/Recent finished work/i)).toBeVisible();
     await expect(page.getByText(/Confirm launch timeline with Alex/i)).toBeVisible();
-    await expect(page.getByRole('link', { name: /Open briefings history/i })).toBeVisible();
-
-    await page.getByTestId('dashboard-sidebar-item-playbooks').click();
-    await expect(page.getByTestId('dashboard-panel-playbooks')).toBeVisible();
-    await expect(page.getByText(/Playbook library in progress/i)).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open full history/i })).toBeVisible();
   });
 
   test('legacy product-shell routes point primary nav back into the live dashboard shell', async ({ page }) => {
@@ -349,42 +336,41 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await page.goto('/dashboard/signals');
 
     const headerNav = page.locator('header nav');
-    await expect(headerNav.getByRole('link', { name: 'Signals' })).toHaveAttribute(
-      'href',
-      '/dashboard?panel=signals',
-    );
-    await expect(headerNav.getByRole('link', { name: 'Audit Log' })).toHaveAttribute(
-      'href',
-      '/dashboard?panel=audit-log',
-    );
-    await expect(headerNav.getByRole('link', { name: 'Integrations' })).toHaveAttribute(
-      'href',
-      '/dashboard?panel=integrations',
-    );
-    await expect(headerNav.getByRole('link', { name: 'Playbooks' })).toHaveAttribute(
-      'href',
-      '/dashboard?panel=playbooks',
-    );
+    await expect(headerNav.getByRole('link', { name: 'Today' })).toHaveAttribute('href', '/dashboard');
+    await expect(headerNav.getByRole('link', { name: 'History' })).toHaveAttribute('href', '/dashboard?panel=history');
+    await expect(headerNav.getByRole('link', { name: 'Sources' })).toHaveAttribute('href', '/dashboard?panel=sources');
+    await expect(headerNav.getByRole('link', { name: 'Signals' })).toHaveCount(0);
+    await expect(headerNav.getByRole('link', { name: 'Audit Log' })).toHaveCount(0);
+    await expect(headerNav.getByRole('link', { name: 'Integrations' })).toHaveCount(0);
+    await expect(headerNav.getByRole('link', { name: 'Playbooks' })).toHaveCount(0);
   });
 
-  test('deep-link /dashboard?panel=settings opens settings shell panel', async ({ page }) => {
+  test('deep-link /dashboard?panel=settings opens Sources with settings link visible', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard?panel=settings');
 
     await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
-    await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBe('settings');
-    await expect(page.getByTestId('dashboard-panel-settings')).toBeVisible();
+    await expect(page.getByTestId('dashboard-panel-sources')).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open full settings/i })).toBeVisible();
   });
 
-  test('deep-link /dashboard?panel=signals opens signals shell panel', async ({ page }) => {
+  test('deep-link /dashboard?panel=signals opens Sources', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard?panel=signals');
 
     await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
-    await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBe('signals');
-    await expect(page.getByTestId('dashboard-panel-signals')).toBeVisible();
+    await expect(page.getByTestId('dashboard-panel-sources')).toBeVisible();
+  });
+
+  test('deep-link /dashboard?panel=audit-log opens History', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setupDashboardMocks(page);
+    await page.goto('/dashboard?panel=audit-log');
+
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
+    await expect(page.getByTestId('dashboard-panel-history')).toBeVisible();
   });
 
   test('primary action records approve decision without sending email by default', async ({ page }) => {
@@ -468,16 +454,16 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
       );
     }
 
-    await page.getByTestId('dashboard-mobile-menu-item-settings').click();
+    await page.getByTestId('dashboard-mobile-menu-item-sources').click();
     await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
-    await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBe('settings');
-    await expect(page.getByTestId('dashboard-panel-settings')).toBeVisible();
+    await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBe('sources');
+    await expect(page.getByTestId('dashboard-panel-sources')).toBeVisible();
     await expect(page.getByTestId('dashboard-mobile-menu')).toHaveCount(0);
 
     await menuButton.click();
-    await page.getByTestId('dashboard-mobile-menu-item-briefing').click();
+    await page.getByTestId('dashboard-mobile-menu-item-today').click();
     await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBeNull();
-    await expect(page.getByTestId('dashboard-panel-briefing')).toBeVisible();
+    await expect(page.getByTestId('dashboard-panel-today')).toBeVisible();
   });
 
   test('account menu opens and sign out remains wired', async ({ page }) => {
