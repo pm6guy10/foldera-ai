@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-05-07 — Dashboard no-safe slate visual polish
+- MODE: Dashboard presentation polish seam only.
+- Files changed: `components/foldera/DailyUtilitySlateCard.tsx`, `components/dashboard/DashboardBriefWorkPanel.tsx`, `SESSION_HISTORY.md`.
+- What changed: Reworked the `/dashboard` no-finished-artifact slate so the main frame reads as a balanced executive surface: large left-side no-safe-action truth, compact outcome/guardrail/action summary, and right-side source-trail receipt. Cleaned the right "How this brief works" rail with icon framing and a proper arrow icon. No API, auth, billing, generator, Supabase, paid-run, or email behavior changed.
+- Verification: `npm run health` passed at session start (`RESULT: 0 FAILING`, warnings only); `npm run build` passed; focused dashboard Playwright slice passed (`4` tests); dashboard navigation + live artifact pixel-lock specs passed (`14` tests); local production-route screenshot proof captured desktop `1920x1080` and mobile `390x844` with mocked authenticated `/dashboard` data, no console errors, and horizontal overflow `0`.
+- Unresolved issues: Browser/IAB plugin proof could not run because the local Node runtime is `v22.19.0` and the Browser plugin requires `>=22.22.0`; Playwright fallback was used. No paid generation was run and no outbound email was sent. Production deploy proof is pending until this commit is pushed and Vercel serves it.
+
 ## 2026-05-07 — Production E2E landing CTA copy repaired
 - MODE: Production E2E failure seam only.
 - Files changed: `components/foldera/LandingPage.tsx`, `SESSION_HISTORY.md`.
