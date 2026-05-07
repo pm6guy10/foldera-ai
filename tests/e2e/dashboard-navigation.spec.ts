@@ -322,7 +322,7 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByTestId('dashboard-panel-sources')).toBeVisible();
     await expect(page.getByTestId('dashboard-panel-account')).toBeVisible();
     await expect(page.getByTestId('dashboard-panel-history')).toContainText(/Recent work/i);
-    await expect(page.getByText(/Connected source health/i)).toBeVisible();
+    await expect(page.getByText(/Source readiness/i)).toBeVisible();
     await expect(page.getByTestId('dashboard-sources-source-status')).toBeVisible();
     await expect(page.getByTestId('dashboard-sources-connected-count')).toHaveText('1');
     await expect(page.getByText(/Confirm launch timeline with Alex/i)).toBeVisible();

@@ -5883,3 +5883,10 @@ pm run build.
 - What changed: Updated the authenticated dashboard CI assertions to the shipped always-value dashboard contract: empty/no-artifact copy now checks `Foldera checked today`, value blocks, and sanitized no-action language; the non-owner signed-in assertion is scoped to the sidebar account row; the document journey account menu expects the new in-dashboard `Account` action instead of the removed Settings jump.
 - Verification: Reproduced the remote `e2e-authenticated` failure from run `25524655818`; focused failing slice passed (`4/4`); full `npx playwright test tests/e2e/authenticated-routes.spec.ts --reporter=list` passed (`36/36`); `npm run build` passed.
 - Unresolved issues: Remote CI/Vercel proof is pending until this CI-repair commit is pushed. No paid generation was run and no outbound email was sent.
+
+## 2026-05-07 - Dashboard support rail premium polish
+- MODE: Dashboard frontend polish seam.
+- Files changed: `components/dashboard/DashboardWorkspacePanels.tsx`, `tests/e2e/dashboard-navigation.spec.ts`, `SESSION_HISTORY.md`.
+- What changed: Reworked the dashboard support rail into premium product panels: recent work now reads as finished-work receipts, source status is framed as readiness for the next artifact, and account controls are presented as trust controls in the same dashboard instead of feeling like a legacy settings annex.
+- Verification: `npm run health` returned `RESULT: 0 FAILING` with Outlook/Microsoft freshness warnings only; dashboard model Vitest passed (`6` tests); large-file split guard passed; `npm run build` passed; `npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list` passed (`14/14`) after rerunning past a local port collision; focused authenticated dashboard CI slice passed (`4/4`); production-bundle screenshot proof captured `.screenshots/dashboard-seam/polished-desktop.png` and `.screenshots/dashboard-seam/polished-mobile.png`.
+- Unresolved issues: GitHub CI, Vercel deployment, production `/api/health` SHA, and live production `/dashboard` proof are pending until this polish commit is pushed. No paid generation was run and no outbound email was sent.
