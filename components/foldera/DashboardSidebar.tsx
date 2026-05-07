@@ -10,7 +10,7 @@ import {
   Link2,
   LogOut,
   Menu,
-  Settings,
+  UserRound,
   X,
   type LucideIcon,
 } from 'lucide-react';
@@ -20,7 +20,8 @@ import { FolderaLogo } from '@/components/foldera/FolderaLogo';
 export type DashboardPanelKey =
   | 'today'
   | 'history'
-  | 'sources';
+  | 'sources'
+  | 'account';
 
 export type DashboardNavItem = {
   panel: DashboardPanelKey;
@@ -31,8 +32,9 @@ export type DashboardNavItem = {
 
 export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
   { panel: 'today', label: 'Today', href: '/dashboard', icon: Inbox },
-  { panel: 'history', label: 'History', href: '/dashboard?panel=history', icon: History },
+  { panel: 'history', label: 'Recent Work', href: '/dashboard?panel=history', icon: History },
   { panel: 'sources', label: 'Sources', href: '/dashboard?panel=sources', icon: Link2 },
+  { panel: 'account', label: 'Account', href: '/dashboard?panel=account', icon: UserRound },
 ];
 
 type DashboardSidebarProps = {
@@ -266,14 +268,18 @@ export function DashboardSidebar({
               className="foldera-dashboard-account-menu absolute bottom-full left-0 right-0 z-20 mb-2 rounded-[14px] border border-border bg-panel p-2 shadow-lg"
               role="menu"
             >
-              <Link
-                href="/dashboard/settings"
+              <button
+                type="button"
                 role="menuitem"
                 className="flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-left text-sm text-text-secondary hover:bg-white/[0.04] hover:text-text-primary"
+                onClick={() => {
+                  onSelectPanel?.('account');
+                  setAccountOpen(false);
+                }}
               >
-                <Settings className="h-4 w-4" aria-hidden />
-                Settings
-              </Link>
+                <UserRound className="h-4 w-4" aria-hidden />
+                Account
+              </button>
               <button
                 type="button"
                 role="menuitem"
@@ -365,14 +371,18 @@ export function DashboardSidebar({
               className="foldera-dashboard-account-menu absolute bottom-full left-0 right-0 z-20 mb-2 rounded-[14px] border border-border bg-panel p-2 shadow-lg"
               role="menu"
             >
-              <Link
-                href="/dashboard/settings"
+              <button
+                type="button"
                 role="menuitem"
                 className="flex w-full items-center gap-2 rounded-[10px] px-3 py-2 text-left text-sm text-text-secondary hover:bg-white/[0.04] hover:text-text-primary"
+                onClick={() => {
+                  onSelectPanel?.('account');
+                  setAccountOpen(false);
+                }}
               >
-                <Settings className="h-4 w-4" aria-hidden />
-                Settings
-              </Link>
+                <UserRound className="h-4 w-4" aria-hidden />
+                Account
+              </button>
               <button
                 type="button"
                 role="menuitem"

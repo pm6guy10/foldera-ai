@@ -36,10 +36,10 @@ export function ProductShell({
       return activePath === '/dashboard' && (activePanel === null || activePanel === 'briefing');
     }
 
-    if (panel === 'settings') {
+    if (panel === 'account') {
       return (
         activePath === '/dashboard/settings' ||
-        (activePath === '/dashboard' && activePanel === 'settings')
+        (activePath === '/dashboard' && (activePanel === 'account' || activePanel === 'settings'))
       );
     }
 

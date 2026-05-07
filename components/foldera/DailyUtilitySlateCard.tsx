@@ -1,6 +1,7 @@
 import type { DailyUtilitySlateItem } from '@/lib/briefing/daily-utility-slate';
+import type { DashboardDailyValueState } from '@/app/dashboard/dashboard-page-model';
 import Link from 'next/link';
-import { CircleSlash2, ListChecks, ShieldCheck } from 'lucide-react';
+import { CircleSlash2, ListChecks, ShieldCheck, Sparkles } from 'lucide-react';
 
 type DailyUtilitySlateCardPayload = {
   primary_move?: DailyUtilitySlateItem | null;
@@ -34,6 +35,30 @@ const SECTION_LABELS = {
 
 function evidenceKey(item: DailyUtilitySlateItem, entry: string): string {
   return `${item.status}:${item.title}:${entry}`;
+}
+
+function friendlySlateText(value: string, fallback: string): string {
+  if (/\bmissing_[a-z0-9_]+\b|\bweak_[a-z0-9_]+\b|\bstale_[a-z0-9_]+\b|\b[a-z]+_[a-z0-9_]+_[a-z0-9_]+\b/i.test(value)) {
+    return fallback;
+  }
+  return value;
+}
+
+function friendlyStopReason(reason: string): string {
+  const normalized = reason.replace(/[_-]+/g, ' ').toLowerCase();
+  if (/\bstale\b|\bfresher\b|\bcurrent artifact facts\b/.test(normalized)) {
+    return 'Foldera needs fresher source data before it can finish this safely.';
+  }
+  if (/\brecipient\b|\bwho should\b/.test(normalized)) {
+    return 'Foldera needs a grounded recipient before it can finish a safe message.';
+  }
+  if (/\bsource\b|\banchor\b|\btoo thin\b/.test(normalized)) {
+    return 'Foldera needs a current source anchor before turning this into finished work.';
+  }
+  if (/\bconsequence\b|\boutcome\b|\bnext action\b|\brisk\b/.test(normalized)) {
+    return 'Foldera needs one concrete consequence or desired outcome first.';
+  }
+  return friendlySlateText(reason, 'Foldera held back because the evidence was not strong enough yet.');
 }
 
 function SlateItemCard({
@@ -70,7 +95,12 @@ function SlateItemCard({
           {item.evidence.slice(0, 4).map((entry) => (
             <li key={evidenceKey(item, entry)} className="flex gap-2">
               <span className="mt-[0.72em] h-1.5 w-1.5 shrink-0 rounded-full bg-accent/70" aria-hidden />
-              <span>{entry}</span>
+              <span>
+                {friendlySlateText(
+                  entry,
+                  'Foldera checked this receipt and held back before producing finished work.',
+                )}
+              </span>
             </li>
           ))}
         </ul>
@@ -81,7 +111,7 @@ function SlateItemCard({
         </p>
       ) : item.no_action_reason ? (
         <p className="mt-4 text-sm leading-6 text-amber-200">
-          <span className="font-semibold">Why it stopped:</span> {item.no_action_reason}
+          <span className="font-semibold">Why it stopped:</span> {friendlyStopReason(item.no_action_reason)}
         </p>
       ) : null}
     </article>
@@ -91,9 +121,11 @@ function SlateItemCard({
 export function DailyUtilitySlateCard({
   slate,
   missingInputPrompt,
+  dailyValueState,
 }: {
   slate: DailyUtilitySlateCardPayload;
   missingInputPrompt?: MissingInputPrompt | null;
+  dailyValueState: DashboardDailyValueState;
 }) {
   const openLoops = slate.open_loops ?? [];
   const changedSinceYesterday = slate.changed_since_yesterday ?? [];
@@ -137,48 +169,41 @@ export function DailyUtilitySlateCard({
       className="foldera-dashboard-brief-card foldera-brief-shell h-full w-full overflow-y-auto px-5 py-6 sm:px-8 sm:py-8"
       data-testid="dashboard-daily-utility-slate"
     >
-      <div className="mx-auto grid min-h-full w-full max-w-[1060px] gap-7 lg:grid-cols-[minmax(0,0.95fr)_minmax(360px,0.78fr)] lg:items-center">
+      <div className="mx-auto grid min-h-full w-full max-w-[1060px] gap-7 xl:grid-cols-[minmax(0,0.95fr)_minmax(340px,0.78fr)] xl:items-center">
         <section className="min-w-0">
           <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
             <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
             {missingInputPrompt?.heading ?? 'Today'}
           </div>
-          <h2 className="mt-5 max-w-[700px] text-[34px] font-semibold leading-[1.02] tracking-[-0.02em] text-text-primary sm:text-[46px] lg:text-[54px]">
-            {missingInputPrompt?.prompt ?? 'No safe finished work today.'}
+          <h2 className="mt-5 max-w-[700px] text-[30px] font-semibold leading-[1.05] tracking-[-0.02em] text-text-primary sm:text-[42px] lg:text-[48px]">
+            {dailyValueState.heading}
           </h2>
-          <p className="mt-5 max-w-[620px] text-[16px] leading-7 text-text-secondary sm:text-[17px] sm:leading-8">
-            {missingInputPrompt?.detail ??
-              'Foldera did not find a piece of finished work it can stand behind today.'}
+          <p className="mt-4 inline-flex rounded-full border border-amber-300/20 bg-amber-300/8 px-3 py-1.5 text-sm font-semibold text-amber-200">
+            {dailyValueState.statusLabel}
           </p>
-          {missingInputPrompt?.actionHref && missingInputPrompt.actionLabel ? (
+          <p className="mt-5 max-w-[620px] text-[16px] leading-7 text-text-secondary sm:text-[17px] sm:leading-8">
+            {dailyValueState.summary}
+          </p>
+          {dailyValueState.actionHref && dailyValueState.actionLabel ? (
             <div className="mt-6">
-              <Link href={missingInputPrompt.actionHref} className="foldera-button-secondary">
-                {missingInputPrompt.actionLabel}
+              <Link href={dailyValueState.actionHref} className="foldera-button-secondary">
+                {dailyValueState.actionLabel}
               </Link>
             </div>
           ) : null}
 
-          <div className="mt-8 grid gap-3 text-sm text-text-secondary sm:grid-cols-3 lg:max-w-[660px]">
-            <div className="border-t border-white/10 pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
-                Outcome
-              </p>
-              <p className="mt-1.5 text-text-primary">No artifact</p>
-            </div>
-            <div className="border-t border-white/10 pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
-                State
-              </p>
-              <p className="mt-1.5 text-text-primary">Waiting for stronger source truth</p>
-            </div>
-            <div className="border-t border-white/10 pt-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
-                Next
-              </p>
-              <p className="mt-1.5 text-text-primary">
-                {missingInputPrompt ? 'Complete the missing input' : 'Nothing to send'}
-              </p>
-            </div>
+          <div className="mt-8 grid gap-3 text-sm text-text-secondary lg:max-w-[700px]">
+            {dailyValueState.valueBlocks.map((block) => (
+              <article key={block.label} className="rounded-[14px] border border-white/10 bg-white/[0.025] p-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-accent" aria-hidden />
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+                    {block.label}
+                  </p>
+                </div>
+                <p className="mt-2 leading-6 text-text-primary">{block.body}</p>
+              </article>
+            ))}
           </div>
         </section>
 

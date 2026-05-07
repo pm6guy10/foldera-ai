@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildDailyValueState,
   buildMissingInputPrompt,
   normalizeDashboardPanel,
   type DailyUtilitySlate,
+  type DashboardHistoryItem,
+  type IntegrationStatusPayload,
 } from '@/app/dashboard/dashboard-page-model';
 
 function slateForReason(reason: string): DailyUtilitySlate {
@@ -20,7 +23,7 @@ function slateForReason(reason: string): DailyUtilitySlate {
 }
 
 describe('dashboard finished-work inbox model', () => {
-  it('normalizes legacy panels into Today, History, and Sources', () => {
+  it('normalizes legacy panels into the unified dashboard sections', () => {
     expect(normalizeDashboardPanel(null)).toBe('today');
     expect(normalizeDashboardPanel('')).toBe('today');
     expect(normalizeDashboardPanel('briefing')).toBe('today');
@@ -30,7 +33,8 @@ describe('dashboard finished-work inbox model', () => {
     expect(normalizeDashboardPanel('history')).toBe('history');
     expect(normalizeDashboardPanel('signals')).toBe('sources');
     expect(normalizeDashboardPanel('integrations')).toBe('sources');
-    expect(normalizeDashboardPanel('settings')).toBe('sources');
+    expect(normalizeDashboardPanel('settings')).toBe('account');
+    expect(normalizeDashboardPanel('account')).toBe('account');
     expect(normalizeDashboardPanel('unknown')).toBe('today');
   });
 
@@ -54,5 +58,45 @@ describe('dashboard finished-work inbox model', () => {
       slateForReason('missing_unknown_candidate_gate: candidate failed internal scoring gate'),
     );
     expect(prompt).toBeNull();
+  });
+
+  it('builds a daily value state even when no finished artifact exists', () => {
+    const integrations: IntegrationStatusPayload = {
+      integrations: [
+        {
+          provider: 'google',
+          is_active: true,
+          sync_email: 'brandon@gmail.com',
+          last_synced_at: '2026-05-07T14:30:00.000Z',
+        },
+      ],
+      mail_ingest_looks_stale: true,
+    };
+    const history: DashboardHistoryItem[] = [
+      {
+        id: 'hist-1',
+        status: 'skipped',
+        action_type: 'do_nothing',
+        directive_preview: 'Foldera held back yesterday because the facts were stale.',
+      },
+    ];
+
+    const state = buildDailyValueState(
+      slateForReason('stale_status_without_current_artifact_facts'),
+      null,
+      integrations,
+      history,
+    );
+
+    expect(state.heading).toBe('Foldera checked today');
+    expect(state.statusLabel).toBe('Needs fresher source');
+    expect(state.valueBlocks.map((block) => block.label)).toEqual([
+      'What changed',
+      'What Foldera protected',
+      'Smallest unlock',
+    ]);
+    expect(state.valueBlocks.map((block) => `${block.label} ${block.body}`).join(' ')).not.toMatch(
+      /missing_|weak_|stale_|candidate|gate|blocker|[a-z]+_[a-z0-9_]+_[a-z0-9_]+/i,
+    );
   });
 });

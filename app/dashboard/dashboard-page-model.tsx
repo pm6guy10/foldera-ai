@@ -97,6 +97,20 @@ export type DashboardHistoryPayload = {
   items?: DashboardHistoryItem[];
 };
 
+export type DashboardDailyValueBlock = {
+  label: 'What changed' | 'What Foldera protected' | 'Smallest unlock';
+  body: string;
+};
+
+export type DashboardDailyValueState = {
+  heading: string;
+  statusLabel: string;
+  summary: string;
+  valueBlocks: DashboardDailyValueBlock[];
+  actionHref?: string;
+  actionLabel?: string;
+};
+
 export type LoadLatestResult = {
   action: DashboardAction | null;
   dailyUtilitySlate: DailyUtilitySlate | null;
@@ -125,8 +139,9 @@ export const DEFAULT_STAGE_METRICS: StageMetrics = {
 
 export const DASHBOARD_PANEL_LABELS: Record<DashboardPanelKey, string> = {
   today: 'Today',
-  history: 'History',
+  history: 'Recent Work',
   sources: 'Sources',
+  account: 'Account',
 };
 
 const INTERNAL_FAILURE_PATTERNS = [
@@ -152,9 +167,13 @@ export function normalizeDashboardPanel(value: string | null): DashboardPanelKey
       return 'history';
     case 'signals':
     case 'integrations':
+      return 'sources';
     case 'settings':
+      return 'account';
     case 'sources':
       return 'sources';
+    case 'account':
+      return 'account';
     default:
       return 'today';
   }
@@ -172,6 +191,8 @@ export type DashboardMissingInputPrompt = {
 const INTERNAL_MISSING_INPUT_PATTERNS = [
   /\bmissing_[a-z0-9_]+\b/i,
   /\bweak_[a-z0-9_]+\b/i,
+  /\bstale_[a-z0-9_]+\b/i,
+  /\b[a-z]+_[a-z0-9_]+_[a-z0-9_]+\b/i,
   /\bcandidate\b/i,
   /\bgate\b/i,
   /\bblocker\b/i,
@@ -262,6 +283,98 @@ export function buildMissingInputPrompt(
   }
 
   return null;
+}
+
+function sanitizeDailyValueText(value: string | null | undefined, fallback: string): string {
+  const trimmed = asTrimmedString(value);
+  if (!trimmed) return fallback;
+  if (INTERNAL_MISSING_INPUT_PATTERNS.some((pattern) => pattern.test(trimmed))) {
+    return fallback;
+  }
+  return trimmed.replace(/\bFoldera stopped\b/gi, 'Foldera held back');
+}
+
+function getSlateItems(slate: DailyUtilitySlate | null | undefined): DailyUtilitySlateItem[] {
+  if (!slate) return [];
+  return [
+    slate.primary_move,
+    ...(slate.open_loops ?? []),
+    ...(slate.changed_since_yesterday ?? []),
+    slate.blocked_but_real,
+    slate.watch_item,
+  ].filter(Boolean) as DailyUtilitySlateItem[];
+}
+
+function countActiveIntegrations(integrationStatus: IntegrationStatusPayload | null | undefined): number {
+  return Array.isArray(integrationStatus?.integrations)
+    ? integrationStatus.integrations.filter((integration) => integration?.is_active === true).length
+    : 0;
+}
+
+export function buildDailyValueState(
+  slate: DailyUtilitySlate | null | undefined,
+  latestIssue: DashboardLoadIssue | null,
+  integrationStatus: IntegrationStatusPayload | null | undefined,
+  historyItems: DashboardHistoryItem[] = [],
+): DashboardDailyValueState {
+  const missingInputPrompt = buildMissingInputPrompt(slate, {
+    hasIntegrationIssue: latestIssue === 'integrations',
+    mailIngestLooksStale: integrationStatus?.mail_ingest_looks_stale === true,
+  });
+  const slateItems = getSlateItems(slate);
+  const firstItem = slateItems[0] ?? null;
+  const changedItem =
+    slate?.changed_since_yesterday?.find((item) => asTrimmedString(item.why_it_matters)) ??
+    firstItem;
+  const protectedItem = slate?.blocked_but_real ?? slate?.watch_item ?? firstItem;
+  const activeSources = countActiveIntegrations(integrationStatus);
+  const recentWorkCount = historyItems.length;
+
+  const statusLabel =
+    missingInputPrompt?.kind === 'freshness'
+      ? 'Needs fresher source'
+      : missingInputPrompt?.kind === 'recipient'
+        ? 'Needs clearer recipient'
+        : missingInputPrompt?.kind === 'source'
+          ? 'Needs current facts'
+          : missingInputPrompt?.kind === 'outcome'
+            ? 'Needs clearer outcome'
+            : activeSources > 0
+              ? 'Sources checked'
+              : 'Connect a source';
+
+  const whatChanged = sanitizeDailyValueText(
+    changedItem?.why_it_matters ?? changedItem?.title,
+    recentWorkCount > 0
+      ? `Foldera reviewed today against ${recentWorkCount} recent decision${recentWorkCount === 1 ? '' : 's'}.`
+      : activeSources > 0
+        ? `Foldera checked ${activeSources} connected source${activeSources === 1 ? '' : 's'} for a safe finished move.`
+        : 'Foldera needs a connected inbox or calendar before it can evaluate finished work.',
+  );
+  const protectedBody = sanitizeDailyValueText(
+    protectedItem?.no_action_reason ?? protectedItem?.why_it_matters,
+    'Foldera held back rather than inventing a draft from weak or stale evidence.',
+  );
+  const smallestUnlock =
+    missingInputPrompt?.detail ??
+    (activeSources > 0
+      ? 'Keep sources fresh; Foldera will finish the next safe artifact when the evidence supports it.'
+      : 'Connect Gmail or Microsoft so Foldera has current facts to work from.');
+
+  return {
+    heading: 'Foldera checked today',
+    statusLabel,
+    summary:
+      missingInputPrompt?.prompt ??
+      'No finished artifact cleared the safety bar, but the dashboard still shows the useful read.',
+    valueBlocks: [
+      { label: 'What changed', body: whatChanged },
+      { label: 'What Foldera protected', body: protectedBody },
+      { label: 'Smallest unlock', body: smallestUnlock },
+    ],
+    actionHref: missingInputPrompt?.actionHref ?? (activeSources > 0 ? undefined : '/api/google/connect'),
+    actionLabel: missingInputPrompt?.actionLabel ?? (activeSources > 0 ? undefined : 'Connect Google'),
+  };
 }
 
 export const DOCUMENT_MARKDOWN_COMPONENTS = {

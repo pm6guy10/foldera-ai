@@ -35,7 +35,7 @@ type DashboardMobileLayoutProps = {
   hasLatestIssue: boolean;
   briefingUnavailableCard: ReactNode;
   emptyStateCard: ReactNode;
-  secondaryPanelNode: ReactNode;
+  supportPanelNode: ReactNode;
   showOutcomeActions: boolean;
   outcomeSubmitting: OutcomeValue | null;
   submitOutcome: (outcome: OutcomeValue) => void;
@@ -66,7 +66,7 @@ export function DashboardMobileLayout({
   hasLatestIssue,
   briefingUnavailableCard,
   emptyStateCard,
-  secondaryPanelNode,
+  supportPanelNode,
   showOutcomeActions,
   outcomeSubmitting,
   submitOutcome,
@@ -118,8 +118,9 @@ export function DashboardMobileLayout({
             {degradedStateNode ? <div className="mx-auto mb-4 w-full max-w-[860px]">{degradedStateNode}</div> : null}
             {statusNoticeNode ? <div className="mx-auto mb-4 w-full max-w-[860px]">{statusNoticeNode}</div> : null}
 
-            <div className="mx-auto w-full max-w-[940px] pb-12">
-              {isTodayPanel ? (
+            <div className="mx-auto grid w-full max-w-[980px] gap-5 pb-12">
+              <div>
+                {(
                 hasAction ? (
                   <div data-testid="dashboard-panel-today">
                     <DailyBriefCard
@@ -147,9 +148,9 @@ export function DashboardMobileLayout({
                 ) : (
                   <div className="min-h-[420px]">{emptyStateCard}</div>
                 )
-              ) : (
-                <div className="min-h-[420px]">{secondaryPanelNode}</div>
-              )}
+                )}
+              </div>
+              {supportPanelNode}
 
               {isTodayPanel && showOutcomeActions ? (
                 <div className="mt-4 flex flex-wrap justify-center gap-3">

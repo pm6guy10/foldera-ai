@@ -80,8 +80,9 @@ const HISTORY_RESPONSE = {
 
 const NAV_CONTRACT = [
   { panel: 'today', label: 'Today' },
-  { panel: 'history', label: 'History' },
+  { panel: 'history', label: 'Recent Work' },
   { panel: 'sources', label: 'Sources' },
+  { panel: 'account', label: 'Account' },
 ] as const;
 
 function json(data: unknown) {
@@ -136,6 +137,7 @@ async function setupDashboardMocks(
   page: Page,
   options: {
     mockClipboard?: boolean;
+    latestResponse?: unknown;
   } = {},
 ) {
   await seedAuthenticatedSession(page);
@@ -229,7 +231,7 @@ async function setupDashboardMocks(
     }),
   );
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
-  await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(DIRECTIVE_RESPONSE));
+  await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(options.latestResponse ?? DIRECTIVE_RESPONSE));
   await page.route(matchApiPath('/api/conviction/history'), fulfillJson(HISTORY_RESPONSE));
   await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
     if (route.request().method() !== 'POST') return route.continue();
@@ -310,24 +312,23 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     }
   });
 
-  test('History and Sources render focused inbox panels', async ({ page }) => {
+  test('default dashboard renders Today, Recent Work, Sources, and Account as one workspace', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
 
-    await page.getByTestId('dashboard-sidebar-item-sources').click();
+    await expect(page.getByTestId('dashboard-panel-today')).toBeVisible();
+    await expect(page.getByTestId('dashboard-panel-history')).toBeVisible();
     await expect(page.getByTestId('dashboard-panel-sources')).toBeVisible();
+    await expect(page.getByTestId('dashboard-panel-account')).toBeVisible();
+    await expect(page.getByTestId('dashboard-panel-history')).toContainText(/Recent work/i);
     await expect(page.getByText(/Connected source health/i)).toBeVisible();
     await expect(page.getByTestId('dashboard-sources-source-status')).toBeVisible();
     await expect(page.getByTestId('dashboard-sources-connected-count')).toHaveText('1');
-    await expect(page.getByRole('link', { name: /Manage connected accounts/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /Open full settings/i })).toBeVisible();
-
-    await page.getByTestId('dashboard-sidebar-item-history').click();
-    await expect(page.getByTestId('dashboard-panel-history')).toBeVisible();
-    await expect(page.getByText(/Recent finished work/i)).toBeVisible();
     await expect(page.getByText(/Confirm launch timeline with Alex/i)).toBeVisible();
-    await expect(page.getByRole('link', { name: /Open full history/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open full history/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Open full settings/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Manage connected accounts/i })).toHaveCount(0);
   });
 
   test('legacy product-shell routes point primary nav back into the live dashboard shell', async ({ page }) => {
@@ -337,22 +338,24 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
 
     const headerNav = page.locator('header nav');
     await expect(headerNav.getByRole('link', { name: 'Today' })).toHaveAttribute('href', '/dashboard');
-    await expect(headerNav.getByRole('link', { name: 'History' })).toHaveAttribute('href', '/dashboard?panel=history');
+    await expect(headerNav.getByRole('link', { name: 'Recent Work' })).toHaveAttribute('href', '/dashboard?panel=history');
     await expect(headerNav.getByRole('link', { name: 'Sources' })).toHaveAttribute('href', '/dashboard?panel=sources');
+    await expect(headerNav.getByRole('link', { name: 'Account' })).toHaveAttribute('href', '/dashboard?panel=account');
     await expect(headerNav.getByRole('link', { name: 'Signals' })).toHaveCount(0);
     await expect(headerNav.getByRole('link', { name: 'Audit Log' })).toHaveCount(0);
     await expect(headerNav.getByRole('link', { name: 'Integrations' })).toHaveCount(0);
     await expect(headerNav.getByRole('link', { name: 'Playbooks' })).toHaveCount(0);
   });
 
-  test('deep-link /dashboard?panel=settings opens Sources with settings link visible', async ({ page }) => {
+  test('deep-link /dashboard?panel=settings opens the unified dashboard with account controls visible', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard?panel=settings');
 
     await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
     await expect(page.getByTestId('dashboard-panel-sources')).toBeVisible();
-    await expect(page.getByRole('link', { name: /Open full settings/i })).toBeVisible();
+    await expect(page.getByTestId('dashboard-panel-account')).toBeVisible();
+    await expect(page.getByTestId('dashboard-panel-account')).toContainText(/Account/i);
   });
 
   test('deep-link /dashboard?panel=signals opens Sources', async ({ page }) => {
@@ -464,6 +467,34 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await page.getByTestId('dashboard-mobile-menu-item-today').click();
     await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBeNull();
     await expect(page.getByTestId('dashboard-panel-today')).toBeVisible();
+  });
+
+  test('no-artifact dashboard still shows daily value instead of a dead empty state', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupDashboardMocks(page, {
+      latestResponse: {
+        daily_utility_slate: {
+          finished_artifact_verdict: 'no_finished_artifact',
+          watch_item: {
+            title: 'No safe finished action today',
+            status: 'watch_item',
+            evidence: ['Latest run stopped because source data is stale.'],
+            why_it_matters: 'Foldera checked the current facts before turning this into finished work.',
+            no_action_reason: 'stale_status_without_current_artifact_facts',
+            source_refs: ['persisted:no_send_receipt'],
+          },
+        },
+      },
+    });
+    await page.goto('/dashboard');
+
+    await expect(page.getByText(/Foldera checked today/i)).toBeVisible();
+    await expect(page.getByText(/What changed/i)).toBeVisible();
+    await expect(page.getByText(/What Foldera protected/i)).toBeVisible();
+    await expect(page.getByText(/Smallest unlock/i)).toBeVisible();
+    await expect(page.getByText(/No safe finished work today/i)).toHaveCount(0);
+    await expect(page.getByText(/No safe artifact/i)).toHaveCount(0);
+    await expect(page.getByText(/stale_status_without_current_artifact_facts/i)).toHaveCount(0);
   });
 
   test('account menu opens and sign out remains wired', async ({ page }) => {

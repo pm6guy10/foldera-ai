@@ -21,7 +21,7 @@ import {
   type DashboardPanelKey,
 } from '@/components/foldera/DashboardSidebar';
 import { EmptyStateCard } from '@/components/foldera/EmptyStateCard';
-import { DashboardSecondaryPanel } from '@/components/dashboard/DashboardSecondaryPanel';
+import { DashboardWorkspacePanels } from '@/components/dashboard/DashboardWorkspacePanels';
 import {
   clearPendingCheckoutPlan,
   resumePendingCheckout,
@@ -34,6 +34,7 @@ import {
   artifactClipboardText,
   asTrimmedString,
   buildMissingInputPrompt,
+  buildDailyValueState,
   buildDecisionSuccessNotice,
   computeStageMetrics,
   getArtifactBody,
@@ -703,9 +704,27 @@ export default function DashboardPage() {
     hasIntegrationIssue,
     mailIngestLooksStale: integrationStatus?.mail_ingest_looks_stale === true,
   });
+  const dailyValueState = buildDailyValueState(
+    dailyUtilitySlate,
+    hasLatestIssue
+      ? 'latest'
+      : hasIntegrationIssue
+        ? 'integrations'
+        : hasGraphIssue
+          ? 'graph'
+          : hasHistoryIssue
+            ? 'history'
+            : null,
+    integrationStatus,
+    historyItems,
+  );
 
   const emptyStateCard = dailyUtilitySlate ? (
-    <DailyUtilitySlateCard slate={dailyUtilitySlate} missingInputPrompt={missingInputPrompt} />
+    <DailyUtilitySlateCard
+      slate={dailyUtilitySlate}
+      missingInputPrompt={missingInputPrompt}
+      dailyValueState={dailyValueState}
+    />
   ) : (
     <EmptyStateCard />
   );
@@ -713,9 +732,8 @@ export default function DashboardPage() {
   const degradedStateNode = <DashboardDegradedState issueLabels={degradedIssueLabels} />;
   const briefingUnavailableCard = <DashboardBriefingUnavailableCard />;
 
-  const secondaryPanelNode = !isTodayPanel ? (
-    <DashboardSecondaryPanel
-      activePanel={activePanel as Exclude<DashboardPanelKey, 'today'>}
+  const supportPanelNode = (
+    <DashboardWorkspacePanels
       connectedSourcesValue={connectedSourcesValue}
       hasIntegrationIssue={hasIntegrationIssue}
       connectedSourceCount={connectedSourceCount}
@@ -726,8 +744,9 @@ export default function DashboardPage() {
       historyLoaded={historyLoaded}
       hasHistoryIssue={hasHistoryIssue}
       recentHistory={recentHistory}
+      userName={sidebarUserName}
     />
-  ) : null;
+  );
 
   const briefingCardNode = action ? (
     <div data-testid="dashboard-panel-today" className="h-full w-full">
@@ -758,9 +777,17 @@ export default function DashboardPage() {
     emptyStateCard
   );
 
-  const cardNode = isTodayPanel ? briefingCardNode : secondaryPanelNode;
+  const workspaceNode = (
+    <div
+      data-testid="dashboard-unified-workspace"
+      className="grid h-full w-full gap-5 xl:grid-cols-[minmax(0,1fr)_440px]"
+    >
+      <div className="min-h-0 min-w-0">{briefingCardNode}</div>
+      <aside className="min-h-0 overflow-y-auto pr-1">{supportPanelNode}</aside>
+    </div>
+  );
 
-  const statusNoticeNode = isTodayPanel && statusNotice ? (
+  const statusNoticeNode = statusNotice ? (
     <DashboardStatusNoticeCard notice={statusNotice} />
   ) : null;
   const hiddenArtifactNode = <HiddenDashboardArtifact title={artifactTitle} body={artifactBody} />;
@@ -812,7 +839,7 @@ export default function DashboardPage() {
           </h1>
 
           <div className="absolute" data-testid="dashboard-figma-card-frame" style={{ left: 388, top: 218, width: 1580, height: 884 }}>
-            {cardNode}
+            {workspaceNode}
           </div>
 
           {statusNoticeNode ? (
@@ -879,7 +906,7 @@ export default function DashboardPage() {
       hasLatestIssue={hasLatestIssue}
       briefingUnavailableCard={briefingUnavailableCard}
       emptyStateCard={emptyStateCard}
-      secondaryPanelNode={secondaryPanelNode}
+      supportPanelNode={supportPanelNode}
       showOutcomeActions={showOutcomeActions}
       outcomeSubmitting={outcomeSubmitting}
       submitOutcome={submitOutcome}
