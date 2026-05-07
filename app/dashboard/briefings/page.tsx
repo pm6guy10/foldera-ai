@@ -101,7 +101,7 @@ export default function BriefingsHistoryPage() {
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">No briefings yet</p>
           <h2 className="mt-4 text-2xl font-black tracking-tight text-text-primary">You&apos;re clear for now.</h2>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary">
-            Foldera will add completed brief artifacts here after each morning cycle. Open Today for the active directive, or review connected sources in settings.
+            Foldera will add completed work here after each cycle. Open Today for the active read, or review connected sources in the dashboard.
           </p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <a
@@ -111,7 +111,7 @@ export default function BriefingsHistoryPage() {
               Open today
             </a>
             <a
-              href="/dashboard/settings#connected-accounts"
+              href="/dashboard?panel=sources"
               className="inline-flex min-h-[44px] items-center justify-center foldera-button-radius border border-border px-4 text-xs font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
             >
               Review sources

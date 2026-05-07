@@ -1251,7 +1251,7 @@ describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
     await expect(page.getByText(/Foldera is reading your connected sources and looking for the one thing silently blocking your real goal/i)).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/No extra setup required/i)).toBeVisible();
     await expect(page.getByText(/Latest source signal/i)).toBeVisible();
-    await expect(page.getByText(/Open legacy signals view/i)).toBeVisible();
+    await expect(page.getByText(/Open Sources/i)).toBeVisible();
     await expect(page.getByText(/signed in as/i)).toBeVisible();
   });
 
@@ -1491,13 +1491,13 @@ describeAuthMocked('Briefings /dashboard/briefings — authenticated', () => {
 });
 
 describeAuthMocked('Signals /dashboard/signals — authenticated', () => {
-  test('shows the legacy-source notice and settings handoff — desktop', async ({ page }) => {
+  test('shows the legacy-source notice and dashboard handoff — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupSignalsPageMocks(page);
     await page.goto('/dashboard/signals');
-    await expect(page.getByRole('heading', { name: /source status moved to settings/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: /source status lives in sources/i })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/route stays available for older links/i)).toBeVisible();
-    await expect(page.getByText(/Open connected accounts/i)).toBeVisible();
+    await expect(page.getByRole('link', { name: /Open sources/i })).toHaveAttribute('href', '/dashboard?panel=sources');
   });
 });
 

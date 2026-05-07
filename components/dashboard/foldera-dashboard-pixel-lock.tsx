@@ -188,14 +188,14 @@ export function FolderaDashboardPixelLock({
         <HotspotButton label="Drop document" rect={{ left: 80.3, top: 66.0, width: 14.3, height: 17.5 }} />
         <HotspotButton label="Upgrade" rect={{ left: 1.4, top: 56.2, width: 13.1, height: 17.0 }} onClick={onUpgrade} />
 
-        <HotspotLink label="Open Executive Briefing" href="/dashboard" rect={{ left: 1.2, top: 11.8, width: 13.6, height: 6.0 }} />
-        <HotspotLink label="Open Playbooks" href="/dashboard/briefings" rect={{ left: 1.3, top: 18.5, width: 13.4, height: 5.2 }} />
-        <HotspotLink label="Open Signals" href="/dashboard/signals" rect={{ left: 1.3, top: 24.8, width: 13.4, height: 5.2 }} />
-        <HotspotLink label="Open Audit Log" href="/dashboard/briefings" rect={{ left: 1.3, top: 31.0, width: 13.4, height: 5.2 }} />
-        <HotspotLink label="Open Integrations" href="/dashboard/settings" rect={{ left: 1.3, top: 37.2, width: 13.4, height: 5.2 }} />
-        <HotspotLink label="Open Settings" href="/dashboard/settings" rect={{ left: 1.3, top: 43.4, width: 13.4, height: 5.2 }} />
+        <HotspotLink label="Open Today" href="/dashboard" rect={{ left: 1.2, top: 11.8, width: 13.6, height: 6.0 }} />
+        <HotspotLink label="Open Recent Work" href="/dashboard?panel=history" rect={{ left: 1.3, top: 18.5, width: 13.4, height: 5.2 }} />
+        <HotspotLink label="Open Sources" href="/dashboard?panel=sources" rect={{ left: 1.3, top: 24.8, width: 13.4, height: 5.2 }} />
+        <HotspotLink label="Open Recent Work" href="/dashboard?panel=history" rect={{ left: 1.3, top: 31.0, width: 13.4, height: 5.2 }} />
+        <HotspotLink label="Open Sources" href="/dashboard?panel=sources" rect={{ left: 1.3, top: 37.2, width: 13.4, height: 5.2 }} />
+        <HotspotLink label="Open Account" href="/dashboard?panel=account" rect={{ left: 1.3, top: 43.4, width: 13.4, height: 5.2 }} />
 
-        <HotspotLink label="Open profile settings" href="/dashboard/settings" rect={{ left: 1.2, top: 84.0, width: 14.0, height: 11.2 }} />
+        <HotspotLink label="Open Account" href="/dashboard?panel=account" rect={{ left: 1.2, top: 84.0, width: 14.0, height: 11.2 }} />
       </div>
     </div>
   );

@@ -58,19 +58,19 @@ export default function SignalsPage() {
 
   return (
     <ProductShell
-      title="Signals"
-      subtitle="Source status now lives in Settings. This route stays available for older links."
+      title="Sources"
+      subtitle="Source readiness now lives in the unified dashboard. This route stays available for older links."
     >
       <section className="rounded-card border border-border bg-panel p-6">
-        <h2 className="text-2xl font-bold tracking-tight text-text-primary">Source status moved to Settings</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-text-primary">Source status lives in Sources</h2>
         <p className="mt-3 text-sm leading-relaxed text-text-secondary">
-          Connected account health and latest source activity now live under Settings so this information sits with account controls.
+          Connected account health and latest source activity now sit beside Today and Recent Work, so the dashboard stays in one place.
         </p>
         <Link
-          href="/dashboard/settings#connected-accounts"
+          href="/dashboard?panel=sources"
           className="mt-5 inline-flex min-h-[44px] items-center foldera-button-radius bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover"
         >
-          Open connected accounts
+          Open sources
         </Link>
       </section>
 

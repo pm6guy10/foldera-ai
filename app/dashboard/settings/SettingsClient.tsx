@@ -378,10 +378,10 @@ export default function SettingsClient() {
                 <p className="text-xs leading-relaxed text-text-secondary">{latestSignalLabel}</p>
               </div>
               <Link
-                href="/dashboard/signals"
+                href="/dashboard?panel=sources"
                 className="inline-flex min-h-[40px] items-center foldera-button-radius border border-border px-3 text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary transition-colors hover:text-text-primary"
               >
-                Open legacy signals view
+                Open Sources
               </Link>
             </div>
 
@@ -874,6 +874,5 @@ function MicrosoftIcon() {
     </div>
   );
 }
-
 
 

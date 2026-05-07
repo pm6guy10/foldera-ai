@@ -6,26 +6,26 @@ import { ProductShell } from '@/components/dashboard/ProductShell';
 export default function IntegrationsPage() {
   return (
     <ProductShell
-      title="Integrations"
-      subtitle="Manage connected accounts from a dedicated dashboard route."
+      title="Sources"
+      subtitle="Legacy integrations links now open the dashboard source controls."
     >
       <section className="rounded-card border border-border bg-panel p-6">
-        <h2 className="text-2xl font-bold tracking-tight text-text-primary">Connected accounts live in Settings</h2>
+        <h2 className="text-2xl font-bold tracking-tight text-text-primary">Source controls live in the dashboard</h2>
         <p className="mt-3 text-sm leading-relaxed text-text-secondary">
-          Integrations is now a first-class dashboard section. The current account controls are in Settings and remain the source of truth.
+          Foldera now keeps connected account health, source freshness, and account controls inside one dashboard surface.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
-            href="/dashboard/settings#connected-accounts"
+            href="/dashboard?panel=sources"
             className="inline-flex min-h-[44px] items-center foldera-button-radius bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover"
           >
-            Open connected accounts
+            Open sources
           </Link>
           <Link
-            href="/dashboard/settings"
+            href="/dashboard?panel=account"
             className="inline-flex min-h-[44px] items-center foldera-button-radius border border-border px-4 text-xs font-black uppercase tracking-[0.14em] text-text-secondary transition-colors hover:text-text-primary"
           >
-            Open settings
+            Open account
           </Link>
         </div>
       </section>
