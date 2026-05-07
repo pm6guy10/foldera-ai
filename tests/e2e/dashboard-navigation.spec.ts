@@ -431,6 +431,8 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
 
+    await expect(page.getByTestId('dashboard-mobile-menu-button')).toBeVisible();
+
     const layout = await page.evaluate(() => {
       const html = document.documentElement;
       const body = document.body;
@@ -443,6 +445,39 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
 
     const maxScrollWidth = Math.max(layout.htmlScrollWidth, layout.bodyScrollWidth);
     expect(maxScrollWidth).toBeLessThanOrEqual(layout.htmlClientWidth + 1);
+  });
+
+  test('mobile menu exposes dashboard sections and swaps panels in-shell', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupDashboardMocks(page);
+    await page.goto('/dashboard');
+
+    const menuButton = page.getByTestId('dashboard-mobile-menu-button');
+    await expect(menuButton).toBeVisible();
+    await expect(menuButton).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByTestId('dashboard-mobile-menu')).toHaveCount(0);
+
+    await menuButton.click();
+    await expect(menuButton).toHaveAttribute('aria-expanded', 'true');
+    const menu = page.getByTestId('dashboard-mobile-menu');
+    await expect(menu).toBeVisible();
+
+    for (const item of NAV_CONTRACT) {
+      await expect(page.getByTestId(`dashboard-mobile-menu-item-${item.panel}`)).toContainText(
+        item.label,
+      );
+    }
+
+    await page.getByTestId('dashboard-mobile-menu-item-settings').click();
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
+    await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBe('settings');
+    await expect(page.getByTestId('dashboard-panel-settings')).toBeVisible();
+    await expect(page.getByTestId('dashboard-mobile-menu')).toHaveCount(0);
+
+    await menuButton.click();
+    await page.getByTestId('dashboard-mobile-menu-item-briefing').click();
+    await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBeNull();
+    await expect(page.getByTestId('dashboard-panel-briefing')).toBeVisible();
   });
 
   test('account menu opens and sign out remains wired', async ({ page }) => {

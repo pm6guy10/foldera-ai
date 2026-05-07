@@ -18,11 +18,11 @@ import {
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
 import { DailyUtilitySlateCard } from '@/components/foldera/DailyUtilitySlateCard';
 import {
+  DashboardMobileNav,
   DashboardSidebar,
   type DashboardPanelKey,
 } from '@/components/foldera/DashboardSidebar';
 import { EmptyStateCard } from '@/components/foldera/EmptyStateCard';
-import { FolderaLogo } from '@/components/foldera/FolderaLogo';
 import { DashboardSecondaryPanel } from '@/components/dashboard/DashboardSecondaryPanel';
 import {
   clearPendingCheckoutPlan,
@@ -902,8 +902,13 @@ export default function DashboardPage() {
           />
 
           <div className="min-w-0">
-            <div className="foldera-panel mb-5 flex items-center justify-between gap-3 px-4 py-3 lg:hidden">
-              <FolderaLogo href="/dashboard" markSize="sm" />
+            <div className="mb-5 lg:hidden">
+              <DashboardMobileNav
+                activeLabel={activeSidebarLabel}
+                userName={sidebarUserName}
+                activePanel={activePanel}
+                onSelectPanel={selectPanel}
+              />
             </div>
 
             <div className="hidden items-center justify-between gap-4 lg:flex">

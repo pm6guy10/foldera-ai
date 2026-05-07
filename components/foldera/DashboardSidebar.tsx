@@ -8,9 +8,11 @@ import {
   Link2,
   LogOut,
   Mail,
+  Menu,
   Radar,
   ScrollText,
   Settings,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { SIGN_OUT_CALLBACK_URL } from '@/lib/auth/constants';
@@ -49,6 +51,137 @@ type DashboardSidebarProps = {
   activePanel?: DashboardPanelKey;
   onSelectPanel?: (panel: DashboardPanelKey) => void;
 };
+
+type DashboardMobileNavProps = {
+  activeLabel: string;
+  userName: string;
+  activePanel: DashboardPanelKey;
+  onSelectPanel: (panel: DashboardPanelKey) => void;
+};
+
+export function DashboardMobileNav({
+  activeLabel,
+  userName,
+  activePanel,
+  onSelectPanel,
+}: DashboardMobileNavProps) {
+  const [open, setOpen] = useState(false);
+  const initial = userName.trim().charAt(0).toUpperCase() || 'F';
+  const activeItem = DASHBOARD_NAV_ITEMS.find((item) => item.panel === activePanel);
+  const ActiveIcon = activeItem?.icon ?? Mail;
+
+  return (
+    <div className="lg:hidden">
+      <div className="foldera-dashboard-mobile-chrome rounded-[28px] border border-cyan-200/10 bg-[#030a12]/95 px-4 py-3 shadow-[0_22px_70px_rgba(0,0,0,0.42)]">
+        <div className="flex min-h-[44px] items-center gap-3">
+          <FolderaLogo href="/dashboard" markSize="sm" />
+
+          <div className="ml-auto min-w-0 text-right">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200/55">
+              Dashboard
+            </p>
+            <p className="truncate text-sm font-semibold text-text-primary">{activeLabel}</p>
+          </div>
+
+          <button
+            type="button"
+            data-testid="dashboard-mobile-menu-button"
+            aria-controls="dashboard-mobile-menu"
+            aria-expanded={open}
+            aria-label={open ? 'Close dashboard menu' : 'Open dashboard menu'}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border border-cyan-200/14 bg-white/[0.035] text-text-primary shadow-[inset_0_0_0_1px_rgba(255,255,255,0.025)] transition-colors hover:border-cyan-200/28 hover:bg-white/[0.06]"
+            onClick={() => setOpen((current) => !current)}
+          >
+            {open ? (
+              <X className="h-5 w-5" aria-hidden />
+            ) : (
+              <Menu className="h-5 w-5" aria-hidden />
+            )}
+          </button>
+        </div>
+
+        {open ? (
+          <div
+            id="dashboard-mobile-menu"
+            data-testid="dashboard-mobile-menu"
+            className="mt-4 rounded-[24px] border border-cyan-200/12 bg-[#050d16]/98 p-3 shadow-[0_18px_60px_rgba(0,0,0,0.38)]"
+          >
+            <div className="mb-3 flex items-center gap-3 rounded-[18px] border border-cyan-200/10 bg-white/[0.035] px-3 py-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-cyan-300/10 text-cyan-200">
+                <ActiveIcon className="h-5 w-5" aria-hidden />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-text-muted">
+                  Current
+                </p>
+                <p className="truncate text-sm font-semibold text-text-primary">{activeLabel}</p>
+              </div>
+            </div>
+
+            <nav aria-label="Dashboard sections" className="grid gap-2">
+              {DASHBOARD_NAV_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const isActive = item.panel === activePanel;
+                const classes = `flex min-h-[52px] w-full items-center gap-3 rounded-[16px] border px-3 text-left text-sm font-semibold transition-colors ${
+                  isActive
+                    ? 'border-cyan-200/20 bg-cyan-300/[0.075] text-text-primary shadow-[inset_3px_0_0_rgba(34,211,238,0.82)]'
+                    : 'border-transparent text-text-secondary hover:border-cyan-200/10 hover:bg-white/[0.035] hover:text-text-primary'
+                }`;
+
+                return (
+                  <button
+                    key={item.panel}
+                    type="button"
+                    data-panel={item.panel}
+                    data-testid={`dashboard-mobile-menu-item-${item.panel}`}
+                    aria-current={isActive ? 'page' : undefined}
+                    className={classes}
+                    onClick={() => {
+                      onSelectPanel(item.panel);
+                      setOpen(false);
+                    }}
+                  >
+                    <Icon
+                      className={`h-5 w-5 shrink-0 ${
+                        isActive ? 'text-cyan-200' : 'text-text-muted'
+                      }`}
+                      aria-hidden
+                    />
+                    <span className="min-w-0 truncate">{item.label}</span>
+                    {isActive ? (
+                      <span className="ml-auto h-2 w-2 rounded-full bg-cyan-300" aria-hidden />
+                    ) : null}
+                  </button>
+                );
+              })}
+            </nav>
+
+            <div className="mt-3 flex items-center gap-3 rounded-[18px] border border-cyan-200/10 bg-white/[0.03] px-3 py-3">
+              <div
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-600 to-slate-950 text-sm font-semibold text-white"
+                aria-hidden
+              >
+                {initial}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-text-primary">{userName}</p>
+                <p className="mt-0.5 text-xs text-text-muted">Signed in</p>
+              </div>
+              <button
+                type="button"
+                className="inline-flex min-h-[40px] shrink-0 items-center justify-center gap-2 rounded-[13px] border border-border bg-panel px-3 text-xs font-semibold text-text-secondary transition-colors hover:border-border-strong hover:text-text-primary"
+                onClick={() => void signOut({ callbackUrl: SIGN_OUT_CALLBACK_URL })}
+              >
+                <LogOut className="h-4 w-4" aria-hidden />
+                Sign out
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
 
 export function DashboardSidebar({
   activeLabel,
