@@ -739,8 +739,15 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     });
     await page.goto('/dashboard');
     await expect(page.getByTestId('dashboard-empty-state')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('No safe finished work today.')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/Foldera did not find a piece of finished work it can stand behind today/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Foldera checked today.' })).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.getByText(/No finished artifact cleared the safety bar, but Foldera is still watching source freshness and recent decisions/i),
+    ).toBeVisible();
+    await expect(page.getByText('What changed')).toBeVisible();
+    await expect(page.getByText('What Foldera protected')).toBeVisible();
+    await expect(page.getByText('Smallest unlock')).toBeVisible();
+    await expect(page.getByText(/No safe finished work today/i)).toHaveCount(0);
+    await expect(page.getByText(/Foldera did not find a piece of finished work it can stand behind today/i)).toHaveCount(0);
     await expect(page.getByText(/You're set until tomorrow morning/i)).toHaveCount(0);
     await expect(page.getByText(/next read still lands in email/i)).toHaveCount(0);
     await expect(page.getByText(/No directive cleared the bar/i)).toHaveCount(0);
@@ -768,10 +775,12 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
 
     await expect(page.getByTestId('dashboard-daily-utility-slate')).toBeVisible({ timeout: 15000 });
     await expect(page.getByText('One thing Foldera needs')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'What outcome should this change?' })).toBeVisible();
+    await expect(page.getByText('What changed')).toBeVisible();
+    await expect(page.getByText('What Foldera protected')).toBeVisible();
+    await expect(page.getByText('Smallest unlock')).toBeVisible();
     await expect(page.getByText(/Foldera needs one concrete consequence or desired outcome/i)).toBeVisible();
     await expect(page.getByText('Latest run stopped before a finished action was safe.')).toBeVisible();
-    await expect(page.getByText('Why Foldera stopped: It did not prove one safe next step.')).toBeVisible();
+    await expect(page.getByText('It did not prove one safe next step.', { exact: true })).toBeVisible();
     await expect(page.getByText(/positive_winner_contract/i)).toHaveCount(0);
     await expect(page.getByText(/missing_schedule_resolution_context/i)).toHaveCount(0);
     await expect(page.getByText(/Candidate family/i)).toHaveCount(0);
@@ -923,7 +932,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
 
     await expect(page.getByText(/Workspace Owner/i)).toHaveCount(0);
     await expect(page.getByText(/Brandon Kapp/i)).toHaveCount(0);
-    await expect(page.getByText(/^Signed in$/i)).toBeVisible();
+    await expect(page.getByRole('complementary').getByText(/^Signed in$/i)).toBeVisible();
     await expect(page.getByRole('heading', { name: /Good (morning|afternoon|evening)\.$/i })).toBeVisible();
   });
 
@@ -1030,7 +1039,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByTestId('dashboard-primary-action')).toHaveText(/^Save$/i);
     await expect(page.getByRole('button', { name: /^skip$/i })).toHaveText(/^Skip$/i);
     await page.getByRole('button', { name: /account menu/i }).click();
-    await expect(page.getByRole('menuitem', { name: /^Settings$/i })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: /^Account$/i })).toBeVisible();
     await expect(page.getByRole('menuitem', { name: /^Sign out$/i })).toBeVisible();
     await page.keyboard.press('Escape');
     await page.getByRole('button', { name: /copy draft/i }).click();
