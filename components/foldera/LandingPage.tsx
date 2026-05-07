@@ -105,7 +105,7 @@ export function LandingPage() {
                 </p>
                 <div className="board-hero__actions">
                   <a href="/start" className="board-btn board-btn--primary">
-                    Start free trial
+                    Get started free
                     <ArrowRight className="h-4 w-4" aria-hidden />
                   </a>
                   <a href="#platform" className="board-btn board-btn--secondary">
@@ -139,7 +139,7 @@ export function LandingPage() {
 
               <div className="board-mobile-actions">
                 <a href="/start" className="board-btn board-btn--primary">
-                  Start free trial
+                  Get started free
                   <ArrowRight className="h-4 w-4" aria-hidden />
                 </a>
                 <a href="#platform" className="board-btn board-btn--secondary">
@@ -356,9 +356,9 @@ export function LandingPage() {
             <div className="board-cta">
               <div>
                 <h2>Finish more. Every morning.</h2>
-                <p>Start your 14-day free trial.</p>
+                <p>Start free. No credit card required.</p>
                 <a href="/start" className="board-btn board-btn--light">
-                  Start free trial
+                  Get started free
                   <ArrowRight className="h-4 w-4" aria-hidden />
                 </a>
               </div>

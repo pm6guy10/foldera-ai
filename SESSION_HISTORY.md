@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-05-07 — Production E2E landing CTA copy repaired
+- MODE: Production E2E failure seam only.
+- Files changed: `components/foldera/LandingPage.tsx`, `SESSION_HISTORY.md`.
+- What changed: Restored the locked free-tier CTA copy on the public `/` landing page by changing the landing CTAs from trial-shaped wording to `Get started free`, and removed the contradictory 14-day trial line from the final CTA block.
+- Verification: `npm run health` passed (`RESULT: 0 FAILING`, Outlook disconnected and last-generation `do_nothing` warnings only); reproduced the live scheduled failure with `npm run test:prod -- --grep "pricing CTA"`; `npm run build` passed; local built-page browser proof at `http://127.0.0.1:3015/` confirmed `copyVisible=true`, `trialVisible=false`, and CTA `href="/start"`; focused landing Playwright slice passed (`npx playwright test tests/e2e/public-routes.spec.ts --grep "Landing page /" --reporter=list`, 11 tests).
+- Unresolved issues: Production proof still requires pushing to `main`, waiting for Vercel to deploy the new commit, then rerunning the production smoke slice against live `/`.
+
 ## 2026-05-05 — Supabase unused-index advisor cleanup
 - MODE: Supabase performance-advisor seam only.
 - Files changed: `supabase/migrations/20260505083000_drop_safe_unused_advisor_indexes.sql`, `docs/SUPABASE_MIGRATIONS.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.
