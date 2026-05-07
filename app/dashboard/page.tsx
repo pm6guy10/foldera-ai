@@ -9,6 +9,7 @@ import {
   DashboardStatusNoticeCard,
   HiddenDashboardArtifact,
 } from '@/components/dashboard/DashboardChromeExtras';
+import { DashboardMobileLayout } from '@/components/dashboard/DashboardMobileLayout';
 import { DashboardStatsStrip } from '@/components/dashboard/DashboardStatsStrip';
 import {
   DashboardBriefingUnavailableCard,
@@ -18,7 +19,6 @@ import {
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
 import { DailyUtilitySlateCard } from '@/components/foldera/DailyUtilitySlateCard';
 import {
-  DashboardMobileNav,
   DashboardSidebar,
   type DashboardPanelKey,
 } from '@/components/foldera/DashboardSidebar';
@@ -890,112 +890,37 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="foldera-dashboard-page foldera-page min-h-screen overflow-x-hidden bg-bg text-text-primary" data-testid="pixel-lock-frame">
-      <div className="mx-auto w-full max-w-[1400px] px-4 py-4 sm:px-5 lg:px-6 lg:py-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[252px_minmax(0,1fr)] 2xl:gap-8">
-          <DashboardSidebar
-            activeLabel={activeSidebarLabel}
-            userName={sidebarUserName}
-            appShell
-            activePanel={activePanel}
-            onSelectPanel={selectPanel}
-          />
-
-          <div className="min-w-0">
-            <div className="mb-5 lg:hidden">
-              <DashboardMobileNav
-                activeLabel={activeSidebarLabel}
-                userName={sidebarUserName}
-                activePanel={activePanel}
-                onSelectPanel={selectPanel}
-              />
-            </div>
-
-            <div className="hidden items-center justify-between gap-4 lg:flex">
-              <p className="foldera-eyebrow">{getDateLabel()}</p>
-            </div>
-
-            <div className="flex items-center justify-between gap-3 pb-1 pt-2 lg:hidden">
-              <p className="foldera-eyebrow">{getDateLabel()}</p>
-            </div>
-
-            <header className="pb-7 pt-3 lg:pb-8 lg:pt-1">
-              <h1 className="text-[clamp(2rem,4vw,3.1rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-text-secondary">
-                {getGreetingLabel()}
-                {firstName ? (
-                  <>
-                    , <strong className="font-semibold text-text-primary">{firstName}.</strong>
-                  </>
-                ) : (
-                  '.'
-                )}
-              </h1>
-              {hasStats ? <DashboardStatsStrip stats={dashboardStats} variant="mobile" /> : null}
-            </header>
-
-            {degradedStateNode ? <div className="mx-auto mb-4 w-full max-w-[860px]">{degradedStateNode}</div> : null}
-            {statusNoticeNode ? <div className="mx-auto mb-4 w-full max-w-[860px]">{statusNoticeNode}</div> : null}
-
-            <div className="mx-auto w-full max-w-[940px] pb-12">
-              {isBriefingPanel ? (
-                action ? (
-                  <div data-testid="dashboard-panel-briefing">
-                    <DailyBriefCard
-                      className="foldera-dashboard-brief-card foldera-dashboard-money-shot foldera-dashboard-current-brief w-full"
-                      dashboardCta
-                      directive={artifactTitle}
-                      whyNow={artifactContradiction}
-                      eyebrowLabel="Daily Brief"
-                      directiveLabel="Directive"
-                      whyLabel="Why This Now"
-                      draftLabel={draftLabel}
-                      draftBody={draftBody}
-                      sourcePills={inferSourcePills(action)}
-                      sourceLabel="Source Basis"
-                      nextStep={writeDocument ? 'Next: Save to record' : 'Next: Await response'}
-                      statusText={writeDocument ? 'READY TO FILE' : 'READY TO SEND'}
-                      footerText="Grounded in connected sources"
-                      actions={cardActions}
-                    />
-                  </div>
-                ) : loadingLatest ? (
-                  loadingCard
-                ) : hasLatestIssue ? (
-                  <div className="min-h-[420px]">{briefingUnavailableCard}</div>
-                ) : (
-                  <div className="min-h-[420px]">{emptyStateCard}</div>
-                )
-              ) : (
-                <div className="min-h-[420px]">{secondaryPanelNode}</div>
-              )}
-
-              {isBriefingPanel && showOutcomeActions ? (
-                <div className="mt-4 flex flex-wrap justify-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => void submitOutcome('worked')}
-                    disabled={Boolean(outcomeSubmitting)}
-                    className="foldera-button-primary"
-                  >
-                    It worked
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void submitOutcome('didnt_work')}
-                    disabled={Boolean(outcomeSubmitting)}
-                    className="foldera-button-secondary"
-                  >
-                    Didn&apos;t work
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {hiddenArtifactNode}
-    </main>
+    <DashboardMobileLayout
+      activeSidebarLabel={activeSidebarLabel}
+      sidebarUserName={sidebarUserName}
+      activePanel={activePanel}
+      selectPanel={selectPanel}
+      dateLabel={getDateLabel()}
+      greetingLabel={getGreetingLabel()}
+      firstName={firstName}
+      hasStats={hasStats}
+      dashboardStats={dashboardStats}
+      degradedStateNode={degradedStateNode}
+      statusNoticeNode={statusNoticeNode}
+      isBriefingPanel={isBriefingPanel}
+      hasAction={Boolean(action)}
+      artifactTitle={artifactTitle}
+      artifactContradiction={artifactContradiction}
+      draftLabel={draftLabel}
+      draftBody={draftBody}
+      sourcePills={action ? inferSourcePills(action) : []}
+      writeDocument={writeDocument}
+      cardActions={cardActions}
+      loadingLatest={loadingLatest}
+      loadingCard={loadingCard}
+      hasLatestIssue={hasLatestIssue}
+      briefingUnavailableCard={briefingUnavailableCard}
+      emptyStateCard={emptyStateCard}
+      secondaryPanelNode={secondaryPanelNode}
+      showOutcomeActions={showOutcomeActions}
+      outcomeSubmitting={outcomeSubmitting}
+      submitOutcome={submitOutcome}
+      hiddenArtifactNode={hiddenArtifactNode}
+    />
   );
 }

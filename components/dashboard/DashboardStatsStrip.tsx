@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 
-type DashboardStat = {
+export type DashboardStat = {
   icon: LucideIcon;
   value: number;
   label: string;
