@@ -83,10 +83,10 @@ function StartContent() {
       <NavAuthMinimal variant="start" />
       <main id="main" className="mx-auto flex max-w-6xl flex-col px-4 py-16 sm:px-6 sm:py-20">
         <div className="mx-auto w-full max-w-2xl rounded-card border border-border bg-panel px-6 py-8 sm:px-10 sm:py-10">
-          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Finished work, every morning</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Finished work when it is safe</p>
           <h1 className="mt-6 text-4xl font-black tracking-tight sm:text-5xl">Get started with Foldera</h1>
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-text-secondary">
-            One secure sign-in. Foldera reads your connected context and prepares one finished move worth approving.
+            One secure sign-in. Foldera reads your connected context and shows finished work or the exact blocker.
           </p>
 
           {error && (
@@ -119,13 +119,13 @@ function StartContent() {
             <ol className="mt-4 space-y-3 text-sm text-text-secondary">
               <li>1. Connect Google or Microsoft.</li>
               <li>2. Choose your focus during setup.</li>
-              <li>3. Your first read arrives tomorrow morning.</li>
+              <li>3. Your dashboard shows the first safe read as soon as Foldera has current source context.</li>
             </ol>
           </div>
 
           <p className="mt-6 inline-flex items-center gap-2 text-xs text-text-muted">
             <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-            Your data stays encrypted. Delete anytime.
+            Your account uses secure source access. Delete anytime.
           </p>
         </div>
       </main>

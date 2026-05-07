@@ -25,41 +25,29 @@ const proofBullets = [
   'Approval before anything moves',
 ];
 
-const trustedTeams = [
-  { label: 'Acme Corp', mark: 'acme' },
-  { label: 'Vertex', mark: 'vertex' },
-  { label: 'Spherule', mark: 'spherule' },
-  { label: 'Quantiv', mark: 'quantiv' },
-  { label: 'Stride', mark: 'stride' },
-];
-
 const signalItems = [
   { label: 'Unanswered threads', icon: Mail },
   { label: 'Calendar holds', icon: CalendarClock },
   { label: 'Stale drafts', icon: FileText },
-  { label: 'And more...', icon: MessageSquare },
+  { label: 'Decision context', icon: MessageSquare },
 ];
 
-const outputItems = ['One clear directive', 'Right time, right context', 'Ready for your approval'];
+const outputItems = ['Finished artifact when safe', 'Reason when Foldera holds back', 'Approval before anything moves'];
 
 const integrationCards = [
   { label: 'Gmail', brand: 'gmail' },
   { label: 'Outlook', brand: 'outlook' },
-  { label: 'Slack', brand: 'slack' },
   { label: 'Google Calendar', brand: 'calendar' },
-  { label: 'Notion', brand: 'notion' },
-  { label: 'Google Drive', brand: 'drive' },
-  { label: 'OneDrive', brand: 'onedrive' },
-  { label: 'Dropbox', brand: 'dropbox' },
+  { label: 'Microsoft Calendar', brand: 'outlook' },
 ];
 
 const reasonTiles = [
-  'Cuts busywork',
-  'Reduces context switching',
-  'Never miss what matters',
-  'Saves hours each week',
-  'Ships work faster',
-  'Keeps teams aligned',
+  'Shows one useful read',
+  'Explains why it stopped',
+  'Keeps source trail visible',
+  'Avoids weak drafts',
+  'Learns from skips',
+  'Keeps approval in your hands',
 ];
 
 const contextRows = [
@@ -71,7 +59,7 @@ const contextRows = [
   { label: 'Keeps teams aligned', icon: Check },
 ];
 
-const trustItems = ['SOC 2 Type II', 'End-to-end encrypted', 'Your data stays yours', 'Enterprise ready'];
+const trustItems = ['OAuth source access', 'Disconnect anytime', 'No outbound by default', 'Approval before send'];
 
 export function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
@@ -93,7 +81,7 @@ export function LandingPage() {
               <div className="board-hero__copy">
                 <p className="board-pill">
                   <span />
-                  Finished work, every morning
+                  Finished work when it is safe
                 </p>
                 <h1>
                   Your day.
@@ -101,7 +89,7 @@ export function LandingPage() {
                   Already <span>done.</span>
                 </h1>
                 <p className="board-hero__lede">
-                  Foldera reads the noise, understands what matters, and delivers one clean, finished move - every morning.
+                  Foldera checks your connected inbox and calendar, then shows the finished work or the one thing blocking it.
                 </p>
                 <div className="board-hero__actions">
                   <a href="/start" className="board-btn board-btn--primary">
@@ -160,13 +148,13 @@ export function LandingPage() {
 
             <TodayBriefCard className="board-hero__wide-card" wide />
 
-            <div className="trusted-row" aria-label="Trusted by teams using Foldera">
-              <p>Trusted by teams using Foldera</p>
+            <div className="trusted-row" aria-label="Foldera operating principles">
+              <p>Built for source-backed work</p>
               <div>
-                {trustedTeams.map((team) => (
-                  <span key={team.label}>
-                    <TeamMark kind={team.mark} />
-                    {team.label}
+                {['Gmail and Microsoft first', 'No outbound by default', 'Approve or skip every artifact', 'No safe artifact is an answer'].map((item) => (
+                  <span key={item}>
+                    <ShieldMiniIcon />
+                    {item}
                   </span>
                 ))}
               </div>
@@ -185,7 +173,7 @@ export function LandingPage() {
             <div className="board-panel board-how">
               <div className="board-section-heading">
                 <h2>See how it works</h2>
-                <p>Foldera turns scattered context into one finished move.</p>
+                <p>Foldera turns scattered context into finished work when the evidence is strong enough.</p>
               </div>
 
               <div className="board-mobile-flow" aria-label="Foldera turns noise into one finished move">
@@ -279,12 +267,12 @@ export function LandingPage() {
 
             <div className="board-panel board-integrations">
               <div className="board-section-heading">
-                <h2>Bring your context together</h2>
-                <p>Connect the tools you already use.</p>
+                <h2>Connect the sources that matter now</h2>
+                <p>Start with Gmail, Outlook, and calendar context.</p>
               </div>
               <div className="board-tabs" aria-label="Integration categories">
-                {['All', 'Communication', 'Calendar', 'Storage', 'Docs', 'Project Management'].map((item) => (
-                  <span key={item} className={item === 'All' ? 'is-active' : ''}>{item}</span>
+                {['Mail', 'Calendar'].map((item) => (
+                  <span key={item} className={item === 'Mail' ? 'is-active' : ''}>{item}</span>
                 ))}
               </div>
               <div className="board-integration-grid">
@@ -319,12 +307,12 @@ export function LandingPage() {
               </div>
             </div>
             <div className="board-panel board-results">
-              <h2>Results that compound</h2>
+              <h2>Value that shows up daily</h2>
               {[
-                ['47%', 'Less time on status & updates'],
-                ['3.2M+', 'Moves executed by teams'],
-                ['86%', 'Fewer items fall through the cracks'],
-                ['>2x', 'Faster follow-through on priorities'],
+                ['Daily', 'Source check against your current context'],
+                ['Grounded', 'Artifact or blocker with a visible source trail'],
+                ['Controlled', 'Approve, skip, or save before anything moves'],
+                ['Honest', 'No weak artifact when the evidence is not enough'],
               ].map(([value, label]) => (
                 <div key={value}>
                   <strong>{value}</strong>
@@ -355,7 +343,7 @@ export function LandingPage() {
           <div className="board-shell">
             <div className="board-cta">
               <div>
-                <h2>Finish more. Every morning.</h2>
+                <h2>Get a useful read every day.</h2>
                 <p>Start free. No credit card required.</p>
                 <a href="/start" className="board-btn board-btn--light">
                   Get started free
@@ -371,7 +359,7 @@ export function LandingPage() {
           <div className="board-shell">
             <div>
               <FolderaLogo href="/" />
-              <p>Finished work, every morning.</p>
+              <p>Finished work when it is safe.</p>
             </div>
             <div className="board-footer__links">
               <a href="/pricing">Pricing</a>
@@ -611,19 +599,6 @@ function BrandIcon({ name }: { name: string }) {
     );
   }
 
-  if (name === 'slack') {
-    return (
-      <svg className="brand-icon" viewBox="0 0 32 32" aria-hidden>
-        <rect x="13" y="3" width="5" height="12" rx="2.5" fill="#36C5F0" />
-        <rect x="3" y="14" width="12" height="5" rx="2.5" fill="#36C5F0" />
-        <rect x="17" y="3" width="5" height="12" rx="2.5" transform="rotate(90 19.5 9)" fill="#2EB67D" />
-        <rect x="17" y="17" width="12" height="5" rx="2.5" fill="#2EB67D" />
-        <rect x="10" y="17" width="5" height="12" rx="2.5" fill="#ECB22E" />
-        <rect x="3" y="10" width="12" height="5" rx="2.5" fill="#E01E5A" />
-      </svg>
-    );
-  }
-
   if (name === 'calendar') {
     return (
       <svg className="brand-icon" viewBox="0 0 32 32" aria-hidden>
@@ -637,35 +612,6 @@ function BrandIcon({ name }: { name: string }) {
     );
   }
 
-  if (name === 'notion') {
-    return (
-      <svg className="brand-icon" viewBox="0 0 32 32" aria-hidden>
-        <rect x="5" y="5" width="22" height="22" rx="3" fill="#fff" />
-        <path d="M8 8h16v16H8V8Z" fill="#fff" stroke="#111827" strokeWidth="2" />
-        <path d="M11 22V11h2.7l6.2 8.2V11H22v11h-2.7l-6.2-8.1V22H11Z" fill="#111827" />
-      </svg>
-    );
-  }
-
-  if (name === 'drive') {
-    return (
-      <svg className="brand-icon" viewBox="0 0 32 32" aria-hidden>
-        <path d="M12.2 4h7.6l8.4 14.6h-7.6L12.2 4Z" fill="#0F9D58" />
-        <path d="M3.8 18.6 12.2 4l3.8 6.6-4.6 8H3.8Z" fill="#F4B400" />
-        <path d="M11.4 18.6h16.8L24.4 25H7.6l3.8-6.4Z" fill="#4285F4" />
-      </svg>
-    );
-  }
-
-  if (name === 'onedrive') {
-    return (
-      <svg className="brand-icon" viewBox="0 0 32 32" aria-hidden>
-        <path d="M12.6 13.8a7.1 7.1 0 0 1 13.2 2.1 5.2 5.2 0 0 1-.4 10.3H10.1a6.4 6.4 0 0 1 2.5-12.4Z" fill="#28A8EA" />
-        <path d="M7.4 16.6A7.7 7.7 0 0 1 21 11.7a8.8 8.8 0 0 0-8.4 2.1 6.4 6.4 0 0 0-5.2 2.8Z" fill="#0078D4" />
-      </svg>
-    );
-  }
-
   return (
     <svg className="brand-icon" viewBox="0 0 32 32" aria-hidden>
       <path d="m10 4 6 4-6 4-6-4 6-4Z" fill="#0061FF" />
@@ -673,24 +619,6 @@ function BrandIcon({ name }: { name: string }) {
       <path d="m10 14 6 4-6 4-6-4 6-4Z" fill="#0061FF" />
       <path d="m22 14 6 4-6 4-6-4 6-4Z" fill="#0061FF" />
       <path d="m16 22 6 4-6 4-6-4 6-4Z" fill="#0061FF" />
-    </svg>
-  );
-}
-
-function TeamMark({ kind }: { kind: string }) {
-  return (
-    <svg className={`team-mark team-mark--${kind}`} viewBox="0 0 24 24" aria-hidden>
-      {kind === 'acme' ? (
-        <path d="M5 15.8 9.8 5l3.7 8.2L15.3 9l3.7 6.8m-12 0h12" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-      ) : kind === 'vertex' ? (
-        <path d="m12 3 8 5v8l-8 5-8-5V8l8-5Z" fill="none" stroke="currentColor" strokeWidth="1.7" />
-      ) : kind === 'spherule' ? (
-        <path d="M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16Zm0 0v16M4 12h16" fill="none" stroke="currentColor" strokeWidth="1.7" />
-      ) : kind === 'quantiv' ? (
-        <path d="M12 3a9 9 0 1 0 9 9M12 3a9 9 0 0 1 9 9M12 7a5 5 0 1 0 5 5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      ) : (
-        <path d="M6 7h12M6 12h12M6 17h12M9 5v14M15 5v14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      )}
     </svg>
   );
 }

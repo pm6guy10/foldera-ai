@@ -84,7 +84,7 @@ export default function TryPage() {
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Live demo</p>
             <h1 className="mt-6 text-5xl font-black tracking-tight sm:text-6xl">Try Foldera</h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-text-secondary">
-              Paste an email thread. See the directive and artifact style Foldera generates.
+              Paste an email thread. See whether Foldera can produce a safe directive and artifact from the evidence.
             </p>
           </div>
         </section>
@@ -126,7 +126,7 @@ export default function TryPage() {
                 </div>
               ) : (
                 <p className="mt-4 text-sm leading-relaxed text-text-secondary">
-                  Results appear here after analysis. For full daily use, connect your accounts and run Foldera each morning.
+                  Results appear here after analysis. For the real dashboard, connect your accounts and let Foldera check current source context.
                 </p>
               )}
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">

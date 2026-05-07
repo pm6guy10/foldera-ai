@@ -124,14 +124,14 @@ test.describe('Visual system screenshots', () => {
 
     await page.setViewportSize({ width: 1440, height: 1400 });
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: /One finished move\. Every morning\./i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Your day\.\s+Already done\./i })).toBeVisible();
     await expect(page.getByText(/FOLDERA DESIGN SYSTEM/i)).toHaveCount(0);
     await expect(page.getByText(/DASHBOARD — PRODUCT VIEWS/i)).toHaveCount(0);
     await page.screenshot({ path: path.join(OUT_DIR, 'landing-desktop-clean.png'), fullPage: true });
 
     await page.setViewportSize({ width: 390, height: 1200 });
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: /One finished move\. Every morning\./i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Your day\.\s+Already done\./i })).toBeVisible();
     await expect(page.getByText(/FOLDERA DESIGN SYSTEM/i)).toHaveCount(0);
     await expect(page.getByText(/DASHBOARD — PRODUCT VIEWS/i)).toHaveCount(0);
     await page.screenshot({ path: path.join(OUT_DIR, 'landing-mobile-clean.png'), fullPage: true });

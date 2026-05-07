@@ -9,11 +9,11 @@ const siteOrigin = resolveCanonicalSiteOrigin();
 export const metadata = {
   metadataBase: new URL(siteOrigin),
   title: {
-    default: "Foldera — Finished work, every morning",
+    default: "Foldera — Finished work when it is safe",
     template: "%s — Foldera",
   },
   description:
-    "Foldera turns scattered inboxes, calendar holds, stale drafts, and unresolved threads into one directive, draft, and source trail every morning.",
+    "Foldera checks connected inbox and calendar context, then shows the finished work or the one thing blocking it.",
   manifest: '/manifest.json',
   keywords: [
     "AI email assistant",
@@ -29,9 +29,9 @@ export const metadata = {
     apple: [{ url: '/foldera-glyph.svg', type: 'image/svg+xml' }],
   },
   openGraph: {
-    title: "Foldera — Finished work, every morning",
+    title: "Foldera — Finished work when it is safe",
     description:
-      "Foldera turns scattered inboxes, calendar holds, stale drafts, and unresolved threads into one directive, draft, and source trail every morning.",
+      "Foldera checks connected inbox and calendar context, then shows the finished work or the one thing blocking it.",
     url: siteOrigin,
     siteName: "Foldera",
     locale: "en_US",
@@ -47,9 +47,9 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: "Foldera — Finished work, every morning",
+    title: "Foldera — Finished work when it is safe",
     description:
-      "Foldera turns scattered inboxes, calendar holds, stale drafts, and unresolved threads into one directive, draft, and source trail every morning.",
+      "Foldera checks connected inbox and calendar context, then shows the finished work or the one thing blocking it.",
     images: [`${siteOrigin}/foldera-logo.png`],
   },
 };

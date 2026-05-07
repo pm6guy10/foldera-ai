@@ -7,7 +7,7 @@ import { NavPublic } from '@/components/nav/NavPublic';
 import { BlogFooter } from '@/components/nav/BlogFooter';
 
 const freeFeatures = [
-  'Daily directive each morning',
+  'Daily source-backed check',
   'Connect Google or Microsoft',
   'First 3 finished artifacts included',
 ];
@@ -15,7 +15,7 @@ const freeFeatures = [
 const proFeatures = [
   'Unlimited finished artifacts',
   'Drafted emails, documents, and decision frames',
-  'Approve and send in one step',
+  'Approve, skip, copy, or save with outbound off by default',
   'Learns from every approve and skip',
 ];
 
@@ -66,15 +66,15 @@ function ProCheckoutButton() {
 const faq = [
   {
     question: 'What is free?',
-    answer: 'Free includes your daily directive and your first three finished artifacts. No credit card required.',
+    answer: 'Free includes the daily source-backed check and your first three finished artifacts. No credit card required.',
   },
   {
     question: 'What changes on Pro?',
-    answer: 'Pro removes the artifact limit and keeps delivering full finished work every morning.',
+    answer: 'Pro removes the artifact limit and keeps showing finished work when it is safe, plus the blocker when it is not.',
   },
   {
     question: 'Can I cancel?',
-    answer: 'Yes. Cancel anytime from dashboard settings.',
+    answer: 'Yes. Cancel anytime from your account controls.',
   },
 ];
 
@@ -97,7 +97,7 @@ export default function PricingPage() {
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Pricing</p>
             <h1 className="mt-6 text-5xl font-black tracking-tight sm:text-6xl">Start free. Upgrade when it clicks.</h1>
             <p className="mt-6 max-w-2xl text-lg leading-relaxed text-text-secondary">
-              The free tier proves value first. Pro removes limits once you want finished artifacts every morning.
+              The free tier proves value first. Pro removes limits once you want a daily finished-work inbox.
             </p>
           </div>
         </section>
@@ -111,7 +111,7 @@ export default function PricingPage() {
                 <p className="pb-1 text-xs font-black uppercase tracking-[0.14em] text-text-secondary">per month</p>
               </div>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-text-secondary">
-                Keep the full brief visible and ready to act on every morning.
+                Keep the full finished-work inbox visible, including source trail, actions, and safe holdbacks.
               </p>
               <ul className="mt-7 divide-y divide-border-subtle border-y border-border-subtle">
                 {proFeatures.map((feature) => (
@@ -130,7 +130,7 @@ export default function PricingPage() {
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">Free</p>
               <p className="mt-4 text-4xl font-black tracking-tight">$0</p>
               <p className="mt-4 text-sm leading-relaxed text-text-secondary">
-                Start with one daily directive and your first three finished artifacts.
+                Start with a daily source-backed check and your first three finished artifacts.
               </p>
               <ul className="mt-6 space-y-3">
                 {freeFeatures.map((feature) => (

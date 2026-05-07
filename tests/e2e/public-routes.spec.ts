@@ -142,6 +142,29 @@ test.describe('Landing page /', () => {
     );
   });
 
+  test('public promise stays aligned to the current source-backed product', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+
+    await expect(page.getByText(/Finished work when it is safe/i).first()).toBeVisible();
+    await expect(page.getByText(/one thing blocking it/i).first()).toBeVisible();
+    await expect(page.getByText(/No safe artifact is an answer/i)).toBeVisible();
+
+    for (const overclaim of [
+      /Trusted by teams/i,
+      /SOC 2/i,
+      /3\.2M/i,
+      /Slack/i,
+      /Notion/i,
+      /Google Drive/i,
+      /Dropbox/i,
+      /Approve and send/i,
+      /Finished work, every morning/i,
+    ]) {
+      await expect(page.getByText(overclaim)).toHaveCount(0);
+    }
+  });
+
   test('no actionable console errors — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const errors = collectConsoleErrors(page);

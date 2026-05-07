@@ -3,7 +3,7 @@ import { LoginInner } from './login-inner';
 
 export const metadata: Metadata = {
   title: 'Sign in',
-  description: 'Sign in to Foldera. Finished work, every morning.',
+  description: 'Sign in to Foldera. Finished work when it is safe, and the blocker when it is not.',
 };
 
 export default async function LoginPage({

@@ -34,7 +34,7 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
       <NavAuthMinimal variant="login" />
       <main id="main" className="mx-auto flex max-w-6xl flex-col px-4 py-16 sm:px-6 sm:py-20">
         <div className="mx-auto w-full max-w-2xl rounded-card border border-border bg-panel px-6 py-8 sm:px-10 sm:py-10">
-          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Finished work, every morning</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Finished work when it is safe</p>
           <h1 className="mt-6 text-4xl font-black tracking-tight sm:text-5xl">Sign in</h1>
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-text-secondary">
             Continue with Google or Microsoft to open your dashboard.
@@ -66,7 +66,7 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
           </div>
 
           <p className="mt-6 text-xs leading-relaxed text-text-muted">
-            Foldera only needs source access to prepare your daily brief. You can disconnect any provider from settings.
+            Foldera uses source access to prepare finished work or explain why it held back. You can disconnect any provider from the dashboard.
           </p>
         </div>
       </main>
@@ -131,4 +131,3 @@ function MicrosoftIcon() {
     </svg>
   );
 }
-
