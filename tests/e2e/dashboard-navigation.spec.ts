@@ -286,10 +286,9 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByTestId('dashboard-brief-why-section')).toContainText(/Why This Now/i);
     await expect(page.getByTestId('dashboard-brief-draft-section')).toContainText('DRAFT');
     await expect(page.getByTestId('dashboard-brief-source-section')).toContainText(/Source Basis/i);
-    await expect(page.getByTestId('dashboard-brief-work-panel')).toContainText(/How this brief works/i);
-    await expect(page.getByTestId('dashboard-brief-work-panel')).toContainText('Source trail');
     const figmaFrame = await page.getByTestId('dashboard-figma-card-frame').boundingBox();
-    expect(figmaFrame?.width).toBeGreaterThan(830);
+    expect(figmaFrame?.width).toBeGreaterThan(1080);
+    await expect(page.getByText(/How this brief works/i)).toHaveCount(0);
   });
 
   test('clicking each sidebar item keeps the app shell on /dashboard', async ({ page }) => {

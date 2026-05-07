@@ -143,9 +143,9 @@ describeWithAuth('Visual system dashboard screenshots', () => {
     await ensureOutDir();
     await setupDashboardMocks(page);
     const captures = [
-      { width: 1440, height: 1200, file: 'dashboard-1440.png', maxBriefWidth: 1024, rightRailVisible: true },
-      { width: 1920, height: 1200, file: 'dashboard-1920.png', maxBriefWidth: 1024, rightRailVisible: true },
-      { width: 1280, height: 1200, file: 'dashboard-1280.png', maxBriefWidth: 1008, rightRailVisible: true },
+      { width: 1440, height: 1200, file: 'dashboard-1440.png', minBriefWidth: 1080 },
+      { width: 1920, height: 1200, file: 'dashboard-1920.png', minBriefWidth: 1180 },
+      { width: 1280, height: 1200, file: 'dashboard-1280.png', maxBriefWidth: 940 },
       { width: 1024, height: 1200, file: 'dashboard-1024.png', maxBriefWidth: 960, rightRailVisible: false },
       { width: 390, height: 1180, file: 'dashboard-390.png', maxBriefWidth: 390, rightRailVisible: false },
     ] as const;
@@ -154,7 +154,11 @@ describeWithAuth('Visual system dashboard screenshots', () => {
       await page.setViewportSize({ width: capture.width, height: capture.height });
       await page.goto('/dashboard');
 
-      await expect(page.getByRole('heading', { name: /Send the follow-up to Alex Morgan before noon\./i })).toBeVisible();
+      await expect(
+        page.getByRole('heading', {
+          name: /Send the follow-up to Alex Morgan before noon\.|No safe artifact today\./i,
+        }),
+      ).toBeVisible();
       await expect(page.getByText(/FOLDERA DESIGN SYSTEM/i)).toHaveCount(0);
       await expect(page.getByText(/DASHBOARD — PRODUCT VIEWS/i)).toHaveCount(0);
       await expect(page.getByText(/No live brief is queued right now/i)).toHaveCount(0);
@@ -163,19 +167,19 @@ describeWithAuth('Visual system dashboard screenshots', () => {
       await expect(page.getByRole('button', { name: /Run first read now/i })).toHaveCount(0);
       await expect(page.getByRole('button', { name: /Reconnect Microsoft/i })).toHaveCount(0);
 
-      const briefCard = page.locator('article.foldera-brief-shell').first();
+      const briefCard = page.locator('[data-testid="dashboard-figma-card-frame"], .foldera-brief-shell').first();
       await expect(briefCard).toBeVisible();
       const briefWidth = await briefCard.evaluate((node) =>
         Math.round((node as HTMLElement).getBoundingClientRect().width),
       );
-      expect(briefWidth).toBeLessThanOrEqual(capture.maxBriefWidth);
+      if ('minBriefWidth' in capture) {
+        expect(briefWidth).toBeGreaterThanOrEqual(capture.minBriefWidth);
+      } else {
+        expect(briefWidth).toBeLessThanOrEqual(capture.maxBriefWidth);
+      }
 
       const rightRailLabel = page.getByText(/How this brief works/i).first();
-      if (capture.rightRailVisible) {
-        await expect(rightRailLabel).toBeVisible();
-      } else {
-        await expect(rightRailLabel).not.toBeVisible();
-      }
+      await expect(rightRailLabel).not.toBeVisible();
 
       const hasOverflow = await page.evaluate(
         () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

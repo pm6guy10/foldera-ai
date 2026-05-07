@@ -5,7 +5,6 @@ import { useSession } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Mail, TriangleAlert, TrendingUp } from 'lucide-react';
-import { DashboardBriefWorkPanel } from '@/components/dashboard/DashboardBriefWorkPanel';
 import {
   DashboardStatusNoticeCard,
   HiddenDashboardArtifact,
@@ -847,14 +846,12 @@ export default function DashboardPage() {
 
           {hasStats ? <DashboardStatsStrip stats={dashboardStats} variant="stage" /> : null}
 
-          <div className="absolute" data-testid="dashboard-figma-card-frame" style={{ left: 388, top: 240, width: 1200, height: 862 }}>
+          <div className="absolute" data-testid="dashboard-figma-card-frame" style={{ left: 388, top: 240, width: 1580, height: 862 }}>
             {cardNode}
           </div>
 
-          {isBriefingPanel ? <DashboardBriefWorkPanel /> : null}
-
           {statusNoticeNode ? (
-            <div className="absolute" style={{ left: 388, top: 1116, width: 1200 }}>
+            <div className="absolute" style={{ left: 388, top: 1116, width: 1580 }}>
               {statusNoticeNode}
             </div>
           ) : null}

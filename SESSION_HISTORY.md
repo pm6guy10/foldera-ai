@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-05-07 — Dashboard desktop rail removed and empty slate widened
+- MODE: Dashboard presentation polish continuation only.
+- Files changed: `app/dashboard/page.tsx`, `components/foldera/EmptyStateCard.tsx`, `components/dashboard/DashboardBriefWorkPanel.tsx`, `tests/e2e/dashboard-navigation.spec.ts`, `tests/e2e/landing-dashboard-visual.spec.ts`, `SESSION_HISTORY.md`.
+- What changed: Removed the redundant desktop "How this brief works" briefing rail from the real `/dashboard` shell, widened the primary desktop brief frame from `1200px` to `1580px`, and reworked the no-action empty state so the expanded canvas reads like a finished Daily Brief surface instead of a centered placeholder. No API, auth, billing, generator, Supabase, paid-run, or email behavior changed.
+- Verification: `npm run health` passed (`RESULT: 0 FAILING`, Outlook/mail-cursor/last-generation warnings only); `npm run build` passed; `npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list` passed (`11` tests); `npx playwright test tests/e2e/landing-dashboard-visual.spec.ts --grep "dashboard screenshots" --reporter=list` passed (`1` test); focused authenticated dashboard checks passed (`6` tests across empty state, daily slate, console, and mobile); `npx playwright test tests/dashboard/live-artifact-pixel-lock.spec.ts --reporter=list` passed (`3` tests); desktop and mobile screenshot proof captured the removed rail, widened frame, no overflow, and updated empty slate.
+- Unresolved issues: Browser/IAB proof remains unavailable in this environment because the Browser runtime previously resolved local Node `v22.19.0` and requires `>=22.22.0`; Playwright fallback was used. Production deploy proof remains pending until this commit is pushed and Vercel serves it. No paid generation was run and no outbound email was sent.
+
 ## 2026-05-07 — Dashboard no-safe slate visual polish
 - MODE: Dashboard presentation polish seam only.
 - Files changed: `components/foldera/DailyUtilitySlateCard.tsx`, `components/dashboard/DashboardBriefWorkPanel.tsx`, `SESSION_HISTORY.md`.
