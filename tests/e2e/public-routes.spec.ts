@@ -146,9 +146,10 @@ test.describe('Landing page /', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
 
-    await expect(page.getByText(/Finished work when it is safe/i).first()).toBeVisible();
-    await expect(page.getByText(/one thing blocking it/i).first()).toBeVisible();
-    await expect(page.getByText(/No safe artifact is an answer/i)).toBeVisible();
+    await expect(page.getByText(/The work that matters today/i).first()).toBeVisible();
+    await expect(page.getByText(/Already written/i).first()).toBeVisible();
+    await expect(page.getByText(/Stops when it should/i)).toBeVisible();
+    await expect(page.getByText(/No outbound by default/i)).toBeVisible();
 
     for (const overclaim of [
       /Trusted by teams/i,
