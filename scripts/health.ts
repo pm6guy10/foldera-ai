@@ -20,10 +20,16 @@ import {
   type HealthCheckRow,
   warningCheck,
 } from './health-checks';
+import {
+  buildMailboxFreshnessCheck,
+  buildMailboxReadinessCheck,
+  buildMailCursorCheck,
+  relAgo,
+  type HealthTokenRow,
+} from './health-connectors';
 
 config({ path: resolve(process.cwd(), '.env.local') });
 
-const TWENTY_FIVE_H_MS = 25 * 60 * 60 * 1000;
 const TWENTY_FOUR_H_MS = 24 * 60 * 60 * 1000;
 const MAIL_TYPES = ['email_received', 'email_sent'] as const;
 
@@ -40,25 +46,6 @@ function formatPtHeader(): string {
   }).formatToParts(now);
   const get = (t: string) => d.find((x) => x.type === t)?.value ?? '';
   return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')} PT`;
-}
-
-function relAgo(iso: string | null | undefined, now: number): string {
-  if (!iso) return 'never';
-  const t = new Date(iso).getTime();
-  if (!Number.isFinite(t)) return 'invalid time';
-  const diff = now - t;
-  if (diff < 0) return '0m ago';
-  const h = Math.floor(diff / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  if (h >= 48) return `${Math.floor(h / 24)}d ago`;
-  if (h > 0) return `${h}h ago`;
-  return `${m}m ago`;
-}
-
-function isFresh(iso: string | null | undefined, now: number): boolean {
-  if (!iso) return false;
-  const t = new Date(iso).getTime();
-  return Number.isFinite(t) && now - t <= TWENTY_FIVE_H_MS;
 }
 
 async function main() {
@@ -81,16 +68,12 @@ async function main() {
 
   // Transient undici/Node "fetch failed" to Supabase should not red the gate once.
   const USER_TOKEN_RETRIES = 3;
-  let tokenRows: {
-    provider: string;
-    last_synced_at: string | null;
-    disconnected_at: string | null;
-  }[] | null = null;
+  let tokenRows: HealthTokenRow[] | null = null;
   let tokErr: { message: string } | null = null;
   for (let attempt = 1; attempt <= USER_TOKEN_RETRIES; attempt++) {
     const { data, error } = await supabase
       .from('user_tokens')
-      .select('provider, last_synced_at, disconnected_at')
+      .select('provider, last_synced_at, disconnected_at, access_token, refresh_token')
       .eq('user_id', userId)
       .in('provider', ['google', 'microsoft']);
     if (!error) {
@@ -111,10 +94,6 @@ async function main() {
     process.exit(1);
   }
 
-  const active = (tokenRows ?? []).filter((r) => r.disconnected_at == null);
-  const googleConnected = active.some((r) => r.provider === 'google');
-  const msConnected = active.some((r) => r.provider === 'microsoft');
-
   async function newestMailOccurred(source: 'gmail' | 'outlook'): Promise<string | null> {
     const { data, error } = await supabase
       .from('tkg_signals')
@@ -128,45 +107,37 @@ async function main() {
     return data?.[0]?.occurred_at ?? null;
   }
 
-  // Gmail fresh
+  // Gmail freshness
   try {
-    if (!googleConnected) {
-      checks.push(warningCheck('Gmail fresh', '(no Google mailbox connected)'));
+    const readiness = buildMailboxReadinessCheck('Gmail', 'google', tokenRows ?? []);
+    if (readiness) {
+      checks.push(readiness);
     } else {
       const newest = await newestMailOccurred('gmail');
-      const fresh = isFresh(newest, now);
-      checks.push(
-        fresh
-          ? warningCheck('Gmail fresh', relAgo(newest, now), 'pass')
-          : warningCheck('Gmail stale', `${relAgo(newest, now)} — check sync / ingest`),
-      );
+      checks.push(buildMailboxFreshnessCheck('Gmail', newest, now));
     }
   } catch (e) {
     checks.push(
       warningCheck(
-        'Gmail fresh',
+        'Gmail freshness query',
         `query error: ${e instanceof Error ? e.message : String(e)}`,
       ),
     );
   }
 
-  // Outlook fresh
+  // Outlook freshness
   try {
-    if (!msConnected) {
-      checks.push(warningCheck('Outlook fresh', '(no Microsoft mailbox connected)'));
+    const readiness = buildMailboxReadinessCheck('Outlook', 'microsoft', tokenRows ?? []);
+    if (readiness) {
+      checks.push(readiness);
     } else {
       const newest = await newestMailOccurred('outlook');
-      const fresh = isFresh(newest, now);
-      checks.push(
-        fresh
-          ? warningCheck('Outlook fresh', relAgo(newest, now), 'pass')
-          : warningCheck('Outlook stale', `${relAgo(newest, now)} — check sync / ingest`),
-      );
+      checks.push(buildMailboxFreshnessCheck('Outlook', newest, now));
     }
   } catch (e) {
     checks.push(
       warningCheck(
-        'Outlook fresh',
+        'Outlook freshness query',
         `query error: ${e instanceof Error ? e.message : String(e)}`,
       ),
     );
@@ -268,22 +239,7 @@ async function main() {
 
   // Mail cursors
   try {
-    const mailTokens = active.filter((r) => r.provider === 'google' || r.provider === 'microsoft');
-    if (mailTokens.length === 0) {
-      checks.push(warningCheck('Mail cursors current', '(no connected google/microsoft tokens)'));
-    } else {
-      const stale: string[] = [];
-      for (const r of mailTokens) {
-        if (!isFresh(r.last_synced_at, now)) {
-          stale.push(`${r.provider} ${relAgo(r.last_synced_at, now)}`);
-        }
-      }
-      checks.push(
-        stale.length === 0
-          ? warningCheck('Mail cursors current', undefined, 'pass')
-          : warningCheck('Mail cursors stale', stale.join('; ')),
-      );
-    }
+    checks.push(buildMailCursorCheck(tokenRows ?? [], now));
   } catch (e) {
     checks.push(
       warningCheck(

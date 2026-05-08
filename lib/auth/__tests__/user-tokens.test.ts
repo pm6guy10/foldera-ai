@@ -4,6 +4,15 @@ const upsertSpy = vi.fn();
 const updateEqSpy = vi.fn();
 const updateSpy = vi.fn();
 const maybeSingleSpy = vi.fn();
+const selectEqSpy = vi.fn();
+const selectNotSpy = vi.fn();
+const selectIsSpy = vi.fn();
+const selectChain = {
+  eq: selectEqSpy,
+  not: selectNotSpy,
+  is: selectIsSpy,
+  maybeSingle: maybeSingleSpy,
+};
 
 vi.mock('@/lib/db/client', () => ({
   createServerClient: () => ({
@@ -15,13 +24,7 @@ vi.mock('@/lib/db/client', () => ({
       return {
         upsert: upsertSpy,
         update: updateSpy,
-        select: () => ({
-          eq: () => ({
-            eq: () => ({
-              maybeSingle: maybeSingleSpy,
-            }),
-          }),
-        }),
+        select: () => selectChain,
       };
     },
   }),
@@ -40,10 +43,16 @@ describe('saveUserToken', () => {
     updateEqSpy.mockReset();
     updateSpy.mockReset();
     maybeSingleSpy.mockReset();
+    selectEqSpy.mockReset();
+    selectNotSpy.mockReset();
+    selectIsSpy.mockReset();
 
     upsertSpy.mockResolvedValue({ error: null });
     updateEqSpy.mockResolvedValue({ error: null });
     maybeSingleSpy.mockResolvedValue({ data: null, error: null });
+    selectEqSpy.mockReturnValue(selectChain);
+    selectNotSpy.mockReturnValue(selectChain);
+    selectIsSpy.mockResolvedValue({ data: [], error: null });
     updateSpy.mockReturnValue({
       eq() {
         return {
@@ -163,7 +172,13 @@ describe('softDisconnectUserToken', () => {
     vi.resetModules();
     updateEqSpy.mockReset();
     updateSpy.mockReset();
+    selectEqSpy.mockReset();
+    selectNotSpy.mockReset();
+    selectIsSpy.mockReset();
     updateEqSpy.mockResolvedValue({ error: null });
+    selectEqSpy.mockReturnValue(selectChain);
+    selectNotSpy.mockReturnValue(selectChain);
+    selectIsSpy.mockResolvedValue({ data: [], error: null });
     updateSpy.mockReturnValue({
       eq() {
         return {
@@ -202,7 +217,13 @@ describe('softDisconnectAfterFatalOAuthRefresh', () => {
     vi.resetModules();
     updateEqSpy.mockReset();
     updateSpy.mockReset();
+    selectEqSpy.mockReset();
+    selectNotSpy.mockReset();
+    selectIsSpy.mockReset();
     updateEqSpy.mockResolvedValue({ error: null });
+    selectEqSpy.mockReturnValue(selectChain);
+    selectNotSpy.mockReturnValue(selectChain);
+    selectIsSpy.mockResolvedValue({ data: [], error: null });
     updateSpy.mockReturnValue({
       eq() {
         return {
@@ -229,5 +250,31 @@ describe('softDisconnectAfterFatalOAuthRefresh', () => {
       }),
     );
     errSpy.mockRestore();
+  });
+});
+
+describe('getAllUsersWithProvider', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    selectEqSpy.mockReset();
+    selectNotSpy.mockReset();
+    selectIsSpy.mockReset();
+    selectEqSpy.mockReturnValue(selectChain);
+    selectNotSpy.mockReturnValue(selectChain);
+    selectIsSpy.mockResolvedValue({
+      data: [{ user_id: 'user-1' }, { user_id: 'user-2' }],
+      error: null,
+    });
+  });
+
+  it('lists only refresh-capable connected provider rows for background sync', async () => {
+    const { getAllUsersWithProvider } = await import('../user-tokens');
+
+    await expect(getAllUsersWithProvider('microsoft')).resolves.toEqual(['user-1', 'user-2']);
+
+    expect(selectEqSpy).toHaveBeenCalledWith('provider', 'microsoft');
+    expect(selectNotSpy).toHaveBeenNthCalledWith(1, 'access_token', 'is', null);
+    expect(selectNotSpy).toHaveBeenNthCalledWith(2, 'refresh_token', 'is', null);
+    expect(selectIsSpy).toHaveBeenCalledWith('disconnected_at', null);
   });
 });

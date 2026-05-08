@@ -213,6 +213,7 @@ export async function getAllUsersWithProvider(
     .select('user_id')
     .eq('provider', provider)
     .not('access_token', 'is', null)
+    .not('refresh_token', 'is', null)
     .is('disconnected_at', null);
 
   if (error) {
