@@ -332,6 +332,20 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByRole('link', { name: /Manage connected accounts/i })).toHaveCount(0);
   });
 
+  test('dashboard brand mark returns to the public landing page', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setupDashboardMocks(page);
+    await page.goto('/dashboard');
+
+    const brandLink = page.getByRole('link', { name: /^Foldera$/ });
+    await expect(brandLink).toHaveAttribute('href', '/');
+
+    await brandLink.click();
+
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/');
+    await expect(page.getByRole('heading', { name: /work that matters today/i })).toBeVisible();
+  });
+
   test('stale Microsoft source auto-recovers and keeps manual sync as fallback', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     let microsoftSyncCalls = 0;

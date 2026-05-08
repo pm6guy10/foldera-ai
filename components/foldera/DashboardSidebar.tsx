@@ -69,7 +69,7 @@ export function DashboardMobileNav({
     <div className="lg:hidden">
       <div className="foldera-dashboard-mobile-chrome rounded-[28px] border border-cyan-200/10 bg-[#030a12]/95 px-4 py-3 shadow-[0_22px_70px_rgba(0,0,0,0.42)]">
         <div className="flex min-h-[44px] items-center gap-3">
-          <FolderaLogo href="/dashboard" markSize="sm" />
+          <FolderaLogo href="/" markSize="sm" />
 
           <div className="ml-auto min-w-0 text-right">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200/55">
@@ -195,7 +195,7 @@ export function DashboardSidebar({
     return (
       <aside className="foldera-dashboard-stage-sidebar absolute left-0 top-0 h-[1152px] w-[304px]">
         <div className="absolute left-[42px] top-[48px]">
-          <FolderaLogo href="/dashboard" markSize="sm" />
+          <FolderaLogo href="/" markSize="sm" />
         </div>
 
         <nav className="absolute left-[24px] top-[138px] w-[260px] space-y-4">
@@ -298,7 +298,7 @@ export function DashboardSidebar({
 
   return (
     <aside className="foldera-panel foldera-dashboard-sidebar hidden h-[calc(100vh-2rem)] min-h-[calc(100vh-2rem)] flex-col p-4 lg:sticky lg:top-4 lg:flex">
-      <FolderaLogo href="/dashboard" markSize="sm" />
+      <FolderaLogo href="/" markSize="sm" />
 
       <nav className="foldera-dashboard-nav mt-7 space-y-1">
         {DASHBOARD_NAV_ITEMS.map((item) => {
