@@ -110,6 +110,8 @@ export type DashboardDailyValueState = {
   valueBlocks: DashboardDailyValueBlock[];
   actionHref?: string;
   actionLabel?: string;
+  copyText?: string;
+  copyLabel?: string;
 };
 
 export type LoadLatestResult = {
@@ -306,6 +308,69 @@ function getSlateItems(slate: DailyUtilitySlate | null | undefined): DailyUtilit
   ].filter(Boolean) as DailyUtilitySlateItem[];
 }
 
+function dailyUtilityClipboardItemLabel(item: DailyUtilitySlateItem): string {
+  switch (item.status) {
+    case 'primary_move':
+      return 'Current best move';
+    case 'open_loop':
+      return 'Open loop';
+    case 'changed_since_yesterday':
+      return 'What changed';
+    case 'blocked_but_real':
+      return 'Possible issue';
+    case 'watch_item':
+      return 'Watch item';
+    default:
+      return 'Foldera read';
+  }
+}
+
+export function dailyUtilitySlateClipboardText(
+  slate: DailyUtilitySlate | null | undefined,
+): string {
+  const item = getSlateItems(slate)[0] ?? null;
+  if (!item) return '';
+
+  const lines = [
+    'Foldera',
+    dailyUtilityClipboardItemLabel(item),
+    '',
+    sanitizeDailyValueText(item.title, 'Foldera found a current move worth preparing.'),
+    '',
+    'Why it matters:',
+    sanitizeDailyValueText(
+      item.why_it_matters,
+      'This is the strongest safe read Foldera can identify from the current source trail.',
+    ),
+  ];
+
+  const evidence = item.evidence
+    .map((entry) => sanitizeDailyValueText(entry, 'Current source trail supports this read.'))
+    .filter(Boolean)
+    .slice(0, 4);
+  if (evidence.length > 0) {
+    lines.push('', 'Evidence:', ...evidence.map((entry) => `- ${entry}`));
+  }
+
+  const nextAction = sanitizeDailyValueText(item.next_action, '');
+  const noActionReason = sanitizeDailyValueText(item.no_action_reason, '');
+  if (nextAction) {
+    lines.push('', 'Safe next action:', nextAction);
+  } else if (noActionReason) {
+    lines.push('', 'Why Foldera held back:', noActionReason);
+  }
+
+  const sourceRefs = (item.source_refs ?? [])
+    .map((entry) => sanitizeDailyValueText(entry, ''))
+    .filter(Boolean)
+    .slice(0, 4);
+  if (sourceRefs.length > 0) {
+    lines.push('', 'Source trail:', ...sourceRefs.map((entry) => `- ${entry}`));
+  }
+
+  return lines.join('\n');
+}
+
 function countActiveIntegrations(integrationStatus: IntegrationStatusPayload | null | undefined): number {
   return Array.isArray(integrationStatus?.integrations)
     ? integrationStatus.integrations.filter((integration) => integration?.is_active === true).length
@@ -378,6 +443,7 @@ export function buildDailyValueState(
     (activeSources > 0
       ? 'Keep sources fresh; Foldera will finish the next safe artifact when the evidence supports it.'
       : 'Connect Gmail or Microsoft so Foldera has current facts to work from.');
+  const copyText = dailyUtilitySlateClipboardText(slate);
 
   return {
     heading: hasPrimaryMove ? 'Foldera found the next move' : 'Foldera checked today',
@@ -394,6 +460,8 @@ export function buildDailyValueState(
     ],
     actionHref: missingInputPrompt?.actionHref ?? (activeSources > 0 ? undefined : '/api/google/connect'),
     actionLabel: missingInputPrompt?.actionLabel ?? (activeSources > 0 ? undefined : 'Connect Google'),
+    copyText: copyText || undefined,
+    copyLabel: hasPrimaryMove ? 'Copy brief' : copyText ? 'Copy read' : undefined,
   };
 }
 

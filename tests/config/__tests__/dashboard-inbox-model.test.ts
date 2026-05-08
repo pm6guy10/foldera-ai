@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildDailyValueState,
   buildMissingInputPrompt,
+  dailyUtilitySlateClipboardText,
   getIntegrationMetaLine,
   getIntegrationStateClass,
   getIntegrationStateLabel,
@@ -126,9 +127,34 @@ describe('dashboard finished-work inbox model', () => {
     expect(state.heading).toBe('Foldera found the next move');
     expect(state.statusLabel).toBe('Current best move');
     expect(state.summary).toContain('Commitment due in 5d');
+    expect(state.copyLabel).toBe('Copy brief');
+    expect(state.copyText).toContain('Current best move');
+    expect(state.copyText).toContain('Safe next action:');
     expect(state.valueBlocks.find((block) => block.label === 'What Foldera protected')?.body).toContain(
       'has not sent, saved, or claimed',
     );
+  });
+
+  it('builds clipboard text for the daily-value card without leaking internal terms', () => {
+    const copyText = dailyUtilitySlateClipboardText({
+      finished_artifact_verdict: 'no_finished_artifact',
+      primary_move: {
+        title: 'Commitment due in 5d: Save job seeker account information',
+        status: 'primary_move',
+        evidence: ['Save job seeker account information before the website transition.'],
+        why_it_matters:
+          'The account transition may happen before the saved records are packaged.',
+        next_action:
+          'Write a decision memo that closes the account transition with the owner, next action, and deadline.',
+        source_refs: ['commitment:account-transition'],
+      },
+    });
+
+    expect(copyText).toContain('Foldera');
+    expect(copyText).toContain('Current best move');
+    expect(copyText).toContain('Evidence:');
+    expect(copyText).toContain('Safe next action:');
+    expect(copyText).not.toMatch(/missing_|weak_|candidate|gate|blocker/i);
   });
 
   it('labels source cursors that need sync without treating them as disconnected', () => {

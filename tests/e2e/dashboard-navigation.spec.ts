@@ -571,6 +571,16 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
 
   test('empty latest state promotes the current best move from deterministic daily value', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: async (text: string) => {
+            (window as unknown as { __folderaCopiedText?: string }).__folderaCopiedText = text;
+          },
+        },
+      });
+    });
     await setupDashboardMocks(page, {
       latestResponse: {},
       dailyValueResponse: {
@@ -597,6 +607,14 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
       page.getByRole('heading', { name: /Commitment due in 5d: Save job seeker account information/i }),
     ).toBeVisible();
     await expect(page.getByText(/has not sent, saved, or claimed/i)).toBeVisible();
+    await expect(page.getByText(/Evidence behind this move/i)).toBeVisible();
+    await page.getByTestId('dashboard-daily-value-copy').click();
+    await expect(page.getByTestId('dashboard-status-notice')).toContainText(/Copied today's read/i);
+    await expect
+      .poll(() =>
+        page.evaluate(() => (window as unknown as { __folderaCopiedText?: string }).__folderaCopiedText ?? ''),
+      )
+      .toContain('Safe next action:');
     await expect(page.getByText(/No safe artifact/i)).toHaveCount(0);
   });
 

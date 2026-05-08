@@ -1,7 +1,9 @@
+'use client';
+
 import type { DailyUtilitySlateItem } from '@/lib/briefing/daily-utility-slate';
 import type { DashboardDailyValueState } from '@/app/dashboard/dashboard-page-model';
 import Link from 'next/link';
-import { CircleSlash2, ListChecks, ShieldCheck, Sparkles } from 'lucide-react';
+import { CircleSlash2, Copy, ListChecks, ShieldCheck, Sparkles } from 'lucide-react';
 
 type DailyUtilitySlateCardPayload = {
   primary_move?: DailyUtilitySlateItem | null;
@@ -122,10 +124,12 @@ export function DailyUtilitySlateCard({
   slate,
   missingInputPrompt,
   dailyValueState,
+  onCopyDailyValue,
 }: {
   slate: DailyUtilitySlateCardPayload;
   missingInputPrompt?: MissingInputPrompt | null;
   dailyValueState: DashboardDailyValueState;
+  onCopyDailyValue?: () => void;
 }) {
   const openLoops = slate.open_loops ?? [];
   const changedSinceYesterday = slate.changed_since_yesterday ?? [];
@@ -163,6 +167,8 @@ export function DailyUtilitySlateCard({
       key: 'watch',
     });
   }
+  const hasPrimaryMove = Boolean(slate.primary_move);
+  const canCopy = Boolean(dailyValueState.copyText && onCopyDailyValue);
 
   return (
     <div
@@ -185,10 +191,33 @@ export function DailyUtilitySlateCard({
             {dailyValueState.summary}
           </p>
           {dailyValueState.actionHref && dailyValueState.actionLabel ? (
-            <div className="mt-6">
+            <div className="mt-6 flex flex-wrap gap-3">
               <Link href={dailyValueState.actionHref} className="foldera-button-secondary">
                 {dailyValueState.actionLabel}
               </Link>
+              {canCopy ? (
+                <button
+                  type="button"
+                  className="foldera-button-primary"
+                  onClick={onCopyDailyValue}
+                  data-testid="dashboard-daily-value-copy"
+                >
+                  <Copy className="h-4 w-4" aria-hidden />
+                  {dailyValueState.copyLabel ?? 'Copy read'}
+                </button>
+              ) : null}
+            </div>
+          ) : canCopy ? (
+            <div className="mt-6">
+              <button
+                type="button"
+                className="foldera-button-primary"
+                onClick={onCopyDailyValue}
+                data-testid="dashboard-daily-value-copy"
+              >
+                <Copy className="h-4 w-4" aria-hidden />
+                {dailyValueState.copyLabel ?? 'Copy read'}
+              </button>
             </div>
           ) : null}
 
@@ -210,14 +239,20 @@ export function DailyUtilitySlateCard({
         <div className="min-w-0 space-y-4">
           <div className="flex items-center gap-3 border-b border-white/10 pb-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-amber-300/25 bg-amber-300/8 text-amber-200">
-              <CircleSlash2 className="h-5 w-5" aria-hidden />
+              {hasPrimaryMove ? (
+                <ListChecks className="h-5 w-5" aria-hidden />
+              ) : (
+                <CircleSlash2 className="h-5 w-5" aria-hidden />
+              )}
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
                 Source trail
               </p>
               <p className="mt-1 text-sm text-text-secondary">
-                The current receipt explains why Foldera stopped.
+                {hasPrimaryMove
+                  ? 'Evidence behind this move.'
+                  : 'The current receipt explains why Foldera held back.'}
               </p>
             </div>
           </div>

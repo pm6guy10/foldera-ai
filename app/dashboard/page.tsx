@@ -37,6 +37,7 @@ import {
   buildDailyValueState,
   buildDecisionSuccessNotice,
   computeStageMetrics,
+  dailyUtilitySlateClipboardText,
   getArtifactBody,
   getDashboardActionHeadline,
   getDashboardDiscrepancyFrame,
@@ -541,6 +542,20 @@ export default function DashboardPage() {
     );
   }, [action]);
 
+  const copyDailyValue = useCallback(async () => {
+    const text = dailyUtilitySlateClipboardText(dailyUtilitySlate);
+    if (!text) {
+      setStatusNotice({ id: 'copy_failed', message: 'Nothing available to copy.' });
+      return;
+    }
+    const copied = await writeClipboardText(text);
+    setStatusNotice(
+      copied
+        ? { id: 'copy_daily_value_succeeded', message: "Copied today's read." }
+        : { id: 'copy_failed', message: 'Copy failed. Select the text manually.' },
+    );
+  }, [dailyUtilitySlate]);
+
   const sessionName = asTrimmedString(session?.user?.name) ?? 'Foldera workspace';
   const firstName = asTrimmedString(session?.user?.name)?.split(' ')[0] ?? null;
   const sidebarUserName = firstName ?? sessionName;
@@ -742,6 +757,7 @@ export default function DashboardPage() {
       slate={dailyUtilitySlate}
       missingInputPrompt={missingInputPrompt}
       dailyValueState={dailyValueState}
+      onCopyDailyValue={() => void copyDailyValue()}
     />
   ) : (
     <EmptyStateCard />
