@@ -608,6 +608,7 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     ).toBeVisible();
     await expect(page.getByText(/has not sent, saved, or claimed/i)).toBeVisible();
     await expect(page.getByText(/Evidence behind this move/i)).toBeVisible();
+    await expect(page.getByText(/One thing Foldera needs/i)).toHaveCount(0);
     await page.getByTestId('dashboard-daily-value-copy').click();
     await expect(page.getByTestId('dashboard-status-notice')).toContainText(/Copied today's read/i);
     await expect

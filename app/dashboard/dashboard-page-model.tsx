@@ -232,6 +232,8 @@ export function buildMissingInputPrompt(
     mailIngestLooksStale?: boolean;
   } = {},
 ): DashboardMissingInputPrompt | null {
+  if (slate?.primary_move) return null;
+
   const text = collectSlateReasonText(slate);
   const normalized = text.toLowerCase();
   const matchText = normalized.replace(/[_-]+/g, ' ');
