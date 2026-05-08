@@ -30,7 +30,7 @@ describe('GET /api/conviction/history', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns summary items for authenticated user', async () => {
+  it('returns summary items with artifact previews for authenticated user', async () => {
     mockResolveUser.mockResolvedValue({ userId: 'u1' });
     const mockLimit = vi.fn().mockResolvedValue({
       data: [
@@ -41,6 +41,11 @@ describe('GET /api/conviction/history', () => {
           confidence: 77,
           generated_at: '2026-04-01T12:00:00Z',
           directive_text: 'Reach out to Sam about the proposal deadline tomorrow.',
+          artifact: {
+            subject: 'Proposal deadline',
+            body: 'Hi Sam — checking whether the proposal is still on track before tomorrow.',
+          },
+          execution_result: null,
         },
       ],
       error: null,
@@ -70,9 +75,85 @@ describe('GET /api/conviction/history', () => {
     expect(body.items[0].id).toBe('a1');
     expect(body.items[0].status).toBe('executed');
     expect(body.items[0].directive_preview).toContain('Sam');
-    expect(body.items[0].has_artifact).toBe(false);
-    expect(body.items[0].artifact_preview).toBe('');
-    expect(mockSelect).toHaveBeenCalledWith('id, status, action_type, confidence, generated_at, directive_text');
+    expect(body.items[0].has_artifact).toBe(true);
+    expect(body.items[0].artifact_preview).toContain('Proposal deadline');
+    expect(body.items[0].artifact_preview).toContain('checking whether the proposal');
+    expect(mockSelect).toHaveBeenCalledWith(
+      'id, status, action_type, confidence, generated_at, directive_text, artifact, execution_result',
+    );
     expect(mockEq).toHaveBeenCalledWith('user_id', 'u1');
+  });
+
+  it('hides no-send tombstones and internal failure rows from Recent Work', async () => {
+    mockResolveUser.mockResolvedValue({ userId: 'u1' });
+    const mockLimit = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 'no-send-1',
+          status: 'skipped',
+          action_type: 'do_nothing',
+          confidence: 0,
+          generated_at: '2026-04-02T12:00:00Z',
+          directive_text: 'GENERATION_LOOP: All ranked candidates blocked by missing_current_fact',
+          artifact: null,
+          execution_result: {
+            outcome_type: 'no_send',
+            no_send: { reason: 'missing_current_fact' },
+          },
+        },
+        {
+          id: 'failed-1',
+          status: 'failed',
+          action_type: 'write_document',
+          confidence: 12,
+          generated_at: '2026-04-02T11:00:00Z',
+          directive_text: 'Directive rejected by persistence validation: weak_next_action',
+          artifact: null,
+          execution_result: {
+            generation_log: { outcome: 'no_send' },
+          },
+        },
+        {
+          id: 'real-1',
+          status: 'skipped',
+          action_type: 'write_document',
+          confidence: 79,
+          generated_at: '2026-04-02T10:00:00Z',
+          directive_text: 'Save the job seeker account transition packet before the deadline.',
+          artifact: null,
+          execution_result: {
+            artifact: {
+              title: 'Job seeker account transition packet',
+              content: 'A concise packet with the deadline, required save action, and source trail.',
+            },
+          },
+        },
+      ],
+      error: null,
+    });
+    const mockOrder = vi.fn().mockReturnValue({ limit: mockLimit });
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: mockEq,
+      }),
+    });
+
+    const { GET } = await import('../route');
+    const res = await GET(new Request('http://localhost/api/conviction/history?limit=3'));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      items: Array<{
+        id: string;
+        directive_preview: string;
+        artifact_preview?: string;
+      }>;
+    };
+
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0].id).toBe('real-1');
+    expect(body.items[0].directive_preview).toContain('job seeker account transition');
+    expect(body.items[0].artifact_preview).toContain('deadline');
+    expect(JSON.stringify(body.items)).not.toMatch(/GENERATION_LOOP|missing_current_fact|weak_next_action|do_nothing/i);
   });
 });
