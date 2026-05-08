@@ -17,7 +17,10 @@ import { encrypt } from "@/lib/encryption";
 import { truncateSignalContent } from "@/lib/utils/signal-egress";
 import { createHash } from "crypto";
 import mammoth from 'mammoth';
-import { FIRST_SYNC_LOOKBACK_MS } from '@/lib/config/constants';
+import {
+  FIRST_SYNC_LOOKBACK_MS,
+  MAIL_SYNC_BODY_TEXT_MAX_CHARS,
+} from '@/lib/config/constants';
 import {
   persistCalendarRsvpAvoidanceSignals,
   persistResponsePatternSignals,
@@ -123,9 +126,6 @@ interface MicrosoftSignalCoverage {
 
 type MicrosoftMailSignalType = "email_sent" | "email_received";
 
-/** Mail signal `content` body preview — aligned with Gmail cap for cross-provider parity. */
-const MAIL_BODY_PREVIEW = 2000;
-
 function headerMapFromInternet(
   headers: Array<{ name?: string; value?: string }> | undefined,
 ): Record<string, string> {
@@ -136,7 +136,7 @@ function headerMapFromInternet(
   return out;
 }
 
-function formatMicrosoftMailContent(
+export function formatMicrosoftMailContent(
   msg: any,
   signalType: MicrosoftMailSignalType,
   options?: { threadMessagesInConversation?: number },
@@ -158,7 +158,11 @@ function formatMicrosoftMailContent(
     msg.sentDateTime ??
     new Date().toISOString();
   const rawBody = msg.body?.content ?? msg.bodyPreview ?? "";
-  const bodyText = rawBody.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, MAIL_BODY_PREVIEW);
+  const bodyText = rawBody
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAIL_SYNC_BODY_TEXT_MAX_CHARS);
 
   const hdrs = headerMapFromInternet(msg.internetMessageHeaders);
   const inReplyTo = hdrs["in-reply-to"] ?? "";
@@ -178,7 +182,7 @@ function formatMicrosoftMailContent(
         `To: ${to}`,
         cc ? `Cc: ${cc}` : "",
         `Subject: ${subject}`,
-        `Body preview: ${bodyText}`,
+        `Body text: ${bodyText}`,
         `Has In-Reply-To or References: ${hasReplyHeaders ? "yes" : "no"}`,
         threadLine,
         importance ? `Importance: ${importance}` : "",
@@ -190,7 +194,7 @@ function formatMicrosoftMailContent(
         `To: ${to}`,
         cc ? `Cc: ${cc}` : "",
         `Subject: ${subject}`,
-        `Body preview: ${bodyText}`,
+        `Body text: ${bodyText}`,
         `Has In-Reply-To or References: ${hasReplyHeaders ? "yes" : "no"}`,
         threadLine,
         importance ? `Importance: ${importance}` : "",

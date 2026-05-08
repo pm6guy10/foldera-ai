@@ -54,6 +54,13 @@ export const INTEGRATIONS_MAIL_GRAPH_STALE_MS = daysMs(7);
  * Tune in prod via `CURSOR_REWOUND` logs (tighten/loosen if false positives or misses).
  */
 export const MAIL_CURSOR_HEAL_GAP_MS = daysMs(1);
+
+/**
+ * Encrypted mail signal body capture cap. This should be large enough for
+ * extraction/generation to see real source facts below the email fold while
+ * staying under the 15k encrypted signal storage limit.
+ */
+export const MAIL_SYNC_BODY_TEXT_MAX_CHARS = 12_000;
 export const MS_14D = daysMs(14);
 /** Connector-health email: secondary source (Calendar / Drive / OneDrive) must be empty this long while primary mail syncs. */
 export const CONNECTOR_HEALTH_EMAIL_SIGNAL_LOOKBACK_MS = MS_14D;

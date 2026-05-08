@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildWinnerTruthNextAction, classifyRecentAction } from '../winner-truth';
+import {
+  buildWinnerTruthNextAction,
+  classifyRecentAction,
+  shouldFlagPreviewOnlyMailSyncFinding,
+} from '../winner-truth';
 
 describe('winner truth replay classification', () => {
   it('treats do_nothing no-send rows with concrete blockers as no-safe artifacts', () => {
@@ -56,5 +60,15 @@ describe('buildWinnerTruthNextAction', () => {
     expect(nextAction).toMatch(/write a decision memo/i);
     expect(nextAction).toMatch(/owner, next action, and deadline/i);
     expect(nextAction).not.toMatch(/^Commitment due/i);
+  });
+});
+
+describe('shouldFlagPreviewOnlyMailSyncFinding', () => {
+  it('does not keep the preview-only backlog finding once sync stores long body text', () => {
+    expect(shouldFlagPreviewOnlyMailSyncFinding(12_000)).toBe(false);
+  });
+
+  it('keeps the finding for short preview caps', () => {
+    expect(shouldFlagPreviewOnlyMailSyncFinding(2_000)).toBe(true);
   });
 });

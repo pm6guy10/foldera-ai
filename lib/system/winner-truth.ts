@@ -15,6 +15,7 @@ import {
   findPollutedTrustedEntities,
   type PollutedEntityFinding,
 } from '@/lib/signals/entity-trust-repair';
+import { MAIL_SYNC_BODY_TEXT_MAX_CHARS } from '@/lib/config/constants';
 import {
   deriveDiscrepancyPatternKeys,
   evaluateDiscrepancyCardFrame,
@@ -37,6 +38,12 @@ interface WinnerTruthFinding {
   finding: string;
   evidence: string;
   smallest_next_move: string;
+}
+
+const PREVIEW_ONLY_MAIL_BODY_MAX_CHARS = 4_000;
+
+export function shouldFlagPreviewOnlyMailSyncFinding(bodyTextMaxChars = MAIL_SYNC_BODY_TEXT_MAX_CHARS): boolean {
+  return bodyTextMaxChars < PREVIEW_ONLY_MAIL_BODY_MAX_CHARS;
 }
 
 interface ThreeDayConsistencyDay {
@@ -470,12 +477,14 @@ export async function getWinnerTruthReport(userId = OWNER_USER_ID): Promise<Winn
       smallest_next_move: 'Downgrade polluted system senders before relationship scoring.',
     });
   }
-  futureFindings.push({
-    classification: 'future_backlog',
-    finding: 'mail_sync_stores_preview_not_full_raw_body',
-    evidence: 'Current mail sync persists headers plus body preview text for scoring/extraction rather than full raw mailbox bodies.',
-    smallest_next_move: 'Add artifact-family-specific evidence hydration where preview-only context is too thin.',
-  });
+  if (shouldFlagPreviewOnlyMailSyncFinding()) {
+    futureFindings.push({
+      classification: 'future_backlog',
+      finding: 'mail_sync_stores_preview_not_full_raw_body',
+      evidence: 'Current mail sync persists headers plus body preview text for scoring/extraction rather than full raw mailbox bodies.',
+      smallest_next_move: 'Add artifact-family-specific evidence hydration where preview-only context is too thin.',
+    });
+  }
 
   const actionNeeded: string[] = [];
   if (providerFreshness.some((provider) => provider.stale)) {

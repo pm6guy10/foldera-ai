@@ -16,7 +16,10 @@ import { encrypt } from '@/lib/encryption';
 import { truncateSignalContent } from '@/lib/utils/signal-egress';
 import { createHash } from 'crypto';
 import mammoth from 'mammoth';
-import { FIRST_SYNC_LOOKBACK_MS } from '@/lib/config/constants';
+import {
+  FIRST_SYNC_LOOKBACK_MS,
+  MAIL_SYNC_BODY_TEXT_MAX_CHARS,
+} from '@/lib/config/constants';
 import {
   persistCalendarRsvpAvoidanceSignals,
   persistResponsePatternSignals,
@@ -68,8 +71,6 @@ function getOAuth2Client(
 
 const GMAIL_PAGE_SIZE = 500;
 const GMAIL_MAX_MESSAGES = 5000; // ~2-5 years depending on volume
-/** Mail signal `content` body preview — must fit generator/snippet path; 2k captures amounts/dates often below fold at 500. */
-const GMAIL_BODY_PREVIEW_MAX = 2000;
 const GMAIL_THREAD_FETCH_CAP = 300;
 /** Debug: compare inbox message age vs `newer_than:1h` window (ms). */
 const GMAIL_DEBUG_NEWER_THAN_MS = 3600000;
@@ -82,7 +83,7 @@ function getGmailHeader(
   return h?.value ?? '';
 }
 
-function extractPlainTextFromGmailPart(
+export function extractPlainTextFromGmailPart(
   part: gmail_v1.Schema$MessagePart | undefined,
   maxLen: number,
 ): string {
@@ -259,9 +260,15 @@ async function syncGmail(
       const headers = msg.data.payload?.headers ?? [];
       const get = (name: string) => getGmailHeader(headers, name);
 
-      const snippet = (msg.data.snippet ?? '').slice(0, GMAIL_BODY_PREVIEW_MAX);
-      const bodyFromPart = extractPlainTextFromGmailPart(msg.data.payload ?? undefined, GMAIL_BODY_PREVIEW_MAX);
-      const bodyPreview = (bodyFromPart || snippet).slice(0, GMAIL_BODY_PREVIEW_MAX).replace(/\s+/g, ' ').trim();
+      const snippet = (msg.data.snippet ?? '').slice(0, MAIL_SYNC_BODY_TEXT_MAX_CHARS);
+      const bodyFromPart = extractPlainTextFromGmailPart(
+        msg.data.payload ?? undefined,
+        MAIL_SYNC_BODY_TEXT_MAX_CHARS,
+      );
+      const bodyText = (bodyFromPart || snippet)
+        .slice(0, MAIL_SYNC_BODY_TEXT_MAX_CHARS)
+        .replace(/\s+/g, ' ')
+        .trim();
 
       const from = get('From');
       const to = get('To');
@@ -302,7 +309,7 @@ async function syncGmail(
             `To: ${to}`,
             `Subject: ${subject}`,
             cc ? `Cc: ${cc}` : '',
-            `Body preview: ${bodyPreview}`,
+            `Body text: ${bodyText}`,
             `Has In-Reply-To or References: ${hasReplyHeaders ? 'yes' : 'no'}`,
             typeof threadLen === 'number' ? `Thread messages (conversation): ${threadLen}` : '',
             importance ? `Priority/importance: ${importance}` : '',
@@ -313,7 +320,7 @@ async function syncGmail(
             `To: ${to}`,
             cc ? `Cc: ${cc}` : '',
             `Subject: ${subject}`,
-            `Body preview: ${bodyPreview}`,
+            `Body text: ${bodyText}`,
             `Has In-Reply-To or References: ${hasReplyHeaders ? 'yes' : 'no'}`,
             typeof threadLen === 'number' ? `Thread messages (conversation): ${threadLen}` : '',
             importance ? `Priority/importance: ${importance}` : '',

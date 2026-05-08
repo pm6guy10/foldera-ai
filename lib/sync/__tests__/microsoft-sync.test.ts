@@ -59,4 +59,25 @@ describe('syncMicrosoft', () => {
     },
     30_000,
   );
+
+  it('formats mailbox body evidence beyond the old preview cap', async () => {
+    const longBody = `Opening context. ${'A'.repeat(4500)} deadline evidence near the end.`;
+    const { formatMicrosoftMailContent } = await import('../microsoft-sync');
+
+    const content = formatMicrosoftMailContent(
+      {
+        id: 'message-1',
+        from: { emailAddress: { address: 'sender@example.com' } },
+        toRecipients: [{ emailAddress: { address: 'user@example.com' } }],
+        subject: 'Account transition',
+        receivedDateTime: '2026-05-08T12:00:00.000Z',
+        body: { content: longBody },
+      },
+      'email_received',
+    );
+
+    expect(content).toContain('Body text:');
+    expect(content).toContain('deadline evidence near the end');
+    expect(content).not.toContain('Body preview:');
+  });
 });

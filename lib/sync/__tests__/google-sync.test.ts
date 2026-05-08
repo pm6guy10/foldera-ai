@@ -89,4 +89,25 @@ describe('syncGoogle', () => {
     expect(warnSpy).toHaveBeenCalledWith('[google-sync] Missing scope: calendar.readonly');
     expect(warnSpy).toHaveBeenCalledWith('[google-sync] Missing scope: drive.readonly');
   });
+
+  it('extracts Gmail plain text beyond the old preview cap', async () => {
+    const longBody = `Opening context. ${'G'.repeat(4500)} source detail near the end.`;
+    const encoded = Buffer.from(longBody, 'utf8')
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    const { extractPlainTextFromGmailPart } = await import('../google-sync');
+
+    const extracted = extractPlainTextFromGmailPart(
+      {
+        mimeType: 'text/plain',
+        body: { data: encoded },
+      } as any,
+      12_000,
+    );
+
+    expect(extracted).toContain('source detail near the end');
+    expect(extracted.length).toBeGreaterThan(4_000);
+  });
 });
