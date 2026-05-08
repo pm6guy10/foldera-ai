@@ -52,19 +52,9 @@ async function refreshGoogleToken(token: JWT): Promise<JWT> {
     const data = await res.json();
     if (!res.ok) {
       console.error('[auth] Google token refresh failed:', data);
-      const errCode = typeof data?.error === 'string' ? data.error : 'unknown';
-      const errDesc = typeof data?.error_description === 'string' ? data.error_description : '';
-      if (token.userId && typeof token.userId === 'string') {
-        const { isGoogleRefreshFatalError } = await import('@/lib/auth/oauth-refresh-fatals');
-        const { softDisconnectAfterFatalOAuthRefresh } = await import('@/lib/auth/user-tokens');
-        if (isGoogleRefreshFatalError(errCode, errDesc)) {
-          await softDisconnectAfterFatalOAuthRefresh(token.userId, 'google', {
-            source: 'auth-options.refreshGoogleToken',
-            error_code: errCode,
-            error_description: errDesc,
-          });
-        }
-      }
+      // Session JWT refresh is not source-connector authority. The background
+      // token-store refresh path owns `user_tokens` disconnect decisions after
+      // reading the persisted connector row directly.
       return { ...token, error: 'RefreshAccessTokenError' };
     }
     const newAccessToken = data.access_token;
@@ -122,22 +112,9 @@ async function refreshMicrosoftToken(token: JWT): Promise<JWT> {
     const data = await res.json();
     if (!res.ok) {
       console.error('[auth] Microsoft token refresh failed:', data);
-      const errCode = typeof data?.error === 'string' ? data.error : 'unknown';
-      const errDesc = typeof data?.error_description === 'string' ? data.error_description : '';
-      if (
-        token.userId &&
-        typeof token.userId === 'string'
-      ) {
-        const { isMicrosoftRefreshFatalError } = await import('@/lib/auth/oauth-refresh-fatals');
-        const { softDisconnectAfterFatalOAuthRefresh } = await import('@/lib/auth/user-tokens');
-        if (isMicrosoftRefreshFatalError(errCode, errDesc)) {
-          await softDisconnectAfterFatalOAuthRefresh(token.userId, 'microsoft', {
-            source: 'auth-options.refreshMicrosoftToken',
-            error_code: errCode,
-            error_description: errDesc,
-          });
-        }
-      }
+      // Session JWT refresh is not source-connector authority. The background
+      // token-store refresh path owns `user_tokens` disconnect decisions after
+      // reading the persisted connector row directly.
       return { ...token, error: 'RefreshAccessTokenError' };
     }
     const newAccessToken = data.access_token;
