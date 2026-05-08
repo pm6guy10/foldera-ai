@@ -5939,3 +5939,10 @@ pm run build.
 - What changed: Settings now translates `missing_refresh_token` callback failures into provider-specific recovery guidance instead of exposing raw token-shaped error copy. Google and Microsoft callback returns explain that background access was not granted and keep the existing `Try again` recovery button.
 - Verification: Reproduced the stale/raw-copy failure first in the focused Playwright regression; after the copy formatter change, fresh production-bundle Playwright passed for the new OAuth recovery regression (`1/1`) and the full Settings browser slice (`13/13`). Callback route Vitest still passed (`4/4`), `npm run health` returned `RESULT: 0 FAILING` with existing Outlook reconnect + do_nothing warnings only, and `npm run build` passed.
 - Unresolved issues: Live OAuth consent and production DB row proof were not exercised. No paid generation was run and no outbound email was sent.
+
+## 2026-05-07 - Local Playwright stale-server reuse disabled
+- MODE: Frontend proof reliability seam.
+- Files changed: `playwright.config.ts`, `SESSION_HISTORY.md`.
+- What changed: The default local Playwright config now always starts a fresh `next start` server for the configured port instead of reusing whatever process happens to be listening. This prevents local browser proof from silently testing an old production bundle and reporting stale UI/copy.
+- Verification: Reproduced the stale-server failure while proving the Settings OAuth copy; after disabling reuse in the default config, the same focused Settings OAuth recovery Playwright regression passed through the normal non-CI local config (`1/1`). `npm run health` and `npm run build` passed.
+- Unresolved issues: This does not kill unrelated developer servers; a real port collision will now fail loudly instead of reusing stale code. No paid generation was run and no outbound email was sent.

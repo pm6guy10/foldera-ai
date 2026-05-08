@@ -23,8 +23,9 @@ export default defineConfig({
   webServer: {
     command: `npx next start -p ${WEB_PORT}`,
     url: WEB_ORIGIN,
-    // GitHub Actions sets CI=true — always spawn a fresh server after `npm run build`. Locally, reuse avoids double `next start` on :3000.
-    reuseExistingServer: process.env.CI !== "true" && process.env.CI !== "1",
+    // A stale `next start` can serve an old production bundle and make local
+    // proof lie. Always start the server for the build under test.
+    reuseExistingServer: false,
     timeout: 120000,
   },
   // Use 127.0.0.1 — Node 22 on Windows often resolves `localhost` to ::1 while the server is IPv4-only → ECONNREFUSED.
