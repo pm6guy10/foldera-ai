@@ -5946,3 +5946,10 @@ pm run build.
 - What changed: The default local Playwright config now always starts a fresh `next start` server for the configured port instead of reusing whatever process happens to be listening. This prevents local browser proof from silently testing an old production bundle and reporting stale UI/copy.
 - Verification: Reproduced the stale-server failure while proving the Settings OAuth copy; after disabling reuse in the default config, the same focused Settings OAuth recovery Playwright regression passed through the normal non-CI local config (`1/1`). `npm run health` and `npm run build` passed.
 - Unresolved issues: This does not kill unrelated developer servers; a real port collision will now fail loudly instead of reusing stale code. No paid generation was run and no outbound email was sent.
+
+## 2026-05-07 - No-safe dashboard value reason restored
+- MODE: Dashboard always-value data seam.
+- Files changed: `lib/briefing/daily-utility-slate.ts`, `lib/briefing/__tests__/daily-utility-slate.test.ts`, `app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts`, `SESSION_HISTORY.md`.
+- What changed: The daily utility slate now extracts known blocker codes from production no-send receipts before any user-facing copy is built. Current production `All ranked candidates blocked...` receipts now surface a safe source/calendar unlock instead of being discarded for containing internal ranking language.
+- Verification: Reproduced the failure with a production-shaped no-send receipt; focused Vitest passed for slate, dashboard model, and latest endpoint (`21/21`); `npm run health` returned `RESULT: 0 FAILING` with Outlook reconnect and last-generation `do_nothing` warnings only; `npm run build` passed; focused dashboard Playwright daily-utility-slate proof passed (`1/1`).
+- Unresolved issues: GitHub CI, Vercel deployment, production `/api/health` SHA, and live production latest/dashboard proof are pending until this commit is pushed. No paid generation was run and no outbound email was sent.

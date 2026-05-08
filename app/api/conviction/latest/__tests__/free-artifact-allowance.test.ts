@@ -17,6 +17,7 @@ type SupabaseMockOptions = {
   pendingActions: Record<string, unknown>[];
   consumedCount: number;
   accountCreatedAt?: string | null;
+  slateReceipts?: Record<string, unknown>[];
 };
 
 const VALID_DISCREPANCY_CARD = {
@@ -113,7 +114,10 @@ function buildSupabaseMock(options: SupabaseMockOptions) {
           eq: vi.fn().mockReturnValue({
             in: vi.fn().mockReturnValue({
               order: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue({ data: [LATEST_NO_SEND_RECEIPT], error: null }),
+                limit: vi.fn().mockResolvedValue({
+                  data: options.slateReceipts ?? [LATEST_NO_SEND_RECEIPT],
+                  error: null,
+                }),
               }),
             }),
           }),
@@ -392,6 +396,44 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(body.id).toBeUndefined();
     expect(mockBuildContextGreeting).toHaveBeenCalledWith('u-test');
     expect(supabase.spies.getUserById).toHaveBeenCalledWith('u-test');
+  });
+
+  it('no action response keeps production no-send blockers visible without leaking internal terms', async () => {
+    const supabase = buildSupabaseMock({
+      pendingActions: [],
+      consumedCount: 0,
+      slateReceipts: [
+        {
+          id: 'production-no-send',
+          action_type: 'do_nothing',
+          directive_text: 'Nothing cleared the bar today after evaluating 9 candidates.',
+          reason:
+            'All 9 ranked candidates blocked after 1 model-backed attempt(s): "Goal drift: Build Foldera into a revenue-generating product. First paid " -> positive_winner_contract:missing_current_artifact_anchor | "Commitment due 2026-05-14 with no matching calendar block" -> positive_winner_contract:missing_schedule_resolution_context',
+          status: 'skipped',
+          generated_at: '2026-05-07T11:07:22.841Z',
+          execution_result: { outcome_type: 'no_send' },
+        },
+      ],
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'none' });
+
+    const res = await callLatest();
+    const body = (await res.json()) as Record<string, unknown>;
+    const serialized = JSON.stringify(body.daily_utility_slate);
+
+    expect(body.daily_utility_slate).toEqual(
+      expect.objectContaining({
+        watch_item: expect.objectContaining({
+          no_action_reason: expect.stringContaining(
+            'Foldera does not have a current source artifact strong enough to anchor this.',
+          ),
+        }),
+      }),
+    );
+    expect(serialized).not.toMatch(
+      /ranked candidates|positive_winner_contract|missing_current_artifact_anchor|missing_schedule_resolution_context|model-backed/i,
+    );
   });
 
   it('keeps the latest route on the narrow two-stage query contract', async () => {

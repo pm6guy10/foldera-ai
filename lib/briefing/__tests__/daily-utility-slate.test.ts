@@ -101,4 +101,28 @@ describe('Daily Utility Slate', () => {
     expect(serialized).toContain('Nothing cleared the bar today.');
     expect(serialized).not.toMatch(/candidates?/i);
   });
+
+  it('turns production ranked-blocker receipts into a visible source unlock', () => {
+    const slate = buildDailyUtilitySlateFromReceipts([
+      {
+        action_type: 'do_nothing',
+        reason:
+          'All 9 ranked candidates blocked after 1 model-backed attempt(s): "Goal drift: Build Foldera into a revenue-generating product. First paid " -> positive_winner_contract:missing_current_artifact_anchor | "Commitment due 2026-05-14 with no matching calendar block" -> positive_winner_contract:missing_schedule_resolution_context',
+        status: 'skipped',
+        generated_at: '2026-05-07T11:07:22.841Z',
+        execution_result: { outcome_type: 'no_send' },
+      },
+    ]);
+    const serialized = JSON.stringify(slate);
+
+    expect(slate?.watch_item?.no_action_reason).toContain(
+      'Foldera does not have a current source artifact strong enough to anchor this.',
+    );
+    expect(slate?.watch_item?.no_action_reason).toContain(
+      'Foldera cannot confirm whether this is already handled on the calendar.',
+    );
+    expect(serialized).not.toMatch(
+      /ranked candidates|positive_winner_contract|missing_current_artifact_anchor|missing_schedule_resolution_context|model-backed/i,
+    );
+  });
 });

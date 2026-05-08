@@ -65,6 +65,13 @@ function containsInternalToken(value: string): boolean {
   return INTERNAL_TOKEN_PATTERNS.some((pattern) => pattern.test(value));
 }
 
+const KNOWN_BLOCKER_PATTERN =
+  /\b(?:(?:positive_winner_contract|artifact_viability):)?(?:missing_schedule_resolution_context|missing_current_artifact_anchor|missing_role_fit_source_bundle|missing_grounded_recipient_for_send_message|no_grounded_recipient_for_send_message|stale_status_without_current_artifact_facts|weak_risk|weak_next_action|reminder_without_risk)\b/gi;
+
+function extractKnownBlockers(reason: string): string[] {
+  return Array.from(new Set(reason.match(KNOWN_BLOCKER_PATTERN) ?? []));
+}
+
 function isUtilityItem(item: DailyUtilitySlateItem | null): item is DailyUtilitySlateItem {
   if (!item) return false;
   if (!item.title.trim()) return false;
@@ -113,6 +120,11 @@ function humanizeBlockers(blockers: string[]): string[] {
 }
 
 function humanizeNoSafeReason(reason: string): string {
+  const knownBlockers = extractKnownBlockers(reason);
+  if (knownBlockers.length > 0) {
+    return humanizeBlockers(knownBlockers).join(' ');
+  }
+
   const afterColon = reason.includes(':') ? reason.split(':').slice(1).join(':') : reason;
   const parts = afterColon
     .split(/[;,]/)
