@@ -21,6 +21,7 @@ Historical notes, long-form ops procedures, and legacy rules belong in `docs/**`
 When docs conflict, active hierarchy wins:
 - `FOLDERA_OPERATING_SYSTEM.md` controls product doctrine and worldview
 - `CODEX_START.md` controls session boot order
+- `ACTIVE_HANDOFF.md` controls current command state and the next exact move
 - `AGENTS.md` controls agent behavior and repo-specific execution rules
 - `ACCEPTANCE_GATE.md` controls product proof
 - `CURRENT_STATE.md` controls current blockers and runtime truth
