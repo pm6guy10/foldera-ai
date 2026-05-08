@@ -28,15 +28,9 @@ If you fixed the same problem twice, you fixed the instance. Build the defense t
 
 ### 2b. Remove Friction Before Explaining It
 
-The product is not smart because it can label a problem. It is smart when it uses existing permissions, tokens, data, and deterministic recovery paths to handle the problem before Brandon has to care.
+The canonical version of this rule now lives in `FOLDERA_OPERATING_SYSTEM.md`.
 
-Examples:
-- Connected source stale -> auto-refresh safely, then show refreshed truth.
-- Token refresh fails fatally -> soft-disconnect and show one reconnect action.
-- No artifact -> show the one concrete missing input or source freshness blocker.
-- Paid/model proof needed -> stop at the free-proof boundary and ask explicitly.
-
-"Status visible but not acted on" is the same class of failure as "done without proof": it makes the user operate the system.
+Permanent lesson: "status visible but not acted on" is the same class of failure as "done without proof" because it makes the user operate the system.
 
 ## 3. The Five Weekly Killers
 

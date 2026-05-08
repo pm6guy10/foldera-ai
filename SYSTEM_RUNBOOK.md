@@ -22,7 +22,9 @@ Achieve 3 consecutive successful runs for a non-Brandon user.
 - If any source-of-truth file is stale, update it before closing the session
 
 ## Source-of-Truth Boundaries
-- `AGENTS.md` and `CLAUDE.md` define active agent execution behavior.
+- `FOLDERA_OPERATING_SYSTEM.md` defines canonical product doctrine and worldview.
+- `CODEX_START.md` defines the session boot contract.
+- `AGENTS.md` and `CLAUDE.md` define active agent execution behavior and compatibility runbook rules.
 - `ACCEPTANCE_GATE.md` defines product done criteria and browser/product proof requirements.
 - `CURRENT_STATE.md` defines current working/broken runtime truth.
 - `SYSTEM_RUNBOOK.md` defines the current operating plan and source-of-truth boundaries.
@@ -30,6 +32,7 @@ Achieve 3 consecutive successful runs for a non-Brandon user.
 - FULL_AUDIT_RESULTS.md is audit evidence, not a mutable checklist; closure receipts belong in `SESSION_HISTORY.md`.
 - `SESSION_HISTORY.md is append-only receipt history`; do not use it as the current done/next selector.
 - `BRANDON.md` defines product feel and taste when a seam needs product-language judgment.
+- Specs, audits, backlog, revenue proof, launch checklists, and historical notes are secondary unless the active seam touches them.
 
 ## Execution Order
 1. Build

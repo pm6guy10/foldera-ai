@@ -19,11 +19,15 @@ Historical notes, long-form ops procedures, and legacy rules belong in `docs/**`
 ## Source-of-Truth Loading Hierarchy
 
 When docs conflict, active hierarchy wins:
-- `AGENTS.md` controls agent behavior
+- `FOLDERA_OPERATING_SYSTEM.md` controls product doctrine and worldview
+- `CODEX_START.md` controls session boot order
+- `AGENTS.md` controls agent behavior and repo-specific execution rules
 - `ACCEPTANCE_GATE.md` controls product proof
 - `CURRENT_STATE.md` controls current blockers and runtime truth
+- `SYSTEM_RUNBOOK.md` controls operating plan and tool boundaries
 - `SESSION_HISTORY.md` is recent receipt history only
-- Specs, audits, backlog, runbooks, and taste docs are reference only; load them only when the seam touches them
+- `BRANDON.md` controls product taste and judgment when the seam needs a "how should this feel?" answer
+- Specs, audits, backlog, and long historical docs are reference only; load them only when the seam touches them
 
 ---
 
@@ -94,11 +98,13 @@ Do not say `Acceptance condition met`, `Fixed`, `Done`, or `Ready` unless browse
 
 Before doing anything else:
 
-1. Run `npm run health`
-2. Inspect the output
-3. If there is a relevant `FAIL`, prioritize it unless the assigned task explicitly targets another proven seam
-4. If health is green or warnings-only, continue autonomously
-5. Include the health summary in the final receipt
+1. Read `CODEX_START.md`
+2. Read `FOLDERA_OPERATING_SYSTEM.md` and the canonical docs named by `CODEX_START.md`
+3. Run `npm run health`
+4. Inspect the output
+5. If there is a relevant `FAIL`, prioritize it unless the assigned task explicitly targets another proven seam
+6. If health is green or warnings-only, continue autonomously
+7. Include the health summary in the final receipt
 
 Do not stop to ask for permission after health.
 
@@ -352,13 +358,9 @@ prefer one polished completed journey over broad UI churn.
 
 ### Zero-Friction Agentic Doctrine
 
-Foldera should act like an operator, not a chore board.
+The canonical zero-friction doctrine lives in `FOLDERA_OPERATING_SYSTEM.md`.
 
-- If Foldera has the user's permission, tokens, data, or local context needed to safely prepare, refresh, retry, reconcile, or repair a path, the system should do that itself before asking the user.
-- "Connected but stale", "configured but useless", "status visible but not handled", and "go somewhere else to fix this" are product failures unless an external provider, missing permission, paid proof lock, or safety rule truly blocks automatic recovery.
-- Every user-facing surface should resolve to one valuable outcome or one irreducible blocker in plain language. Do not expose internal codes, gate names, candidate terms, raw diagnostics, or operator taxonomy as the product.
-- Manual controls are fallback and trust affordances, not the primary value loop.
-- Before each slice, ask: "What can Foldera safely do for the user before the user has to do anything?" Build that first.
+Before each slice, ask: what can Foldera safely do for the user before the user has to do anything? Build that first, unless an external provider, missing permission, paid proof lock, or safety rule truly blocks automatic recovery.
 
 ---
 

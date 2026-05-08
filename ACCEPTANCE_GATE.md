@@ -12,15 +12,9 @@ Foldera is not a generic morning-summary product. Command-center category is dia
 
 ## Zero-Friction Agentic Standard
 
-Foldera is broken when a connected user has to diagnose, babysit, or manually orchestrate a path that the system can safely handle itself.
+Canonical doctrine lives in `FOLDERA_OPERATING_SYSTEM.md`.
 
-Every core surface must prefer this order:
-
-1. Detect the user's need or system gap.
-2. Use existing permissions, tokens, source data, deterministic checks, and safe local recovery paths to prepare or repair automatically.
-3. Show one finished artifact, one useful daily read, or one irreducible blocker with one clear action.
-
-Manual controls may remain visible for trust and fallback, but they are not the main value loop. "Connected but stale", "configured but useless", "status shown but not acted on", and "go to another page to fix this" do not satisfy the product promise unless the blocker truly requires external provider approval, missing permission, paid/model proof, or a safety/product decision.
+This acceptance gate enforces that doctrine: a path is broken when a connected user has to diagnose, babysit, or manually orchestrate work the system can safely handle itself. Finished value, safe self-recovery, or one irreducible blocker are the only acceptable user-facing outcomes.
 
 ## Production Ladder: Works / Broken / Proof
 

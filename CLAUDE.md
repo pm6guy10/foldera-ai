@@ -29,9 +29,13 @@ Historical notes belong in:
 
 Read these in order:
 
-1. `CURRENT_STATE.md`
-2. `AGENTS.md`
-3. `LESSONS_LEARNED.md`
+1. `CODEX_START.md`
+2. `FOLDERA_OPERATING_SYSTEM.md`
+3. `CURRENT_STATE.md`
+4. `ACCEPTANCE_GATE.md`
+5. `SYSTEM_RUNBOOK.md`
+6. latest `SESSION_HISTORY.md` entries
+7. `BRANDON.md`
 
 Read other files only if they are directly relevant to the active seam.
 
@@ -44,11 +48,12 @@ Do not broad-audit unless explicitly asked.
 
 Before doing anything else:
 
-1. Run `npm run health`
-2. Inspect the output
-3. If any row shows `FAIL`, treat the first relevant failing row as the top-priority blocker unless the assigned task explicitly targets a different proven seam
-4. If health is green or warnings-only, continue autonomously
-5. Include the health summary in the final receipt
+1. Read the startup and doctrine files above.
+2. Run `npm run health`.
+3. Inspect the output.
+4. If any row shows `FAIL`, treat the first relevant failing row as the top-priority blocker unless the assigned task explicitly targets a different proven seam.
+5. If health is green or warnings-only, continue autonomously.
+6. Include the health summary in the final receipt.
 
 Health is orientation, not completion.
 A green health check does not mean the mission is done.
@@ -116,16 +121,9 @@ Core law:
 
 ### Zero-Friction Agentic Product Bar
 
-Foldera is supposed to remove work, not describe work.
+The canonical zero-friction product doctrine lives in `FOLDERA_OPERATING_SYSTEM.md`.
 
-For every product slice, ask first: what can Foldera safely do with existing permissions, tokens, source data, deterministic checks, and local product context before Brandon has to click, diagnose, reconnect, or explain anything?
-
-The preferred product loop is:
-1. Detect the need.
-2. Attempt safe automatic preparation, refresh, retry, repair, or reconciliation.
-3. Present one finished artifact, one useful daily read, or one irreducible external blocker.
-
-Manual buttons, settings links, and diagnostics are fallback controls. They are not the core value proposition. "Connected but useless" and "status shown but not handled" are broken states unless the remaining step truly requires external provider approval, missing user permission, paid/model proof, or a safety decision.
+Apply it before local runbook habit: Foldera removes work, safely self-recovers where it can, and asks for exactly one irreducible blocker only when it cannot proceed.
 
 ### Mandatory Pre-Code Grill Gate
 
