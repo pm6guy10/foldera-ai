@@ -91,6 +91,19 @@ function toMs(iso: string | null | undefined): number | null {
   return Number.isNaN(ms) ? null : ms;
 }
 
+function isRollingWindowBoundaryDrift(entry: BehavioralGraphDriftEntry): boolean {
+  const latestSignalMs = toMs(entry.latest_signal_at);
+  const patternsUpdatedMs = toMs(entry.patterns_updated_at);
+  if (latestSignalMs == null || patternsUpdatedMs == null || latestSignalMs > patternsUpdatedMs) {
+    return false;
+  }
+
+  const delta14 = Math.abs(entry.stored.signal_count_14d - entry.actual.signal_count_14d);
+  const delta30 = Math.abs(entry.stored.signal_count_30d - entry.actual.signal_count_30d);
+  const delta90 = Math.abs(entry.stored.signal_count_90d - entry.actual.signal_count_90d);
+  return delta14 <= 1 && delta30 <= 1 && delta90 <= 1;
+}
+
 function buildEmptyCounts(): SignalWindowCounts {
   return {
     count14: 0,
@@ -391,7 +404,7 @@ export async function auditBehavioralGraphConsistency(
       const delta30 = Math.abs(entry.stored.signal_count_30d - entry.actual.signal_count_30d);
       const delta90 = Math.abs(entry.stored.signal_count_90d - entry.actual.signal_count_90d);
       const boundaryOnly14dDrift = delta14 <= 1 && delta30 === 0 && delta90 === 0;
-      return !boundaryOnly14dDrift && (delta14 > 0 || delta30 > 0 || delta90 > 0);
+      return !boundaryOnly14dDrift && !isRollingWindowBoundaryDrift(entry) && (delta14 > 0 || delta30 > 0 || delta90 > 0);
     });
 }
 

@@ -16,17 +16,20 @@ function buildSupabaseMock(input: {
     entityUpdates,
     from(table: string) {
       if (table === 'tkg_entities') {
-        return {
-          select: () => ({
-            eq: () => ({
-              neq: () => ({
-                eq: () => Promise.resolve({
-                  data: input.entities,
-                  error: null,
-                }),
-              }),
-            }),
+        const entityQuery = {
+          eq: () => entityQuery,
+          neq: () => entityQuery,
+          order: () => entityQuery,
+          limit: () => Promise.resolve({
+            data: input.entities,
+            error: null,
           }),
+          then: (
+            resolve: (value: { data: Array<Record<string, unknown>>; error: null }) => unknown,
+          ) => resolve({ data: input.entities, error: null }),
+        };
+        return {
+          select: () => entityQuery,
           update: (payload: Record<string, unknown>) => ({
             eq: (field: string, id: string) => {
               if (field === 'id') {
@@ -121,5 +124,31 @@ describe('behavioral graph', () => {
 
     const { needsBehavioralGraphRefresh } = await import('../behavioral-graph');
     await expect(needsBehavioralGraphRefresh('user-1')).resolves.toBe(true);
+  });
+
+  it('ignores one-count rolling-window drift when no newer signal exists', async () => {
+    const entity = {
+      id: 'entity-1',
+      name: 'keri nopens',
+      display_name: 'Keri Nopens',
+      total_interactions: 17,
+      last_interaction: '2026-03-30T16:32:19.372Z',
+      patterns: {
+        bx_stats: {
+          signal_count_14d: 0,
+          signal_count_30d: 0,
+          signal_count_90d: 17,
+        },
+      },
+      patterns_updated_at: '2026-05-05T11:05:06.682Z',
+    };
+    const signals = Array.from({ length: 16 }, () => ({
+      extracted_entities: ['entity-1'],
+      occurred_at: '2026-03-30T16:32:19.372Z',
+    }));
+    createServerClient.mockReturnValue(buildSupabaseMock({ entities: [entity], signals }));
+
+    const { auditBehavioralGraphConsistency } = await import('../behavioral-graph');
+    await expect(auditBehavioralGraphConsistency('user-1')).resolves.toEqual([]);
   });
 });
