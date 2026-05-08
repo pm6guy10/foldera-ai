@@ -20,6 +20,12 @@
 
 set -o pipefail
 
+npm run preflight -- --stage=pre-push
+if [ $? -ne 0 ]; then
+  echo "CONTRACT PREFLIGHT FAILED. Push rejected."
+  exit 1
+fi
+
 echo "Running e2e assertion linter..."
 npm run test:ci:e2e:lint
 if [ $? -ne 0 ]; then

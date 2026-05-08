@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { describe, expect, it, vi } from 'vitest';
@@ -344,6 +344,7 @@ Next blocker: non-owner account setup pending
       const code = runControllerAutopilot(repoDir);
 
       expect(code).toBe(1);
+      expect(existsSync(join(repoDir, '.foldera-contract.json'))).toBe(false);
       expect(logs.some((line) => line.includes('CONTROLLER RESULT: STOP'))).toBe(true);
       expect(
         logs.some((line) =>
@@ -364,6 +365,81 @@ Next blocker: non-owner account setup pending
       ).toBe(true);
       expect(logs.some((line) => line.includes('WAITING PASSIVE PROOF ITEMS:'))).toBe(true);
       expect(logs.some((line) => line.includes('WAITING EXTERNAL BLOCKER ITEMS:'))).toBe(true);
+    } finally {
+      spy.mockRestore();
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
+  it('writes a machine-readable contract on GO and prints next_command as the final line', () => {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      logs.push(args.map(String).join(' '));
+    });
+
+    const repoDir = mkdtempSync(join(tmpdir(), 'controller-autopilot-'));
+    try {
+      execSync('git init', { cwd: repoDir, stdio: 'ignore' });
+      writeFileSync(
+        join(repoDir, 'FOLDERA_PRODUCTION_BACKLOG.md'),
+        `
+### BL-777
+ID: BL-777
+Rung: 0
+Title: Contract enforcement
+User-facing path: Local controller run
+Starting route or trigger: npm run controller:autopilot
+Ending success state: Contract exists
+Problem: Contract was only printed
+Protected contracts: stay inside allowed files, keep proof required
+Allowed files: \`scripts/controller-autopilot.ts\`, \`scripts/preflight.ts\`, \`lib/briefing/__tests__/*\`, fixture/test files only when safe
+Forbidden files: \`app/dashboard/**\`, billing, auth/session
+Required local proof: npx vitest run scripts/__tests__/controller-autopilot.test.ts
+Required production proof: None
+Done means: Controller writes contract and prints command
+Do-not-count: stdout-only reports
+Status: OPEN
+Next blocker: Implement contract persistence.
+`,
+      );
+      writeFileSync(
+        join(repoDir, 'ACCEPTANCE_GATE.md'),
+        'If Codex cannot prove that at least one production rung advanced, the run did not count.',
+      );
+      writeFileSync(
+        join(repoDir, 'SESSION_HISTORY.md'),
+        '## 2026-05-08 - Contract\n- Files changed: none\n- Verification: none\n',
+      );
+      execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
+      execSync('git -c user.name=Test -c user.email=test@example.com commit -m init', {
+        cwd: repoDir,
+        stdio: 'ignore',
+      });
+
+      const code = runControllerAutopilot(repoDir);
+      const contract = JSON.parse(
+        readFileSync(join(repoDir, '.foldera-contract.json'), 'utf8'),
+      ) as {
+        backlog_id: string;
+        base_commit: string;
+        allowed_file_patterns: string[];
+        allowed_files_raw: string;
+        forbidden_files_raw: string;
+        next_command: string;
+      };
+
+      expect(code).toBe(0);
+      expect(contract.backlog_id).toBe('BL-777');
+      expect(contract.base_commit).toMatch(/^[0-9a-f]{40}$/);
+      expect(contract.allowed_file_patterns).toEqual([
+        'scripts/controller-autopilot.ts',
+        'scripts/preflight.ts',
+        'lib/briefing/__tests__/*',
+      ]);
+      expect(contract.allowed_files_raw).toContain('fixture/test files');
+      expect(contract.forbidden_files_raw).toContain('billing');
+      expect(contract.next_command).toContain('Selected: BL-777.');
+      expect(logs.at(-1)).toBe(contract.next_command);
     } finally {
       spy.mockRestore();
       rmSync(repoDir, { recursive: true, force: true });

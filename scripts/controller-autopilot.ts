@@ -1,7 +1,12 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import {
+  FolderaRunContract,
+  normalizeContractFilePatterns,
+} from './preflight-contract';
 
 const REQUIRED_FILES = [
   'FOLDERA_PRODUCTION_BACKLOG.md',
@@ -621,6 +626,68 @@ function printSeamContractReport(item: BacklogItem | null, acceptanceGateText: s
   console.log(`- Stop condition: ${compact(buildStopCondition(item, acceptanceGateText), 240)}`);
 }
 
+function normalizeContractNotes(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(/\r?\n|,/g)
+    .map((s) => s.trim())
+    .map((s) => s.replace(/^[-*]\s+/, '').trim())
+    .map((s) => s.replace(/^`+|`+$/g, '').trim())
+    .filter(Boolean);
+}
+
+function getGitHeadSha(repoRoot: string): string {
+  const result = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(result.stderr.trim() || 'git rev-parse HEAD failed');
+  return (result.stdout || '').trim();
+}
+
+function buildNextCommand(item: BacklogItem | null, acceptanceGateText: string): string {
+  const id = item?.id ?? 'UNKNOWN';
+  const allowed = normalizeContractFilePatterns(item?.allowedFiles);
+  const forbidden = normalizeContractFilePatterns(item?.forbiddenFiles);
+  const localProof = compact(item?.requiredLocalProof);
+  const prodProof = compact(item?.requiredProductionProof);
+  const stop = compact(buildStopCondition(item, acceptanceGateText), 240);
+
+  return [
+    'Run FOLDERA CONTROLLED AUTOPILOT.',
+    `Selected: ${id}.`,
+    `Allowed: ${allowed.length ? allowed.join(' | ') : '(unspecified)'}.`,
+    `Forbidden: ${forbidden.length ? forbidden.join(' | ') : '(unspecified)'}.`,
+    `Proof: local="${localProof}" production="${prodProof}".`,
+    `Stop when: ${stop}`,
+  ].join(' ');
+}
+
+function writeContractFile(repoRoot: string, item: BacklogItem | null, acceptanceGateText: string) {
+  const head = getGitHeadSha(repoRoot);
+  const contract: FolderaRunContract = {
+    backlog_id: item?.id ?? 'UNKNOWN',
+    base_commit: head,
+    allowed_file_patterns: normalizeContractFilePatterns(item?.allowedFiles),
+    forbidden_file_patterns: normalizeContractFilePatterns(item?.forbiddenFiles),
+    allowed_files_raw: item?.allowedFiles ?? '',
+    forbidden_files_raw: item?.forbiddenFiles ?? '',
+    required_local_proof: item?.requiredLocalProof ?? '',
+    required_browser_proof: item?.requiredProductionProof ?? '',
+    anti_regression_checks: normalizeContractNotes(
+      item?.doneMeans ?? item?.protectedContracts,
+    ),
+    next_command: buildNextCommand(item, acceptanceGateText),
+  };
+
+  const path = resolve(repoRoot, '.foldera-contract.json');
+  writeFileSync(path, `${JSON.stringify(contract, null, 2)}\n`, 'utf8');
+}
+
+function printNextCommand(item: BacklogItem | null, acceptanceGateText: string) {
+  console.log('');
+  console.log('NEXT COMMAND (verbatim — paste this as-is)');
+  console.log(buildNextCommand(item, acceptanceGateText));
+}
+
 function runGitStatus(repoRoot: string): string {
   const result = spawnSync('git', ['status', '--short'], {
     cwd: repoRoot,
@@ -734,6 +801,10 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
 
   console.log('');
   printSeamContractReport(firstActionableItem, acceptanceGateText);
+  if (controllerResult === 'GO') {
+    writeContractFile(repoRoot, firstActionableItem, acceptanceGateText);
+  }
+  printNextCommand(firstActionableItem, acceptanceGateText);
 
   return controllerResult === 'GO' ? 0 : 1;
 }

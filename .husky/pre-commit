@@ -1,1 +1,1 @@
-# No pre-commit checks — build check runs on pre-push
+npm run preflight -- --stage=pre-commit || exit 1

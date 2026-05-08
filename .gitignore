@@ -10,6 +10,7 @@ test-results/
 audit-output/
 output/
 artifacts/
+.foldera-contract.json
 
 # Local owner session for /api/dev/* (brain-receipt, email-preview)
 tests/local/auth-state-owner.json

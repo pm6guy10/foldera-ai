@@ -15,10 +15,36 @@ import { config } from 'dotenv';
 import { resolve } from 'path';
 
 import { ActionRow, CheckResult, evaluatePaidLlmGate, Verdict } from './preflight-core';
+import {
+  ContractValidationStage,
+  validateContractForStage,
+} from './preflight-contract';
 
 config({ path: resolve(process.cwd(), '.env.local') });
 
 const FORTY_EIGHT_H_MS = 48 * 60 * 60 * 1000;
+
+function getContractValidationStage(): ContractValidationStage {
+  const stageArg = process.argv.find((arg) => arg.startsWith('--stage='));
+  const stage = stageArg?.split('=').at(1);
+  if (stage === 'pre-commit' || stage === 'pre-push') return stage;
+  return 'manual';
+}
+
+function runContractGateOrExit(stage: ContractValidationStage) {
+  const result = validateContractForStage(process.cwd(), stage);
+  if (result.ok) {
+    console.log(`CONTRACT PREFLIGHT: PASS (${stage}; ${result.touchedFiles.length} file(s))`);
+    return;
+  }
+
+  console.error(`PREFLIGHT ABORT: ${result.message}`);
+  if (result.violations.length > 0) {
+    console.error('Contract violations:');
+    for (const violation of result.violations) console.error(`- ${violation}`);
+  }
+  process.exit(1);
+}
 
 interface TokenRow {
   provider: string;
@@ -41,6 +67,12 @@ function relAgo(iso: string | null | undefined): string {
 }
 
 async function main() {
+  const contractStage = getContractValidationStage();
+  runContractGateOrExit(contractStage);
+  if (contractStage === 'pre-commit') {
+    process.exit(0);
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const userId = (process.env.OWNER_USER_ID || '').trim();
