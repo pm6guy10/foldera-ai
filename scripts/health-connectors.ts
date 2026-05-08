@@ -1,6 +1,5 @@
 import { warningCheck, type HealthCheckRow } from './health-checks';
-
-const TWENTY_FIVE_H_MS = 25 * 60 * 60 * 1000;
+import { MAIL_CURSOR_FRESH_MS } from '../lib/config/constants';
 
 export interface HealthTokenRow {
   provider: string;
@@ -26,7 +25,7 @@ export function relAgo(iso: string | null | undefined, now: number): string {
 export function isFresh(iso: string | null | undefined, now: number): boolean {
   if (!iso) return false;
   const t = new Date(iso).getTime();
-  return Number.isFinite(t) && now - t <= TWENTY_FIVE_H_MS;
+  return Number.isFinite(t) && now - t <= MAIL_CURSOR_FRESH_MS;
 }
 
 function hasValue(value: string | null | undefined): boolean {

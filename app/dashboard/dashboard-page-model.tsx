@@ -73,6 +73,7 @@ export type IntegrationStatusItem = {
   last_synced_at?: string | null;
   needs_reconnect?: boolean;
   needs_reauth?: boolean;
+  needs_sync?: boolean;
   sync_stale?: boolean;
 };
 
@@ -311,6 +312,14 @@ function countActiveIntegrations(integrationStatus: IntegrationStatusPayload | n
     : 0;
 }
 
+function hasSourceFreshnessAttention(integrationStatus: IntegrationStatusPayload | null | undefined): boolean {
+  return Array.isArray(integrationStatus?.integrations)
+    ? integrationStatus.integrations.some(
+        (integration) => integration?.needs_sync === true || integration?.sync_stale === true,
+      )
+    : false;
+}
+
 export function buildDailyValueState(
   slate: DailyUtilitySlate | null | undefined,
   latestIssue: DashboardLoadIssue | null,
@@ -319,7 +328,9 @@ export function buildDailyValueState(
 ): DashboardDailyValueState {
   const missingInputPrompt = buildMissingInputPrompt(slate, {
     hasIntegrationIssue: latestIssue === 'integrations',
-    mailIngestLooksStale: integrationStatus?.mail_ingest_looks_stale === true,
+    mailIngestLooksStale:
+      integrationStatus?.mail_ingest_looks_stale === true ||
+      hasSourceFreshnessAttention(integrationStatus),
   });
   const slateItems = getSlateItems(slate);
   const firstItem = slateItems[0] ?? null;
@@ -684,23 +695,30 @@ export function normalizeIntegrationProvider(provider: string | null | undefined
 }
 
 export function getIntegrationStateLabel(integration: IntegrationStatusItem | null | undefined): string {
+  if (integration?.needs_reauth) return 'Needs re-auth';
+  if (integration?.needs_reconnect) return 'Needs reconnect';
   if (!integration?.is_active) return 'Not connected';
-  if (integration.needs_reauth) return 'Needs re-auth';
-  if (integration.needs_reconnect) return 'Needs reconnect';
+  if (integration.needs_sync) return 'Needs sync';
   if (integration.sync_stale) return 'Sync stale';
   return 'Connected';
 }
 
 export function getIntegrationStateClass(integration: IntegrationStatusItem | null | undefined): string {
-  if (!integration?.is_active) return 'text-text-muted';
-  if (integration.needs_reauth || integration.needs_reconnect || integration.sync_stale) {
+  if (
+    integration?.needs_reauth ||
+    integration?.needs_reconnect ||
+    integration?.needs_sync ||
+    integration?.sync_stale
+  ) {
     return 'text-amber-300';
   }
+  if (!integration?.is_active) return 'text-text-muted';
   return 'text-emerald-300';
 }
 
 export function getIntegrationMetaLine(integration: IntegrationStatusItem | null | undefined): string {
-  if (!integration?.is_active) return 'Connect from Settings';
+  if (integration?.needs_reauth || integration?.needs_reconnect) return 'Reconnect required';
+  if (!integration?.is_active) return 'Connect from this dashboard';
   const meta: string[] = [];
   const syncEmail = asTrimmedString(integration.sync_email);
   if (syncEmail) {
@@ -710,6 +728,9 @@ export function getIntegrationMetaLine(integration: IntegrationStatusItem | null
   }
   if (asTrimmedString(integration.last_synced_at)) {
     meta.push(formatRelativeTime(integration.last_synced_at));
+  }
+  if (integration.needs_sync) {
+    meta.push('Fresh sync needed');
   }
   return meta.join(' · ');
 }

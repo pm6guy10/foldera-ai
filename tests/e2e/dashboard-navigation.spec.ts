@@ -138,6 +138,7 @@ async function setupDashboardMocks(
   options: {
     mockClipboard?: boolean;
     latestResponse?: unknown;
+    integrationStatusResponse?: unknown;
   } = {},
 ) {
   await seedAuthenticatedSession(page);
@@ -191,9 +192,8 @@ async function setupDashboardMocks(
     fulfillJson({ plan: 'pro', status: 'active', can_manage_billing: true }),
   );
   await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
-  await page.route(
-    matchApiPath('/api/integrations/status'),
-    fulfillJson({
+  const integrationStatusResponse =
+    options.integrationStatusResponse ?? {
       integrations: [
         {
           provider: 'google',
@@ -218,8 +218,9 @@ async function setupDashboardMocks(
       ],
       newest_mail_signal_at: '2026-04-25T08:30:00.000Z',
       mail_ingest_looks_stale: false,
-    }),
-  );
+    };
+
+  await page.route(matchApiPath('/api/integrations/status'), fulfillJson(integrationStatusResponse));
   await page.route(
     matchApiPath('/api/graph/stats'),
     fulfillJson({
@@ -329,6 +330,58 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByRole('link', { name: /Open full history/i })).toHaveCount(0);
     await expect(page.getByRole('link', { name: /Open full settings/i })).toHaveCount(0);
     await expect(page.getByRole('link', { name: /Manage connected accounts/i })).toHaveCount(0);
+  });
+
+  test('stale Microsoft source auto-recovers and keeps manual sync as fallback', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    let microsoftSyncCalls = 0;
+    await setupDashboardMocks(page, {
+      integrationStatusResponse: {
+        integrations: [
+          {
+            provider: 'google',
+            is_active: true,
+            sync_email: 'test@gmail.com',
+            last_synced_at: '2026-04-25T08:30:00.000Z',
+            missing_scopes: [],
+            needs_reconnect: false,
+            needs_reauth: false,
+            needs_sync: false,
+            sync_stale: false,
+          },
+          {
+            provider: 'azure_ad',
+            is_active: true,
+            sync_email: 'test@outlook.com',
+            last_synced_at: '2026-04-21T10:00:00.000Z',
+            missing_scopes: [],
+            needs_reconnect: false,
+            needs_reauth: false,
+            needs_sync: true,
+            sync_stale: false,
+          },
+        ],
+        newest_mail_signal_at: '2026-04-25T08:30:00.000Z',
+        mail_ingest_looks_stale: false,
+      },
+    });
+    await page.route(matchApiPath('/api/microsoft/sync-now'), async (route) => {
+      if (route.request().method() !== 'POST') return route.continue();
+      microsoftSyncCalls += 1;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: json({ ok: true, mail_signals: 3, calendar_signals: 1 }),
+      });
+    });
+    await page.goto('/dashboard?panel=sources');
+
+    const sourcesPanel = page.getByTestId('dashboard-panel-sources');
+    await expect(sourcesPanel).toContainText('Needs sync');
+    await expect(sourcesPanel).toContainText('Fresh sync needed');
+    await expect.poll(() => microsoftSyncCalls).toBe(1);
+    await expect(sourcesPanel).toContainText('Microsoft sync complete');
+    await expect(sourcesPanel.getByRole('button', { name: /sync microsoft/i })).toBeVisible();
   });
 
   test('legacy product-shell routes point primary nav back into the live dashboard shell', async ({ page }) => {

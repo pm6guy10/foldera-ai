@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildDailyValueState,
   buildMissingInputPrompt,
+  getIntegrationMetaLine,
+  getIntegrationStateClass,
+  getIntegrationStateLabel,
   normalizeDashboardPanel,
   type DailyUtilitySlate,
   type DashboardHistoryItem,
@@ -98,5 +101,21 @@ describe('dashboard finished-work inbox model', () => {
     expect(state.valueBlocks.map((block) => `${block.label} ${block.body}`).join(' ')).not.toMatch(
       /missing_|weak_|stale_|candidate|gate|blocker|[a-z]+_[a-z0-9_]+_[a-z0-9_]+/i,
     );
+  });
+
+  it('labels source cursors that need sync without treating them as disconnected', () => {
+    const integration = {
+      provider: 'azure_ad',
+      is_active: true,
+      sync_email: 'brandon@outlook.com',
+      last_synced_at: '2026-05-06T11:04:20.111Z',
+      needs_sync: true,
+      sync_stale: false,
+    };
+
+    expect(getIntegrationStateLabel(integration)).toBe('Needs sync');
+    expect(getIntegrationStateClass(integration)).toContain('amber');
+    expect(getIntegrationMetaLine(integration)).toContain('Fresh sync needed');
+    expect(getIntegrationMetaLine(integration)).not.toMatch(/missing_|weak_|candidate|gate|blocker/i);
   });
 });

@@ -364,4 +364,54 @@ describe('GET /api/integrations/status', () => {
       }),
     ]);
   });
+
+  it('marks an active Microsoft connector as needing sync when the cursor is stale enough to block trust', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'user-1' } });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'user_tokens') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              or: vi.fn().mockResolvedValue({
+                data: [
+                  {
+                    provider: 'microsoft',
+                    email: 'u@outlook.com',
+                    last_synced_at: '2026-04-21T10:00:00.000Z',
+                    scopes:
+                      'openid profile email User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Tasks.Read',
+                    access_token: 'encrypted-access',
+                    expires_at: 9999999999,
+                    refresh_token: 'encrypted-refresh',
+                    disconnected_at: null,
+                    oauth_reauth_required_at: null,
+                  },
+                ],
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'tkg_signals') return newestMailChain('2026-04-21T10:00:00.000Z');
+      throw new Error(`unexpected table ${table}`);
+    });
+
+    vi.useFakeTimers({ now: new Date('2026-04-23T12:00:00.000Z').getTime() });
+    const { GET } = await import('../route');
+    const res = await GET();
+    vi.useRealTimers();
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      integrations: Array<{ provider: string; needs_sync?: boolean; sync_stale?: boolean }>;
+    };
+    expect(body.integrations).toEqual([
+      expect.objectContaining({
+        provider: 'azure_ad',
+        needs_sync: true,
+        sync_stale: false,
+      }),
+    ]);
+  });
 });

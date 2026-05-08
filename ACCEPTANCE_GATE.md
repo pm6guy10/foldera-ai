@@ -10,6 +10,18 @@ Foldera is not a generic morning-summary product. Command-center category is dia
 
 `No safe artifact today.` is valid only when no viable candidate exists or a hard safety/action failure remains.
 
+## Zero-Friction Agentic Standard
+
+Foldera is broken when a connected user has to diagnose, babysit, or manually orchestrate a path that the system can safely handle itself.
+
+Every core surface must prefer this order:
+
+1. Detect the user's need or system gap.
+2. Use existing permissions, tokens, source data, deterministic checks, and safe local recovery paths to prepare or repair automatically.
+3. Show one finished artifact, one useful daily read, or one irreducible blocker with one clear action.
+
+Manual controls may remain visible for trust and fallback, but they are not the main value loop. "Connected but stale", "configured but useless", "status shown but not acted on", and "go to another page to fix this" do not satisfy the product promise unless the blocker truly requires external provider approval, missing permission, paid/model proof, or a safety/product decision.
+
 ## Production Ladder: Works / Broken / Proof
 
 This ladder is the operational definition of production truth.

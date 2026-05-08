@@ -38,6 +38,8 @@ export const SIGNAL_RETENTION_DAYS = 180;
 export const daysMs = (n: number): number => n * 24 * 60 * 60 * 1000;
 
 export const MS_7D  = daysMs(7);
+/** Mail cursor freshness bar used by health and dashboard source readiness. */
+export const MAIL_CURSOR_FRESH_MS = 25 * 60 * 60 * 1000;
 /** Settings / integrations: warn when mail sync timestamp has not advanced (stuck connector). */
 export const INTEGRATIONS_SYNC_STALE_MS = daysMs(3);
 

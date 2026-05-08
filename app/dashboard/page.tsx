@@ -194,38 +194,33 @@ export default function DashboardPage() {
     });
   }, [status]);
 
+  const loadIntegrationStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/integrations/status', { cache: 'no-store' });
+      if (!response.ok) {
+        setLoadIssue('integrations', true);
+        setIntegrationStatus(null);
+        return;
+      }
+      const payload = (await response.json().catch(() => null)) as IntegrationStatusPayload | null;
+      setLoadIssue('integrations', payload === null);
+      setIntegrationStatus(payload);
+    } catch {
+      setLoadIssue('integrations', true);
+      setIntegrationStatus(null);
+    }
+  }, [setLoadIssue]);
+
   useEffect(() => {
     if (status !== 'authenticated') {
       setIntegrationStatus(null);
       setLoadIssue('integrations', false);
-      return;
+      return undefined;
     }
 
-    let cancelled = false;
-    void fetch('/api/integrations/status', { cache: 'no-store' })
-      .then((response) => {
-        if (!response.ok) {
-          setLoadIssue('integrations', true);
-          return null;
-        }
-        return response.json();
-      })
-      .then((payload: IntegrationStatusPayload | null) => {
-        if (cancelled) return;
-        setLoadIssue('integrations', payload === null);
-        setIntegrationStatus(payload);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setLoadIssue('integrations', true);
-          setIntegrationStatus(null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [setLoadIssue, status]);
+    void loadIntegrationStatus();
+    return undefined;
+  }, [loadIntegrationStatus, setLoadIssue, status]);
 
   useEffect(() => {
     if (status !== 'authenticated') {
@@ -560,6 +555,9 @@ export default function DashboardPage() {
     ? integrationStatus.integrations
     : [];
   const connectedSources = integrationRows.filter((integration) => integration?.is_active === true);
+  const sourceFreshnessNeedsAttention = integrationRows.some(
+    (integration) => integration?.needs_sync === true || integration?.sync_stale === true,
+  );
   const connectedSourceCount = connectedSources.length;
   const latestSignalLabel = asTrimmedString(graphStats?.lastSignalAt)
     ? `${providerDisplayName(graphStats?.lastSignalSource)} · ${formatRelativeTime(
@@ -702,7 +700,8 @@ export default function DashboardPage() {
 
   const missingInputPrompt = buildMissingInputPrompt(dailyUtilitySlate, {
     hasIntegrationIssue,
-    mailIngestLooksStale: integrationStatus?.mail_ingest_looks_stale === true,
+    mailIngestLooksStale:
+      integrationStatus?.mail_ingest_looks_stale === true || sourceFreshnessNeedsAttention,
   });
   const dailyValueState = buildDailyValueState(
     dailyUtilitySlate,
@@ -745,6 +744,7 @@ export default function DashboardPage() {
       hasHistoryIssue={hasHistoryIssue}
       recentHistory={recentHistory}
       userName={sidebarUserName}
+      onSourceSynced={() => void loadIntegrationStatus()}
     />
   );
 

@@ -10,7 +10,11 @@ import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { createServerClient } from '@/lib/db/client';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
-import { INTEGRATIONS_MAIL_GRAPH_STALE_MS, INTEGRATIONS_SYNC_STALE_MS } from '@/lib/config/constants';
+import {
+  INTEGRATIONS_MAIL_GRAPH_STALE_MS,
+  INTEGRATIONS_SYNC_STALE_MS,
+  MAIL_CURSOR_FRESH_MS,
+} from '@/lib/config/constants';
 
 export const dynamic = 'force-dynamic';
 
@@ -157,6 +161,10 @@ export async function GET() {
         hasRefreshInDb &&
         lastSyncMs > 0 &&
         nowMs - lastSyncMs > INTEGRATIONS_SYNC_STALE_MS;
+      const needsSync =
+        hasToken &&
+        hasRefreshInDb &&
+        (lastSyncMs === 0 || nowMs - lastSyncMs > MAIL_CURSOR_FRESH_MS);
 
       return {
         provider: uiProvider,
@@ -174,6 +182,7 @@ export async function GET() {
         expires_at: expSec,
         needs_reconnect: needsReconnect,
         needs_reauth: reauthRequired,
+        needs_sync: needsSync,
         sync_stale: syncStale,
       };
     });

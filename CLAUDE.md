@@ -114,6 +114,19 @@ Core law:
 - Never send outbound email by default.
 - Never leave old contradictory UI, copy, or state in the same user path.
 
+### Zero-Friction Agentic Product Bar
+
+Foldera is supposed to remove work, not describe work.
+
+For every product slice, ask first: what can Foldera safely do with existing permissions, tokens, source data, deterministic checks, and local product context before Brandon has to click, diagnose, reconnect, or explain anything?
+
+The preferred product loop is:
+1. Detect the need.
+2. Attempt safe automatic preparation, refresh, retry, repair, or reconciliation.
+3. Present one finished artifact, one useful daily read, or one irreducible external blocker.
+
+Manual buttons, settings links, and diagnostics are fallback controls. They are not the core value proposition. "Connected but useless" and "status shown but not handled" are broken states unless the remaining step truly requires external provider approval, missing user permission, paid/model proof, or a safety decision.
+
 ### Mandatory Pre-Code Grill Gate
 
 Before editing code or product behavior, answer all eight:

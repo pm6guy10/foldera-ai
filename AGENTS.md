@@ -350,6 +350,16 @@ prefer one persisted, believable artifact over vague system improvement.
 For frontend work:
 prefer one polished completed journey over broad UI churn.
 
+### Zero-Friction Agentic Doctrine
+
+Foldera should act like an operator, not a chore board.
+
+- If Foldera has the user's permission, tokens, data, or local context needed to safely prepare, refresh, retry, reconcile, or repair a path, the system should do that itself before asking the user.
+- "Connected but stale", "configured but useless", "status visible but not handled", and "go somewhere else to fix this" are product failures unless an external provider, missing permission, paid proof lock, or safety rule truly blocks automatic recovery.
+- Every user-facing surface should resolve to one valuable outcome or one irreducible blocker in plain language. Do not expose internal codes, gate names, candidate terms, raw diagnostics, or operator taxonomy as the product.
+- Manual controls are fallback and trust affordances, not the primary value loop.
+- Before each slice, ask: "What can Foldera safely do for the user before the user has to do anything?" Build that first.
+
 ---
 
 ## What Not To Do

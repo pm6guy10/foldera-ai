@@ -15,6 +15,8 @@ Brandon opens a chat. Drags this file in. Claude reads it, diffs against what CC
 
 Foldera watches Brandon's real inbox/calendar for job, interview, benefits, payment, and admin deadlines, then gives him one exact ready-to-use artifact he can save or skip.
 
+Foldera must behave like a proactive agent, not a static dashboard. When it already has permission and enough trusted context, it should refresh sources, prepare the next useful read, recover stale state, and reconcile obvious system gaps before asking Brandon to do anything. The user-facing result should be a finished artifact, a useful daily read, or one plain irreducible blocker. Manual controls and settings links are fallback trust controls, not the product's main loop.
+
 Foldera is not a generic morning-summary product. It must not create fabricated obligations, transactional-sender pressure, relationship-silence artifacts, stale-event artifacts, placeholders, action-type mismatches, or outbound email by default.
 
 Primary artifact categories:

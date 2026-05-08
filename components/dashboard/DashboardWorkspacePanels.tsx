@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { signOut } from 'next-auth/react';
 import {
   Activity,
@@ -8,7 +9,6 @@ import {
   History,
   Link2,
   LogOut,
-  Mail,
   RefreshCw,
   ShieldCheck,
   UserRound,
@@ -20,10 +20,13 @@ import {
   getIntegrationMetaLine,
   getIntegrationStateClass,
   getIntegrationStateLabel,
+  normalizeIntegrationProvider,
   type DashboardHistoryItem,
   type IntegrationStatusItem,
 } from '@/app/dashboard/dashboard-page-model';
 import { providerDisplayName } from '@/lib/ui/provider-display';
+
+type SourceActionState = 'idle' | 'syncing' | 'complete' | 'failed';
 
 type DashboardWorkspacePanelsProps = {
   connectedSourcesValue: string;
@@ -37,6 +40,7 @@ type DashboardWorkspacePanelsProps = {
   hasHistoryIssue: boolean;
   recentHistory: DashboardHistoryItem[];
   userName: string;
+  onSourceSynced?: () => void;
 };
 
 function PanelShell({
@@ -114,12 +118,34 @@ function HistoryRow({ item }: { item: DashboardHistoryItem }) {
 function SourceRow({
   integration,
   fallbackProvider,
+  actionState,
+  onSync,
 }: {
   integration: IntegrationStatusItem | null;
   fallbackProvider: 'google' | 'azure_ad';
+  actionState?: SourceActionState;
+  onSync: (provider: 'google' | 'azure_ad') => void;
 }) {
-  const label = providerDisplayName(integration?.provider ?? fallbackProvider);
-  const meta = integration?.is_active ? getIntegrationMetaLine(integration) : 'Connect from this dashboard when needed';
+  const provider = normalizeIntegrationProvider(integration?.provider ?? fallbackProvider) as
+    | 'google'
+    | 'azure_ad';
+  const label = providerDisplayName(provider);
+  const meta = getIntegrationMetaLine(integration);
+  const connectHref = provider === 'azure_ad' ? '/api/microsoft/connect' : '/api/google/connect';
+  const shouldReconnect = integration?.needs_reauth === true || integration?.needs_reconnect === true;
+  const canSync =
+    integration?.is_active === true &&
+    (integration.needs_sync === true || integration.sync_stale === true) &&
+    !shouldReconnect;
+  const syncState = actionState ?? 'idle';
+  const actionMessage =
+    syncState === 'syncing'
+      ? `Foldera is refreshing ${label}...`
+      : syncState === 'complete'
+        ? `${label} sync complete`
+        : syncState === 'failed'
+          ? `${label} sync could not finish`
+          : null;
   return (
     <div className="rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-3.5">
       <div className="flex items-center justify-between gap-3">
@@ -139,6 +165,35 @@ function SourceRow({
       <p className="mt-2 break-all text-xs leading-5 text-text-secondary">
         {meta}
       </p>
+      {shouldReconnect || !integration?.is_active ? (
+        <a href={connectHref} className="foldera-button-secondary mt-3 w-full justify-center">
+          <RefreshCw className="h-4 w-4" aria-hidden />
+          {shouldReconnect ? `Reconnect ${label}` : `Connect ${label}`}
+        </a>
+      ) : canSync ? (
+        <button
+          type="button"
+          className="foldera-button-secondary mt-3 w-full justify-center"
+          onClick={() => onSync(provider)}
+          disabled={syncState === 'syncing'}
+        >
+          <RefreshCw
+            className={`h-4 w-4 ${syncState === 'syncing' ? 'animate-spin' : ''}`}
+            aria-hidden
+          />
+          {syncState === 'syncing' ? `Refreshing ${label}` : `Sync ${label}`}
+        </button>
+      ) : null}
+      {actionMessage ? (
+        <p
+          className={`mt-2 text-xs font-medium ${
+            syncState === 'failed' ? 'text-amber-300' : 'text-emerald-300'
+          }`}
+          aria-live="polite"
+        >
+          {actionMessage}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -155,12 +210,52 @@ export function DashboardWorkspacePanels({
   hasHistoryIssue,
   recentHistory,
   userName,
+  onSourceSynced,
 }: DashboardWorkspacePanelsProps) {
+  const [sourceActionState, setSourceActionState] = useState<
+    Partial<Record<'google' | 'azure_ad', SourceActionState>>
+  >({});
+  const autoRecoveryAttemptedRef = useRef<Set<'google' | 'azure_ad'>>(new Set());
   const initial = userName.trim().charAt(0).toUpperCase() || 'F';
   const connectedSourceLabel = hasIntegrationIssue
     ? 'Unavailable'
     : `${connectedSourceCount} connected`;
   const readySources = sourceSummaryRows.length;
+
+  const syncSource = useCallback(async (provider: 'google' | 'azure_ad') => {
+    const endpoint = provider === 'azure_ad' ? '/api/microsoft/sync-now' : '/api/google/sync-now';
+    setSourceActionState((current) => ({ ...current, [provider]: 'syncing' }));
+    try {
+      const response = await fetch(endpoint, { method: 'POST' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.ok === false) {
+        throw new Error(typeof payload?.error === 'string' ? payload.error : 'Sync failed');
+      }
+      setSourceActionState((current) => ({ ...current, [provider]: 'complete' }));
+      onSourceSynced?.();
+    } catch {
+      setSourceActionState((current) => ({ ...current, [provider]: 'failed' }));
+    }
+  }, [onSourceSynced]);
+
+  useEffect(() => {
+    const integrations = [googleIntegration, microsoftIntegration];
+    for (const integration of integrations) {
+      const provider = normalizeIntegrationProvider(integration?.provider) as 'google' | 'azure_ad';
+      const canAutoRecover =
+        (provider === 'google' || provider === 'azure_ad') &&
+        integration?.is_active === true &&
+        (integration.needs_sync === true || integration.sync_stale === true) &&
+        integration.needs_reauth !== true &&
+        integration.needs_reconnect !== true &&
+        !autoRecoveryAttemptedRef.current.has(provider);
+
+      if (canAutoRecover) {
+        autoRecoveryAttemptedRef.current.add(provider);
+        void syncSource(provider);
+      }
+    }
+  }, [googleIntegration, microsoftIntegration, syncSource]);
 
   return (
     <div className="grid gap-4" data-testid="dashboard-workspace-support">
@@ -242,24 +337,20 @@ export function DashboardWorkspacePanels({
             <p className="rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-3.5 text-sm text-text-secondary">
               Source status is unavailable right now.
             </p>
-          ) : sourceSummaryRows.length === 0 ? (
-            <>
-              <p className="rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-3.5 text-sm text-text-secondary">
-                Connect Gmail or Microsoft to give Foldera current facts.
-              </p>
-              <a href="/api/google/connect" className="foldera-button-secondary">
-                <Mail className="h-4 w-4" aria-hidden />
-                Connect Google
-              </a>
-              <a href="/api/microsoft/connect" className="foldera-button-secondary">
-                <RefreshCw className="h-4 w-4" aria-hidden />
-                Connect Microsoft
-              </a>
-            </>
           ) : (
             <>
-              <SourceRow integration={googleIntegration} fallbackProvider="google" />
-              <SourceRow integration={microsoftIntegration} fallbackProvider="azure_ad" />
+              <SourceRow
+                integration={googleIntegration}
+                fallbackProvider="google"
+                actionState={sourceActionState.google}
+                onSync={(provider) => void syncSource(provider)}
+              />
+              <SourceRow
+                integration={microsoftIntegration}
+                fallbackProvider="azure_ad"
+                actionState={sourceActionState.azure_ad}
+                onSync={(provider) => void syncSource(provider)}
+              />
             </>
           )}
         </div>
