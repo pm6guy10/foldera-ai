@@ -442,6 +442,7 @@ async function setupDashboardMocks(
   options: {
     sessionResponse?: Record<string, unknown>;
     latestResponse?: Record<string, unknown>;
+    dailyValueResponse?: Record<string, unknown>;
     subscriptionResponse?: Record<string, unknown>;
     checkoutGuardOptions?: {
       clearPendingCheckout?: boolean;
@@ -467,6 +468,10 @@ async function setupDashboardMocks(
   await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
   await page.route(matchApiPath('/api/graph/stats'), fulfillJson(GRAPH_STATS_RESPONSE));
   await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(options.latestResponse ?? DIRECTIVE_RESPONSE));
+  await page.route(
+    matchApiPath('/api/conviction/daily-value'),
+    fulfillJson(options.dailyValueResponse ?? { daily_utility_slate: null }),
+  );
   await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
     let decision: string | undefined;
     try {
@@ -493,6 +498,7 @@ async function setupEmptyDashboardMocks(page: Page) {
   await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
   await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
   await page.route(matchApiPath('/api/conviction/latest'), fulfillJson({}));
+  await page.route(matchApiPath('/api/conviction/daily-value'), fulfillJson({ daily_utility_slate: null }));
 }
 
 /** Set up mocks for settings page. */

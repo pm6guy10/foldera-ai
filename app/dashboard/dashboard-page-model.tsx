@@ -334,6 +334,7 @@ export function buildDailyValueState(
   });
   const slateItems = getSlateItems(slate);
   const firstItem = slateItems[0] ?? null;
+  const hasPrimaryMove = Boolean(slate?.primary_move);
   const changedItem =
     slate?.changed_since_yesterday?.find((item) => asTrimmedString(item.why_it_matters)) ??
     firstItem;
@@ -342,7 +343,9 @@ export function buildDailyValueState(
   const recentWorkCount = historyItems.length;
 
   const statusLabel =
-    missingInputPrompt?.kind === 'freshness'
+    hasPrimaryMove
+      ? 'Current best move'
+      : missingInputPrompt?.kind === 'freshness'
       ? 'Needs fresher source'
       : missingInputPrompt?.kind === 'recipient'
         ? 'Needs clearer recipient'
@@ -362,21 +365,27 @@ export function buildDailyValueState(
         ? `Foldera checked ${activeSources} connected source${activeSources === 1 ? '' : 's'} for a safe finished move.`
         : 'Foldera needs a connected inbox or calendar before it can evaluate finished work.',
   );
-  const protectedBody = sanitizeDailyValueText(
-    protectedItem?.no_action_reason ?? protectedItem?.why_it_matters,
-    'Foldera held back rather than inventing a draft from weak or stale evidence.',
-  );
+  const protectedBody = hasPrimaryMove
+    ? 'Foldera has not sent, saved, or claimed this as finished work yet; it is showing the current move it can safely see.'
+    : sanitizeDailyValueText(
+        protectedItem?.no_action_reason ?? protectedItem?.why_it_matters,
+        'Foldera held back rather than inventing a draft from weak or stale evidence.',
+      );
   const smallestUnlock =
-    missingInputPrompt?.detail ??
+    (hasPrimaryMove
+      ? sanitizeDailyValueText(firstItem?.next_action, 'Turn this into finished work on the next safe generation run.')
+      : missingInputPrompt?.detail) ??
     (activeSources > 0
       ? 'Keep sources fresh; Foldera will finish the next safe artifact when the evidence supports it.'
       : 'Connect Gmail or Microsoft so Foldera has current facts to work from.');
 
   return {
-    heading: 'Foldera checked today',
+    heading: hasPrimaryMove ? 'Foldera found the next move' : 'Foldera checked today',
     statusLabel,
     summary:
-      missingInputPrompt?.prompt ??
+      (hasPrimaryMove
+        ? sanitizeDailyValueText(firstItem?.title, 'Foldera found a current move worth preparing.')
+        : missingInputPrompt?.prompt) ??
       'No finished artifact cleared the safety bar, but the dashboard still shows the useful read.',
     valueBlocks: [
       { label: 'What changed', body: whatChanged },

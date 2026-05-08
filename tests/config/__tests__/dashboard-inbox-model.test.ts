@@ -103,6 +103,34 @@ describe('dashboard finished-work inbox model', () => {
     );
   });
 
+  it('frames a primary move as useful value without pretending it is approved finished work', () => {
+    const state = buildDailyValueState(
+      {
+        finished_artifact_verdict: 'no_finished_artifact',
+        primary_move: {
+          title: 'Commitment due in 5d: Save job seeker account information',
+          status: 'primary_move',
+          evidence: ['Save job seeker account information before the website transition.'],
+          why_it_matters:
+            'The account transition may happen before the saved records are packaged.',
+          next_action:
+            'Write a decision memo that closes the account transition with the owner, next action, and deadline.',
+          source_refs: ['commitment:account-transition'],
+        },
+      },
+      null,
+      { integrations: [{ provider: 'google', is_active: true }] },
+      [],
+    );
+
+    expect(state.heading).toBe('Foldera found the next move');
+    expect(state.statusLabel).toBe('Current best move');
+    expect(state.summary).toContain('Commitment due in 5d');
+    expect(state.valueBlocks.find((block) => block.label === 'What Foldera protected')?.body).toContain(
+      'has not sent, saved, or claimed',
+    );
+  });
+
   it('labels source cursors that need sync without treating them as disconnected', () => {
     const integration = {
       provider: 'azure_ad',

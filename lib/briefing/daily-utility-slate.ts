@@ -35,6 +35,25 @@ export type DailyUtilitySlateReceipt = {
   execution_result?: unknown;
 };
 
+export type DailyUtilityWinnerTruthReport = {
+  generated_at?: unknown;
+  current_winner?: {
+    verdict?: unknown;
+    title?: unknown;
+    discrepancy_card?: {
+      claim?: unknown;
+      contradiction?: unknown;
+      risk?: unknown;
+      evidence?: unknown;
+      next_action?: unknown;
+      why_now?: unknown;
+      source_refs?: unknown;
+    } | null;
+    no_safe_artifact_reason?: unknown;
+  } | null;
+  action_needed?: unknown;
+};
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
 }
@@ -65,6 +84,22 @@ function containsInternalToken(value: string): boolean {
   return INTERNAL_TOKEN_PATTERNS.some((pattern) => pattern.test(value));
 }
 
+function safeText(value: unknown, fallback: string): string {
+  const text = readString(value);
+  if (!text || containsInternalToken(text)) return fallback;
+  return text;
+}
+
+function safeSourceRefs(value: unknown): string[] {
+  if (!Array.isArray(value)) return ['current-source-trail'];
+  const refs = value
+    .map((entry) => readString(entry))
+    .filter((entry): entry is string => Boolean(entry))
+    .filter((entry) => !containsInternalToken(entry))
+    .slice(0, 4);
+  return refs.length > 0 ? refs : ['current-source-trail'];
+}
+
 const KNOWN_BLOCKER_PATTERN =
   /\b(?:(?:positive_winner_contract|artifact_viability):)?(?:missing_schedule_resolution_context|missing_current_artifact_anchor|missing_role_fit_source_bundle|missing_grounded_recipient_for_send_message|no_grounded_recipient_for_send_message|stale_status_without_current_artifact_facts|weak_risk|weak_next_action|reminder_without_risk)\b/gi;
 
@@ -76,6 +111,8 @@ function isUtilityItem(item: DailyUtilitySlateItem | null): item is DailyUtility
   if (!item) return false;
   if (!item.title.trim()) return false;
   if (!item.why_it_matters.trim()) return false;
+  if (containsInternalToken(item.title) || containsInternalToken(item.why_it_matters)) return false;
+  if (item.next_action && containsInternalToken(item.next_action)) return false;
   if (!Array.isArray(item.evidence) || item.evidence.length === 0) return false;
   if (!item.evidence.every((entry) => entry.trim().length > 0 && !containsInternalToken(entry))) {
     return false;
@@ -210,4 +247,79 @@ export function buildDailyUtilitySlateFromReceipts(
     slate.watch_item;
 
   return hasAnyItem ? slate : null;
+}
+
+export function buildDailyUtilitySlateFromWinnerTruth(
+  report: DailyUtilityWinnerTruthReport | null | undefined,
+): DailyUtilitySlate | null {
+  const winner = report?.current_winner;
+  const card = winner?.discrepancy_card;
+  const generatedAt = readString(report?.generated_at) ?? new Date().toISOString();
+
+  if (winner?.verdict === 'selected' && card) {
+    const evidence = Array.isArray(card.evidence)
+      ? asEvidence(
+          card.evidence.map((entry) =>
+            typeof entry === 'string' && !containsInternalToken(entry) ? entry : null,
+          ),
+        )
+      : [];
+    const primaryMove: DailyUtilitySlateItem = {
+      title: safeText(card.claim ?? winner.title, 'Foldera found a current move worth preparing.'),
+      status: 'primary_move',
+      evidence: evidence.length > 0 ? evidence : ['Current source trail supports this move.'],
+      why_it_matters: safeText(
+        card.risk ?? card.why_now,
+        'This is the strongest safe move Foldera can identify from the current source trail.',
+      ),
+      next_action: safeText(
+        card.next_action,
+        'Turn this into finished work on the next safe generation run.',
+      ),
+      source_refs: safeSourceRefs(card.source_refs),
+    };
+
+    if (!isUtilityItem(primaryMove)) return null;
+
+    return {
+      generated_at: generatedAt,
+      finished_artifact_verdict: 'no_finished_artifact',
+      primary_move: primaryMove,
+      open_loops: [],
+      changed_since_yesterday: [],
+      blocked_but_real: null,
+      watch_item: null,
+    };
+  }
+
+  const actionNeeded = Array.isArray(report?.action_needed)
+    ? report.action_needed.map((entry) => readString(entry)).find(Boolean)
+    : null;
+  const noSafeReason = readString(winner?.no_safe_artifact_reason) ?? actionNeeded;
+  if (!noSafeReason || containsInternalToken(noSafeReason)) return null;
+  const readableReason = humanizeNoSafeReason(noSafeReason);
+  const watchItem: DailyUtilitySlateItem = {
+    title: 'No safe finished action today',
+    status: 'watch_item',
+    evidence: asEvidence([
+      'Latest replay stopped before a finished action was safe.',
+      `Why Foldera stopped: ${readableReason}`,
+    ]),
+    why_it_matters:
+      'The safest answer is to avoid handing you a weak task that sounds useful but cannot prove its value.',
+    no_action_reason: readableReason,
+    source_refs: ['current-winner-truth'],
+  };
+
+  return isUtilityItem(watchItem)
+    ? {
+        generated_at: generatedAt,
+        finished_artifact_verdict: 'no_finished_artifact',
+        primary_move: null,
+        open_loops: [],
+        changed_since_yesterday: [],
+        blocked_but_real: null,
+        watch_item: watchItem,
+      }
+    : null;
 }

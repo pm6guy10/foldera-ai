@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { buildDailyUtilitySlateFromReceipts } from '../daily-utility-slate';
+import {
+  buildDailyUtilitySlateFromReceipts,
+  buildDailyUtilitySlateFromWinnerTruth,
+} from '../daily-utility-slate';
 
 const noSendReceipt = {
   id: 'no-send-1',
@@ -124,5 +127,41 @@ describe('Daily Utility Slate', () => {
     expect(serialized).not.toMatch(
       /ranked candidates|positive_winner_contract|missing_current_artifact_anchor|missing_schedule_resolution_context|model-backed/i,
     );
+  });
+
+  it('turns current winner truth into a visible best-move read without internal language', () => {
+    const slate = buildDailyUtilitySlateFromWinnerTruth({
+      generated_at: '2026-05-08T18:30:00.000Z',
+      current_winner: {
+        verdict: 'selected',
+        title: 'Commitment due in 5d: Save job seeker account information',
+        discrepancy_card: {
+          claim: 'Commitment due in 5d: Save job seeker account information',
+          contradiction: 'Expected: account records saved. Current: no execution artifact exists.',
+          risk: 'The account transition may happen before the saved records are packaged.',
+          evidence: [
+            'Save job seeker account information before the website transition.',
+            'due_at=2026-05-14T00:00:00+00:00, days_until_due=5',
+          ],
+          next_action:
+            'Write a decision memo that closes the account transition with the owner, next action, and deadline.',
+          why_now: 'The deadline is close enough that delay creates avoidable exposure.',
+          source_refs: ['commitment:account-transition'],
+        },
+        no_safe_artifact_reason: null,
+      },
+      action_needed: [],
+    });
+    const serialized = JSON.stringify(slate);
+
+    expect(slate?.primary_move).toEqual(
+      expect.objectContaining({
+        title: 'Commitment due in 5d: Save job seeker account information',
+        status: 'primary_move',
+        next_action:
+          'Write a decision memo that closes the account transition with the owner, next action, and deadline.',
+      }),
+    );
+    expect(serialized).not.toMatch(/candidate_id|missing_|weak_|gate|positive_winner_contract/i);
   });
 });

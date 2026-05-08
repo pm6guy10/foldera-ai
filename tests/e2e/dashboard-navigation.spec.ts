@@ -138,6 +138,7 @@ async function setupDashboardMocks(
   options: {
     mockClipboard?: boolean;
     latestResponse?: unknown;
+    dailyValueResponse?: unknown;
     integrationStatusResponse?: unknown;
   } = {},
 ) {
@@ -233,6 +234,10 @@ async function setupDashboardMocks(
   );
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
   await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(options.latestResponse ?? DIRECTIVE_RESPONSE));
+  await page.route(
+    matchApiPath('/api/conviction/daily-value'),
+    fulfillJson(options.dailyValueResponse ?? { daily_utility_slate: null }),
+  );
   await page.route(matchApiPath('/api/conviction/history'), fulfillJson(HISTORY_RESPONSE));
   await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
     if (route.request().method() !== 'POST') return route.continue();
@@ -562,6 +567,37 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByText(/No safe finished work today/i)).toHaveCount(0);
     await expect(page.getByText(/No safe artifact/i)).toHaveCount(0);
     await expect(page.getByText(/stale_status_without_current_artifact_facts/i)).toHaveCount(0);
+  });
+
+  test('empty latest state promotes the current best move from deterministic daily value', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupDashboardMocks(page, {
+      latestResponse: {},
+      dailyValueResponse: {
+        daily_utility_slate: {
+          finished_artifact_verdict: 'no_finished_artifact',
+          primary_move: {
+            title: 'Commitment due in 5d: Save job seeker account information',
+            status: 'primary_move',
+            evidence: ['Save job seeker account information before the website transition.'],
+            why_it_matters:
+              'The account transition may happen before the saved records are packaged.',
+            next_action:
+              'Write a decision memo that closes the account transition with the owner, next action, and deadline.',
+            source_refs: ['commitment:account-transition'],
+          },
+        },
+      },
+    });
+    await page.goto('/dashboard');
+
+    await expect(page.getByText(/Foldera found the next move/i)).toBeVisible();
+    await expect(page.getByText(/Current best move/i)).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /Commitment due in 5d: Save job seeker account information/i }),
+    ).toBeVisible();
+    await expect(page.getByText(/has not sent, saved, or claimed/i)).toBeVisible();
+    await expect(page.getByText(/No safe artifact/i)).toHaveCount(0);
   });
 
   test('account menu opens and sign out remains wired', async ({ page }) => {

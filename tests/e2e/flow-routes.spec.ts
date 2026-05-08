@@ -98,6 +98,7 @@ async function attachFlowApiMocks(page: Page) {
     fulfillJson({ plan: 'free', status: 'active', current_period_end: null, can_manage_billing: false }),
   );
   await page.route(matchApiPath('/api/conviction/latest'), fulfillJson({}));
+  await page.route(matchApiPath('/api/conviction/daily-value'), fulfillJson({ daily_utility_slate: null }));
   await page.route(matchApiPath('/api/conviction/history'), fulfillJson({ items: [] }));
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
   await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));

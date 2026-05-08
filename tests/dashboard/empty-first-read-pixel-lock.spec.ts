@@ -114,6 +114,7 @@ describeWithAuth('Dashboard empty-state first-read trigger', () => {
 
       await route.fulfill({ status: 200, contentType: 'application/json', body: json(payload) });
     });
+    await page.route(matchApiPath('/api/conviction/daily-value'), fulfillJson({ daily_utility_slate: null }));
     await page.route(matchApiPath('/api/settings/run-brief'), async (route) => {
       runBriefCalls += 1;
       const url = new URL(route.request().url());
@@ -189,6 +190,7 @@ describeWithAuth('Dashboard empty-state first-read trigger', () => {
       latestCalls += 1;
       await route.fulfill({ status: 200, contentType: 'application/json', body: json({}) });
     });
+    await page.route(matchApiPath('/api/conviction/daily-value'), fulfillJson({ daily_utility_slate: null }));
     await page.route(matchApiPath('/api/settings/run-brief'), async (route) => {
       runBriefCalls += 1;
       await route.fulfill({

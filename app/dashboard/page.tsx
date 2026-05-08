@@ -133,10 +133,29 @@ export default function DashboardPage() {
       const visibleAction = isVisibleDashboardAction(latest) ? (latest as DashboardAction) : null;
       const action =
         visibleAction && !locallyHiddenActionIds.has(visibleAction.id) ? visibleAction : null;
-      const slate =
+      let slate =
         !action && isDailyUtilitySlate(latest?.daily_utility_slate)
           ? latest.daily_utility_slate
           : null;
+      if (!action) {
+        try {
+          const dailyValueRes = await fetch('/api/conviction/daily-value', {
+            signal: controller.signal,
+            cache: 'no-store',
+          });
+          if (!controller.signal.aborted && dailyValueRes.ok) {
+            const dailyValue = await dailyValueRes.json().catch(() => ({}));
+            if (isDailyUtilitySlate(dailyValue?.daily_utility_slate)) {
+              slate = dailyValue.daily_utility_slate;
+            }
+          }
+        } catch {
+          // The receipt-backed latest slate remains the fallback if live daily value is unavailable.
+        }
+      }
+      if (controller.signal.aborted) {
+        return { action: null, dailyUtilitySlate: null, loaded: false };
+      }
       setAction(action);
       setDailyUtilitySlate(slate);
       setArtifactPaywallLocked(action ? latest?.artifact_paywall_locked === true : false);
