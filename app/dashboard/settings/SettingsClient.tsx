@@ -170,13 +170,13 @@ export default function SettingsClient() {
     if (googleError) {
       setProviderOAuthError((p) => ({
         ...p,
-        google: `Connection failed (${googleError.replace(/_/g, ' ')}).`,
+        google: formatProviderOAuthError('Google', googleError),
       }));
     }
     if (microsoftError) {
       setProviderOAuthError((p) => ({
         ...p,
-        microsoft: `Connection failed (${microsoftError.replace(/_/g, ' ')}).`,
+        microsoft: formatProviderOAuthError('Microsoft', microsoftError),
       }));
     }
 
@@ -783,6 +783,14 @@ function formatMissingScopes(scopes: string[]): string {
   return `${scopes.slice(0, -1).join(', ')}, and ${scopes[scopes.length - 1]}`;
 }
 
+function formatProviderOAuthError(providerName: 'Google' | 'Microsoft', code: string): string {
+  if (code === 'missing_refresh_token') {
+    return `${providerName} did not grant background access. Try connecting again so Foldera can keep reading your sources.`;
+  }
+
+  return `Connection failed (${code.replace(/_/g, ' ')}).`;
+}
+
 function buildFirstRunStatus(integration: Integration | undefined): {
   headline: string;
   detail: string;
@@ -874,5 +882,4 @@ function MicrosoftIcon() {
     </div>
   );
 }
-
 

@@ -1298,6 +1298,26 @@ describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
     await expect(microsoftReconnectCard.getByRole('button', { name: /^Connect$/i })).toBeVisible();
   });
 
+  test('shows clear OAuth recovery copy when a provider does not grant background access', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupSettingsMocks(page);
+    await page.goto('/dashboard/settings?google_error=missing_refresh_token');
+
+    await expect(
+      page.getByText(/Google did not grant background access/i),
+    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/missing refresh token/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Try again/i }).first()).toBeVisible();
+
+    await page.goto('/dashboard/settings?microsoft_error=missing_refresh_token');
+
+    await expect(
+      page.getByText(/Microsoft did not grant background access/i),
+    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/missing refresh token/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Try again/i }).first()).toBeVisible();
+  });
+
   test('Manage subscription redirects to the Stripe billing portal URL returned by the Settings API @payments', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupSettingsManageBillingMocks(page);
