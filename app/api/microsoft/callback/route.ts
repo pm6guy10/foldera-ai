@@ -115,6 +115,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${settingsUrl}?microsoft_error=no_access_token`);
   }
 
+  if (!tokenData.refresh_token) {
+    console.error('[microsoft/callback] No refresh_token in response');
+    return NextResponse.redirect(`${settingsUrl}?microsoft_error=missing_refresh_token`);
+  }
+
   // 5. Get user email from Microsoft Graph
   let msEmail: string | undefined;
   try {
@@ -135,7 +140,7 @@ export async function GET(request: NextRequest) {
   try {
     await saveUserToken(userId, 'microsoft', {
       access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token ?? '',
+      refresh_token: tokenData.refresh_token,
       expires_at: expiresAt,
       email: msEmail,
       scopes: tokenData.scope ?? '',

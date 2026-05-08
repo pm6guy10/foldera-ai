@@ -86,6 +86,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${settingsUrl}?google_error=no_access_token`);
   }
 
+  if (!tokens.refresh_token) {
+    console.error('[google/callback] No refresh_token in response');
+    return NextResponse.redirect(`${settingsUrl}?google_error=missing_refresh_token`);
+  }
+
   // 5. Get user email from Google
   let googleEmail: string | undefined;
   try {
@@ -101,7 +106,7 @@ export async function GET(request: NextRequest) {
   try {
     await saveUserToken(userId, 'google', {
       access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token ?? '',
+      refresh_token: tokens.refresh_token,
       expires_at: tokens.expiry_date ?? Date.now() + 3_600_000,
       email: googleEmail,
       scopes: tokens.scope ?? '',

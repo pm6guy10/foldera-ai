@@ -88,4 +88,24 @@ describe('GET /api/google/callback', () => {
       'https://foldera.ai/dashboard/settings?google_connected=true',
     );
   });
+
+  it('fails closed when Google does not return a refresh token', async () => {
+    getToken.mockResolvedValueOnce({
+      tokens: {
+        access_token: 'access-token',
+        expiry_date: 1777000000000,
+        scope: 'scope-a scope-b',
+      },
+    });
+
+    const { GET } = await import('../route');
+    const response = await GET(
+      new NextRequest('https://foldera.ai/api/google/callback?code=code-123&state=state-123'),
+    );
+
+    expect(saveUserToken).not.toHaveBeenCalled();
+    expect(response.headers.get('location')).toBe(
+      'https://foldera.ai/dashboard/settings?google_error=missing_refresh_token',
+    );
+  });
 });
