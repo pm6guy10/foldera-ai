@@ -1703,6 +1703,66 @@ describe('generateDirective runtime failures', () => {
     }));
   });
 
+  it('repairs one-sentence directive render failures for viable write_document candidates', async () => {
+    const scored = asWinnerScored(buildScorerResult());
+    scored.winner.type = 'discrepancy';
+    scored.winner.discrepancyClass = 'exposure';
+    scored.winner.suggestedActionType = 'write_document';
+    scored.winner.title = 'Commitment due in 5d: Save job seeker account information';
+    scored.winner.content = `The WorkSource account transition is due by ${isoDateFromFixedNow(5)} and the saved documents need a closed decision.`;
+    scored.winner.matchedGoal = {
+      text: 'Maintain family and household stability through job transition',
+      priority: 2,
+      category: 'career',
+    };
+    mockScoreOpenLoops.mockResolvedValue(scored);
+
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+    queueTkgActionsResult([]);
+
+    anthropicCreate.mockResolvedValue({
+      usage: { input_tokens: 120, output_tokens: 90 },
+      content: [{
+        type: 'text',
+        text: JSON.stringify({
+          directive: 'Write the WorkSource account transition memo today. Include the account activity decision before the deadline.',
+          artifact_type: 'write_document',
+          artifact: {
+            document_purpose: 'decision memo',
+            target_reader: 'user',
+            title: 'WorkSource account transition decision',
+            content: 'Decision required: confirm the account activity path and close the open loop before the transition deadline.\n\nAsk: pick the one account activity to complete today.\n\nConsequence: if this stays open, saved documents and job-search continuity can slip during the website transition.',
+          },
+          evidence: 'The account transition is due in five days and the saved documents path is unresolved.',
+          why_now: 'The transition deadline is close enough that waiting makes the account activity harder to recover.',
+          causal_diagnosis: {
+            why_exists_now: 'The account activity deadline is approaching while the saved-document path is still unresolved.',
+            mechanism: 'A short deadline plus an unresolved account path creates preventable job-search continuity risk.',
+          },
+        }),
+      }],
+    });
+
+    const { generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1', { dryRun: true });
+
+    expect(anthropicCreate).toHaveBeenCalledTimes(2);
+    expect(directive.directive).not.toBe('__GENERATION_FAILED__');
+    expect(directive.action_type).toBe('write_document');
+    const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    expectDocumentArtifactShape(embeddedArtifact, {
+      minTitleLength: 12,
+      minLength: 120,
+      minParagraphs: 3,
+      requiredRegexes: [/decision required/i, /\bask:/i, /\bconsequence:/i],
+    });
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
+      event: 'candidate_repaired',
+      generationStatus: 'decision_enforcement_repaired',
+    }));
+  });
+
   it('lets weak behavioral_pattern write_document output proceed with artifact-quality warnings', async () => {
     const scored = asWinnerScored(buildScorerResult());
     scored.winner.type = 'discrepancy';

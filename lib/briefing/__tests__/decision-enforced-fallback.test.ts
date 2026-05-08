@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { buildDecisionEnforcedFallbackPayload, getDecisionEnforcementIssues } from '../generator';
+import {
+  buildDecisionEnforcedFallbackPayload,
+  getDecisionEnforcementIssues,
+  shouldAttemptDecisionEnforcementRepair,
+} from '../generator';
 import type { ScoredLoop } from '../scorer';
 import type { ValidArtifactTypeCanonical } from '../types';
 import {
@@ -182,5 +186,25 @@ describe('buildDecisionEnforcedFallbackPayload', () => {
       matchedGoalCategory: 'career',
     });
     expect(issues.filter((issue) => issue.startsWith('decision_enforcement:'))).toEqual([]);
+  });
+});
+
+describe('shouldAttemptDecisionEnforcementRepair', () => {
+  it('treats one-sentence directive render failures as repairable for executable artifacts', () => {
+    expect(shouldAttemptDecisionEnforcementRepair(
+      ['directive must be exactly one sentence'],
+      'write_document',
+    )).toBe(true);
+    expect(shouldAttemptDecisionEnforcementRepair(
+      ['Generation validation failed: directive must remain exactly one sentence'],
+      'send_message',
+    )).toBe(true);
+  });
+
+  it('does not repair directive render failures for non-executable artifact types', () => {
+    expect(shouldAttemptDecisionEnforcementRepair(
+      ['directive must be exactly one sentence'],
+      'schedule_block',
+    )).toBe(false);
   });
 });

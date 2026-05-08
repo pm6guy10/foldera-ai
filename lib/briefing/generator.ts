@@ -8280,28 +8280,30 @@ function isLowCrossSignalValidationIssue(issue: string): boolean {
   return issue.toLowerCase().startsWith(LOW_CROSS_SIGNAL_ISSUE_PREFIX);
 }
 
-function shouldAttemptDecisionEnforcementRepair(
+export function isDecisionFallbackRepairableIssue(issue: string): boolean {
+  const normalized = normalizeValidationIssue(issue).toLowerCase();
+  return (
+    isDecisionEnforcementIssue(issue) ||
+    isCausalDiagnosisIssue(issue) ||
+    isDoNothingSchemaIssue(issue) ||
+    isCanonicalArtifactSchemaRepairableIssue(issue) ||
+    normalized === 'directive must be exactly one sentence' ||
+    normalized === 'directive must remain exactly one sentence' ||
+    issue.startsWith('interview_artifact:generic_prep_trash:')
+  );
+}
+
+export function shouldAttemptDecisionEnforcementRepair(
   issues: string[],
   actionType: ValidArtifactTypeCanonical,
 ): boolean {
   if (issues.length === 0) return false;
   if (actionType !== 'send_message' && actionType !== 'write_document') return false;
-  const hasReparable = issues.some(
-    (issue) =>
-      isDecisionEnforcementIssue(issue) ||
-      isCausalDiagnosisIssue(issue) ||
-      isDoNothingSchemaIssue(issue) ||
-      isCanonicalArtifactSchemaRepairableIssue(issue) ||
-      issue.startsWith('interview_artifact:generic_prep_trash:'),
-  );
+  const hasReparable = issues.some((issue) => isDecisionFallbackRepairableIssue(issue));
   if (!hasReparable) return false;
   const hardBlockers = issues.filter(
     (issue) =>
-      !isDecisionEnforcementIssue(issue) &&
-      !isCausalDiagnosisIssue(issue) &&
-      !isDoNothingSchemaIssue(issue) &&
-      !isCanonicalArtifactSchemaRepairableIssue(issue) &&
-      !issue.startsWith('interview_artifact:generic_prep_trash:') &&
+      !isDecisionFallbackRepairableIssue(issue) &&
       !isLowCrossSignalValidationIssue(issue),
   );
   return hardBlockers.length === 0;

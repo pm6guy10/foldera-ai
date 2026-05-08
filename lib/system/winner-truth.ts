@@ -3,6 +3,7 @@ import { resolveSelfIdentity } from '@/lib/auth/self-identity';
 import { createServerClient } from '@/lib/db/client';
 import { decryptWithStatus } from '@/lib/encryption';
 import { scoreOpenLoops } from '@/lib/briefing/scorer';
+import type { ScoredLoop } from '@/lib/briefing/scorer';
 import { selectRankedCandidates } from '@/lib/briefing/generator';
 import {
   auditBehavioralGraphConsistency,
@@ -206,6 +207,32 @@ export function classifyRecentAction(row: {
   };
 }
 
+export function buildWinnerTruthNextAction(
+  candidate: Pick<ScoredLoop, 'title' | 'suggestedActionType' | 'content'>,
+  note?: string | null,
+): string {
+  const cleanTitle = candidate.title
+    .replace(/^Commitment due(?: in \d+d)?:\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 120);
+  const target = cleanTitle || candidate.title;
+
+  if (candidate.suggestedActionType === 'write_document') {
+    return `Write a decision memo that closes "${target}" with the owner, next action, and deadline.`;
+  }
+  if (candidate.suggestedActionType === 'send_message') {
+    return 'Send the grounded thread a concrete ask that names the decision and deadline.';
+  }
+  if (candidate.suggestedActionType === 'schedule') {
+    return `Schedule a protected work block or resolution slot for "${target}".`;
+  }
+  if (candidate.suggestedActionType === 'make_decision') {
+    return `Decide the next owner-backed move for "${target}" and close the open loop.`;
+  }
+  return note ?? candidate.content ?? candidate.title;
+}
+
 function buildWinnerDiscrepancyCard(
   selected: ReturnType<typeof selectRankedCandidates>['ranked'][number] | null,
 ): DiscrepancyCardFrame | null {
@@ -251,7 +278,7 @@ function buildWinnerDiscrepancyCard(
     contradiction,
     risk,
     evidence: evidence.slice(0, 5),
-    next_action: candidate.title,
+    next_action: buildWinnerTruthNextAction(candidate, selected.note),
     why_now: trigger?.why_now ?? selected.note ?? candidate.content,
     source_refs: sourceRefs.length > 0 ? sourceRefs : [`candidate:${candidate.id}`],
     confidence: Math.max(0, Math.min(1, candidate.confidence_prior / 100)),
@@ -348,14 +375,14 @@ export async function getWinnerTruthReport(userId = OWNER_USER_ID): Promise<Winn
   const selectedForTruth = selectedDiscrepancyQuality.passes ? selected : null;
   const candidateArtifactability = selection?.winnerQualityTrace?.candidate_artifactability ?? [];
   const topViableCandidates = candidateArtifactability
-    .filter((candidate: any) => candidate.viable === true && ['tier_1', 'tier_2'].includes(candidate.tier))
+    .filter((candidate: any) => candidate.artifactable === true && ['tier_1', 'tier_2'].includes(candidate.tier))
     .slice(0, 5)
     .map((candidate: any) => ({
       candidate_id: String(candidate.candidate_id),
       title: String(candidate.title),
       tier: String(candidate.tier),
       artifact_family: String(candidate.artifact_family),
-      missing_blockers: Array.isArray(candidate.missing_blockers) ? candidate.missing_blockers.map(String) : [],
+      missing_blockers: Array.isArray(candidate.blockers) ? candidate.blockers.map(String) : [],
     }));
   const selectedArtifactability = selectedForTruth
     ? candidateArtifactability.find((candidate: any) => String(candidate.candidate_id) === String(selectedForTruth.candidate.id))

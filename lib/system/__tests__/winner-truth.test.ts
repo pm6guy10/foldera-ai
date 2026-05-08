@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { classifyRecentAction } from '../winner-truth';
+import { buildWinnerTruthNextAction, classifyRecentAction } from '../winner-truth';
 
 describe('winner truth replay classification', () => {
   it('treats do_nothing no-send rows with concrete blockers as no-safe artifacts', () => {
@@ -42,5 +42,19 @@ describe('winner truth replay classification', () => {
     });
 
     expect(classified.classification).toBe('garbage_regression');
+  });
+});
+
+describe('buildWinnerTruthNextAction', () => {
+  it('converts viable deadline document candidates into concrete next actions', () => {
+    const nextAction = buildWinnerTruthNextAction({
+      title: 'Commitment due in 5d: Save job seeker account information',
+      suggestedActionType: 'write_document',
+      content: 'Saved documents need a closed decision before the account transition.',
+    });
+
+    expect(nextAction).toMatch(/write a decision memo/i);
+    expect(nextAction).toMatch(/owner, next action, and deadline/i);
+    expect(nextAction).not.toMatch(/^Commitment due/i);
   });
 });
