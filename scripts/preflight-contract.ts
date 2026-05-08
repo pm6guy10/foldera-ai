@@ -7,12 +7,15 @@ export type ContractValidationStage = 'manual' | 'pre-commit' | 'pre-push';
 export interface FolderaRunContract {
   backlog_id: string;
   base_commit: string;
+  money_loop_rung: string;
   allowed_file_patterns: string[];
   forbidden_file_patterns?: string[];
   allowed_files_raw: string;
   forbidden_files_raw: string;
   required_local_proof: string;
   required_browser_proof: string;
+  is_user_facing: boolean;
+  browser_proof_command: string;
   anti_regression_checks: string[];
   next_command: string;
 }
@@ -129,6 +132,26 @@ function loadContract(repoRoot: string): FolderaRunContract | null {
   }
 }
 
+function isExplicitBoolean(value: unknown): value is boolean {
+  return value === true || value === false;
+}
+
+function validateContractMetadata(contract: FolderaRunContract): string | null {
+  if (!contract.money_loop_rung?.trim()) {
+    return '.foldera-contract.json is missing money_loop_rung. Re-run controller after fixing the backlog item.';
+  }
+
+  if (!isExplicitBoolean(contract.is_user_facing)) {
+    return '.foldera-contract.json is missing an explicit is_user_facing boolean. Re-run controller after fixing the backlog item.';
+  }
+
+  if (contract.is_user_facing && !contract.browser_proof_command?.trim()) {
+    return '.foldera-contract.json is missing browser_proof_command for a user-facing seam. Re-run controller after fixing the backlog item.';
+  }
+
+  return null;
+}
+
 function getTouchedFiles(
   repoRoot: string,
   stage: ContractValidationStage,
@@ -172,6 +195,17 @@ export function validateContractForStage(
       ok: false,
       code: 'invalid_contract',
       message: '.foldera-contract.json is unreadable or missing base_commit.',
+      touchedFiles: [],
+      violations: [],
+    };
+  }
+
+  const metadataError = validateContractMetadata(contract);
+  if (metadataError) {
+    return {
+      ok: false,
+      code: 'invalid_contract',
+      message: metadataError,
       touchedFiles: [],
       violations: [],
     };

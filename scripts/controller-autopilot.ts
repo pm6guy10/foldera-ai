@@ -52,6 +52,7 @@ export interface BacklogItem {
   headingId: string;
   id: string;
   rung: string | null;
+  moneyLoopRung: string | null;
   title: string | null;
   userFacingPath: string | null;
   startingTrigger: string | null;
@@ -62,6 +63,8 @@ export interface BacklogItem {
   forbiddenFiles: string | null;
   requiredLocalProof: string | null;
   requiredProductionProof: string | null;
+  isUserFacing: boolean | null;
+  browserProofCommand: string | null;
   doneMeans: string | null;
   doNotCount: string | null;
   status: string | null;
@@ -263,6 +266,14 @@ function extractField(block: string, label: string): string | null {
   return match?.[1]?.trim() ?? null;
 }
 
+function parseBooleanField(value: string | null | undefined): boolean | null {
+  const normalized = (value ?? '').trim().toLowerCase();
+  if (!normalized) return null;
+  if (normalized === 'true' || normalized === 'yes') return true;
+  if (normalized === 'false' || normalized === 'no') return false;
+  return null;
+}
+
 function normalizeStatus(value: string | null | undefined): string {
   return (value ?? '').trim().toUpperCase();
 }
@@ -369,6 +380,7 @@ export function parseBacklogItems(markdown: string): BacklogItem[] {
       headingId,
       id: extractField(block, 'ID') ?? headingId,
       rung: extractField(block, 'Rung'),
+      moneyLoopRung: extractField(block, 'Money loop rung'),
       title: extractField(block, 'Title'),
       userFacingPath: extractField(block, 'User-facing path'),
       startingTrigger: extractField(block, 'Starting route or trigger'),
@@ -379,6 +391,8 @@ export function parseBacklogItems(markdown: string): BacklogItem[] {
       forbiddenFiles: extractField(block, 'Forbidden files'),
       requiredLocalProof: extractField(block, 'Required local proof'),
       requiredProductionProof: extractField(block, 'Required production proof'),
+      isUserFacing: parseBooleanField(extractField(block, 'Is user-facing')),
+      browserProofCommand: extractField(block, 'Browser proof command'),
       doneMeans: extractField(block, 'Done means'),
       doNotCount: extractField(block, 'Do-not-count'),
       status: extractField(block, 'Status'),
@@ -613,6 +627,7 @@ function printSeamContractReport(item: BacklogItem | null, acceptanceGateText: s
   console.log(`- Backlog ID: ${item?.id ?? 'UNKNOWN'}`);
   console.log(`- Title: ${compact(item?.title)}`);
   console.log(`- Rung: ${item?.rung ?? 'UNKNOWN'}`);
+  console.log(`- Money loop rung: ${item?.moneyLoopRung ?? 'UNKNOWN'}`);
   console.log(`- User-facing path protected: ${compact(item?.userFacingPath)}`);
   console.log(`- Starting trigger/route: ${compact(item?.startingTrigger)}`);
   console.log(`- Ending success state: ${compact(item?.endingSuccessState)}`);
@@ -623,6 +638,8 @@ function printSeamContractReport(item: BacklogItem | null, acceptanceGateText: s
   console.log(`- Adjacent behavior to verify: ${compact(item?.doneMeans ?? item?.protectedContracts)}`);
   console.log(`- Local proof commands: ${compact(item?.requiredLocalProof)}`);
   console.log(`- Production proof: ${compact(item?.requiredProductionProof)}`);
+  console.log(`- User-facing seam: ${item?.isUserFacing == null ? 'UNKNOWN' : item.isUserFacing ? 'true' : 'false'}`);
+  console.log(`- Browser proof command: ${compact(item?.browserProofCommand)}`);
   console.log(`- Stop condition: ${compact(buildStopCondition(item, acceptanceGateText), 240)}`);
 }
 
@@ -666,12 +683,15 @@ function writeContractFile(repoRoot: string, item: BacklogItem | null, acceptanc
   const contract: FolderaRunContract = {
     backlog_id: item?.id ?? 'UNKNOWN',
     base_commit: head,
+    money_loop_rung: item?.moneyLoopRung?.trim() ?? '',
     allowed_file_patterns: normalizeContractFilePatterns(item?.allowedFiles),
     forbidden_file_patterns: normalizeContractFilePatterns(item?.forbiddenFiles),
     allowed_files_raw: item?.allowedFiles ?? '',
     forbidden_files_raw: item?.forbiddenFiles ?? '',
     required_local_proof: item?.requiredLocalProof ?? '',
     required_browser_proof: item?.requiredProductionProof ?? '',
+    is_user_facing: item?.isUserFacing ?? false,
+    browser_proof_command: item?.browserProofCommand ?? '',
     anti_regression_checks: normalizeContractNotes(
       item?.doneMeans ?? item?.protectedContracts,
     ),
@@ -760,6 +780,14 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
       skippedItems.length > 0
         ? 'No actionable backlog item found; all parsed items are waiting, blocked, closed, missing status, or missing a current code/proof seam.'
         : 'No actionable backlog item found.';
+  }
+
+  if (!hardStopReason && !firstActionableItem?.moneyLoopRung?.trim()) {
+    hardStopReason = 'Selected backlog item is missing Money loop rung.';
+  }
+
+  if (!hardStopReason && firstActionableItem?.isUserFacing == null) {
+    hardStopReason = 'Selected backlog item is missing Is user-facing.';
   }
 
   if (!hardStopReason && dirtyClassification.blocking.length > 0) {

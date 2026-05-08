@@ -53,6 +53,11 @@ A valid loop requires:
 - user can approve
 - works for non-owner user
 
+## Controlled Autopilot Loop Contract
+- `max_seams: 5`
+- After 5 completed seams in one daily controlled-autopilot run, stop and return a final report instead of selecting a 6th seam.
+- Update `FOLDERA_PRODUCTION_BACKLOG.md` and `SESSION_HISTORY.md` before the final push whenever the seam changes backlog truth, controller truth, or contract doctrine.
+
 ## Demo Harness Command
 - Golden artifact proof insert: `npm run proof:golden-artifact`
 - Purpose: insert one hand-authored `pending_approval` + `write_document` row so `/api/conviction/latest` and `/dashboard` can be proven against a known-good artifact.

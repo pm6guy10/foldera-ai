@@ -8,6 +8,7 @@ BL-015 — Owner money-shot artifact is not consistently excellent.
 ## How to use this file
 - Every Codex run opens this file first.
 - Execute the first actionable OPEN item only.
+- Every backlog item must declare `Money loop rung`, `Is user-facing`, and `Browser proof command`. If `Is user-facing: true`, `Browser proof command` must be a real non-empty command.
 - Autopilot skips any item that is not currently actionable, including `WAITING_EXTERNAL_ACCOUNT`, `WAITING_EXTERNAL_PROOF`, `WAITING_EXTERNAL_QUOTA`, `WAITING_PASSIVE_PROOF`, `WAITING_PAID_PROOF`, `WAITING_MANUAL_AUTH`, `WAITING_REAL_USER`, and `WAITING_TIME_WINDOW`.
 - Exception: a `WAITING_PAID_PROOF` item may still be actionable only when its backlog text explicitly allows deterministic local fixture replay, the next action is unpaid/local-only, and paid production proof remains recorded as pending. Brandon's default is no paid tests; every paid proof requires explicit per-run approval.
 - Autopilot also skips `OPEN` items when `Next blocker` says the next step requires unavailable external account setup, paid/model quota, passive waiting, manual reauth, real user onboarding, a future natural cron/time window, fabricated production data, or fresh failure evidence that does not currently exist.
@@ -21,12 +22,14 @@ BL-015 — Owner money-shot artifact is not consistently excellent.
 - Assign the next BL-NNN ID.
 - Place it at the correct rung position, not at the bottom.
 - Infrastructure > code > polish at the same rung.
+- Add `Money loop rung`, `Is user-facing`, and `Browser proof command` before marking the item actionable.
 
 ## Items
 
 ### BL-017
 ID: BL-017
 Rung: 0
+Money loop rung: produce_finished_work
 Title: Product reset to Brandon command-center artifact wedge
 User-facing path: Brandon receives exactly one safe ready-to-use artifact from real job, interview, benefits, payment, admin deadline, or calendar-conflict signals, or sees `No safe artifact today.`
 Starting route or trigger: Artifact quality gate during generation, pending-approval persistence, and scheduled send-time recheck.
@@ -37,6 +40,8 @@ Allowed files: `FOLDERA_PRODUCT_SPEC.md`, `CURRENT_STATE.md`, `FOLDERA_PRODUCTIO
 Forbidden files: product UI, auth/session, billing, provider sync, migrations, outbound email delivery code, broad refactors, paid proof scripts
 Required local proof: `npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts lib/briefing/__tests__/generator-runtime.test.ts`; `npm run health`; `npm run lint`; `npm run build`
 Required production proof: None for this reset unless Brandon separately approves a paid owner proof later. No paid tests and no outbound email are part of this seam.
+Is user-facing: false
+Browser proof command:
 Done means: The docs and gate name the five allowed classes, off-wedge candidates return `No safe artifact today.`, suppression/no-send is not counted as a saveable artifact, and a relationship-silence owner-shaped generator candidate is blocked before persistence.
 Do-not-count: Morning-summary copy, generic no-send rationale, relationship silence decision maps, prep checklists, research/review homework, fake admin obligations, or local-only paid/model calls.
 Status: CLOSED
@@ -47,6 +52,7 @@ Next blocker: None for this seam. BL-015 remains separately waiting on explicit 
 ### BL-015
 ID: BL-015
 Rung: 0
+Money loop rung: produce_finished_work
 Title: Owner money-shot artifact is not consistently excellent
 User-facing path: Brandon runs Generate Now and receives one finished artifact that is specific, grounded, timely, and immediately usable.
 Starting route or trigger: Owner `POST /api/settings/run-brief?force=true&use_llm=true` after external model capacity is available, or deterministic local fixture replay when live capacity is unavailable.
@@ -57,6 +63,8 @@ Allowed files: `FOLDERA_PRODUCTION_BACKLOG.md`, `CURRENT_STATE.md`, `SESSION_HIS
 Forbidden files: dashboard UI, auth/session, billing, migrations, provider sync code, non-owner proof scripts, broad refactors
 Required local proof: `npx vitest run lib/briefing/__tests__/artifact-quality-gate.test.ts`; `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts`; `npm run health`; `npm run preflight`; `npm run lint`; `npm run build`
 Required production proof: Only after explicit per-run approval, trigger one authenticated owner Generate Now run after external model capacity returns, then verify the resulting latest action is one strict-rubric PASS artifact in `pending_approval` and visible in-product.
+Is user-facing: true
+Browser proof command: `npx playwright test tests/production/smoke.spec.ts --grep "Generate Now triggers the dry-run button only in explicit manual proof mode" --config playwright.prod.config.ts`
 Done means: Bad owner-shaped artifacts are blocked, one good owner-shaped artifact passes, the artifact is finished work instead of prep, no existing good artifact path breaks, and production proof is complete or explicitly waiting on external capacity.
 Do-not-count: Structural validity alone, a generic checklist, a reminder-only artifact, a static mock, a non-owner proof, a provider/debug no-send, or a local-only proof presented as live product proof.
 Status: WAITING_PAID_PROOF
@@ -66,6 +74,7 @@ Next blocker: Transport/auth/DB receipt is proven and the exact bad Resend/onboa
 ### BL-016
 ID: BL-016
 Rung: 0
+Money loop rung: approve_or_skip
 Title: Approval send kill switch defaults outbound email off
 User-facing path: Brandon clicks Approve, Save, or Skip on a pending dashboard artifact.
 Starting route or trigger: Dashboard approval action through the conviction execute path into `executeAction()`.
@@ -76,6 +85,8 @@ Allowed files: `lib/conviction/execute-action.ts`, `lib/conviction/__tests__/exe
 Forbidden files: Auth, Stripe, briefing, LLM, provider sync, Supabase, migrations, package files, visual redesign files, and broad refactors.
 Required local proof: `npx vitest run lib/conviction/__tests__/execute-action.test.ts`; `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "write_document journey"`; `npm run health`; `npm run preflight`; `npm run lint`; `npm run build`
 Required production proof: Read-only production deployment/health confirmation after push. Do not click live approval, do not send email, and do not run paid Generate Now.
+Is user-facing: true
+Browser proof command: `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "write_document journey"`
 Done means: Approval cannot send outbound email by default, write_document document-ready Resend is blocked by default while saving remains safe, email artifacts record `email_send_disabled`, the dashboard does not show `Approve & send` unless sending is enabled, and Skip stays visible.
 Do-not-count: A dashboard label-only change, a mock that bypasses `executeAction()`, a paid generation run, a live approval click, or a real outbound email.
 Status: CLOSED
@@ -85,6 +96,7 @@ Next blocker: None for this seam. Outbound approval sends require the explicit `
 ### BL-001
 ID: BL-001
 Rung: 1
+Money loop rung: produce_finished_work
 Title: Production paid-LLM gate no longer blocks live generation
 User-facing path: Owner triggers a real brief run and expects Foldera to generate instead of hard-failing before generation.
 Starting route or trigger: `POST /api/settings/run-brief?force=true&use_llm=true` or nightly `daily-generate`
@@ -95,6 +107,8 @@ Allowed files: `lib/llm/paid-llm-gate.ts`, `app/api/settings/run-brief/**`, `scr
 Forbidden files: `app/dashboard/**`, `app/api/stripe/**`, `app/(marketing)/**`, unrelated Playwright/dashboard suites
 Required local proof: `npm run preflight`; `npx vitest run lib/llm/__tests__/paid-llm-gate.test.ts app/api/settings/run-brief/__tests__/route.test.ts`; `npm run build`
 Required production proof: Confirm the live production env contract on the current deployment, then verify the newest production action after redeploy is blocked by something other than `paid_llm_disabled`.
+Is user-facing: false
+Browser proof command:
 Done means: Production truth shows the newest live generation row is no longer blocked by `paid_llm_disabled`.
 Do-not-count: Cron 200s, deploy logs, DB rows without a completed user-facing run, or docs/screenshots/refactors/unrelated tests.
 Status: CLOSED
@@ -104,6 +118,7 @@ Next blocker: BL-008.
 ### BL-008
 ID: BL-008
 Rung: 1
+Money loop rung: produce_finished_work
 Title: Production daily spend cap now blocks real generation after paid-gate clearance
 User-facing path: Owner triggers a real brief run and expects Foldera to generate a real artifact instead of a no-send blocker.
 Starting route or trigger: Nightly `daily-generate` or a real generation path after the paid gate clears.
@@ -114,6 +129,8 @@ Allowed files: `lib/utils/api-tracker.ts`, `lib/briefing/generator.ts`, `lib/cro
 Forbidden files: `app/dashboard/**`, `app/api/stripe/**`, `app/(marketing)/**`, unrelated Playwright/dashboard suites
 Required local proof: Focused spend-cap / generation-path tests for touched files; `npm run preflight`; `npm run build`
 Required production proof: Verify the newest live generation row no longer records `Daily spend cap reached.` and instead persists a real generated non-`do_nothing` action.
+Is user-facing: false
+Browser proof command:
 Done means: A real production generation path gets past the spend-cap blocker and persists a real action.
 Do-not-count: Cron 200s, deploy logs, DB rows without a completed user-facing run, or docs/screenshots/refactors/unrelated tests.
 Status: CLOSED
@@ -123,6 +140,7 @@ Next blocker: BL-011.
 ### BL-010
 ID: BL-010
 Rung: 1
+Money loop rung: produce_finished_work
 Title: Production cron routes reject the current CRON_SECRET and block manual cron proof
 User-facing path: Manual cron triggers reach the live production cron routes so daily-send and health-check can be verified on the real runtime.
 Starting route or trigger: `POST /api/cron/daily-send` and `GET /api/cron/health-check`
@@ -133,6 +151,8 @@ Allowed files: `lib/auth/resolve-user.ts`, `app/api/cron/**`, focused tests, `SE
 Forbidden files: `lib/cron/daily-brief-send.ts`, `lib/briefing/**`, `app/dashboard/**`, `app/api/stripe/**`, unrelated landing/auth surfaces
 Required local proof: Focused cron-auth tests for touched files; `npm run lint`; `npm run build`
 Required production proof: `vercel env pull <temp> --environment=production`, then `POST https://foldera.ai/api/cron/daily-send` and `GET https://foldera.ai/api/cron/health-check` with the documented cron secret header contract (`Authorization: Bearer $CRON_SECRET` and/or `x-cron-secret: $CRON_SECRET`) must return live route payload instead of `401`.
+Is user-facing: false
+Browser proof command:
 Done means: The authoritative current production `CRON_SECRET` can successfully authenticate live cron routes again.
 Do-not-count: Deploy logs alone, health route success alone, protected deployment splash pages, or DB rows without a successful cron-route response.
 Status: CLOSED
@@ -142,6 +162,7 @@ Next blocker: BL-002.
 ### BL-002
 ID: BL-002
 Rung: 1
+Money loop rung: produce_finished_work
 Title: Production daily-send path still lacks live wait-rationale delivery proof
 User-facing path: Scheduled daily brief email arrives even when no send-worthy artifact exists.
 Starting route or trigger: `POST /api/cron/daily-send`
@@ -152,6 +173,8 @@ Allowed files: `lib/cron/daily-brief-send.ts`, `lib/cron/brief-service.ts`, `app
 Forbidden files: `app/dashboard/**`, `lib/briefing/**`, `app/api/stripe/**`, unrelated landing/auth surfaces
 Required local proof: `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/brief-service.test.ts`; `npm run build`
 Required production proof: `curl -i -X POST https://foldera.ai/api/cron/daily-send -H "Authorization: Bearer $CRON_SECRET" -H "x-cron-secret: $CRON_SECRET"` and then verify the intended recipient receives exactly one fresh daily brief email or wait-rationale for that run.
+Is user-facing: false
+Browser proof command:
 Done means: One real production daily-send trigger produces exactly one user-facing email outcome with the row marked sent.
 Do-not-count: HTTP 200 or 204 alone, logs/traces alone, DB rows alone, or docs/screenshots/refactors/unrelated tests.
 Status: CLOSED
@@ -161,6 +184,7 @@ Next blocker: BL-011.
 ### BL-011
 ID: BL-011
 Rung: 1
+Money loop rung: produce_finished_work
 Title: Duplicate generic no-send emails still need merged daily-send idempotency fix
 User-facing path: User receives daily brief email only when there is a real artifact or explicitly useful no-send policy, not duplicate “Nothing cleared the bar” messages.
 Starting route or trigger: Nightly `daily-send` after one or more generic `do_nothing` / `wait_rationale` rows exist for the same user/PT day.
@@ -171,6 +195,8 @@ Allowed files: `lib/cron/daily-brief-send.ts`, `lib/cron/__tests__/daily-brief.t
 Forbidden files: `lib/briefing/**`, `app/dashboard/**`, `app/api/stripe/**`, `supabase/**`, `.github/workflows/**`, Vercel/Supabase quota files, unrelated tests.
 Required local proof: `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts`; `npm run build`
 Required production proof: Passive next normal daily-send window; do not force cron. Verify generic no-send persists but sends no email, real artifact emails still send once, and duplicate no-send rows do not produce duplicate emails.
+Is user-facing: false
+Browser proof command:
 Done means: The idempotency/no-send suppression patch is visible on GitHub main, deployed, and awaiting passive production proof or already passively proven by the next normal daily-send.
 Do-not-count: Local-only commit, unpushed branch, Codex “safe to merge” report, forced cron proof, or duplicate no-send email still arriving.
 Status: WAITING_PASSIVE_PROOF
@@ -180,6 +206,7 @@ Next blocker: next normal daily-send proof required
 ### BL-012
 ID: BL-012
 Rung: 1
+Money loop rung: produce_finished_work
 Title: Manual Generate Now checkpoint must not block the next scheduled morning daily brief
 User-facing path: A user can click Generate Now in the evening and still receive the next scheduled morning daily brief without waiting out a 20-hour cooldown.
 Starting route or trigger: Evening `POST /api/settings/run-brief?force=true&use_llm=true`, followed by the next normal scheduled `daily-brief` cron.
@@ -190,6 +217,8 @@ Allowed files: `lib/cron/daily-brief-generate.ts`, `lib/cron/brief-cycle-gate.ts
 Forbidden files: `app/dashboard/**`, `lib/briefing/**`, `lib/email/**`, `app/api/stripe/**`, auth/session code, migrations unless absolutely required, unrelated tests, styling/layout files
 Required local proof: `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts`; `npm run lint`; `npm run build`; `npm run controller:autopilot`
 Required production proof: Wait for the deployed build to advance, then verify on live production rows that a recent `settings_run_brief` checkpoint still sits within the 20-hour cooldown, no same-PT-day scheduled `cron_daily_brief` run exists for that user, and the deployed scheduled-cooldown predicate therefore leaves the next normal morning cron eligible without forcing cron.
+Is user-facing: false
+Browser proof command:
 Done means: Production truth shows a recent manual Generate Now checkpoint no longer blocks the next scheduled morning daily brief path.
 Do-not-count: Local-only tests, forced cron runs, source-only reasoning without production row proof, or docs/screenshots/refactors/unrelated tests.
 Status: CLOSED
@@ -199,6 +228,7 @@ Next blocker: BL-011 passive next-window send-stage proof remains open.
 ### BL-009
 ID: BL-009
 Rung: 2
+Money loop rung: produce_finished_work
 Title: Owner paid run still collapses the selected winner into internal no-send blocker sludge
 User-facing path: Owner triggers a real paid brief run and expects one usable artifact instead of an internal blocker dump.
 Starting route or trigger: `POST /api/settings/run-brief?force=true&use_llm=true`
@@ -209,6 +239,8 @@ Allowed files: `lib/briefing/generator.ts`, `lib/briefing/decision-enforcement.t
 Forbidden files: `app/dashboard/**`, `app/api/stripe/**`, `app/(marketing)/**`, unrelated landing/dashboard suites
 Required local proof: `npx vitest run lib/briefing/__tests__/generator-runtime.test.ts lib/briefing/__tests__/artifact-decision-enforcement.test.ts lib/cron/__tests__/daily-brief.test.ts app/api/settings/run-brief/__tests__/route.test.ts`; `npm run build`
 Required production proof: Trigger one real authenticated `POST https://foldera.ai/api/settings/run-brief?force=true&use_llm=true`, then verify the latest action is not `do_nothing` and does not expose internal blocker strings.
+Is user-facing: true
+Browser proof command: `npx playwright test tests/production/smoke.spec.ts --grep "Generate Now triggers the dry-run button only in explicit manual proof mode" --config playwright.prod.config.ts`
 Done means: The same live owner paid path produces one usable artifact or a clean user-facing wait-rationale instead of internal validation sludge.
 Do-not-count: HTTP 200 alone, `pipeline_runs` / `api_usage` alone, internal logs alone, or docs/screenshots/refactors/unrelated tests.
 Status: CLOSED
@@ -218,6 +250,7 @@ Next blocker: BL-013.
 ### BL-013
 ID: BL-013
 Rung: 2
+Money loop rung: produce_finished_work
 Title: Scheduled do_nothing/internal-failure no-send email escaped to user
 User-facing path: Nightly scheduled `daily-send` must never email internal no-send/debug/quota failure rows.
 Starting route or trigger: Scheduled `cron_daily_brief` send stage (`runDailySend` / `POST /api/cron/daily-send`).
@@ -228,6 +261,8 @@ Allowed files: `lib/cron/daily-brief-send.ts`, `lib/cron/daily-brief-generate.ts
 Forbidden files: `app/dashboard/**`, `app/api/stripe/**`, auth/session code, billing code, migrations, visual/styling files, unrelated tests, broad refactors
 Required local proof: `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts`; `npm run lint`; `npm run build`; `npm run controller:autopilot`
 Required production proof: Verify production deploy advanced to the pushed fix and confirm the leaked no-send/internal-failure class is now suppressed by deployed scheduled-send gating logic (without forcing cron).
+Is user-facing: false
+Browser proof command:
 Done means: Scheduled no-send/internal-failure rows no longer call send delivery; exact leaked payload is regression-tested; real artifact sends still pass once-only behavior; push + deploy are complete.
 Do-not-count: Sanitized no-send customer email delivery, local-only tests, forced cron proof, or docs-only status updates without deployed logic.
 Status: CLOSED
@@ -237,6 +272,7 @@ Next blocker: BL-003.
 ### BL-003
 ID: BL-003
 Rung: 2
+Money loop rung: produce_finished_work
 Title: Native interview write_document still does not reliably persist as the real winner
 User-facing path: A live interview-related run should create one usable `write_document`, not block or fall back away from the intended artifact.
 Starting route or trigger: `POST /api/settings/run-brief?force=true&use_llm=true` on interview-class owner data
@@ -247,6 +283,8 @@ Allowed files: `lib/briefing/scorer.ts`, `lib/briefing/stakes-gate.ts`, `lib/bri
 Forbidden files: `app/dashboard/**`, `app/api/auth/**`, `app/api/stripe/**`, landing/visual-only files
 Required local proof: `npx vitest run lib/briefing/__tests__/stakes-gate.test.ts lib/briefing/__tests__/write-document-hydration.test.ts lib/briefing/__tests__/interview-fallback.test.ts lib/briefing/__tests__/artifact-decision-enforcement.test.ts`; `npm run build`
 Required production proof: Trigger one real owner interview-class run through `POST https://foldera.ai/api/settings/run-brief?force=true&use_llm=true`, then verify the resulting latest action is a single interview-class `write_document` in `pending_approval`, not a blocked fallback or `do_nothing`.
+Is user-facing: true
+Browser proof command: `npx playwright test tests/production/smoke.spec.ts --grep "Generate Now triggers the dry-run button only in explicit manual proof mode" --config playwright.prod.config.ts`
 Done means: A real production interview-class run creates exactly one usable `write_document` artifact instead of blocking before persistence.
 Do-not-count: Logs saying “artifact created,” a persisted invalid payload, static mock screenshots, or docs/screenshots/refactors/unrelated tests.
 Status: WAITING_EXTERNAL_QUOTA
@@ -256,6 +294,7 @@ Next blocker: Paid model quota reset/access required before fresh owner intervie
 ### BL-004
 ID: BL-004
 Rung: 3
+Money loop rung: approve_or_skip
 Title: Pending write_document visibility on `/dashboard` still lacks locked production proof
 User-facing path: A signed-in user opens `/dashboard` and sees the pending artifact directly before taking any action.
 Starting route or trigger: `/dashboard`
@@ -266,6 +305,8 @@ Allowed files: `app/dashboard/page.tsx`, `app/api/conviction/latest/route.ts`, `
 Forbidden files: `lib/briefing/**`, `lib/cron/**`, `app/api/stripe/**`, landing/marketing routes
 Required local proof: `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "write_document journey"`; `npx playwright test tests/dashboard/live-artifact-pixel-lock.spec.ts`; `npm run build`
 Required production proof: Browser check on `https://foldera.ai/dashboard` with a known `pending_approval` `write_document`: capture a screenshot before approve/skip and confirm the title/body are visible in the real dashboard surface.
+Is user-facing: true
+Browser proof command: `npx playwright test tests/dashboard/live-artifact-pixel-lock.spec.ts`
 Done means: A signed-in production user can open `/dashboard` and see the pending artifact directly, with captured proof before taking action.
 Do-not-count: DB/API inspection, console logs, screenshots from non-dashboard surfaces, or static mock content.
 Status: CLOSED
@@ -275,6 +316,7 @@ Next blocker: BL-005.
 ### BL-014
 ID: BL-014
 Rung: 5
+Money loop rung: produce_finished_work
 Title: Stale/pre-quality interview write_document artifacts can still be emailed by daily-send
 User-facing path: Scheduled daily brief email includes one finished artifact, not stale interview prep homework.
 Starting route or trigger: Scheduled `cron_daily_brief` send stage (`runDailySend` / `POST /api/cron/daily-send`) selecting a pending interview `write_document`.
@@ -285,6 +327,8 @@ Allowed files: `lib/cron/daily-brief-send.ts`, `lib/cron/__tests__/daily-brief.t
 Forbidden files: `app/dashboard/**`, `app/api/auth/**`, `app/api/stripe/**`, `app/(marketing)/**`, `package.json`, lockfiles, migrations, visual/styling files, broad generator refactors, paid LLM/provider code.
 Required local proof: `npx vitest run lib/cron/__tests__/daily-brief.test.ts lib/cron/__tests__/manual-send.test.ts`; `npm run lint`; `npm run build`; `npm run health`; `npm run preflight`
 Required production proof: Verify production deploy advanced to the fix commit and production health reports that revision. Do not force a garbage email or run paid generation to prove suppression.
+Is user-facing: false
+Browser proof command:
 Done means: Scheduled daily-send suppresses interview `write_document` artifacts that fail the current finished-work quality bar. The ESB Technician prep-sheet class is regression-tested and cannot email again.
 Do-not-count: Prompt-only quality fixes, generator proof blocked by quota, deleting rows manually, local-only unpushed code, or sending a garbage email to prove the guard.
 Status: CLOSED
@@ -295,6 +339,7 @@ Next blocker: BL-006 remains the current top OPEN backlog item; it requires a re
 ### BL-005
 ID: BL-005
 Rung: 5
+Money loop rung: produce_finished_work
 Title: Interview write_document artifacts still miss the demoable quality bar
 User-facing path: The user opens the generated interview document and expects finished work, not prep homework.
 Starting route or trigger: Interview-class production run that reaches `write_document`
@@ -305,6 +350,8 @@ Allowed files: `lib/briefing/generator.ts`, `lib/briefing/decision-enforcement.t
 Forbidden files: `app/dashboard/**`, `app/api/auth/**`, `app/api/stripe/**`, unrelated cron/dashboard shell files
 Required local proof: `npx vitest run lib/briefing/__tests__/artifact-decision-enforcement.test.ts lib/briefing/__tests__/write-document-hydration.test.ts lib/briefing/__tests__/interview-fallback.test.ts`; `npm run build`
 Required production proof: Trigger one real interview-class production run, open the resulting artifact in-product, and verify it reads like finished work instead of checklist/STAR/dress-code prep trash.
+Is user-facing: true
+Browser proof command: `npx playwright test tests/production/smoke.spec.ts --grep "Generate Now triggers the dry-run button only in explicit manual proof mode" --config playwright.prod.config.ts`
 Done means: The real artifact is demoable and money-moving without manual rewrite.
 Do-not-count: Structural validity alone, pretty formatting alone, or “better than before” language by itself.
 Status: WAITING_EXTERNAL_QUOTA
@@ -314,6 +361,7 @@ Next blocker: Wait for Anthropic quota/access reset, then run one fresh intervie
 ### BL-006
 ID: BL-006
 Rung: 6
+Money loop rung: connect_sources
 Title: No real connected non-owner account exists to prove repeatable multi-user runs
 User-facing path: A non-owner user connects providers and receives the same daily brief loop without operator help.
 Starting route or trigger: Real non-owner connect flow plus nightly `daily-generate` and `daily-send`
@@ -324,6 +372,8 @@ Allowed files: `scripts/beta-readiness.ts`, `lib/cron/acceptance-gate.ts`, `test
 Forbidden files: `app/dashboard/**`, `lib/briefing/generator.ts`, `app/api/stripe/**`, landing/marketing routes
 Required local proof: `npm run beta:readiness -- <real-non-owner-user-id-or-email>` when environment allows; `npm run build`
 Required production proof: Connect one real non-owner account through the product, then verify one full run reaches artifact, email, and approve depth for that user without synthetic IDs.
+Is user-facing: true
+Browser proof command: `npx playwright test tests/production/smoke.spec.ts --grep "redirects authenticated users to dashboard or onboard" --config playwright.prod.config.ts`
 Done means: One real non-owner user completes the production loop and the acceptance gate no longer fails `NON_OWNER_DEPTH`.
 Do-not-count: Synthetic user rows, owner-only runs, logs alone, or manual DB fabrication.
 Status: WAITING_EXTERNAL_ACCOUNT
@@ -333,6 +383,7 @@ Next blocker: Provision and connect one real non-owner user with live auth and t
 ### BL-007
 ID: BL-007
 Rung: 6
+Money loop rung: learn_from_outcome
 Title: Repeated-directive health failure still trips within the 24-hour window
 User-facing path: The user receives daily briefs on consecutive runs without the same directive shape being reissued.
 Starting route or trigger: Nightly `daily-generate` or manual `POST /api/settings/run-brief?force=true&use_llm=true`
@@ -343,6 +394,8 @@ Allowed files: `scripts/health.ts`, `lib/cron/daily-brief-generate.ts`, `lib/cro
 Forbidden files: `app/dashboard/**`, `app/api/auth/**`, `app/api/stripe/**`, landing/visual-only files
 Required local proof: `npm run health`; focused duplicate/regression tests for touched files; `npm run build`
 Required production proof: Run the real brief path twice inside the monitored window and verify health no longer reports repeated copies of one directive shape.
+Is user-facing: false
+Browser proof command:
 Done means: Consecutive real runs stay unique enough that the 24-hour repeated-directive health gate passes.
 Do-not-count: Muting the check, deleting rows manually, or proving uniqueness only in mocks.
 Status: WAITING_EXTERNAL_PROOF

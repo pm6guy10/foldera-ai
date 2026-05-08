@@ -33,6 +33,9 @@ function writeContract(
   repoDir: string,
   contract: {
     base_commit: string;
+    money_loop_rung?: string;
+    is_user_facing?: boolean;
+    browser_proof_command?: string;
     allowed_file_patterns?: string[];
     forbidden_file_patterns?: string[];
   },
@@ -43,10 +46,13 @@ function writeContract(
       {
         backlog_id: 'BL-777',
         base_commit: contract.base_commit,
+        money_loop_rung: contract.money_loop_rung ?? 'produce_finished_work',
         allowed_file_patterns: contract.allowed_file_patterns ?? [],
         forbidden_file_patterns: contract.forbidden_file_patterns ?? [],
         required_local_proof: 'npm test',
         required_browser_proof: '',
+        is_user_facing: contract.is_user_facing ?? false,
+        browser_proof_command: contract.browser_proof_command ?? '',
         anti_regression_checks: [],
         next_command: 'Run FOLDERA CONTROLLED AUTOPILOT.',
       },
@@ -81,6 +87,26 @@ describe('preflight contract validation', () => {
 
       expect(result.ok).toBe(false);
       expect(result.code).toBe('stale_base_commit');
+    } finally {
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
+  it('fails when a user-facing contract is missing browser_proof_command', () => {
+    const { repoDir, baseCommit } = makeRepo();
+    try {
+      writeContract(repoDir, {
+        base_commit: baseCommit,
+        is_user_facing: true,
+        browser_proof_command: '',
+        allowed_file_patterns: ['scripts/controller-autopilot.ts'],
+      });
+
+      const result = validateContractForStage(repoDir, 'pre-commit');
+
+      expect(result.ok).toBe(false);
+      expect(result.code).toBe('invalid_contract');
+      expect(result.message).toContain('browser_proof_command');
     } finally {
       rmSync(repoDir, { recursive: true, force: true });
     }
@@ -132,6 +158,9 @@ describe('preflight contract validation', () => {
     try {
       writeContract(repoDir, {
         base_commit: baseCommit,
+        is_user_facing: true,
+        browser_proof_command:
+          'npx playwright test tests/e2e/public-routes.spec.ts --grep "controller contract"',
         allowed_file_patterns: [
           'scripts/controller-autopilot.ts',
           'lib/briefing/__tests__/*',

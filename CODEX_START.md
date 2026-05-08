@@ -14,6 +14,11 @@ Read these first, in order:
 
 Then continue execution autonomously.
 
+Controlled autopilot daily loop:
+- `max_seams: 5`
+- After 5 completed seams in one daily autopilot run, stop and return a final report instead of selecting a 6th seam.
+- Reset only when Brandon explicitly starts the next run.
+
 Do not ask Brandon what to do unless:
 - credentials are required
 - payment approval is required
@@ -32,8 +37,9 @@ Everything else is owned by you.
 4. Trace the real execution path before editing.
 5. Patch the smallest global rule that fixes the class.
 6. Prove it at the affected surface.
-7. Build, commit, push to `main`, and verify the deploy path when applicable.
-8. Record the receipt in `SESSION_HISTORY.md`.
+7. Update `FOLDERA_PRODUCTION_BACKLOG.md` and `SESSION_HISTORY.md` before the final push when the seam changes backlog or controller truth.
+8. Build, commit, push to `main`, and verify the deploy path when applicable.
+9. Record the receipt in `SESSION_HISTORY.md`.
 
 ## Report Format
 

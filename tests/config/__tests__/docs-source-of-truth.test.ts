@@ -7,7 +7,10 @@ describe('documentation source-of-truth boundaries', () => {
     const operatingSystem = fs.readFileSync(path.join(process.cwd(), 'FOLDERA_OPERATING_SYSTEM.md'), 'utf8');
     const codexStart = fs.readFileSync(path.join(process.cwd(), 'CODEX_START.md'), 'utf8');
     const activeHandoff = fs.readFileSync(path.join(process.cwd(), 'ACTIVE_HANDOFF.md'), 'utf8');
-    const readOrder = codexStart.match(/Read these first, in order:\n\n([\s\S]*?)\n\nThen continue execution autonomously\./)?.[1] ?? '';
+    const readOrder =
+      codexStart.match(
+        /Read these first, in order:\r?\n\r?\n([\s\S]*?)\r?\n\r?\nThen continue execution autonomously\./,
+      )?.[1] ?? '';
 
     expect(operatingSystem).toContain('Foldera is not a dashboard.');
     expect(operatingSystem).toContain('Foldera is an operator.');
@@ -18,6 +21,7 @@ describe('documentation source-of-truth boundaries', () => {
     expect(readOrder.trimStart()).toMatch(/^1\. `ACTIVE_HANDOFF\.md`/);
     expect(codexStart).toContain('FOLDERA_OPERATING_SYSTEM.md');
     expect(codexStart).toContain('Everything else is owned by you.');
+    expect(codexStart).toContain('max_seams: 5');
     expect(activeHandoff).toContain('# ACTIVE HANDOFF');
     expect(activeHandoff).toContain('Current slice:');
     expect(activeHandoff).toContain('## Next exact move');
@@ -36,6 +40,7 @@ describe('documentation source-of-truth boundaries', () => {
     expect(runbook).toContain('FOLDERA_MASTER_AUDIT.md');
     expect(runbook).toContain('SESSION_HISTORY.md is append-only receipt history');
     expect(runbook).toContain('FULL_AUDIT_RESULTS.md is audit evidence, not a mutable checklist');
+    expect(runbook).toContain('Update `FOLDERA_PRODUCTION_BACKLOG.md` and `SESSION_HISTORY.md` before the final push');
   });
 
   it('keeps AGENTS as the active controller for source-of-truth loading order', () => {

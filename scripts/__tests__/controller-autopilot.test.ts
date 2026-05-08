@@ -371,6 +371,69 @@ Next blocker: non-owner account setup pending
     }
   });
 
+  it('returns STOP when the selected backlog item is missing Money loop rung', () => {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      logs.push(args.map(String).join(' '));
+    });
+
+    const repoDir = mkdtempSync(join(tmpdir(), 'controller-autopilot-'));
+    try {
+      execSync('git init', { cwd: repoDir, stdio: 'ignore' });
+      writeFileSync(
+        join(repoDir, 'FOLDERA_PRODUCTION_BACKLOG.md'),
+        `
+### BL-778
+ID: BL-778
+Rung: 0
+Title: Missing money loop rung
+User-facing path: Local controller run
+Starting route or trigger: npm run controller:autopilot
+Ending success state: Contract exists
+Problem: Contract can still GO without an explicit money loop rung
+Protected contracts: stay inside allowed files
+Allowed files: \`scripts/controller-autopilot.ts\`
+Forbidden files: \`app/dashboard/**\`
+Required local proof: npx vitest run scripts/__tests__/controller-autopilot.test.ts
+Required production proof: None
+Is user-facing: false
+Browser proof command:
+Done means: Controller must refuse to emit GO.
+Do-not-count: stdout-only reports
+Status: OPEN
+Next blocker: Add the missing backlog schema field.
+`,
+      );
+      writeFileSync(
+        join(repoDir, 'ACCEPTANCE_GATE.md'),
+        'If Codex cannot prove that at least one production rung advanced, the run did not count.',
+      );
+      writeFileSync(
+        join(repoDir, 'SESSION_HISTORY.md'),
+        '## 2026-05-08 - Contract\n- Files changed: none\n- Verification: none\n',
+      );
+      execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
+      execSync('git -c user.name=Test -c user.email=test@example.com commit -m init', {
+        cwd: repoDir,
+        stdio: 'ignore',
+      });
+
+      const code = runControllerAutopilot(repoDir);
+
+      expect(code).toBe(1);
+      expect(existsSync(join(repoDir, '.foldera-contract.json'))).toBe(false);
+      expect(logs.some((line) => line.includes('CONTROLLER RESULT: STOP'))).toBe(true);
+      expect(
+        logs.some((line) =>
+          line.includes('HARD STOP REASON: Selected backlog item is missing Money loop rung.'),
+        ),
+      ).toBe(true);
+    } finally {
+      spy.mockRestore();
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
   it('writes a machine-readable contract on GO and prints next_command as the final line', () => {
     const logs: string[] = [];
     const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
@@ -386,6 +449,7 @@ Next blocker: non-owner account setup pending
 ### BL-777
 ID: BL-777
 Rung: 0
+Money loop rung: produce_finished_work
 Title: Contract enforcement
 User-facing path: Local controller run
 Starting route or trigger: npm run controller:autopilot
@@ -396,6 +460,8 @@ Allowed files: \`scripts/controller-autopilot.ts\`, \`scripts/preflight.ts\`, \`
 Forbidden files: \`app/dashboard/**\`, billing, auth/session
 Required local proof: npx vitest run scripts/__tests__/controller-autopilot.test.ts
 Required production proof: None
+Is user-facing: true
+Browser proof command: npx playwright test tests/e2e/public-routes.spec.ts --grep "controller contract"
 Done means: Controller writes contract and prints command
 Do-not-count: stdout-only reports
 Status: OPEN
@@ -422,15 +488,19 @@ Next blocker: Implement contract persistence.
       ) as {
         backlog_id: string;
         base_commit: string;
+        money_loop_rung: string;
         allowed_file_patterns: string[];
         allowed_files_raw: string;
         forbidden_files_raw: string;
+        is_user_facing: boolean;
+        browser_proof_command: string;
         next_command: string;
       };
 
       expect(code).toBe(0);
       expect(contract.backlog_id).toBe('BL-777');
       expect(contract.base_commit).toMatch(/^[0-9a-f]{40}$/);
+      expect(contract.money_loop_rung).toBe('produce_finished_work');
       expect(contract.allowed_file_patterns).toEqual([
         'scripts/controller-autopilot.ts',
         'scripts/preflight.ts',
@@ -438,6 +508,10 @@ Next blocker: Implement contract persistence.
       ]);
       expect(contract.allowed_files_raw).toContain('fixture/test files');
       expect(contract.forbidden_files_raw).toContain('billing');
+      expect(contract.is_user_facing).toBe(true);
+      expect(contract.browser_proof_command).toBe(
+        'npx playwright test tests/e2e/public-routes.spec.ts --grep "controller contract"',
+      );
       expect(contract.next_command).toContain('Selected: BL-777.');
       expect(logs.at(-1)).toBe(contract.next_command);
     } finally {
