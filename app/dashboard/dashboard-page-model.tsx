@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { formatRelativeTime } from '@/lib/ui/provider-display';
-import { formatSourceRefLabel } from '@/lib/briefing/source-ref-labels';
+import { formatSourceRefLabel, formatSourceRefLabels } from '@/lib/briefing/source-ref-labels';
 import type { DashboardPanelKey } from '@/components/foldera/DashboardSidebar';
 import {
   buildDiscrepancyFrameFromActionPayload,
@@ -740,7 +740,7 @@ export function computeStageMetrics(): StageMetrics {
 export function inferSourcePills(action: DashboardAction | null): string[] {
   const frame = getDashboardDiscrepancyFrame(action);
   if (frame?.source_refs.length) {
-    return frame.source_refs.slice(0, 4);
+    return formatSourceRefLabels(frame.source_refs, 'Connected source evidence').slice(0, 4);
   }
 
   if (isWriteDocumentAction(action)) {

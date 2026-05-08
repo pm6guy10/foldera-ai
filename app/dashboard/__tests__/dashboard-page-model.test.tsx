@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   getDashboardDiscrepancyFrame,
+  inferSourcePills,
   isVisibleDashboardAction,
   type DashboardAction,
 } from '../dashboard-page-model';
@@ -39,6 +40,16 @@ describe('dashboard discrepancy visibility contract', () => {
     expect(isVisibleDashboardAction(VALID_DISCREPANCY_ACTION)).toBe(true);
     expect(getDashboardDiscrepancyFrame(VALID_DISCREPANCY_ACTION)?.claim).toContain(
       'MAS3 interview packet',
+    );
+  });
+
+  it('turns strict artifact source refs into customer-readable source pills', () => {
+    expect(inferSourcePills(VALID_DISCREPANCY_ACTION)).toEqual([
+      'Email thread',
+      'Source document',
+    ]);
+    expect(inferSourcePills(VALID_DISCREPANCY_ACTION).join(' ')).not.toMatch(
+      /gmail:|drive:|alex-confirmed|packet-owner/i,
     );
   });
 

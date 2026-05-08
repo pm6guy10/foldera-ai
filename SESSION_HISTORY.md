@@ -6037,3 +6037,10 @@ pm run build.
 - What changed: Added a reusable display-safe source reference formatter and applied it to the deterministic daily-value slate plus dashboard clipboard copy. Raw source refs such as `commitment:<uuid>` now become plain labels like `Saved commitment`, and no-safe receipt refs use `Safety receipt` / `Current source trail` instead of internal tags.
 - Verification: Red focused tests first proved `/api/conviction/daily-value` and `Copy brief` leaked `commitment:<uuid>`; after patch focused slate/API/dashboard-model Vitest passed (`15/15`), `npm run build` passed, full dashboard Playwright passed (`17/17`) after rebuilding the Next production bundle, `npm run health` reported `RESULT: 0 FAILING`, and `npm run lint` passed.
 - Unresolved issues: This is a display/source-trail trust fix only. It does not persist a fresh pending artifact or run paid generation. No outbound email, schema migration, payment action, or destructive action was run.
+
+## 2026-05-08 - Strict artifact source pills stop leaking raw refs
+- MODE: Dashboard finished-artifact trust seam.
+- Files changed: `app/dashboard/dashboard-page-model.tsx`, `app/dashboard/__tests__/dashboard-page-model.test.tsx`, `tests/e2e/dashboard-navigation.spec.ts`, `SESSION_HISTORY.md`.
+- What changed: The strict artifact card now reuses the display-safe source reference formatter for source pills. Real finished-work cards show labels like `Email thread`, `Calendar event`, and `Source document` instead of raw `email:*`, `calendar:*`, `gmail:*`, or `drive:*` refs.
+- Verification: Red dashboard model test first proved `inferSourcePills()` leaked `gmail:alex-confirmed` / `drive:packet-owner`; after patch focused dashboard model/config Vitest passed (`10/10`), `npm run build` passed, full dashboard Playwright passed (`17/17`) including strict artifact source-pill assertions, `npm run health` reported `RESULT: 0 FAILING`, and `npm run lint` passed.
+- Unresolved issues: This does not create a fresh pending artifact or run paid generation. No outbound email, schema migration, payment action, or destructive action was run.
