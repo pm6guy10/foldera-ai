@@ -146,7 +146,7 @@ describe('Daily Utility Slate', () => {
           next_action:
             'Write a decision memo that closes the account transition with the owner, next action, and deadline.',
           why_now: 'The deadline is close enough that delay creates avoidable exposure.',
-          source_refs: ['commitment:account-transition'],
+          source_refs: ['commitment:8c9e725a-a5ce-461d-84c4-a9fec4338d70'],
         },
         no_safe_artifact_reason: null,
       },
@@ -160,8 +160,11 @@ describe('Daily Utility Slate', () => {
         status: 'primary_move',
         next_action:
           'Write a decision memo that closes the account transition with the owner, next action, and deadline.',
+        source_refs: ['Saved commitment'],
       }),
     );
-    expect(serialized).not.toMatch(/candidate_id|missing_|weak_|gate|positive_winner_contract/i);
+    expect(serialized).not.toMatch(
+      /candidate_id|missing_|weak_|gate|positive_winner_contract|commitment:[0-9a-f-]+|8c9e725a/i,
+    );
   });
 });

@@ -115,7 +115,7 @@ describe('dashboard finished-work inbox model', () => {
           'The account transition may happen before the saved records are packaged.',
         next_action:
           'Write a decision memo that closes the account transition with the owner, next action, and deadline.',
-        source_refs: ['commitment:account-transition'],
+        source_refs: ['commitment:8c9e725a-a5ce-461d-84c4-a9fec4338d70'],
       },
     };
     const state = buildDailyValueState(
@@ -156,7 +156,8 @@ describe('dashboard finished-work inbox model', () => {
     expect(copyText).toContain('Current best move');
     expect(copyText).toContain('Evidence:');
     expect(copyText).toContain('Safe next action:');
-    expect(copyText).not.toMatch(/missing_|weak_|candidate|gate|blocker/i);
+    expect(copyText).toContain('Saved commitment');
+    expect(copyText).not.toMatch(/missing_|weak_|candidate|gate|blocker|commitment:[0-9a-f-]+|8c9e725a/i);
   });
 
   it('labels source cursors that need sync without treating them as disconnected', () => {

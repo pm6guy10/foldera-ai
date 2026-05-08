@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import { formatRelativeTime } from '@/lib/ui/provider-display';
+import { formatSourceRefLabel } from '@/lib/briefing/source-ref-labels';
 import type { DashboardPanelKey } from '@/components/foldera/DashboardSidebar';
 import {
   buildDiscrepancyFrameFromActionPayload,
@@ -363,6 +364,7 @@ export function dailyUtilitySlateClipboardText(
   }
 
   const sourceRefs = (item.source_refs ?? [])
+    .map((entry) => formatSourceRefLabel(entry))
     .map((entry) => sanitizeDailyValueText(entry, ''))
     .filter(Boolean)
     .slice(0, 4);

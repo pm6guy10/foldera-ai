@@ -594,7 +594,7 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
               'The account transition may happen before the saved records are packaged.',
             next_action:
               'Write a decision memo that closes the account transition with the owner, next action, and deadline.',
-            source_refs: ['commitment:account-transition'],
+            source_refs: ['commitment:8c9e725a-a5ce-461d-84c4-a9fec4338d70'],
           },
         },
       },
@@ -616,6 +616,16 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
         page.evaluate(() => (window as unknown as { __folderaCopiedText?: string }).__folderaCopiedText ?? ''),
       )
       .toContain('Safe next action:');
+    await expect
+      .poll(() =>
+        page.evaluate(() => (window as unknown as { __folderaCopiedText?: string }).__folderaCopiedText ?? ''),
+      )
+      .toContain('Saved commitment');
+    await expect
+      .poll(() =>
+        page.evaluate(() => (window as unknown as { __folderaCopiedText?: string }).__folderaCopiedText ?? ''),
+      )
+      .not.toMatch(/commitment:[0-9a-f-]+|8c9e725a/i);
     await expect(page.getByText(/No safe artifact/i)).toHaveCount(0);
   });
 

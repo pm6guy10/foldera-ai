@@ -1,3 +1,5 @@
+import { formatSourceRefLabels } from './source-ref-labels';
+
 export type DailyUtilitySlateItemStatus =
   | 'primary_move'
   | 'open_loop'
@@ -91,13 +93,7 @@ function safeText(value: unknown, fallback: string): string {
 }
 
 function safeSourceRefs(value: unknown): string[] {
-  if (!Array.isArray(value)) return ['current-source-trail'];
-  const refs = value
-    .map((entry) => readString(entry))
-    .filter((entry): entry is string => Boolean(entry))
-    .filter((entry) => !containsInternalToken(entry))
-    .slice(0, 4);
-  return refs.length > 0 ? refs : ['current-source-trail'];
+  return formatSourceRefLabels(value);
 }
 
 const KNOWN_BLOCKER_PATTERN =
@@ -218,7 +214,7 @@ function buildWatchItem(receipt: DailyUtilitySlateReceipt): DailyUtilitySlateIte
     why_it_matters:
       'The safest answer is to avoid handing you a weak task that sounds useful but cannot prove its value.',
     no_action_reason: readableReason,
-    source_refs: ['persisted:no_send_receipt'],
+    source_refs: ['Safety receipt'],
   };
 }
 
@@ -308,7 +304,7 @@ export function buildDailyUtilitySlateFromWinnerTruth(
     why_it_matters:
       'The safest answer is to avoid handing you a weak task that sounds useful but cannot prove its value.',
     no_action_reason: readableReason,
-    source_refs: ['current-winner-truth'],
+    source_refs: ['Current source trail'],
   };
 
   return isUtilityItem(watchItem)

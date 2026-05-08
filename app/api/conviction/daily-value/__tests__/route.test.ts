@@ -41,7 +41,7 @@ describe('GET /api/conviction/daily-value', () => {
           next_action:
             'Write a decision memo that closes the account transition with the owner, next action, and deadline.',
           why_now: 'The deadline is close enough that delay creates avoidable exposure.',
-          source_refs: ['commitment:account-transition'],
+          source_refs: ['commitment:8c9e725a-a5ce-461d-84c4-a9fec4338d70'],
         },
       },
       action_needed: [],
@@ -60,9 +60,10 @@ describe('GET /api/conviction/daily-value', () => {
         status: 'primary_move',
         why_it_matters:
           'The account transition may happen before the saved records are packaged.',
+        source_refs: ['Saved commitment'],
       }),
     );
-    expect(serialized).not.toMatch(/candidate_id|missing_|weak_|gate|winnerQualityTrace/i);
+    expect(serialized).not.toMatch(/candidate_id|missing_|weak_|gate|winnerQualityTrace|commitment:[0-9a-f-]+|8c9e725a/i);
   });
 
   it('passes auth responses through', async () => {
