@@ -85,6 +85,13 @@ const NAV_CONTRACT = [
   { panel: 'account', label: 'Account' },
 ] as const;
 
+const STAGE_NAV_CONTRACT = [
+  { panel: 'today', label: 'Executive Briefing' },
+  { panel: 'history', label: 'Audit Log' },
+  { panel: 'sources', label: 'Integrations' },
+  { panel: 'account', label: 'Settings' },
+] as const;
+
 function json(data: unknown) {
   return JSON.stringify(data);
 }
@@ -273,24 +280,25 @@ async function setupDashboardMocks(
 }
 
 describeAuthMocked('Dashboard navigation and action wiring', () => {
-  test('sidebar exposes the finished-work inbox labels on /dashboard desktop shell', async ({ page }) => {
+  test('desktop dashboard shell matches the approved executive-briefing frame', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
 
-    for (const item of NAV_CONTRACT) {
+    for (const item of STAGE_NAV_CONTRACT) {
       const button = page.getByTestId(`dashboard-sidebar-item-${item.panel}`);
       await expect(button).toBeVisible();
       await expect(button).toContainText(item.label);
     }
 
-    await expect(page.getByTestId('dashboard-sidebar-item-playbooks')).toHaveCount(0);
-    await expect(page.getByTestId('dashboard-sidebar-item-signals')).toHaveCount(0);
-    await expect(page.getByTestId('dashboard-sidebar-item-audit-log')).toHaveCount(0);
-    await expect(page.getByTestId('dashboard-truth-stats')).toHaveCount(0);
-    await expect(page.getByText('open threads')).toHaveCount(0);
-    await expect(page.getByText('need attention')).toHaveCount(0);
-    await expect(page.getByText('ready to move')).toHaveCount(0);
+    await expect(page.getByRole('link', { name: 'Playbooks' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Signals' })).toBeVisible();
+    await expect(page.getByText(/Upgrade to Pro/i)).toBeVisible();
+    await expect(page.getByText(/Workspace Owner/i)).toBeVisible();
+    await expect(page.getByText(/Search Foldera/i)).toBeVisible();
+    await expect(page.getByText('open threads')).toBeVisible();
+    await expect(page.getByText('need attention')).toBeVisible();
+    await expect(page.getByText('ready to move')).toBeVisible();
     await expect(page.getByTestId('dashboard-brief-directive-section')).toContainText(/Finished work/i);
     await expect(page.getByTestId('dashboard-brief-why-section')).toContainText(/Why it matters/i);
     await expect(page.getByTestId('dashboard-brief-draft-section')).toContainText('Ready text');
@@ -298,9 +306,11 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByTestId('dashboard-brief-source-section')).toContainText('Email thread');
     await expect(page.getByTestId('dashboard-brief-source-section')).toContainText('Calendar event');
     await expect(page.getByTestId('dashboard-brief-source-section')).not.toContainText(/email:|calendar:/i);
+    await expect(page.getByText(/How this brief works/i)).toBeVisible();
+    await expect(page.getByText(/Drop a folder or document\./i)).toBeVisible();
     const figmaFrame = await page.getByTestId('dashboard-figma-card-frame').boundingBox();
-    expect(figmaFrame?.width).toBeGreaterThan(1080);
-    await expect(page.getByText(/How this brief works/i)).toHaveCount(0);
+    expect(figmaFrame?.width).toBeGreaterThan(960);
+    expect(figmaFrame?.height).toBeGreaterThan(560);
   });
 
   test('clicking each sidebar item keeps the app shell on /dashboard', async ({ page }) => {
@@ -321,23 +331,28 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     }
   });
 
-  test('default dashboard renders Today, Recent Work, Sources, and Account as one workspace', async ({ page }) => {
+  test('default dashboard keeps Today as the primary surface and routes support panels behind navigation', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
 
     await expect(page.getByTestId('dashboard-panel-today')).toBeVisible();
+    await expect(page.getByTestId('dashboard-panel-history')).toHaveCount(0);
+    await expect(page.getByTestId('dashboard-panel-sources')).toHaveCount(0);
+    await expect(page.getByTestId('dashboard-panel-account')).toHaveCount(0);
+    await expect(page.getByText(/How this brief works/i)).toBeVisible();
+    await expect(page.getByText(/Drop a folder or document\./i)).toBeVisible();
+
+    await page.getByTestId('dashboard-sidebar-item-history').click();
     await expect(page.getByTestId('dashboard-panel-history')).toBeVisible();
+
+    await page.getByTestId('dashboard-sidebar-item-sources').click();
     await expect(page.getByTestId('dashboard-panel-sources')).toBeVisible();
-    await expect(page.getByTestId('dashboard-panel-account')).toBeVisible();
-    await expect(page.getByTestId('dashboard-panel-history')).toContainText(/Recent work/i);
     await expect(page.getByText(/Source readiness/i)).toBeVisible();
-    await expect(page.getByTestId('dashboard-sources-source-status')).toBeVisible();
-    await expect(page.getByTestId('dashboard-sources-connected-count')).toHaveText('1');
-    await expect(page.getByText(/Confirm launch timeline with Alex/i)).toBeVisible();
-    await expect(page.getByRole('link', { name: /Open full history/i })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: /Open full settings/i })).toHaveCount(0);
-    await expect(page.getByRole('link', { name: /Manage connected accounts/i })).toHaveCount(0);
+
+    await page.getByTestId('dashboard-sidebar-item-account').click();
+    await expect(page.getByTestId('dashboard-panel-account')).toBeVisible();
+    await expect(page.getByText(/Trust controls/i)).toBeVisible();
   });
 
   test('dashboard brand mark returns to the public landing page', async ({ page }) => {
@@ -428,8 +443,8 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await page.goto('/dashboard?panel=settings');
 
     await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
-    await expect(page.getByTestId('dashboard-panel-sources')).toBeVisible();
     await expect(page.getByTestId('dashboard-panel-account')).toBeVisible();
+    await expect(page.getByTestId('dashboard-panel-sources')).toHaveCount(0);
     await expect(page.getByTestId('dashboard-panel-account')).toContainText(/Account/i);
   });
 
@@ -633,7 +648,7 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
   });
 
   test('account menu opens and sign out remains wired', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.setViewportSize({ width: 1440, height: 900 });
     const refs = await setupDashboardMocks(page);
     await page.goto('/dashboard');
 

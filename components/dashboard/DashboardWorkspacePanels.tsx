@@ -41,6 +41,7 @@ type DashboardWorkspacePanelsProps = {
   recentHistory: DashboardHistoryItem[];
   userName: string;
   onSourceSynced?: () => void;
+  focusPanel?: 'all' | 'history' | 'sources' | 'account';
 };
 
 function PanelShell({
@@ -211,6 +212,7 @@ export function DashboardWorkspacePanels({
   recentHistory,
   userName,
   onSourceSynced,
+  focusPanel = 'all',
 }: DashboardWorkspacePanelsProps) {
   const [sourceActionState, setSourceActionState] = useState<
     Partial<Record<'google' | 'azure_ad', SourceActionState>>
@@ -259,151 +261,157 @@ export function DashboardWorkspacePanels({
 
   return (
     <div className="grid gap-4" data-testid="dashboard-workspace-support">
-      <PanelShell
-        testId="dashboard-panel-history"
-        label="Recent Work"
-        title="Recent finished work"
-        description="A receipt trail of what was approved, skipped, or saved so Today never feels like a black box."
-      >
-        {!historyLoaded ? (
-          <p className="text-sm text-text-secondary">Loading recent work...</p>
-        ) : hasHistoryIssue ? (
-          <p className="text-sm text-text-secondary" data-testid="dashboard-history-empty-state">
-            Recent work is unavailable right now.
-          </p>
-        ) : recentHistory.length === 0 ? (
-          <div
-            className="rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-4"
-            data-testid="dashboard-history-empty-state"
-          >
-            <p className="text-sm font-medium text-text-primary">No saved work in this window yet.</p>
-            <p className="mt-2 text-sm leading-6 text-text-secondary">
-              Foldera still checked today&apos;s sources and will keep the next finished artifact here.
+      {focusPanel === 'all' || focusPanel === 'history' ? (
+        <PanelShell
+          testId="dashboard-panel-history"
+          label="Recent Work"
+          title="Recent finished work"
+          description="A receipt trail of what was approved, skipped, or saved so Today never feels like a black box."
+        >
+          {!historyLoaded ? (
+            <p className="text-sm text-text-secondary">Loading recent work...</p>
+          ) : hasHistoryIssue ? (
+            <p className="text-sm text-text-secondary" data-testid="dashboard-history-empty-state">
+              Recent work is unavailable right now.
             </p>
-          </div>
-        ) : (
-          <ul className="space-y-3" data-testid="dashboard-history-list">
-            {recentHistory.map((item) => (
-              <HistoryRow key={item.id} item={item} />
-            ))}
-          </ul>
-        )}
-      </PanelShell>
-
-      <PanelShell
-        testId="dashboard-panel-sources"
-        label="Sources"
-        title="Source readiness"
-        description="Foldera only turns current connected evidence into finished work."
-      >
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-          <div className="rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-3.5">
-            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
-              <Link2 className="h-3.5 w-3.5 text-accent" aria-hidden />
-              Active sources
-            </div>
-            <div className="mt-2 flex items-end justify-between gap-3">
-              <p className="text-[30px] font-semibold leading-none text-text-primary" data-testid="dashboard-sources-connected-count">
-                {connectedSourcesValue}
+          ) : recentHistory.length === 0 ? (
+            <div
+              className="rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-4"
+              data-testid="dashboard-history-empty-state"
+            >
+              <p className="text-sm font-medium text-text-primary">No saved work in this window yet.</p>
+              <p className="mt-2 text-sm leading-6 text-text-secondary">
+                Foldera still checked today&apos;s sources and will keep the next finished artifact here.
               </p>
-              <p className="pb-1 text-xs font-semibold text-text-muted">{connectedSourceLabel}</p>
             </div>
-            <p className="mt-2 text-xs leading-5 text-text-secondary">
-              {hasIntegrationIssue
-                ? 'Source health is unavailable right now.'
-                : connectedSourceCount > 0
-                  ? 'Connected evidence is available for the next finished artifact.'
-                  : 'Connect a source to give Foldera current facts.'}
-            </p>
-          </div>
-          <div className="rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-3.5">
-            <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
-              <Activity className="h-3.5 w-3.5 text-accent" aria-hidden />
-              Latest activity
-            </div>
-            <p className="mt-2 text-sm font-semibold text-text-primary" data-testid="dashboard-sources-latest-label">
-              {latestSignalLabel}
-            </p>
-            <p className="mt-2 text-xs leading-5 text-text-secondary">
-              {readySources > 0
-                ? `${readySources} source${readySources === 1 ? '' : 's'} ready for review.`
-                : 'Foldera is waiting on a live source signal.'}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-1" data-testid="dashboard-sources-source-status">
-          {hasIntegrationIssue ? (
-            <p className="rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-3.5 text-sm text-text-secondary">
-              Source status is unavailable right now.
-            </p>
           ) : (
-            <>
-              <SourceRow
-                integration={googleIntegration}
-                fallbackProvider="google"
-                actionState={sourceActionState.google}
-                onSync={(provider) => void syncSource(provider)}
-              />
-              <SourceRow
-                integration={microsoftIntegration}
-                fallbackProvider="azure_ad"
-                actionState={sourceActionState.azure_ad}
-                onSync={(provider) => void syncSource(provider)}
-              />
-            </>
+            <ul className="space-y-3" data-testid="dashboard-history-list">
+              {recentHistory.map((item) => (
+                <HistoryRow key={item.id} item={item} />
+              ))}
+            </ul>
           )}
-        </div>
-      </PanelShell>
+        </PanelShell>
+      ) : null}
 
-      <PanelShell
-        testId="dashboard-panel-account"
-        label="Account"
-        title="Trust controls"
-        description="Keep identity, source access, and outbound behavior visible in the same dashboard."
-      >
-        <div className="flex items-center gap-3 rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-3.5">
-          <div
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-600 to-slate-950 text-sm font-semibold text-white"
-            aria-hidden
-          >
-            {initial}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-text-primary">{userName}</p>
-            <p className="mt-0.5 text-xs text-text-muted">Signed in</p>
-          </div>
-          <UserRound className="h-4 w-4 shrink-0 text-text-muted" aria-hidden />
-        </div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-          <div className="rounded-[14px] border border-emerald-300/20 bg-emerald-300/[0.045] p-3.5">
-            <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
-              <ShieldCheck className="h-4 w-4 text-emerald-300" aria-hidden />
-              No outbound by default
+      {focusPanel === 'all' || focusPanel === 'sources' ? (
+        <PanelShell
+          testId="dashboard-panel-sources"
+          label="Sources"
+          title="Source readiness"
+          description="Foldera only turns current connected evidence into finished work."
+        >
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-3.5">
+              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+                <Link2 className="h-3.5 w-3.5 text-accent" aria-hidden />
+                Active sources
+              </div>
+              <div className="mt-2 flex items-end justify-between gap-3">
+                <p className="text-[30px] font-semibold leading-none text-text-primary" data-testid="dashboard-sources-connected-count">
+                  {connectedSourcesValue}
+                </p>
+                <p className="pb-1 text-xs font-semibold text-text-muted">{connectedSourceLabel}</p>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-text-secondary">
+                {hasIntegrationIssue
+                  ? 'Source health is unavailable right now.'
+                  : connectedSourceCount > 0
+                    ? 'Connected evidence is available for the next finished artifact.'
+                    : 'Connect a source to give Foldera current facts.'}
+              </p>
             </div>
-            <p className="mt-2 text-xs leading-5 text-text-secondary">
-              Approvals record intent unless the explicit send switch is enabled.
-            </p>
-          </div>
-          <div className="rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-3.5">
-            <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
-              <CheckCircle2 className="h-4 w-4 text-accent" aria-hidden />
-              Same-place controls
+            <div className="rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-3.5">
+              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+                <Activity className="h-3.5 w-3.5 text-accent" aria-hidden />
+                Latest activity
+              </div>
+              <p className="mt-2 text-sm font-semibold text-text-primary" data-testid="dashboard-sources-latest-label">
+                {latestSignalLabel}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-text-secondary">
+                {readySources > 0
+                  ? `${readySources} source${readySources === 1 ? '' : 's'} ready for review.`
+                  : 'Foldera is waiting on a live source signal.'}
+              </p>
             </div>
-            <p className="mt-2 text-xs leading-5 text-text-secondary">
-              Sources and account actions stay inside the dashboard instead of jumping to legacy rooms.
-            </p>
           </div>
-          <button
-            type="button"
-            className="foldera-button-secondary"
-            onClick={() => void signOut({ callbackUrl: SIGN_OUT_CALLBACK_URL })}
-          >
-            <LogOut className="h-4 w-4" aria-hidden />
-            Sign out
-          </button>
-        </div>
-      </PanelShell>
+
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-1" data-testid="dashboard-sources-source-status">
+            {hasIntegrationIssue ? (
+              <p className="rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-3.5 text-sm text-text-secondary">
+                Source status is unavailable right now.
+              </p>
+            ) : (
+              <>
+                <SourceRow
+                  integration={googleIntegration}
+                  fallbackProvider="google"
+                  actionState={sourceActionState.google}
+                  onSync={(provider) => void syncSource(provider)}
+                />
+                <SourceRow
+                  integration={microsoftIntegration}
+                  fallbackProvider="azure_ad"
+                  actionState={sourceActionState.azure_ad}
+                  onSync={(provider) => void syncSource(provider)}
+                />
+              </>
+            )}
+          </div>
+        </PanelShell>
+      ) : null}
+
+      {focusPanel === 'all' || focusPanel === 'account' ? (
+        <PanelShell
+          testId="dashboard-panel-account"
+          label="Account"
+          title="Trust controls"
+          description="Keep identity, source access, and outbound behavior visible in the same dashboard."
+        >
+          <div className="flex items-center gap-3 rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-3.5">
+            <div
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-600 to-slate-950 text-sm font-semibold text-white"
+              aria-hidden
+            >
+              {initial}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-text-primary">{userName}</p>
+              <p className="mt-0.5 text-xs text-text-muted">Signed in</p>
+            </div>
+            <UserRound className="h-4 w-4 shrink-0 text-text-muted" aria-hidden />
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="rounded-[14px] border border-emerald-300/20 bg-emerald-300/[0.045] p-3.5">
+              <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+                <ShieldCheck className="h-4 w-4 text-emerald-300" aria-hidden />
+                No outbound by default
+              </div>
+              <p className="mt-2 text-xs leading-5 text-text-secondary">
+                Approvals record intent unless the explicit send switch is enabled.
+              </p>
+            </div>
+            <div className="rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-3.5">
+              <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
+                <CheckCircle2 className="h-4 w-4 text-accent" aria-hidden />
+                Same-place controls
+              </div>
+              <p className="mt-2 text-xs leading-5 text-text-secondary">
+                Sources and account actions stay inside the dashboard instead of jumping to legacy rooms.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="foldera-button-secondary"
+              onClick={() => void signOut({ callbackUrl: SIGN_OUT_CALLBACK_URL })}
+            >
+              <LogOut className="h-4 w-4" aria-hidden />
+              Sign out
+            </button>
+          </div>
+        </PanelShell>
+      ) : null}
     </div>
   );
 }

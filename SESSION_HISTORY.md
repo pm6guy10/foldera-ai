@@ -2,6 +2,13 @@
 
 # Session History
 
+## 2026-05-08 - Dashboard shell now matches the executive-briefing comp with a real native layout
+- MODE: Pixel-locked dashboard UI seam.
+- Files changed: `app/dashboard/page.tsx`, `app/globals.css`, `components/dashboard/DashboardMobileLayout.tsx`, `components/dashboard/DashboardWorkspacePanels.tsx`, `components/foldera/DashboardSidebar.tsx`, `components/foldera/DailyBriefCard.tsx`, `tests/e2e/dashboard-navigation.spec.ts`, `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`.
+- What changed: Rebuilt the `/dashboard` shell to match the supplied executive-briefing design in native React/Tailwind composition across desktop and mobile, including the three-column desktop frame, staged sidebar, right-side explainer rail, compact mobile phone shell, and updated dashboard/spec assertions. The final blocker was a collapsed height chain in the desktop Today workspace that left the stage brief card footer visually floating and unclickable; restoring `h-full` through the wrapper fixed the real footer geometry and made the `write_document` Save/Copy actions hittable again.
+- Verification: `npm run health` reported `RESULT: 0 FAILING` with warnings only at session start and again after the UI patch. `node .\\node_modules\\next\\dist\\bin\\next build` passed. Focused Playwright proof for `write_document journey: document preview, save action, saved status` passed (`1/1`). Full dashboard shell/navigation Playwright passed (`17/17`). Authenticated dashboard plus signals regression Playwright passed (`20/20`).
+- Unresolved issues: Browser plugin auth was unavailable, so final route proof used mocked-auth Playwright against the built local dashboard rather than an interactive signed-in browser session. No paid generation, outbound email, schema migration, payment action, or destructive action was run.
+
 ## 2026-05-07 — Dashboard desktop rail removed and empty slate widened
 - MODE: Dashboard presentation polish continuation only.
 - Files changed: `app/dashboard/page.tsx`, `components/foldera/EmptyStateCard.tsx`, `components/dashboard/DashboardBriefWorkPanel.tsx`, `tests/e2e/dashboard-navigation.spec.ts`, `tests/e2e/landing-dashboard-visual.spec.ts`, `SESSION_HISTORY.md`.

@@ -837,7 +837,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByText('ready to move')).toHaveCount(0);
     await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
     await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /notifications/i })).toBeVisible();
     await expect(page.getByText(/^Upgrade to Pro$/i)).toHaveCount(0);
     await expect.poll(async () =>
       page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
@@ -938,7 +938,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
 
     await expect(page.getByText(/Workspace Owner/i)).toHaveCount(0);
     await expect(page.getByText(/Brandon Kapp/i)).toHaveCount(0);
-    await expect(page.getByRole('complementary').getByText(/^Signed in$/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /open dashboard menu/i })).toBeVisible();
     await expect(page.getByRole('heading', { name: /Good (morning|afternoon|evening)\.$/i })).toBeVisible();
   });
 
@@ -974,7 +974,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
   });
 
   test('write_document journey: document preview, save action, saved status', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.addInitScript(() => {
       const writes: string[] = [];
       Object.defineProperty(window, '__dashboardClipboardWrites', {
@@ -1031,23 +1031,24 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       nextAction: DOCUMENT_DIRECTIVE_RESPONSE.discrepancy_card.next_action,
     });
     await expect(page.getByTestId('dashboard-truth-stats')).toHaveCount(0);
-    await expect(page.getByText('open threads')).toHaveCount(0);
-    await expect(page.getByText('need attention')).toHaveCount(0);
-    await expect(page.getByText('ready to move')).toHaveCount(0);
-    await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
-    await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);
-    await expect(page.getByText(/^Upgrade to Pro$/i)).toHaveCount(0);
+    await expect(page.getByText('open threads')).toBeVisible();
+    await expect(page.getByText('need attention')).toBeVisible();
+    await expect(page.getByText('ready to move')).toBeVisible();
+    await expect(page.getByText(/Drop a folder or document/i)).toBeVisible();
+    await expect(page.getByText(/Search Foldera/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /notifications/i })).toBeVisible();
+    await expect(page.getByText(/^Upgrade to Pro$/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /approve & send/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^skip$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /snooze 24h/i })).toHaveCount(0);
     await expect(page.getByTestId('dashboard-primary-action')).toHaveText(/^Save$/i);
     await expect(page.getByRole('button', { name: /^skip$/i })).toHaveText(/^Skip$/i);
-    await page.getByRole('button', { name: /account menu/i }).click();
+    const accountMenuButton = page.getByRole('button', { name: /account menu/i });
+    await accountMenuButton.click();
     await expect(page.getByRole('menuitem', { name: /^Account$/i })).toBeVisible();
     await expect(page.getByRole('menuitem', { name: /^Sign out$/i })).toBeVisible();
-    await page.keyboard.press('Escape');
+    await accountMenuButton.click();
     await page.getByRole('button', { name: /copy draft/i }).click();
     await expectDashboardStatus(page, 'copy_succeeded');
     const copiedText = await page.evaluate(() => {

@@ -191,8 +191,8 @@ export function DailyBriefCard({
 
   if (stageDesktop && dashboardCta) {
     return (
-      <article className={`foldera-brief-shell relative h-full w-full rounded-[24px] ${className}`}>
-        <header className="absolute inset-x-0 top-0 h-[68px] border-b border-white/8 px-[36px]">
+      <article className={`foldera-brief-shell relative z-10 h-full w-full rounded-[24px] ${className}`}>
+        <header className="absolute inset-x-0 top-0 z-10 h-[68px] border-b border-white/8 px-[36px]">
           <div className="flex h-full items-center justify-between gap-3">
             <span className="text-[16px] font-semibold uppercase tracking-[0.16em] text-text-muted">{eyebrowLabel}</span>
             <div className="flex items-center gap-3">
@@ -202,7 +202,7 @@ export function DailyBriefCard({
           </div>
         </header>
 
-        <div className="absolute inset-x-0 bottom-[126px] top-[68px] overflow-y-auto px-[52px] py-[28px]">
+        <div className="absolute inset-x-0 bottom-[126px] top-[68px] z-10 overflow-y-auto px-[52px] py-[28px]">
           <section
             className="grid grid-cols-[126px_minmax(0,1fr)] gap-0"
             data-testid="dashboard-brief-directive-section"
@@ -269,7 +269,7 @@ export function DailyBriefCard({
           </section>
         </div>
 
-        <footer className="absolute inset-x-0 bottom-0 h-[126px] border-t border-white/8">
+        <footer className="absolute inset-x-0 bottom-0 z-20 h-[126px] border-t border-white/8">
           <div className="absolute left-[38px] top-[48px] flex items-center gap-2.5 text-[16px] text-text-muted">
             <Shield className="h-5 w-5 shrink-0 text-text-secondary" aria-hidden="true" />
             <span>{footerText}</span>

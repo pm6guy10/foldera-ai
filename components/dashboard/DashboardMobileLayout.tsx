@@ -1,10 +1,10 @@
 'use client';
 
 import type { ComponentProps, ReactNode } from 'react';
+import { Activity, Bell, Mail, TriangleAlert } from 'lucide-react';
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
 import {
   DashboardMobileNav,
-  DashboardSidebar,
   type DashboardPanelKey,
 } from '@/components/foldera/DashboardSidebar';
 
@@ -73,41 +73,41 @@ export function DashboardMobileLayout({
   hiddenArtifactNode,
 }: DashboardMobileLayoutProps) {
   return (
-    <main className="foldera-dashboard-page foldera-page min-h-screen overflow-x-hidden bg-bg text-text-primary" data-testid="pixel-lock-frame">
-      <div className="mx-auto w-full max-w-[1400px] px-4 py-4 sm:px-5 lg:px-6 lg:py-6">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[252px_minmax(0,1fr)] 2xl:gap-8">
-          <DashboardSidebar
-            activeLabel={activeSidebarLabel}
-            userName={sidebarUserName}
-            appShell
-            activePanel={activePanel}
-            onSelectPanel={selectPanel}
-          />
-
-          <div className="min-w-0">
-            <div className="mb-5 lg:hidden">
+    <main
+      className="foldera-dashboard-page foldera-page min-h-screen overflow-x-hidden bg-bg text-text-primary"
+      data-testid="pixel-lock-frame"
+    >
+      <div className="mx-auto w-full max-w-[420px] px-3 pb-6 pt-3">
+        <div className="rounded-[32px] border border-white/10 bg-[#030a12]/96 p-3 shadow-[0_24px_80px_rgba(0,0,0,0.46)]">
+          <div className="flex items-center justify-between px-2 pb-3 pt-1">
+            <p className="text-[11px] font-semibold tracking-[0.02em] text-white">9:41</p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                aria-label="Notifications"
+                className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-white/10 bg-white/[0.04] text-text-primary"
+              >
+                <Bell className="h-4 w-4" aria-hidden />
+              </button>
               <DashboardMobileNav
                 activeLabel={activeSidebarLabel}
                 userName={sidebarUserName}
                 activePanel={activePanel}
                 onSelectPanel={selectPanel}
+                compact
               />
             </div>
+          </div>
 
-            <div className="hidden items-center justify-between gap-4 lg:flex">
-              <p className="foldera-eyebrow">{dateLabel}</p>
-            </div>
+          <div className="px-2">
+            <p className="foldera-eyebrow">{dateLabel}</p>
 
-            <div className="flex items-center justify-between gap-3 pb-1 pt-2 lg:hidden">
-              <p className="foldera-eyebrow">{dateLabel}</p>
-            </div>
-
-            <header className="pb-7 pt-3 lg:pb-8 lg:pt-1">
-              <h1 className="text-[clamp(2rem,4vw,3.1rem)] font-semibold leading-[1.08] tracking-[-0.04em] text-text-secondary">
+            <header className="pb-5 pt-3">
+              <h1 className="max-w-[12ch] text-[34px] font-semibold leading-[1.08] tracking-[-0.05em] text-white">
                 {greetingLabel}
                 {firstName ? (
                   <>
-                    , <strong className="font-semibold text-text-primary">{firstName}.</strong>
+                    , <strong className="font-semibold text-white">{firstName}.</strong>
                   </>
                 ) : (
                   '.'
@@ -115,22 +115,46 @@ export function DashboardMobileLayout({
               </h1>
             </header>
 
-            {degradedStateNode ? <div className="mx-auto mb-4 w-full max-w-[860px]">{degradedStateNode}</div> : null}
-            {statusNoticeNode ? <div className="mx-auto mb-4 w-full max-w-[860px]">{statusNoticeNode}</div> : null}
+            <div className="grid grid-cols-3 gap-2 rounded-[18px] border border-white/8 bg-white/[0.025] p-3">
+              <div className="rounded-[14px] border border-white/7 bg-white/[0.03] px-2 py-2.5">
+                <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                  <Mail className="h-3.5 w-3.5 text-accent" aria-hidden />
+                  <span className="font-semibold text-white">5</span>
+                </div>
+                <p className="mt-1 text-[10px] leading-4 text-text-muted">open</p>
+              </div>
+              <div className="rounded-[14px] border border-white/7 bg-white/[0.03] px-2 py-2.5">
+                <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                  <TriangleAlert className="h-3.5 w-3.5 text-[#F59E0B]" aria-hidden />
+                  <span className="font-semibold text-[#F59E0B]">2</span>
+                </div>
+                <p className="mt-1 text-[10px] leading-4 text-text-muted">attention</p>
+              </div>
+              <div className="rounded-[14px] border border-white/7 bg-white/[0.03] px-2 py-2.5">
+                <div className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                  <Activity className="h-3.5 w-3.5 text-accent" aria-hidden />
+                  <span className="font-semibold text-white">1</span>
+                </div>
+                <p className="mt-1 text-[10px] leading-4 text-text-muted">ready</p>
+              </div>
+            </div>
 
-            <div className="mx-auto grid w-full max-w-[980px] gap-5 pb-12">
+            {degradedStateNode ? <div className="mt-4">{degradedStateNode}</div> : null}
+            {statusNoticeNode ? <div className="mt-4">{statusNoticeNode}</div> : null}
+
+            <div className="mt-4 grid gap-4 pb-4">
               <div>
-                {(
-                hasAction ? (
+                {hasAction ? (
                   <div data-testid="dashboard-panel-today">
                     <DailyBriefCard
                       className="foldera-dashboard-brief-card foldera-dashboard-money-shot foldera-dashboard-current-brief w-full"
                       dashboardCta
+                      compact
                       directive={artifactTitle}
                       whyNow={artifactContradiction}
-                      eyebrowLabel="Finished work"
-                      directiveLabel="Finished work"
-                      whyLabel="Why it matters"
+                      eyebrowLabel="Daily Brief"
+                      directiveLabel="Directive"
+                      whyLabel="Why this now"
                       draftLabel={draftLabel}
                       draftBody={draftBody}
                       sourcePills={sourcePills}
@@ -147,13 +171,13 @@ export function DashboardMobileLayout({
                   <div className="min-h-[420px]">{briefingUnavailableCard}</div>
                 ) : (
                   <div className="min-h-[420px]">{emptyStateCard}</div>
-                )
                 )}
               </div>
+
               {supportPanelNode}
 
               {isTodayPanel && showOutcomeActions ? (
-                <div className="mt-4 flex flex-wrap justify-center gap-3">
+                <div className="mt-1 flex flex-wrap justify-center gap-3">
                   <button
                     type="button"
                     onClick={() => void submitOutcome('worked')}
@@ -172,6 +196,29 @@ export function DashboardMobileLayout({
                   </button>
                 </div>
               ) : null}
+            </div>
+
+            <div className="grid grid-cols-4 gap-2 rounded-[18px] border border-white/8 bg-white/[0.02] p-2 text-center text-[11px] text-text-muted">
+              <button
+                type="button"
+                className={`rounded-[14px] px-2 py-2 ${activePanel === 'today' ? 'bg-cyan-300/[0.12] text-accent' : 'bg-transparent text-text-muted'}`}
+                onClick={() => selectPanel('today')}
+              >
+                Briefing
+              </button>
+              <a href="/dashboard/playbooks" className="rounded-[14px] px-2 py-2">
+                Playbooks
+              </a>
+              <a href="/dashboard/signals" className="rounded-[14px] px-2 py-2">
+                Signals
+              </a>
+              <button
+                type="button"
+                className={`rounded-[14px] px-2 py-2 ${activePanel !== 'today' ? 'bg-white/[0.05] text-text-primary' : 'bg-transparent text-text-muted'}`}
+                onClick={() => selectPanel(activePanel === 'account' ? 'history' : 'account')}
+              >
+                More
+              </button>
             </div>
           </div>
         </div>
