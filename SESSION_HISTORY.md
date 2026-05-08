@@ -5918,3 +5918,10 @@ pm run build.
 - What changed: Health now classifies Gmail/Outlook as disconnected, reconnect-required, stale, or fresh from one reusable connector classifier, so missing, disconnected, access-only, or refresh-missing Microsoft rows can no longer print as `Outlook fresh`. Background provider user listing now also requires `refresh_token` before cron sync treats a row as eligible.
 - Verification: `npm run health` returned `RESULT: 0 FAILING` and now truthfully reports `Outlook stale` plus `Mail cursors stale` for the current Microsoft state; focused health/user-token Vitest passed (`17/17`); adjacent integrations/status, Microsoft sync, and token-store Vitest passed (`15/15`); `npm run build` passed.
 - Unresolved issues: Production deploy/SHA proof is pending until this commit is pushed. This did not change Azure tenant behavior, force OAuth reconnect, run paid generation, or send outbound email.
+
+## 2026-05-07 - Authenticated start-page CI assertion repaired
+- MODE: CI failure seam only.
+- Files changed: `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`.
+- What changed: Updated the `/start` unauthenticated smoke assertion from the removed `first read arrives tomorrow morning` promise to the current truthful copy: the first safe read appears when Foldera has current source context.
+- Verification: `npm run health` returned `RESULT: 0 FAILING` with Outlook/Microsoft freshness warnings only; reproduced the stale assertion from GitHub failure #939 in source; focused Playwright start smoke passed (`1/1`); full `npx playwright test tests/e2e/authenticated-routes.spec.ts --reporter=list` passed (`36/36`) after clearing a stale local port 3000 server; `npm run build` passed.
+- Unresolved issues: Remote CI/Vercel proof is pending until this CI-repair commit is pushed. No paid generation was run and no outbound email was sent.
