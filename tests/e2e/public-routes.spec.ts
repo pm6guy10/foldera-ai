@@ -281,9 +281,7 @@ test.describe('Start page /start', () => {
       }),
     );
 
-    let signInPath = '';
     await page.route(/\/api\/auth\/signin\/.*/, (route) => {
-      signInPath = new URL(route.request().url()).pathname;
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -292,11 +290,20 @@ test.describe('Start page /start', () => {
     });
 
     await page.goto('/start');
-    await Promise.all([
-      page.waitForURL(/\/start\?oauth=ok$/),
-      page.getByRole('button', { name: /continue with google/i }).click(),
-    ]);
-    expect(signInPath).toBe('/api/auth/signin/google');
+    const signInRequestPromise = page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return url.pathname === '/api/auth/signin/google' && request.method() === 'POST';
+    });
+    const signInResponsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname === '/api/auth/signin/google' && response.status() === 200;
+    });
+
+    await page.getByRole('button', { name: /continue with google/i }).click();
+    const [signInRequest] = await Promise.all([signInRequestPromise, signInResponsePromise]);
+
+    expect(new URL(signInRequest.url()).pathname).toBe('/api/auth/signin/google');
+    expect(signInRequest.method()).toBe('POST');
   });
 
   test('plan=pro stores pending checkout intent before OAuth', async ({ page }) => {
@@ -360,9 +367,7 @@ test.describe('Login page /login', () => {
       }),
     );
 
-    let signInPath = '';
     await page.route(/\/api\/auth\/signin\/.*/, (route) => {
-      signInPath = new URL(route.request().url()).pathname;
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -371,11 +376,20 @@ test.describe('Login page /login', () => {
     });
 
     await page.goto('/login');
-    await Promise.all([
-      page.waitForURL(/\/login\?oauth=ok$/),
-      page.getByRole('button', { name: /continue with microsoft/i }).click(),
-    ]);
-    expect(signInPath).toBe('/api/auth/signin/azure-ad');
+    const signInRequestPromise = page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return url.pathname === '/api/auth/signin/azure-ad' && request.method() === 'POST';
+    });
+    const signInResponsePromise = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return url.pathname === '/api/auth/signin/azure-ad' && response.status() === 200;
+    });
+
+    await page.getByRole('button', { name: /continue with microsoft/i }).click();
+    const [signInRequest] = await Promise.all([signInRequestPromise, signInResponsePromise]);
+
+    expect(new URL(signInRequest.url()).pathname).toBe('/api/auth/signin/azure-ad');
+    expect(signInRequest.method()).toBe('POST');
   });
 
   test('no actionable console errors', async ({ page }) => {

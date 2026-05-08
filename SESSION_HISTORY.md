@@ -6044,3 +6044,10 @@ pm run build.
 - What changed: The strict artifact card now reuses the display-safe source reference formatter for source pills. Real finished-work cards show labels like `Email thread`, `Calendar event`, and `Source document` instead of raw `email:*`, `calendar:*`, `gmail:*`, or `drive:*` refs.
 - Verification: Red dashboard model test first proved `inferSourcePills()` leaked `gmail:alex-confirmed` / `drive:packet-owner`; after patch focused dashboard model/config Vitest passed (`10/10`), `npm run build` passed, full dashboard Playwright passed (`17/17`) including strict artifact source-pill assertions, `npm run health` reported `RESULT: 0 FAILING`, and `npm run lint` passed.
 - Unresolved issues: This does not create a fresh pending artifact or run paid generation. No outbound email, schema migration, payment action, or destructive action was run.
+
+## 2026-05-08 - Pre-push OAuth smoke no longer races unsettled Next builds
+- MODE: Push-blocking CI stability seam.
+- Files changed: `.husky/pre-push`, `scripts/wait-for-next-build-settle.mjs`, `tests/e2e/public-routes.spec.ts`, `SESSION_HISTORY.md`.
+- What changed: Hardened the local pre-push hook so the public smoke lane waits for concrete Next production build files and, on Windows, waits for lingering `next build` / worker processes before starting `next start`. The `/start` Google and `/login` Microsoft smoke tests now assert the exact NextAuth POST request they are named to prove instead of waiting on a brittle mocked redirect load.
+- Verification: Reproduced the push blocker as the public smoke timing out on `/start` while `.next/BUILD_ID` was not yet written; the new build-settle script reports `Next build output settled`; focused NextAuth public-route smoke now passes (`2/2`) against a production bundle.
+- Unresolved issues: This is local/CI guard hardening only. No paid generation, outbound email, schema migration, payment action, or destructive action was run.

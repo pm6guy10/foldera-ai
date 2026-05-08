@@ -39,6 +39,13 @@ if [ "$build_status" -ne 0 ]; then
   exit 1
 fi
 
+echo "Waiting for Next build output to settle..."
+node scripts/wait-for-next-build-settle.mjs
+if [ $? -ne 0 ]; then
+  echo "NEXT BUILD OUTPUT DID NOT SETTLE. Push rejected."
+  exit 1
+fi
+
 if [ "${FULL_PREPUSH:-0}" = "1" ]; then
   echo "FULL_PREPUSH=1 — running unit tests locally (mirrors CI)..."
   npx vitest run --exclude ".claude/worktrees/**"
