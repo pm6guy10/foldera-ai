@@ -1,4 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
+import {
+  ensureAnthropicBudget,
+  isAnthropicBudgetExceededError,
+} from '@/lib/llm/anthropic-budget-governor';
 import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import type { AgentJobId } from '@/lib/agents/constants';
@@ -34,6 +38,15 @@ export async function runAgentSonnet(params: {
 
   if (!isPaidLlmAllowed()) {
     return { error: 'Paid LLM disabled (set ALLOW_PAID_LLM=true)' };
+  }
+
+  try {
+    await ensureAnthropicBudget(`agent-runner.${params.job}`);
+  } catch (error) {
+    if (isAnthropicBudgetExceededError(error)) {
+      return { error: 'Anthropic budget exhausted' };
+    }
+    throw error;
   }
 
   try {
@@ -83,6 +96,15 @@ export async function runAgentSonnetVision(params: {
 
   if (!isPaidLlmAllowed()) {
     return { error: 'Paid LLM disabled (set ALLOW_PAID_LLM=true)' };
+  }
+
+  try {
+    await ensureAnthropicBudget(`agent-runner.${params.job}`);
+  } catch (error) {
+    if (isAnthropicBudgetExceededError(error)) {
+      return { error: 'Anthropic budget exhausted' };
+    }
+    throw error;
   }
 
   const content: Anthropic.ContentBlockParam[] = params.userParts.map((p) => {

@@ -30,11 +30,11 @@ import {
   passesTop3RankingInvariants,
   scoreOpenLoops,
 } from './scorer';
-import {
-  ANTHROPIC_BUDGET_RESERVE_ESTIMATE_CENTS,
-  reserveAnthropicBudgetSlot,
-} from '@/lib/cron/api-budget';
 import { OWNER_USER_ID } from '@/lib/auth/constants';
+import {
+  ensureAnthropicBudget,
+  isAnthropicBudgetExceededError,
+} from '@/lib/llm/anthropic-budget-governor';
 import { assertPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { isOverDailyLimit, isOverManualCallLimit, trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
@@ -10576,8 +10576,12 @@ export async function generateDirective(
     const lockedContactPromptLines = lockedContactsResult.promptLines;
 
     if (!(options.dryRun || envFixture || options.pipelineDryRun)) {
-      const budget = await reserveAnthropicBudgetSlot(ANTHROPIC_BUDGET_RESERVE_ESTIMATE_CENTS);
-      if (!budget.allowed) {
+      try {
+        await ensureAnthropicBudget('generator.generateDirective');
+      } catch (error) {
+        if (!isAnthropicBudgetExceededError(error)) {
+          throw error;
+        }
         logStructuredEvent({
           event: 'generation_skipped',
           level: 'warn',
@@ -10586,11 +10590,15 @@ export async function generateDirective(
           generationStatus: 'api_monthly_budget_cap',
           details: {
             scope: 'generator',
-            budget: budget.raw,
-            rpc_error: budget.errorMessage ?? null,
+            budget: error.raw,
+            rpc_error: error.rpcErrorMessage ?? null,
           },
         });
-        return buildBudgetCapDirectiveFromScored(scored, budget.raw, budget.errorMessage);
+        return buildBudgetCapDirectiveFromScored(
+          scored,
+          error.raw,
+          error.rpcErrorMessage,
+        );
       }
     }
 

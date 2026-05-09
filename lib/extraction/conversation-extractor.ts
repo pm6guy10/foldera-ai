@@ -21,6 +21,7 @@ import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
 import { encrypt } from '@/lib/encryption';
 import { truncateSignalContent } from '@/lib/utils/signal-egress';
 import { isNonCommitment } from '@/lib/signals/signal-processor';
+import { ensureAnthropicBudget } from '@/lib/llm/anthropic-budget-governor';
 import { assertPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { isOverDailyLimit, trackApiCall } from '@/lib/utils/api-tracker';
 
@@ -217,6 +218,8 @@ export async function extractFromConversation(
   if (existing) {
     throw new Error(`Conversation already ingested (signal ${existing.id})`);
   }
+
+  await ensureAnthropicBudget('conversation-extractor.extractFromConversation');
 
   // 2. Write raw signal
   const { data: signal, error: signalError } = await supabase

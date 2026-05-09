@@ -1,10 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+class MockAnthropicBudgetExceededError extends Error {
+  constructor(
+    public readonly scope: string,
+    public readonly raw: unknown,
+    public readonly rpcErrorMessage?: string,
+  ) {
+    super(`Anthropic budget governor blocked ${scope}`);
+    this.name = 'AnthropicBudgetExceededError';
+  }
+}
+
 const mockMessagesCreate = vi.fn();
 const mockTrackApiCall = vi.fn();
 const mockIsOverDailyLimit = vi.fn();
 const mockLogStructuredEvent = vi.fn();
 const mockRecoverMicrosoftSignalContent = vi.fn();
+const mockEnsureAnthropicBudget = vi.fn().mockResolvedValue({
+  allowed: true,
+  raw: { bypassed: 'test' },
+});
 
 vi.mock('@anthropic-ai/sdk', () => ({
   default: class MockAnthropic {
@@ -29,6 +44,12 @@ vi.mock('@/lib/utils/api-tracker', () => ({
 
 vi.mock('@/lib/utils/structured-logger', () => ({
   logStructuredEvent: mockLogStructuredEvent,
+}));
+
+vi.mock('@/lib/llm/anthropic-budget-governor', () => ({
+  ensureAnthropicBudget: (...args: unknown[]) => mockEnsureAnthropicBudget(...args),
+  isAnthropicBudgetExceededError: (error: unknown) => error instanceof MockAnthropicBudgetExceededError,
+  AnthropicBudgetExceededError: MockAnthropicBudgetExceededError,
 }));
 
 vi.mock('@/lib/sync/microsoft-sync', () => ({
@@ -337,6 +358,11 @@ describe('processUnextractedSignals entity freshness', () => {
     mockIsOverDailyLimit.mockResolvedValue(false);
     mockTrackApiCall.mockResolvedValue(undefined);
     mockRecoverMicrosoftSignalContent.mockResolvedValue(null);
+    mockEnsureAnthropicBudget.mockReset();
+    mockEnsureAnthropicBudget.mockResolvedValue({
+      allowed: true,
+      raw: { bypassed: 'test' },
+    });
     process.env.ANTHROPIC_API_KEY = 'test-key';
   });
 
@@ -592,6 +618,11 @@ describe('processUnextractedSignals diagnostics', () => {
     mockIsOverDailyLimit.mockResolvedValue(false);
     mockTrackApiCall.mockResolvedValue(undefined);
     mockRecoverMicrosoftSignalContent.mockResolvedValue(null);
+    mockEnsureAnthropicBudget.mockReset();
+    mockEnsureAnthropicBudget.mockResolvedValue({
+      allowed: true,
+      raw: { bypassed: 'test' },
+    });
     process.env.ANTHROPIC_API_KEY = 'test-key';
   });
 
@@ -682,6 +713,50 @@ describe('processUnextractedSignals diagnostics', () => {
       }),
     }));
   });
+
+  it('stops before Anthropic extraction when the budget governor blocks the batch', async () => {
+    mockEnsureAnthropicBudget.mockRejectedValue(
+      new MockAnthropicBudgetExceededError(
+        'signal-processor.processUnextractedSignals',
+        { allowed: false },
+        'cap reached',
+      ),
+    );
+    const entities: EntityRow[] = [
+      { id: 'self-1', user_id: USER_ID, name: 'self', display_name: 'You', patterns: {} },
+    ];
+    const signals: SignalRow[] = [
+      {
+        id: 'signal-budget-blocked',
+        user_id: USER_ID,
+        source: 'gmail',
+        source_id: 'gmail-budget-blocked',
+        type: 'email_sent',
+        content: 'To: Alex Morgan <alex@example.com>\nBody: I will send the signed permit appeal draft by Friday.',
+        author: 'self',
+        occurred_at: '2026-04-01T12:00:00.000Z',
+        processed: false,
+      },
+    ];
+    const supabase = createSupabaseMock({ entities, signals });
+    vi.doMock('@/lib/db/client', () => ({
+      createServerClient: () => supabase,
+    }));
+
+    const { processUnextractedSignals } = await import('@/lib/signals/signal-processor');
+    const result = await processUnextractedSignals(USER_ID, { maxSignals: 1 });
+
+    expect(result.errors).toContain('anthropic_budget_exhausted');
+    expect(mockMessagesCreate).not.toHaveBeenCalled();
+    expect(mockTrackApiCall).not.toHaveBeenCalled();
+    expect(latestExtractionDiagnosticsEvent()).toEqual(expect.objectContaining({
+      details: expect.objectContaining({
+        empty_reason_counts: {
+          anthropic_budget_exhausted: 1,
+        },
+      }),
+    }));
+  });
 });
 
 describe('processUnextractedSignals commitment due_at', () => {
@@ -693,6 +768,11 @@ describe('processUnextractedSignals commitment due_at', () => {
     mockIsOverDailyLimit.mockResolvedValue(false);
     mockTrackApiCall.mockResolvedValue(undefined);
     mockRecoverMicrosoftSignalContent.mockResolvedValue(null);
+    mockEnsureAnthropicBudget.mockReset();
+    mockEnsureAnthropicBudget.mockResolvedValue({
+      allowed: true,
+      raw: { bypassed: 'test' },
+    });
     process.env.ANTHROPIC_API_KEY = 'test-key';
   });
 
@@ -844,6 +924,11 @@ describe('processUnextractedSignals sensitive data gate', () => {
     mockIsOverDailyLimit.mockResolvedValue(false);
     mockTrackApiCall.mockResolvedValue(undefined);
     mockRecoverMicrosoftSignalContent.mockResolvedValue(null);
+    mockEnsureAnthropicBudget.mockReset();
+    mockEnsureAnthropicBudget.mockResolvedValue({
+      allowed: true,
+      raw: { bypassed: 'test' },
+    });
     process.env.ANTHROPIC_API_KEY = 'test-key';
   });
 
@@ -1044,6 +1129,11 @@ describe('processUnextractedSignals parse failure quarantine', () => {
     mockIsOverDailyLimit.mockResolvedValue(false);
     mockTrackApiCall.mockResolvedValue(undefined);
     mockRecoverMicrosoftSignalContent.mockResolvedValue(null);
+    mockEnsureAnthropicBudget.mockReset();
+    mockEnsureAnthropicBudget.mockResolvedValue({
+      allowed: true,
+      raw: { bypassed: 'test' },
+    });
     process.env.ANTHROPIC_API_KEY = 'test-key';
   });
 

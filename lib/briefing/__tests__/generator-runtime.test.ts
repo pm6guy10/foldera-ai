@@ -6,6 +6,17 @@ import {
   expectEmailArtifactShape,
 } from '@/test/generated-output-assertions';
 
+class MockAnthropicBudgetExceededError extends Error {
+  constructor(
+    public readonly scope: string,
+    public readonly raw: unknown,
+    public readonly rpcErrorMessage?: string,
+  ) {
+    super(`Anthropic budget governor blocked ${scope}`);
+    this.name = 'AnthropicBudgetExceededError';
+  }
+}
+
 const FIXED_NOW = new Date('2026-04-20T15:00:00.000Z');
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -32,6 +43,10 @@ const mockGetDirectiveConstraintViolations = vi.fn();
 const mockGetPinnedConstraintPrompt = vi.fn();
 const mockLogStructuredEvent = vi.fn();
 const mockDecryptWithStatus = vi.fn((_value: unknown) => ({ plaintext: String(_value), usedFallback: false }));
+const mockEnsureAnthropicBudget = vi.fn().mockResolvedValue({
+  allowed: true,
+  raw: { bypassed: 'test' },
+});
 
 const queryResult = { data: [], error: null };
 const tkgActionsResultsQueue: Array<{ data: unknown[]; error: null }> = [];
@@ -174,6 +189,12 @@ vi.mock('@/lib/utils/structured-logger', () => ({
   logStructuredEvent: mockLogStructuredEvent,
 }));
 
+vi.mock('@/lib/llm/anthropic-budget-governor', () => ({
+  ensureAnthropicBudget: (...args: unknown[]) => mockEnsureAnthropicBudget(...args),
+  isAnthropicBudgetExceededError: (error: unknown) => error instanceof MockAnthropicBudgetExceededError,
+  AnthropicBudgetExceededError: MockAnthropicBudgetExceededError,
+}));
+
 // Encryption mock — buildAvoidanceObservations calls decryptWithStatus on signal content.
 // Return correct shape { plaintext, usedFallback } so the no-reply observer works.
 vi.mock('@/lib/encryption', () => ({
@@ -267,6 +288,11 @@ describe('generateDirective runtime failures', () => {
     mockGetPinnedConstraintPrompt.mockReset();
     mockLogStructuredEvent.mockReset();
     mockDecryptWithStatus.mockClear();
+    mockEnsureAnthropicBudget.mockReset();
+    mockEnsureAnthropicBudget.mockResolvedValue({
+      allowed: true,
+      raw: { bypassed: 'test' },
+    });
     anthropicCreate.mockReset();
     tkgActionsResultsQueue.length = 0;
     lockedConstraintsQueue.length = 0;
@@ -328,6 +354,25 @@ describe('generateDirective runtime failures', () => {
     },
     20_000,
   );
+
+  it('returns the budget sentinel before any Anthropic call when the governor blocks generation', async () => {
+    mockScoreOpenLoops.mockResolvedValue(buildScorerResult());
+    mockEnsureAnthropicBudget.mockRejectedValue(
+      new MockAnthropicBudgetExceededError(
+        'generator.generateDirective',
+        { allowed: false, cap_cents: 3000 },
+        'cap reached',
+      ),
+    );
+
+    const { BUDGET_CAP_DIRECTIVE_SENTINEL, generateDirective } = await import('../generator');
+    const directive = await generateDirective('user-1');
+
+    expect(directive.directive).toBe(BUDGET_CAP_DIRECTIVE_SENTINEL);
+    expect(directive.action_type).toBe('do_nothing');
+    expect(directive.reason).toContain('Monthly Anthropic API budget gate closed');
+    expect(anthropicCreate).not.toHaveBeenCalled();
+  });
 
   it('falls through to the next candidate when persistence validation blocks recursive decision-memo sludge', async () => {
     const scored = asWinnerScored(buildScorerResult());

@@ -7,6 +7,10 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 
+import {
+  ensureAnthropicBudget,
+  isAnthropicBudgetExceededError,
+} from '@/lib/llm/anthropic-budget-governor';
 import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { getDailySpend, trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
@@ -207,6 +211,27 @@ export async function runInsightScan(args: {
     .replace('{entities}', entityText || '(none)');
 
   if (!isPaidLlmAllowed()) {
+    return [];
+  }
+
+  try {
+    await ensureAnthropicBudget('insight-scan.runInsightScan');
+  } catch (error) {
+    if (!isAnthropicBudgetExceededError(error)) {
+      throw error;
+    }
+    logStructuredEvent({
+      event: 'insight_scan_skipped',
+      level: 'warn',
+      userId,
+      artifactType: null,
+      generationStatus: 'insight_scan_skipped_budget_governor',
+      details: {
+        scope: 'insight_scan',
+        reason: 'anthropic_budget_exhausted',
+        rpc_error: error.rpcErrorMessage ?? null,
+      },
+    });
     return [];
   }
 

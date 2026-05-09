@@ -1,4 +1,15 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+class MockAnthropicBudgetExceededError extends Error {
+  constructor(
+    public readonly scope: string,
+    public readonly raw: unknown,
+    public readonly rpcErrorMessage?: string,
+  ) {
+    super(`Anthropic budget governor blocked ${scope}`);
+    this.name = 'AnthropicBudgetExceededError';
+  }
+}
 
 const createMock = vi.fn().mockImplementation(() => ({
   messages: {
@@ -28,10 +39,29 @@ vi.mock('@/lib/utils/structured-logger', () => ({
   logStructuredEvent: (...args: unknown[]) => mockLogStructuredEvent(...(args as [])),
 }));
 
+const mockEnsureAnthropicBudget = vi.fn().mockResolvedValue({
+  allowed: true,
+  raw: { bypassed: 'test' },
+});
+vi.mock('@/lib/llm/anthropic-budget-governor', () => ({
+  ensureAnthropicBudget: (...args: unknown[]) => mockEnsureAnthropicBudget(...args),
+  isAnthropicBudgetExceededError: (error: unknown) => error instanceof MockAnthropicBudgetExceededError,
+  AnthropicBudgetExceededError: MockAnthropicBudgetExceededError,
+}));
+
+const FIXED_NOW = new Date('2026-05-09T12:00:00.000Z');
+
 describe('runInsightScan', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(FIXED_NOW);
     vi.clearAllMocks();
     mockLogStructuredEvent.mockClear();
+    mockEnsureAnthropicBudget.mockReset();
+    mockEnsureAnthropicBudget.mockResolvedValue({
+      allowed: true,
+      raw: { bypassed: 'test' },
+    });
     createMock.mockImplementation(() => ({
       messages: {
         create: vi.fn().mockResolvedValue({
@@ -47,8 +77,12 @@ describe('runInsightScan', () => {
     }));
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('returns insight candidates from LLM response', async () => {
-    const base = Date.now();
+    const base = FIXED_NOW.getTime();
     const d0 = new Date(base).toISOString().split('T')[0];
     const d1 = new Date(base - 86400000).toISOString().split('T')[0];
     const d2 = new Date(base - 2 * 86400000).toISOString().split('T')[0];
@@ -133,6 +167,42 @@ describe('runInsightScan', () => {
           reason: 'insufficient_signals_last_30d',
           recent_signal_count: 1,
           min_required: 10,
+        }),
+      }),
+    );
+  });
+
+  it('returns empty array and never calls Anthropic when the budget governor blocks the scan', async () => {
+    mockEnsureAnthropicBudget.mockRejectedValue(
+      new MockAnthropicBudgetExceededError('insight-scan.runInsightScan', { allowed: false }, 'cap reached'),
+    );
+    const { runInsightScan } = await import('../insight-scan');
+
+    const base = FIXED_NOW.getTime();
+    const signals = Array.from({ length: 15 }, (_, i) => ({
+      id: `sig-${i}`,
+      content: `Signal ${i}: repeated job-search tension with Test Person and a named deadline that keeps slipping.`,
+      source: 'email_sent',
+      type: null as string | null,
+      occurred_at: new Date(base - i * 86400000).toISOString(),
+    }));
+
+    const result = await runInsightScan({
+      userId: 'test-user',
+      decryptedSignals: signals,
+      goals: [],
+      entities: [],
+    });
+
+    expect(result).toEqual([]);
+    expect(createMock).not.toHaveBeenCalled();
+    expect(mockLogStructuredEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'insight_scan_skipped',
+        generationStatus: 'insight_scan_skipped_budget_governor',
+        details: expect.objectContaining({
+          scope: 'insight_scan',
+          reason: 'anthropic_budget_exhausted',
         }),
       }),
     );

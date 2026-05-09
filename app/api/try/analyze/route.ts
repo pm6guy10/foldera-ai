@@ -10,6 +10,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import {
+  ensureAnthropicBudget,
+  isAnthropicBudgetExceededError,
+} from '@/lib/llm/anthropic-budget-governor';
 import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { rateLimit } from '@/lib/utils/rate-limit';
 
@@ -114,6 +118,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    await ensureAnthropicBudget('try-analyze.route');
     const client = new Anthropic({ apiKey });
     const response = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
@@ -155,6 +160,12 @@ export async function POST(request: NextRequest) {
       artifact:      artifact ?? null,
     });
   } catch (err: any) {
+    if (isAnthropicBudgetExceededError(err)) {
+      return NextResponse.json(
+        { error: 'Anthropic budget exhausted. Try again later.' },
+        { status: 503 },
+      );
+    }
     console.error('[try/analyze]', err.message);
     return NextResponse.json({ error: 'Analysis failed — try again' }, { status: 500 });
   }

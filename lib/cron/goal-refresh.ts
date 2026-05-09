@@ -1,5 +1,9 @@
 import { createServerClient } from '@/lib/db/client';
 import Anthropic from '@anthropic-ai/sdk';
+import {
+  ensureAnthropicBudget,
+  isAnthropicBudgetExceededError,
+} from '@/lib/llm/anthropic-budget-governor';
 import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { isOverDailyLimit, trackApiCall } from '@/lib/utils/api-tracker';
 import { SIGNAL_CONTEXT_LIMIT, SIGNAL_CONTEXT_SELECT } from '@/lib/utils/signal-egress';
@@ -35,6 +39,7 @@ export async function refreshGoalContext(): Promise<{ ok: boolean; updated: numb
 
   let updated = 0;
   let skipped = 0;
+  let budgetExhausted = false;
 
   for (const userId of userIds) {
     // Check daily spend cap before any Anthropic API call
@@ -90,6 +95,20 @@ export async function refreshGoalContext(): Promise<{ ok: boolean; updated: numb
           `[${((s.occurred_at as string) ?? '').slice(0, 10)}] ${((s.content as string) ?? '').slice(0, 200)}`)
         .join('\n');
 
+      try {
+        await ensureAnthropicBudget('goal-refresh.refreshGoalContext');
+      } catch (error) {
+        if (!isAnthropicBudgetExceededError(error)) {
+          throw error;
+        }
+        console.log(
+          `[goal-refresh] Anthropic budget exhausted; stopping refresh (${error.rpcErrorMessage ?? 'no rpc error'})`,
+        );
+        skipped++;
+        budgetExhausted = true;
+        break;
+      }
+
       const response = await anthropic.messages.create({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 300,
@@ -121,6 +140,10 @@ Rewrite the goal text to include specific entity names (people, organizations, j
           .eq('id', goal.id);
         updated++;
       }
+    }
+
+    if (budgetExhausted) {
+      break;
     }
   }
 

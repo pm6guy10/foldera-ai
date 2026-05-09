@@ -19,6 +19,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import { OWNER_USER_ID } from '@/lib/auth/constants';
 import { createServerClient } from '@/lib/db/client';
 import { decryptWithStatus, encrypt } from '@/lib/encryption';
+import {
+  ensureAnthropicBudget,
+  isAnthropicBudgetExceededError,
+} from '@/lib/llm/anthropic-budget-governor';
 import { recoverMicrosoftSignalContent } from '@/lib/sync/microsoft-sync';
 import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { trackApiCall } from '@/lib/utils/api-tracker';
@@ -97,6 +101,7 @@ interface ProcessResult {
 
 type ExtractionEmptyReason =
   | 'paid_llm_disabled'
+  | 'anthropic_budget_exhausted'
   | 'daily_extraction_spend_cap'
   | 'decrypt_quarantined'
   | 'sensitive_redacted'
@@ -1165,6 +1170,33 @@ async function processBatch(
   }
 
   const promptText = signalTexts.join('\n\n');
+
+  try {
+    await ensureAnthropicBudget('signal-processor.processUnextractedSignals');
+  } catch (error) {
+    if (!isAnthropicBudgetExceededError(error)) {
+      throw error;
+    }
+    result.errors.push('anthropic_budget_exhausted');
+    recordExtractionEmptySignals(
+      diagnostics,
+      'anthropic_budget_exhausted',
+      decryptedBatch.length,
+    );
+    logStructuredEvent({
+      event: 'signal_processor_budget_governor_blocked',
+      level: 'warn',
+      userId,
+      artifactType: null,
+      generationStatus: 'anthropic_budget_exhausted',
+      details: {
+        scope: 'signal-processor',
+        blocked_signals: decryptedBatch.length,
+        rpc_error: error.rpcErrorMessage ?? null,
+      },
+    });
+    return result;
+  }
 
   const response = await anthropic.messages.create({
     model: HAIKU_MODEL,

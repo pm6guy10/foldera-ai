@@ -12,6 +12,10 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
+import {
+  ensureAnthropicBudget,
+  isAnthropicBudgetExceededError,
+} from '@/lib/llm/anthropic-budget-governor';
 import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
@@ -230,6 +234,8 @@ async function compressWeek(userId: string, bucket: WeekBucket): Promise<WeekSum
   const MODEL = 'claude-haiku-4-5-20251001';
 
   try {
+    await ensureAnthropicBudget('signal-summarizer.compressWeek');
+
     const response = await getAnthropic().messages.create({
       model: MODEL,
       max_tokens: 400,
@@ -272,6 +278,21 @@ Output JSON:
       tone: parsed.tone ?? 'neutral',
     };
   } catch (err: any) {
+    if (isAnthropicBudgetExceededError(err)) {
+      logStructuredEvent({
+        event: 'summary_budget_governor_blocked',
+        level: 'warn',
+        userId,
+        artifactType: null,
+        generationStatus: 'anthropic_budget_exhausted',
+        details: {
+          scope: 'summarizer',
+          week_start: bucket.weekStart,
+          rpc_error: err.rpcErrorMessage ?? null,
+        },
+      });
+      return buildFallbackSummary(bucket);
+    }
     logStructuredEvent({
       event: 'summary_model_failed',
       level: 'warn',

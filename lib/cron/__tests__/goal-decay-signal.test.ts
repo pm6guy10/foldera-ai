@@ -6,6 +6,12 @@ const testState = vi.hoisted(() => ({
   trackedCalls: [] as Array<Record<string, unknown>>,
 }));
 
+const mockEnsureAnthropicBudget = vi.fn().mockResolvedValue({
+  allowed: true,
+  raw: { bypassed: 'test' },
+});
+const mockAnthropicCreate = vi.fn();
+
 function projectRow(row: Record<string, unknown>, columns: string): Record<string, unknown> {
   const fields = columns.split(',').map((field) => field.trim()).filter(Boolean);
   if (fields.length === 0 || fields.includes('*')) return { ...row };
@@ -141,6 +147,12 @@ vi.mock('@/lib/llm/paid-llm-gate', () => ({
   isPaidLlmAllowed: vi.fn(() => false),
 }));
 
+vi.mock('@/lib/llm/anthropic-budget-governor', () => ({
+  ensureAnthropicBudget: (...args: unknown[]) => mockEnsureAnthropicBudget(...args),
+  isAnthropicBudgetExceededError: (error: unknown) =>
+    error instanceof Error && error.name === 'AnthropicBudgetExceededError',
+}));
+
 vi.mock('@/lib/utils/api-tracker', () => ({
   isOverDailyLimit: vi.fn(async () => false),
   trackApiCall: vi.fn(async (payload: Record<string, unknown>) => {
@@ -150,7 +162,7 @@ vi.mock('@/lib/utils/api-tracker', () => ({
 
 vi.mock('@anthropic-ai/sdk', () => ({
   default: vi.fn().mockImplementation(() => ({
-    messages: { create: vi.fn() },
+    messages: { create: mockAnthropicCreate },
   })),
 }));
 
@@ -161,6 +173,12 @@ describe('signalReinforcesGoalKeywords (CE-5)', () => {
     testState.goals.length = 0;
     testState.signals.length = 0;
     testState.trackedCalls.length = 0;
+    mockEnsureAnthropicBudget.mockReset();
+    mockEnsureAnthropicBudget.mockResolvedValue({
+      allowed: true,
+      raw: { bypassed: 'test' },
+    });
+    mockAnthropicCreate.mockReset();
   });
 
   it('returns true when two keywords hit the same signal', () => {
@@ -236,6 +254,57 @@ describe('signalReinforcesGoalKeywords (CE-5)', () => {
       id: 'goal-2',
       priority: 3,
       status: 'active',
+      current_priority: true,
+    });
+  });
+
+  it('stops Anthropic goal refresh when the budget governor blocks and leaves the goal unchanged', async () => {
+    const { isPaidLlmAllowed } = await import('@/lib/llm/paid-llm-gate');
+    vi.mocked(isPaidLlmAllowed).mockReturnValue(true);
+    mockEnsureAnthropicBudget.mockRejectedValue(
+      Object.assign(new Error('Anthropic budget governor blocked goal-refresh.refreshGoalContext'), {
+        name: 'AnthropicBudgetExceededError',
+        scope: 'goal-refresh.refreshGoalContext',
+        raw: { allowed: false },
+        rpcErrorMessage: 'cap reached',
+      }),
+    );
+
+    testState.goals.push({
+      id: 'goal-3',
+      user_id: 'user-3',
+      goal_text: 'Land MAS3 role',
+      priority: 3,
+      goal_category: 'career',
+      source: 'extracted',
+      status: 'active',
+      current_priority: true,
+    });
+
+    for (let i = 0; i < 5; i += 1) {
+      testState.signals.push({
+        id: `signal-goal-${i}`,
+        user_id: 'user-3',
+        type: 'email_received',
+        author: 'hiring@example.com',
+        recipients: ['user-3@example.com'],
+        extracted_entities: ['MAS3 role', 'HCA'],
+        extracted_commitments: ['MAS3 role interview moved to Thursday at HCA'],
+        source: 'gmail',
+        processed: true,
+        occurred_at: new Date(Date.now() - i * 3600000).toISOString(),
+      });
+    }
+
+    const result = await refreshGoalContext();
+
+    expect(result).toMatchObject({ ok: true, updated: 0, skipped: 1, decayed: 0 });
+    expect(mockAnthropicCreate).not.toHaveBeenCalled();
+    expect(testState.trackedCalls).toHaveLength(0);
+    expect(testState.goals[0]).toMatchObject({
+      id: 'goal-3',
+      goal_text: 'Land MAS3 role',
+      priority: 3,
       current_priority: true,
     });
   });
