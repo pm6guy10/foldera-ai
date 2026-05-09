@@ -366,7 +366,7 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await brandLink.click();
 
     await expect.poll(() => new URL(page.url()).pathname).toBe('/');
-    await expect(page.getByRole('heading', { name: /work that matters today/i })).toBeVisible();
+    await expect(page.getByTestId('landing-hero-heading')).toContainText(/One finished move/i);
   });
 
   test('stale Microsoft source auto-recovers and keeps manual sync as fallback', async ({ page }) => {

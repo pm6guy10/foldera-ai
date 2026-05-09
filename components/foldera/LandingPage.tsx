@@ -300,21 +300,21 @@ function HeroProofCard() {
           <div className="flex flex-wrap gap-3 border-t border-white/8 pt-6">
             <button
               type="button"
-              className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-[14px] border border-emerald-300/35 bg-emerald-500 px-4 text-[14px] font-semibold text-white shadow-[0_0_24px_rgba(74,222,128,0.22)]"
+              className="inline-flex foldera-touch-height flex-1 items-center justify-center gap-2 rounded-[14px] border border-emerald-300/35 bg-emerald-500 px-4 text-[14px] font-semibold text-white shadow-[0_0_24px_rgba(74,222,128,0.22)]"
             >
               <Zap className="h-4 w-4" aria-hidden />
               Approve
             </button>
             <button
               type="button"
-              className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-[14px] border border-white/10 bg-white/[0.04] px-4 text-[14px] font-semibold text-slate-100"
+              className="inline-flex foldera-touch-height flex-1 items-center justify-center gap-2 rounded-[14px] border border-white/10 bg-white/[0.04] px-4 text-[14px] font-semibold text-slate-100"
             >
               <Clock3 className="h-4 w-4 text-amber-300" aria-hidden />
               Hold 24h
             </button>
             <button
               type="button"
-              className="inline-flex min-h-[48px] flex-1 items-center justify-center gap-2 rounded-[14px] border border-white/10 bg-white/[0.04] px-4 text-[14px] font-semibold text-slate-100"
+              className="inline-flex foldera-touch-height flex-1 items-center justify-center gap-2 rounded-[14px] border border-white/10 bg-white/[0.04] px-4 text-[14px] font-semibold text-slate-100"
             >
               <SkipForward className="h-4 w-4 text-slate-300" aria-hidden />
               Skip

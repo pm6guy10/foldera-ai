@@ -1,6 +1,6 @@
 # FOLDERA Production Backlog
 
-Last refreshed: 2026-05-08
+Last refreshed: 2026-05-09
 
 ## Current top item
 BL-015 — Owner money-shot artifact is not consistently excellent.
@@ -25,6 +25,28 @@ BL-015 — Owner money-shot artifact is not consistently excellent.
 - Add `Money loop rung`, `Is user-facing`, and `Browser proof command` before marking the item actionable.
 
 ## Items
+
+### BL-021
+ID: BL-021
+Rung: 0
+Money loop rung: show_finished_work_clearly
+Title: Restore CI guardrails for landing primitives and dashboard split seams
+User-facing path: An anonymous visitor on `/` and a signed-in user on `/dashboard` should see the same shipped homepage and executive-briefing shell while CI guardrails stay green.
+Starting route or trigger: GitHub Actions `unit` failed after `a7e3bf8` and `4066ce5` because `app/dashboard/page.tsx` exceeded the audit complexity threshold and `components/foldera/LandingPage.tsx` used a forbidden raw touch-height primitive.
+Ending success state: The homepage keeps the shipped BL-020 behavior without raw `min-h-[48px]` in TSX, the dashboard desktop shell moves into a presentation-only extracted component so `app/dashboard/page.tsx` is back under 1000 lines, and focused homepage/dashboard browser proof still passes.
+Problem: The latest shipped landing and dashboard work left CI red on two narrow guard tests even though the intended homepage and dashboard behavior were otherwise correct.
+Protected contracts: Do not redesign the homepage, do not change auth, dashboard data wiring, connector logic, mail logic, controller logic, backlog parsing, or health scripts. Preserve the existing `/` and `/dashboard` behavior while fixing only the guard-failing seams.
+Allowed files: `components/foldera/LandingPage.tsx`, `app/dashboard/page.tsx`, `components/dashboard/DashboardDesktopStage.tsx`, `tests/e2e/dashboard-navigation.spec.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `SESSION_HISTORY.md`
+Forbidden files: `app/api/**`, `lib/**`, `package.json`, `scripts/**`, auth logic, connector logic, controller logic, health scripts, unrelated dirty files
+Required local proof: `node node_modules/vitest/vitest.mjs run tests/config/__tests__/large-file-splits.test.ts tests/config/__tests__/design-system-buttons.test.ts --reporter=verbose`; `npm run build`; `node scripts/wait-for-next-build-settle.mjs`; `node node_modules/@playwright/test/cli.js test tests/e2e/public-routes.spec.ts --grep "Landing page /" --reporter=list`; `node node_modules/@playwright/test/cli.js test tests/e2e/dashboard-navigation.spec.ts --reporter=list`; `npm run health`
+Required production proof: None in this seam. Local browser proof on `/` and `/dashboard` is the requested acceptance surface.
+Is user-facing: true
+Browser proof command: `node node_modules/@playwright/test/cli.js test tests/e2e/public-routes.spec.ts --grep "Landing page /" --reporter=list`; `node node_modules/@playwright/test/cli.js test tests/e2e/dashboard-navigation.spec.ts --reporter=list`
+Done means: The two red CI guards pass, the homepage and dashboard behavior remain intact in focused Playwright proof, `npm run build` passes, and no unrelated product system changes are introduced.
+Do-not-count: Guard tests passing alone, proof surfaces still expecting stale homepage copy, or any change that widens into auth/dashboard data/controller/mail work.
+Status: CLOSED
+Last evidence: 2026-05-09 — `app/dashboard/page.tsx` was reduced to `939` lines by extracting the desktop stage shell into new presentation-only `components/dashboard/DashboardDesktopStage.tsx`, preserving the existing dashboard behavior. `components/foldera/LandingPage.tsx` replaced the raw `min-h-[48px]` proof-card buttons with the existing `foldera-touch-height` utility, keeping the shipped homepage layout intact. Focused config guards passed (`2/2`), `npm run build` passed, `node scripts/wait-for-next-build-settle.mjs` reported `Next build output settled`, focused landing Playwright passed (`12/12`), focused dashboard navigation Playwright passed (`17/17`), and `npm run health` remained `RESULT: 0 FAILING`.
+Next blocker: None for this seam. Future changes to `/` or `/dashboard` must preserve the current guardrails or update them with fresh proof.
 
 ### BL-020
 ID: BL-020
