@@ -2165,6 +2165,68 @@ Decide by 2026-04-24.`,
     ]);
   });
 
+  it('suppresses persisted decision artifacts that only frame options without a default recommendation', async () => {
+    vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
+    mockSupabase.actionRows = [
+      {
+        id: 'decision-soft-warning-1',
+        user_id: USER_ID,
+        status: 'pending_approval',
+        action_type: 'write_document',
+        directive_text: 'Decide whether to attend the Notion Developer Platform event before May 13.',
+        reason: 'The invite expires soon, but it only matters if it unblocks a real Foldera platform decision.',
+        evidence: [
+          { description: 'Source Email: Notion Developer Platform event invite for May 13.' },
+        ],
+        confidence: 88,
+        generated_at: new Date().toISOString(),
+        execution_result: {
+          artifact: {
+            type: 'document',
+            title: 'Notion Developer Platform Event - Attend or Decline (May 13, 3 days)',
+            content: [
+              'Decision: whether to attend or decline the Notion Developer Platform event on May 13.',
+              'Attend if Notion API changes unblock a current Foldera platform decision.',
+              'Decline if this is only general ecosystem awareness.',
+              'You must decide by May 13 so the invite does not linger.',
+              'Options: attend / decline.',
+            ].join('\n\n'),
+          },
+        },
+      },
+    ];
+
+    const result = await runDailySend();
+
+    expect(result.results).toEqual([
+      expect.objectContaining({
+        code: 'no_send_blocker_persisted',
+        success: true,
+        meta: expect.objectContaining({
+          action_id: 'decision-soft-warning-1',
+          artifact_quality_gate_suppressed: true,
+          suppression_code: 'artifact_quality_gate_blocked',
+          suppression_reasons: expect.arrayContaining(['decision_no_concrete_outcome']),
+        }),
+      }),
+    ]);
+    expect(sendDailyDirective).not.toHaveBeenCalled();
+    expect(mockSupabase.updatedActions).toEqual([
+      expect.objectContaining({
+        id: 'decision-soft-warning-1',
+        payload: expect.objectContaining({
+          execution_result: expect.objectContaining({
+            daily_send_suppression: expect.objectContaining({
+              code: 'artifact_quality_gate_blocked',
+              reasons: expect.arrayContaining(['decision_no_concrete_outcome']),
+              soft_warnings: expect.arrayContaining(['no_concrete_outcome']),
+            }),
+          }),
+        }),
+      }),
+    ]);
+  });
+
   it('suppresses generic persisted no-send blockers for explicitly scoped manual runs', async () => {
     vi.mocked(getVerifiedDailyBriefRecipientEmail).mockResolvedValue('owner@example.com');
     mockSupabase.actionRows = [

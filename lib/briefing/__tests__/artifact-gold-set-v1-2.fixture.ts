@@ -317,7 +317,14 @@ export const GOOD_ARTIFACT_GOLD_SET_V1_2: ArtifactGoldCase[] = [
     artifact: {
       type: 'document',
       title: 'CHC bridge-job decision',
-      content: 'Source Email: CHC bridge-job thread asks for availability this week. Decision: decline any CHC shift that overlaps the ES Benefits Technician interview prep window. Deciding criterion: preserve the higher-upside interview while keeping CHC warm. Next action: reply today with availability after the interview window closes. Trigger: if CHC needs an answer before noon, send the availability note immediately.',
+      content: [
+        'Source Email: CHC bridge-job thread asks for availability this week.',
+        'FINAL RECOMMENDATION: DECLINE any CHC shift that overlaps the ES Benefits Technician interview prep window.',
+        'Deciding criterion: preserve the higher-upside interview while keeping CHC warm.',
+        'NEXT PHYSICAL STEP: reply today with availability after the interview window closes.',
+        'OVERRIDE TRIGGER: if CHC needs an answer before noon, send the availability note immediately.',
+        'CONSEQUENCE IF NO MOVEMENT: otherwise the interview-prep window gets diluted and the stronger opportunity loses focused time.',
+      ].join(' '),
     },
   },
   {

@@ -250,6 +250,53 @@ describe('safety-only post-generation artifact gate', () => {
     expect(result.reasons).toContain('relationship_silence_artifact');
     expect(result.safeArtifactMessage).toBe('No safe artifact today.');
   });
+
+  it('promotes no_concrete_outcome to a hard failure for decision-style admin deadline packets', () => {
+    const result = evaluateArtifactQualityGate({
+      directive: {
+        action_type: 'write_document',
+        directive: 'Decide whether to attend the Notion Developer Platform event before May 13.',
+        reason: 'The invite expires soon, but only matters if a real Foldera platform choice depends on it.',
+        evidence: [{ description: 'Source Email: Notion Developer Platform event invite for May 13.' }],
+      },
+      artifact: {
+        type: 'document',
+        title: 'Notion Developer Platform Event - Attend or Decline (May 13, 3 days)',
+        content: [
+          'Decision: whether to attend or decline the Notion Developer Platform event on May 13.',
+          'Attend if Notion API changes unblock a current Foldera platform decision.',
+          'Decline if this is only general ecosystem awareness.',
+          'You must decide by May 13 so the invite does not linger.',
+          'Options: attend / decline.',
+        ].join('\n\n'),
+      },
+      sourceFacts: ['Source Email: Notion Developer Platform event invite for May 13.'],
+    });
+
+    expect(result.passes).toBe(false);
+    expect(result.reasons).toContain('decision_no_concrete_outcome');
+    expect(result.soft_warnings).toContain('no_concrete_outcome');
+  });
+
+  it('keeps no_concrete_outcome as a soft warning for non-decision documents', () => {
+    const result = evaluateArtifactQualityGate({
+      directive: {
+        action_type: 'write_document',
+        directive: 'Create the morning summary.',
+        reason: 'Daily overview.',
+        evidence: [{ description: 'Inbox summary: several unrelated messages arrived.' }],
+      },
+      artifact: {
+        type: 'document',
+        title: 'Morning summary',
+        content: 'Source: inbox. Summary: three emails arrived, one calendar event is coming up, and several tasks may need review later.',
+      },
+    });
+
+    expect(result.passes).toBe(true);
+    expect(result.reasons).toEqual([]);
+    expect(result.soft_warnings).toContain('no_concrete_outcome');
+  });
 });
 
 describe('owner money-shot artifact suite', () => {

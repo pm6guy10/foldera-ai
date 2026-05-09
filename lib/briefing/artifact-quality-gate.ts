@@ -1,5 +1,6 @@
 import type { ConvictionArtifact, ConvictionDirective } from './types';
 import { isLikelyAutomatedTransactionalInbound } from './automated-inbound-signal';
+import { getDecisionWriteDocumentContractIssues } from './decision-enforcement';
 import { evaluateGoldStandardArtifact } from './gold-standard-artifact-evaluator';
 
 export type ArtifactQualityCategory =
@@ -17,7 +18,8 @@ export type ArtifactQualityBlockReason =
   | 'stale_event'
   | 'fabricated_claim'
   | 'transactional_sender_decision_pressure'
-  | 'relationship_silence_artifact';
+  | 'relationship_silence_artifact'
+  | 'decision_no_concrete_outcome';
 
 export type ArtifactQualitySoftWarning =
   | 'no_source_grounding'
@@ -269,7 +271,11 @@ function classifyDecisionBrief(text: string): boolean {
     /\bexecution move\b/i.test(text) &&
     /\bwhy this beats the alternatives\b/i.test(text) &&
     /\b(reopen trigger|deadline)\b/i.test(text);
-  return explicitDecision || executionDecision;
+  const labeledDefaultDecision =
+    /\b(?:FINAL|DEFAULT)\s+RECOMMENDATION\s*:/i.test(text) &&
+    /\bNEXT PHYSICAL STEP\s*:/i.test(text) &&
+    /\bCONSEQUENCE IF NO MOVEMENT\s*:/i.test(text);
+  return explicitDecision || executionDecision || labeledDefaultDecision;
 }
 
 function classifyRiskAlert(text: string): boolean {
@@ -422,6 +428,16 @@ export function evaluateArtifactQualityGate(
       ) {
         softWarnings.push('generic_coaching');
       }
+    }
+    const decisionContractIssues = getDecisionWriteDocumentContractIssues({
+      actionType: input.directive.action_type,
+      directiveText: input.directive.directive,
+      reason: input.directive.reason,
+      artifact: input.artifact as unknown as Record<string, unknown>,
+    });
+    if (decisionContractIssues.length > 0) {
+      softWarnings.push('no_concrete_outcome');
+      reasons.push('decision_no_concrete_outcome');
     }
   }
   if (!suppressionDecision && hasTransactionalSenderDecisionPressure(combined, evidence)) {

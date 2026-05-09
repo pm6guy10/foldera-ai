@@ -1,4 +1,5 @@
 import type { ConvictionArtifact } from './types';
+import { inferArtifactTasteFamily } from './artifact-taste-pack';
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
@@ -119,6 +120,17 @@ const SUMMARY_ONLY_PATTERNS = [
   /\bbackground only\b/i,
 ];
 
+const DECISION_STYLE_WRITE_DOCUMENT_PATTERN =
+  /\b(?:decide whether|decision\s*:|the decision is whether|options?\s*:|attend if|decline if|approve if|register if|you must decide|choose between)\b/i;
+const DEFAULT_RECOMMENDATION_LINE_RE = /(?:^|\n)\s*(?:FINAL|DEFAULT)\s+RECOMMENDATION\s*:\s*(.+)$/im;
+const NEXT_PHYSICAL_STEP_LINE_RE = /(?:^|\n)\s*NEXT PHYSICAL STEP\s*:\s*(.+)$/im;
+const CONSEQUENCE_IF_NO_MOVEMENT_LINE_RE = /(?:^|\n)\s*CONSEQUENCE IF NO MOVEMENT\s*:\s*(.+)$/im;
+const OVERRIDE_TRIGGER_LINE_RE = /(?:^|\n)\s*OVERRIDE TRIGGER\s*:\s*(.+)$/im;
+const ADMIN_DECISION_ACTION_VERB_RE =
+  /\b(skip|decline|archive|attend|register|block|approve|send|pay|submit|schedule|close)\b/i;
+const DEFAULT_RECOMMENDATION_WEAK_PATTERN =
+  /\b(?:whether to|options?\s*:|attend if|decline if|approve if|register if|you must decide|decision is whether)\b/i;
+
 const RECURSIVE_DIRECTIVE_TEMPLATE_LINE_RE =
   /^(?:Decision required for\b|Ask:|Consequence:)/i;
 
@@ -177,6 +189,80 @@ export function getWriteDocumentTaskManagerLabelIssues(artifact: Record<string, 
     out.push('decision_enforcement:forbidden_owner_you_task_line');
   }
   return out;
+}
+
+function extractLabeledLine(text: string, pattern: RegExp): string | null {
+  const match = text.match(pattern);
+  const value = match?.[1]?.trim();
+  return value && value.length > 0 ? value : null;
+}
+
+export function getDecisionWriteDocumentContractIssues(input: {
+  actionType: string;
+  directiveText: string;
+  reason: string;
+  artifact: Record<string, unknown> | null;
+  skipEnforcement?: boolean;
+}): string[] {
+  if (normalizeDecisionActionType(input.actionType) !== 'write_document') {
+    return [];
+  }
+  if (input.skipEnforcement || !input.artifact || typeof input.artifact !== 'object') {
+    return [];
+  }
+
+  const title = isNonEmptyString(input.artifact.title) ? input.artifact.title.trim() : '';
+  const content = isNonEmptyString(input.artifact.content) ? input.artifact.content.trim() : '';
+  const combined = [input.directiveText, input.reason, title, content].filter(Boolean).join('\n');
+  const family = inferArtifactTasteFamily({
+    actionType: 'write_document',
+    title,
+    content,
+    text: combined,
+  });
+  const looksLikeDecisionDocument =
+    DEFAULT_RECOMMENDATION_LINE_RE.test(content) ||
+    DECISION_STYLE_WRITE_DOCUMENT_PATTERN.test(combined);
+
+  if (!looksLikeDecisionDocument) {
+    return [];
+  }
+
+  const issues: string[] = [];
+  const recommendation =
+    extractLabeledLine(content, DEFAULT_RECOMMENDATION_LINE_RE) ??
+    extractLabeledLine(combined, DEFAULT_RECOMMENDATION_LINE_RE);
+  const nextPhysicalStep = extractLabeledLine(content, NEXT_PHYSICAL_STEP_LINE_RE);
+  const consequenceIfNoMovement = extractLabeledLine(content, CONSEQUENCE_IF_NO_MOVEMENT_LINE_RE);
+  const overrideTrigger = extractLabeledLine(content, OVERRIDE_TRIGGER_LINE_RE);
+
+  if (!recommendation || DEFAULT_RECOMMENDATION_WEAK_PATTERN.test(recommendation)) {
+    issues.push('decision_enforcement:missing_default_recommendation');
+  }
+
+  const requiresAdminDecisionContract =
+    looksLikeDecisionDocument &&
+    (
+      family === 'admin_deadline_decision_packet' ||
+      /\b(?:attend|decline|register|invite|event|deadline|cutoff|payment|benefit|invoice|appeal|claim|admin|forms?)\b/i.test(combined)
+    );
+
+  if (requiresAdminDecisionContract) {
+    const actionSurface = [recommendation ?? '', nextPhysicalStep ?? '', overrideTrigger ?? '']
+      .filter(Boolean)
+      .join('\n');
+    if (!ADMIN_DECISION_ACTION_VERB_RE.test(actionSurface)) {
+      issues.push('decision_enforcement:admin_decision_missing_action_verb');
+    }
+    if (!nextPhysicalStep) {
+      issues.push('decision_enforcement:admin_decision_missing_next_physical_step');
+    }
+    if (!consequenceIfNoMovement) {
+      issues.push('decision_enforcement:admin_decision_missing_consequence_if_no_movement');
+    }
+  }
+
+  return issues;
 }
 
 function normalizeRecursiveDirectiveTarget(value: string): string {
@@ -724,6 +810,18 @@ export function getDecisionEnforcementIssues(input: {
         issues.push('decision_enforcement:internal_execution_brief_future_artifact');
       }
     }
+    issues.push(
+      ...getDecisionWriteDocumentContractIssues({
+        actionType: input.actionType,
+        directiveText: input.directiveText,
+        reason: input.reason,
+        artifact: artifactRecord,
+        skipEnforcement:
+          isInternalExecutionBrief ||
+          interviewClassRelax ||
+          input.discrepancyClass === 'behavioral_pattern',
+      }),
+    );
   }
 
   let out = [...new Set(issues)];

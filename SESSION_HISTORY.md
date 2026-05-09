@@ -6087,6 +6087,13 @@ pm run build.
 - Verification: `npm run build` passed; focused landing red/green proof passed in `tests/e2e/public-routes.spec.ts`; full landing route Playwright block passed (`12/12`) with `PLAYWRIGHT_WEB_PORT=3010`; mobile overflow + hamburger checks passed in `tests/e2e/mobile-visual-qa.spec.ts` (`2/2`); local browser proof on `http://127.0.0.1:3005/` produced desktop/mobile screenshots with readable hero and proof card and no visible text overlap.
 - Unresolved issues: This seam did not change pricing, auth, dashboard, connectors, mail logic, controller logic, backlog parsing, or health scripts. Production deployment proof is not part of this local route seam.
 
+## 2026-05-09 - Decision write_document artifacts now require a chosen default move
+- MODE: Daily artifact quality gate seam only.
+- Files changed: `lib/briefing/decision-enforcement.ts`, `lib/briefing/artifact-quality-gate.ts`, `lib/briefing/__tests__/artifact-gold-set-v1-2.fixture.ts`, `lib/briefing/__tests__/artifact-quality-gate.test.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `lib/cron/__tests__/daily-brief.test.ts`, `SESSION_HISTORY.md`.
+- What changed: Added a decision-style `write_document` validator that fails balanced option memos unless they name a real `FINAL RECOMMENDATION` or `DEFAULT RECOMMENDATION`. Admin deadline decision packets now also require a concrete action verb, `NEXT PHYSICAL STEP`, and `CONSEQUENCE IF NO MOVEMENT`, with optional `OVERRIDE TRIGGER`. The artifact quality gate now promotes `no_concrete_outcome` from a soft warning to a hard block for decision artifacts so they cannot persist or ship as email.
+- Verification: Focused regression suite passed in `lib/conviction/__tests__/artifact-generator.test.ts`, `lib/briefing/__tests__/artifact-quality-gate.test.ts`, and `lib/cron/__tests__/daily-brief.test.ts`, including the new Notion-style failing memo, the short passing default-action memo, the hard-block promotion for `no_concrete_outcome`, and the non-decision soft-warning guard. `npm run build` passed.
+- Unresolved issues: This seam is locally proven only; no paid generation, outbound email, production deploy, or schema change was run.
+
 ## 2026-05-09 - CI guardrails restored for homepage and dashboard shell
 - MODE: CI seam repair only.
 - Files changed: `components/foldera/LandingPage.tsx`, `app/dashboard/page.tsx`, `components/dashboard/DashboardDesktopStage.tsx`, `tests/e2e/dashboard-navigation.spec.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `SESSION_HISTORY.md`.

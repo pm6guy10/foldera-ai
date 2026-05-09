@@ -299,6 +299,84 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     expect(issues).toContain('decision_enforcement:missing_owner_assignment');
   });
 
+  it('fails a balanced decision memo that frames options without choosing a default recommendation', () => {
+    const directive: any = {
+      action_type: 'write_document',
+      directive: 'Decide whether to attend the Notion Developer Platform event before May 13.',
+      reason: 'The event invite expires soon, but it only matters if it unblocks a real Foldera platform decision.',
+      confidence: 82,
+      evidence: [
+        { type: 'signal', description: 'Source Email: Notion Developer Platform event invite for May 13.' },
+      ],
+      requires_search: false,
+    };
+    const artifact = {
+      type: 'document',
+      document_purpose: 'decision memo',
+      target_reader: 'decision owner',
+      title: 'Notion Developer Platform Event - Attend or Decline (May 13, 3 days)',
+      content: [
+        'Decision: whether to attend or decline the Notion Developer Platform event on May 13.',
+        'Attend if Notion API changes unblock a current Foldera platform decision.',
+        'Decline if this is only general ecosystem awareness.',
+        'You must decide by May 13 so the invite does not linger.',
+        'Options: attend / decline.',
+      ].join('\n\n'),
+    };
+
+    const issues = getArtifactPersistenceIssues('write_document', artifact, directive);
+    const persistenceIssues = validateDirectiveForPersistence({
+      userId: 'user-1',
+      directive,
+      artifact,
+    });
+
+    expect(issues).toContain('decision_enforcement:missing_default_recommendation');
+    expect(issues).toContain('decision_enforcement:admin_decision_missing_next_physical_step');
+    expect(issues).toContain('decision_enforcement:admin_decision_missing_consequence_if_no_movement');
+    expect(persistenceIssues).toContain('decision_enforcement:missing_default_recommendation');
+  });
+
+  it('passes a short decision memo that names the default move and next step', () => {
+    const directive: any = {
+      action_type: 'write_document',
+      directive: 'Decide whether to attend the Notion Developer Platform event before May 13.',
+      reason: 'The event invite expires soon, but it only matters if it unblocks a real Foldera platform decision.',
+      confidence: 82,
+      evidence: [
+        { type: 'signal', description: 'Source Email: Notion Developer Platform event invite for May 13.' },
+      ],
+      requires_search: false,
+    };
+    const artifact = {
+      type: 'document',
+      document_purpose: 'decision memo',
+      target_reader: 'decision owner',
+      title: 'Notion Developer Platform Event - Default action',
+      content: [
+        'FINAL RECOMMENDATION: SKIP.',
+        'This is not revenue-critical unless a current Foldera platform decision depends on Notion API changes before June.',
+        'OWNER: Brandon closes this loop today.',
+        'NEXT PHYSICAL STEP: archive or decline the invite today.',
+        'OVERRIDE TRIGGER: attend only if you can name one Foldera product decision blocked by Notion developer-platform changes.',
+        'CONSEQUENCE IF NO MOVEMENT: it remains an open loop and steals bandwidth from first-customer and revenue work.',
+      ].join('\n\n'),
+    };
+
+    const issues = getArtifactPersistenceIssues('write_document', artifact, directive);
+    const persistenceIssues = validateDirectiveForPersistence({
+      userId: 'user-1',
+      directive,
+      artifact,
+    });
+
+    expect(issues).not.toContain('decision_enforcement:missing_default_recommendation');
+    expect(issues).not.toContain('decision_enforcement:admin_decision_missing_action_verb');
+    expect(issues).not.toContain('decision_enforcement:admin_decision_missing_next_physical_step');
+    expect(issues).not.toContain('decision_enforcement:admin_decision_missing_consequence_if_no_movement');
+    expect(persistenceIssues).not.toContain('decision_enforcement:missing_default_recommendation');
+  });
+
   it('compat and persistence validation surface the same owner-assignment blocker for the same weak document', () => {
     const directive: any = {
       action_type: 'write_document',
