@@ -1,6 +1,6 @@
 # FOLDERA Production Backlog
 
-Last refreshed: 2026-05-02
+Last refreshed: 2026-05-08
 
 ## Current top item
 BL-015 — Owner money-shot artifact is not consistently excellent.
@@ -25,6 +25,72 @@ BL-015 — Owner money-shot artifact is not consistently excellent.
 - Add `Money loop rung`, `Is user-facing`, and `Browser proof command` before marking the item actionable.
 
 ## Items
+
+### BL-020
+ID: BL-020
+Rung: 0
+Money loop rung: connect_sources
+Title: Implement production-safe homepage from LANDING_PAGE_VISUAL_HANDOFF.md
+User-facing path: An anonymous visitor opens `/` and understands Foldera through a dark Daily Brief-first homepage before deciding whether to start.
+Starting route or trigger: `GET /` via `app/page.tsx` -> `components/foldera/LandingPage.tsx`
+Ending success state: The real homepage route renders the approved dark neon Foldera landing with a prominent Daily Brief proof card, truthful product framing, readable desktop/mobile hierarchy, and working public nav/footer destinations.
+Problem: BL-019 created the image-first homepage handoff, but the real `/` route still showed the older public landing instead of the approved production-safe implementation.
+Protected contracts: Do not add fake customer logos, fake metrics, unsupported integrations, or broad feature claims. Do not alter auth, dashboard, connector logic, mail logic, controller logic, backlog parsing, or health scripts.
+Allowed files: `components/foldera/LandingPage.tsx`, `tests/e2e/public-routes.spec.ts`, `LANDING_PAGE_VISUAL_HANDOFF.md`, `FOLDERA_PRODUCTION_BACKLOG.md`, `SESSION_HISTORY.md`
+Forbidden files: `app/dashboard/**`, `app/api/**`, `lib/briefing/**`, `lib/cron/**`, `package.json`, `scripts/**`, connector logic, controller logic, health scripts, unrelated dirty files
+Required local proof: `npm run build`; `npx playwright test tests/e2e/public-routes.spec.ts --grep "Landing page /" --reporter=list`; `npx playwright test tests/e2e/mobile-visual-qa.spec.ts --grep "scrollWidth ≤ viewport: home|opens full-screen overlay" --reporter=list`; `npm run health`; `npm run controller:autopilot`
+Required production proof: None in this seam. Local browser route proof is the requested acceptance surface.
+Is user-facing: true
+Browser proof command: `npx playwright test tests/e2e/public-routes.spec.ts --grep "Landing page /" --reporter=list`
+Done means: `/` renders the new homepage from `LANDING_PAGE_VISUAL_HANDOFF.md`, the Daily Brief card is the primary visual object, desktop/mobile copy stays readable with no overlap, claims remain truthful and narrow, build passes, health passes, and controller still emits a real `CONTROLLER RESULT`.
+Do-not-count: Screenshot-only mockups, fake proof logos/metrics, unsupported integration claims, selector-only green checks without browser route proof, or changes to auth/dashboard/controller/health behavior.
+Status: CLOSED
+Last evidence: 2026-05-08 — `components/foldera/LandingPage.tsx` now renders the approved dark neon homepage with the real Daily Brief proof card, three-step source/artifact/safe-stop explanation, protected trust line, CTA, and footer while keeping NavPublic destinations intact. `npm run build` passed. Focused landing red/green proof completed in `tests/e2e/public-routes.spec.ts`, and the full landing route block passed (`12/12`) on a fresh Playwright port. Mobile overflow/hamburger checks passed in `tests/e2e/mobile-visual-qa.spec.ts` (`2/2`). Local browser proof on `http://127.0.0.1:3005/` produced `homepage-desktop-1440.png` and `homepage-mobile-390.png`, both visually confirming a readable hero, legible Daily Brief card, and no text overlap. No auth, dashboard, connector, mail, controller, backlog-parser, or health-script behavior changed.
+Next blocker: None for this seam. Future public-surface work must stay on new explicit seams.
+
+### BL-019
+ID: BL-019
+Rung: 0
+Money loop rung: derive_next_useful_move
+Title: Image-first landing page direction handoff
+User-facing path: A future implementation agent needs one truthful production handoff before changing the homepage route.
+Starting route or trigger: The current image-first mockup direction is usable, but the repo has no single production-safe handoff that explains how to build `/` from that direction.
+Ending success state: A single homepage handoff spec exists, grounded in the approved desktop/mobile image references and current landing source, so the next implementation seam can build real responsive components without depending on Figma layer extraction.
+Problem: Editable-layer Figma generation caused text overlap and spacing failures, so the usable source of truth is now the high-fidelity image mockup direction plus the existing Foldera landing references.
+Protected contracts: Do not change app code, homepage behavior, controller scoring, backlog semantics, Gmail/Outlook logic, artifact generation, or unrelated dirty files.
+Allowed files: `LANDING_PAGE_VISUAL_HANDOFF.md`, `FOLDERA_PRODUCTION_BACKLOG.md`, `SESSION_HISTORY.md`
+Forbidden files: `app/**`, `components/**`, `lib/**`, `tests/**`, `package.json`, `node_modules/**`, product UI, controller logic, Gmail/Outlook code, artifact generation, Figma exports, unrelated dirty files
+Required local proof: `npm run health`; `npm run controller:autopilot`
+Required production proof: None. This is a repo handoff/spec seam only.
+Is user-facing: false
+Browser proof command:
+Done means: The repo contains one production-safe homepage handoff that says the image/mockup is direction rather than editable source of truth, preserves the dark neon Foldera Daily Brief-first direction, defines the required homepage sections and truth constraints, and leaves app code unchanged.
+Do-not-count: A screenshot or mockup alone, Figma layer extraction requirements, app code changes, product-behavior changes, or backlog/history receipts without the actual handoff file.
+Status: CLOSED
+Last evidence: 2026-05-08 — added `LANDING_PAGE_VISUAL_HANDOFF.md` as the single implementation handoff, grounded in `artifacts/visual-pass/home-desktop-1440.png`, `artifacts/visual-pass/home-mobile-390.png`, `components/foldera/LandingPage.tsx`, and the landing-page product spec references. The handoff locks the dark SaaS / neon cyan-blue-magenta Foldera direction, keeps the Daily Brief as the primary proof object, requires real responsive React/Tailwind implementation, forbids fake logos/metrics/unsupported integrations, and defines the homepage sections plus QA gates. `npm run health` printed `RESULT: 0 FAILING`, and `npm run controller:autopilot` still printed a real `CONTROLLER RESULT`. No app code changed.
+Next blocker: None for this handoff seam. A future homepage implementation seam must still prove the real `/` route separately.
+
+### BL-018
+ID: BL-018
+Rung: 0
+Money loop rung: derive_next_useful_move
+Title: Local npm wrappers no longer depend on a missing tsx.cmd shim
+User-facing path: A local Foldera operator runs `npm run health` and `npm run controller:autopilot` on this Windows checkout and both commands execute their real scripts.
+Starting route or trigger: `npm run health` or `npm run controller:autopilot` in the current checkout.
+Ending success state: Both npm wrappers succeed without relying on `node_modules/.bin/tsx.cmd`, and controller prints a real `CONTROLLER RESULT: GO|STOP`.
+Problem: This checkout has `node_modules/tsx/dist/cli.mjs` installed but no root `node_modules/.bin`, so npm cannot resolve `npx tsx` and the health/controller wrappers fail before the actual scripts run.
+Protected contracts: Do not change product behavior, controller selection semantics, backlog eligibility, Gmail/Outlook logic, artifact generation, or unrelated npm scripts. Do not patch `node_modules`.
+Allowed files: `package.json`, `scripts/run-local-tsx.cjs`, `scripts/__tests__/npm-wrapper.test.ts`, `FOLDERA_PRODUCTION_BACKLOG.md`, `SESSION_HISTORY.md`
+Forbidden files: `app/**`, `components/**`, `lib/**`, existing controller logic, backlog semantics, Gmail/Outlook code, artifact generation, package lockfiles, `node_modules/**`
+Required local proof: `node node_modules/vitest/vitest.mjs run scripts/__tests__/npm-wrapper.test.ts --reporter=verbose`; `npm run health`; `npm run controller:autopilot`
+Required production proof: None. This is a local wrapper/tooling seam only.
+Is user-facing: false
+Browser proof command:
+Done means: `npm run health` prints `RESULT: 0 FAILING`; `npm run controller:autopilot` prints a real `CONTROLLER RESULT: GO|STOP`; neither wrapper requires a direct `node node_modules/tsx/dist/cli.mjs ...` fallback.
+Do-not-count: Running the underlying `tsx` CLI directly, recreating `.bin` by hand inside `node_modules`, changing unrelated scripts, or modifying product/runtime behavior.
+Status: CLOSED
+Last evidence: 2026-05-08 — focused regression first failed because `package.json` still called `npx tsx` and `scripts/run-local-tsx.cjs` did not exist. After the scoped fix, `node node_modules/vitest/vitest.mjs run scripts/__tests__/npm-wrapper.test.ts --reporter=verbose` passed (`2/2`), `npm run health` executed through `node scripts/run-local-tsx.cjs scripts/health.ts` and printed `RESULT: 0 FAILING`, and `npm run controller:autopilot` executed through `node scripts/run-local-tsx.cjs scripts/controller-autopilot.ts` and printed a real `CONTROLLER RESULT: STOP` while selecting BL-018 and naming the existing dirty-file blockers. No direct `node node_modules/tsx/dist/cli.mjs ...` fallback was needed after the fix.
+Next blocker: None for this seam. Broader dirty-worktree/controller blockers remain outside the wrapper scope.
 
 ### BL-017
 ID: BL-017

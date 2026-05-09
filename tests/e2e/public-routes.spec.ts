@@ -112,10 +112,12 @@ test.describe('Landing page /', () => {
     await expect(page).toHaveTitle(/Foldera/i);
   });
 
-  test('hero text is visible — desktop', async ({ page }) => {
+  test('hero headline and daily brief proof card are visible — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
-    await expect(page.getByText('Foldera').first()).toBeVisible();
+    await expect(page.getByTestId('landing-hero-heading')).toContainText(/One finished move/i);
+    await expect(page.getByTestId('landing-proof-card')).toBeVisible();
+    await expect(page.getByText(/Approval stays yours/i).first()).toBeVisible();
   });
 
   test('landing demo uses neutral public copy and default approve language', async ({ page }) => {
@@ -126,9 +128,11 @@ test.describe('Landing page /', () => {
     await expect(page.getByRole('button', { name: /^Approve$/i }).first()).toBeVisible();
   });
 
-  test('landing demo stays neutral on mobile preview', async ({ page }) => {
+  test('landing proof card stays visible on mobile preview', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
+    await expect(page.getByTestId('landing-hero-heading')).toContainText(/One finished move/i);
+    await expect(page.getByTestId('landing-proof-card')).toBeVisible();
     await expect(page.getByText(/Brandon/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Approve & send/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Approve$/i }).first()).toBeVisible();
@@ -146,10 +150,11 @@ test.describe('Landing page /', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
 
-    await expect(page.getByText(/The work that matters today/i).first()).toBeVisible();
-    await expect(page.getByText(/Already written/i).first()).toBeVisible();
-    await expect(page.getByText(/Stops when it should/i)).toBeVisible();
-    await expect(page.getByText(/No outbound by default/i)).toBeVisible();
+    await expect(page.getByTestId('landing-hero-heading')).toContainText(/One finished move/i);
+    await expect(page.getByText(/Checks the real sources/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Ships the artifact/i }).first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Stops safely|Stops when it should/i }).first()).toBeVisible();
+    await expect(page.getByText(/No outbound by default/i).first()).toBeVisible();
 
     for (const overclaim of [
       /Trusted by teams/i,
