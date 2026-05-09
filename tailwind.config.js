@@ -35,6 +35,41 @@ module.exports = {
         },
         warning: "#f59e0b",
         success: "#22c55e",
+        'demo-background': 'oklch(var(--demo-background) / <alpha-value>)',
+        'demo-foreground': 'oklch(var(--demo-foreground) / <alpha-value>)',
+        'demo-surface': {
+          DEFAULT: 'oklch(var(--demo-surface) / <alpha-value>)',
+          elevated: 'oklch(var(--demo-surface-elevated) / <alpha-value>)',
+        },
+        'demo-primary': {
+          DEFAULT: 'oklch(var(--demo-primary) / <alpha-value>)',
+          foreground: 'oklch(var(--demo-primary-foreground) / <alpha-value>)',
+        },
+        'demo-secondary': {
+          DEFAULT: 'oklch(var(--demo-secondary) / <alpha-value>)',
+          foreground: 'oklch(var(--demo-secondary-foreground) / <alpha-value>)',
+        },
+        'demo-muted': {
+          DEFAULT: 'oklch(var(--demo-muted) / <alpha-value>)',
+          foreground: 'oklch(var(--demo-muted-foreground) / <alpha-value>)',
+        },
+        'demo-accent': {
+          DEFAULT: 'oklch(var(--demo-accent) / <alpha-value>)',
+          foreground: 'oklch(var(--demo-accent-foreground) / <alpha-value>)',
+        },
+        'demo-attention': 'oklch(var(--demo-attention) / <alpha-value>)',
+        'demo-success': 'oklch(var(--demo-success) / <alpha-value>)',
+        'demo-destructive': {
+          DEFAULT: 'oklch(var(--demo-destructive) / <alpha-value>)',
+          foreground: 'oklch(var(--demo-destructive-foreground) / <alpha-value>)',
+        },
+        'demo-border': 'oklch(var(--demo-border) / <alpha-value>)',
+        'demo-input': 'oklch(var(--demo-input) / <alpha-value>)',
+        'demo-ring': 'oklch(var(--demo-ring) / <alpha-value>)',
+        'demo-sidebar': {
+          DEFAULT: 'oklch(var(--demo-sidebar) / <alpha-value>)',
+          foreground: 'oklch(var(--demo-sidebar-foreground) / <alpha-value>)',
+        },
       },
 
       // ─── Border radius — use rounded-xl (card) everywhere ──────────────
@@ -85,5 +120,5 @@ module.exports = {
       },
     },
   },
-  plugins: [require('@tailwindcss/typography')],
+  plugins: [require('@tailwindcss/typography'), require('tailwindcss-animate')],
 }
