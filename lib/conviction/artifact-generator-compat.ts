@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { buildPromptCachedSystem } from '@/lib/llm/anthropic-prompt-cache';
 import type {
   CalendarEventArtifact,
   ConvictionArtifact,
@@ -16,6 +17,26 @@ import {
 import { getDecisionEnforcementIssues } from '@/lib/briefing/decision-enforcement';
 
 const ARTIFACT_MODEL = 'claude-sonnet-4-20250514';
+const WRITE_DOCUMENT_SYSTEM_INSTRUCTIONS = [
+  'Write one finished document artifact.',
+  'Return JSON with type=document, title, and content.',
+  'The document must be an Execution Brief, not notes or a status update.',
+  'The content must explicitly include: FINAL RECOMMENDATION, OWNER, NEXT PHYSICAL STEP, and CONSEQUENCE IF NO MOVEMENT.',
+  'Use a decisive final recommendation. Do not present open options without choosing one.',
+  'Do not assign homework. No research agenda, no "things to think about", no generic "for your review", and no instructions to gather more context.',
+  'If the thread is stale, say so plainly and deprecate the bandwidth instead of preserving a zombie thread.',
+  'Do not include analysis scaffolding, generic filler, or placeholder text.',
+].join('\n');
+const SEND_MESSAGE_SYSTEM_INSTRUCTIONS = [
+  'Write one grounded send_message artifact as JSON with type, to, subject, and body.',
+  'Foldera does not send status updates, passive follow-ups, or generic check-in sludge.',
+  'Use only a named, grounded recipient from the supplied directive and evidence.',
+  'The body must include one concrete yes/no ask OR one explicit owner assignment.',
+  'The body must include one hard deadline with a real date or explicit day boundary.',
+  'The body must include one explicit consequence of silence or non-response.',
+  'If the thread is stale, name the closure condition plainly instead of sending a vague follow-up.',
+  'No filler phrases, no placeholder text, and no hallucinated relationship context.',
+].join('\n');
 
 let anthropicClient: Anthropic | null = null;
 
@@ -486,27 +507,24 @@ function parseResponseText(raw: string): unknown | null {
   return JSON.parse(cleaned);
 }
 
-function buildDocumentSystemPrompt(directive: ConvictionDirective, rawContext: string): string {
-  const parts = [
-    'Write one finished document artifact.',
-    'Return JSON with type=document, title, and content.',
-    'The document must be an Execution Brief, not notes or a status update.',
-    'The content must explicitly include: FINAL RECOMMENDATION, OWNER, NEXT PHYSICAL STEP, and CONSEQUENCE IF NO MOVEMENT.',
-    'Use a decisive final recommendation. Do not present open options without choosing one.',
-    'Do not assign homework. No research agenda, no "things to think about", no generic "for your review", and no instructions to gather more context.',
-    'If the thread is stale, say so plainly and deprecate the bandwidth instead of preserving a zombie thread.',
-    'Do not include analysis scaffolding, generic filler, or placeholder text.',
-  ];
+function buildDocumentSystemPrompt(
+  directive: ConvictionDirective,
+  rawContext: string,
+): Array<Anthropic.TextBlockParam> {
+  const dynamicRules: string[] = [];
   if (directiveLooksLikeScheduleConflict(directive)) {
-    parts.push('CALENDAR CONFLICTS ARE NOT VALID WRITE_DOCUMENT OUTPUTS ON THIS PATH: do not emit a schedule-conflict memo.');
+    dynamicRules.push('CALENDAR CONFLICTS ARE NOT VALID WRITE_DOCUMENT OUTPUTS ON THIS PATH: do not emit a schedule-conflict memo.');
   }
   if (directive.discrepancyClass === 'behavioral_pattern') {
-    parts.push('Behavioral pattern case: write a finished note with a concrete next move, not raw analysis.');
+    dynamicRules.push('Behavioral pattern case: write a finished note with a concrete next move, not raw analysis.');
   }
   if (isNonEmptyString(rawContext)) {
-    parts.push(`Context: ${rawContext.slice(0, 4000)}`);
+    dynamicRules.push(`Context: ${rawContext.slice(0, 4000)}`);
   }
-  return parts.join('\n');
+  return buildPromptCachedSystem(
+    WRITE_DOCUMENT_SYSTEM_INSTRUCTIONS,
+    dynamicRules.join('\n'),
+  );
 }
 
 function buildDocumentUserPrompt(directive: ConvictionDirective, rawContext: string): string {
@@ -518,18 +536,11 @@ function buildDocumentUserPrompt(directive: ConvictionDirective, rawContext: str
   ].join('\n');
 }
 
-function buildSendMessagePrompt(directive: ConvictionDirective): { system: string; user: string } {
+function buildSendMessagePrompt(
+  directive: ConvictionDirective,
+): { system: Array<Anthropic.TextBlockParam>; user: string } {
   return {
-    system: [
-      'Write one grounded send_message artifact as JSON with type, to, subject, and body.',
-      'Foldera does not send status updates, passive follow-ups, or generic check-in sludge.',
-      'Use only a named, grounded recipient from the supplied directive and evidence.',
-      'The body must include one concrete yes/no ask OR one explicit owner assignment.',
-      'The body must include one hard deadline with a real date or explicit day boundary.',
-      'The body must include one explicit consequence of silence or non-response.',
-      'If the thread is stale, name the closure condition plainly instead of sending a vague follow-up.',
-      'No filler phrases, no placeholder text, and no hallucinated relationship context.',
-    ].join('\n'),
+    system: buildPromptCachedSystem(SEND_MESSAGE_SYSTEM_INSTRUCTIONS),
     user: [
       `DIRECTIVE: ${directive.directive}`,
       `REASON: ${directive.reason ?? ''}`,
@@ -698,7 +709,7 @@ function validateArtifact(
 async function generateViaAnthropic(
   actionType: ConvictionDirective['action_type'],
   directive: ConvictionDirective,
-  system: string,
+  system: string | Array<Anthropic.TextBlockParam>,
   user: string,
   rawContext: string,
 ): Promise<ConvictionArtifact | null> {

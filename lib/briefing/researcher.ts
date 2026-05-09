@@ -13,6 +13,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
+import { buildPromptCachedSystem } from '@/lib/llm/anthropic-prompt-cache';
 import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
@@ -66,6 +67,10 @@ const RESEARCHER_MODEL = 'claude-haiku-4-5-20251001';
 const SIGNAL_LOOKBACK_DAYS = 30;
 const MAX_SIGNALS_FOR_PROMPT = 40;
 const RESEARCHER_TIMEOUT_MS = 15_000;
+const SYNTHESIS_SYSTEM_PROMPT =
+  'You are a research analyst finding non-obvious connections in a person\'s life data. You produce facts and their implications — never consulting advice. Do not reference Foldera, data pipelines, signal processing, or any internal infrastructure.';
+const ENRICHMENT_SYSTEM_PROMPT =
+  'You are a research assistant. Return only verifiable public facts with sources. If you are not confident in the information, return null.';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -275,7 +280,7 @@ export async function researchWinner(
       model: RESEARCHER_MODEL,
       max_tokens: 800,
       temperature: 0.1,
-      system: 'You are a research analyst finding non-obvious connections in a person\'s life data. You produce facts and their implications — never consulting advice. Do not reference Foldera, data pipelines, signal processing, or any internal infrastructure.',
+      system: buildPromptCachedSystem(SYNTHESIS_SYSTEM_PROMPT),
       messages: [{ role: 'user', content: synthesisPrompt }],
     });
 
@@ -375,7 +380,7 @@ export async function researchWinner(
           model: RESEARCHER_MODEL,
           max_tokens: 400,
           temperature: 0,
-          system: 'You are a research assistant. Return only verifiable public facts with sources. If you are not confident in the information, return null.',
+          system: buildPromptCachedSystem(ENRICHMENT_SYSTEM_PROMPT),
           messages: [{ role: 'user', content: enrichmentPrompt }],
         });
 

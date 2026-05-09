@@ -83,6 +83,22 @@ function anthropicResponse(content: string) {
   };
 }
 
+function getSystemBlocks(
+  request: { system?: string | Array<Record<string, unknown>> } | undefined,
+): Array<Record<string, unknown>> {
+  if (!request?.system) return [];
+  if (Array.isArray(request.system)) return request.system;
+  return [{ type: 'text', text: request.system }];
+}
+
+function getSystemText(
+  request: { system?: string | Array<Record<string, unknown>> } | undefined,
+): string {
+  return getSystemBlocks(request)
+    .map((block) => String(block.text ?? ''))
+    .join('\n');
+}
+
 const BASE_WRITE_DOCUMENT_DIRECTIVE: any = {
   action_type: 'write_document',
   directive: 'Address financial runway concern',
@@ -213,11 +229,20 @@ describe('artifact-generator — analysis dump leak prevention', () => {
       requires_search: false,
     } as any);
 
-    const firstCall = mockCreate.mock.calls[0]?.[0] as { system?: string; messages?: Array<{ content?: string }> };
-    expect(firstCall?.system ?? '').toContain('Foldera does not send status updates');
-    expect(firstCall?.system ?? '').toContain('one concrete yes/no ask OR one explicit owner assignment');
-    expect(firstCall?.system ?? '').toContain('one hard deadline');
-    expect(firstCall?.system ?? '').toContain('one explicit consequence of silence or non-response');
+    const firstCall = mockCreate.mock.calls[0]?.[0] as {
+      system?: string | Array<Record<string, unknown>>;
+      messages?: Array<{ content?: string }>;
+    };
+    const systemBlocks = getSystemBlocks(firstCall);
+    const systemText = getSystemText(firstCall);
+    expect(systemBlocks[0]).toMatchObject({
+      type: 'text',
+      cache_control: { type: 'ephemeral', ttl: '5m' },
+    });
+    expect(systemText).toContain('Foldera does not send status updates');
+    expect(systemText).toContain('one concrete yes/no ask OR one explicit owner assignment');
+    expect(systemText).toContain('one hard deadline');
+    expect(systemText).toContain('one explicit consequence of silence or non-response');
     expect(firstCall?.messages?.[0]?.content ?? '').toContain('finished decision email, not a recap');
   });
 
@@ -453,10 +478,23 @@ describe('artifact-generator — analysis dump leak prevention', () => {
       reason: 'If the owner is still missing after 2026-04-21, the runway packet slips.',
     });
 
-    const firstCall = mockCreate.mock.calls[0]?.[0] as { system?: string; messages?: Array<{ content?: string }> };
-    expect(firstCall?.system ?? '').toContain('Execution Brief');
-    expect(firstCall?.system ?? '').toContain('FINAL RECOMMENDATION, OWNER, NEXT PHYSICAL STEP, and CONSEQUENCE IF NO MOVEMENT');
-    expect(firstCall?.system ?? '').toContain('Do not assign homework');
+    const firstCall = mockCreate.mock.calls[0]?.[0] as {
+      system?: string | Array<Record<string, unknown>>;
+      messages?: Array<{ content?: string }>;
+    };
+    const systemBlocks = getSystemBlocks(firstCall);
+    const systemText = getSystemText(firstCall);
+    expect(systemBlocks[0]).toMatchObject({
+      type: 'text',
+      cache_control: { type: 'ephemeral', ttl: '5m' },
+    });
+    expect(systemBlocks[1]).toMatchObject({
+      type: 'text',
+    });
+    expect(systemBlocks[1]?.cache_control).toBeUndefined();
+    expect(systemText).toContain('Execution Brief');
+    expect(systemText).toContain('FINAL RECOMMENDATION, OWNER, NEXT PHYSICAL STEP, and CONSEQUENCE IF NO MOVEMENT');
+    expect(systemText).toContain('Do not assign homework');
     expect(firstCall?.messages?.[0]?.content ?? '').toContain('Never ask the user to do more research');
   });
 
@@ -704,9 +742,10 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     await generateArtifact('user-1', directive);
 
     expect(mockCreate).toHaveBeenCalled();
-    const firstCall = mockCreate.mock.calls[0]?.[0] as { system?: string };
-    expect(firstCall?.system ?? '').toMatch(/CALENDAR CONFLICTS ARE NOT VALID WRITE_DOCUMENT OUTPUTS ON THIS PATH/i);
-    expect(firstCall?.system ?? '').not.toMatch(/Numbered steps, each completable/i);
+    const firstCall = mockCreate.mock.calls[0]?.[0] as { system?: string | Array<Record<string, unknown>> };
+    const systemText = getSystemText(firstCall);
+    expect(systemText).toMatch(/CALENDAR CONFLICTS ARE NOT VALID WRITE_DOCUMENT OUTPUTS ON THIS PATH/i);
+    expect(systemText).not.toMatch(/Numbered steps, each completable/i);
   });
 
   it('renders a single interview-week execution brief from clustered signals and exclusion notes', async () => {

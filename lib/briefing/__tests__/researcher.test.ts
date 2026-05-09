@@ -56,13 +56,15 @@ vi.mock('@/lib/db/client', () => ({
 
 let mockAnthropicResponse: { text: string } = { text: '{"synthesis": null}' };
 let anthropicCallCount = 0;
+const anthropicRequests: Array<Record<string, unknown>> = [];
 
 vi.mock('@anthropic-ai/sdk', () => {
   return {
     default: class MockAnthropic {
       messages = {
-        create: async () => {
+        create: async (request: Record<string, unknown>) => {
           anthropicCallCount++;
+          anthropicRequests.push(request);
           return {
             content: [{ type: 'text' as const, text: mockAnthropicResponse.text }],
             usage: { input_tokens: 100, output_tokens: 50 },
@@ -133,6 +135,7 @@ describe('researcher', () => {
   beforeEach(async () => {
     mockSignals.length = 0;
     anthropicCallCount = 0;
+    anthropicRequests.length = 0;
     mockAnthropicResponse = { text: '{"synthesis": null}' };
     // Re-import to reset module-level singleton
     vi.resetModules();
@@ -182,6 +185,16 @@ describe('researcher', () => {
     expect(insight!.supporting_signals).toContain('sig-1');
     expect(insight!.window).toBeTruthy();
     expect(insight!.artifact_instructions).toBeTruthy();
+    expect(anthropicRequests[0]?.system).toEqual([
+      {
+        type: 'text',
+        text: 'You are a research analyst finding non-obvious connections in a person\'s life data. You produce facts and their implications — never consulting advice. Do not reference Foldera, data pipelines, signal processing, or any internal infrastructure.',
+        cache_control: {
+          type: 'ephemeral',
+          ttl: '5m',
+        },
+      },
+    ]);
   });
 
   it('returns insight without financial implications when no financial overlap exists', async () => {
