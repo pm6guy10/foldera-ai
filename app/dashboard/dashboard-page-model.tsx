@@ -34,6 +34,8 @@ export type DashboardAction = {
   discrepancy_card?: DiscrepancyCardFrame | null;
   discrepancy_quality?: DiscrepancyCardQualityResult | null;
   executionResult?: Record<string, unknown>;
+  detail_required?: boolean;
+  detail_url?: string;
 };
 
 export type DailyUtilitySlateItem = {
@@ -642,6 +644,20 @@ export function isVisibleDashboardAction(value: unknown): value is DashboardActi
     getDashboardActionHeadline(action).length > 0 ||
     getArtifactBody(getDashboardActionArtifact(action)).length > 0
   );
+}
+
+export function needsDashboardActionDetail(value: unknown): value is DashboardAction {
+  if (!value || typeof value !== 'object') return false;
+  const action = value as DashboardAction;
+  return asTrimmedString(action.id) !== null && action.detail_required === true;
+}
+
+export function isDashboardActionSummary(value: unknown): value is DashboardAction {
+  if (!needsDashboardActionDetail(value)) return false;
+  const action = value as DashboardAction;
+  if (dashboardActionContainsInternalFailureText(action)) return false;
+  if (!getDashboardDiscrepancyFrame(action)) return false;
+  return getDashboardActionHeadline(action).length > 0;
 }
 
 function isDailyUtilitySlateItem(value: unknown): value is DailyUtilitySlateItem {

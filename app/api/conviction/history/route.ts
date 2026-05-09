@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
+import { ACTION_HISTORY_SELECT } from '@/lib/conviction/action-read-shapes';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,8 +25,9 @@ type HistoryRow = {
   confidence: number | null;
   generated_at: string | null;
   directive_text: unknown;
-  artifact?: unknown;
-  execution_result?: unknown;
+  artifact_preview?: unknown;
+  is_no_send?: unknown;
+  no_send_reason?: unknown;
 };
 
 const USER_FACING_STATUSES = new Set(['pending_approval', 'approved', 'executed', 'skipped']);
@@ -47,20 +49,6 @@ function previewText(text: unknown): string {
   return t.length <= PREVIEW_LEN ? t : `${t.slice(0, PREVIEW_LEN)}…`;
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : null;
-}
-
-function firstPreviewableString(values: unknown[]): string {
-  for (const value of values) {
-    const preview = previewText(value);
-    if (preview) return preview;
-  }
-  return '';
-}
-
 function hasInternalFailureText(value: unknown): boolean {
   const text = previewText(value);
   if (!text) return false;
@@ -68,16 +56,7 @@ function hasInternalFailureText(value: unknown): boolean {
 }
 
 function hasNoSendOutcome(row: HistoryRow): boolean {
-  if (row.action_type === 'do_nothing') return true;
-
-  const executionResult = asRecord(row.execution_result);
-  if (!executionResult) return false;
-
-  if (executionResult.outcome_type === 'no_send') return true;
-  if (executionResult.no_send === true || asRecord(executionResult.no_send)) return true;
-
-  const generationLog = asRecord(executionResult.generation_log);
-  return generationLog?.outcome === 'no_send';
+  return row.action_type === 'do_nothing' || row.is_no_send === true;
 }
 
 function isUserFacingHistoryRow(row: HistoryRow): boolean {
@@ -85,40 +64,6 @@ function isUserFacingHistoryRow(row: HistoryRow): boolean {
   if (hasNoSendOutcome(row)) return false;
   if (hasInternalFailureText(row.directive_text)) return false;
   return true;
-}
-
-function readArtifactFromRow(row: HistoryRow): unknown {
-  const executionResult = asRecord(row.execution_result);
-  const executionArtifact = asRecord(executionResult?.artifact);
-  const columnArtifact = asRecord(row.artifact);
-  if (executionArtifact || columnArtifact) {
-    return { ...(executionArtifact ?? {}), ...(columnArtifact ?? {}) };
-  }
-  return row.artifact ?? executionResult?.artifact;
-}
-
-function artifactPreview(artifactValue: unknown): string {
-  const artifact = asRecord(artifactValue);
-  if (!artifact) return previewText(artifactValue);
-
-  const headline = firstPreviewableString([
-    artifact.title,
-    artifact.subject,
-    artifact.heading,
-    artifact.type,
-  ]);
-  const body = firstPreviewableString([
-    artifact.body,
-    artifact.content,
-    artifact.text,
-    artifact.context,
-    artifact.summary,
-    artifact.description,
-    artifact.message,
-    artifact.draft,
-  ]);
-
-  return previewText([headline, body].filter(Boolean).join(' - '));
 }
 
 export async function GET(request: Request) {
@@ -136,8 +81,8 @@ export async function GET(request: Request) {
     const supabase = createServerClient();
     const fetchLimit = Math.min(MAX_FETCH_LIMIT, Math.max(limit, limit * 3));
     const { data: rows, error } = await supabase
-      .from('tkg_actions')
-      .select('id, status, action_type, confidence, generated_at, directive_text, artifact, execution_result')
+      .from('tkg_action_summaries')
+      .select(ACTION_HISTORY_SELECT)
       .eq('user_id', userId)
       .order('generated_at', { ascending: false })
       .limit(fetchLimit);
@@ -150,7 +95,7 @@ export async function GET(request: Request) {
       .filter(isUserFacingHistoryRow)
       .slice(0, limit)
       .map((r) => {
-        const artifact_preview = artifactPreview(readArtifactFromRow(r));
+        const artifact_preview = previewText(r.artifact_preview);
         return {
           id: r.id,
           status: r.status,

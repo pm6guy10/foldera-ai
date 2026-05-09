@@ -72,6 +72,30 @@ describe('Daily Utility Slate', () => {
     );
   });
 
+  it('builds the same watch item from summary receipts without execution_result', () => {
+    const slate = buildDailyUtilitySlateFromReceipts([
+      {
+        id: 'no-send-summary-1',
+        action_type: 'do_nothing',
+        directive_text: 'Nothing cleared the bar today after evaluating candidates.',
+        reason:
+          'Selected candidate failed discrepancy-card quality: weak_risk; weak_next_action; reminder_without_risk',
+        status: 'skipped',
+        generated_at: '2026-05-06T13:43:52.405Z',
+        is_no_send: true,
+        no_send_reason:
+          'Selected candidate failed discrepancy-card quality: weak_risk; weak_next_action; reminder_without_risk',
+        generation_outcome: 'no_send',
+        outcome_type: 'no_send',
+      },
+    ]);
+
+    expect(slate?.watch_item?.title).toBe('No safe finished action today');
+    expect(slate?.watch_item?.no_action_reason).toContain(
+      'The strongest possible action did not prove a concrete consequence.',
+    );
+  });
+
   it('refuses to create a slate from empty receipts', () => {
     expect(buildDailyUtilitySlateFromReceipts([])).toBeNull();
     expect(buildDailyUtilitySlateFromReceipts([{ action_type: 'write_document' }])).toBeNull();

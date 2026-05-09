@@ -34,6 +34,10 @@ export type DailyUtilitySlateReceipt = {
   reason?: unknown;
   status?: unknown;
   generated_at?: unknown;
+  is_no_send?: unknown;
+  no_send_reason?: unknown;
+  generation_outcome?: unknown;
+  outcome_type?: unknown;
   execution_result?: unknown;
 };
 
@@ -179,7 +183,9 @@ function extractNoSafeReason(receipt: DailyUtilitySlateReceipt): string | null {
   const candidateDiscovery = asRecord(generationLog?.candidateDiscovery);
 
   const candidates = [
+    readString(receipt.no_send_reason),
     readString(receipt.reason),
+    readString(receipt.generation_outcome) === 'no_send' ? readString(receipt.reason) : null,
     readString(generationLog?.reason),
     readString(candidateDiscovery?.failureReason),
     readString(noSend?.reason),
@@ -193,6 +199,9 @@ function hasNoSendOutcome(receipt: DailyUtilitySlateReceipt): boolean {
   const generationLog = getGenerationLog(receipt);
   return (
     readString(receipt.action_type) === 'do_nothing' ||
+    receipt.is_no_send === true ||
+    readString(receipt.outcome_type) === 'no_send' ||
+    readString(receipt.generation_outcome) === 'no_send' ||
     executionResult?.outcome_type === 'no_send' ||
     generationLog?.outcome === 'no_send'
   );

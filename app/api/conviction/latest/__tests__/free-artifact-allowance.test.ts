@@ -20,6 +20,12 @@ type SupabaseMockOptions = {
   slateReceipts?: Record<string, unknown>[];
 };
 
+const PENDING_RANKING_SELECT = 'id, confidence, generated_at, status';
+const PENDING_SUMMARY_SELECT =
+  'id, status, action_type, confidence, generated_at, approved_at, executed_at, directive_text, reason, skip_reason, outcome_closed, artifact_type, artifact_title, brief_origin, artifact_preview, discrepancy_claim, discrepancy_contradiction, discrepancy_risk, discrepancy_evidence, discrepancy_next_action, discrepancy_why_now, discrepancy_source_refs, discrepancy_confidence, is_no_send, no_send_reason, generation_outcome, outcome_type';
+const SLATE_RECEIPT_SELECT =
+  'id, action_type, directive_text, reason, status, generated_at, is_no_send, no_send_reason, generation_outcome, outcome_type';
+
 const VALID_DISCREPANCY_CARD = {
   claim: 'Packet owner confirmation is ready for review.',
   contradiction:
@@ -77,19 +83,144 @@ function buildSupabaseMock(options: SupabaseMockOptions) {
   const pendingEqStatus = vi.fn().mockReturnValue({ order: pendingOrderConfidence });
   const pendingEqUser = vi.fn().mockReturnValue({ eq: pendingEqStatus });
 
+  const pendingSummaries = options.pendingActions.map((action) => {
+    const artifact =
+      action.artifact && typeof action.artifact === 'object'
+        ? (action.artifact as Record<string, unknown>)
+        : null;
+    const executionResult =
+      action.execution_result && typeof action.execution_result === 'object'
+        ? (action.execution_result as Record<string, unknown>)
+        : null;
+    const discrepancyCard =
+      executionResult?.discrepancy_card && typeof executionResult.discrepancy_card === 'object'
+        ? (executionResult.discrepancy_card as Record<string, unknown>)
+        : null;
+
+    return {
+      id: action.id,
+      status: action.status,
+      action_type: action.action_type,
+      confidence: action.confidence,
+      generated_at: action.generated_at,
+      approved_at: action.approved_at ?? null,
+      executed_at: action.executed_at ?? null,
+      directive_text: action.directive_text,
+      reason: action.reason,
+      skip_reason: action.skip_reason ?? null,
+      outcome_closed: action.outcome_closed ?? false,
+      artifact_type:
+        (typeof artifact?.type === 'string' ? artifact.type : null) ??
+        (typeof executionResult?.artifact === 'object' &&
+        executionResult.artifact &&
+        typeof (executionResult.artifact as Record<string, unknown>).type === 'string'
+          ? ((executionResult.artifact as Record<string, unknown>).type as string)
+          : null),
+      artifact_title:
+        (typeof artifact?.title === 'string' ? artifact.title : null) ??
+        (typeof artifact?.subject === 'string' ? artifact.subject : null) ??
+        (discrepancyCard && typeof discrepancyCard.claim === 'string' ? discrepancyCard.claim : null),
+      brief_origin:
+        typeof executionResult?.brief_origin === 'string' ? executionResult.brief_origin : null,
+      artifact_preview:
+        (typeof artifact?.content === 'string' ? artifact.content : null) ??
+        (typeof artifact?.body === 'string' ? artifact.body : null),
+      discrepancy_claim:
+        (discrepancyCard && typeof discrepancyCard.claim === 'string' ? discrepancyCard.claim : null) ??
+        action.directive_text,
+      discrepancy_contradiction:
+        discrepancyCard && typeof discrepancyCard.contradiction === 'string'
+          ? discrepancyCard.contradiction
+          : null,
+      discrepancy_risk:
+        discrepancyCard && typeof discrepancyCard.risk === 'string' ? discrepancyCard.risk : null,
+      discrepancy_evidence:
+        discrepancyCard && Array.isArray(discrepancyCard.evidence)
+          ? discrepancyCard.evidence
+          : Array.isArray(action.evidence)
+            ? action.evidence
+            : [],
+      discrepancy_next_action:
+        discrepancyCard && typeof discrepancyCard.next_action === 'string'
+          ? discrepancyCard.next_action
+          : null,
+      discrepancy_why_now:
+        discrepancyCard && typeof discrepancyCard.why_now === 'string'
+          ? discrepancyCard.why_now
+          : action.reason,
+      discrepancy_source_refs:
+        discrepancyCard && Array.isArray(discrepancyCard.source_refs)
+          ? discrepancyCard.source_refs
+          : [],
+      discrepancy_confidence:
+        discrepancyCard && typeof discrepancyCard.confidence === 'number'
+          ? discrepancyCard.confidence
+          : action.confidence,
+      is_no_send:
+        action.action_type === 'do_nothing' ||
+        executionResult?.outcome_type === 'no_send' ||
+        executionResult?.generation_log &&
+          typeof executionResult.generation_log === 'object' &&
+          (executionResult.generation_log as Record<string, unknown>).outcome === 'no_send',
+      no_send_reason:
+        typeof action.reason === 'string' ? action.reason : null,
+      generation_outcome:
+        executionResult?.generation_log &&
+        typeof executionResult.generation_log === 'object' &&
+        typeof (executionResult.generation_log as Record<string, unknown>).outcome === 'string'
+          ? ((executionResult.generation_log as Record<string, unknown>).outcome as string)
+          : null,
+      outcome_type:
+        typeof executionResult?.outcome_type === 'string' ? executionResult.outcome_type : null,
+    };
+  });
+
   let selectedPayloadId: unknown;
-  const pendingPayloadMaybeSingle = vi.fn().mockImplementation(() =>
+  const pendingSummaryMaybeSingle = vi.fn().mockImplementation(() =>
     Promise.resolve({
-      data: options.pendingActions.find((action) => action.id === selectedPayloadId) ?? null,
+      data: pendingSummaries.find((action) => action.id === selectedPayloadId) ?? null,
       error: null,
     }),
   );
-  const pendingPayloadEqId = vi.fn().mockImplementation((_column: string, value: unknown) => {
+  const pendingSummaryEqId = vi.fn().mockImplementation((_column: string, value: unknown) => {
     selectedPayloadId = value;
-    return { maybeSingle: pendingPayloadMaybeSingle };
+    return { maybeSingle: pendingSummaryMaybeSingle };
   });
-  const pendingPayloadEqStatus = vi.fn().mockReturnValue({ eq: pendingPayloadEqId });
-  const pendingPayloadEqUser = vi.fn().mockReturnValue({ eq: pendingPayloadEqStatus });
+  const pendingSummaryEqStatus = vi.fn().mockReturnValue({ eq: pendingSummaryEqId });
+  const pendingSummaryEqUser = vi.fn().mockReturnValue({ eq: pendingSummaryEqStatus });
+
+  const slateSummaries = (options.slateReceipts ?? [LATEST_NO_SEND_RECEIPT]).map((receipt) => {
+    const executionResult =
+      receipt.execution_result && typeof receipt.execution_result === 'object'
+        ? (receipt.execution_result as Record<string, unknown>)
+        : null;
+    const generationLog =
+      executionResult?.generation_log && typeof executionResult.generation_log === 'object'
+        ? (executionResult.generation_log as Record<string, unknown>)
+        : null;
+
+    return {
+      id: receipt.id,
+      action_type: receipt.action_type,
+      directive_text: receipt.directive_text,
+      reason: receipt.reason,
+      status: receipt.status,
+      generated_at: receipt.generated_at,
+      is_no_send:
+        receipt.action_type === 'do_nothing' ||
+        executionResult?.outcome_type === 'no_send' ||
+        generationLog?.outcome === 'no_send',
+      no_send_reason:
+        typeof receipt.reason === 'string'
+          ? receipt.reason
+          : typeof generationLog?.reason === 'string'
+            ? generationLog.reason
+            : null,
+      generation_outcome: typeof generationLog?.outcome === 'string' ? generationLog.outcome : null,
+      outcome_type:
+        typeof executionResult?.outcome_type === 'string' ? executionResult.outcome_type : null,
+    };
+  });
 
   const tkgActionsSelect = vi
     .fn()
@@ -97,34 +228,35 @@ function buildSupabaseMock(options: SupabaseMockOptions) {
       if (config?.head) {
         return { eq: consumedCountEqUser };
       }
-      if (columns === 'id, confidence, generated_at, status') {
+      if (columns === PENDING_RANKING_SELECT) {
         return { eq: pendingEqUser };
-      }
-      if (
-        columns ===
-        'id, action_type, directive_text, reason, confidence, evidence, status, generated_at, approved_at, executed_at, execution_result, artifact'
-      ) {
-        return { eq: pendingPayloadEqUser };
-      }
-      if (
-        columns ===
-        'id, action_type, directive_text, reason, status, generated_at, execution_result'
-      ) {
-        return {
-          eq: vi.fn().mockReturnValue({
-            in: vi.fn().mockReturnValue({
-              order: vi.fn().mockReturnValue({
-                limit: vi.fn().mockResolvedValue({
-                  data: options.slateReceipts ?? [LATEST_NO_SEND_RECEIPT],
-                  error: null,
-                }),
-              }),
-            }),
-          }),
-        };
       }
       return { eq: pendingEqUser };
     });
+
+  const summarySelect = vi.fn().mockImplementation((columns: string) => {
+    if (columns === PENDING_RANKING_SELECT) {
+      return { eq: pendingEqUser };
+    }
+    if (columns === PENDING_SUMMARY_SELECT) {
+      return { eq: pendingSummaryEqUser };
+    }
+    if (columns === SLATE_RECEIPT_SELECT) {
+      return {
+        eq: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue({
+                data: slateSummaries,
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      };
+    }
+    return { eq: pendingEqUser };
+  });
 
   const userSubscriptionUpdateEq = vi.fn().mockResolvedValue({ error: null });
   const userSubscriptionUpdate = vi.fn().mockReturnValue({ eq: userSubscriptionUpdateEq });
@@ -135,6 +267,7 @@ function buildSupabaseMock(options: SupabaseMockOptions) {
 
   const from = vi.fn().mockImplementation((table: string) => {
     if (table === 'tkg_actions') return { select: tkgActionsSelect };
+    if (table === 'tkg_action_summaries') return { select: summarySelect };
     if (table === 'user_subscriptions') return { update: userSubscriptionUpdate };
     throw new Error(`Unexpected table: ${table}`);
   });
@@ -149,8 +282,9 @@ function buildSupabaseMock(options: SupabaseMockOptions) {
     spies: {
       inConsumedStatuses,
       pendingLimit,
-      pendingPayloadMaybeSingle,
+      pendingSummaryMaybeSingle,
       tkgActionsSelect,
+      summarySelect,
       getUserById,
     },
   };
@@ -219,13 +353,15 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(body.approved_count).toBe(0);
     expect(body.free_artifact_remaining).toBe(true);
     expect(body.artifact_paywall_locked).toBe(false);
+    expect(body.artifact).toBeUndefined();
+    expect(body.executionResult).toBeUndefined();
+    expect(body.detail_required).toBe(true);
+    expect(body.detail_url).toBe('/api/conviction/actions/action-1');
     expect(supabase.spies.inConsumedStatuses).toHaveBeenCalledWith('status', ['approved', 'executed', 'skipped']);
-    expect(supabase.spies.tkgActionsSelect).toHaveBeenCalledWith('id, confidence, generated_at, status');
+    expect(supabase.spies.summarySelect).toHaveBeenCalledWith(PENDING_RANKING_SELECT);
     expect(supabase.spies.pendingLimit).toHaveBeenCalledWith(5);
-    expect(supabase.spies.tkgActionsSelect).toHaveBeenCalledWith(
-      'id, action_type, directive_text, reason, confidence, evidence, status, generated_at, approved_at, executed_at, execution_result, artifact',
-    );
-    expect(supabase.spies.pendingPayloadMaybeSingle).toHaveBeenCalledTimes(1);
+    expect(supabase.spies.summarySelect).toHaveBeenCalledWith(PENDING_SUMMARY_SELECT);
+    expect(supabase.spies.pendingSummaryMaybeSingle).toHaveBeenCalledTimes(1);
     expect(mockBuildContextGreeting).not.toHaveBeenCalled();
     expect(supabase.spies.getUserById).not.toHaveBeenCalled();
   });
@@ -443,8 +579,9 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
 
     expect(source).not.toContain(".select('*')");
     expect(source).toContain("const PENDING_RANKING_LIMIT = 5");
-    expect(source).toContain("const PENDING_RANKING_SELECT = 'id, confidence, generated_at, status'");
-    expect(source).toContain('const PENDING_PAYLOAD_SELECT =');
+    expect(source).toContain('const PENDING_RANKING_SELECT = ACTION_RANKING_SELECT;');
+    expect(source).toContain('const PENDING_SUMMARY_SELECT =');
+    expect(source).not.toContain('execution_result, artifact');
   });
 
   it('does not run winner-truth diagnostics on the normal dashboard latest route', async () => {

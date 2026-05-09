@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   getDashboardDiscrepancyFrame,
   inferSourcePills,
+  isDashboardActionSummary,
   isVisibleDashboardAction,
+  needsDashboardActionDetail,
   type DashboardAction,
 } from '../dashboard-page-model';
 
@@ -70,5 +72,28 @@ describe('dashboard discrepancy visibility contract', () => {
 
     expect(isVisibleDashboardAction(weakAction)).toBe(false);
     expect(getDashboardDiscrepancyFrame(weakAction)).toBeNull();
+  });
+
+  it('recognizes a summary-only latest payload that still needs detail by id', () => {
+    const summaryOnlyAction: DashboardAction = {
+      id: 'action-summary',
+      directive: 'Finalize the MAS3 interview packet owner.',
+      action_type: 'write_document',
+      reason: 'The packet is due today, but the owner is still missing.',
+      discrepancy_card: VALID_DISCREPANCY_ACTION.discrepancy_card,
+      discrepancy_quality: {
+        passes: true,
+        quality_score: 0.9,
+        blocked_by: [],
+        pattern_keys: ['discrepancy:interview_role_fit', 'action:write_document'],
+        rejection_reason: null,
+      },
+      detail_required: true,
+      detail_url: '/api/conviction/actions/action-summary',
+    };
+
+    expect(isVisibleDashboardAction(summaryOnlyAction)).toBe(false);
+    expect(needsDashboardActionDetail(summaryOnlyAction)).toBe(true);
+    expect(isDashboardActionSummary(summaryOnlyAction)).toBe(true);
   });
 });

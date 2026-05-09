@@ -112,6 +112,17 @@ function matchApiPath(apiPath: string) {
   };
 }
 
+function matchApiPrefix(apiPrefix: string) {
+  return (url: URL | string): boolean => {
+    try {
+      const parsed = typeof url === 'string' ? new URL(url) : url;
+      return parsed.pathname.startsWith(apiPrefix);
+    } catch {
+      return false;
+    }
+  };
+}
+
 async function seedAuthenticatedSession(page: Page) {
   const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) {
@@ -145,6 +156,7 @@ async function setupDashboardMocks(
   options: {
     mockClipboard?: boolean;
     latestResponse?: unknown;
+    detailResponse?: unknown;
     dailyValueResponse?: unknown;
     integrationStatusResponse?: unknown;
   } = {},
@@ -181,6 +193,7 @@ async function setupDashboardMocks(
 
   let signOutCallCount = 0;
   const executeDecisions: string[] = [];
+  let detailRequestCount = 0;
 
   await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
   await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
@@ -241,6 +254,14 @@ async function setupDashboardMocks(
   );
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
   await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(options.latestResponse ?? DIRECTIVE_RESPONSE));
+  await page.route(matchApiPrefix('/api/conviction/actions/'), async (route) => {
+    detailRequestCount += 1;
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: json(options.detailResponse ?? DIRECTIVE_RESPONSE),
+    });
+  });
   await page.route(
     matchApiPath('/api/conviction/daily-value'),
     fulfillJson(options.dailyValueResponse ?? { daily_utility_slate: null }),
@@ -276,6 +297,7 @@ async function setupDashboardMocks(
   return {
     executeDecisions,
     getSignOutCallCount: () => signOutCallCount,
+    getDetailRequestCount: () => detailRequestCount,
   };
 }
 
@@ -477,6 +499,40 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
       'approve_recorded',
     );
     await expect.poll(() => refs.executeDecisions.filter((decision) => decision === 'approve').length).toBe(1);
+  });
+
+  test('summary-only latest payload stays cheap until the user opens the finished artifact detail', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const refs = await setupDashboardMocks(page, {
+      latestResponse: {
+        id: DIRECTIVE_RESPONSE.id,
+        directive: DIRECTIVE_RESPONSE.directive,
+        action_type: DIRECTIVE_RESPONSE.action_type,
+        confidence: DIRECTIVE_RESPONSE.confidence,
+        reason: DIRECTIVE_RESPONSE.reason,
+        status: DIRECTIVE_RESPONSE.status,
+        approved_count: 1,
+        is_subscribed: true,
+        free_artifact_remaining: true,
+        artifact_paywall_locked: false,
+        finished_artifact_verdict: 'strict_artifact_selected',
+        discrepancy_card: DIRECTIVE_RESPONSE.discrepancy_card,
+        discrepancy_quality: DIRECTIVE_RESPONSE.discrepancy_quality,
+        detail_required: true,
+        detail_url: `/api/conviction/actions/${DIRECTIVE_RESPONSE.id}`,
+      },
+      detailResponse: DIRECTIVE_RESPONSE,
+    });
+    await page.goto('/dashboard');
+
+    await expect.poll(() => refs.getDetailRequestCount()).toBe(0);
+    await expect(page.getByText(/Open the finished artifact to inspect the exact draft before acting/i)).toBeVisible();
+    await page.getByRole('button', { name: /open finished work/i }).click();
+    await expect.poll(() => refs.getDetailRequestCount()).toBe(1);
+    await expect(page.getByTestId('dashboard-brief-draft-section')).toContainText('Ready text');
+    await expect(page.getByTestId('dashboard-document-body')).toContainText(
+      'Following up on the update from yesterday.',
+    );
   });
 
   test('snooze action posts skip decision', async ({ page }) => {

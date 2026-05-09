@@ -317,7 +317,10 @@ export function DailyBriefCard({
       </header>
 
       <div className={`${dashboardBodyPad} ${dashboardBodyStack}`}>
-        <section className={`${compact ? 'gap-4' : dashboardSectionGap} grid grid-cols-[auto_minmax(0,1fr)] items-start`}>
+        <section
+          className={`${compact ? 'gap-4' : dashboardSectionGap} grid grid-cols-[auto_minmax(0,1fr)] items-start`}
+          data-testid="dashboard-brief-directive-section"
+        >
           <div className="flex h-11 w-11 items-center justify-center rounded-[16px] border border-cyan-400/20 bg-cyan-400/6 text-accent">
             <DirectiveIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
           </div>
@@ -341,7 +344,10 @@ export function DailyBriefCard({
           </div>
         </section>
 
-        <section className={`grid grid-cols-[auto_minmax(0,1fr)] items-start ${dashboardSectionGap} border-t ${divider} ${dashboardSectionTop}`}>
+        <section
+          className={`grid grid-cols-[auto_minmax(0,1fr)] items-start ${dashboardSectionGap} border-t ${divider} ${dashboardSectionTop}`}
+          data-testid="dashboard-brief-why-section"
+        >
           <div className="flex h-11 w-11 items-center justify-center rounded-[16px] border border-amber-400/20 bg-amber-400/6 text-amber-400">
             <WhyIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
           </div>
@@ -351,7 +357,10 @@ export function DailyBriefCard({
           </div>
         </section>
 
-        <section className={`grid grid-cols-[auto_minmax(0,1fr)] items-start ${dashboardSectionGap} border-t ${divider} ${dashboardSectionTop}`}>
+        <section
+          className={`grid grid-cols-[auto_minmax(0,1fr)] items-start ${dashboardSectionGap} border-t ${divider} ${dashboardSectionTop}`}
+          data-testid="dashboard-brief-draft-section"
+        >
           <div className="flex h-11 w-11 items-center justify-center rounded-[16px] border border-white/8 bg-white/[0.02] text-text-secondary">
             <DraftIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
           </div>
@@ -361,7 +370,10 @@ export function DailyBriefCard({
           </div>
         </section>
 
-        <section className={`border-t ${divider} ${dashboardSectionTop}`}>
+        <section
+          className={`border-t ${divider} ${dashboardSectionTop}`}
+          data-testid="dashboard-brief-source-section"
+        >
           <div className="flex items-center gap-3">
             <SourceIcon className="h-5 w-5 text-text-secondary" strokeWidth={2} aria-hidden="true" />
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">{sourceLabel}</p>

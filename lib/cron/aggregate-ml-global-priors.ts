@@ -22,6 +22,50 @@ function smoothedRate(agg: Agg): number {
   return (pos + 1) / (total + 2);
 }
 
+async function insertGlobalPrior(
+  supabase: ReturnType<typeof createServerClient>,
+  payload: {
+    bucket_key: string;
+    approve_count: number;
+    skip_count: number;
+    total_count: number;
+    approve_rate: number;
+    updated_at: string;
+    approved_count: number;
+    skipped_count: number;
+    rejected_count: number;
+    executed_count: number;
+    failed_count: number;
+    total_labeled: number;
+    smoothed_approve_rate: number;
+  },
+) {
+  const primaryInsert = await supabase.from('tkg_directive_ml_global_priors').insert({
+    bucket_key: payload.bucket_key,
+    approve_count: payload.approve_count,
+    skip_count: payload.skip_count,
+    total_count: payload.total_count,
+    approve_rate: payload.approve_rate,
+    updated_at: payload.updated_at,
+  });
+  if (!primaryInsert.error) {
+    return null;
+  }
+
+  const fallbackInsert = await supabase.from('tkg_directive_ml_global_priors').insert({
+    bucket_key: payload.bucket_key,
+    approved_count: payload.approved_count,
+    skipped_count: payload.skipped_count,
+    rejected_count: payload.rejected_count,
+    executed_count: payload.executed_count,
+    failed_count: payload.failed_count,
+    total_labeled: payload.total_labeled,
+    smoothed_approve_rate: payload.smoothed_approve_rate,
+    updated_at: payload.updated_at,
+  });
+  return fallbackInsert.error;
+}
+
 export async function runAggregateMlGlobalPriors(): Promise<{
   bucketsWritten: number;
   snapshotsLabeled: number;
@@ -89,8 +133,13 @@ export async function runAggregateMlGlobalPriors(): Promise<{
     if (total < MIN_BUCKET_SAMPLES) continue;
 
     const smoothed_approve_rate = smoothedRate(agg);
-    const { error: insErr } = await supabase.from('tkg_directive_ml_global_priors').insert({
+    const insErr = await insertGlobalPrior(supabase, {
       bucket_key,
+      approve_count: agg.approved + agg.executed,
+      skip_count: agg.skipped + agg.rejected + agg.failed,
+      total_count: total,
+      approve_rate: smoothed_approve_rate,
+      updated_at: now,
       approved_count: agg.approved,
       skipped_count: agg.skipped,
       rejected_count: agg.rejected,
@@ -98,7 +147,6 @@ export async function runAggregateMlGlobalPriors(): Promise<{
       failed_count: agg.failed,
       total_labeled: total,
       smoothed_approve_rate,
-      updated_at: now,
     });
     if (!insErr) bucketsWritten++;
   }

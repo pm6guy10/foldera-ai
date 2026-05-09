@@ -1,9 +1,8 @@
 /**
  * GET /api/conviction/latest
  *
- * Returns the most recent tkg_actions row with status=pending_approval
- * for the authenticated user. If nothing is pending, returns 200 with
- * a context greeting only so the dashboard can render its empty state.
+ * Returns the highest-confidence pending action summary for the authenticated
+ * user. Heavy artifact payloads stay behind the per-action detail route.
  */
 
 import { NextResponse } from 'next/server';
@@ -13,21 +12,23 @@ import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { buildContextGreeting } from '@/lib/briefing/context-builder';
 import { CONFIDENCE_SEND_THRESHOLD } from '@/lib/config/constants';
 import { getSubscriptionStatus } from '@/lib/auth/subscription';
-import {
-  buildDiscrepancyFrameFromActionPayload,
-  evaluateDiscrepancyCardFrame,
-} from '@/lib/briefing/discrepancy-card-frame';
+import { evaluateDiscrepancyCardFrame } from '@/lib/briefing/discrepancy-card-frame';
 import { buildDailyUtilitySlateFromReceipts } from '@/lib/briefing/daily-utility-slate';
+import {
+  ACTION_RANKING_SELECT,
+  ACTION_SLATE_SELECT,
+  ACTION_SUMMARY_SELECT,
+  buildDiscrepancyCardFromSummary,
+  type ActionSummaryRow,
+} from '@/lib/conviction/action-read-shapes';
 
 export const dynamic = 'force-dynamic';
 const MIN_PENDING_CONFIDENCE = CONFIDENCE_SEND_THRESHOLD;
 const PENDING_RANKING_LIMIT = 5;
 const FREE_ARTIFACT_ALLOWANCE = 3;
-const PENDING_RANKING_SELECT = 'id, confidence, generated_at, status';
-const PENDING_PAYLOAD_SELECT =
-  'id, action_type, directive_text, reason, confidence, evidence, status, generated_at, approved_at, executed_at, execution_result, artifact';
-const SLATE_RECEIPT_SELECT =
-  'id, action_type, directive_text, reason, status, generated_at, execution_result';
+const PENDING_RANKING_SELECT = ACTION_RANKING_SELECT;
+const PENDING_SUMMARY_SELECT = ACTION_SUMMARY_SELECT;
+const SLATE_RECEIPT_SELECT = ACTION_SLATE_SELECT;
 const CONSUMED_FREE_ARTIFACT_STATUSES = ['approved', 'executed', 'skipped'] as const;
 const SLATE_RECEIPT_STATUSES = ['skipped', 'executed', 'approved'] as const;
 const NO_STORE_HEADERS = {
@@ -61,6 +62,18 @@ function isPendingRankingRow(value: unknown): value is PendingRankingRow {
   return typeof row.id === 'string' && typeof row.confidence === 'number';
 }
 
+function asString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function hasSummaryArtifact(action: ActionSummaryRow | null | undefined): boolean {
+  return Boolean(
+    asString(action?.artifact_type) ||
+      asString(action?.artifact_title) ||
+      asString(action?.artifact_preview),
+  );
+}
+
 async function getConsumedFreeArtifactCount(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
@@ -83,7 +96,7 @@ async function buildDailyUtilitySlatePayload(
 ) {
   try {
     const { data, error } = await supabase
-      .from('tkg_actions')
+      .from('tkg_action_summaries')
       .select(SLATE_RECEIPT_SELECT)
       .eq('user_id', userId)
       .in('status', [...SLATE_RECEIPT_STATUSES])
@@ -104,35 +117,7 @@ async function buildDailyUtilitySlatePayload(
   }
 }
 
-/**
- * Merge execution_result.artifact with the persisted `artifact` column (column wins),
- * matching the brain-receipt / persistence path so ranking and the dashboard see the same payload.
- */
-function extractArtifact(action: Record<string, unknown>): Record<string, unknown> | undefined {
-  const executionResult =
-    action.execution_result && typeof action.execution_result === 'object'
-      ? (action.execution_result as Record<string, unknown>)
-      : null;
-
-  const erArtifact =
-    executionResult?.artifact && typeof executionResult.artifact === 'object'
-      ? (executionResult.artifact as Record<string, unknown>)
-      : {};
-
-  const colArtifact =
-    action.artifact && typeof action.artifact === 'object'
-      ? (action.artifact as Record<string, unknown>)
-      : {};
-
-  const merged = { ...erArtifact, ...colArtifact };
-  if (Object.keys(merged).length === 0) {
-    return undefined;
-  }
-  return merged;
-}
-
 export async function GET(request: Request) {
-  // Auth
   const auth = await resolveUser(request);
   if (auth instanceof NextResponse) return auth;
   const { userId } = auth;
@@ -155,7 +140,7 @@ export async function GET(request: Request) {
     })();
 
     const { data: candidates, error } = await supabase
-      .from('tkg_actions')
+      .from('tkg_action_summaries')
       .select(PENDING_RANKING_SELECT)
       .eq('user_id', userId)
       .eq('status', 'pending_approval')
@@ -189,29 +174,29 @@ export async function GET(request: Request) {
     );
     const selectedCandidate = rankedCandidates[0];
 
-    let action: Record<string, unknown> | null = null;
+    let selectedAction: ActionSummaryRow | null = null;
     if (selectedCandidate?.id) {
-      const { data: selectedAction, error: selectedActionError } = await supabase
-        .from('tkg_actions')
-        .select(PENDING_PAYLOAD_SELECT)
+      const { data: selectedSummary, error: selectedSummaryError } = await supabase
+        .from('tkg_action_summaries')
+        .select(PENDING_SUMMARY_SELECT)
         .eq('user_id', userId)
         .eq('status', 'pending_approval')
         .eq('id', selectedCandidate.id)
         .maybeSingle();
 
-      if (selectedActionError) {
-        throw new Error(selectedActionError.message ?? JSON.stringify(selectedActionError));
+      if (selectedSummaryError) {
+        throw new Error(selectedSummaryError.message ?? JSON.stringify(selectedSummaryError));
       }
 
-      if (selectedAction && extractArtifact(selectedAction as Record<string, unknown>)) {
-        action = selectedAction as Record<string, unknown>;
+      if (selectedSummary) {
+        selectedAction = selectedSummary as ActionSummaryRow;
       }
     }
 
     let contextGreeting: string | null = null;
     let accountCreatedAt: string | null = null;
 
-    if (!action) {
+    if (!selectedAction) {
       try {
         contextGreeting = await buildContextGreeting(userId);
       } catch {
@@ -241,15 +226,9 @@ export async function GET(request: Request) {
       });
     }
 
-    const artifact = extractArtifact(action as Record<string, unknown>);
-    const artifactPaywallLocked = Boolean(artifact) && !proUnlocked && !freeArtifactRemaining;
-    const discrepancyCard = buildDiscrepancyFrameFromActionPayload({
-      ...action,
-      artifact,
-      executionResult: action.execution_result,
-    });
+    const discrepancyCard = buildDiscrepancyCardFromSummary(selectedAction);
     const discrepancyQuality = evaluateDiscrepancyCardFrame(discrepancyCard);
-    if (!discrepancyCard || !discrepancyQuality.passes) {
+    if (!hasSummaryArtifact(selectedAction) || !discrepancyCard || !discrepancyQuality.passes) {
       try {
         contextGreeting = await buildContextGreeting(userId);
       } catch {
@@ -269,35 +248,37 @@ export async function GET(request: Request) {
         daily_utility_slate: dailyUtilitySlate,
         no_safe_artifact_reason: discrepancyQuality.rejection_reason ?? 'missing_discrepancy_card',
         blocked_latest_action: {
-          id: action.id,
-          title: action.directive_text,
+          id: selectedAction.id,
+          title: selectedAction.directive_text,
           blocked_by: discrepancyQuality.blocked_by,
           rejection_reason: discrepancyQuality.rejection_reason ?? 'missing_discrepancy_card',
         },
       });
     }
 
-    // Map DB row → ConvictionAction shape
+    const artifactPaywallLocked = hasSummaryArtifact(selectedAction) && !proUnlocked && !freeArtifactRemaining;
     return jsonNoStore({
-      id:              action.id,
+      id: selectedAction.id,
       userId,
-      directive:       action.directive_text,
-      action_type:     action.action_type,
-      confidence:      action.confidence,
-      reason:          action.reason,
-      evidence:        action.evidence ?? [],
-      status:          action.status,
-      generatedAt:     action.generated_at,
-      approvedAt:      action.approved_at ?? undefined,
-      executedAt:      action.executed_at ?? undefined,
-      executionResult: action.execution_result ?? undefined,
-      artifact,
+      directive: selectedAction.directive_text,
+      action_type: selectedAction.action_type,
+      confidence: selectedAction.confidence,
+      reason: selectedAction.reason,
+      status: selectedAction.status,
+      generatedAt: selectedAction.generated_at,
+      approvedAt: selectedAction.approved_at ?? undefined,
+      executedAt: selectedAction.executed_at ?? undefined,
       discrepancy_card: discrepancyCard,
       discrepancy_quality: discrepancyQuality,
+      artifact_type: selectedAction.artifact_type ?? undefined,
+      artifact_title: selectedAction.artifact_title ?? undefined,
+      brief_origin: selectedAction.brief_origin ?? undefined,
+      detail_required: true,
+      detail_url: `/api/conviction/actions/${selectedAction.id}`,
       finished_artifact_verdict: 'strict_artifact_selected',
       daily_utility_slate: null,
-      context_greeting: contextGreeting,
-      account_created_at: accountCreatedAt,
+      context_greeting: null,
+      account_created_at: null,
       approved_count: consumedFreeArtifactCount,
       is_subscribed: proUnlocked,
       free_artifact_remaining: freeArtifactRemaining,

@@ -42,9 +42,11 @@ import {
   getDateLabel,
   getGreetingLabel,
   inferSourcePills,
+  isDashboardActionSummary,
   isDailyUtilitySlate,
   isVisibleDashboardAction,
   isWriteDocumentAction,
+  needsDashboardActionDetail,
   normalizeDashboardPanel,
   normalizeIntegrationProvider,
   shouldReconcileExecuteFailure,
@@ -74,6 +76,7 @@ export default function DashboardPage() {
   const [historyItems, setHistoryItems] = useState<DashboardHistoryItem[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [artifactPaywallLocked, setArtifactPaywallLocked] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [statusNotice, setStatusNotice] = useState<DashboardStatusNotice | null>(null);
   const [outcomeSubmitting, setOutcomeSubmitting] = useState<null | 'worked' | 'didnt_work'>(
@@ -129,7 +132,10 @@ export default function DashboardPage() {
         return { action: null, dailyUtilitySlate: null, loaded: false };
       }
 
-      const visibleAction = isVisibleDashboardAction(latest) ? (latest as DashboardAction) : null;
+      const visibleAction =
+        isVisibleDashboardAction(latest) || isDashboardActionSummary(latest)
+          ? (latest as DashboardAction)
+          : null;
       const action =
         visibleAction && !locallyHiddenActionIds.has(visibleAction.id) ? visibleAction : null;
       let slate =
@@ -475,6 +481,31 @@ export default function DashboardPage() {
     [action, approvalEmailSendEnabled, executing, load],
   );
 
+  const openActionDetail = useCallback(async () => {
+    if (!action || !needsDashboardActionDetail(action) || action.artifact || detailLoading) return;
+    setDetailLoading(true);
+    try {
+      const detailUrl = action.detail_url ?? `/api/conviction/actions/${action.id}`;
+      const response = await fetch(detailUrl, { cache: 'no-store' });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !isVisibleDashboardAction(payload)) {
+        setStatusNotice({
+          id: 'detail_load_failed',
+          message: 'Could not load finished work right now.',
+        });
+        return;
+      }
+      setAction(payload);
+    } catch {
+      setStatusNotice({
+        id: 'detail_load_failed',
+        message: 'Could not load finished work right now.',
+      });
+    } finally {
+      setDetailLoading(false);
+    }
+  }, [action, detailLoading]);
+
   const submitOutcome = useCallback(
     async (outcome: 'worked' | 'didnt_work') => {
       if (!executedActionId || outcomeSubmitting || outcomeRecorded) return;
@@ -559,6 +590,7 @@ export default function DashboardPage() {
   const sidebarUserName = firstName ?? sessionName;
   const writeDocument = isWriteDocumentAction(action);
   const showArtifactBlur = Boolean(action?.artifact) && artifactPaywallLocked;
+  const summaryNeedsDetail = Boolean(action && needsDashboardActionDetail(action) && !action.artifact);
   const discrepancyFrame = getDashboardDiscrepancyFrame(action);
   const artifactTitle =
     discrepancyFrame?.claim ?? getDashboardActionHeadline(action);
@@ -694,6 +726,15 @@ export default function DashboardPage() {
           </p>
           <div className="mt-2">{artifactBodyContent}</div>
         </section>
+      ) : summaryNeedsDetail ? (
+        <section>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+            Finished work
+          </p>
+          <div className="mt-2 rounded-[16px] border border-border bg-panel-raised p-4 text-sm text-text-secondary">
+            Open the finished artifact to inspect the exact draft before acting.
+          </div>
+        </section>
       ) : null}
     </div>
   ) : artifactBody ? (
@@ -709,22 +750,29 @@ export default function DashboardPage() {
 
   const cardActions = action
     ? [
-        {
-          label: copyActionLabel,
-          kind: 'secondary' as const,
-          onClick: () => void copyDraft(),
-        },
+        ...(summaryNeedsDetail
+          ? [{
+              label: detailLoading ? 'Opening…' : 'Open finished work',
+              kind: 'secondary' as const,
+              onClick: () => void openActionDetail(),
+              disabled: detailLoading,
+            }]
+          : [{
+              label: copyActionLabel,
+              kind: 'secondary' as const,
+              onClick: () => void copyDraft(),
+            }]),
         {
           label: skipActionLabel,
           kind: 'amber' as const,
           onClick: () => void runDecision('skip'),
-          disabled: executing,
+          disabled: executing || detailLoading,
         },
         {
           label: primaryActionLabel,
           kind: 'primary' as const,
           onClick: () => void runDecision('approve'),
-          disabled: executing,
+          disabled: executing || detailLoading,
           dataTestId: 'dashboard-primary-action',
         },
       ]

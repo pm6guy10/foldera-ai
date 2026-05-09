@@ -41,11 +41,10 @@ describe('GET /api/conviction/history', () => {
           confidence: 77,
           generated_at: '2026-04-01T12:00:00Z',
           directive_text: 'Reach out to Sam about the proposal deadline tomorrow.',
-          artifact: {
-            subject: 'Proposal deadline',
-            body: 'Hi Sam — checking whether the proposal is still on track before tomorrow.',
-          },
-          execution_result: null,
+          artifact_preview:
+            'Proposal deadline - Hi Sam — checking whether the proposal is still on track before tomorrow.',
+          is_no_send: false,
+          no_send_reason: null,
         },
       ],
       error: null,
@@ -79,7 +78,7 @@ describe('GET /api/conviction/history', () => {
     expect(body.items[0].artifact_preview).toContain('Proposal deadline');
     expect(body.items[0].artifact_preview).toContain('checking whether the proposal');
     expect(mockSelect).toHaveBeenCalledWith(
-      'id, status, action_type, confidence, generated_at, directive_text, artifact, execution_result',
+      'id, status, action_type, confidence, generated_at, directive_text, artifact_preview, is_no_send, no_send_reason',
     );
     expect(mockEq).toHaveBeenCalledWith('user_id', 'u1');
   });
@@ -95,11 +94,9 @@ describe('GET /api/conviction/history', () => {
           confidence: 0,
           generated_at: '2026-04-02T12:00:00Z',
           directive_text: 'GENERATION_LOOP: All ranked candidates blocked by missing_current_fact',
-          artifact: null,
-          execution_result: {
-            outcome_type: 'no_send',
-            no_send: { reason: 'missing_current_fact' },
-          },
+          artifact_preview: null,
+          is_no_send: true,
+          no_send_reason: 'missing_current_fact',
         },
         {
           id: 'failed-1',
@@ -108,10 +105,9 @@ describe('GET /api/conviction/history', () => {
           confidence: 12,
           generated_at: '2026-04-02T11:00:00Z',
           directive_text: 'Directive rejected by persistence validation: weak_next_action',
-          artifact: null,
-          execution_result: {
-            generation_log: { outcome: 'no_send' },
-          },
+          artifact_preview: null,
+          is_no_send: false,
+          no_send_reason: null,
         },
         {
           id: 'real-1',
@@ -120,13 +116,10 @@ describe('GET /api/conviction/history', () => {
           confidence: 79,
           generated_at: '2026-04-02T10:00:00Z',
           directive_text: 'Save the job seeker account transition packet before the deadline.',
-          artifact: null,
-          execution_result: {
-            artifact: {
-              title: 'Job seeker account transition packet',
-              content: 'A concise packet with the deadline, required save action, and source trail.',
-            },
-          },
+          artifact_preview:
+            'Job seeker account transition packet - A concise packet with the deadline, required save action, and source trail.',
+          is_no_send: false,
+          no_send_reason: null,
         },
       ],
       error: null,
@@ -155,5 +148,14 @@ describe('GET /api/conviction/history', () => {
     expect(body.items[0].directive_preview).toContain('job seeker account transition');
     expect(body.items[0].artifact_preview).toContain('deadline');
     expect(JSON.stringify(body.items)).not.toMatch(/GENERATION_LOOP|missing_current_fact|weak_next_action|do_nothing/i);
+  });
+
+  it('keeps the history summary query off artifact and execution_result', async () => {
+    const source = await import('node:fs/promises').then((fs) =>
+      fs.readFile(new URL('../route.ts', import.meta.url), 'utf8'),
+    );
+
+    expect(source).toContain("from('tkg_action_summaries')");
+    expect(source).not.toContain('artifact, execution_result');
   });
 });
