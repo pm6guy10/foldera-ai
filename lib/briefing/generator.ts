@@ -1151,6 +1151,7 @@ export function selectRankedCandidates(
   const POSITIVE_CONTRACT_HARD_BLOCKERS = new Set([
     'transactional_sender_candidate',
     'relationship_silence_without_command_center_artifact',
+    'low_value_event_invite_without_dependency',
     'missing_source_facts',
     'missing_grounded_recipient_for_send_message',
     'stale_evidence_over_14d',
@@ -2052,6 +2053,7 @@ function buildWinnerQualityTrace(input: {
         [
           'transactional_sender_candidate',
           'relationship_silence_without_command_center_artifact',
+          'low_value_event_invite_without_dependency',
           'missing_source_facts',
           'missing_grounded_recipient_for_send_message',
           'stale_evidence_over_14d',
@@ -2125,6 +2127,9 @@ function smallestNextMoveForWinnerBlockers(blockers: string[]): string {
   const text = blockers.join(' ');
   if (text.includes('transactional_sender_candidate')) {
     return 'Repair sender/entity trust pollution only for the proven transactional sender and replay selection.';
+  }
+  if (text.includes('low_value_event_invite_without_dependency')) {
+    return 'Require a direct revenue, roadmap, attendance-intent, or accepted-invite fact before letting an event invite compete as the daily winner.';
   }
   if (text.includes('stale_evidence_over_14d')) {
     return 'Refresh provider sync or require newer source facts before treating the candidate as urgent.';

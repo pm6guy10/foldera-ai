@@ -1,5 +1,6 @@
 import type { ScoredLoop } from './scorer';
 import type { ActionType } from './types';
+import { assessLowValueEventInvite } from './low-value-event-invite';
 
 export type ArtifactTasteFamily =
   | 'interview_role_fit_packet'
@@ -343,8 +344,20 @@ export function evaluateCandidateArtifactability(
   const blockers: string[] = [];
   const modelRiskFlags: string[] = [];
   const emailHits = searchText.match(EMAIL_RE) ?? [];
+  const lowValueEventInvite = assessLowValueEventInvite({
+    title: candidate.title,
+    content: candidate.content,
+    suggestedActionType: candidate.suggestedActionType,
+    matchedGoalText: candidate.matchedGoal?.text ?? null,
+    relatedSignals: candidate.relatedSignals ?? [],
+    sourceSignals: candidate.sourceSignals ?? [],
+    relationshipContext: candidate.relationshipContext ?? null,
+    entityName: candidate.entityName ?? null,
+    trigger: candidate.trigger,
+  });
 
   if (facts.length === 0) blockers.push('missing_source_facts');
+  if (lowValueEventInvite.reason) blockers.push(lowValueEventInvite.reason);
   if (TRANSACTIONAL_SENDER_RE.test(searchText)) blockers.push('transactional_sender_candidate');
   if (taste.family === 'relationship_risk_silence' && !COMMAND_CENTER_RE.test(searchText)) {
     blockers.push('relationship_silence_without_command_center_artifact');

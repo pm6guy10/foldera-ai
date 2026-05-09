@@ -77,6 +77,7 @@ import {
   getGoalQuarantineReason,
   isUsableGoalRow,
 } from './goal-hygiene';
+import { assessLowValueEventInvite } from './low-value-event-invite';
 
 // ---------------------------------------------------------------------------
 // Self-referential signal filter — excludes Foldera's own directive outputs
@@ -2230,6 +2231,22 @@ export function applyRankingInvariants(scored: ScoredLoop[]): RankingInvariantRe
     if (computeEvidenceDensity(candidate) === 2) {
       multiplier *= 0.9;
       diag.penaltyReasons.push('thin_evidence_penalty');
+    }
+    if (
+      assessLowValueEventInvite({
+        title: candidate.title,
+        content: candidate.content,
+        suggestedActionType: candidate.suggestedActionType,
+        matchedGoalText: candidate.matchedGoal?.text ?? null,
+        relatedSignals: candidate.relatedSignals,
+        sourceSignals: candidate.sourceSignals,
+        relationshipContext: candidate.relationshipContext,
+        entityName: candidate.entityName,
+        trigger: candidate.trigger,
+      }).isLowValueInvite
+    ) {
+      multiplier *= 0.35;
+      diag.penaltyReasons.push('low_value_event_invite_penalty');
     }
     candidate.score *= multiplier;
   }

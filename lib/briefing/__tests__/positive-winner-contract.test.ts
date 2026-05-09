@@ -188,6 +188,62 @@ describe('positive winner contract', () => {
     expect(evaluateCandidateArtifactability(fakeCalendarConflict, { now }).blockers).toContain('missing_schedule_resolution_context');
   });
 
+  it('blocks low-value platform invites and calendar-gap invites without a direct dependency fact', () => {
+    const notionExposure = makeCandidate({
+      id: 'notion-platform-exposure',
+      type: 'discrepancy',
+      discrepancyClass: 'exposure',
+      title: 'Commitment due in 3d: Virtual event to announce new Developer Platform primitives',
+      content:
+        'You committed to "Virtual event to announce new Developer Platform primitives and capabilities" and it is due in 3 days. No execution artifact exists yet.',
+      score: 25,
+      suggestedActionType: 'write_document',
+      matchedGoal: {
+        id: 'goal-foldera',
+        text: 'Build Foldera into a revenue-generating product. First paid user, then scale to replace employment income.',
+        priority: 1,
+        category: 'project',
+      },
+      sourceSignals: [
+        signal('Source Email: Notion Developer Platform event invite for May 13.'),
+      ],
+      relatedSignals: [
+        'notify@updates.notion.so sent the invite for May 13.',
+      ],
+    });
+
+    const notionCalendarGap = makeCandidate({
+      id: 'notion-calendar-gap',
+      type: 'hunt',
+      title: 'Commitment due 2026-05-13 with no matching calendar block',
+      content:
+        'Commitment due 2026-05-13 with no matching calendar block. Commitment id 41a7: Virtual event to announce new Developer Platform primitives and capabilities. Nearest calendar event keyword overlap with commitment was only 0.',
+      score: 24,
+      suggestedActionType: 'schedule',
+      sourceSignals: [signal('Source Email: Notion Developer Platform event invite for May 13.')],
+      relatedSignals: [
+        'Commitment due 2026-05-13 with no matching calendar block',
+        'Commitment id 41a7: Virtual event to announce new Developer Platform primitives and capabilities',
+      ],
+    });
+
+    expect(evaluateCandidateArtifactability(notionExposure, { now }).blockers).toContain(
+      'low_value_event_invite_without_dependency',
+    );
+    expect(evaluateCandidateArtifactability(notionCalendarGap, { now }).blockers).toContain(
+      'low_value_event_invite_without_dependency',
+    );
+
+    const result = selectRankedCandidates(
+      [notionExposure, notionCalendarGap],
+      { approvedRecently: [] },
+      { now },
+    );
+
+    expect(result.ranked.every((entry) => entry.disqualified)).toBe(true);
+    expect(result.winnerQualityTrace?.positive_winner_contract.verdict).toBe('all_candidates_blocked');
+  });
+
   it('does not let stale interview-status decay masquerade as a current role-fit packet', () => {
     const staleInterviewStatus = makeCandidate({
       id: 'accepted-macsc-stale-status',

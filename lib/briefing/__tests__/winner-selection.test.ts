@@ -456,6 +456,116 @@ describe('selectFinalWinner', () => {
     expect(ranked[0]?.candidate.id).toBe('career-bandwidth-rule');
   });
 
+  it('generic platform event exposure yields to a stronger revenue move', () => {
+    const notionExposure = makeCandidate({
+      id: 'notion-platform-exposure',
+      score: 15,
+      type: 'discrepancy',
+      discrepancyClass: 'exposure',
+      suggestedActionType: 'write_document',
+      title: 'Commitment due in 3d: Virtual event to announce new Developer Platform primitives',
+      content:
+        'You committed to "Virtual event to announce new Developer Platform primitives and capabilities" and it is due in 3 days. No execution artifact exists yet.',
+      matchedGoal: {
+        text: 'Build Foldera into a revenue-generating product. First paid user, then scale to replace employment income.',
+        priority: 1,
+        category: 'project',
+      },
+      sourceSignals: [
+        {
+          kind: 'signal',
+          source: 'gmail',
+          summary: 'Source Email: Notion Developer Platform event invite for May 13.',
+          occurredAt: new Date().toISOString(),
+        },
+      ],
+      relatedSignals: ['notify@updates.notion.so sent the invite for May 13.'],
+    });
+    const revenueMove = makeCandidate({
+      id: 'revenue-owner-lock',
+      score: 7,
+      type: 'commitment',
+      suggestedActionType: 'send_message',
+      title: 'Confirm the live customer proposal owner before Friday',
+      content:
+        'Marcus needs the accountable owner for the live customer proposal before Friday or the revenue decision slips.',
+      entityName: 'Marcus',
+      relationshipContext: 'Marcus <marcus@company.com> (Finance)',
+      matchedGoal: {
+        text: 'Build Foldera into a revenue-generating product. First paid user, then scale to replace employment income.',
+        priority: 1,
+        category: 'project',
+      },
+      sourceSignals: [
+        {
+          kind: 'signal',
+          source: 'gmail',
+          summary: 'Marcus asked who owns the live customer proposal decision before Friday.',
+          occurredAt: new Date().toISOString(),
+        },
+      ],
+      relatedSignals: ['The live customer proposal stalls if the accountable owner is not named this week.'],
+    });
+
+    const { ranked } = selectRankedCandidates([notionExposure, revenueMove], NO_GUARDRAILS);
+    const { winner } = selectFinalWinner([notionExposure, revenueMove], NO_GUARDRAILS);
+
+    expect(winner.id).toBe('revenue-owner-lock');
+    expect(ranked.find((entry) => entry.candidate.id === 'notion-platform-exposure')?.disqualified).toBe(true);
+    expect(
+      ranked.find((entry) => entry.candidate.id === 'notion-platform-exposure')?.disqualifyReason,
+    ).toBe('positive_winner_contract:low_value_event_invite_without_dependency');
+  });
+
+  it('allows a platform event when source facts prove a current roadmap dependency', () => {
+    const dependentEvent = makeCandidate({
+      id: 'notion-roadmap-dependency',
+      score: 9,
+      type: 'discrepancy',
+      discrepancyClass: 'exposure',
+      suggestedActionType: 'write_document',
+      title: 'Commitment due in 3d: Notion Developer Platform event',
+      content:
+        'You committed to the Notion Developer Platform event and it is due in 3 days. Current Foldera Notion integration decision depends on this event before June.',
+      matchedGoal: {
+        text: 'Build Foldera into a revenue-generating product. First paid user, then scale to replace employment income.',
+        priority: 1,
+        category: 'project',
+      },
+      sourceSignals: [
+        {
+          kind: 'signal',
+          source: 'gmail',
+          summary: 'Current Foldera Notion integration decision depends on this event before June.',
+          occurredAt: new Date().toISOString(),
+        },
+      ],
+      relatedSignals: ['The roadmap is blocked until the announced Notion API changes are clarified.'],
+    });
+    const genericRunner = makeCandidate({
+      id: 'generic-runner',
+      score: 4,
+      type: 'signal',
+      suggestedActionType: 'write_document',
+      title: 'General planning note',
+      content: 'Write a generic planning note for the week.',
+      sourceSignals: [
+        {
+          kind: 'signal',
+          source: 'gmail',
+          summary: 'General planning note with no direct decision pressure.',
+          occurredAt: new Date().toISOString(),
+        },
+      ],
+    });
+
+    const { ranked } = selectRankedCandidates([dependentEvent, genericRunner], NO_GUARDRAILS);
+    const { winner } = selectFinalWinner([dependentEvent, genericRunner], NO_GUARDRAILS);
+
+    expect(winner.id).toBe('notion-roadmap-dependency');
+    expect(ranked.find((entry) => entry.candidate.id === 'notion-roadmap-dependency')?.disqualified).toBe(false);
+  });
+
   it('generic career status-check outbound is disqualified unless the next step is grounded', () => {
     const genericCareerFollowUp = makeCandidate({
       id: 'generic-career-follow-up',
