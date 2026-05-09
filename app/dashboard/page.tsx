@@ -104,7 +104,7 @@ export default function DashboardPage() {
     });
   }, []);
 
-  const load = useCallback(async (): Promise<LoadLatestResult> => {
+  const load = useCallback(async (cacheMode: RequestCache = 'default'): Promise<LoadLatestResult> => {
     loadAbortRef.current?.abort();
     const controller = new AbortController();
     loadAbortRef.current = controller;
@@ -113,7 +113,7 @@ export default function DashboardPage() {
     try {
       const latestRes = await fetch('/api/conviction/latest', {
         signal: controller.signal,
-        cache: 'no-store',
+        cache: cacheMode,
       });
       if (controller.signal.aborted) {
         return { action: null, dailyUtilitySlate: null, loaded: false };
@@ -146,7 +146,7 @@ export default function DashboardPage() {
         try {
           const dailyValueRes = await fetch('/api/conviction/daily-value', {
             signal: controller.signal,
-            cache: 'no-store',
+            cache: cacheMode,
           });
           if (!controller.signal.aborted && dailyValueRes.ok) {
             const dailyValue = await dailyValueRes.json().catch(() => ({}));
@@ -220,7 +220,7 @@ export default function DashboardPage() {
 
   const loadIntegrationStatus = useCallback(async () => {
     try {
-      const response = await fetch('/api/integrations/status', { cache: 'no-store' });
+      const response = await fetch('/api/integrations/status');
       if (!response.ok) {
         setLoadIssue('integrations', true);
         setIntegrationStatus(null);
@@ -254,7 +254,7 @@ export default function DashboardPage() {
     }
 
     let cancelled = false;
-    void fetch('/api/graph/stats', { cache: 'no-store' })
+    void fetch('/api/graph/stats')
       .then((response) => {
         if (!response.ok) {
           setLoadIssue('graph', true);
@@ -290,7 +290,7 @@ export default function DashboardPage() {
 
     let cancelled = false;
     setHistoryLoaded(false);
-    void fetch('/api/conviction/history?limit=5', { cache: 'no-store' })
+    void fetch('/api/conviction/history?limit=5')
       .then((response) => {
         if (!response.ok) {
           setLoadIssue('history', true);
@@ -419,7 +419,7 @@ export default function DashboardPage() {
         if (!response.ok) {
           const message = (data as { error?: string }).error ?? `${decision} failed`;
           if (shouldReconcileExecuteFailure(response, message)) {
-            await load();
+            await load('reload');
             setStatusNotice({
               id: 'reconciled_stale_action',
               message:
@@ -460,12 +460,12 @@ export default function DashboardPage() {
         }
         setStatusNotice(buildDecisionSuccessNotice(action, decision, approvalEmailSendEnabled));
         if (decision === 'approve') {
-          await load();
+          await load('reload');
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : `${decision} failed`;
         if (shouldReconcileExecuteFailure(null, message)) {
-          await load();
+          await load('reload');
           setStatusNotice({
             id: 'reconciled_stale_action',
             message:
@@ -486,7 +486,7 @@ export default function DashboardPage() {
     setDetailLoading(true);
     try {
       const detailUrl = action.detail_url ?? `/api/conviction/actions/${action.id}`;
-      const response = await fetch(detailUrl, { cache: 'no-store' });
+      const response = await fetch(detailUrl);
       const payload = await response.json().catch(() => ({}));
       if (!response.ok || !isVisibleDashboardAction(payload)) {
         setStatusNotice({

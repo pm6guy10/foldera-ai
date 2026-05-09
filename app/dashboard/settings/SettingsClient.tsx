@@ -65,7 +65,7 @@ export default function SettingsClient() {
 
   const refreshIntegrationsStatus = useCallback(async () => {
     const gen = ++integrationsFetchGenRef.current;
-    const response = await fetch('/api/integrations/status', { cache: 'no-store' });
+    const response = await fetch('/api/integrations/status', { cache: 'reload' });
     if (!response.ok) {
       throw new Error('Could not refresh integrations status.');
     }
@@ -82,7 +82,7 @@ export default function SettingsClient() {
   }, []);
 
   const refreshGraphStats = useCallback(async () => {
-    const response = await fetch('/api/graph/stats', { cache: 'no-store' });
+    const response = await fetch('/api/graph/stats', { cache: 'reload' });
     if (!response.ok) {
       throw new Error('Could not refresh source status.');
     }
@@ -107,9 +107,9 @@ export default function SettingsClient() {
     if (status !== 'authenticated') { setLoading(false); return; }
     const intGen = ++integrationsFetchGenRef.current;
     Promise.all([
-      fetch('/api/integrations/status', { cache: 'no-store' }),
+      fetch('/api/integrations/status'),
       fetch('/api/subscription/status'),
-      fetch('/api/graph/stats', { cache: 'no-store' }),
+      fetch('/api/graph/stats'),
     ]).then(async ([intRes, subRes, graphRes]) => {
       if (intRes.ok) {
         const d = await intRes.json();
@@ -882,4 +882,3 @@ function MicrosoftIcon() {
     </div>
   );
 }
-

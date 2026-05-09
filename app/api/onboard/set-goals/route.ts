@@ -7,6 +7,9 @@ import { renderWelcomeEmailHtml, sendResendEmail } from '@/lib/email/resend';
 import { MS_90D } from '@/lib/config/constants';
 import { syncGoogle } from '@/lib/sync/google-sync';
 import { syncMicrosoft } from '@/lib/sync/microsoft-sync';
+import { jsonWithReadOnlyUserCache } from '@/lib/utils/read-only-user-cache';
+
+export const dynamic = 'force-dynamic';
 
 const GOAL_BUCKETS: Record<string, { goal_text: string; category: string }> = {
   'Job search': { goal_text: 'Active job search and career transition', category: 'career' },
@@ -221,7 +224,7 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ buckets, freeText });
+    return jsonWithReadOnlyUserCache({ buckets, freeText });
   } catch (err) {
     return apiErrorForRoute(err, 'onboard/set-goals GET');
   }

@@ -39,14 +39,15 @@ const nextConfig = {
           },
         ],
       },
-      // Session-scoped JSON (e.g. GET /api/integrations/status) — never cache on shared caches;
-      // s-maxage caused stale connector state after OAuth reconnect on production.
+      // Session-scoped JSON (e.g. GET /api/integrations/status) stays private to the browser.
+      // Short browser TTLs cut repeated reads, while OAuth reconnect flows now force reload on the
+      // freshness-sensitive client refreshes instead of relying on shared-cache no-store.
       {
         source: '/api/integrations/:path*',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'private, no-store, must-revalidate',
+            value: 'private, max-age=20, stale-while-revalidate=40',
           },
         ],
       },

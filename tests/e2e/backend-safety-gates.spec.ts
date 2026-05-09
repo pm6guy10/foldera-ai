@@ -86,6 +86,17 @@ function expectNoTopLevelError(body: Record<string, unknown>) {
   expect(Object.prototype.hasOwnProperty.call(body, 'error')).toBe(false);
 }
 
+function expectReadOnlyUserCacheHeaders(response: Awaited<ReturnType<APIRequestContext['get']>>) {
+  const cacheControl = response.headers()['cache-control'] ?? '';
+  const vary = response.headers().vary ?? '';
+
+  expect(cacheControl).toContain('private');
+  expect(cacheControl).toContain('max-age=20');
+  expect(cacheControl).toContain('stale-while-revalidate=40');
+  expect(cacheControl).not.toContain('no-store');
+  expect(vary).toMatch(/cookie/i);
+}
+
 test.describe('Backend safety gates', () => {
   test('nightly-ops returns 200 and valid JSON', async ({ request }) => {
     test.setTimeout(120_000);
@@ -173,6 +184,26 @@ test.describe('Backend safety gates', () => {
       request.get('/api/integrations/status', { headers }),
     );
     expect(integrations.response.status()).toBe(200);
+  });
+
+  test('read-only user GET endpoints return private cache headers', async ({ request }) => {
+    const headers = await buildAuthHeaders();
+    const paths = [
+      '/api/onboard/check',
+      '/api/onboard/set-goals',
+      '/api/integrations/status',
+      '/api/subscription/status',
+      '/api/graph/stats',
+      '/api/conviction/latest',
+      '/api/conviction/history?limit=5',
+      '/api/conviction/daily-value',
+    ];
+
+    for (const path of paths) {
+      const response = await request.get(path, { headers });
+      expect(response.status(), `${path} should stay readable`).toBe(200);
+      expectReadOnlyUserCacheHeaders(response);
+    }
   });
 
   test('google sync endpoint handles missing tokens gracefully', async ({ request }) => {

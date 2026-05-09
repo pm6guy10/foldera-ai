@@ -6,6 +6,7 @@ import {
   ACTION_DETAIL_SELECT,
   buildDashboardActionPayload,
 } from '@/lib/conviction/action-read-shapes';
+import { jsonWithReadOnlyUserCache } from '@/lib/utils/read-only-user-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,9 @@ export async function GET(request: Request, context: RouteContext) {
       return NextResponse.json({ error: 'Action not found' }, { status: 404 });
     }
 
-    return NextResponse.json(buildDashboardActionPayload(action as Record<string, unknown>, userId));
+    return jsonWithReadOnlyUserCache(
+      buildDashboardActionPayload(action as Record<string, unknown>, userId),
+    );
   } catch (err: unknown) {
     return apiErrorForRoute(err, 'conviction/actions/[id]');
   }

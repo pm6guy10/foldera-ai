@@ -52,7 +52,11 @@ describe('GET /api/conviction/daily-value', () => {
     const serialized = JSON.stringify(body);
 
     expect(response.status).toBe(200);
-    expect(response.headers.get('cache-control')).toContain('no-store');
+    expect(response.headers.get('cache-control')).toContain('private');
+    expect(response.headers.get('cache-control')).toContain('max-age=20');
+    expect(response.headers.get('cache-control')).toContain('stale-while-revalidate=40');
+    expect(response.headers.get('cache-control')).not.toContain('no-store');
+    expect(response.headers.get('vary')).toContain('Cookie');
     expect(mockGetWinnerTruthReport).toHaveBeenCalledWith('u-test');
     expect(body.daily_utility_slate.primary_move).toEqual(
       expect.objectContaining({

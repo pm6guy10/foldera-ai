@@ -15,6 +15,7 @@ import {
   INTEGRATIONS_SYNC_STALE_MS,
   MAIL_CURSOR_FRESH_MS,
 } from '@/lib/config/constants';
+import { withReadOnlyUserCache } from '@/lib/utils/read-only-user-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -225,11 +226,7 @@ export async function GET() {
         newest_mail_signal_at: newestMailIso,
         mail_ingest_looks_stale: mailIngestLooksStale,
       },
-      {
-        headers: {
-          'Cache-Control': 'private, no-store, must-revalidate',
-        },
-      },
+      withReadOnlyUserCache(),
     );
   } catch (err: unknown) {
     return apiErrorForRoute(err, 'integrations/status');

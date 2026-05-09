@@ -320,9 +320,12 @@ async function callLatest() {
   return GET(new Request('http://localhost/api/conviction/latest'));
 }
 
-function expectNoStoreHeaders(response: Response) {
-  expect(response.headers.get('cache-control')).toContain('no-store');
-  expect(response.headers.get('cache-control')).toContain('must-revalidate');
+function expectReadCacheHeaders(response: Response) {
+  expect(response.headers.get('cache-control')).toContain('private');
+  expect(response.headers.get('cache-control')).toContain('max-age=20');
+  expect(response.headers.get('cache-control')).toContain('stale-while-revalidate=40');
+  expect(response.headers.get('cache-control')).not.toContain('no-store');
+  expect(response.headers.get('vary')).toContain('Cookie');
 }
 
 describe('GET /api/conviction/latest free artifact allowance contract', () => {
@@ -346,7 +349,7 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
 
     const res = await callLatest();
     expect(res.status).toBe(200);
-    expectNoStoreHeaders(res);
+    expectReadCacheHeaders(res);
     const body = (await res.json()) as Record<string, unknown>;
 
     expect(body.id).toBe('action-1');
@@ -511,7 +514,7 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
 
     const res = await callLatest();
     expect(res.status).toBe(200);
-    expectNoStoreHeaders(res);
+    expectReadCacheHeaders(res);
     const body = (await res.json()) as Record<string, unknown>;
 
     expect(body.context_greeting).toBeTypeOf('string');

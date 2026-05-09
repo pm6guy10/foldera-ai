@@ -52,7 +52,7 @@ function OnboardContent() {
 
     let cancelled = false;
     setConnectionState('loading');
-    fetch('/api/integrations/status', { cache: 'no-store' })
+    fetch('/api/integrations/status', { cache: 'reload' })
       .then(async (response) => {
         if (!response.ok) throw new Error('Could not load integrations.');
         return response.json();
@@ -73,7 +73,7 @@ function OnboardContent() {
   useEffect(() => {
     if (!isEdit) return;
     setLoadError(null);
-    fetch('/api/onboard/set-goals')
+    fetch('/api/onboard/set-goals', { cache: 'reload' })
       .then((response) => response.json())
       .then((data) => {
         const buckets: string[] = Array.isArray(data.buckets) ? data.buckets : [];

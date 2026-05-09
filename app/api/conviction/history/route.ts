@@ -10,6 +10,7 @@ import { resolveUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { ACTION_HISTORY_SELECT } from '@/lib/conviction/action-read-shapes';
+import { jsonWithReadOnlyUserCache } from '@/lib/utils/read-only-user-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,7 +109,7 @@ export async function GET(request: Request) {
         };
       });
 
-    return NextResponse.json({ items });
+    return jsonWithReadOnlyUserCache({ items });
   } catch (err: unknown) {
     return apiErrorForRoute(err, 'conviction/history');
   }

@@ -61,6 +61,9 @@ describe('GET /api/conviction/history', () => {
     const { GET } = await import('../route');
     const res = await GET(new Request('http://localhost/api/conviction/history'));
     expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toContain('private');
+    expect(res.headers.get('cache-control')).not.toContain('no-store');
+    expect(res.headers.get('vary')).toContain('Cookie');
     const body = (await res.json()) as {
       items: Array<{
         id: string;

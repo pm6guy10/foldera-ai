@@ -90,6 +90,10 @@ describe('GET /api/integrations/status', () => {
     vi.useRealTimers();
 
     expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toContain('private');
+    expect(res.headers.get('cache-control')).toContain('max-age=20');
+    expect(res.headers.get('cache-control')).not.toContain('no-store');
+    expect(res.headers.get('vary')).toContain('Cookie');
     const body = (await res.json()) as {
       newest_mail_signal_at: string | null;
       mail_ingest_looks_stale: boolean;

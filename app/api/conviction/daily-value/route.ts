@@ -11,13 +11,9 @@ import { resolveUser } from '@/lib/auth/resolve-user';
 import { buildDailyUtilitySlateFromWinnerTruth } from '@/lib/briefing/daily-utility-slate';
 import { getWinnerTruthReport } from '@/lib/system/winner-truth';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
+import { jsonWithReadOnlyUserCache } from '@/lib/utils/read-only-user-cache';
 
 export const dynamic = 'force-dynamic';
-
-const NO_STORE_HEADERS = {
-  'Cache-Control': 'private, no-store, max-age=0, must-revalidate',
-  Pragma: 'no-cache',
-} as const;
 
 export async function GET(request: Request) {
   const auth = await resolveUser(request);
@@ -27,11 +23,10 @@ export async function GET(request: Request) {
     const report = await getWinnerTruthReport(auth.userId);
     const dailyUtilitySlate = buildDailyUtilitySlateFromWinnerTruth(report);
 
-    return NextResponse.json(
+    return jsonWithReadOnlyUserCache(
       {
         daily_utility_slate: dailyUtilitySlate,
       },
-      { status: 200, headers: NO_STORE_HEADERS },
     );
   } catch (error: unknown) {
     return apiErrorForRoute(error, 'conviction/daily-value GET');

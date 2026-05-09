@@ -9,6 +9,7 @@ import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { getSubscriptionStatus } from '@/lib/auth/subscription';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
+import { jsonWithReadOnlyUserCache } from '@/lib/utils/read-only-user-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,7 +22,7 @@ export async function GET() {
   try {
     const info = await getSubscriptionStatus(session.user.id);
 
-    return NextResponse.json({
+    return jsonWithReadOnlyUserCache({
       plan: info.plan,
       status: info.status,
       current_period_end: info.current_period_end,

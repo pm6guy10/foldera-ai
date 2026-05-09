@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
+import { jsonWithReadOnlyUserCache } from '@/lib/utils/read-only-user-cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,7 +60,7 @@ export async function GET(request: Request) {
       throw queryError;
     }
 
-    return NextResponse.json({
+    return jsonWithReadOnlyUserCache({
       signalsTotal:      signalsRes.count ?? 0,
       commitmentsActive: commitmentsRes.count ?? 0,
       patternsActive:    Object.keys(

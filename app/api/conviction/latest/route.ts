@@ -14,6 +14,7 @@ import { CONFIDENCE_SEND_THRESHOLD } from '@/lib/config/constants';
 import { getSubscriptionStatus } from '@/lib/auth/subscription';
 import { evaluateDiscrepancyCardFrame } from '@/lib/briefing/discrepancy-card-frame';
 import { buildDailyUtilitySlateFromReceipts } from '@/lib/briefing/daily-utility-slate';
+import { jsonWithReadOnlyUserCache } from '@/lib/utils/read-only-user-cache';
 import {
   ACTION_RANKING_SELECT,
   ACTION_SLATE_SELECT,
@@ -31,10 +32,6 @@ const PENDING_SUMMARY_SELECT = ACTION_SUMMARY_SELECT;
 const SLATE_RECEIPT_SELECT = ACTION_SLATE_SELECT;
 const CONSUMED_FREE_ARTIFACT_STATUSES = ['approved', 'executed', 'skipped'] as const;
 const SLATE_RECEIPT_STATUSES = ['skipped', 'executed', 'approved'] as const;
-const NO_STORE_HEADERS = {
-  'Cache-Control': 'private, no-store, max-age=0, must-revalidate',
-  Pragma: 'no-cache',
-} as const;
 
 type PendingRankingRow = {
   id?: unknown;
@@ -42,8 +39,8 @@ type PendingRankingRow = {
   generated_at?: unknown;
 };
 
-function jsonNoStore(payload: unknown): NextResponse {
-  return NextResponse.json(payload, { status: 200, headers: NO_STORE_HEADERS });
+function jsonReadCache(payload: unknown): NextResponse {
+  return jsonWithReadOnlyUserCache(payload);
 }
 
 function startOfTodayIso(): string {
@@ -214,7 +211,7 @@ export async function GET(request: Request) {
 
       const dailyUtilitySlate = await buildDailyUtilitySlatePayload(supabase, userId);
 
-      return jsonNoStore({
+      return jsonReadCache({
         context_greeting: contextGreeting,
         account_created_at: accountCreatedAt,
         approved_count: consumedFreeArtifactCount,
@@ -237,7 +234,7 @@ export async function GET(request: Request) {
 
       const dailyUtilitySlate = await buildDailyUtilitySlatePayload(supabase, userId);
 
-      return jsonNoStore({
+      return jsonReadCache({
         context_greeting: contextGreeting,
         account_created_at: accountCreatedAt,
         approved_count: consumedFreeArtifactCount,
@@ -257,7 +254,7 @@ export async function GET(request: Request) {
     }
 
     const artifactPaywallLocked = hasSummaryArtifact(selectedAction) && !proUnlocked && !freeArtifactRemaining;
-    return jsonNoStore({
+    return jsonReadCache({
       id: selectedAction.id,
       userId,
       directive: selectedAction.directive_text,

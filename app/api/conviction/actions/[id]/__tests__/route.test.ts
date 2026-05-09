@@ -77,6 +77,9 @@ describe('GET /api/conviction/actions/[id]', () => {
     });
 
     expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toContain('private');
+    expect(res.headers.get('cache-control')).not.toContain('no-store');
+    expect(res.headers.get('vary')).toContain('Cookie');
     const body = (await res.json()) as Record<string, unknown>;
     expect(body.id).toBe('action-1');
     expect(body.artifact).toEqual(
