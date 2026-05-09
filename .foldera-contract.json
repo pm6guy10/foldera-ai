@@ -1,0 +1,36 @@
+{
+  "backlog_id": "MANUAL-DEMO-LOVABLE-TRANSPLANT",
+  "base_commit": "b04d197cdae207796870d084a9233af84ed4a180",
+  "money_loop_rung": "transplant_foldera_demo_flow_into_isolated_demo_route",
+  "allowed_file_patterns": [
+    "app/demo/**",
+    "components/demo/**",
+    "lib/demo/**",
+    "tests/e2e/demo-route.spec.ts",
+    "tailwind.config.js",
+    "package.json",
+    "package-lock.json",
+    "SESSION_HISTORY.md"
+  ],
+  "forbidden_file_patterns": [
+    "FOLDERA_PRODUCTION_BACKLOG.md",
+    "app/page.tsx",
+    "app/HomePageClient.tsx",
+    "app/dashboard/**",
+    "components/foldera/**",
+    "lib/briefing/**",
+    "scripts/**"
+  ],
+  "allowed_files_raw": "app/demo/**, components/demo/**, lib/demo/**, tests/e2e/demo-route.spec.ts, tailwind.config.js, package.json, package-lock.json, SESSION_HISTORY.md",
+  "forbidden_files_raw": "FOLDERA_PRODUCTION_BACKLOG.md, app/page.tsx, app/HomePageClient.tsx, app/dashboard/**, components/foldera/**, lib/briefing/**, scripts/**",
+  "required_local_proof": "Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue; npm run build; npm run lint; $env:PLAYWRIGHT_WEB_PORT='3018'; npx playwright test tests/e2e/demo-route.spec.ts --reporter=list",
+  "required_browser_proof": "$env:PLAYWRIGHT_WEB_PORT='3020'; npx playwright test tests/e2e/public-routes.spec.ts --grep \"landing demo uses neutral public copy and default approve language\" --reporter=list",
+  "is_user_facing": true,
+  "browser_proof_command": "npx playwright test tests/e2e/demo-route.spec.ts --reporter=list",
+  "anti_regression_checks": [
+    "the landing page route and copy must remain unchanged",
+    "the production dashboard route must remain unchanged",
+    "the Lovable demo styling must stay isolated to /demo"
+  ],
+  "next_command": "Push the verified /demo transplant to main."
+}
