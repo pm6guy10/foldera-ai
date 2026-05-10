@@ -6,44 +6,93 @@ import {
   CalendarClock,
   CheckCircle2,
   Clock3,
+  FileText,
+  Inbox,
+  Layers3,
   Mail,
   ShieldCheck,
-  SkipForward,
+  Sparkles,
   Zap,
 } from 'lucide-react';
+import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
 import { FolderaLogo } from '@/components/foldera/FolderaLogo';
 import { NavPublic } from '@/components/nav/NavPublic';
 
-const heroPromises = ['Source trail included', 'Approval stays yours', 'No outbound by default'];
+const heroSignalPills = [
+  'Unanswered thread',
+  'Calendar hold',
+  'Stale draft',
+  'Decision waiting',
+];
 
-const valueSteps = [
+const signalInputs = [
   {
-    title: 'Checks the real sources',
-    body: 'Foldera reads connected inbox and calendar context so the day starts from evidence instead of memory.',
+    title: 'Unanswered threads',
+    body: 'Open loops that have gone quiet while the stakes keep moving.',
     icon: Mail,
   },
   {
-    title: 'Ships the artifact',
-    body: 'When the signal is strong, you get the drafted reply, decision frame, or document instead of a vague reminder.',
-    icon: CheckCircle2,
+    title: 'Calendar holds',
+    body: 'Meetings and deadlines that make a reply or decision time-sensitive.',
+    icon: CalendarClock,
   },
   {
-    title: 'Stops safely',
-    body: 'If the evidence is weak, Foldera holds back and shows the blocker instead of pretending the work is finished.',
-    icon: CalendarClock,
+    title: 'Stale drafts',
+    body: 'Half-finished work that already has context but never crossed the line.',
+    icon: FileText,
+  },
+  {
+    title: 'Decisions waiting',
+    body: 'The exact ask, tradeoff, or unblocker that still needs a finished move.',
+    icon: Layers3,
   },
 ];
 
-const trustItems = [
-  'Gmail and Microsoft first',
-  'No outbound by default',
-  'Approval stays yours',
-  'Honest holdback when evidence is weak',
+const finishedMoveOutputs = [
+  {
+    title: 'Directive',
+    body: 'The move that matters most right now.',
+    icon: Zap,
+  },
+  {
+    title: 'Drafted action',
+    body: 'Ready-to-send wording or a ready-to-use document.',
+    icon: FileText,
+  },
+  {
+    title: 'Source trail',
+    body: 'The thread, hold, draft, and evidence behind the move.',
+    icon: Inbox,
+  },
+  {
+    title: 'Approval ready',
+    body: 'Nothing moves until you approve, skip, or hold it.',
+    icon: CheckCircle2,
+  },
+];
+
+const approvalCards = [
+  {
+    title: 'Approval before anything sends',
+    body: 'Foldera prepares the move. You stay in control of whether it goes out.',
+    icon: ShieldCheck,
+  },
+  {
+    title: 'Source trail attached',
+    body: 'The connected source basis stays with the brief so you can see why it exists.',
+    icon: Layers3,
+  },
+  {
+    title: 'Audit trail visible',
+    body: 'The product keeps the decision path visible without pretending it can do more than it can.',
+    icon: CheckCircle2,
+  },
 ];
 
 const footerLinks = [
   { label: 'Pricing', href: '/pricing' },
   { label: 'Blog', href: '/blog' },
+  { label: 'About', href: '/about' },
   { label: 'Security', href: '/security' },
   { label: 'Status', href: '/status' },
   { label: 'Privacy', href: '/privacy' },
@@ -52,9 +101,16 @@ const footerLinks = [
 
 const gridBackdropStyle = {
   backgroundImage:
-    'linear-gradient(rgba(148,163,184,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.08) 1px, transparent 1px)',
-  backgroundSize: '72px 72px',
+    'linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px)',
+  backgroundSize: '64px 64px',
 };
+
+const heroDraft = (
+  <div className="space-y-4">
+    <p>Hi Alex — attached is the finalized board update with the churn revisions folded in.</p>
+    <p>If this clears your review, I can send the revised version before 11:30 PT today.</p>
+  </div>
+);
 
 export function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
@@ -67,102 +123,100 @@ export function LandingPage() {
   }, []);
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#04070c] text-slate-50">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#03060b] text-slate-50">
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute inset-0 opacity-50" style={gridBackdropStyle} />
-        <div className="absolute left-[-12%] top-[6%] h-[34rem] w-[34rem] rounded-full bg-cyan-500/16 blur-3xl" />
-        <div className="absolute right-[-10%] top-[2%] h-[30rem] w-[30rem] rounded-full bg-fuchsia-500/12 blur-3xl" />
-        <div className="absolute right-[12%] top-[18%] h-[24rem] w-[24rem] rounded-full bg-sky-500/14 blur-3xl" />
-        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#02040a] via-[#02040a]/80 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-[#02040a] to-transparent" />
+        <div className="absolute inset-0 opacity-70" style={gridBackdropStyle} />
+        <div className="absolute left-[-10%] top-8 h-[28rem] w-[28rem] rounded-full bg-cyan-400/12 blur-3xl" />
+        <div className="absolute right-[-8%] top-14 h-[24rem] w-[24rem] rounded-full bg-fuchsia-500/10 blur-3xl" />
+        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-[#020409] via-[#020409]/78 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-[#020409] to-transparent" />
       </div>
 
-      <NavPublic scrolled={scrolled} platformHref="#product" />
+      <NavPublic scrolled={scrolled} platformHref="/#how-foldera-works" />
 
       <main id="main" className="relative">
-        <section className="px-4 pb-14 pt-28 sm:px-6 sm:pb-18 sm:pt-32 lg:px-8 lg:pb-20">
+        <section className="px-4 pb-12 pt-28 sm:px-6 sm:pb-14 sm:pt-32 lg:px-8 lg:pb-16">
           <div className="mx-auto max-w-[1440px]">
-            <div className="grid gap-12 lg:grid-cols-[minmax(0,0.92fr)_minmax(440px,0.88fr)] lg:items-center lg:gap-16">
-              <div className="max-w-[660px]">
-                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-100/90 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
-                  <CheckCircle2 className="h-4 w-4 text-cyan-300" aria-hidden />
-                  One finished move from your real sources
+            <div className="grid gap-10 lg:grid-cols-[minmax(0,0.82fr)_minmax(420px,0.98fr)] lg:items-center lg:gap-12">
+              <div className="max-w-[630px]">
+                <div className="inline-flex items-center gap-3 rounded-full border border-cyan-300/16 bg-white/[0.04] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.10)]">
+                  <Sparkles className="h-4 w-4 text-cyan-300" aria-hidden />
+                  Finished work, every morning.
                 </div>
 
                 <h1
                   data-testid="landing-hero-heading"
-                  className="mt-7 max-w-[10ch] text-[46px] font-semibold leading-[0.94] tracking-[-0.07em] text-white sm:text-[64px] lg:text-[88px]"
+                  className="mt-7 max-w-[9.5ch] text-[46px] font-semibold leading-[0.94] tracking-[-0.075em] text-white sm:text-[66px] lg:text-[88px]"
                 >
                   One finished move.
                   <span className="mt-2 block bg-gradient-to-r from-white via-cyan-100 to-sky-300 bg-clip-text text-transparent">
-                    Already prepared.
+                    Every morning.
                   </span>
                 </h1>
 
-                <p className="mt-7 max-w-[36rem] text-[17px] leading-8 text-slate-300 sm:text-[18px]">
-                  Foldera checks connected inbox and calendar context, drafts the move that matters, and waits for your approval instead of inventing work.
+                <p className="mt-7 max-w-[37rem] text-[17px] leading-8 text-slate-300 sm:text-[18px]">
+                  Foldera reads the noise across your connected sources, finds what matters, drafts the next move,
+                  and waits for your approval.
                 </p>
 
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                   <a
-                    href="/start"
-                    className="inline-flex min-h-[54px] items-center justify-center gap-2 rounded-[14px] border border-cyan-200/35 bg-cyan-300 px-5 text-[14px] font-semibold text-slate-950 shadow-[0_0_30px_rgba(34,211,238,0.22)] transition-transform duration-150 hover:-translate-y-0.5 hover:bg-cyan-200"
+                    href="/demo"
+                    className="inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[15px] bg-white px-5 text-[14px] font-semibold text-slate-950 shadow-[0_0_34px_rgba(255,255,255,0.10)] transition-transform duration-150 hover:-translate-y-0.5"
                   >
-                    Get started free
+                    See live demo
                     <ArrowRight className="h-4 w-4" aria-hidden />
                   </a>
                   <a
-                    href="#product"
-                    className="inline-flex min-h-[54px] items-center justify-center gap-2 rounded-[14px] border border-white/12 bg-white/[0.04] px-5 text-[14px] font-semibold text-slate-100 transition-colors hover:bg-white/[0.08]"
+                    href="/start"
+                    className="inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[15px] border border-cyan-300/18 bg-cyan-400/[0.08] px-5 text-[14px] font-semibold text-cyan-100 transition-colors hover:bg-cyan-400/[0.12]"
                   >
-                    See how it works
+                    Start free
                   </a>
                 </div>
 
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                  {heroPromises.map((item) => (
+                <div className="mt-8 grid gap-3 sm:grid-cols-2">
+                  {[
+                    'Reads connected sources',
+                    'Finds the move that matters',
+                    'Shows the source trail',
+                    'Nothing moves until approval',
+                  ].map((item) => (
                     <div
                       key={item}
-                      className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-200/90"
+                      className="inline-flex min-h-[46px] items-center gap-3 rounded-[16px] border border-white/8 bg-white/[0.03] px-4 text-sm text-slate-100/90"
                     >
-                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_16px_rgba(74,222,128,0.70)]" />
+                      <span className="h-2.5 w-2.5 rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(34,211,238,0.72)]" />
                       {item}
                     </div>
                   ))}
                 </div>
               </div>
 
-              <HeroProofCard />
+              <HeroProofRail />
             </div>
           </div>
         </section>
 
-        <section id="product" className="px-4 py-6 sm:px-6 lg:px-8">
+        <section id="how-foldera-works" className="px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-[1440px]">
-            <div className="overflow-hidden rounded-[28px] border border-white/10 bg-[#07101a]/90 shadow-[0_24px_90px_rgba(0,0,0,0.46)]">
-              <div className="grid gap-8 px-6 py-8 sm:px-8 sm:py-10 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1fr)] lg:gap-10 lg:px-10">
-                <div className="max-w-[34rem]">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-200/80">
-                    Why the page stays short
+            <div className="overflow-hidden rounded-[30px] border border-white/10 bg-[#060d16]/94 shadow-[0_22px_80px_rgba(0,0,0,0.42)]">
+              <div className="grid gap-px bg-white/10 lg:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
+                <div className="bg-[#060d16] px-6 py-8 sm:px-8 sm:py-10 lg:px-10">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-200/82">
+                    How Foldera works
                   </p>
-                  <h2 className="mt-4 max-w-[14ch] text-[34px] font-semibold leading-[1.02] tracking-[-0.05em] text-white sm:text-[42px]">
-                    Checks sources. Ships the artifact. Stops safely.
+                  <h2 className="mt-4 text-[34px] font-semibold leading-[1.02] tracking-[-0.05em] text-white sm:text-[42px]">
+                    Signals in. Finished move out.
                   </h2>
-                  <p className="mt-4 text-[16px] leading-7 text-slate-300">
-                    Foldera is not promising a giant autonomous control plane. It is promising one truthful finished move when the signal is ready.
+                  <p className="mt-4 max-w-[32rem] text-[16px] leading-7 text-slate-300">
+                    Foldera keeps the homepage short because the promise is narrow: read the connected context, prepare the move, and keep the approval with you.
                   </p>
                 </div>
 
-                <div className="grid gap-px overflow-hidden rounded-[24px] border border-white/10 bg-white/10 lg:grid-cols-3">
-                  {valueSteps.map(({ title, body, icon: Icon }) => (
-                    <article key={title} className="bg-[#060d16] p-6 sm:p-7">
-                      <div className="inline-flex rounded-2xl border border-cyan-300/15 bg-cyan-400/10 p-3 text-cyan-200">
-                        <Icon className="h-5 w-5" aria-hidden />
-                      </div>
-                      <h3 className="mt-6 text-[22px] font-semibold tracking-[-0.03em] text-white">{title}</h3>
-                      <p className="mt-4 text-[15px] leading-7 text-slate-300">{body}</p>
-                    </article>
-                  ))}
+                <div className="grid gap-px bg-white/10 lg:grid-cols-2">
+                  <ProofColumn title="Signals in" items={signalInputs} />
+                  <ProofColumn title="Finished move out" items={finishedMoveOutputs} />
                 </div>
               </div>
             </div>
@@ -173,29 +227,33 @@ export function LandingPage() {
           <div className="mx-auto max-w-[1440px]">
             <div
               data-testid="landing-trust-line"
-              className="rounded-[26px] border border-cyan-300/14 bg-[linear-gradient(180deg,rgba(5,12,20,0.94),rgba(4,8,14,0.96))] px-6 py-7 shadow-[0_0_40px_rgba(34,211,238,0.08)] sm:px-8 lg:px-10"
+              className="rounded-[30px] border border-cyan-300/14 bg-[linear-gradient(180deg,rgba(5,12,20,0.96),rgba(4,9,15,0.98))] px-6 py-8 shadow-[0_0_44px_rgba(34,211,238,0.08)] sm:px-8 sm:py-10 lg:px-10"
             >
-              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-                <div className="max-w-[34rem]">
-                  <div className="inline-flex items-center gap-2 text-sm font-semibold text-cyan-200">
-                    <ShieldCheck className="h-4 w-4" aria-hidden />
-                    Protected by the trust line
-                  </div>
-                  <p className="mt-3 text-[15px] leading-7 text-slate-300 sm:text-[16px]">
-                    Source-backed, approval-controlled, and narrow enough to stay honest about what Foldera can do today.
-                  </p>
-                </div>
+              <div className="max-w-[44rem]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-200/82">
+                  Approval and safety
+                </p>
+                <h2 className="mt-4 text-[32px] font-semibold leading-[1.04] tracking-[-0.05em] text-white sm:text-[40px]">
+                  Approval before anything sends.
+                </h2>
+                <p className="mt-4 text-[16px] leading-7 text-slate-300">
+                  Foldera can show the source trail, keep the audit path visible, and hold back when the evidence is weak. No outbound by default, and no pretending the move is finished when it is not.
+                </p>
+              </div>
 
-                <div className="flex flex-wrap gap-3">
-                  {trustItems.map((item) => (
-                    <span
-                      key={item}
-                      className="inline-flex min-h-[42px] items-center rounded-full border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-slate-100/90"
-                    >
-                      {item}
-                    </span>
-                  ))}
-                </div>
+              <div className="mt-8 grid gap-4 lg:grid-cols-3">
+                {approvalCards.map(({ title, body, icon: Icon }) => (
+                  <article
+                    key={title}
+                    className="rounded-[22px] border border-white/8 bg-white/[0.03] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                  >
+                    <div className="inline-flex rounded-2xl border border-cyan-300/14 bg-cyan-400/10 p-3 text-cyan-200">
+                      <Icon className="h-5 w-5" aria-hidden />
+                    </div>
+                    <h3 className="mt-5 text-[20px] font-semibold tracking-[-0.03em] text-white">{title}</h3>
+                    <p className="mt-3 text-[15px] leading-7 text-slate-300">{body}</p>
+                  </article>
+                ))}
               </div>
             </div>
           </div>
@@ -203,29 +261,34 @@ export function LandingPage() {
 
         <section className="px-4 pb-8 pt-6 sm:px-6 sm:pb-10 lg:px-8">
           <div className="mx-auto max-w-[1440px]">
-            <div className="overflow-hidden rounded-[30px] border border-white/10 bg-[#050c14]/95 px-6 py-8 shadow-[0_24px_90px_rgba(0,0,0,0.48)] sm:px-8 sm:py-10 lg:px-10 lg:py-12">
-              <div className="grid gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(300px,0.72fr)] lg:items-end">
-                <div className="max-w-[36rem]">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-200/80">
-                    Start with one source
+            <div className="overflow-hidden rounded-[32px] border border-white/10 bg-[#050c14]/95 px-6 py-8 shadow-[0_24px_90px_rgba(0,0,0,0.48)] sm:px-8 sm:py-10 lg:px-10 lg:py-12">
+              <div className="grid gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(320px,0.68fr)] lg:items-end">
+                <div className="max-w-[38rem]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-200/82">
+                    Final CTA
                   </p>
                   <h2 className="mt-4 text-[34px] font-semibold leading-[1.02] tracking-[-0.05em] text-white sm:text-[42px]">
-                    See the Daily Brief before you give Foldera more to do.
+                    Stop starting at the work. Get the next finished move.
                   </h2>
                   <p className="mt-4 text-[16px] leading-7 text-slate-300">
-                    Connect a source, let Foldera read the current context, and judge the product by whether the move is already finished when it appears.
+                    See the live demo first, then decide whether the source-backed move feels finished enough to trust.
                   </p>
                 </div>
 
                 <div className="flex flex-col gap-4 lg:items-end">
                   <a
-                    href="/start"
+                    href="/demo"
                     className="inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[16px] bg-white px-5 text-[14px] font-semibold text-slate-950 transition-transform duration-150 hover:-translate-y-0.5"
                   >
-                    Get started free
+                    See live demo
                     <ArrowRight className="h-4 w-4" aria-hidden />
                   </a>
-                  <p className="text-sm text-slate-400">No credit card required. No outbound messages without approval.</p>
+                  <a
+                    href="/start"
+                    className="inline-flex min-h-[54px] items-center justify-center gap-2 rounded-[16px] border border-cyan-300/18 bg-cyan-400/[0.08] px-5 text-[14px] font-semibold text-cyan-100 transition-colors hover:bg-cyan-400/[0.12]"
+                  >
+                    Start free
+                  </a>
                 </div>
               </div>
             </div>
@@ -236,8 +299,8 @@ export function LandingPage() {
           <div className="mx-auto flex max-w-[1440px] flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <FolderaLogo href="/" />
-              <p className="mt-3 max-w-[20rem] text-sm leading-6 text-slate-400">
-                Finished work when it is safe.
+              <p className="mt-3 max-w-[22rem] text-sm leading-6 text-slate-400">
+                Foldera turns scattered context into one finished move.
               </p>
             </div>
 
@@ -255,79 +318,78 @@ export function LandingPage() {
   );
 }
 
-function HeroProofCard() {
+function HeroProofRail() {
   return (
     <article
       data-testid="landing-proof-card"
-      className="relative overflow-hidden rounded-[32px] border border-cyan-300/22 bg-[linear-gradient(180deg,rgba(4,8,14,0.96),rgba(5,11,18,0.98))] shadow-[0_0_40px_rgba(34,211,238,0.12),0_26px_90px_rgba(0,0,0,0.52)]"
+      className="relative overflow-hidden rounded-[34px] border border-cyan-300/18 bg-[linear-gradient(180deg,rgba(4,8,14,0.97),rgba(5,10,17,0.99))] shadow-[0_0_40px_rgba(34,211,238,0.12),0_28px_96px_rgba(0,0,0,0.56)]"
     >
-      <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.12),transparent_38%),radial-gradient(circle_at_10%_18%,rgba(168,85,247,0.12),transparent_34%)]" />
-      <div className="relative">
-        <div className="flex items-center justify-between gap-4 border-b border-white/8 px-5 py-4 sm:px-7 sm:py-5">
-          <span className="inline-flex items-center rounded-full border border-cyan-300/15 bg-cyan-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-100">
-            Daily brief
-          </span>
-          <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-300">
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_16px_rgba(74,222,128,0.72)]" />
-            Ready to approve
-          </span>
-        </div>
-
-        <div className="space-y-6 px-5 py-5 sm:px-7 sm:py-7">
-          <div className="inline-flex rounded-full border border-rose-300/18 bg-rose-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-rose-100">
-            Needs your reply today
-          </div>
-
-          <div>
-            <h2 className="max-w-[16ch] text-[32px] font-semibold leading-[1.02] tracking-[-0.05em] text-white sm:text-[42px]">
-              Send the follow-up to Alex Morgan before noon.
-            </h2>
-            <p className="mt-4 max-w-[34rem] text-[15px] leading-7 text-slate-300 sm:text-[16px]">
-              The thread is open, the ask is time-bound, and Foldera already drafted the cleanest unblocker instead of handing you a reminder.
-            </p>
-          </div>
-
-          <div className="rounded-[28px] border border-cyan-300/18 bg-cyan-400/[0.08] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <div className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200">
-              <Mail className="h-4 w-4" aria-hidden />
-              Drafted reply
-            </div>
-            <p className="mt-4 text-[18px] leading-8 text-slate-50">
-              Hi Alex, attached is the finalized update for the board packet. If this clears your review, I can send the revised version before 12:00 PT today.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3 border-t border-white/8 pt-6">
-            <button
-              type="button"
-              className="inline-flex foldera-touch-height flex-1 items-center justify-center gap-2 rounded-[14px] border border-emerald-300/35 bg-emerald-500 px-4 text-[14px] font-semibold text-white shadow-[0_0_24px_rgba(74,222,128,0.22)]"
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.12),transparent_36%),radial-gradient(circle_at_8%_20%,rgba(217,70,239,0.10),transparent_32%)]"
+      />
+      <div className="relative border-b border-white/8 px-5 py-4 sm:px-6">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {heroSignalPills.map((pill) => (
+            <span
+              key={pill}
+              className="inline-flex min-h-[36px] items-center rounded-full border border-white/10 bg-white/[0.04] px-3.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-200/88"
             >
-              <Zap className="h-4 w-4" aria-hidden />
-              Approve
-            </button>
-            <button
-              type="button"
-              className="inline-flex foldera-touch-height flex-1 items-center justify-center gap-2 rounded-[14px] border border-white/10 bg-white/[0.04] px-4 text-[14px] font-semibold text-slate-100"
-            >
-              <Clock3 className="h-4 w-4 text-amber-300" aria-hidden />
-              Hold 24h
-            </button>
-            <button
-              type="button"
-              className="inline-flex foldera-touch-height flex-1 items-center justify-center gap-2 rounded-[14px] border border-white/10 bg-white/[0.04] px-4 text-[14px] font-semibold text-slate-100"
-            >
-              <SkipForward className="h-4 w-4 text-slate-300" aria-hidden />
-              Skip
-            </button>
-          </div>
-
-          <div className="flex flex-wrap gap-2 border-t border-white/8 pt-5 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-300/85">
-            <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2">Email thread</span>
-            <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2">Calendar timing</span>
-            <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2">Source trail attached</span>
-          </div>
+              {pill}
+            </span>
+          ))}
         </div>
       </div>
+
+      <div className="space-y-5 px-4 py-5 sm:px-5 sm:py-6">
+        <div className="rounded-[24px] border border-cyan-300/14 bg-cyan-400/[0.08] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-200">What Foldera catches</p>
+          <p className="mt-2 text-[16px] leading-7 text-slate-100">
+            You have reopened this thread six times, tomorrow&apos;s review still depends on it, and the draft already exists.
+          </p>
+        </div>
+
+        <DailyBriefCard
+          className="shadow-[0_0_34px_rgba(34,211,238,0.12)]"
+          directive="Reply to Alex Morgan before the board hold expires."
+          whyNow="The thread has been open for six days, tomorrow's board review depends on the answer, and Foldera pulled the exact draft that already matches the latest context."
+          draftBody={heroDraft}
+          sourcePills={['Email thread', 'Calendar hold', 'Stale draft', 'Decision note']}
+          nextStep="Nothing sends until you approve."
+          footerText="Source trail attached. Approval stays with you."
+          statusText="READY FOR APPROVAL"
+          actions={[
+            { label: 'View source trail', kind: 'secondary', href: '/demo' },
+            { label: 'Hold 24h', kind: 'amber' },
+            { label: 'Approve', kind: 'primary' },
+          ]}
+        />
+      </div>
     </article>
+  );
+}
+
+function ProofColumn({
+  title,
+  items,
+}: {
+  title: string;
+  items: Array<{ title: string; body: string; icon: typeof Mail }>;
+}) {
+  return (
+    <div className="bg-[#07111b] px-6 py-8 sm:px-7 sm:py-9">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-200/82">{title}</p>
+      <div className="mt-6 space-y-5">
+        {items.map(({ title: itemTitle, body, icon: Icon }) => (
+          <article key={itemTitle} className="rounded-[20px] border border-white/8 bg-white/[0.03] p-5">
+            <div className="inline-flex rounded-2xl border border-cyan-300/14 bg-cyan-400/10 p-3 text-cyan-200">
+              <Icon className="h-5 w-5" aria-hidden />
+            </div>
+            <h3 className="mt-4 text-[20px] font-semibold tracking-[-0.03em] text-white">{itemTitle}</h3>
+            <p className="mt-3 text-[15px] leading-7 text-slate-300">{body}</p>
+          </article>
+        ))}
+      </div>
+    </div>
   );
 }

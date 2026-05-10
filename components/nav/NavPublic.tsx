@@ -10,11 +10,9 @@ export type NavPublicProps = {
 };
 
 const navLinks = [
-  { label: 'Platform', href: '/#product' },
-  { label: 'Pricing', href: '/pricing' },
-  { label: 'Blog', href: '/blog' },
+  { label: 'Product', href: '/#how-foldera-works' },
   { label: 'Security', href: '/security' },
-  { label: 'About', href: '/about' },
+  { label: 'Pricing', href: '/pricing' },
 ];
 
 export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavPublicProps) {
@@ -75,20 +73,20 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
             Sign in
           </a>
           <a
-            href="/start"
-            className="inline-flex min-h-[42px] items-center gap-2 rounded-[9px] border border-cyan-200/30 bg-accent px-4 text-[12px] font-semibold text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.18)] transition-colors hover:bg-accent-hover"
+            href="/demo"
+            className="inline-flex min-h-[42px] items-center gap-2 rounded-[9px] border border-white/18 bg-white px-4 text-[12px] font-semibold text-slate-950 shadow-[0_0_18px_rgba(255,255,255,0.10)] transition-colors hover:bg-white/90"
           >
-            Start free
+            See demo
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </a>
         </div>
 
         <div className="flex items-center gap-2 lg:hidden">
           <a
-            href="/dashboard"
-            className="inline-flex min-h-[38px] items-center rounded-[9px] bg-accent px-3 text-[12px] font-semibold text-slate-950 shadow-[0_0_16px_rgba(34,211,238,0.16)] sm:hidden"
+            href="/demo"
+            className="inline-flex min-h-[38px] items-center rounded-[9px] bg-white px-3 text-[12px] font-semibold text-slate-950 shadow-[0_0_16px_rgba(255,255,255,0.10)] sm:hidden"
           >
-            Dashboard
+            Demo
           </a>
 
           <button
@@ -156,9 +154,17 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
               <a
                 href="/start"
                 onClick={() => setMenuOpen(false)}
-                className="mt-2 inline-flex foldera-touch-height items-center justify-center gap-2 rounded-[10px] bg-accent px-4 text-sm font-semibold text-slate-950"
+                className="inline-flex foldera-touch-height items-center rounded-[10px] px-3 text-sm font-medium text-slate-100 transition-colors hover:bg-white/[0.045]"
               >
                 Start free
+              </a>
+
+              <a
+                href="/demo"
+                onClick={() => setMenuOpen(false)}
+                className="mt-2 inline-flex foldera-touch-height items-center justify-center gap-2 rounded-[10px] bg-white px-4 text-sm font-semibold text-slate-950"
+              >
+                See demo
                 <ChevronRight className="h-4 w-4" aria-hidden="true" />
               </a>
             </nav>

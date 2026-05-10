@@ -117,7 +117,8 @@ test.describe('Landing page /', () => {
     await page.goto('/');
     await expect(page.getByTestId('landing-hero-heading')).toContainText(/One finished move/i);
     await expect(page.getByTestId('landing-proof-card')).toBeVisible();
-    await expect(page.getByText(/Approval stays yours/i).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: /See live demo/i }).first()).toBeVisible();
+    await expect(page.getByText(/Nothing sends until you approve/i).first()).toBeVisible();
   });
 
   test('landing demo uses neutral public copy and default approve language', async ({ page }) => {
@@ -126,6 +127,7 @@ test.describe('Landing page /', () => {
     await expect(page.getByText(/Brandon/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Approve & send/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Approve$/i }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: /See live demo/i }).first()).toHaveAttribute('href', '/demo');
   });
 
   test('landing proof card stays visible on mobile preview', async ({ page }) => {
@@ -136,13 +138,14 @@ test.describe('Landing page /', () => {
     await expect(page.getByText(/Brandon/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Approve & send/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Approve$/i }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: /See live demo/i }).first()).toBeVisible();
   });
 
   test('root metadata description matches the finished-work positioning', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('meta[name="description"]')).toHaveAttribute(
       'content',
-      /finished move|directive, draft, and source trail|finished work/i,
+      /connected sources|finished action|source trail|approval/i,
     );
   });
 
@@ -151,10 +154,13 @@ test.describe('Landing page /', () => {
     await page.goto('/');
 
     await expect(page.getByTestId('landing-hero-heading')).toContainText(/One finished move/i);
-    await expect(page.getByText(/Checks the real sources/i)).toBeVisible();
-    await expect(page.getByRole('heading', { name: /Ships the artifact/i }).first()).toBeVisible();
-    await expect(page.getByRole('heading', { name: /Stops safely|Stops when it should/i }).first()).toBeVisible();
+    await expect(page.getByText(/How Foldera works/i).first()).toBeVisible();
+    await expect(page.getByText(/Signals in/i).first()).toBeVisible();
+    await expect(page.getByText(/Finished move out/i).first()).toBeVisible();
+    await expect(page.getByText(/Approval before anything sends/i).first()).toBeVisible();
+    await expect(page.getByText(/Source trail attached/i).first()).toBeVisible();
     await expect(page.getByText(/No outbound by default/i).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: /See live demo/i }).first()).toHaveAttribute('href', '/demo');
 
     for (const overclaim of [
       /Trusted by teams/i,
@@ -165,7 +171,6 @@ test.describe('Landing page /', () => {
       /Google Drive/i,
       /Dropbox/i,
       /Approve and send/i,
-      /Finished work, every morning/i,
     ]) {
       await expect(page.getByText(overclaim)).toHaveCount(0);
     }

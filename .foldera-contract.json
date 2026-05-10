@@ -1,35 +1,34 @@
 {
-  "backlog_id": "MANUAL-ARTIFACT-WINNER-SELECTION",
-  "base_commit": "1fe86aed5d8090ea8dbb18c01011ac9c72cb2dd7",
-  "money_loop_rung": "artifact_winner_selection",
+  "backlog_id": "MANUAL-HOMEPAGE-FRONT-DOOR",
+  "base_commit": "8fcff617ae196a3bbfbe7b86749453eaada35b90",
+  "money_loop_rung": "public_front_door",
   "allowed_file_patterns": [
     ".foldera-contract.json",
-    "lib/briefing/low-value-event-invite.ts",
-    "lib/briefing/artifact-taste-pack.ts",
-    "lib/briefing/generator.ts",
-    "lib/briefing/__tests__/low-value-event-invite.test.ts",
-    "lib/briefing/__tests__/positive-winner-contract.test.ts",
-    "lib/briefing/__tests__/winner-selection.test.ts",
-    "FOLDERA_PRODUCTION_BACKLOG.md",
+    "app/page.tsx",
+    "components/foldera/LandingPage.tsx",
+    "components/nav/NavPublic.tsx",
+    "tests/e2e/public-routes.spec.ts",
     "SESSION_HISTORY.md"
   ],
   "forbidden_file_patterns": [
-    "lib/conviction/artifact-generator*",
-    "lib/signals/**/*",
-    "lib/cron/daily-brief-generate.ts"
+    "app/demo/**/*",
+    "app/api/**/*",
+    "lib/briefing/**/*",
+    "lib/cron/**/*",
+    "supabase/**/*"
   ],
-  "allowed_files_raw": "`.foldera-contract.json`, `lib/briefing/low-value-event-invite.ts`, `lib/briefing/artifact-taste-pack.ts`, `lib/briefing/generator.ts`, `lib/briefing/__tests__/low-value-event-invite.test.ts`, `lib/briefing/__tests__/positive-winner-contract.test.ts`, `lib/briefing/__tests__/winner-selection.test.ts`, `SESSION_HISTORY.md`",
-  "forbidden_files_raw": "`lib/conviction/artifact-generator*`, `lib/signals/**/*`, `lib/cron/daily-brief-generate.ts`, unrelated product/runtime files outside this winner-selection seam",
-  "required_local_proof": "`node node_modules/vitest/vitest.mjs run lib/briefing/__tests__/low-value-event-invite.test.ts lib/briefing/__tests__/positive-winner-contract.test.ts lib/briefing/__tests__/winner-selection.test.ts --reporter=verbose`, `node node_modules/vitest/vitest.mjs run lib/system/__tests__/winner-truth.test.ts --reporter=verbose`, `npm run build`, `npm run health`",
-  "required_browser_proof": "None. This is a backend winner-selection seam with deterministic local proof only.",
-  "is_user_facing": false,
-  "browser_proof_command": "Done means: low-authority webinar/platform invites are silently suppressed before generation, direct next-move impact is required to compete, and the Notion-style regression stays blocked in focused tests.",
+  "allowed_files_raw": "`.foldera-contract.json`, `app/page.tsx`, `components/foldera/LandingPage.tsx`, `components/nav/NavPublic.tsx`, `tests/e2e/public-routes.spec.ts`, `SESSION_HISTORY.md`",
+  "forbidden_files_raw": "`app/demo/**/*`, `app/api/**/*`, `lib/briefing/**/*`, `lib/cron/**/*`, `supabase/**/*`, and unrelated product/runtime files outside this homepage seam",
+  "required_local_proof": "`npm run health`, `npm run lint`, `npm run build`, `npx playwright test tests/e2e/public-routes.spec.ts --grep \"Landing page /\"`, `npx playwright test tests/e2e/mobile-visual-qa.spec.ts --grep \"scrollWidth ≤ viewport: home|opens full-screen overlay, closes on X\"`",
+  "required_browser_proof": "Open the local production build in the in-app browser at desktop and mobile widths, confirm the homepage first viewport communicates the full Foldera story, and confirm `/demo` still loads.",
+  "is_user_facing": true,
+  "browser_proof_command": "Local production build on `http://127.0.0.1:3000/`: inspect desktop and mobile homepage, confirm `See live demo` routes to `/demo`, then open `http://127.0.0.1:3000/demo` and verify the Executive Briefing title still loads.",
   "anti_regression_checks": [
-    "Notion-style decide-whether-to-attend candidate is disqualified",
-    "Context-smart alone is not enough; receipt records changes_next_move=false",
-    "Low-authority event invite gets silent suppression receipt with user_visible=false",
-    "Direct current dependency version remains actionable",
-    "Winner truth/build/health still pass"
+    "Homepage first viewport states connected sources, ranked move, draft, source trail, and approval",
+    "Primary CTA points to `/demo` and secondary CTA points to `/start`",
+    "Public nav exposes Product / Security / Pricing / Sign in / See demo without dead links",
+    "Mobile homepage has no horizontal overflow and hamburger menu still closes cleanly",
+    "`/demo` still loads unchanged on the same local production build"
   ],
-  "next_command": "Artifact winner-selection seam is in scope for commit: keep the change inside low-value event invite assessment, artifactability, positive winner contract, focused tests, and session history; verify the focused proofs plus build and health, then commit and push."
+  "next_command": "Homepage front-door seam is in scope for commit: keep the change inside the landing page, public nav, homepage metadata, homepage route proof, and session history; verify health, lint, build, focused landing/mobile Playwright, in-app browser proof, then commit and push."
 }
