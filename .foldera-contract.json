@@ -1,6 +1,6 @@
 {
   "backlog_id": "MANUAL-ARTIFACT-WINNER-SELECTION",
-  "base_commit": "95bfb89a36ae617d15c905ccb6cf3418e7d72c3a",
+  "base_commit": "1fe86aed5d8090ea8dbb18c01011ac9c72cb2dd7",
   "money_loop_rung": "artifact_winner_selection",
   "allowed_file_patterns": [
     ".foldera-contract.json",
