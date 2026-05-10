@@ -59,6 +59,38 @@ export interface TrackCallParams {
   persist?: boolean;
 }
 
+type CostEventRow = {
+  created_at: string;
+  endpoint: string;
+  model: string;
+  estimated_cost: string | number;
+  input_tokens: number;
+  output_tokens: number;
+};
+
+export type CostWindowSummary = {
+  total_usd: number;
+  event_count: number;
+  input_tokens: number;
+  output_tokens: number;
+};
+
+type CostBreakdownRow = {
+  total_usd: number;
+  event_count: number;
+};
+
+export type CostEventSummaryReport = {
+  generated_at: string;
+  windows: {
+    last_24h: CostWindowSummary;
+    last_7d: CostWindowSummary;
+    last_30d: CostWindowSummary;
+  };
+  by_endpoint_7d: Array<{ endpoint: string } & CostBreakdownRow>;
+  by_model_7d: Array<{ model: string } & CostBreakdownRow>;
+};
+
 /**
  * Log a Claude API call to api_usage.
  * Fire-and-forget — never throws so callers don't need try/catch.
@@ -71,7 +103,7 @@ export async function trackApiCall(params: TrackCallParams): Promise<void> {
     const cost = estimateCost(params.model, params.inputTokens, params.outputTokens);
     const supabase = createServerClient();
     const prCtx = getPipelineRunContext();
-    const { error } = await supabase.from('api_usage').insert({
+    const sharedPayload = {
       user_id:       params.userId ?? null,
       model:         params.model,
       input_tokens:  params.inputTokens,
@@ -79,24 +111,139 @@ export async function trackApiCall(params: TrackCallParams): Promise<void> {
       estimated_cost: cost,
       endpoint:      params.callType,
       ...(prCtx?.pipelineRunId ? { pipeline_run_id: prCtx.pipelineRunId } : {}),
-    });
-    if (error) {
-      throw error;
+    };
+    const [
+      apiUsageResult,
+      costEventsResult,
+    ] = await Promise.all([
+      supabase.from('api_usage').insert(sharedPayload),
+      supabase.from('cost_events').insert({
+        ...sharedPayload,
+        provider: 'anthropic',
+      }),
+    ]);
+    if (apiUsageResult.error) {
+      throw apiUsageResult.error;
+    }
+    if (costEventsResult.error) {
+      throw costEventsResult.error;
     }
   } catch (error) {
     logStructuredEvent({
-      event: 'api_usage_tracking_failed',
+      event: 'llm_cost_tracking_failed',
       level: 'warn',
       userId: params.userId ?? null,
       artifactType: null,
       generationStatus: 'tracking_failed',
       details: {
         scope: 'api-tracker',
+        tables: ['api_usage', 'cost_events'],
         call_type: params.callType,
         error: error instanceof Error ? error.message : String(error),
       },
     });
   }
+}
+
+function emptyCostWindowSummary(): CostWindowSummary {
+  return {
+    total_usd: 0,
+    event_count: 0,
+    input_tokens: 0,
+    output_tokens: 0,
+  };
+}
+
+function roundUsd(value: number): number {
+  return Number(value.toFixed(6));
+}
+
+function addToWindow(summary: CostWindowSummary, row: CostEventRow): void {
+  summary.total_usd = roundUsd(summary.total_usd + Number(row.estimated_cost ?? 0));
+  summary.event_count += 1;
+  summary.input_tokens += Number(row.input_tokens ?? 0);
+  summary.output_tokens += Number(row.output_tokens ?? 0);
+}
+
+function addToBreakdown<T extends string>(
+  map: Map<T, CostBreakdownRow>,
+  key: T,
+  row: CostEventRow,
+): void {
+  const current = map.get(key) ?? { total_usd: 0, event_count: 0 };
+  current.total_usd = roundUsd(current.total_usd + Number(row.estimated_cost ?? 0));
+  current.event_count += 1;
+  map.set(key, current);
+}
+
+function breakdownToArray<T extends string, K extends string>(
+  map: Map<T, CostBreakdownRow>,
+  field: K,
+): Array<Record<K, T> & CostBreakdownRow> {
+  return Array.from(map.entries())
+    .map(([key, value]) => ({
+      [field]: key,
+      ...value,
+    }) as Record<K, T> & CostBreakdownRow)
+    .sort((a, b) => b.total_usd - a.total_usd || b.event_count - a.event_count);
+}
+
+export async function getCostEventSummaryReport(): Promise<CostEventSummaryReport> {
+  const supabase = createServerClient();
+  const now = new Date();
+  const since30d = new Date(now);
+  since30d.setUTCDate(since30d.getUTCDate() - 30);
+
+  const { data, error } = await supabase
+    .from('cost_events')
+    .select('created_at, endpoint, model, estimated_cost, input_tokens, output_tokens')
+    .gte('created_at', since30d.toISOString());
+
+  if (error) {
+    throw error;
+  }
+
+  const summary: CostEventSummaryReport = {
+    generated_at: now.toISOString(),
+    windows: {
+      last_24h: emptyCostWindowSummary(),
+      last_7d: emptyCostWindowSummary(),
+      last_30d: emptyCostWindowSummary(),
+    },
+    by_endpoint_7d: [],
+    by_model_7d: [],
+  };
+
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  const sevenDayMs = 7 * oneDayMs;
+  const thirtyDayMs = 30 * oneDayMs;
+  const endpoint7d = new Map<string, CostBreakdownRow>();
+  const model7d = new Map<string, CostBreakdownRow>();
+
+  for (const row of (data ?? []) as CostEventRow[]) {
+    const createdAtMs = new Date(row.created_at).getTime();
+    if (!Number.isFinite(createdAtMs)) {
+      continue;
+    }
+
+    const ageMs = now.getTime() - createdAtMs;
+    if (ageMs <= oneDayMs) {
+      addToWindow(summary.windows.last_24h, row);
+    }
+    if (ageMs <= sevenDayMs) {
+      addToWindow(summary.windows.last_7d, row);
+      addToBreakdown(endpoint7d, row.endpoint, row);
+      addToBreakdown(model7d, row.model, row);
+    }
+    if (ageMs <= thirtyDayMs) {
+      addToWindow(summary.windows.last_30d, row);
+    }
+  }
+
+  summary.by_endpoint_7d = breakdownToArray(endpoint7d, 'endpoint');
+  summary.by_model_7d = breakdownToArray(model7d, 'model');
+
+  return summary;
 }
 
 /**
