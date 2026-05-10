@@ -2,6 +2,8 @@
 
 Last refreshed: 2026-05-10
 
+Operating doctrine pointer: see [FOLDERA_OPERATING_DOCTRINE.md](/C:/Users/b-kap/foldera-ai/FOLDERA_OPERATING_DOCTRINE.md) for the durable seam order, current priority, and stop condition that should guide backlog selection.
+
 ## Current top item
 BL-022 — Cost Firewall proof card shows real production ledger totals.
 

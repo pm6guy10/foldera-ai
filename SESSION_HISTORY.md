@@ -2,6 +2,15 @@
 
 # Session History
 
+Operating doctrine pointer: see [FOLDERA_OPERATING_DOCTRINE.md](/C:/Users/b-kap/foldera-ai/FOLDERA_OPERATING_DOCTRINE.md) for the durable owner/operator seam order and current stop condition.
+
+## 2026-05-10 - Durable operating doctrine pointer added
+- MODE: Docs-only operating doctrine seam.
+- Files changed: `FOLDERA_OPERATING_DOCTRINE.md`, `SESSION_HISTORY.md`, `FOLDERA_PRODUCTION_BACKLOG.md`.
+- What changed: Added a durable operating doctrine file that locks the current source-truth -> cost-truth -> run-truth -> artifact-truth -> payment-truth -> scale/security order, and added short top-level pointers from session history and the production backlog so future runs do not lose the seam.
+- Verification: `npm run health` passed before docs edits and after docs edits with `RESULT: 0 FAILING`; `npm run build` passed after the docs updates; no product/runtime files changed.
+- Unresolved issues: None for this docs-only seam. No product behavior, schema, billing, auth, sync, or paid-model path changed.
+
 ## 2026-05-08 - Dashboard shell now matches the executive-briefing comp with a real native layout
 - MODE: Pixel-locked dashboard UI seam.
 - Files changed: `app/dashboard/page.tsx`, `app/globals.css`, `components/dashboard/DashboardMobileLayout.tsx`, `components/dashboard/DashboardWorkspacePanels.tsx`, `components/foldera/DashboardSidebar.tsx`, `components/foldera/DailyBriefCard.tsx`, `tests/e2e/dashboard-navigation.spec.ts`, `tests/e2e/authenticated-routes.spec.ts`, `SESSION_HISTORY.md`.
