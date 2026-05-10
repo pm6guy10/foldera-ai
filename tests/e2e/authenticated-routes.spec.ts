@@ -305,6 +305,65 @@ const INTEGRATIONS_MICROSOFT_REAUTH_RESPONSE = {
   ],
 };
 
+const INTEGRATIONS_STALE_GOOGLE_RESPONSE = {
+  integrations: [
+    {
+      provider: 'google',
+      is_active: true,
+      sync_email: 'b.kapp1010@gmail.com',
+      last_synced_at: '2026-05-08T19:35:02.000Z',
+      status: 'stale',
+      recommended_action:
+        'Refresh Google before the next generation if newer mail or calendar updates should be present.',
+      needs_sync: true,
+      sync_stale: true,
+      needs_reauth: false,
+      needs_reconnect: false,
+      missing_scopes: [],
+    },
+    {
+      provider: 'azure_ad',
+      is_active: true,
+      sync_email: 'b-kapp@outlook.com',
+      last_synced_at: '2026-05-10T11:21:24.472Z',
+      status: 'fresh',
+      recommended_action: 'No action needed. Microsoft is fresh enough for generation.',
+      needs_sync: false,
+      sync_stale: false,
+      needs_reauth: false,
+      needs_reconnect: false,
+      missing_scopes: [],
+    },
+  ],
+  connector_health: {
+    generation_gate: {
+      level: 'warn',
+      reason:
+        'At least one active connector is stale or needs attention, but another active connector is still fresh.',
+      recommended_actions: [
+        'Refresh Google before the next generation if newer mail or calendar updates should be present.',
+      ],
+    },
+    instructions: [
+      {
+        provider: 'google',
+        email: 'b.kapp1010@gmail.com',
+        status: 'stale',
+        last_synced_at: '2026-05-08T19:35:02.000Z',
+        recommended_action:
+          'Refresh Google before the next generation if newer mail or calendar updates should be present.',
+      },
+      {
+        provider: 'microsoft',
+        email: 'b-kapp@outlook.com',
+        status: 'fresh',
+        last_synced_at: '2026-05-10T11:21:24.472Z',
+        recommended_action: 'No action needed. Microsoft is fresh enough for generation.',
+      },
+    ],
+  },
+};
+
 const PRO_SUBSCRIPTION_RESPONSE = {
   plan: 'pro',
   status: 'active',
@@ -573,6 +632,21 @@ async function setupSettingsGoogleReauthMocks(page: Page) {
     fulfillJson({ plan: 'pro', status: 'active', can_manage_billing: true }),
   );
   await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_GOOGLE_REAUTH_RESPONSE));
+  await page.route(matchApiPath('/api/graph/stats'), fulfillJson(GRAPH_STATS_RESPONSE));
+  await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
+}
+
+async function setupSettingsStaleGoogleMocks(page: Page) {
+  await seedAuthenticatedSession(page);
+  await attachCheckoutGuards(page);
+  await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+  await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+  await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+  await page.route(
+    matchApiPath('/api/subscription/status'),
+    fulfillJson({ plan: 'pro', status: 'active', can_manage_billing: true }),
+  );
+  await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_STALE_GOOGLE_RESPONSE));
   await page.route(matchApiPath('/api/graph/stats'), fulfillJson(GRAPH_STATS_RESPONSE));
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
 }
@@ -1269,6 +1343,18 @@ describeAuthMocked('Settings /dashboard/settings — authenticated', () => {
     await expect(page.getByText(/one more consent step to keep reading/i)).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/reconnect required/i).first()).toBeVisible();
     await expect(page.getByText(/Gmail read access/i).first()).toBeVisible();
+  });
+
+  test('shows stale Google clearly while Microsoft stays fresh', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupSettingsStaleGoogleMocks(page);
+    await page.goto('/dashboard/settings');
+    await expect(page.getByText(/Google is stale/i)).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.getByText(/Refresh Google before the next generation if newer mail or calendar updates should be present/i),
+    ).toBeVisible();
+    await expect(page.getByText(/Last synced/i).first()).toBeVisible();
+    await expect(page.getByText(/Microsoft/i).first()).toBeVisible();
   });
 
   test('shows Google reconnect state without auto-refresh failure blame', async ({ page }) => {

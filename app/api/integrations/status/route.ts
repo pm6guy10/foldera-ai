@@ -9,97 +9,16 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { createServerClient } from '@/lib/db/client';
-import { apiErrorForRoute } from '@/lib/utils/api-error';
 import {
-  INTEGRATIONS_MAIL_GRAPH_STALE_MS,
-  INTEGRATIONS_SYNC_STALE_MS,
-  MAIL_CURSOR_FRESH_MS,
-} from '@/lib/config/constants';
+  buildConnectorHealthEntries,
+  buildConnectorHealthSummary,
+  loadConnectorHealthRows,
+} from '@/lib/integrations/connector-health';
+import { apiErrorForRoute } from '@/lib/utils/api-error';
+import { INTEGRATIONS_MAIL_GRAPH_STALE_MS } from '@/lib/config/constants';
 import { withReadOnlyUserCache } from '@/lib/utils/read-only-user-cache';
 
 export const dynamic = 'force-dynamic';
-
-const GOOGLE_REQUIRED_SCOPE_HINTS = [
-  { needle: 'userinfo.email', label: 'email access' },
-  { needle: 'userinfo.profile', label: 'profile access' },
-  { needle: 'gmail.readonly', label: 'Gmail read access' },
-  { needle: 'gmail.send', label: 'send access' },
-  { needle: 'calendar', label: 'Calendar access' },
-  { needle: 'drive.readonly', label: 'Drive access' },
-];
-
-const MICROSOFT_REQUIRED_SCOPE_HINTS = [
-  { needle: 'user.read', label: 'Microsoft profile access' },
-  { needle: 'mail.read', label: 'mail read access' },
-  { needle: 'mail.send', label: 'mail send access' },
-  { needle: 'calendars.read', label: 'calendar access' },
-  { needle: 'files.read', label: 'files access' },
-  { needle: 'tasks.read', label: 'tasks access' },
-  { needle: 'offline_access', label: 'offline refresh access' },
-];
-
-function normalizeScopes(scopes: unknown): string[] {
-  return typeof scopes === 'string'
-    ? scopes
-        .split(/\s+/)
-        .map((scope) => scope.trim().toLowerCase())
-        .filter(Boolean)
-    : [];
-}
-
-function missingScopeLabels(
-  provider: string,
-  scopes: unknown,
-  options?: { hasRefreshToken?: boolean },
-): string[] {
-  const granted = normalizeScopes(scopes);
-  const hints = provider === 'microsoft' ? MICROSOFT_REQUIRED_SCOPE_HINTS : GOOGLE_REQUIRED_SCOPE_HINTS;
-  return hints
-    .filter(({ needle }) => {
-      if (provider === 'microsoft' && needle === 'offline_access' && options?.hasRefreshToken) {
-        return false;
-      }
-      return !granted.some((scope) => scope.includes(needle));
-    })
-    .map(({ label }) => label);
-}
-
-/**
- * PostgREST errors are often `PostgrestError extends Error`. `JSON.stringify(err)` drops
- * non-enumerable `message`, so schema errors never match `/oauth_reauth_required_at/`.
- */
-function supabaseErrorText(err: unknown): string {
-  if (err == null) return '';
-  if (typeof err === 'string') return err;
-  if (err instanceof Error) {
-    const e = err as Error & { details?: string; hint?: string; code?: string };
-    return [e.message, e.details, e.hint, e.code].filter(Boolean).join(' | ');
-  }
-  if (typeof err === 'object') {
-    const o = err as Record<string, unknown>;
-    const parts = [o.message, o.details, o.hint, o.code].filter((x) => typeof x === 'string') as string[];
-    try {
-      return `${parts.join(' | ')} | ${JSON.stringify(err)}`;
-    } catch {
-      return parts.join(' | ');
-    }
-  }
-  return String(err);
-}
-
-function postgresErrorCode(err: unknown): string {
-  if (err == null || typeof err !== 'object') return '';
-  const code = (err as Record<string, unknown>).code;
-  return typeof code === 'string' ? code : '';
-}
-
-function isOauthReauthColumnMissing(err: unknown): boolean {
-  const text = supabaseErrorText(err);
-  if (/oauth_reauth_required_at/i.test(text)) return true;
-  // Some PostgREST paths surface 42703 with the column name only in details/hint.
-  if (postgresErrorCode(err) === '42703' && /oauth_reauth/i.test(text)) return true;
-  return false;
-}
 
 export async function GET() {
   const session = await getServerSession(getAuthOptions());
@@ -109,82 +28,29 @@ export async function GET() {
 
   try {
     const supabase = createServerClient();
-
-    let data: unknown[] | null;
-    let legacyReauthShape = false;
-
-    const modern = await supabase
-      .from('user_tokens')
-      .select(
-        'provider, email, last_synced_at, scopes, access_token, expires_at, refresh_token, disconnected_at, oauth_reauth_required_at',
-      )
-      .eq('user_id', session.user.id)
-      .or('disconnected_at.is.null,oauth_reauth_required_at.not.is.null');
-
-    if (modern.error && isOauthReauthColumnMissing(modern.error)) {
-      const legacy = await supabase
-        .from('user_tokens')
-        .select('provider, email, last_synced_at, scopes, access_token, expires_at, refresh_token')
-        .eq('user_id', session.user.id)
-        .is('disconnected_at', null);
-      if (legacy.error) {
-        throw legacy.error;
-      }
-      data = legacy.data as unknown[];
-      legacyReauthShape = true;
-    } else if (modern.error) {
-      throw modern.error;
-    } else {
-      data = modern.data as unknown[];
-    }
-
+    const { rows } = await loadConnectorHealthRows({
+      userId: session.user.id,
+      supabase: supabase as never,
+    });
     const nowMs = Date.now();
-    const integrations = (data ?? []).map((row: any) => {
-      // Map user_tokens provider names to settings UI provider names
-      const uiProvider = row.provider === 'microsoft' ? 'azure_ad' : row.provider;
-      const hasToken = typeof row.access_token === 'string' && row.access_token.length > 0;
-      const expSec = typeof row.expires_at === 'number' ? row.expires_at : null;
-      // Encrypted blob or plaintext — presence means background refresh may work
-      const hasRefreshInDb =
-        typeof row.refresh_token === 'string' && row.refresh_token.length > 0;
-
-      // Do NOT treat short-lived access_token expiry as "reconnect": cron/sync refreshes via
-      // refresh_token; DB expires_at can lag behind a successful last_synced_at (Google).
-      const needsReconnect = hasToken && !hasRefreshInDb;
-      const reauthRequired =
-        !legacyReauthShape &&
-        row.oauth_reauth_required_at != null &&
-        typeof row.oauth_reauth_required_at === 'string';
-
-      const lastSyncMs = row.last_synced_at ? new Date(row.last_synced_at as string).getTime() : 0;
-      const syncStale =
-        hasToken &&
-        hasRefreshInDb &&
-        lastSyncMs > 0 &&
-        nowMs - lastSyncMs > INTEGRATIONS_SYNC_STALE_MS;
-      const needsSync =
-        hasToken &&
-        hasRefreshInDb &&
-        (lastSyncMs === 0 || nowMs - lastSyncMs > MAIL_CURSOR_FRESH_MS);
-
+    const connectorProviders = buildConnectorHealthEntries(rows, { nowMs });
+    const connectorHealth = buildConnectorHealthSummary(connectorProviders);
+    const integrations = connectorProviders.map((provider, index) => {
+      const row = rows[index];
       return {
-        provider: uiProvider,
-        is_active: hasToken,
-        sync_email: row.email ?? null,
-        last_synced_at: row.last_synced_at ?? null,
-        scopes: row.scopes ?? null,
-        missing_scopes: hasToken
-          ? missingScopeLabels(
-              uiProvider === 'azure_ad' ? 'microsoft' : 'google',
-              row.scopes,
-              { hasRefreshToken: hasRefreshInDb },
-            )
-          : [],
-        expires_at: expSec,
-        needs_reconnect: needsReconnect,
-        needs_reauth: reauthRequired,
-        needs_sync: needsSync,
-        sync_stale: syncStale,
+        provider: provider.ui_provider,
+        is_active: provider.is_active,
+        sync_email: provider.email,
+        last_synced_at: provider.last_synced_at,
+        scopes: row?.scopes ?? null,
+        missing_scopes: provider.missing_scopes,
+        expires_at: typeof row?.expires_at === 'number' ? row.expires_at : null,
+        needs_reconnect: provider.needs_reconnect,
+        needs_reauth: provider.needs_reauth,
+        needs_sync: provider.needs_sync,
+        sync_stale: provider.sync_stale,
+        status: provider.status,
+        recommended_action: provider.recommended_action,
       };
     });
 
@@ -201,18 +67,11 @@ export async function GET() {
       .limit(1)
       .maybeSingle();
 
-    const tokenRows = (data ?? []) as Array<{
-      provider?: string;
-      access_token?: unknown;
-      refresh_token?: unknown;
-    }>;
-    const hasMailConnector = tokenRows.some(
-      (row) =>
-        (row.provider === 'google' || row.provider === 'microsoft') &&
-        typeof row.access_token === 'string' &&
-        row.access_token.length > 0 &&
-        typeof row.refresh_token === 'string' &&
-        row.refresh_token.length > 0,
+    const hasMailConnector = connectorProviders.some(
+      (provider) =>
+        (provider.provider === 'google' || provider.provider === 'microsoft') &&
+        provider.has_access_token &&
+        provider.has_refresh_token,
     );
     const newestMailIso = (newestMailRow?.occurred_at as string | undefined) ?? null;
     const newestMailMs = newestMailIso ? new Date(newestMailIso).getTime() : 0;
@@ -223,6 +82,7 @@ export async function GET() {
     return NextResponse.json(
       {
         integrations,
+        connector_health: connectorHealth,
         newest_mail_signal_at: newestMailIso,
         mail_ingest_looks_stale: mailIngestLooksStale,
       },

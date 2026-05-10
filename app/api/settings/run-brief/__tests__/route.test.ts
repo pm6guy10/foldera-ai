@@ -12,6 +12,7 @@ const mockPendingApprovalSelect = vi.fn();
 const mockPendingApprovalLimit = vi.fn();
 const mockLatestActionMaybeSingle = vi.fn();
 const mockLatestPipelineMaybeSingle = vi.fn();
+const mockGetConnectorHealthSummary = vi.fn();
 
 vi.mock('@/lib/auth/resolve-user', () => ({
   resolveUser: mockResolveUser,
@@ -19,6 +20,10 @@ vi.mock('@/lib/auth/resolve-user', () => ({
 
 vi.mock('@/lib/cron/brief-service', () => ({
   runBriefLifecycle: mockRunBriefLifecycle,
+}));
+
+vi.mock('@/lib/integrations/connector-health', () => ({
+  getConnectorHealthSummary: mockGetConnectorHealthSummary,
 }));
 
 function createPipelineRunsChain() {
@@ -132,6 +137,22 @@ describe('POST /api/settings/run-brief', () => {
     mockLatestPipelineMaybeSingle.mockResolvedValue({ data: null, error: null });
     mockPendingApprovalSelect.mockReset();
     mockPendingApprovalLimit.mockResolvedValue({ data: [], error: null });
+    mockGetConnectorHealthSummary.mockResolvedValue({
+      providers: [],
+      instructions: [],
+      counts: {
+        fresh: 0,
+        stale: 0,
+        disconnected: 0,
+        reauth_required: 0,
+        never_synced: 0,
+      },
+      generation_gate: {
+        level: 'ok',
+        reason: 'All active connectors are fresh enough for generation.',
+        recommended_actions: [],
+      },
+    });
     mockApiError.mockImplementation((error: unknown) =>
       NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 }));
   });
@@ -184,12 +205,145 @@ describe('POST /api/settings/run-brief', () => {
       id: 'pending-action-1',
       generated_at: expect.any(String),
     });
+    expect(payload.connector_health.generation_gate.level).toBe('ok');
     expect(payload.stages.daily_brief).toEqual(expect.objectContaining(RUN_BRIEF_CHEAP_DRY_RUN_STAGE));
     expect(payload.stages.sync_microsoft).toBeUndefined();
     expect(payload.stages.sync_google).toBeUndefined();
     expect(Object.keys(payload.stages)).toEqual([...RUN_BRIEF_CHEAP_DRY_RUN_STAGE_KEYS]);
     expect(mockRateLimit).toHaveBeenCalledWith(`run-brief:${userId}`, { limit: 2, window: 600 });
   }, 45_000);
+
+  it('surfaces connector freshness warnings in cheap dry-run receipts', async () => {
+    const userId = '67676767-6767-6767-6767-676767676767';
+    mockResolveUser.mockResolvedValue({ userId });
+    mockGetConnectorHealthSummary.mockResolvedValue({
+      providers: [
+        {
+          provider: 'google',
+          email: 'b.kapp1010@gmail.com',
+          status: 'stale',
+          last_synced_at: '2026-05-08T19:35:02.000Z',
+          recommended_action:
+            'Refresh Google before the next generation if newer mail or calendar updates should be present.',
+        },
+        {
+          provider: 'microsoft',
+          email: 'b-kapp@outlook.com',
+          status: 'fresh',
+          last_synced_at: '2026-05-10T11:21:24.472Z',
+          recommended_action: 'No action needed. Microsoft is fresh enough for generation.',
+        },
+      ],
+      instructions: [
+        {
+          provider: 'google',
+          email: 'b.kapp1010@gmail.com',
+          status: 'stale',
+          last_synced_at: '2026-05-08T19:35:02.000Z',
+          recommended_action:
+            'Refresh Google before the next generation if newer mail or calendar updates should be present.',
+        },
+        {
+          provider: 'microsoft',
+          email: 'b-kapp@outlook.com',
+          status: 'fresh',
+          last_synced_at: '2026-05-10T11:21:24.472Z',
+          recommended_action: 'No action needed. Microsoft is fresh enough for generation.',
+        },
+      ],
+      counts: {
+        fresh: 1,
+        stale: 1,
+        disconnected: 0,
+        reauth_required: 0,
+        never_synced: 0,
+      },
+      generation_gate: {
+        level: 'warn',
+        reason:
+          'At least one active connector is stale or needs attention, but another active connector is still fresh.',
+        recommended_actions: [
+          'Refresh Google before the next generation if newer mail or calendar updates should be present.',
+        ],
+      },
+    });
+    const { POST } = await import('../route');
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/settings/run-brief?force=true&dry_run=true', { method: 'POST' }),
+    );
+
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.connector_health.generation_gate.level).toBe('warn');
+    expect(payload.connector_health.instructions).toEqual([
+      expect.objectContaining({
+        provider: 'google',
+        status: 'stale',
+      }),
+      expect.objectContaining({
+        provider: 'microsoft',
+        status: 'fresh',
+      }),
+    ]);
+  });
+
+  it('blocks live generation when no active connector is fresh enough', async () => {
+    const userId = '78787878-7878-7878-7878-787878787878';
+    mockResolveUser.mockResolvedValue({ userId });
+    mockGetConnectorHealthSummary.mockResolvedValue({
+      providers: [
+        {
+          provider: 'google',
+          email: 'b.kapp1010@gmail.com',
+          status: 'stale',
+          last_synced_at: '2026-05-08T19:35:02.000Z',
+          recommended_action:
+            'Refresh Google before the next generation if newer mail or calendar updates should be present.',
+        },
+      ],
+      instructions: [
+        {
+          provider: 'google',
+          email: 'b.kapp1010@gmail.com',
+          status: 'stale',
+          last_synced_at: '2026-05-08T19:35:02.000Z',
+          recommended_action:
+            'Refresh Google before the next generation if newer mail or calendar updates should be present.',
+        },
+      ],
+      counts: {
+        fresh: 0,
+        stale: 1,
+        disconnected: 0,
+        reauth_required: 0,
+        never_synced: 0,
+      },
+      generation_gate: {
+        level: 'block',
+        reason: 'No active connector is fresh enough for generation.',
+        recommended_actions: [
+          'Refresh Google before the next generation if newer mail or calendar updates should be present.',
+        ],
+      },
+    });
+    const { POST } = await import('../route');
+
+    const response = await POST(
+      new Request('http://localhost:3000/api/settings/run-brief?force=true', { method: 'POST' }),
+    );
+
+    expect(response.status).toBe(207);
+    expect(mockRunBriefLifecycle).not.toHaveBeenCalled();
+    const payload = await response.json();
+    expect(payload.ok).toBe(false);
+    expect(payload.short_circuit).toEqual(
+      expect.objectContaining({
+        reason: 'connector_health_blocked',
+      }),
+    );
+    expect(payload.connector_health.generation_gate.level).toBe('block');
+  });
 
   it('persists and returns a transport diagnostic receipt before lifecycle work', async () => {
     const userId = '12121212-1212-1212-1212-121212121212';

@@ -1,36 +1,39 @@
 {
-  "backlog_id": "MANUAL-DEMO-LOVABLE-TRANSPLANT",
-  "base_commit": "b04d197cdae207796870d084a9233af84ed4a180",
-  "money_loop_rung": "transplant_foldera_demo_flow_into_isolated_demo_route",
+  "backlog_id": "MANUAL-CONNECTOR-FRESHNESS",
+  "base_commit": "2ed63457c62151dc61de73a425913a571af7585a",
+  "money_loop_rung": "connector_freshness_truth",
   "allowed_file_patterns": [
-    "app/demo/**",
-    "components/demo/**",
-    "lib/demo/**",
-    "tests/e2e/demo-route.spec.ts",
-    "tailwind.config.js",
-    "package.json",
-    "package-lock.json",
+    "app/api/integrations/status/route.ts",
+    "app/api/integrations/status/**/*",
+    "app/api/settings/run-brief/route.ts",
+    "app/api/settings/run-brief/**/*",
+    "app/dashboard/settings/SettingsClient.tsx",
+    "app/dashboard/settings/**/*",
+    "lib/integrations/connector-health.ts",
+    "lib/integrations/**/*",
+    "scripts/health.ts",
+    "scripts/health-connectors.ts",
+    "scripts/__tests__/health-connectors.test.ts",
+    "tests/**/*",
     "SESSION_HISTORY.md"
   ],
   "forbidden_file_patterns": [
-    "FOLDERA_PRODUCTION_BACKLOG.md",
-    "app/page.tsx",
-    "app/HomePageClient.tsx",
-    "app/dashboard/**",
-    "components/foldera/**",
-    "lib/briefing/**",
-    "scripts/**"
+    "lib/briefing/generator.ts",
+    "lib/conviction/artifact-generator*",
+    "lib/signals/**/*",
+    "lib/cron/daily-brief-generate.ts"
   ],
-  "allowed_files_raw": "app/demo/**, components/demo/**, lib/demo/**, tests/e2e/demo-route.spec.ts, tailwind.config.js, package.json, package-lock.json, SESSION_HISTORY.md",
-  "forbidden_files_raw": "FOLDERA_PRODUCTION_BACKLOG.md, app/page.tsx, app/HomePageClient.tsx, app/dashboard/**, components/foldera/**, lib/briefing/**, scripts/**",
-  "required_local_proof": "Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue; npm run build; npm run lint; $env:PLAYWRIGHT_WEB_PORT='3018'; npx playwright test tests/e2e/demo-route.spec.ts --reporter=list",
-  "required_browser_proof": "$env:PLAYWRIGHT_WEB_PORT='3020'; npx playwright test tests/e2e/public-routes.spec.ts --grep \"landing demo uses neutral public copy and default approve language\" --reporter=list",
+  "allowed_files_raw": "`app/api/integrations/status/route.ts`, `app/api/integrations/status/**/*`, `app/api/settings/run-brief/route.ts`, `app/api/settings/run-brief/**/*`, `app/dashboard/settings/SettingsClient.tsx`, `app/dashboard/settings/**/*`, `lib/integrations/connector-health.ts`, `lib/integrations/**/*`, `scripts/health.ts`, `scripts/health-connectors.ts`, `scripts/__tests__/health-connectors.test.ts`, `tests/**/*`, `SESSION_HISTORY.md`",
+  "forbidden_files_raw": "`lib/briefing/generator.ts`, `lib/conviction/artifact-generator*`, `lib/signals/**/*`, `lib/cron/daily-brief-generate.ts`, Supabase migrations unless strictly necessary, artifact quality logic, paid LLM flow, unrelated dirty files",
+  "required_local_proof": "`node node_modules/vitest/vitest.mjs run lib/integrations/__tests__/connector-health.test.ts app/api/integrations/status/__tests__/route.test.ts app/api/settings/run-brief/__tests__/route.test.ts scripts/__tests__/health-connectors.test.ts --reporter=verbose`; `npm run build`; `npm run health`",
+  "required_browser_proof": "Authenticated settings proof showing Google stale, Microsoft fresh, the reconnect action, and last-synced evidence before generation.",
   "is_user_facing": true,
-  "browser_proof_command": "npx playwright test tests/e2e/demo-route.spec.ts --reporter=list",
+  "browser_proof_command": "Done means: `/dashboard/settings` clearly surfaces stale Google with a reconnect action, `/api/integrations/status` returns structured connector freshness, and run-brief blocks when no connector is fresh enough.",
   "anti_regression_checks": [
-    "the landing page route and copy must remain unchanged",
-    "the production dashboard route must remain unchanged",
-    "the Lovable demo styling must stay isolated to /demo"
+    "Google stale is visible before generation",
+    "Microsoft fresh stays visible when Google is stale",
+    "Disconnected test accounts do not count as active owner health",
+    "Run-brief blocks when no active connector is fresh enough"
   ],
-  "next_command": "Push the verified /demo transplant to main."
+  "next_command": "Connector freshness seam is in scope for commit: status route, settings surfacing, run-brief gate, shared classifier, and health proof only. Stop when Google stale and Microsoft fresh are both proven in health/settings and disconnected test accounts stay excluded from owner health."
 }

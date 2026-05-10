@@ -21,8 +21,7 @@ import {
   warningCheck,
 } from './health-checks';
 import {
-  buildMailboxFreshnessCheck,
-  buildMailboxReadinessCheck,
+  buildConnectorStatusCheck,
   buildMailCursorCheck,
   relAgo,
   type HealthTokenRow,
@@ -31,8 +30,6 @@ import {
 config({ path: resolve(process.cwd(), '.env.local') });
 
 const TWENTY_FOUR_H_MS = 24 * 60 * 60 * 1000;
-const MAIL_TYPES = ['email_received', 'email_sent'] as const;
-
 function formatPtHeader(): string {
   const now = new Date();
   const d = new Intl.DateTimeFormat('en-CA', {
@@ -73,7 +70,7 @@ async function main() {
   for (let attempt = 1; attempt <= USER_TOKEN_RETRIES; attempt++) {
     const { data, error } = await supabase
       .from('user_tokens')
-      .select('provider, last_synced_at, disconnected_at, access_token, refresh_token')
+      .select('provider, email, last_synced_at, scopes, access_token, refresh_token, disconnected_at, oauth_reauth_required_at')
       .eq('user_id', userId)
       .in('provider', ['google', 'microsoft']);
     if (!error) {
@@ -94,28 +91,9 @@ async function main() {
     process.exit(1);
   }
 
-  async function newestMailOccurred(source: 'gmail' | 'outlook'): Promise<string | null> {
-    const { data, error } = await supabase
-      .from('tkg_signals')
-      .select('occurred_at')
-      .eq('user_id', userId)
-      .eq('source', source)
-      .in('type', [...MAIL_TYPES])
-      .order('occurred_at', { ascending: false, nullsFirst: false })
-      .limit(1);
-    if (error) throw new Error(`${source} signals: ${error.message}`);
-    return data?.[0]?.occurred_at ?? null;
-  }
-
   // Gmail freshness
   try {
-    const readiness = buildMailboxReadinessCheck('Gmail', 'google', tokenRows ?? []);
-    if (readiness) {
-      checks.push(readiness);
-    } else {
-      const newest = await newestMailOccurred('gmail');
-      checks.push(buildMailboxFreshnessCheck('Gmail', newest, now));
-    }
+    checks.push(buildConnectorStatusCheck('Gmail', 'google', tokenRows ?? [], now));
   } catch (e) {
     checks.push(
       warningCheck(
@@ -127,13 +105,7 @@ async function main() {
 
   // Outlook freshness
   try {
-    const readiness = buildMailboxReadinessCheck('Outlook', 'microsoft', tokenRows ?? []);
-    if (readiness) {
-      checks.push(readiness);
-    } else {
-      const newest = await newestMailOccurred('outlook');
-      checks.push(buildMailboxFreshnessCheck('Outlook', newest, now));
-    }
+    checks.push(buildConnectorStatusCheck('Outlook', 'microsoft', tokenRows ?? [], now));
   } catch (e) {
     checks.push(
       warningCheck(

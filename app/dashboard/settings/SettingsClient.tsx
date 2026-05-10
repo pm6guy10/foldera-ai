@@ -16,6 +16,8 @@ interface Integration {
   scopes?: string | null;
   last_synced_at?: string | null;
   expires_at?: number | null;
+  status?: 'fresh' | 'stale' | 'disconnected' | 'reauth_required' | 'never_synced';
+  recommended_action?: string;
   needs_reconnect?: boolean;
   needs_reauth?: boolean;
   missing_scopes?: string[];
@@ -404,6 +406,16 @@ export default function SettingsClient() {
                         Google needs a quick reconnect to resume background sync. Tap Connect and Foldera will pick back up.
                       </p>
                     )}
+                    {google?.is_active && google.status === 'stale' && (
+                      <>
+                        <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
+                          Stale sync detected.
+                        </p>
+                        <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
+                          Reconnect now if newer Google mail or calendar updates should already be present.
+                        </p>
+                      </>
+                    )}
                     {google?.is_active && google.missing_scopes?.length ? (
                       <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
                         Reconnect required — missing {formatMissingScopes(google.missing_scopes)}.
@@ -432,10 +444,10 @@ export default function SettingsClient() {
                   </div>
                 </div>
                 <div className="flex flex-col w-full md:w-auto md:items-end gap-2 shrink-0">
-                  {google?.is_active && (google.needs_reconnect || google.sync_stale) && (
-                    <button
-                      type="button"
-                      onClick={startGoogleOAuth}
+                    {google?.is_active && shouldOfferReconnect(google) && (
+                      <button
+                        type="button"
+                        onClick={startGoogleOAuth}
                       disabled={connectingProvider === 'google'}
                       className="w-full md:w-auto foldera-touch-height text-[10px] font-black uppercase tracking-[0.12em] bg-accent text-bg hover:bg-accent-hover px-3 py-2 foldera-button-radius transition-colors disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
                     >
@@ -513,6 +525,16 @@ export default function SettingsClient() {
                         Microsoft needs a quick reconnect to resume background sync. Tap Connect and Foldera will pick back up.
                       </p>
                     )}
+                    {microsoft?.is_active && microsoft.status === 'stale' && (
+                      <>
+                        <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
+                          Stale sync detected.
+                        </p>
+                        <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
+                          Reconnect now if newer Microsoft mail or calendar updates should already be present.
+                        </p>
+                      </>
+                    )}
                     {microsoft?.is_active && microsoft.missing_scopes?.length ? (
                       <p className="text-[11px] text-text-secondary mt-1.5 leading-snug">
                         Reconnect required — missing {formatMissingScopes(microsoft.missing_scopes)}.
@@ -541,7 +563,7 @@ export default function SettingsClient() {
                   </div>
                 </div>
                 <div className="flex flex-col w-full md:w-auto md:items-end gap-2 shrink-0">
-                  {microsoft?.is_active && (microsoft.needs_reconnect || microsoft.sync_stale) && (
+                  {microsoft?.is_active && shouldOfferReconnect(microsoft) && (
                     <button
                       type="button"
                       onClick={startMicrosoftOAuth}
@@ -816,16 +838,35 @@ function buildFirstRunStatus(integration: Integration | undefined): {
   const isWarm = Boolean(integration.last_synced_at);
   const providerName = providerDisplayName(integration.provider);
 
-  if (missingScopes.length > 0) {
+  if (integration.status === 'reauth_required' || missingScopes.length > 0 || integration.needs_reconnect) {
     return {
       headline: `${providerName} is connected, but Foldera needs one more consent step to keep reading.`,
       detail: 'Reconnect to grant the missing permissions so Foldera can keep reading your connected sources and finish the first pass. No extra setup required.',
       missingScopes,
-      missingScopesLabel: `Reconnect ${providerName} to restore ${formatMissingScopes(missingScopes)}.`,
+      missingScopesLabel:
+        missingScopes.length > 0
+          ? `Reconnect ${providerName} to restore ${formatMissingScopes(missingScopes)}.`
+          : integration.recommended_action ?? `Reconnect ${providerName} to restore background sync.`,
       steps: [
         { label: 'Connected', copy: `${providerName} is linked to ${integration.sync_email ?? 'your account'}.` },
         { label: 'Reconnect', copy: 'Foldera will ask for the missing permissions only.' },
         { label: 'Resume', copy: 'After reconnect, Foldera keeps reading in the background.' },
+      ],
+    };
+  }
+
+  if (integration.status === 'stale') {
+    return {
+      headline: `${providerName} is stale.`,
+      detail:
+        integration.recommended_action ??
+        `Refresh ${providerName} before the next generation if newer mail or calendar updates should be present.`,
+      missingScopes,
+      missingScopesLabel: '',
+      steps: [
+        { label: 'Connected', copy: `${providerName} is linked to ${integration.sync_email ?? 'your account'}.` },
+        { label: 'Refresh', copy: integration.recommended_action ?? `Reconnect ${providerName} to pull a fresh sync.` },
+        { label: 'Verify', copy: 'Run the next generation only after the connector shows fresh again.' },
       ],
     };
   }
@@ -855,6 +896,17 @@ function buildFirstRunStatus(integration: Integration | undefined): {
       { label: 'First value', copy: 'Your next finished move arrives when it is ready.' },
     ],
   };
+}
+
+function shouldOfferReconnect(integration: Integration | undefined): boolean {
+  if (!integration?.is_active) return false;
+  return (
+    integration.status === 'stale' ||
+    integration.status === 'reauth_required' ||
+    integration.status === 'never_synced' ||
+    Boolean(integration.needs_reconnect) ||
+    Boolean(integration.sync_stale)
+  );
 }
 
 function GoogleIcon() {

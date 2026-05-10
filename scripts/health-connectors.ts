@@ -1,13 +1,12 @@
+import {
+  buildConnectorHealthEntries,
+  type ConnectorHealthEntry,
+  type ConnectorHealthRow,
+} from '../lib/integrations/connector-health';
 import { warningCheck, type HealthCheckRow } from './health-checks';
 import { MAIL_CURSOR_FRESH_MS } from '../lib/config/constants';
 
-export interface HealthTokenRow {
-  provider: string;
-  last_synced_at: string | null;
-  disconnected_at: string | null;
-  access_token?: string | null;
-  refresh_token?: string | null;
-}
+export interface HealthTokenRow extends ConnectorHealthRow {}
 
 export function relAgo(iso: string | null | undefined, now: number): string {
   if (!iso) return 'never';
@@ -112,4 +111,73 @@ export function buildMailCursorCheck(tokenRows: HealthTokenRow[], now: number): 
   return stale.length === 0
     ? warningCheck('Mail cursors current', undefined, 'pass')
     : warningCheck('Mail cursors stale', stale.join('; '));
+}
+
+function connectorForHealth(
+  provider: 'google' | 'microsoft',
+  tokenRows: HealthTokenRow[],
+  now: number,
+): ConnectorHealthEntry | null {
+  const providerEntries = buildConnectorHealthEntries(
+    tokenRows.filter((row) => row.provider === provider),
+    { nowMs: now },
+  );
+  if (providerEntries.length === 0) return null;
+
+  return (
+    providerEntries.find((entry) => entry.is_active) ??
+    providerEntries.find((entry) => entry.status === 'reauth_required') ??
+    providerEntries[0]
+  );
+}
+
+export function buildConnectorStatusCheck(
+  label: 'Gmail' | 'Outlook',
+  provider: 'google' | 'microsoft',
+  tokenRows: HealthTokenRow[],
+  now: number,
+): HealthCheckRow {
+  const entry = connectorForHealth(provider, tokenRows, now);
+  const providerLabel = providerName(provider);
+
+  if (!entry) {
+    return warningCheck(
+      `${label} disconnected`,
+      `(no ${providerLabel} mailbox connected - reconnect in Sources)`,
+    );
+  }
+
+  if (entry.status === 'fresh') {
+    return warningCheck(
+      `${label} fresh`,
+      `${relAgo(entry.last_synced_at, now)}${entry.email ? ` · ${entry.email}` : ''}`,
+      'pass',
+    );
+  }
+
+  if (entry.status === 'stale') {
+    return warningCheck(
+      `${label} stale`,
+      `${relAgo(entry.last_synced_at, now)} - ${entry.recommended_action}`,
+    );
+  }
+
+  if (entry.status === 'reauth_required') {
+    return warningCheck(
+      `${label} reauth required`,
+      `${entry.email ?? providerLabel} - ${entry.recommended_action}`,
+    );
+  }
+
+  if (entry.status === 'never_synced') {
+    return warningCheck(
+      `${label} never synced`,
+      `${entry.email ?? providerLabel} - ${entry.recommended_action}`,
+    );
+  }
+
+  return warningCheck(
+    `${label} disconnected`,
+    `${entry.email ?? providerLabel} - ${entry.recommended_action}`,
+  );
 }

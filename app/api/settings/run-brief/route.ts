@@ -7,6 +7,7 @@ import { CONFIDENCE_PERSIST_THRESHOLD } from '@/lib/config/constants';
 import { runBriefLifecycle } from '@/lib/cron/brief-service';
 import { extractArtifact, extractSentAt } from '@/lib/cron/daily-brief-generate';
 import { createServerClient } from '@/lib/db/client';
+import { getConnectorHealthSummary } from '@/lib/integrations/connector-health';
 import { rateLimit } from '@/lib/utils/rate-limit';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
 import {
@@ -329,6 +330,7 @@ async function persistTransportDiagnosticReceipt(input: {
 }
 
 function buildCheapDryRunResponse(input: {
+  connectorHealth: Awaited<ReturnType<typeof getConnectorHealthSummary>>;
   facts: CheapDryRunFacts;
   paidLlmEffective: boolean;
   paidLlmRequested: boolean;
@@ -360,6 +362,7 @@ function buildCheapDryRunResponse(input: {
     ...(input.transportDiagnostic
       ? { transport_diagnostic: input.transportDiagnostic }
       : {}),
+    connector_health: input.connectorHealth,
     facts: input.facts,
     stages: {
       daily_brief: { ...RUN_BRIEF_CHEAP_DRY_RUN_STAGE },
@@ -396,6 +399,7 @@ export async function POST(request: Request) {
       );
     }
     const revision = getDeployRevision();
+    const connectorHealth = await getConnectorHealthSummary({ userId });
     const transportDiagnosticReceipt =
       pipelineDryRun && transportDiagnostic
         ? await persistTransportDiagnosticReceipt({
@@ -420,6 +424,7 @@ export async function POST(request: Request) {
 
     if (pipelineDryRun) {
       return buildCheapDryRunResponse({
+        connectorHealth,
         pipelineDryRun,
         paidLlmRequested,
         paidLlmEffective,
@@ -441,6 +446,28 @@ export async function POST(request: Request) {
             : null,
         },
       });
+    }
+
+    if (connectorHealth.generation_gate.level === 'block') {
+      return NextResponse.json({
+        ok: false,
+        spend_policy: {
+          pipeline_dry_run: pipelineDryRun,
+          paid_llm_requested: paidLlmRequested,
+          paid_llm_effective: paidLlmEffective,
+        },
+        short_circuit: {
+          reason: 'connector_health_blocked',
+          mode: 'live_generation_guard',
+        },
+        revision,
+        health: {
+          mode: 'connector_health_blocked',
+          live_generation_executed: false,
+          live_sync_executed: false,
+        },
+        connector_health: connectorHealth,
+      }, { status: getRunBriefRouteStatus(false) });
     }
 
     // Ceiling defense is a nightly batch (all users). Running it here per-click
@@ -465,6 +492,7 @@ export async function POST(request: Request) {
         paid_llm_requested: paidLlmRequested,
         paid_llm_effective: paidLlmEffective,
       },
+      connector_health: connectorHealth,
       stages: {
         daily_brief: {
           ...dailyBrief,

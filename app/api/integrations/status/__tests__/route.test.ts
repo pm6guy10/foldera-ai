@@ -158,7 +158,7 @@ describe('GET /api/integrations/status', () => {
     expect(body.integrations.length).toBe(1);
     expect(body.integrations[0].needs_reauth).toBe(false);
     expect(legacySelect).toHaveBeenCalledWith(
-      'provider, email, last_synced_at, scopes, access_token, expires_at, refresh_token',
+      'provider, email, last_synced_at, scopes, access_token, expires_at, refresh_token, disconnected_at',
     );
   });
 
@@ -415,6 +415,102 @@ describe('GET /api/integrations/status', () => {
         provider: 'azure_ad',
         needs_sync: true,
         sync_stale: false,
+      }),
+    ]);
+  });
+
+  it('returns structured connector freshness with stale Google and fresh Microsoft', async () => {
+    getServerSession.mockResolvedValue({ user: { id: 'user-1' } });
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'user_tokens') {
+        return {
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              or: vi.fn().mockResolvedValue({
+                data: [
+                  {
+                    provider: 'google',
+                    email: 'b.kapp1010@gmail.com',
+                    last_synced_at: '2026-05-08T19:35:02.000Z',
+                    scopes:
+                      'openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.readonly',
+                    access_token: 'google-access',
+                    expires_at: 9999999999,
+                    refresh_token: 'google-refresh',
+                    disconnected_at: null,
+                    oauth_reauth_required_at: null,
+                  },
+                  {
+                    provider: 'microsoft',
+                    email: 'b-kapp@outlook.com',
+                    last_synced_at: '2026-05-10T11:21:24.472Z',
+                    scopes:
+                      'openid profile email User.Read Mail.Read Mail.Send Calendars.Read Files.Read Tasks.Read offline_access',
+                    access_token: 'microsoft-access',
+                    expires_at: 9999999999,
+                    refresh_token: 'microsoft-refresh',
+                    disconnected_at: null,
+                    oauth_reauth_required_at: null,
+                  },
+                ],
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === 'tkg_signals') return newestMailChain('2026-05-10T11:21:24.472Z');
+      throw new Error(`unexpected table ${table}`);
+    });
+
+    vi.useFakeTimers({ now: new Date('2026-05-10T12:00:00.000Z').getTime() });
+    const { GET } = await import('../route');
+    const res = await GET();
+    vi.useRealTimers();
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      integrations: Array<{
+        provider: string;
+        status: string;
+        recommended_action: string;
+      }>;
+      connector_health: {
+        generation_gate: { level: string; reason: string };
+        instructions: Array<{
+          provider: string;
+          email: string | null;
+          status: string;
+          last_synced_at: string | null;
+          recommended_action: string;
+        }>;
+      };
+    };
+
+    expect(body.integrations).toEqual([
+      expect.objectContaining({
+        provider: 'google',
+        status: 'stale',
+      }),
+      expect.objectContaining({
+        provider: 'azure_ad',
+        status: 'fresh',
+      }),
+    ]);
+    expect(body.integrations[0].recommended_action).toContain('Refresh Google');
+    expect(body.connector_health.generation_gate.level).toBe('warn');
+    expect(body.connector_health.generation_gate.reason).toContain('still fresh');
+    expect(body.connector_health.instructions).toEqual([
+      expect.objectContaining({
+        provider: 'google',
+        email: 'b.kapp1010@gmail.com',
+        status: 'stale',
+        last_synced_at: '2026-05-08T19:35:02.000Z',
+      }),
+      expect.objectContaining({
+        provider: 'microsoft',
+        email: 'b-kapp@outlook.com',
+        status: 'fresh',
       }),
     ]);
   });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildConnectorStatusCheck,
   buildMailboxFreshnessCheck,
   buildMailboxReadinessCheck,
   buildMailCursorCheck,
@@ -69,5 +70,33 @@ describe('health connector copy', () => {
 
     expect(check.line).toContain('Mail cursors unavailable');
     expect(check.line).not.toContain('Mail cursors current');
+  });
+
+  it('reports Google stale from connector freshness truth', () => {
+    const check = buildConnectorStatusCheck('Gmail', 'google', [
+      row({
+        provider: 'google',
+        email: 'b.kapp1010@gmail.com',
+        last_synced_at: new Date(now - 42 * 60 * 60 * 1000).toISOString(),
+        scopes: 'openid email profile gmail.readonly gmail.send calendar drive.readonly',
+      }),
+    ], now);
+
+    expect(check.line).toContain('Gmail stale');
+    expect(check.line).toContain('Refresh Google before the next generation');
+  });
+
+  it('reports Microsoft fresh from connector freshness truth', () => {
+    const check = buildConnectorStatusCheck('Outlook', 'microsoft', [
+      row({
+        provider: 'microsoft',
+        email: 'b-kapp@outlook.com',
+        scopes:
+          'openid profile email User.Read Mail.Read Mail.Send Calendars.Read Files.Read Tasks.Read offline_access',
+      }),
+    ], now);
+
+    expect(check.line).toContain('Outlook fresh');
+    expect(check.status).toBe('pass');
   });
 });
