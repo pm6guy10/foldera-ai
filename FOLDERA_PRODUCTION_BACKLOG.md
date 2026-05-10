@@ -1,9 +1,9 @@
 # FOLDERA Production Backlog
 
-Last refreshed: 2026-05-09
+Last refreshed: 2026-05-10
 
 ## Current top item
-BL-015 — Owner money-shot artifact is not consistently excellent.
+BL-022 — Cost Firewall proof card shows real production ledger totals.
 
 ## How to use this file
 - Every Codex run opens this file first.
@@ -25,6 +25,27 @@ BL-015 — Owner money-shot artifact is not consistently excellent.
 - Add `Money loop rung`, `Is user-facing`, and `Browser proof command` before marking the item actionable.
 
 ## Items
+
+### BL-022
+ID: BL-022
+Rung: 0
+Money loop rung: prove_unit_economics
+Title: Cost Firewall proof card shows real production ledger totals
+User-facing path: Owner opens a dev/admin cost surface and sees real cost totals from `public.cost_events` for the last 24h, 7d, and 30d.
+Starting route or trigger: `GET /api/dev/cost-summary` and the existing `cost_events` rows written through `trackApiCall`.
+Ending success state: A dev/admin proof surface or route-level proof shows `last_24h` total cost, `last_7d` total cost, `last_30d` total cost, cost by endpoint, cost by model, event count, token totals, and the empty-state behavior when no rows exist.
+Problem: Cost Firewall backend v1 is shipped, but production economics are not visible enough to prove Foldera is cheap per user/month. The ledger exists, but the owner still needs a clean proof surface/receipt.
+Protected contracts: Do not change generation behavior, budget limits, prompt cache behavior, Supabase thin-read routes, auth, Stripe, connector sync, or artifact generation. Do not expose cost data to non-owner users.
+Allowed files: `app/api/dev/cost-summary/route.ts`, `app/api/dev/cost-summary/**/*`, `app/dashboard/settings/**/*`, `components/**/*`, `lib/utils/api-tracker.ts`, `tests/**/*`, `FOLDERA_PRODUCTION_BACKLOG.md`, `SESSION_HISTORY.md`
+Forbidden files: `lib/briefing/generator.ts`, `lib/conviction/artifact-generator*`, `lib/signals/**/*`, `lib/cron/daily-brief-generate.ts`, Supabase migrations unless strictly necessary, Stripe/billing routes, OAuth/provider token logic, unrelated dirty files
+Required local proof: `npx vitest run app/api/dev/cost-summary/__tests__/route.test.ts --reporter=verbose`; focused UI/model proof for the added cost surface if a proof card is added; `npm run build`; `npm run health`
+Required production proof: Owner-authenticated call to `/api/dev/cost-summary` or a production-safe equivalent, then confirm it returns real `cost_events` totals from production.
+Is user-facing: false
+Browser proof command:
+Done means: The owner can prove production cost behavior from the real `cost_events` ledger without reading Supabase manually, and non-owner access is blocked.
+Do-not-count: Local-only mock data, unauthenticated route access, a cost table with no production route proof, or a UI card not backed by real `cost_events`.
+Status: OPEN
+Next blocker: None.
 
 ### BL-021
 ID: BL-021
