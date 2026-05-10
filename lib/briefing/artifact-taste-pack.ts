@@ -43,6 +43,15 @@ export interface CandidateArtifactabilityReceipt {
   blockers: string[];
   model_risk_flags: string[];
   taste_family_match: ArtifactTasteFamily;
+  context_smart: boolean;
+  changes_next_move: boolean;
+  source_authority: 'trusted_or_operational' | 'spam_or_promotional' | 'unknown_or_mixed' | null;
+  suppression_receipt: {
+    reason: 'low_authority_event_invite';
+    source_authority: 'spam_or_promotional';
+    user_visible: false;
+    action_taken: 'suppressed_or_archived_if_allowed';
+  } | null;
 }
 
 export interface PositiveWinnerContractReceipt {
@@ -357,6 +366,10 @@ export function evaluateCandidateArtifactability(
   });
 
   if (facts.length === 0) blockers.push('missing_source_facts');
+  if (lowValueEventInvite.shouldSuppressSilently) blockers.push('low_authority_event_invite_suppressed');
+  if (lowValueEventInvite.isEventInvite && !lowValueEventInvite.changesNextMove) {
+    blockers.push('changes_next_move_required');
+  }
   if (lowValueEventInvite.reason) blockers.push(lowValueEventInvite.reason);
   if (TRANSACTIONAL_SENDER_RE.test(searchText)) blockers.push('transactional_sender_candidate');
   if (taste.family === 'relationship_risk_silence' && !COMMAND_CENTER_RE.test(searchText)) {
@@ -416,5 +429,9 @@ export function evaluateCandidateArtifactability(
     blockers,
     model_risk_flags: modelRiskFlags,
     taste_family_match: taste.family,
+    context_smart: lowValueEventInvite.contextSmart,
+    changes_next_move: lowValueEventInvite.changesNextMove,
+    source_authority: lowValueEventInvite.isEventInvite ? lowValueEventInvite.sourceAuthority : null,
+    suppression_receipt: lowValueEventInvite.suppressionReceipt,
   };
 }

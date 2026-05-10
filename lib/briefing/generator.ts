@@ -1149,6 +1149,8 @@ export function selectRankedCandidates(
   const SCHEDULING_ADMIN_RE =
     /\boverlap|double[-\s]?book|calendar|same window|conflict|slot|reschedul|\bschedule\b/i;
   const POSITIVE_CONTRACT_HARD_BLOCKERS = new Set([
+    'low_authority_event_invite_suppressed',
+    'changes_next_move_required',
     'transactional_sender_candidate',
     'relationship_silence_without_command_center_artifact',
     'low_value_event_invite_without_dependency',
@@ -2051,6 +2053,8 @@ function buildWinnerQualityTrace(input: {
       if (blockerList.length === 0 || !artifactability) return null;
       const currentBlocker = blockerList.some((reason) =>
         [
+          'low_authority_event_invite_suppressed',
+          'changes_next_move_required',
           'transactional_sender_candidate',
           'relationship_silence_without_command_center_artifact',
           'low_value_event_invite_without_dependency',
@@ -2127,6 +2131,12 @@ function smallestNextMoveForWinnerBlockers(blockers: string[]): string {
   const text = blockers.join(' ');
   if (text.includes('transactional_sender_candidate')) {
     return 'Repair sender/entity trust pollution only for the proven transactional sender and replay selection.';
+  }
+  if (text.includes('low_authority_event_invite_suppressed')) {
+    return 'Keep low-authority promotional invites silent unless a hard consequence or current dependency makes them operational.';
+  }
+  if (text.includes('changes_next_move_required')) {
+    return 'Require proof that the candidate changes the default next move before letting it compete as a winner.';
   }
   if (text.includes('low_value_event_invite_without_dependency')) {
     return 'Require a direct revenue, roadmap, attendance-intent, or accepted-invite fact before letting an event invite compete as the daily winner.';

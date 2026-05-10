@@ -25,6 +25,16 @@ export interface LowValueEventInviteAssessment {
   hasDirectDependency: boolean;
   hasExplicitIntentOrAcceptance: boolean;
   hasProtectedConsequence: boolean;
+  contextSmart: boolean;
+  changesNextMove: boolean;
+  sourceAuthority: 'trusted_or_operational' | 'spam_or_promotional' | 'unknown_or_mixed';
+  shouldSuppressSilently: boolean;
+  suppressionReceipt: {
+    reason: 'low_authority_event_invite';
+    source_authority: 'spam_or_promotional';
+    user_visible: false;
+    action_taken: 'suppressed_or_archived_if_allowed';
+  } | null;
   reason: string | null;
 }
 
@@ -42,6 +52,12 @@ const EXPLICIT_INTENT_RE =
   /\b(?:plan to attend|will attend|going to attend|want to attend|accepted invite|invite accepted|rsvp(?:'d)? yes|tentatively accepted|already registered|registered already|confirmed attendance|already on (?:the )?calendar|calendar hold confirmed)\b/i;
 const NEGATIVE_CALENDAR_GAP_RE =
   /\b(?:no matching calendar block|no calendar block|rsvp still pending|invite still pending|keyword overlap with commitment was only 0)\b/i;
+const PROMOTIONAL_EVENT_RE =
+  /\b(?:newsletter|promotional|promotion|community update|platform update|platform event|developer platform|event invite|invitation|virtual event|save your seat|register now|join us for|watch the replay|recording available|unsubscribe|manage subscriptions|marketing)\b/i;
+const PROMOTIONAL_SENDER_RE =
+  /\b(?:notify|notifications?|newsletter|newsletters|updates?|mailer|marketing|promotions?|events?|community|hello|team|noreply|no-reply|donotreply)@[a-z0-9.-]+\.[a-z]{2,}\b/i;
+const SPAM_FOLDER_RE =
+  /\b(?:spam|junk|promotions?|promotional tab|bulk mail|newsletter tab)\b/i;
 
 function compactText(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -82,6 +98,11 @@ export function assessLowValueEventInvite(input: LowValueEventInviteInput): LowV
       hasDirectDependency: false,
       hasExplicitIntentOrAcceptance: false,
       hasProtectedConsequence: false,
+      contextSmart: false,
+      changesNextMove: false,
+      sourceAuthority: 'unknown_or_mixed',
+      shouldSuppressSilently: false,
+      suppressionReceipt: null,
       reason: null,
     };
   }
@@ -91,11 +112,26 @@ export function assessLowValueEventInvite(input: LowValueEventInviteInput): LowV
     !NEGATIVE_CALENDAR_GAP_RE.test(combined) && EXPLICIT_INTENT_RE.test(combined);
   const hasDirectDependency =
     DIRECT_DEPENDENCY_VERB_RE.test(contextText) && DIRECT_DEPENDENCY_OBJECT_RE.test(`${contextText} ${goalText}`);
+  const contextSmart = goalText.trim().length > 0 || compactText(input.relationshipContext).trim().length > 0;
+  const changesNextMove =
+    hasProtectedConsequence ||
+    hasExplicitIntentOrAcceptance ||
+    hasDirectDependency;
+  const sourceAuthority: LowValueEventInviteAssessment['sourceAuthority'] =
+    PROMOTIONAL_EVENT_RE.test(combined) || PROMOTIONAL_SENDER_RE.test(combined) || SPAM_FOLDER_RE.test(combined)
+      ? 'spam_or_promotional'
+      : /\b(?:invoice|payment|benefit|claim|appeal|deadline|interview|recruiter|manager|client|customer|contract|proposal|approval|security alert)\b/i.test(combined)
+        ? 'trusted_or_operational'
+        : 'unknown_or_mixed';
   const isLowValueInvite =
     looksLikeEventInvite &&
     !hasProtectedConsequence &&
     !hasExplicitIntentOrAcceptance &&
     !hasDirectDependency;
+  const shouldSuppressSilently =
+    isLowValueInvite &&
+    !changesNextMove &&
+    sourceAuthority === 'spam_or_promotional';
 
   return {
     isEventInvite: looksLikeEventInvite,
@@ -103,6 +139,18 @@ export function assessLowValueEventInvite(input: LowValueEventInviteInput): LowV
     hasDirectDependency,
     hasExplicitIntentOrAcceptance,
     hasProtectedConsequence,
+    contextSmart,
+    changesNextMove,
+    sourceAuthority,
+    shouldSuppressSilently,
+    suppressionReceipt: shouldSuppressSilently
+      ? {
+          reason: 'low_authority_event_invite',
+          source_authority: 'spam_or_promotional',
+          user_visible: false,
+          action_taken: 'suppressed_or_archived_if_allowed',
+        }
+      : null,
     reason: isLowValueInvite ? 'low_value_event_invite_without_dependency' : null,
   };
 }

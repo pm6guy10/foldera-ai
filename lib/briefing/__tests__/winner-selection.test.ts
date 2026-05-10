@@ -514,7 +514,39 @@ describe('selectFinalWinner', () => {
     expect(ranked.find((entry) => entry.candidate.id === 'notion-platform-exposure')?.disqualified).toBe(true);
     expect(
       ranked.find((entry) => entry.candidate.id === 'notion-platform-exposure')?.disqualifyReason,
-    ).toBe('positive_winner_contract:low_value_event_invite_without_dependency');
+    ).toBe('positive_winner_contract:low_authority_event_invite_suppressed');
+  });
+
+  it('suppresses a lone low-authority platform invite instead of turning it into a user-facing closure artifact', () => {
+    const notionExposure = makeCandidate({
+      id: 'notion-platform-exposure-only',
+      score: 15,
+      type: 'discrepancy',
+      discrepancyClass: 'exposure',
+      suggestedActionType: 'write_document',
+      title: 'Commitment due in 3d: Virtual event to announce new Developer Platform primitives',
+      content:
+        'You committed to "Virtual event to announce new Developer Platform primitives and capabilities" and it is due in 3 days. No execution artifact exists yet.',
+      matchedGoal: {
+        text: 'Build Foldera into a revenue-generating product. First paid user, then scale to replace employment income.',
+        priority: 1,
+        category: 'project',
+      },
+      sourceSignals: [
+        {
+          kind: 'signal',
+          source: 'gmail',
+          summary: 'Source Email: Notion Developer Platform event invite for May 13.',
+          occurredAt: new Date().toISOString(),
+        },
+      ],
+      relatedSignals: ['notify@updates.notion.so sent the invite for May 13.'],
+    });
+
+    const { ranked } = selectRankedCandidates([notionExposure], NO_GUARDRAILS);
+    expect(ranked).toHaveLength(1);
+    expect(ranked[0]?.disqualified).toBe(true);
+    expect(ranked[0]?.disqualifyReason).toBe('positive_winner_contract:low_authority_event_invite_suppressed');
   });
 
   it('allows a platform event when source facts prove a current roadmap dependency', () => {

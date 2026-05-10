@@ -227,11 +227,31 @@ describe('positive winner contract', () => {
       ],
     });
 
-    expect(evaluateCandidateArtifactability(notionExposure, { now }).blockers).toContain(
-      'low_value_event_invite_without_dependency',
+    const notionExposureReceipt = evaluateCandidateArtifactability(notionExposure, { now });
+    const notionCalendarGapReceipt = evaluateCandidateArtifactability(notionCalendarGap, { now });
+
+    expect(notionExposureReceipt.context_smart).toBe(true);
+    expect(notionExposureReceipt.changes_next_move).toBe(false);
+    expect(notionExposureReceipt.source_authority).toBe('spam_or_promotional');
+    expect(notionExposureReceipt.blockers).toEqual(
+      expect.arrayContaining([
+        'low_authority_event_invite_suppressed',
+        'changes_next_move_required',
+        'low_value_event_invite_without_dependency',
+      ]),
     );
-    expect(evaluateCandidateArtifactability(notionCalendarGap, { now }).blockers).toContain(
-      'low_value_event_invite_without_dependency',
+    expect(notionExposureReceipt.suppression_receipt).toEqual({
+      reason: 'low_authority_event_invite',
+      source_authority: 'spam_or_promotional',
+      user_visible: false,
+      action_taken: 'suppressed_or_archived_if_allowed',
+    });
+    expect(notionCalendarGapReceipt.blockers).toEqual(
+      expect.arrayContaining([
+        'low_authority_event_invite_suppressed',
+        'changes_next_move_required',
+        'low_value_event_invite_without_dependency',
+      ]),
     );
 
     const result = selectRankedCandidates(
@@ -242,6 +262,17 @@ describe('positive winner contract', () => {
 
     expect(result.ranked.every((entry) => entry.disqualified)).toBe(true);
     expect(result.winnerQualityTrace?.positive_winner_contract.verdict).toBe('all_candidates_blocked');
+    expect(result.winnerQualityTrace?.good_candidate_blockers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          candidate_id: 'notion-platform-exposure',
+          blockers: expect.arrayContaining([
+            'low_authority_event_invite_suppressed',
+            'changes_next_move_required',
+          ]),
+        }),
+      ]),
+    );
   });
 
   it('does not let stale interview-status decay masquerade as a current role-fit packet', () => {

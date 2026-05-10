@@ -1,29 +1,35 @@
 {
-  "backlog_id": "MANUAL-OPERATING-DOCTRINE",
+  "backlog_id": "MANUAL-ARTIFACT-WINNER-SELECTION",
   "base_commit": "95bfb89a36ae617d15c905ccb6cf3418e7d72c3a",
-  "money_loop_rung": "operator_doctrine",
+  "money_loop_rung": "artifact_winner_selection",
   "allowed_file_patterns": [
-    "FOLDERA_OPERATING_DOCTRINE.md",
+    ".foldera-contract.json",
+    "lib/briefing/low-value-event-invite.ts",
+    "lib/briefing/artifact-taste-pack.ts",
+    "lib/briefing/generator.ts",
+    "lib/briefing/__tests__/low-value-event-invite.test.ts",
+    "lib/briefing/__tests__/positive-winner-contract.test.ts",
+    "lib/briefing/__tests__/winner-selection.test.ts",
     "FOLDERA_PRODUCTION_BACKLOG.md",
     "SESSION_HISTORY.md"
   ],
   "forbidden_file_patterns": [
-    "lib/briefing/generator.ts",
     "lib/conviction/artifact-generator*",
     "lib/signals/**/*",
     "lib/cron/daily-brief-generate.ts"
   ],
-  "allowed_files_raw": "`FOLDERA_OPERATING_DOCTRINE.md`, `FOLDERA_PRODUCTION_BACKLOG.md`, `SESSION_HISTORY.md`",
-  "forbidden_files_raw": "`lib/briefing/generator.ts`, `lib/conviction/artifact-generator*`, `lib/signals/**/*`, `lib/cron/daily-brief-generate.ts`, product/runtime behavior files, unrelated dirty files",
-  "required_local_proof": "`npm run health`",
-  "required_browser_proof": "None. This is a docs-only doctrine seam.",
+  "allowed_files_raw": "`.foldera-contract.json`, `lib/briefing/low-value-event-invite.ts`, `lib/briefing/artifact-taste-pack.ts`, `lib/briefing/generator.ts`, `lib/briefing/__tests__/low-value-event-invite.test.ts`, `lib/briefing/__tests__/positive-winner-contract.test.ts`, `lib/briefing/__tests__/winner-selection.test.ts`, `SESSION_HISTORY.md`",
+  "forbidden_files_raw": "`lib/conviction/artifact-generator*`, `lib/signals/**/*`, `lib/cron/daily-brief-generate.ts`, unrelated product/runtime files outside this winner-selection seam",
+  "required_local_proof": "`node node_modules/vitest/vitest.mjs run lib/briefing/__tests__/low-value-event-invite.test.ts lib/briefing/__tests__/positive-winner-contract.test.ts lib/briefing/__tests__/winner-selection.test.ts --reporter=verbose`, `node node_modules/vitest/vitest.mjs run lib/system/__tests__/winner-truth.test.ts --reporter=verbose`, `npm run build`, `npm run health`",
+  "required_browser_proof": "None. This is a backend winner-selection seam with deterministic local proof only.",
   "is_user_facing": false,
-  "browser_proof_command": "Done means: the durable doctrine file exists, both top-level pointers exist near the top, and health still passes with no product behavior changes.",
+  "browser_proof_command": "Done means: low-authority webinar/platform invites are silently suppressed before generation, direct next-move impact is required to compete, and the Notion-style regression stays blocked in focused tests.",
   "anti_regression_checks": [
-    "FOLDERA_OPERATING_DOCTRINE.md exists",
-    "SESSION_HISTORY.md points to it near the top",
-    "FOLDERA_PRODUCTION_BACKLOG.md points to it near the top",
-    "Health still passes with no product behavior changes"
+    "Notion-style decide-whether-to-attend candidate is disqualified",
+    "Context-smart alone is not enough; receipt records changes_next_move=false",
+    "Low-authority event invite gets silent suppression receipt with user_visible=false",
+    "Direct current dependency version remains actionable",
+    "Winner truth/build/health still pass"
   ],
-  "next_command": "Docs-only doctrine seam is in scope for commit: add the durable operating doctrine file, add the two top-level pointers, verify health, commit, and push without changing product behavior."
+  "next_command": "Artifact winner-selection seam is in scope for commit: keep the change inside low-value event invite assessment, artifactability, positive winner contract, focused tests, and session history; verify the focused proofs plus build and health, then commit and push."
 }
