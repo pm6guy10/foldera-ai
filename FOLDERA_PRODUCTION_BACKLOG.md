@@ -5,7 +5,7 @@ Last refreshed: 2026-05-10
 Operating doctrine pointer: see [FOLDERA_OPERATING_DOCTRINE.md](/C:/Users/b-kap/foldera-ai/FOLDERA_OPERATING_DOCTRINE.md) for the durable seam order, current priority, and stop condition that should guide backlog selection.
 
 ## Current top item
-BL-022 — Cost Firewall proof card shows real production ledger totals.
+None actionable — remaining items are waiting passive proof or external blockers.
 
 ## How to use this file
 - Every Codex run opens this file first.
@@ -46,8 +46,9 @@ Is user-facing: false
 Browser proof command:
 Done means: The owner can prove production cost behavior from the real `cost_events` ledger without reading Supabase manually, and non-owner access is blocked.
 Do-not-count: Local-only mock data, unauthenticated route access, a cost table with no production route proof, or a UI card not backed by real `cost_events`.
-Status: OPEN
-Next blocker: None.
+Status: CLOSED
+Last evidence: 2026-05-10 — production unauthenticated `GET https://www.foldera.ai/api/dev/cost-summary` returned `401 {"error":"Unauthorized"}`. The same route with the saved owner auth state returned `200` and real ledger totals: `last_24h = last_7d = last_30d = $0.023245`, `event_count = 5`, `input_tokens = 18955`, `output_tokens = 2020`, with `by_endpoint_7d` = `insight_scan $0.017973 (1)`, `goal_refresh $0.003556 (3)`, `signal_extraction $0.001716 (1)`, and `by_model_7d` = `claude-haiku-4-5-20251001 $0.023245 (5)`. An independent production `cost_events` rollup through the service-role DB path matched the route output exactly (`row_count_30d = 5`). Local regression proof also passed: `npx vitest run app/api/dev/cost-summary/__tests__/route.test.ts --reporter=verbose` (`3/3`), `npm run build`, `npm run health`, and `npm run preflight`.
+Next blocker: None. No current actionable OPEN backlog item remains after this proof closeout.
 
 ### BL-021
 ID: BL-021
