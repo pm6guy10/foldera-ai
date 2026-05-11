@@ -19,6 +19,9 @@ export interface FolderaRunContract {
   required_browser_proof: string;
   acceptance_condition?: string;
   stop_condition?: string;
+  source_truth_file?: string;
+  source_truth_finding?: string;
+  required_closure_update?: string;
   is_user_facing: boolean;
   browser_proof_command: string;
   anti_regression_checks: string[];
@@ -141,6 +144,17 @@ function isExplicitBoolean(value: unknown): value is boolean {
   return value === true || value === false;
 }
 
+function isAppendOnlyUpdate(previousContent: string, nextContent: string): boolean {
+  const normalizedPrevious = previousContent.replace(/\r\n/g, '\n');
+  const normalizedNext = nextContent.replace(/\r\n/g, '\n');
+  return normalizedNext.startsWith(normalizedPrevious);
+}
+
+function contractAllowsPath(contract: FolderaRunContract, path: string): boolean {
+  const allowed = normalizePatternList(contract.allowed_file_patterns);
+  return allowed.some((pattern) => fileMatchesContractPattern(path, pattern));
+}
+
 function validateContractMetadata(contract: FolderaRunContract): string | null {
   if (!contract.money_loop_rung?.trim()) {
     return '.foldera-contract.json is missing money_loop_rung. Re-run controller after fixing the backlog item.';
@@ -154,7 +168,34 @@ function validateContractMetadata(contract: FolderaRunContract): string | null {
     return '.foldera-contract.json is missing browser_proof_command for a user-facing seam. Re-run controller after fixing the backlog item.';
   }
 
+  if (contract.generated_contract_id) {
+    if (!contract.source_truth_file?.trim()) {
+      return '.foldera-contract.json is missing source_truth_file for a generated contract. Re-run controller after fixing the backlog item.';
+    }
+
+    if (!contract.source_truth_finding?.trim()) {
+      return '.foldera-contract.json is missing source_truth_finding for a generated contract. Re-run controller after fixing the backlog item.';
+    }
+
+    if (!contract.required_closure_update?.trim()) {
+      return '.foldera-contract.json is missing required_closure_update for a generated contract. Re-run controller after fixing the backlog item.';
+    }
+
+    if (!contractAllowsPath(contract, contract.source_truth_file)) {
+      return `.foldera-contract.json source_truth_file ${contract.source_truth_file} is not allowed by allowed_file_patterns. Re-run controller after fixing the generated contract closure scope.`;
+    }
+  }
+
   return null;
+}
+
+function readFileAtRef(repoRoot: string, ref: string, path: string): string | null {
+  const result = runGit(repoRoot, ['show', `${ref}:${path}`]);
+  if (result.status !== 0) {
+    return null;
+  }
+
+  return result.stdout;
 }
 
 function getTouchedFiles(
@@ -236,6 +277,33 @@ export function validateContractForStage(
       touchedFiles: [],
       violations: [],
     };
+  }
+
+  if (touched.files.includes('SESSION_HISTORY.md')) {
+    const correctionAllowed =
+      contract.source_truth_file === 'SESSION_HISTORY.md' &&
+      /\b(correct|correction|repair|rewrite|amend)\b/i.test(
+        contract.required_closure_update ?? '',
+      );
+
+    if (!correctionAllowed) {
+      const previousContent = readFileAtRef(repoRoot, baseCommit, 'SESSION_HISTORY.md') ?? '';
+      const nextContent =
+        stage === 'pre-commit'
+          ? readFileSync(resolve(repoRoot, 'SESSION_HISTORY.md'), 'utf8')
+          : readFileAtRef(repoRoot, 'HEAD', 'SESSION_HISTORY.md') ?? '';
+
+      if (!isAppendOnlyUpdate(previousContent, nextContent)) {
+        return {
+          ok: false,
+          code: 'invalid_contract',
+          message:
+            'SESSION_HISTORY.md must remain append-only for new receipts unless the contract explicitly requires a history correction.',
+          touchedFiles: touched.files,
+          violations: ['SESSION_HISTORY.md'],
+        };
+      }
+    }
   }
 
   const allowed = normalizePatternList(contract.allowed_file_patterns);

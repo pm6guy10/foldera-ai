@@ -414,6 +414,9 @@ Next blocker: non-owner account setup pending
         money_loop_rung: string;
         allowed_file_patterns: string[];
         forbidden_file_patterns: string[];
+        source_truth_file?: string;
+        source_truth_finding?: string;
+        required_closure_update?: string;
         required_local_proof: string;
         required_product_proof?: string;
         acceptance_condition?: string;
@@ -434,7 +437,11 @@ Next blocker: non-owner account setup pending
         'GENERATED-CANDIDATE-SELECTION-CONVERGENCE',
       );
       expect(contract.money_loop_rung).toBe('candidate_selection');
+      expect(contract.source_truth_file).toBe('CURRENT_STATE.md');
+      expect(contract.source_truth_finding).toContain('Convergence depends on name overlap');
+      expect(contract.required_closure_update).toContain('Update CURRENT_STATE.md');
       expect(contract.allowed_file_patterns).toContain('lib/briefing/discrepancy-detector.ts');
+      expect(contract.allowed_file_patterns).toContain('CURRENT_STATE.md');
       expect(contract.forbidden_file_patterns).toContain('app/dashboard/**');
       expect(contract.required_local_proof).toContain(
         'lib/briefing/__tests__/discrepancy-detector.test.ts',
@@ -444,6 +451,100 @@ Next blocker: non-owner account setup pending
       expect(contract.stop_condition).toContain(
         'If Codex cannot prove that at least one production rung advanced',
       );
+    } finally {
+      spy.mockRestore();
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
+  it('does not emit the same generated seam again after the source-truth finding is closed and committed', () => {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      logs.push(args.map(String).join(' '));
+    });
+
+    const repoDir = mkdtempSync(join(tmpdir(), 'controller-autopilot-'));
+    try {
+      execSync('git init', { cwd: repoDir, stdio: 'ignore' });
+      writeFileSync(
+        join(repoDir, 'FOLDERA_PRODUCTION_BACKLOG.md'),
+        `
+### BL-011
+ID: BL-011
+Status: WAITING_PASSIVE_PROOF
+Next blocker: next normal daily-send proof required
+`,
+      );
+      writeCommonControllerTruthFiles(repoDir, {
+        currentState: `# CURRENT STATE — FOLDERA
+
+## B. WHAT IS BROKEN (REAL)
+
+- **Convergence depends on name overlap** — \`extractConvergence\` requires the entity name to appear in signal bodies; calendar titles without names may under-match.
+- **Three-day consistency is recovering** — the latest persisted generation is still historical \`do_nothing\`, and daily-value is carrying the current best move.
+`,
+        sessionHistory: `## 2026-05-11 - Prior seam
+- Files changed: none
+- Verification: daily-value still carries the current best move
+`,
+      });
+      execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
+      execSync('git -c user.name=Test -c user.email=test@example.com commit -m init', {
+        cwd: repoDir,
+        stdio: 'ignore',
+      });
+
+      expect(runControllerAutopilot(repoDir)).toBe(0);
+      const firstContract = JSON.parse(
+        readFileSync(join(repoDir, '.foldera-contract.json'), 'utf8'),
+      ) as { backlog_id: string };
+      expect(firstContract.backlog_id).toBe('GENERATED-CANDIDATE-SELECTION-CONVERGENCE');
+
+      writeFileSync(
+        join(repoDir, 'CURRENT_STATE.md'),
+        `# CURRENT STATE — FOLDERA
+
+## A. WHAT IS WORKING
+
+- **Convergence now counts known entity email aliases** — after commit 20e4f12, \`extractConvergence\` can link known entity email aliases across calendar and drive without exact body-text name overlap.
+
+## B. WHAT IS BROKEN (REAL)
+
+- **Three-day consistency is recovering** — the latest persisted generation is still historical \`do_nothing\`, and daily-value is carrying the current best move.
+`,
+      );
+      writeFileSync(
+        join(repoDir, 'SESSION_HISTORY.md'),
+        `## 2026-05-11 - Prior seam
+- Files changed: none
+- Verification: daily-value still carries the current best move
+
+## 2026-05-11 - Closure receipt
+- Files changed: CURRENT_STATE.md
+- Verification: closed convergence name-overlap finding after alias proof
+`,
+      );
+      execSync('git add CURRENT_STATE.md SESSION_HISTORY.md .foldera-contract.json', {
+        cwd: repoDir,
+        stdio: 'ignore',
+      });
+      execSync('git -c user.name=Test -c user.email=test@example.com commit -m closure', {
+        cwd: repoDir,
+        stdio: 'ignore',
+      });
+
+      logs.length = 0;
+      expect(runControllerAutopilot(repoDir)).toBe(0);
+      expect(
+        logs.some((line) =>
+          line.includes('Selected backlog ID: GENERATED-CANDIDATE-SELECTION-CONVERGENCE'),
+        ),
+      ).toBe(false);
+      expect(
+        logs.some((line) =>
+          line.includes('Selected backlog ID: GENERATED-USEFUL-CURRENT-MOVE-DAILY-VALUE'),
+        ),
+      ).toBe(true);
     } finally {
       spy.mockRestore();
       rmSync(repoDir, { recursive: true, force: true });

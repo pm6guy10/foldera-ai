@@ -73,6 +73,9 @@ export interface BacklogItem {
   doNotCount: string | null;
   status: string | null;
   nextBlocker: string | null;
+  sourceTruthFile: string | null;
+  sourceTruthFinding: string | null;
+  requiredClosureUpdate: string | null;
 }
 
 interface ControllerTruthSnapshot {
@@ -409,6 +412,9 @@ export function parseBacklogItems(markdown: string): BacklogItem[] {
       doNotCount: extractField(block, 'Do-not-count'),
       status: extractField(block, 'Status'),
       nextBlocker: extractField(block, 'Next blocker'),
+      sourceTruthFile: extractField(block, 'Source truth file'),
+      sourceTruthFinding: extractField(block, 'Source truth finding'),
+      requiredClosureUpdate: extractField(block, 'Required closure update'),
     };
   });
 }
@@ -595,6 +601,15 @@ function buildGeneratedContractId(slug: string): string {
   return `GENERATED-${slug}`;
 }
 
+function ensureContractListIncludes(raw: string, path: string): string {
+  const normalized = normalizeRepoPath(path);
+  if (normalizeContractFilePatterns(raw).includes(normalized)) {
+    return raw;
+  }
+
+  return raw.trim() ? `${raw.trim()}, \`${normalized}\`` : `\`${normalized}\``;
+}
+
 function createGeneratedContract(
   slug: string,
   fields: Partial<BacklogItem> & {
@@ -610,9 +625,16 @@ function createGeneratedContract(
     requiredProductionProof: string;
     doneMeans: string;
     nextBlocker: string;
+    sourceTruthFile: string;
+    sourceTruthFinding: string;
+    requiredClosureUpdate: string;
   },
 ): BacklogItem {
   const generatedId = buildGeneratedContractId(slug);
+  const allowedFiles = ensureContractListIncludes(
+    fields.allowedFiles,
+    fields.sourceTruthFile,
+  );
 
   return {
     headingId: generatedId,
@@ -626,7 +648,7 @@ function createGeneratedContract(
     endingSuccessState: fields.endingSuccessState,
     problem: fields.problem,
     protectedContracts: fields.protectedContracts ?? null,
-    allowedFiles: fields.allowedFiles,
+    allowedFiles,
     forbiddenFiles: fields.forbiddenFiles,
     requiredLocalProof: fields.requiredLocalProof,
     requiredProductionProof: fields.requiredProductionProof,
@@ -636,6 +658,9 @@ function createGeneratedContract(
     doNotCount: fields.doNotCount ?? 'Backlog emptiness alone is not a valid stop state.',
     status: 'GENERATED',
     nextBlocker: fields.nextBlocker,
+    sourceTruthFile: fields.sourceTruthFile,
+    sourceTruthFinding: fields.sourceTruthFinding,
+    requiredClosureUpdate: fields.requiredClosureUpdate,
   };
 }
 
@@ -681,6 +706,11 @@ function synthesizeAppOwnerContract(snapshot: ControllerTruthSnapshot): BacklogI
         'Connector freshness is explicit and consistent before generation: Foldera says which source is stale/disconnected/reauth_required, preserves the healthy source truth, and generation warns or blocks safely instead of pretending the loop is ready.',
       nextBlocker:
         'Prove the stale/disconnected connector truth on the real settings + run-brief path without widening into generation or sync internals.',
+      sourceTruthFile: 'ACTIVE_HANDOFF.md',
+      sourceTruthFinding:
+        'Current command state or health truth shows stale/disconnected/reauth connector state while generation can still look runnable.',
+      requiredClosureUpdate:
+        'Update ACTIVE_HANDOFF.md so the current command state records the repaired connector freshness truth or the exact remaining external blocker.',
     });
   }
 
@@ -714,6 +744,11 @@ function synthesizeAppOwnerContract(snapshot: ControllerTruthSnapshot): BacklogI
         'Use deterministic convergence proof first; only widen if the same under-match still survives scorer truth after the extractor fix.',
       doNotCount:
         'Do not call this done from backlog emptiness, logs alone, or a code diff without convergence-focused regression proof.',
+      sourceTruthFile: 'CURRENT_STATE.md',
+      sourceTruthFinding:
+        'Convergence depends on name overlap',
+      requiredClosureUpdate:
+        'Update CURRENT_STATE.md to retire the name-overlap-only finding once known entity email aliases are proven to count, while preserving any broader unresolved convergence risk that still has evidence.',
     });
   }
 
@@ -751,6 +786,11 @@ function synthesizeAppOwnerContract(snapshot: ControllerTruthSnapshot): BacklogI
         'When no fresh pending artifact exists, Foldera still shows one grounded useful current move with source trail and non-contradictory save/copy behavior, without pretending a finished artifact was persisted.',
       nextBlocker:
         'Keep this seam inside the deterministic current-best-move path until it is proven truthful at the dashboard surface.',
+      sourceTruthFile: 'CURRENT_STATE.md',
+      sourceTruthFinding:
+        'The latest persisted generation is still historical do_nothing while daily-value carries the current best move.',
+      requiredClosureUpdate:
+        'Update CURRENT_STATE.md when the deterministic current-best-move fallback is proven truthful or replaced by a fresher persisted artifact path, and append only a new SESSION_HISTORY receipt.',
     });
   }
 
@@ -897,6 +937,9 @@ function printSeamContractReport(item: BacklogItem | null, acceptanceGateText: s
   console.log(`- Production proof: ${compact(item?.requiredProductionProof)}`);
   console.log(`- User-facing seam: ${item?.isUserFacing == null ? 'UNKNOWN' : item.isUserFacing ? 'true' : 'false'}`);
   console.log(`- Browser proof command: ${compact(item?.browserProofCommand)}`);
+  console.log(`- Closure source truth: ${compact(item?.sourceTruthFile)}`);
+  console.log(`- Source truth finding: ${compact(item?.sourceTruthFinding)}`);
+  console.log(`- Required closure update: ${compact(item?.requiredClosureUpdate)}`);
   console.log(`- Stop condition: ${compact(buildStopCondition(item, acceptanceGateText), 240)}`);
 }
 
@@ -953,6 +996,9 @@ function writeContractFile(repoRoot: string, item: BacklogItem | null, acceptanc
     required_browser_proof: item?.requiredProductionProof ?? '',
     acceptance_condition: item?.doneMeans ?? '',
     stop_condition: stopCondition,
+    source_truth_file: item?.sourceTruthFile ?? undefined,
+    source_truth_finding: item?.sourceTruthFinding ?? undefined,
+    required_closure_update: item?.requiredClosureUpdate ?? undefined,
     is_user_facing: item?.isUserFacing ?? false,
     browser_proof_command: item?.browserProofCommand ?? '',
     anti_regression_checks: normalizeContractNotes(

@@ -38,6 +38,10 @@ function writeContract(
     browser_proof_command?: string;
     allowed_file_patterns?: string[];
     forbidden_file_patterns?: string[];
+    generated_contract_id?: string;
+    source_truth_file?: string;
+    source_truth_finding?: string;
+    required_closure_update?: string;
   },
 ) {
   writeFileSync(
@@ -45,12 +49,16 @@ function writeContract(
     JSON.stringify(
       {
         backlog_id: 'BL-777',
+        generated_contract_id: contract.generated_contract_id,
         base_commit: contract.base_commit,
         money_loop_rung: contract.money_loop_rung ?? 'produce_finished_work',
         allowed_file_patterns: contract.allowed_file_patterns ?? [],
         forbidden_file_patterns: contract.forbidden_file_patterns ?? [],
         required_local_proof: 'npm test',
         required_browser_proof: '',
+        source_truth_file: contract.source_truth_file,
+        source_truth_finding: contract.source_truth_finding,
+        required_closure_update: contract.required_closure_update,
         is_user_facing: contract.is_user_facing ?? false,
         browser_proof_command: contract.browser_proof_command ?? '',
         anti_regression_checks: [],
@@ -112,6 +120,29 @@ describe('preflight contract validation', () => {
     }
   });
 
+  it('fails when a generated contract does not allow its source-truth closure file', () => {
+    const { repoDir, baseCommit } = makeRepo();
+    try {
+      writeContract(repoDir, {
+        base_commit: baseCommit,
+        generated_contract_id: 'GENERATED-CANDIDATE-SELECTION-CONVERGENCE',
+        source_truth_file: 'CURRENT_STATE.md',
+        source_truth_finding: 'Convergence depends on name overlap',
+        required_closure_update: 'Update CURRENT_STATE.md to retire the triggering finding.',
+        allowed_file_patterns: ['scripts/controller-autopilot.ts'],
+      });
+
+      const result = validateContractForStage(repoDir, 'pre-commit');
+
+      expect(result.ok).toBe(false);
+      expect(result.code).toBe('invalid_contract');
+      expect(result.message).toContain('source_truth_file');
+      expect(result.message).toContain('CURRENT_STATE.md');
+    } finally {
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
   it('fails staged files outside allowed_file_patterns in pre-commit mode', () => {
     const { repoDir, baseCommit } = makeRepo();
     try {
@@ -148,6 +179,96 @@ describe('preflight contract validation', () => {
       expect(result.ok).toBe(false);
       expect(result.code).toBe('files_outside_contract');
       expect(result.violations).toEqual(['README.md']);
+    } finally {
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects SESSION_HISTORY rewrites when the contract only allows append-only receipts', () => {
+    const { repoDir, baseCommit } = makeRepo();
+    try {
+      writeFileSync(
+        join(repoDir, 'SESSION_HISTORY.md'),
+        `## 2026-05-10 - Prior seam
+- Files changed: none
+- Verification: pass
+`,
+      );
+      commitAll(repoDir, 'add history');
+      const historyBaseCommit = execSync('git rev-parse HEAD', {
+        cwd: repoDir,
+        encoding: 'utf8',
+      }).trim();
+
+      writeContract(repoDir, {
+        base_commit: historyBaseCommit,
+        generated_contract_id: 'GENERATED-CURRENT-STATE-CLOSURE',
+        source_truth_file: 'CURRENT_STATE.md',
+        source_truth_finding: 'Convergence depends on name overlap',
+        required_closure_update: 'Update CURRENT_STATE.md and append one new SESSION_HISTORY receipt.',
+        allowed_file_patterns: ['CURRENT_STATE.md', 'SESSION_HISTORY.md'],
+      });
+      writeFileSync(
+        join(repoDir, 'SESSION_HISTORY.md'),
+        `## 2026-05-10 - Prior seam
+- Files changed: changed
+- Verification: pass
+`,
+      );
+      execSync('git add SESSION_HISTORY.md', { cwd: repoDir, stdio: 'ignore' });
+
+      const result = validateContractForStage(repoDir, 'pre-commit');
+
+      expect(result.ok).toBe(false);
+      expect(result.code).toBe('invalid_contract');
+      expect(result.message).toContain('SESSION_HISTORY.md');
+      expect(result.message).toContain('append-only');
+    } finally {
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
+  it('allows append-only SESSION_HISTORY receipts', () => {
+    const { repoDir } = makeRepo();
+    try {
+      writeFileSync(
+        join(repoDir, 'SESSION_HISTORY.md'),
+        `## 2026-05-10 - Prior seam
+- Files changed: none
+- Verification: pass
+`,
+      );
+      commitAll(repoDir, 'add history');
+      const historyBaseCommit = execSync('git rev-parse HEAD', {
+        cwd: repoDir,
+        encoding: 'utf8',
+      }).trim();
+
+      writeContract(repoDir, {
+        base_commit: historyBaseCommit,
+        generated_contract_id: 'GENERATED-CURRENT-STATE-CLOSURE',
+        source_truth_file: 'CURRENT_STATE.md',
+        source_truth_finding: 'Convergence depends on name overlap',
+        required_closure_update: 'Update CURRENT_STATE.md and append one new SESSION_HISTORY receipt.',
+        allowed_file_patterns: ['CURRENT_STATE.md', 'SESSION_HISTORY.md'],
+      });
+      writeFileSync(
+        join(repoDir, 'SESSION_HISTORY.md'),
+        `## 2026-05-10 - Prior seam
+- Files changed: none
+- Verification: pass
+
+## 2026-05-11 - Closure receipt
+- Files changed: CURRENT_STATE.md
+- Verification: pass
+`,
+      );
+      execSync('git add SESSION_HISTORY.md', { cwd: repoDir, stdio: 'ignore' });
+
+      const result = validateContractForStage(repoDir, 'pre-commit');
+
+      expect(result.ok).toBe(true);
+      expect(result.touchedFiles).toEqual(['SESSION_HISTORY.md']);
     } finally {
       rmSync(repoDir, { recursive: true, force: true });
     }
