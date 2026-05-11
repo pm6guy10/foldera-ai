@@ -1,8 +1,11 @@
 {
   "backlog_id": "DIRECT-CI-SEAM-2026-05-11",
-  "base_commit": "4dafbb3d45e16a8c75171bfd5104ce8cf0928182",
+  "base_commit": "6991a320b46019a4dc1c364a0f4c7b2d8b543f3f",
   "money_loop_rung": "protect_ci_reliability",
   "allowed_file_patterns": [
+    ".github/workflows/production-e2e.yml",
+    ".github/workflows/weekly-audit.yml",
+    "tests/production/smoke.spec.ts",
     "ACTIVE_HANDOFF.md",
     "SESSION_HISTORY.md",
     ".foldera-contract.json"
@@ -13,15 +16,16 @@
     "app/api/settings/run-brief/**/*",
     "supabase/migrations/**/*"
   ],
-  "allowed_files_raw": "`ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`, `.foldera-contract.json`",
+  "allowed_files_raw": "`.github/workflows/production-e2e.yml`, `.github/workflows/weekly-audit.yml`, `tests/production/smoke.spec.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`, `.foldera-contract.json`",
   "forbidden_files_raw": "`lib/briefing/**/*`, `lib/cron/daily-brief-generate.ts`, `app/api/settings/run-brief/**/*`, `supabase/migrations/**/*`, unrelated staged docs, dashboard/auth/billing/product-generation files",
-  "required_local_proof": "No new code proof required for this closeout-only update; keep the shipped heartbeat proof in SESSION_HISTORY current.",
-  "required_browser_proof": "Record the fresh GitHub `Pipeline cron heartbeat` hosted proof that already passed on the new head commit.",
+  "required_local_proof": "`npx playwright test tests/production/smoke.spec.ts --config playwright.prod.config.ts --grep 'locked /start CTA copy stays \"Get started free\"'`; `npm run build`; `npm run health`",
+  "required_browser_proof": "Trigger or observe fresh current-main runs for the touched scheduled workflows and confirm the hosted proof goes green with the updated monitor semantics/runtime.",
   "is_user_facing": true,
-  "browser_proof_command": "Done means: ACTIVE_HANDOFF.md and SESSION_HISTORY.md reflect that `Pipeline cron heartbeat` run `#35` passed on main with the same-day UTC heartbeat window already shipped.",
+  "browser_proof_command": "Done means: Production E2E and Weekly Production Audit use non-deprecated artifact actions, Production E2E still proves the locked /start CTA contract, and fresh hosted current-main runs are green.",
   "anti_regression_checks": [
-    "Only closeout docs plus `.foldera-contract.json` change in this follow-up.",
-    "Hosted proof remains run `#35` success on `main`."
+    "Production E2E still proves the locked /start CTA contract through the landing /start links, not generic page text.",
+    "Scheduled workflows stop using upload-artifact@v4 in the touched cron lanes.",
+    "Workflow comments and logs still say exactly what success means."
   ],
-  "next_command": "Close out the shipped heartbeat seam only. Allowed: ACTIVE_HANDOFF.md | SESSION_HISTORY.md | .foldera-contract.json. Hosted proof already exists: GitHub `Pipeline cron heartbeat` run `#35` succeeded on `main`."
+  "next_command": "Run the scheduled-check reliability seam only. Allowed: .github/workflows/production-e2e.yml | .github/workflows/weekly-audit.yml | tests/production/smoke.spec.ts | ACTIVE_HANDOFF.md | SESSION_HISTORY.md | .foldera-contract.json. Local proof: focused production smoke grep + build + health. Hosted proof: fresh current-main runs for Production E2E and Weekly Production Audit."
 }

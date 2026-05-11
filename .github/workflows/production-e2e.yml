@@ -55,10 +55,18 @@ jobs:
         run: npx tsx tests/production/refresh-auth.ts
         continue-on-error: true
 
-      - name: Run cheap production smoke
+      - name: Describe production monitor contract
+        run: |
+          echo "Scheduled success means the public production contract is healthy on current main:"
+          echo "- landing/start/login/pricing routes load"
+          echo "- locked /start CTA copy is intact"
+          echo "- lite /api/health stays healthy"
+          echo "Authenticated and live-brief proof remain workflow_dispatch-only."
+
+      - name: Run public production contract smoke
         run: npm run test:prod
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: e2e-results

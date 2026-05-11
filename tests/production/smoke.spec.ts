@@ -164,13 +164,13 @@ test.describe('Public: Landing page', () => {
     await expect(page).toHaveTitle(/Foldera/i);
   });
 
-  test('pricing CTA says "Get started free"', async ({ page }) => {
+  test('locked /start CTA copy stays "Get started free"', async ({ page }) => {
     await page.goto('/');
-    // Scroll to bottom where pricing section lives
-    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.waitForTimeout(500);
-    const hasCorrectCopy = await page.getByText(/get started free/i).first().isVisible().catch(() => false);
-    expect(hasCorrectCopy).toBe(true);
+    // This copy is intentionally locked and production-only. Scope the assertion to
+    // the real landing /start CTAs instead of any generic page text that might move.
+    const startLinks = page.locator('a[href="/start"]:visible');
+    await expect(startLinks.first()).toBeVisible();
+    await expect(startLinks.first()).toHaveText('Get started free');
   });
 
   test('Get Started button links to /start', async ({ page }) => {
