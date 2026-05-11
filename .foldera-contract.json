@@ -1,37 +1,35 @@
 {
-  "backlog_id": "DIRECT-CONTROLLER-FALLBACK-CONTRACT-2026-05-11",
-  "base_commit": "c2e9a0176764017837b11d0703021b150adfe27d",
-  "money_loop_rung": "run_truth",
-  "user_system_path": "Controller/autopilot must generate one valid app-owner contract from current product truth when backlog rows are waiting-only, instead of stopping at UNKNOWN.",
+  "backlog_id": "GENERATED-CANDIDATE-SELECTION-CONVERGENCE",
+  "generated_contract_id": "GENERATED-CANDIDATE-SELECTION-CONVERGENCE",
+  "base_commit": "5ca2d562a40dcbd0ff64289eee87282b871902f4",
+  "money_loop_rung": "candidate_selection",
+  "user_system_path": "Signal scoring should still recognize one entity across calendar titles and neighboring signals even when the exact name string is missing from message bodies.",
   "allowed_file_patterns": [
-    "scripts/controller-autopilot.ts",
-    "scripts/preflight-contract.ts",
-    "scripts/__tests__/controller-autopilot.test.ts",
+    "lib/briefing/discrepancy-detector.ts",
+    "lib/briefing/scorer.ts",
+    "lib/briefing/__tests__/discrepancy-detector.test.ts",
     "ACTIVE_HANDOFF.md",
     "SESSION_HISTORY.md"
   ],
   "forbidden_file_patterns": [
-    "app/**",
-    "components/**",
-    "lib/briefing/**",
+    "app/dashboard/**",
+    "app/api/settings/run-brief/**",
     "lib/cron/**",
     "supabase/migrations/**",
-    "app/api/stripe/**",
-    "paid generation routes",
-    "outbound email paths"
+    "app/api/stripe/**"
   ],
-  "allowed_files_raw": "`scripts/controller-autopilot.ts`, `scripts/preflight-contract.ts`, `scripts/__tests__/controller-autopilot.test.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`",
-  "forbidden_files_raw": "`app/**`, `components/**`, `lib/briefing/**`, `lib/cron/**`, `supabase/migrations/**`, `app/api/stripe/**`, paid generation routes, outbound email paths`",
-  "required_local_proof": "node node_modules/vitest/vitest.mjs run scripts/__tests__/controller-autopilot.test.ts --reporter=verbose; npm run controller:autopilot; npm run health; npm run build",
-  "required_product_proof": "npm run controller:autopilot",
-  "required_browser_proof": "npm run controller:autopilot",
-  "acceptance_condition": "When backlog rows are all waiting, blocked, or closed, controller/autopilot emits one valid app-owner contract with a real money_loop_rung and exact proof/stop fields, or stops only on an exact external blocker.",
-  "stop_condition": "Do not call this done from backlog emptiness, logs alone, or a code diff without focused controller proof. If Codex cannot prove that at least one production rung advanced, the run did not count.",
+  "allowed_files_raw": "`lib/briefing/discrepancy-detector.ts`, `lib/briefing/scorer.ts`, `lib/briefing/__tests__/discrepancy-detector.test.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`",
+  "forbidden_files_raw": "`app/dashboard/**`, `app/api/settings/run-brief/**`, `lib/cron/**`, `supabase/migrations/**`, `app/api/stripe/**`, paid proof routes, unrelated homepage/settings files`",
+  "required_local_proof": "node node_modules/vitest/vitest.mjs run lib/briefing/__tests__/discrepancy-detector.test.ts --reporter=verbose; npm run health; npm run build",
+  "required_product_proof": "npm run winner:autopsy",
+  "required_browser_proof": "npm run winner:autopsy",
+  "acceptance_condition": "A calendar-title-only convergence scenario now advances candidate_selection: deterministic proof shows the same entity can be linked across sources without exact body-text name overlap, and the resulting candidate evidence stays grounded.",
+  "stop_condition": "Do not call this done from backlog emptiness, logs alone, or a code diff without convergence-focused regression proof. If Codex cannot prove that at least one production rung advanced, the run did not count.",
   "is_user_facing": false,
   "browser_proof_command": "",
   "anti_regression_checks": [
-    "Controller never emits UNKNOWN as the normal waiting-only stop state.",
-    "External blockers still stop honestly with one exact blocker reason."
+    "A calendar-title-only convergence scenario now advances candidate_selection: deterministic proof shows the same entity can be linked across sources without exact body-text name overlap",
+    "and the resulting candidate evidence stays grounded."
   ],
-  "next_command": "Repair controller/autopilot contract generation only. Allowed: scripts/controller-autopilot.ts | scripts/preflight-contract.ts | scripts/__tests__/controller-autopilot.test.ts | ACTIVE_HANDOFF.md | SESSION_HISTORY.md. Proof: local=\"node node_modules/vitest/vitest.mjs run scripts/__tests__/controller-autopilot.test.ts --reporter=verbose; npm run controller:autopilot; npm run health; npm run build\" production=\"npm run controller:autopilot\". Stop when: Do not call this done from backlog emptiness, logs alone, or a code diff without focused controller proof. If Codex cannot prove that at least one production rung advanced, the run did not count."
+  "next_command": "Run FOLDERA CONTROLLED AUTOPILOT. Selected: GENERATED-CANDIDATE-SELECTION-CONVERGENCE. Allowed: lib/briefing/discrepancy-detector.ts | lib/briefing/scorer.ts | lib/briefing/__tests__/discrepancy-detector.test.ts | ACTIVE_HANDOFF.md | SESSION_HISTORY.md. Forbidden: app/dashboard/** | app/api/settings/run-brief/** | lib/cron/** | supabase/migrations/** | app/api/stripe/**. Proof: local=\"node node_modules/vitest/vitest.mjs run lib/briefing/__tests__/discrepancy-detector.test.ts --reporter=verbose; npm run health; npm run build\" production=\"npm run winner:autopsy\". Stop when: Do not call this done from backlog emptiness, logs alone, or a code diff without convergence-focused regression proof. If Codex cannot prove that at least one production rung advanced, the run did not count."
 }

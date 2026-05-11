@@ -2685,13 +2685,18 @@ function extractConvergence(structured: StructuredSignalInput[], entities: Entit
     const n = ent.name.toLowerCase();
     if (n.length < 3) continue;
     const tokens = n.split(/\s+/).filter((t) => t.length >= 3);
+    const entityEmails = [ent.primary_email, ...(ent.emails ?? [])]
+      .filter((email): email is string => Boolean(email))
+      .map((email) => email.toLowerCase());
     const buckets = new Set<'email' | 'calendar' | 'drive' | 'conversation'>();
     const samples: StructuredSignalInput[] = [];
     for (const s of structured) {
       const t = new Date(s.occurred_at).getTime();
       if (t < since || t > nowMs) continue;
       const c = s.content.toLowerCase();
-      if (!tokens.every((tok) => c.includes(tok))) continue;
+      const matchesFullName = tokens.every((tok) => c.includes(tok));
+      const matchesKnownEntityEmail = entityEmails.some((email) => c.includes(email));
+      if (!matchesFullName && !matchesKnownEntityEmail) continue;
       const b = sourceBucket(s.source, s.type, s.content);
       if (b) {
         buckets.add(b);

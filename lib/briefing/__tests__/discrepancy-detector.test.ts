@@ -920,6 +920,69 @@ describe('Cross-source discrepancy extractors', () => {
     expect(result.some((d) => d.class === 'stale_document')).toBe(true);
   });
 
+  it('emits convergence when calendar and drive signals only carry a known entity email alias, not the full name', () => {
+    const structured = [
+      {
+        id: 'mail-sam',
+        source: 'gmail',
+        type: 'email',
+        occurred_at: daysAgoISO(2),
+        content: [
+          'From: Sam Devore <sdevore@example.com>',
+          'Subject: Follow-up on implementation review',
+          'Sam Devore asked for the latest draft before tomorrow.',
+        ].join('\n'),
+      },
+      {
+        id: 'calendar-sam',
+        source: 'google_calendar',
+        type: 'calendar_event',
+        occurred_at: daysAgoISO(1),
+        content: [
+          '[Calendar event: Implementation review]',
+          `Start: ${daysFromNowISO(1)}`,
+          `End: ${daysFromNowISO(1)}`,
+          'Attendees: sdevore@example.com',
+          'Location: Zoom',
+        ].join('\n'),
+      },
+      {
+        id: 'drive-sam',
+        source: 'drive',
+        type: 'file_modified',
+        occurred_at: daysAgoISO(3),
+        content: [
+          '[File: Implementation notes]',
+          'Owner: self',
+          'Shared with: sdevore@example.com',
+        ].join('\n'),
+      },
+    ];
+
+    const result = detectDiscrepancies({
+      entities: [
+        {
+          id: 'sam-devore',
+          name: 'Sam Devore',
+          primary_email: 'sdevore@example.com',
+          emails: ['sdevore@example.com'],
+          total_interactions: 10,
+          last_interaction: daysAgoISO(2),
+          patterns: { bx_stats: { silence_detected: false, signal_count_90d: 5 } },
+        },
+      ],
+      commitments: [],
+      goals: [],
+      decryptedSignals: [],
+      structuredSignals: structured,
+      now: NOW,
+    });
+
+    const convergence = result.find((d) => d.class === 'convergence');
+    expect(convergence).toBeTruthy();
+    expect(convergence?.title).toContain('Sam Devore');
+  });
+
   it('routes a confirmed Alex Crisler interview into a prep artifact instead of an outbound confirmation email', () => {
     const interviewNow = new Date('2026-04-28T18:00:00.000Z');
     const result = detectDiscrepancies({
