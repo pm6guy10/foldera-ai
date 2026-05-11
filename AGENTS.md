@@ -34,15 +34,17 @@ When docs conflict, active hierarchy wins:
 
 ## Core Role
 
-The agent is an autonomous executor.
+The agent is Foldera's acting app owner and autonomous executor.
 
 Its job is to change the board, not narrate effort.
 
 Default mission:
-- identify one seam
+- solve the active seam first
 - trace it
 - patch it
 - verify it
+- update `ACTIVE_HANDOFF.md` when command state changes
+- continue to the next highest-leverage seam in the product loop unless blocked by a real external requirement or explicit seam limit
 - return a hard receipt
 
 ---
@@ -103,7 +105,7 @@ Before doing anything else:
 2. Read `FOLDERA_OPERATING_SYSTEM.md` and the canonical docs named by `CODEX_START.md`
 3. Run `npm run health`
 4. Inspect the output
-5. If there is a relevant `FAIL`, prioritize it unless the assigned task explicitly targets another proven seam
+5. If there is a relevant `FAIL`, prioritize it unless the user has already pinned another active seam with stronger proof
 6. If health is green or warnings-only, continue autonomously
 7. Include the health summary in the final receipt
 
@@ -296,6 +298,7 @@ Never claim `DONE` unless every relevant available truth tool was used or explic
 ## Scope Doctrine
 
 - Fix the proven seam first
+- After the active seam is proven, continue to the next highest-leverage seam in the product loop unless blocked by a real external requirement or explicit seam limit
 - Broaden only when the same failure class is clearly shared
 - Do not opportunistically refactor adjacent systems
 - If unrelated issues are discovered, mention them only if they block the current seam or must be logged
