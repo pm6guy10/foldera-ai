@@ -1,11 +1,8 @@
 {
   "backlog_id": "DIRECT-CI-SEAM-2026-05-11",
-  "base_commit": "274cb81e03b420d8e9b0fdda5549f90a80797a19",
+  "base_commit": "4dafbb3d45e16a8c75171bfd5104ce8cf0928182",
   "money_loop_rung": "protect_ci_reliability",
   "allowed_file_patterns": [
-    ".github/workflows/pipeline-cron-heartbeat.yml",
-    "scripts/pipeline-cron-heartbeat-check.ts",
-    "scripts/__tests__/pipeline-cron-heartbeat-check.test.ts",
     "ACTIVE_HANDOFF.md",
     "SESSION_HISTORY.md",
     ".foldera-contract.json"
@@ -16,16 +13,15 @@
     "app/api/settings/run-brief/**/*",
     "supabase/migrations/**/*"
   ],
-  "allowed_files_raw": "`.github/workflows/pipeline-cron-heartbeat.yml`, `scripts/pipeline-cron-heartbeat-check.ts`, `scripts/__tests__/pipeline-cron-heartbeat-check.test.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`, `.foldera-contract.json`",
+  "allowed_files_raw": "`ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`, `.foldera-contract.json`",
   "forbidden_files_raw": "`lib/briefing/**/*`, `lib/cron/daily-brief-generate.ts`, `app/api/settings/run-brief/**/*`, `supabase/migrations/**/*`, unrelated staged docs, dashboard/auth/billing/product-generation files",
-  "required_local_proof": "`npx vitest run scripts/__tests__/pipeline-cron-heartbeat-check.test.ts --reporter=verbose`; `npm run build`; `npm run health`; rerun-mode `npm run check:pipeline-heartbeat` against the same-day UTC window",
-  "required_browser_proof": "Trigger or observe a fresh GitHub `Pipeline cron heartbeat` run on the new head commit and confirm the hosted check passes with the new same-day UTC window semantics.",
+  "required_local_proof": "No new code proof required for this closeout-only update; keep the shipped heartbeat proof in SESSION_HISTORY current.",
+  "required_browser_proof": "Record the fresh GitHub `Pipeline cron heartbeat` hosted proof that already passed on the new head commit.",
   "is_user_facing": true,
-  "browser_proof_command": "Done means: the heartbeat script checks `daily_brief` `cron_complete` rows from today's expected UTC lower bound through now, late-day reruns pass when the same-day row exists, yesterday's rows do not count, and the hosted `Pipeline cron heartbeat` workflow passes on the new commit.",
+  "browser_proof_command": "Done means: ACTIVE_HANDOFF.md and SESSION_HISTORY.md reflect that `Pipeline cron heartbeat` run `#35` passed on main with the same-day UTC heartbeat window already shipped.",
   "anti_regression_checks": [
-    "Heartbeat query window starts at today's expected UTC lower bound, not `Date.now() - 3h`.",
-    "Late-day reruns still pass when the same-day `daily_brief` `cron_complete` row exists after the lower bound.",
-    "Yesterday's `daily_brief` `cron_complete` rows do not satisfy today's check."
+    "Only closeout docs plus `.foldera-contract.json` change in this follow-up.",
+    "Hosted proof remains run `#35` success on `main`."
   ],
-  "next_command": "Run the heartbeat-semantics seam only. Allowed: .github/workflows/pipeline-cron-heartbeat.yml | scripts/pipeline-cron-heartbeat-check.ts | scripts/__tests__/pipeline-cron-heartbeat-check.test.ts | ACTIVE_HANDOFF.md | SESSION_HISTORY.md | .foldera-contract.json. Forbidden: briefing/generation/runtime/auth/billing/schema files. Local proof: `npx vitest run scripts/__tests__/pipeline-cron-heartbeat-check.test.ts --reporter=verbose`; `npm run build`; `npm run health`; rerun-mode `npm run check:pipeline-heartbeat`. Hosted proof: trigger or observe a fresh GitHub `Pipeline cron heartbeat` run on the new head commit."
+  "next_command": "Close out the shipped heartbeat seam only. Allowed: ACTIVE_HANDOFF.md | SESSION_HISTORY.md | .foldera-contract.json. Hosted proof already exists: GitHub `Pipeline cron heartbeat` run `#35` succeeded on `main`."
 }
