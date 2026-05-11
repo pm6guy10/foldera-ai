@@ -38,10 +38,11 @@ Everything else is owned by you.
 4. Trace the real execution path before editing.
 5. Patch the smallest global rule that fixes the class.
 6. Prove it at the affected surface.
-7. Update `ACTIVE_HANDOFF.md` when command state changes, and update `FOLDERA_PRODUCTION_BACKLOG.md` plus `SESSION_HISTORY.md` before the final push when backlog or controller truth changes.
-8. Continue to the next highest-leverage seam in the product loop unless blocked by a real external requirement or explicit seam limit.
-9. Build, commit, push to `main`, and verify the deploy path when applicable.
-10. Record the receipt in `SESSION_HISTORY.md`.
+7. Build if the seam requires it.
+8. Commit and push the verified seam to `main`.
+9. Verify the deploy path and production truth when applicable.
+10. Update `ACTIVE_HANDOFF.md` and `SESSION_HISTORY.md` with the receipt, and update `FOLDERA_PRODUCTION_BACKLOG.md` too when backlog or controller truth changed.
+11. Then continue to the next highest-leverage seam in the product loop unless blocked by a real external requirement or explicit seam limit.
 
 ## Report Format
 

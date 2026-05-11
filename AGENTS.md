@@ -43,8 +43,11 @@ Default mission:
 - trace it
 - patch it
 - verify it
-- update `ACTIVE_HANDOFF.md` when command state changes
-- continue to the next highest-leverage seam in the product loop unless blocked by a real external requirement or explicit seam limit
+- build if required
+- commit and push the verified seam to `main`
+- verify deploy/production truth when applicable
+- update `ACTIVE_HANDOFF.md` and `SESSION_HISTORY.md` with the receipt when command state or repo truth changed
+- then continue to the next highest-leverage seam in the product loop unless blocked by a real external requirement or explicit seam limit
 - return a hard receipt
 
 ---
@@ -298,7 +301,7 @@ Never claim `DONE` unless every relevant available truth tool was used or explic
 ## Scope Doctrine
 
 - Fix the proven seam first
-- After the active seam is proven, continue to the next highest-leverage seam in the product loop unless blocked by a real external requirement or explicit seam limit
+- After the active seam is proven, build if required, commit and push it, verify deploy/production truth when applicable, update the receipt docs, and only then continue to the next highest-leverage seam unless blocked by a real external requirement or explicit seam limit
 - Broaden only when the same failure class is clearly shared
 - Do not opportunistically refactor adjacent systems
 - If unrelated issues are discovered, mention them only if they block the current seam or must be logged
