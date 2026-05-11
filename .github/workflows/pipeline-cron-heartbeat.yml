@@ -1,4 +1,4 @@
-# After daily-brief cron (~11:10 UTC): fail if no cron_complete row landed in Supabase.
+# After the daily-brief cron window opens, fail only if today's expected daily_brief heartbeat is still missing.
 name: Pipeline cron heartbeat
 
 on:
