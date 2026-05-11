@@ -1,59 +1,53 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-11 13:33 PT
+Last updated: 2026-05-11 14:06 PT
 Last known production SHA: f387d93
-Last completed commit: 9a3b420
-Current slice: Scheduled-check reliability hardening
-Current mode: Reliability-class seam shipped and fresh hosted proof complete
+Last completed commit: pending current controller fallback commit
+Current slice: Controller app-owner fallback contract generation
+Current mode: Controller no longer stops at waiting-only backlog state
 
 ## Current product truth
 
 - Health is `0 FAILING`; Gmail and Outlook are fresh/current; last stored generation is still historical `do_nothing`.
-- Production is live on `f387d93`.
-- Current scheduled-check truth:
-  - `Pipeline cron heartbeat`: current-main replacement runs are green; the old red history split into `external platform failure` (GitHub checkout 500) and `bad monitor semantics` (rolling rerun window).
-  - `Production E2E`: current-main hosted proof is green; the old scheduled red was a real production CTA regression on commit `5186327`.
-  - `Weekly Production Audit`: current-main hosted proof is green.
-  - `Signal Backlog Drain`, `Agent — Health Watchdog`, `Agent — Distribution Finder`, and the other cron agent workflows are currently green.
-- The scheduled Playwright/audit lanes no longer emit the targeted Node-20 artifact-action deprecation warning; fresh hosted runs used `actions/upload-artifact@v6`.
+- Production is still live on `f387d93`; this seam is controller/runtime-only and does not require a deploy.
+- `npm run controller:autopilot` no longer falls back to `Selected backlog ID: UNKNOWN` when backlog rows are all waiting/blocked.
+- Current generated contract truth:
+  - `Generated contract ID`: `GENERATED-CANDIDATE-SELECTION-CONVERGENCE`
+  - `Money loop rung`: `candidate_selection`
+  - `User/system path`: signal scoring should still link one entity across calendar titles and neighboring signals even when the exact name string is missing from message bodies.
+  - `Required local proof`: focused `discrepancy-detector` Vitest + `npm run health` + `npm run build`
+  - `Required product/prod proof`: `npm run winner:autopsy`
 
 ## Current slice goal
 
-- This seam is complete. Scheduled checks are now classified by real root cause, the CTA monitor proves the locked contract directly, and the touched cron workflows are green on fresh current-main runs.
+- This seam is complete. The controller now synthesizes one valid app-owner contract from current product truth when backlog rows are waiting-only, and it names an exact external blocker instead of treating backlog emptiness as the stop condition.
 
 ## Completed recently
 
-- Reclassified the active scheduled failures by root bucket instead of treating old red history as current truth.
-- Tightened the production smoke CTA assertion to the real visible `/start` links.
-- Upgraded the scheduled artifact uploads in `Production E2E` and `Weekly Production Audit` to `actions/upload-artifact@v6`.
-- Added workflow log breadcrumbs so the cron monitor tells the operator exactly what success means.
-- Triggered fresh current-main hosted runs for both touched workflows; both completed `success`.
+- Extended controller truth inputs to read `ACTIVE_HANDOFF.md`, `CURRENT_STATE.md`, latest `SESSION_HISTORY.md`, and fresh health output before deciding to stop.
+- Added app-owner fallback synthesis so the controller can emit a generated seam from the main money loop when backlog rows are all waiting, blocked, or closed.
+- Added exact external-blocker stopping so waiting-only states stop with a named blocker instead of generic `UNKNOWN`.
+- Extended the machine-readable contract to carry `generated_contract_id`, `user_system_path`, `required_product_proof`, `acceptance_condition`, and `stop_condition`.
 
 ## Verified proof
 
-- health: PASS 2026-05-11 13:17 PT; `RESULT: 0 FAILING`; warning `Last generation do_nothing`
+- controller tests: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/controller-autopilot.test.ts --reporter=verbose` (`15/15`)
+- controller runtime: PASS `npm run controller:autopilot` now returns `CONTROLLER RESULT: GO` with `GENERATED-CANDIDATE-SELECTION-CONVERGENCE` instead of `UNKNOWN`
+- health: PASS 2026-05-11 14:01 PT; `RESULT: 0 FAILING`; warning `Last generation do_nothing`
 - build: PASS `npm run build`
-- focused Playwright: PASS `npx playwright test tests/production/smoke.spec.ts --config playwright.prod.config.ts --grep 'locked /start CTA copy stays "Get started free"'`
-- GitHub truth:
-  - `Production E2E` `#1099` (`workflow_dispatch`, commit `9a3b420`) PASS: `https://github.com/pm6guy10/foldera-ai/actions/runs/25695446490`
-  - `Weekly Production Audit` `#8` (`workflow_dispatch`, commit `9a3b420`) PASS: `https://github.com/pm6guy10/foldera-ai/actions/runs/25695447427`
-  - New logs confirm `actions/upload-artifact@v6` was used and the targeted `Node.js 20 actions are deprecated` warning is absent in both runs
-  - `Pipeline cron heartbeat` workflow-dispatch runs `#35` and `#36` remain green
-- Playwright/browser: production smoke public CTA proof passed against the live site
-- production SHA: PASS `https://www.foldera.ai/api/health` -> build `f387d93`
 
 ## Remaining defects in current slice
 
-1. Old red history remains visible for `Production E2E` `#1094` and `Pipeline cron heartbeat` `#34`, but both now have fresh green current-main replacement runs and should not be treated as open failures.
-2. Production deploy SHA is still `f387d93`; this seam is CI/workflow-only and does not require a Vercel redeploy to prove the hosted monitor behavior.
-3. This slice does not change daily-brief generation, paid model behavior, or dashboard/product execution paths.
+1. The generated fallback seam is selected but not executed in this session; the next autonomous move is still the convergence contract itself.
+2. Paid/external waiting items remain honest blockers: BL-015/003/005 need paid or quota proof, BL-006 needs a real non-owner account, and BL-011 still needs passive next-window proof.
+3. This slice does not change generation behavior, dashboard rendering, connector sync, or production deploy state.
 
 ## Next exact move
 
 Start here:
 1. Read `ACTIVE_HANDOFF.md` before broad history.
-2. Treat this scheduled-check seam as closed unless a fresh current-main cron run names a different exact blocker.
-3. If a future cron lane fails, classify it first as product regression, monitor semantics, brittle assertion, platform failure, env drift, or real pipeline failure before editing code.
+2. Run `npm run controller:autopilot`.
+3. Execute only `GENERATED-CANDIDATE-SELECTION-CONVERGENCE` unless a fresher controller truth output replaces it.
 
 ## Do not touch yet
 
@@ -62,7 +56,7 @@ Start here:
 - Stripe charge
 - schema migration
 - destructive DB action
-- other slices unless a fresh hosted scheduled run names them
+- other slices unless a fresher generated controller contract replaces the current one
 
 ## External blockers
 
@@ -70,4 +64,4 @@ Start here:
 
 ## Stop condition
 
-Stop only when a future current-main scheduled run reveals one exact blocker, or when an explicit user seam limit stops autonomous continuation.
+Stop only when the controller can prove every money-loop rung is production-proven or externally blocked, or when an explicit user seam limit stops autonomous continuation.

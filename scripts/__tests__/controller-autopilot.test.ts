@@ -16,6 +16,62 @@ import {
   runControllerAutopilot,
 } from '../controller-autopilot';
 
+function writeCommonControllerTruthFiles(
+  repoDir: string,
+  overrides?: {
+    activeHandoff?: string;
+    currentState?: string;
+    sessionHistory?: string;
+    acceptanceGate?: string;
+  },
+) {
+  writeFileSync(
+    join(repoDir, 'ACTIVE_HANDOFF.md'),
+    overrides?.activeHandoff ??
+      `# ACTIVE HANDOFF — FOLDERA
+
+Last updated: 2026-05-11 14:00 PT
+Current slice: Closed seam
+Current mode: Waiting for the next exact seam
+
+## Current product truth
+
+- Health is \`0 FAILING\`; last generation is still historical \`do_nothing\`.
+
+## Verified proof
+
+- health: PASS 2026-05-11 14:00 PT; \`RESULT: 0 FAILING\`
+
+## Remaining defects in current slice
+
+1. This slice is complete.
+`,
+  );
+  writeFileSync(
+    join(repoDir, 'CURRENT_STATE.md'),
+    overrides?.currentState ??
+      `# CURRENT STATE — FOLDERA
+
+## B. WHAT IS BROKEN (REAL)
+
+- **Convergence depends on name overlap** — \`extractConvergence\` requires the entity name to appear in signal bodies; calendar titles without names may under-match.
+`,
+  );
+  writeFileSync(
+    join(repoDir, 'SESSION_HISTORY.md'),
+    overrides?.sessionHistory ??
+      `## 2026-05-11 - Prior seam
+- Files changed: none
+- Verification: none
+`,
+  );
+  writeFileSync(
+    join(repoDir, 'ACCEPTANCE_GATE.md'),
+    overrides?.acceptanceGate ??
+      'If Codex cannot prove that at least one production rung advanced, the run did not count.',
+  );
+}
+
 describe('controller-autopilot backlog parsing', () => {
   it('skips WAITING_PASSIVE_PROOF items and selects the first later OPEN backlog item', () => {
     const items = parseBacklogItems(`
@@ -304,7 +360,7 @@ Status: OPEN
 });
 
 describe('controller-autopilot stop behavior', () => {
-  it('returns STOP when no actionable OPEN item exists (waiting/blocked only)', () => {
+  it('generates a fallback app-owner contract when backlog has no actionable item but current truth still has an unresolved rung', () => {
     const logs: string[] = [];
     const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
       logs.push(args.map(String).join(' '));
@@ -332,14 +388,100 @@ Status: WAITING_EXTERNAL_ACCOUNT
 Next blocker: non-owner account setup pending
 `,
       );
-      writeFileSync(
-        join(repoDir, 'ACCEPTANCE_GATE.md'),
-        'If Codex cannot prove that at least one production rung advanced, the run did not count.',
+      writeCommonControllerTruthFiles(
+        repoDir,
+        {
+          currentState: `# CURRENT STATE — FOLDERA
+
+## B. WHAT IS BROKEN (REAL)
+
+- **Convergence depends on name overlap** — \`extractConvergence\` requires the entity name to appear in signal bodies; calendar titles without names may under-match.
+`,
+        },
       );
-      writeFileSync(
-        join(repoDir, 'SESSION_HISTORY.md'),
-        '## 2026-04-28 — Session\n- Files changed: none\n- Verification: none\n',
+      execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
+      execSync('git -c user.name=Test -c user.email=test@example.com commit -m init', {
+        cwd: repoDir,
+        stdio: 'ignore',
+      });
+
+      const code = runControllerAutopilot(repoDir);
+      const contract = JSON.parse(
+        readFileSync(join(repoDir, '.foldera-contract.json'), 'utf8'),
+      ) as {
+        backlog_id: string;
+        generated_contract_id?: string;
+        money_loop_rung: string;
+        allowed_file_patterns: string[];
+        forbidden_file_patterns: string[];
+        required_local_proof: string;
+        required_product_proof?: string;
+        acceptance_condition?: string;
+        stop_condition?: string;
+      };
+
+      expect(code).toBe(0);
+      expect(existsSync(join(repoDir, '.foldera-contract.json'))).toBe(true);
+      expect(logs.some((line) => line.includes('CONTROLLER RESULT: GO'))).toBe(true);
+      expect(
+        logs.some((line) =>
+          line.includes('Selected backlog ID: GENERATED-CANDIDATE-SELECTION-CONVERGENCE'),
+        ),
+      ).toBe(true);
+      expect(logs.some((line) => line.includes('Selected backlog ID: UNKNOWN'))).toBe(false);
+      expect(contract.backlog_id).toBe('GENERATED-CANDIDATE-SELECTION-CONVERGENCE');
+      expect(contract.generated_contract_id).toBe(
+        'GENERATED-CANDIDATE-SELECTION-CONVERGENCE',
       );
+      expect(contract.money_loop_rung).toBe('candidate_selection');
+      expect(contract.allowed_file_patterns).toContain('lib/briefing/discrepancy-detector.ts');
+      expect(contract.forbidden_file_patterns).toContain('app/dashboard/**');
+      expect(contract.required_local_proof).toContain(
+        'lib/briefing/__tests__/discrepancy-detector.test.ts',
+      );
+      expect(contract.required_product_proof).toContain('npm run winner:autopsy');
+      expect(contract.acceptance_condition).toContain('calendar-title-only convergence');
+      expect(contract.stop_condition).toContain(
+        'If Codex cannot prove that at least one production rung advanced',
+      );
+    } finally {
+      spy.mockRestore();
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
+  it('returns STOP with an exact external blocker when all remaining money-loop rungs are externally blocked', () => {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      logs.push(args.map(String).join(' '));
+    });
+
+    const repoDir = mkdtempSync(join(tmpdir(), 'controller-autopilot-'));
+    try {
+      execSync('git init', { cwd: repoDir, stdio: 'ignore' });
+      writeFileSync(
+        join(repoDir, 'FOLDERA_PRODUCTION_BACKLOG.md'),
+        `
+### BL-015
+ID: BL-015
+Status: WAITING_PAID_PROOF
+Next blocker: explicit paid-proof approval required
+`,
+      );
+      writeCommonControllerTruthFiles(repoDir, {
+        currentState: `# CURRENT STATE — FOLDERA
+
+## B. WHAT IS BROKEN (REAL)
+
+- **Owner money-shot production proof** — Future proof still requires one explicitly approved paid owner run after quota returns.
+- **Non-owner depth remains externally blocked** — Requires one real connected non-owner account.
+`,
+      });
+      execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
+      execSync('git -c user.name=Test -c user.email=test@example.com commit -m init', {
+        cwd: repoDir,
+        stdio: 'ignore',
+      });
 
       const code = runControllerAutopilot(repoDir);
 
@@ -349,22 +491,18 @@ Next blocker: non-owner account setup pending
       expect(
         logs.some((line) =>
           line.includes(
-            'HARD STOP REASON: No actionable backlog item found; all parsed items are waiting, blocked, closed, missing status, or missing a current code/proof seam.',
+            'HARD STOP REASON: All remaining money-loop rungs are externally blocked by paid/model-backed proof.',
           ),
         ),
       ).toBe(true);
-      expect(logs.some((line) => line.includes('SKIPPED NON-ACTIONABLE ITEMS:'))).toBe(
-        true,
-      );
       expect(
         logs.some((line) =>
-          line.includes(
-            'BL-006 | status=WAITING_EXTERNAL_ACCOUNT | reason=requires unavailable external account setup',
-          ),
+          line.includes('Selected backlog ID: UNKNOWN'),
         ),
       ).toBe(true);
-      expect(logs.some((line) => line.includes('WAITING PASSIVE PROOF ITEMS:'))).toBe(true);
-      expect(logs.some((line) => line.includes('WAITING EXTERNAL BLOCKER ITEMS:'))).toBe(true);
+      expect(
+        logs.some((line) => line.includes('No actionable backlog item found')),
+      ).toBe(false);
     } finally {
       spy.mockRestore();
       rmSync(repoDir, { recursive: true, force: true });
@@ -404,14 +542,7 @@ Status: OPEN
 Next blocker: Add the missing backlog schema field.
 `,
       );
-      writeFileSync(
-        join(repoDir, 'ACCEPTANCE_GATE.md'),
-        'If Codex cannot prove that at least one production rung advanced, the run did not count.',
-      );
-      writeFileSync(
-        join(repoDir, 'SESSION_HISTORY.md'),
-        '## 2026-05-08 - Contract\n- Files changed: none\n- Verification: none\n',
-      );
+      writeCommonControllerTruthFiles(repoDir);
       execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
       execSync('git -c user.name=Test -c user.email=test@example.com commit -m init', {
         cwd: repoDir,
@@ -468,14 +599,7 @@ Status: OPEN
 Next blocker: Implement contract persistence.
 `,
       );
-      writeFileSync(
-        join(repoDir, 'ACCEPTANCE_GATE.md'),
-        'If Codex cannot prove that at least one production rung advanced, the run did not count.',
-      );
-      writeFileSync(
-        join(repoDir, 'SESSION_HISTORY.md'),
-        '## 2026-05-08 - Contract\n- Files changed: none\n- Verification: none\n',
-      );
+      writeCommonControllerTruthFiles(repoDir);
       execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
       execSync('git -c user.name=Test -c user.email=test@example.com commit -m init', {
         cwd: repoDir,
@@ -489,9 +613,14 @@ Next blocker: Implement contract persistence.
         backlog_id: string;
         base_commit: string;
         money_loop_rung: string;
+        generated_contract_id?: string;
         allowed_file_patterns: string[];
+        forbidden_file_patterns: string[];
         allowed_files_raw: string;
         forbidden_files_raw: string;
+        required_product_proof?: string;
+        acceptance_condition?: string;
+        stop_condition?: string;
         is_user_facing: boolean;
         browser_proof_command: string;
         next_command: string;
@@ -501,13 +630,20 @@ Next blocker: Implement contract persistence.
       expect(contract.backlog_id).toBe('BL-777');
       expect(contract.base_commit).toMatch(/^[0-9a-f]{40}$/);
       expect(contract.money_loop_rung).toBe('produce_finished_work');
+      expect(contract.generated_contract_id).toBeUndefined();
       expect(contract.allowed_file_patterns).toEqual([
         'scripts/controller-autopilot.ts',
         'scripts/preflight.ts',
         'lib/briefing/__tests__/*',
       ]);
+      expect(contract.forbidden_file_patterns).toEqual(['app/dashboard/**']);
       expect(contract.allowed_files_raw).toContain('fixture/test files');
       expect(contract.forbidden_files_raw).toContain('billing');
+      expect(contract.required_product_proof).toBe('None');
+      expect(contract.acceptance_condition).toContain('Controller writes contract');
+      expect(contract.stop_condition).toContain(
+        'If Codex cannot prove that at least one production rung advanced',
+      );
       expect(contract.is_user_facing).toBe(true);
       expect(contract.browser_proof_command).toBe(
         'npx playwright test tests/e2e/public-routes.spec.ts --grep "controller contract"',

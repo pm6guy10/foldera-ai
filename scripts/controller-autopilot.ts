@@ -10,6 +10,8 @@ import {
 
 const REQUIRED_FILES = [
   'FOLDERA_PRODUCTION_BACKLOG.md',
+  'ACTIVE_HANDOFF.md',
+  'CURRENT_STATE.md',
   'ACCEPTANCE_GATE.md',
   'SESSION_HISTORY.md',
 ] as const;
@@ -17,6 +19,7 @@ const REQUIRED_FILES = [
 const CONTROLLER_OWNED_PATHS = new Set([
   'package.json',
   'scripts/controller-autopilot.ts',
+  'scripts/preflight-contract.ts',
   'scripts/__tests__/controller-autopilot.test.ts',
 ]);
 
@@ -51,6 +54,7 @@ export interface DirtyClassification {
 export interface BacklogItem {
   headingId: string;
   id: string;
+  generatedContractId?: string | null;
   rung: string | null;
   moneyLoopRung: string | null;
   title: string | null;
@@ -69,6 +73,13 @@ export interface BacklogItem {
   doNotCount: string | null;
   status: string | null;
   nextBlocker: string | null;
+}
+
+interface ControllerTruthSnapshot {
+  activeHandoffText: string;
+  currentStateText: string;
+  sessionHistoryText: string;
+  healthOutput: string;
 }
 
 export interface BacklogEligibility {
@@ -379,6 +390,7 @@ export function parseBacklogItems(markdown: string): BacklogItem[] {
     return {
       headingId,
       id: extractField(block, 'ID') ?? headingId,
+      generatedContractId: null,
       rung: extractField(block, 'Rung'),
       moneyLoopRung: extractField(block, 'Money loop rung'),
       title: extractField(block, 'Title'),
@@ -533,6 +545,249 @@ export function parseSessionHistoryEntries(markdown: string): SessionHistoryEntr
   });
 }
 
+function normalizeWhitespace(value: string): string {
+  return value.replace(/\s+/g, ' ').trim();
+}
+
+function extractSection(markdown: string, heading: string): string {
+  const escaped = escapeRegex(heading);
+  const match = markdown.match(
+    new RegExp(`^##\\s+${escaped}\\s*$\\r?\\n([\\s\\S]*?)(?=^##\\s+|\\Z)`, 'm'),
+  );
+  return match?.[1]?.trim() ?? '';
+}
+
+function readHealthOutput(repoRoot: string, activeHandoffText: string): string {
+  const packageJsonPath = resolve(repoRoot, 'package.json');
+  const healthScriptPath = resolve(repoRoot, 'scripts', 'health.ts');
+
+  if (existsSync(packageJsonPath) && existsSync(healthScriptPath)) {
+    const result = spawnSync('npm', ['run', 'health'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      timeout: 120000,
+    });
+
+    if (!result.error && result.status === 0 && result.stdout.trim()) {
+      return result.stdout.trim();
+    }
+  }
+
+  const handoffHealthMatch = activeHandoffText.match(/health:[^\r\n]+/i);
+  return handoffHealthMatch?.[0]?.trim() ?? 'Health output unavailable.';
+}
+
+function buildTruthSnapshot(
+  activeHandoffText: string,
+  currentStateText: string,
+  sessionHistoryText: string,
+  healthOutput: string,
+): ControllerTruthSnapshot {
+  return {
+    activeHandoffText,
+    currentStateText,
+    sessionHistoryText,
+    healthOutput,
+  };
+}
+
+function buildGeneratedContractId(slug: string): string {
+  return `GENERATED-${slug}`;
+}
+
+function createGeneratedContract(
+  slug: string,
+  fields: Partial<BacklogItem> & {
+    moneyLoopRung: string;
+    title: string;
+    userFacingPath: string;
+    startingTrigger: string;
+    endingSuccessState: string;
+    problem: string;
+    allowedFiles: string;
+    forbiddenFiles: string;
+    requiredLocalProof: string;
+    requiredProductionProof: string;
+    doneMeans: string;
+    nextBlocker: string;
+  },
+): BacklogItem {
+  const generatedId = buildGeneratedContractId(slug);
+
+  return {
+    headingId: generatedId,
+    id: generatedId,
+    generatedContractId: generatedId,
+    rung: fields.rung ?? 'GENERATED',
+    moneyLoopRung: fields.moneyLoopRung,
+    title: fields.title,
+    userFacingPath: fields.userFacingPath,
+    startingTrigger: fields.startingTrigger,
+    endingSuccessState: fields.endingSuccessState,
+    problem: fields.problem,
+    protectedContracts: fields.protectedContracts ?? null,
+    allowedFiles: fields.allowedFiles,
+    forbiddenFiles: fields.forbiddenFiles,
+    requiredLocalProof: fields.requiredLocalProof,
+    requiredProductionProof: fields.requiredProductionProof,
+    isUserFacing: fields.isUserFacing ?? false,
+    browserProofCommand: fields.browserProofCommand ?? null,
+    doneMeans: fields.doneMeans,
+    doNotCount: fields.doNotCount ?? 'Backlog emptiness alone is not a valid stop state.',
+    status: 'GENERATED',
+    nextBlocker: fields.nextBlocker,
+  };
+}
+
+function detectConnectorFreshnessGap(snapshot: ControllerTruthSnapshot): boolean {
+  const activeConnectorTruth = `${snapshot.activeHandoffText}\n${snapshot.healthOutput}`;
+  const hasConnectorAlert = /\b(stale|disconnected|reauth_required|never_synced|refresh google|reconnect)\b/i.test(
+    activeConnectorTruth,
+  );
+  const allFresh = /\bRESULT:\s*0 FAILING\b/i.test(snapshot.healthOutput) &&
+    /\bGmail fresh\b/i.test(snapshot.healthOutput) &&
+    /\bOutlook fresh\b/i.test(snapshot.healthOutput);
+
+  return hasConnectorAlert && !allFresh;
+}
+
+function synthesizeAppOwnerContract(snapshot: ControllerTruthSnapshot): BacklogItem | null {
+  if (detectConnectorFreshnessGap(snapshot)) {
+    return createGeneratedContract('SOURCE-FRESHNESS-CONNECTOR-HEALTH', {
+      moneyLoopRung: 'source_freshness',
+      title: 'Connector freshness truth must stay visible before generation',
+      userFacingPath:
+        'Health + settings + run-brief guard must agree on fresh/stale/disconnected/reauth connector truth before generation.',
+      startingTrigger:
+        'Health output or settings truth shows a stale/disconnected/reauth source while generation can still proceed unclearly.',
+      endingSuccessState:
+        'Health, settings, and run-brief guard classify the same connector state and generation warns or blocks safely when required sources are stale.',
+      problem:
+        'Foldera still has unresolved connector freshness or reconnect truth, so the main loop can look runnable when sources are not actually ready.',
+      protectedContracts:
+        'Do not touch artifact generation, billing, dashboard shell layout, Stripe, or outbound email behavior. Keep the connector state contract narrow and truthful.',
+      allowedFiles:
+        '`lib/integrations/connector-health.ts`, `app/api/integrations/status/route.ts`, `app/api/settings/run-brief/route.ts`, `app/dashboard/settings/SettingsClient.tsx`, `scripts/health.ts`, `scripts/health-connectors.ts`, `lib/integrations/__tests__/connector-health.test.ts`, `app/api/integrations/status/__tests__/route.test.ts`, `app/api/settings/run-brief/__tests__/route.test.ts`, `scripts/__tests__/health-connectors.test.ts`, `tests/e2e/authenticated-routes.spec.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`',
+      forbiddenFiles:
+        '`lib/briefing/**`, `lib/cron/**`, `app/dashboard/page.tsx`, `supabase/migrations/**`, `app/api/stripe/**`, outbound email paths, paid generation routes beyond the stale-guard check`',
+      requiredLocalProof:
+        'node node_modules/vitest/vitest.mjs run lib/integrations/__tests__/connector-health.test.ts app/api/integrations/status/__tests__/route.test.ts app/api/settings/run-brief/__tests__/route.test.ts scripts/__tests__/health-connectors.test.ts --reporter=verbose; npm run health; npm run build',
+      requiredProductionProof:
+        'npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "shows stale Google clearly while Microsoft stays fresh" --reporter=list',
+      isUserFacing: true,
+      browserProofCommand:
+        'npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "shows stale Google clearly while Microsoft stays fresh" --reporter=list',
+      doneMeans:
+        'Connector freshness is explicit and consistent before generation: Foldera says which source is stale/disconnected/reauth_required, preserves the healthy source truth, and generation warns or blocks safely instead of pretending the loop is ready.',
+      nextBlocker:
+        'Prove the stale/disconnected connector truth on the real settings + run-brief path without widening into generation or sync internals.',
+    });
+  }
+
+  if (/Convergence depends on name overlap/i.test(snapshot.currentStateText)) {
+    return createGeneratedContract('CANDIDATE-SELECTION-CONVERGENCE', {
+      moneyLoopRung: 'candidate_selection',
+      title: 'Calendar-title-only convergence must still surface the right candidate',
+      userFacingPath:
+        'Signal scoring should still recognize one entity across calendar titles and neighboring signals even when the exact name string is missing from message bodies.',
+      startingTrigger:
+        'Current truth says extractConvergence under-matches when calendar titles omit the exact entity name.',
+      endingSuccessState:
+        'Calendar-title-only convergence contributes to candidate selection, so the same entity can surface from mixed-source evidence without exact body-text name repetition.',
+      problem:
+        'Candidate selection can miss a real convergence signal because extractConvergence currently depends on exact entity-name overlap in signal bodies.',
+      protectedContracts:
+        'Do not change paid generation, dashboard actions, outbound email, cron delivery, Stripe, or schema state. Keep the seam inside deterministic convergence extraction/scoring and its proofs.',
+      allowedFiles:
+        '`lib/briefing/discrepancy-detector.ts`, `lib/briefing/scorer.ts`, `lib/briefing/__tests__/discrepancy-detector.test.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`',
+      forbiddenFiles:
+        '`app/dashboard/**`, `app/api/settings/run-brief/**`, `lib/cron/**`, `supabase/migrations/**`, `app/api/stripe/**`, paid proof routes, unrelated homepage/settings files`',
+      requiredLocalProof:
+        'node node_modules/vitest/vitest.mjs run lib/briefing/__tests__/discrepancy-detector.test.ts --reporter=verbose; npm run health; npm run build',
+      requiredProductionProof:
+        'npm run winner:autopsy',
+      isUserFacing: false,
+      browserProofCommand: null,
+      doneMeans:
+        'A calendar-title-only convergence scenario now advances candidate_selection: deterministic proof shows the same entity can be linked across sources without exact body-text name overlap, and the resulting candidate evidence stays grounded.',
+      nextBlocker:
+        'Use deterministic convergence proof first; only widen if the same under-match still survives scorer truth after the extractor fix.',
+      doNotCount:
+        'Do not call this done from backlog emptiness, logs alone, or a code diff without convergence-focused regression proof.',
+    });
+  }
+
+  if (
+    /latest persisted generation is still historical `do_nothing`/i.test(snapshot.currentStateText) &&
+    /\b(daily-value|daily utility slate|current best move)\b/i.test(
+      `${snapshot.currentStateText}\n${snapshot.sessionHistoryText}`,
+    )
+  ) {
+    return createGeneratedContract('USEFUL-CURRENT-MOVE-DAILY-VALUE', {
+      moneyLoopRung: 'artifact_or_useful_current_move',
+      title: 'Current best move must stay truthful and useful when no fresh artifact persists',
+      userFacingPath:
+        'When /api/conviction/latest has no visible pending artifact, /dashboard should still show the deterministic current best move without contradicting the approval/save path.',
+      startingTrigger:
+        'Current truth says the latest persisted generation is still historical do_nothing while daily-value is carrying the user-facing useful read.',
+      endingSuccessState:
+        'The dashboard and deterministic daily-value path present one current useful move with grounded source trail and non-contradictory actions until a fresh safe artifact persists.',
+      problem:
+        'Foldera still relies on a useful-current-move fallback because the latest persisted generation is historical do_nothing, so this path remains a real production-readiness rung.',
+      protectedContracts:
+        'Do not trigger paid generation, do not send outbound email, do not rewrite latest/persistence semantics into fake pending artifacts, and do not widen into billing or connector auth.',
+      allowedFiles:
+        '`app/api/conviction/daily-value/route.ts`, `app/dashboard/page.tsx`, `app/dashboard/dashboard-page-model.tsx`, `lib/briefing/daily-utility-slate.ts`, `app/api/conviction/daily-value/__tests__/route.test.ts`, `lib/briefing/__tests__/daily-utility-slate.test.ts`, `tests/config/__tests__/dashboard-inbox-model.test.ts`, `tests/e2e/dashboard-navigation.spec.ts`, `tests/e2e/authenticated-routes.spec.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`',
+      forbiddenFiles:
+        '`app/api/settings/run-brief/**`, `lib/cron/**`, `lib/briefing/generator.ts`, `supabase/migrations/**`, `app/api/stripe/**`, paid model proof paths, unrelated public homepage files`',
+      requiredLocalProof:
+        'node node_modules/vitest/vitest.mjs run app/api/conviction/daily-value/__tests__/route.test.ts lib/briefing/__tests__/daily-utility-slate.test.ts tests/config/__tests__/dashboard-inbox-model.test.ts --reporter=verbose; npm run health; npm run build',
+      requiredProductionProof:
+        'node node_modules/@playwright/test/cli.js test tests/e2e/dashboard-navigation.spec.ts --grep "current best move" --reporter=list',
+      isUserFacing: true,
+      browserProofCommand:
+        'node node_modules/@playwright/test/cli.js test tests/e2e/dashboard-navigation.spec.ts --grep "current best move" --reporter=list',
+      doneMeans:
+        'When no fresh pending artifact exists, Foldera still shows one grounded useful current move with source trail and non-contradictory save/copy behavior, without pretending a finished artifact was persisted.',
+      nextBlocker:
+        'Keep this seam inside the deterministic current-best-move path until it is proven truthful at the dashboard surface.',
+    });
+  }
+
+  return null;
+}
+
+function getExternalBlockerStopReason(
+  snapshot: ControllerTruthSnapshot,
+  waitingExternalBlockerItems: readonly BacklogItem[],
+): string | null {
+  const blockerText = [
+    snapshot.currentStateText,
+    snapshot.activeHandoffText,
+    ...waitingExternalBlockerItems.map((item) => `${item.status ?? ''} ${item.nextBlocker ?? ''}`),
+  ].join('\n');
+
+  if (/\b(paid[-\s]?proof|paid model|paid\/model-backed proof|quota returns|explicitly approved paid|WAITING_PAID_PROOF|WAITING_EXTERNAL_QUOTA)\b/i.test(blockerText)) {
+    return 'All remaining money-loop rungs are externally blocked by paid/model-backed proof.';
+  }
+
+  if (/\b(real connected non-owner|real non-owner account|connected non-owner|WAITING_EXTERNAL_ACCOUNT|credentials required|missing credential)\b/i.test(blockerText)) {
+    return 'All remaining money-loop rungs are externally blocked by external account setup or credentials.';
+  }
+
+  if (/\b(product decision|safety decision|policy decision)\b/i.test(blockerText)) {
+    return 'All remaining money-loop rungs are externally blocked by a product or safety decision.';
+  }
+
+  return null;
+}
+
+function isWholeLoopExplicitlyProven(snapshot: ControllerTruthSnapshot): boolean {
+  const brokenSection = extractSection(snapshot.currentStateText, 'B. WHAT IS BROKEN (REAL)');
+  if (brokenSection && /\*\*/.test(brokenSection)) return false;
+  return /\bRESULT:\s*0 FAILING\b/i.test(snapshot.healthOutput);
+}
+
 function readRequiredFile(repoRoot: string, relativePath: string): string {
   return readFileSync(resolve(repoRoot, relativePath), 'utf8');
 }
@@ -625,11 +880,13 @@ function printRecentSessionHistory(entries: readonly SessionHistoryEntry[]) {
 function printSeamContractReport(item: BacklogItem | null, acceptanceGateText: string) {
   console.log('SEAM CONTRACT REPORT');
   console.log(`- Backlog ID: ${item?.id ?? 'UNKNOWN'}`);
+  console.log(`- Generated contract ID: ${item?.generatedContractId ?? 'none'}`);
   console.log(`- Title: ${compact(item?.title)}`);
   console.log(`- Rung: ${item?.rung ?? 'UNKNOWN'}`);
   console.log(`- Money loop rung: ${item?.moneyLoopRung ?? 'UNKNOWN'}`);
-  console.log(`- User-facing path protected: ${compact(item?.userFacingPath)}`);
+  console.log(`- User/system path protected: ${compact(item?.userFacingPath)}`);
   console.log(`- Starting trigger/route: ${compact(item?.startingTrigger)}`);
+  console.log(`- Acceptance condition: ${compact(item?.doneMeans)}`);
   console.log(`- Ending success state: ${compact(item?.endingSuccessState)}`);
   console.log(`- Production risk: ${compact(item?.problem)}`);
   console.log(`- Exact files likely to touch: ${compact(item?.allowedFiles)}`);
@@ -680,16 +937,22 @@ function buildNextCommand(item: BacklogItem | null, acceptanceGateText: string):
 
 function writeContractFile(repoRoot: string, item: BacklogItem | null, acceptanceGateText: string) {
   const head = getGitHeadSha(repoRoot);
+  const stopCondition = buildStopCondition(item, acceptanceGateText);
   const contract: FolderaRunContract = {
     backlog_id: item?.id ?? 'UNKNOWN',
+    generated_contract_id: item?.generatedContractId ?? undefined,
     base_commit: head,
     money_loop_rung: item?.moneyLoopRung?.trim() ?? '',
+    user_system_path: item?.userFacingPath ?? '',
     allowed_file_patterns: normalizeContractFilePatterns(item?.allowedFiles),
     forbidden_file_patterns: normalizeContractFilePatterns(item?.forbiddenFiles),
     allowed_files_raw: item?.allowedFiles ?? '',
     forbidden_files_raw: item?.forbiddenFiles ?? '',
     required_local_proof: item?.requiredLocalProof ?? '',
+    required_product_proof: item?.requiredProductionProof ?? '',
     required_browser_proof: item?.requiredProductionProof ?? '',
+    acceptance_condition: item?.doneMeans ?? '',
+    stop_condition: stopCondition,
     is_user_facing: item?.isUserFacing ?? false,
     browser_proof_command: item?.browserProofCommand ?? '',
     anti_regression_checks: normalizeContractNotes(
@@ -731,8 +994,11 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
   );
 
   let backlogText = '';
+  let activeHandoffText = '';
+  let currentStateText = '';
   let acceptanceGateText = '';
   let sessionHistoryText = '';
+  let healthOutput = '';
   let dirtyStatusOutput = '';
   let hardStopReason: string | null = null;
 
@@ -748,8 +1014,11 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
 
   if (!hardStopReason) {
     backlogText = readRequiredFile(repoRoot, 'FOLDERA_PRODUCTION_BACKLOG.md');
+    activeHandoffText = readRequiredFile(repoRoot, 'ACTIVE_HANDOFF.md');
+    currentStateText = readRequiredFile(repoRoot, 'CURRENT_STATE.md');
     acceptanceGateText = readRequiredFile(repoRoot, 'ACCEPTANCE_GATE.md');
     sessionHistoryText = readRequiredFile(repoRoot, 'SESSION_HISTORY.md');
+    healthOutput = readHealthOutput(repoRoot, activeHandoffText);
   }
 
   const dirtyEntries = parseGitStatusShort(dirtyStatusOutput);
@@ -770,23 +1039,37 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
   const recentSessionEntries = sessionHistoryText
     ? parseSessionHistoryEntries(sessionHistoryText).slice(-3)
     : [];
+  const truthSnapshot = buildTruthSnapshot(
+    activeHandoffText,
+    currentStateText,
+    sessionHistoryText,
+    healthOutput,
+  );
+  const generatedAppOwnerItem =
+    !firstActionableItem && !hardStopReason ? synthesizeAppOwnerContract(truthSnapshot) : null;
+  const selectedItem = firstActionableItem ?? generatedAppOwnerItem;
 
-  if (!hardStopReason && backlogItems.length === 0) {
-    hardStopReason = 'Backlog parse failed: no BL-NNN sections found.';
+  if (!hardStopReason && !selectedItem) {
+    const externalBlockerStopReason = getExternalBlockerStopReason(
+      truthSnapshot,
+      waitingExternalBlockerItems,
+    );
+    if (externalBlockerStopReason) {
+      hardStopReason = externalBlockerStopReason;
+    } else if (isWholeLoopExplicitlyProven(truthSnapshot)) {
+      hardStopReason =
+        'All money-loop rungs are currently production-proven in active truth.';
+    } else {
+      hardStopReason =
+        'Unable to synthesize an app-owner seam from current product truth; exact proof or blocker classification is missing.';
+    }
   }
 
-  if (!hardStopReason && !firstActionableItem) {
-    hardStopReason =
-      skippedItems.length > 0
-        ? 'No actionable backlog item found; all parsed items are waiting, blocked, closed, missing status, or missing a current code/proof seam.'
-        : 'No actionable backlog item found.';
-  }
-
-  if (!hardStopReason && !firstActionableItem?.moneyLoopRung?.trim()) {
+  if (!hardStopReason && !selectedItem?.moneyLoopRung?.trim()) {
     hardStopReason = 'Selected backlog item is missing Money loop rung.';
   }
 
-  if (!hardStopReason && firstActionableItem?.isUserFacing == null) {
+  if (!hardStopReason && selectedItem?.isUserFacing == null) {
     hardStopReason = 'Selected backlog item is missing Is user-facing.';
   }
 
@@ -798,15 +1081,15 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
   }
 
   const controllerResult = hardStopReason ? 'STOP' : 'GO';
-  const requiredProofSummary = firstActionableItem
-    ? `Local: ${compact(firstActionableItem.requiredLocalProof)} | Production: ${compact(firstActionableItem.requiredProductionProof)}`
+  const requiredProofSummary = selectedItem
+    ? `Local: ${compact(selectedItem.requiredLocalProof)} | Production: ${compact(selectedItem.requiredProductionProof)}`
     : 'UNKNOWN';
 
   console.log(`CONTROLLER RESULT: ${controllerResult}`);
-  console.log(`Selected backlog ID: ${firstActionableItem?.id ?? 'UNKNOWN'}`);
-  console.log(`Title: ${compact(firstActionableItem?.title)}`);
-  console.log(`Rung: ${firstActionableItem?.rung ?? 'UNKNOWN'}`);
-  console.log(`Protected path: ${compact(firstActionableItem?.userFacingPath)}`);
+  console.log(`Selected backlog ID: ${selectedItem?.id ?? 'UNKNOWN'}`);
+  console.log(`Title: ${compact(selectedItem?.title)}`);
+  console.log(`Rung: ${selectedItem?.rung ?? 'UNKNOWN'}`);
+  console.log(`Protected path: ${compact(selectedItem?.userFacingPath)}`);
   console.log(`Required proof: ${requiredProofSummary}`);
   if (controllerResult === 'STOP') {
     console.log(`HARD STOP REASON: ${hardStopReason}`);
@@ -828,11 +1111,11 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
   printRecentSessionHistory(recentSessionEntries);
 
   console.log('');
-  printSeamContractReport(firstActionableItem, acceptanceGateText);
+  printSeamContractReport(selectedItem, acceptanceGateText);
   if (controllerResult === 'GO') {
-    writeContractFile(repoRoot, firstActionableItem, acceptanceGateText);
+    writeContractFile(repoRoot, selectedItem, acceptanceGateText);
   }
-  printNextCommand(firstActionableItem, acceptanceGateText);
+  printNextCommand(selectedItem, acceptanceGateText);
 
   return controllerResult === 'GO' ? 0 : 1;
 }

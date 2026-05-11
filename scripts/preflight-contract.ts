@@ -6,14 +6,19 @@ export type ContractValidationStage = 'manual' | 'pre-commit' | 'pre-push';
 
 export interface FolderaRunContract {
   backlog_id: string;
+  generated_contract_id?: string;
   base_commit: string;
   money_loop_rung: string;
+  user_system_path?: string;
   allowed_file_patterns: string[];
   forbidden_file_patterns?: string[];
   allowed_files_raw: string;
   forbidden_files_raw: string;
   required_local_proof: string;
+  required_product_proof?: string;
   required_browser_proof: string;
+  acceptance_condition?: string;
+  stop_condition?: string;
   is_user_facing: boolean;
   browser_proof_command: string;
   anti_regression_checks: string[];

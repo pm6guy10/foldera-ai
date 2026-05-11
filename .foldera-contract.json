@@ -1,27 +1,37 @@
 {
-  "backlog_id": "DIRECT-CI-SEAM-2026-05-11",
-  "base_commit": "9a3b420142891babc859c673144be56eeabec7b5",
-  "money_loop_rung": "protect_ci_reliability",
+  "backlog_id": "DIRECT-CONTROLLER-FALLBACK-CONTRACT-2026-05-11",
+  "base_commit": "c2e9a0176764017837b11d0703021b150adfe27d",
+  "money_loop_rung": "run_truth",
+  "user_system_path": "Controller/autopilot must generate one valid app-owner contract from current product truth when backlog rows are waiting-only, instead of stopping at UNKNOWN.",
   "allowed_file_patterns": [
+    "scripts/controller-autopilot.ts",
+    "scripts/preflight-contract.ts",
+    "scripts/__tests__/controller-autopilot.test.ts",
     "ACTIVE_HANDOFF.md",
-    "SESSION_HISTORY.md",
-    ".foldera-contract.json"
+    "SESSION_HISTORY.md"
   ],
   "forbidden_file_patterns": [
-    "lib/briefing/**/*",
-    "lib/cron/daily-brief-generate.ts",
-    "app/api/settings/run-brief/**/*",
-    "supabase/migrations/**/*"
+    "app/**",
+    "components/**",
+    "lib/briefing/**",
+    "lib/cron/**",
+    "supabase/migrations/**",
+    "app/api/stripe/**",
+    "paid generation routes",
+    "outbound email paths"
   ],
-  "allowed_files_raw": "`ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`, `.foldera-contract.json`",
-  "forbidden_files_raw": "`lib/briefing/**/*`, `lib/cron/daily-brief-generate.ts`, `app/api/settings/run-brief/**/*`, `supabase/migrations/**/*`, unrelated staged docs, dashboard/auth/billing/product-generation files",
-  "required_local_proof": "No new local proof required for this closeout-only update; keep the shipped scheduled-monitor receipts current.",
-  "required_browser_proof": "Record the fresh current-main hosted proof for Production E2E and Weekly Production Audit.",
-  "is_user_facing": true,
-  "browser_proof_command": "Done means: ACTIVE_HANDOFF.md and SESSION_HISTORY.md reflect that Production E2E #1099 and Weekly Production Audit #8 both passed on current main without the Node-20 artifact warning.",
+  "allowed_files_raw": "`scripts/controller-autopilot.ts`, `scripts/preflight-contract.ts`, `scripts/__tests__/controller-autopilot.test.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`",
+  "forbidden_files_raw": "`app/**`, `components/**`, `lib/briefing/**`, `lib/cron/**`, `supabase/migrations/**`, `app/api/stripe/**`, paid generation routes, outbound email paths`",
+  "required_local_proof": "node node_modules/vitest/vitest.mjs run scripts/__tests__/controller-autopilot.test.ts --reporter=verbose; npm run controller:autopilot; npm run health; npm run build",
+  "required_product_proof": "npm run controller:autopilot",
+  "required_browser_proof": "npm run controller:autopilot",
+  "acceptance_condition": "When backlog rows are all waiting, blocked, or closed, controller/autopilot emits one valid app-owner contract with a real money_loop_rung and exact proof/stop fields, or stops only on an exact external blocker.",
+  "stop_condition": "Do not call this done from backlog emptiness, logs alone, or a code diff without focused controller proof. If Codex cannot prove that at least one production rung advanced, the run did not count.",
+  "is_user_facing": false,
+  "browser_proof_command": "",
   "anti_regression_checks": [
-    "Only closeout docs plus `.foldera-contract.json` change in this follow-up.",
-    "Hosted proof references the fresh current-main runs, not the old scheduled red history."
+    "Controller never emits UNKNOWN as the normal waiting-only stop state.",
+    "External blockers still stop honestly with one exact blocker reason."
   ],
-  "next_command": "Close out the scheduled-check reliability seam only. Allowed: ACTIVE_HANDOFF.md | SESSION_HISTORY.md | .foldera-contract.json. Hosted proof already exists: Production E2E #1099 and Weekly Production Audit #8 succeeded on current main."
+  "next_command": "Repair controller/autopilot contract generation only. Allowed: scripts/controller-autopilot.ts | scripts/preflight-contract.ts | scripts/__tests__/controller-autopilot.test.ts | ACTIVE_HANDOFF.md | SESSION_HISTORY.md. Proof: local=\"node node_modules/vitest/vitest.mjs run scripts/__tests__/controller-autopilot.test.ts --reporter=verbose; npm run controller:autopilot; npm run health; npm run build\" production=\"npm run controller:autopilot\". Stop when: Do not call this done from backlog emptiness, logs alone, or a code diff without focused controller proof. If Codex cannot prove that at least one production rung advanced, the run did not count."
 }
