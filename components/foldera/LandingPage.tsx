@@ -171,7 +171,7 @@ export function LandingPage() {
                     href="/start"
                     className="inline-flex min-h-[56px] items-center justify-center gap-2 rounded-[15px] border border-cyan-300/18 bg-cyan-400/[0.08] px-5 text-[14px] font-semibold text-cyan-100 transition-colors hover:bg-cyan-400/[0.12]"
                   >
-                    Start free
+                    Get started free
                   </a>
                 </div>
 
@@ -287,7 +287,7 @@ export function LandingPage() {
                     href="/start"
                     className="inline-flex min-h-[54px] items-center justify-center gap-2 rounded-[16px] border border-cyan-300/18 bg-cyan-400/[0.08] px-5 text-[14px] font-semibold text-cyan-100 transition-colors hover:bg-cyan-400/[0.12]"
                   >
-                    Start free
+                    Get started free
                   </a>
                 </div>
               </div>

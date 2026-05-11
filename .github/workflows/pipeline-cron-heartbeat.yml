@@ -10,11 +10,15 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
+      # Mirror the working production-e2e fetch path: scheduled heartbeat should
+      # validate the latest main check script, not depend on an exact SHA fetch.
+      - uses: actions/checkout@v5
         with:
-          node-version: 20
+          ref: main
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
 
       - run: npm ci
 

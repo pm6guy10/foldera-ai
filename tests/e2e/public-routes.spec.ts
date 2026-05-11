@@ -130,6 +130,15 @@ test.describe('Landing page /', () => {
     await expect(page.getByRole('link', { name: /See live demo/i }).first()).toHaveAttribute('href', '/demo');
   });
 
+  test('start CTAs keep the locked "Get started free" copy', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+
+    const startLinks = page.locator('a[href="/start"]');
+    await expect(startLinks).toHaveCount(2);
+    await expect(startLinks).toHaveText(['Get started free', 'Get started free']);
+  });
+
   test('landing proof card stays visible on mobile preview', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
