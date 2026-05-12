@@ -1,37 +1,36 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-11 19:20 PT
+Last updated: 2026-05-11 19:32 PT
 Last known production SHA: f387d93
-Last completed commit: 4e17357
-Current slice: Useful current move fallback proof
-Current mode: Generated daily-value seam locally proven and awaiting push + clean-tree controller rerun
+Last completed commit: 49eaa6e
+Current slice: Connector freshness truth before generation
+Current mode: Useful-current-move seam complete; next generated contract selected
 
 ## Current product truth
 
-- Health is `0 FAILING`; Gmail and Outlook are fresh/current; last stored generation warning remains `do_nothing`.
-- Production is still live on `f387d93`; this seam stays inside the local dashboard fallback path and does not require paid generation, outbound email, Stripe, schema, or destructive DB changes.
-- `GENERATED-USEFUL-CURRENT-MOVE-DAILY-VALUE` is the active contract.
-- The contract acceptance condition is locally proven: when `/api/conviction/latest` has no visible pending artifact, `/dashboard` still shows one grounded current best move with source trail and copy behavior without pretending a finished artifact was persisted.
-- `CURRENT_STATE.md` now closes the exact stale finding that caused this seam: the dashboard fallback path is proven, even though the latest persisted artifact path is still a separate product concern.
+- Useful-current-move fallback seam is complete and pushed in `49eaa6e`.
+- Focused route/slate/model proof passed for the daily-value path.
+- Dashboard current-best-move Playwright proof passed.
+- Clean-tree `npm run controller:autopilot` advanced to `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH`.
+- The next contract has `money_loop_rung: source_freshness`.
 
 ## Verified proof
 
-- focused route/slate/model proof: PASS `node node_modules/vitest/vitest.mjs run app/api/conviction/daily-value/__tests__/route.test.ts lib/briefing/__tests__/daily-utility-slate.test.ts tests/config/__tests__/dashboard-inbox-model.test.ts --reporter=verbose` (`16/16`)
-- dashboard proof: PASS `node node_modules/@playwright/test/cli.js test tests/e2e/dashboard-navigation.spec.ts --grep "current best move" --reporter=list`
+- route/slate/model: PASS `node node_modules/vitest/vitest.mjs run app/api/conviction/daily-value/__tests__/route.test.ts lib/briefing/__tests__/daily-utility-slate.test.ts tests/config/__tests__/dashboard-inbox-model.test.ts --reporter=verbose`
+- dashboard current best move: PASS `node node_modules/@playwright/test/cli.js test tests/e2e/dashboard-navigation.spec.ts --grep "current best move" --reporter=list`
+- health after seam: PASS `npm run health` -> `RESULT: 0 FAILING`
+- build after seam: PASS `npm run build`
 
 ## Remaining defects in current slice
 
-1. This seam is locally proven but not yet pushed in this receipt.
-2. The next exact move is to run `npm run health`, `npm run build`, push this closure, and rerun the controller from a clean tree.
-3. Paid/quota/non-owner/passive blockers remain unchanged and are outside this seam.
+1. Next generated contract is `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH`.
+2. Current continuation is blocked by unexpected dirty dashboard source edits outside the generated contract scope.
 
 ## Next exact move
 
 Start here:
-1. Run `npm run health`.
-2. Run `npm run build`.
-3. Commit and push this seam closure.
-4. Rerun `npm run controller:autopilot` from a clean tree.
+1. Resume the Daily Contract Loop with `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH`.
+2. Stay inside `money_loop_rung: source_freshness`.
 
 ## Do not touch yet
 
@@ -44,8 +43,8 @@ Start here:
 
 ## External blockers
 
-- None for this seam.
+- None for the shipped useful-current-move seam.
 
 ## Stop condition
 
-Stop only on completed seam plus the next generated contract or an exact external blocker after the clean-tree controller rerun.
+Stop on the next generated contract's exact blocker, failed proof, invalid contract, or wrong/missing `money_loop_rung`.
