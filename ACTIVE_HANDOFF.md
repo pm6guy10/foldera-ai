@@ -1,20 +1,20 @@
 # ACTIVE HANDOFF — FOLDERA
 
 Last updated: 2026-05-12 15:45 PT
-Last known production SHA: f0c1b15
-Last completed commit: f0c1b15
+Last known production SHA: a6fdeec
+Last completed commit: a6fdeec
 Current slice: Controller stop-state cleanup
 Current mode: Controller STOP is valid; no executable contract remains on disk.
 
 ## Current product truth
 
-- Frontend surface contract A-Z is shipped on `main` and live in production at `f0c1b15`.
+- Frontend surface contract A-Z is shipped on `main`; controller STOP cleanup is shipped on `main` and live in production at `a6fdeec`.
 - Public landing nav is server-auth-aware: logged-out `/` shows `Sign in` + `Start free`; logged-in `/` shows `Dashboard` instead of `Sign in`, without adding a client `/api/auth/session` poll.
 - Legacy app surfaces that use `ProductShell` share the matte Foldera app background, wider app-width shell, cyan-edged header card, and mobile dashboard-section rail.
 - Auth/onboarding surfaces (`/login`, `/start`, `/onboard`) use the same premium matte app surface and centered cards without changing OAuth, onboarding, billing, source freshness, or outbound email contracts.
 - Production mobile auth checks, production Playwright auth state, and production smoke CTA assertions now match the public-only deploy contract.
-- Production deploy truth: `https://www.foldera.ai/api/health` reports `revision.git_sha=f0c1b15a4b08c89f8835579c58fc677d8cfe65d6`, `git_ref=main`, `deployment_id=dpl_7vFTKqtZfEkA6QG2ri5JRYs3dpdQ`, `vercel_env=production`.
-- GitHub truth for `f0c1b15` is green: commit check-runs include successful CI lanes, `Deploy to Vercel` success, and `Production E2E` success.
+- Production deploy truth: `https://www.foldera.ai/api/health` reports `revision.git_sha=a6fdeecd445473ce29b4b32ed61b2783898fe39d`, `git_ref=main`, `deployment_id=dpl_662ia9cV6ezkQkFTeAzVKFajP5mC`, `vercel_env=production`.
+- GitHub truth for `a6fdeec` is green: commit check-runs include successful health, static verification, unit/build/e2e, deploy, and deploy-triggered CI gates; authenticated/payments/quarantine lanes were skipped by workflow scope.
 - Controller truth: `npm run controller:autopilot` returns `CONTROLLER RESULT: STOP` because all remaining money-loop rungs are externally blocked by paid/model-backed proof, passive proof, quota/access, real non-owner account, or fresh external proof.
 - The controller now clears stale `.foldera-contract.json` on STOP so future runs cannot execute an already-finished contract.
 - Current health is non-blocking: Gmail fresh `10h ago`, Outlook fresh `10h ago`, `Mail cursors current`, and last generation `do_nothing`.
@@ -25,8 +25,8 @@ Current mode: Controller STOP is valid; no executable contract remains on disk.
 - controller/preflight regression: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/controller-autopilot.test.ts scripts/__tests__/preflight-contract.test.ts --reporter=verbose` (`32/32`).
 - build/lint: PASS `npm run build`; PASS `npm run lint`.
 - health: PASS `npm run health` -> `RESULT: 0 FAILING`.
-- production SHA: PASS `https://www.foldera.ai/api/health` -> `f0c1b15`, deployment `dpl_7vFTKqtZfEkA6QG2ri5JRYs3dpdQ`.
-- GitHub CI/deploy: PASS check-runs on `f0c1b15` include successful CI, successful `Deploy to Vercel`, and successful `Production E2E`.
+- production SHA: PASS `https://www.foldera.ai/api/health` -> `a6fdeec`, deployment `dpl_662ia9cV6ezkQkFTeAzVKFajP5mC`.
+- GitHub CI/deploy: PASS check-runs on `a6fdeec` all completed with no failures.
 - Previously proven frontend surface contract: build, lint, large-file split, public routes, dashboard navigation, authenticated routes, mobile visual QA, production public smoke, and proof screenshots.
 
 ## Remaining defects in current slice
