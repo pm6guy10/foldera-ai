@@ -1,15 +1,55 @@
 export function DashboardLoadingCard() {
   return (
-    <div className="foldera-dashboard-brief-card foldera-brief-shell flex h-full w-full items-center justify-center px-8 py-10 text-center">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-muted">
-          Loading
-        </p>
-        <p className="mt-4 text-[18px] leading-8 text-text-secondary">
-          Loading your finished work inbox.
-        </p>
+    <article
+      className="foldera-dashboard-brief-card foldera-brief-shell h-full w-full overflow-hidden"
+      data-testid="dashboard-loading-card"
+    >
+      <header className="flex items-center justify-between border-b border-white/[0.028] px-5 py-4 sm:px-6">
+        <div className="h-3.5 w-24 animate-pulse rounded-full bg-white/[0.08]" />
+        <div className="flex items-center gap-3">
+          <div className="h-3.5 w-32 animate-pulse rounded-full bg-cyan-300/[0.15]" />
+          <div className="h-3 w-3 animate-pulse rounded-full bg-cyan-300/[0.3]" />
+        </div>
+      </header>
+      <div className="space-y-6 px-5 py-6 sm:px-6 sm:py-6">
+        <section className="grid gap-4 border-b border-white/[0.028] pb-5 md:grid-cols-[72px_minmax(0,1fr)]">
+          <div className="h-12 w-12 animate-pulse rounded-[16px] bg-cyan-300/[0.12]" />
+          <div className="space-y-3">
+            <div className="h-3 w-28 animate-pulse rounded-full bg-white/[0.08]" />
+            <div className="h-8 w-full max-w-[680px] animate-pulse rounded-[14px] bg-white/[0.06]" />
+            <div className="h-8 w-4/5 max-w-[560px] animate-pulse rounded-[14px] bg-white/[0.04]" />
+          </div>
+        </section>
+        <section className="grid gap-4 border-b border-white/[0.028] pb-5 md:grid-cols-[72px_minmax(0,1fr)]">
+          <div className="h-12 w-12 animate-pulse rounded-[16px] bg-amber-300/[0.12]" />
+          <div className="space-y-3">
+            <div className="h-3 w-32 animate-pulse rounded-full bg-amber-300/[0.16]" />
+            <div className="h-4 w-full animate-pulse rounded-full bg-white/[0.06]" />
+            <div className="h-4 w-[92%] animate-pulse rounded-full bg-white/[0.05]" />
+            <div className="h-4 w-[84%] animate-pulse rounded-full bg-white/[0.04]" />
+          </div>
+        </section>
+        <section className="grid gap-4 border-b border-white/[0.028] pb-5 md:grid-cols-[72px_minmax(0,1fr)]">
+          <div className="h-12 w-12 animate-pulse rounded-[16px] bg-white/[0.08]" />
+          <div className="space-y-3">
+            <div className="h-3 w-20 animate-pulse rounded-full bg-white/[0.08]" />
+            <div className="h-24 w-full animate-pulse rounded-[18px] bg-white/[0.05]" />
+          </div>
+        </section>
+        <section className="grid gap-4 md:grid-cols-[72px_minmax(0,1fr)]">
+          <div className="h-9 w-9 animate-pulse rounded-[12px] bg-white/[0.08]" />
+          <div className="space-y-3">
+            <div className="h-3 w-24 animate-pulse rounded-full bg-white/[0.08]" />
+            <div className="flex flex-wrap gap-2">
+              <div className="h-9 w-24 animate-pulse rounded-[10px] bg-white/[0.05]" />
+              <div className="h-9 w-28 animate-pulse rounded-[10px] bg-white/[0.05]" />
+              <div className="h-9 w-24 animate-pulse rounded-[10px] bg-white/[0.05]" />
+              <div className="h-9 w-32 animate-pulse rounded-[10px] bg-white/[0.05]" />
+            </div>
+          </div>
+        </section>
       </div>
-    </div>
+    </article>
   );
 }
 

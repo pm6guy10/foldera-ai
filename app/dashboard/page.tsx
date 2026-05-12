@@ -18,7 +18,6 @@ import { DashboardDesktopStage } from '@/components/dashboard/DashboardDesktopSt
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
 import { DailyUtilitySlateCard } from '@/components/foldera/DailyUtilitySlateCard';
 import { type DashboardPanelKey } from '@/components/foldera/DashboardSidebar';
-import { EmptyStateCard } from '@/components/foldera/EmptyStateCard';
 import { DashboardWorkspacePanels } from '@/components/dashboard/DashboardWorkspacePanels';
 import {
   clearPendingCheckoutPlan,
@@ -614,13 +613,15 @@ export default function DashboardPage() {
       statusNotice?.id === 'approve_recorded' ||
       statusNotice?.id === 'outcome_record_failed') &&
     !outcomeRecorded;
-  const stageTransform = `translate(${stageMetrics.offsetX}px, ${stageMetrics.offsetY}px) scale(${stageMetrics.scale})`;
   const integrationRows = Array.isArray(integrationStatus?.integrations)
     ? integrationStatus.integrations
     : [];
   const connectedSources = integrationRows.filter((integration) => integration?.is_active === true);
   const sourceFreshnessNeedsAttention = integrationRows.some(
     (integration) => integration?.needs_sync === true || integration?.sync_stale === true,
+  );
+  const sourceReconnectNeeded = integrationRows.some(
+    (integration) => integration?.needs_reconnect === true || integration?.needs_reauth === true,
   );
   const connectedSourceCount = connectedSources.length;
   const latestSignalLabel = asTrimmedString(graphStats?.lastSignalAt)
@@ -798,6 +799,73 @@ export default function DashboardPage() {
     historyItems,
   );
 
+  const showSourceNeededBrief =
+    !dailyUtilitySlate &&
+    (connectedSourceCount === 0 ||
+      sourceFreshnessNeedsAttention ||
+      sourceReconnectNeeded ||
+      integrationStatus?.mail_ingest_looks_stale === true);
+
+  const sourceNeededBriefCard = (
+    <DailyBriefCard
+      className="foldera-dashboard-brief-card foldera-dashboard-money-shot h-full w-full"
+      dashboardCta
+      stageDesktop={stageMetrics.isDesktop}
+      directive="Connect sources so Foldera can find today’s finished move."
+      whyNow="Foldera needs recent email, calendar, and draft context before it can safely recommend a source-backed action."
+      eyebrowLabel="Daily Brief"
+      directiveLabel="Directive"
+      whyLabel="Why this now"
+      draftLabel="Draft"
+      draftBody={
+        <p>
+          Once your sources are connected, this space will show the directive, why it matters now,
+          the finished draft or document, and the source trail behind it.
+        </p>
+      }
+      sourcePills={['Email', 'Calendar', 'Drafts', 'Decision notes']}
+      sourceLabel="Source trail"
+      nextStep="Next: Connect sources so Foldera can prepare the next safe artifact."
+      statusText="WAITING FOR SOURCES"
+      footerText="Foldera needs current source context first"
+      actions={[
+        { label: 'View demo', href: '/demo', kind: 'secondary' },
+        {
+          label: 'Connect sources',
+          href: '/dashboard?panel=sources',
+          kind: 'primary',
+          dataTestId: 'dashboard-connect-sources',
+        },
+      ]}
+    />
+  );
+
+  const waitingBriefCard = (
+    <DailyBriefCard
+      className="foldera-dashboard-brief-card foldera-dashboard-money-shot h-full w-full"
+      dashboardCta
+      stageDesktop={stageMetrics.isDesktop}
+      directive="Foldera is watching for the next finished move."
+      whyNow="Today’s connected evidence has not yet cleared the bar for a source-backed artifact, so Foldera is staying current instead of forcing a weak recommendation."
+      eyebrowLabel="Daily Brief"
+      directiveLabel="Directive"
+      whyLabel="Why this now"
+      draftLabel="What appears here next"
+      draftBody={
+        <p>
+          This space will update with the next safe directive, why it matters now, the finished
+          work itself, and the evidence trail behind it.
+        </p>
+      }
+      sourcePills={['Email', 'Calendar', 'Drafts', 'Decision notes']}
+      sourceLabel="Source trail"
+      nextStep="Next: Foldera will surface the next safe artifact."
+      statusText="STANDING BY"
+      footerText="Watching connected sources"
+      actions={[{ label: 'Review sources', href: '/dashboard?panel=sources', kind: 'secondary' }]}
+    />
+  );
+
   const emptyStateCard = dailyUtilitySlate ? (
     <DailyUtilitySlateCard
       slate={dailyUtilitySlate}
@@ -805,8 +873,10 @@ export default function DashboardPage() {
       dailyValueState={dailyValueState}
       onCopyDailyValue={() => void copyDailyValue()}
     />
+  ) : showSourceNeededBrief ? (
+    sourceNeededBriefCard
   ) : (
-    <EmptyStateCard />
+    waitingBriefCard
   );
   const loadingCard = <DashboardLoadingCard />;
   const degradedStateNode = <DashboardDegradedState issueLabels={degradedIssueLabels} />;
@@ -947,7 +1017,6 @@ export default function DashboardPage() {
         outcomeSubmitting={outcomeSubmitting}
         submitOutcome={submitOutcome}
         hiddenArtifactNode={hiddenArtifactNode}
-        stageTransform={stageTransform}
       />
     );
   }

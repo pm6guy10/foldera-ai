@@ -132,9 +132,7 @@ export type StageMetrics = {
   offsetY: number;
 };
 
-const DESIGN_W = 2048;
-const DESIGN_H = 1152;
-const DESKTOP_STAGE_MIN_WIDTH = 1440;
+const DESKTOP_STAGE_MIN_WIDTH = 1100;
 
 export const DEFAULT_STAGE_METRICS: StageMetrics = {
   isDesktop: false,
@@ -742,15 +740,11 @@ export function computeStageMetrics(): StageMetrics {
   }
 
   const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
   if (viewportWidth < DESKTOP_STAGE_MIN_WIDTH) {
     return { isDesktop: false, scale: 1, offsetX: 0, offsetY: 0 };
   }
 
-  const scale = Math.min(viewportWidth / DESIGN_W, viewportHeight / DESIGN_H);
-  const offsetX = (viewportWidth - DESIGN_W * scale) / 2;
-  const offsetY = (viewportHeight - DESIGN_H * scale) / 2;
-  return { isDesktop: true, scale, offsetX, offsetY };
+  return { isDesktop: true, scale: 1, offsetX: 0, offsetY: 0 };
 }
 
 export function inferSourcePills(action: DashboardAction | null): string[] {

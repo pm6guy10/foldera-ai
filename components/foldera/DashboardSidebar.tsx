@@ -4,15 +4,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import {
-  Activity,
   ChevronDown,
   History,
   Inbox,
-  LayoutGrid,
   Link2,
   LogOut,
   Menu,
-  Settings2,
   UserRound,
   X,
   type LucideIcon,
@@ -41,15 +38,12 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
 ];
 
 const DASHBOARD_STAGE_NAV_ITEMS: Array<
-  | { kind: 'panel'; panel: DashboardPanelKey; label: string; href: string; icon: LucideIcon }
-  | { kind: 'link'; label: string; href: string; icon: LucideIcon }
+  { kind: 'panel'; panel: DashboardPanelKey; label: string; href: string; icon: LucideIcon }
 > = [
-  { kind: 'panel', panel: 'today', label: 'Executive Briefing', href: '/dashboard', icon: Inbox },
-  { kind: 'link', label: 'Playbooks', href: '/dashboard/playbooks', icon: LayoutGrid },
-  { kind: 'link', label: 'Signals', href: '/dashboard/signals', icon: Activity },
-  { kind: 'panel', panel: 'history', label: 'Audit Log', href: '/dashboard?panel=history', icon: History },
-  { kind: 'panel', panel: 'sources', label: 'Integrations', href: '/dashboard?panel=sources', icon: Link2 },
-  { kind: 'panel', panel: 'account', label: 'Settings', href: '/dashboard?panel=account', icon: Settings2 },
+  { kind: 'panel', panel: 'today', label: 'Today', href: '/dashboard', icon: Inbox },
+  { kind: 'panel', panel: 'history', label: 'Recent Work', href: '/dashboard?panel=history', icon: History },
+  { kind: 'panel', panel: 'sources', label: 'Sources', href: '/dashboard?panel=sources', icon: Link2 },
+  { kind: 'panel', panel: 'account', label: 'Account', href: '/dashboard?panel=account', icon: UserRound },
 ];
 
 type DashboardSidebarProps = {
@@ -286,18 +280,9 @@ export function DashboardSidebar({
               );
             }
 
-            if (isPanelItem) {
-              return (
-                <Link key={item.label} href={item.href} className={classes}>
-                  <Icon className={`h-[18px] w-[18px] ${isActive ? 'text-accent' : 'text-text-muted'}`} aria-hidden="true" />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            }
-
             return (
               <Link key={item.label} href={item.href} className={classes}>
-                <Icon className="h-[18px] w-[18px] text-text-muted" aria-hidden="true" />
+                <Icon className={`h-[18px] w-[18px] ${isActive ? 'text-accent' : 'text-text-muted'}`} aria-hidden="true" />
                 <span>{item.label}</span>
               </Link>
             );

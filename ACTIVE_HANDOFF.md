@@ -1,42 +1,43 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-12 06:58 PT
+Last updated: 2026-05-12 07:23 PT
 Last known production SHA: f387d93
-Last completed commit: fc46bae
-Current slice: Controller live-finding validation
-Current mode: Stale source-freshness contract suppressed; clean-tree build/lint are green
+Last completed commit: a40f355
+Current slice: Dashboard visual acceptance
+Current mode: `/dashboard` is locally proven as the real app shell; public-nav auth proof is intentionally deferred
 
 ## Current product truth
 
-- `controller:autopilot` no longer emits `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH` from stale or absent truth.
-- Generated fallback contracts now require a live `source_truth_finding` that is literally present in the current source-truth file or current `npm run health` output.
-- Clean current health is still fresh, not degraded: Gmail fresh `1h ago`, Outlook fresh `1h ago`, and `Mail cursors current`.
-- With stale source-freshness removed, the next truthful controller state is `STOP` on exact external blockers, not a fake app-owner seam.
-- The prior `stageTransform` build blocker was stale local dashboard drift, not current tracked `main`.
-- Current clean tree proof is green: `npm run build` passed, `npm run lint` passed, `git status --short` is clean, and `origin/main` matches current head `fc46bae`.
+- `/dashboard` now renders as the actual post-login app surface instead of a centered mock frame: full viewport, stable left rail, dominant center artifact, and aligned right support rail.
+- Mobile `/dashboard` now uses the real viewport with no fake phone shell or status bar; the bottom nav swaps Today, Sources, Recent Work, and Account in-shell.
+- The center stage no longer falls back to a dead loading box. Loading uses a Daily Brief skeleton, daily-value still renders the existing slate card, connected-but-idle renders a standing-by brief, and disconnected/stale inputs render a `WAITING FOR SOURCES` brief.
+- Public-nav auth awareness is intentionally not part of this seam. `NavPublic.tsx` remains deferred until `/` hydration and root static-asset serving are proven.
+- Current health remains non-blocking: Gmail fresh `2h ago`, Outlook fresh `2h ago`, `Mail cursors current`, and last generation `do_nothing`.
 
 ## Verified proof
 
-- controller regressions: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/controller-autopilot.test.ts --reporter=verbose`
-- controller rerun: PASS `npm run controller:autopilot` -> exact blocker STOP, no stale `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH`
 - health: PASS `npm run health` -> `RESULT: 0 FAILING`
 - build: PASS `npm run build`
 - lint: PASS `npm run lint`
-- repo status: PASS `git status --short` clean; `origin/main` matches `fc46bae`
+- dashboard UI proof: PASS `npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list` (`19/19`)
+- fresh screenshots: PASS `artifacts/verification/dashboard-contract-desktop-fresh.png` and `artifacts/verification/dashboard-contract-mobile-fresh.png`
 
 ## Remaining defects in current slice
 
-1. All remaining money-loop rungs are currently externally blocked: paid/model-backed proof, passive next-window proof, or real non-owner account setup.
-2. No clean-tree build blocker remains from the stale `stageTransform` report.
+1. Public-nav auth proof is still unproven. Do not mix `NavPublic.tsx` into this seam until `/` serves its static assets correctly, hydration works, and logged-in/logged-out nav behavior is browser-proven.
+2. This slice does not change source freshness, paid generation, outbound email, Stripe, schema, or controller selection.
 
 ## Next exact move
 
 Start here:
-1. Do not resume `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH`.
-2. Rerun `npm run controller:autopilot` only after a real external blocker clears or a fresh live source-truth finding appears.
+1. Push the dashboard visual acceptance seam after the final preflight/build guard clears.
+2. Next customer-visible seam: persisted artifact path, unless deployment proof for this dashboard seam is selected first.
 
 ## Do not touch yet
 
+- `components/nav/NavPublic.tsx`
+- public route tests
+- controller/meta seams unless execution hard-fails
 - paid generation
 - outbound email
 - Stripe charge
@@ -46,10 +47,8 @@ Start here:
 
 ## External blockers
 
-- BL-015 / BL-003 / BL-005: paid or quota-blocked proof remains required.
-- BL-006: real connected non-owner account setup remains required.
-- BL-011: passive next-window proof remains required.
+- `/` root-route hydration and static-asset serving are not yet proven, so auth-aware public nav remains a separate unproven seam.
 
 ## Stop condition
 
-Stop on the exact external blocker until a real actionable backlog item or live generated finding exists again.
+Stop after the dashboard shell seam is committed and pushed cleanly without reintroducing unproven public-nav work.

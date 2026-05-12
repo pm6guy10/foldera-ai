@@ -85,13 +85,6 @@ const NAV_CONTRACT = [
   { panel: 'account', label: 'Account' },
 ] as const;
 
-const STAGE_NAV_CONTRACT = [
-  { panel: 'today', label: 'Executive Briefing' },
-  { panel: 'history', label: 'Audit Log' },
-  { panel: 'sources', label: 'Integrations' },
-  { panel: 'account', label: 'Settings' },
-] as const;
-
 function json(data: unknown) {
   return JSON.stringify(data);
 }
@@ -302,25 +295,24 @@ async function setupDashboardMocks(
 }
 
 describeAuthMocked('Dashboard navigation and action wiring', () => {
-  test('desktop dashboard shell matches the approved executive-briefing frame', async ({ page }) => {
+  test('desktop dashboard fills the viewport as a real app shell', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
 
-    for (const item of STAGE_NAV_CONTRACT) {
+    for (const item of NAV_CONTRACT) {
       const button = page.getByTestId(`dashboard-sidebar-item-${item.panel}`);
       await expect(button).toBeVisible();
       await expect(button).toContainText(item.label);
     }
 
-    await expect(page.getByRole('link', { name: 'Playbooks' })).toBeVisible();
-    await expect(page.getByRole('link', { name: 'Signals' })).toBeVisible();
-    await expect(page.getByText(/Upgrade to Pro/i)).toBeVisible();
-    await expect(page.getByText(/Workspace Owner/i)).toBeVisible();
-    await expect(page.getByText(/Search Foldera/i)).toBeVisible();
-    await expect(page.getByText('open threads')).toBeVisible();
-    await expect(page.getByText('need attention')).toBeVisible();
-    await expect(page.getByText('ready to move')).toBeVisible();
+    const shell = await page.getByTestId('dashboard-app-shell').boundingBox();
+    expect(shell?.x ?? 999).toBeLessThanOrEqual(4);
+    expect(shell?.y ?? 999).toBeLessThanOrEqual(4);
+    expect(shell?.width ?? 0).toBeGreaterThan(1430);
+    expect(shell?.height ?? 0).toBeGreaterThan(890);
+
+    await expect(page.getByTestId('dashboard-figma-card-frame')).toHaveCount(0);
     await expect(page.getByTestId('dashboard-brief-directive-section')).toContainText(/Finished work/i);
     await expect(page.getByTestId('dashboard-brief-why-section')).toContainText(/Why it matters/i);
     await expect(page.getByTestId('dashboard-brief-draft-section')).toContainText('Ready text');
@@ -330,9 +322,6 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByTestId('dashboard-brief-source-section')).not.toContainText(/email:|calendar:/i);
     await expect(page.getByText(/How this brief works/i)).toBeVisible();
     await expect(page.getByText(/Drop a folder or document\./i)).toBeVisible();
-    const figmaFrame = await page.getByTestId('dashboard-figma-card-frame').boundingBox();
-    expect(figmaFrame?.width).toBeGreaterThan(960);
-    expect(figmaFrame?.height).toBeGreaterThan(560);
   });
 
   test('clicking each sidebar item keeps the app shell on /dashboard', async ({ page }) => {
@@ -561,56 +550,52 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     expect(clipboardText).toContain('Following up on the update from yesterday.');
   });
 
-  test('mobile 390px has no horizontal overflow on /dashboard shell', async ({ page }) => {
+  test('mobile 390px fills the viewport with no horizontal overflow or phone frame', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
 
-    await expect(page.getByTestId('dashboard-mobile-menu-button')).toBeVisible();
+    await expect(page.getByText('9:41')).toHaveCount(0);
+    await expect(page.getByTestId('dashboard-mobile-tab-today')).toBeVisible();
 
     const layout = await page.evaluate(() => {
       const html = document.documentElement;
       const body = document.body;
+      const shell = document.querySelector('[data-testid="dashboard-route-shell"]') as HTMLElement | null;
       return {
         htmlScrollWidth: html.scrollWidth,
         htmlClientWidth: html.clientWidth,
         bodyScrollWidth: body.scrollWidth,
+        shellWidth: shell?.getBoundingClientRect().width ?? 0,
+        shellHeight: shell?.getBoundingClientRect().height ?? 0,
       };
     });
 
     const maxScrollWidth = Math.max(layout.htmlScrollWidth, layout.bodyScrollWidth);
     expect(maxScrollWidth).toBeLessThanOrEqual(layout.htmlClientWidth + 1);
+    expect(layout.shellWidth).toBeGreaterThanOrEqual(389);
+    expect(layout.shellHeight).toBeGreaterThanOrEqual(844);
   });
 
-  test('mobile menu exposes dashboard sections and swaps panels in-shell', async ({ page }) => {
+  test('mobile bottom nav swaps dashboard panels in-shell', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await setupDashboardMocks(page);
     await page.goto('/dashboard');
 
-    const menuButton = page.getByTestId('dashboard-mobile-menu-button');
-    await expect(menuButton).toBeVisible();
-    await expect(menuButton).toHaveAttribute('aria-expanded', 'false');
-    await expect(page.getByTestId('dashboard-mobile-menu')).toHaveCount(0);
-
-    await menuButton.click();
-    await expect(menuButton).toHaveAttribute('aria-expanded', 'true');
-    const menu = page.getByTestId('dashboard-mobile-menu');
-    await expect(menu).toBeVisible();
-
     for (const item of NAV_CONTRACT) {
-      await expect(page.getByTestId(`dashboard-mobile-menu-item-${item.panel}`)).toContainText(
-        item.label,
-      );
+      await expect(page.getByTestId(`dashboard-mobile-tab-${item.panel}`)).toContainText(item.label);
     }
 
-    await page.getByTestId('dashboard-mobile-menu-item-sources').click();
+    await page.getByTestId('dashboard-mobile-tab-sources').click();
     await expect.poll(() => new URL(page.url()).pathname).toBe('/dashboard');
     await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBe('sources');
     await expect(page.getByTestId('dashboard-panel-sources')).toBeVisible();
-    await expect(page.getByTestId('dashboard-mobile-menu')).toHaveCount(0);
 
-    await menuButton.click();
-    await page.getByTestId('dashboard-mobile-menu-item-today').click();
+    await page.getByTestId('dashboard-mobile-tab-history').click();
+    await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBe('history');
+    await expect(page.getByTestId('dashboard-panel-history')).toBeVisible();
+
+    await page.getByTestId('dashboard-mobile-tab-today').click();
     await expect.poll(() => new URL(page.url()).searchParams.get('panel')).toBeNull();
     await expect(page.getByTestId('dashboard-panel-today')).toBeVisible();
   });
@@ -701,6 +686,55 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
       )
       .not.toMatch(/commitment:[0-9a-f-]+|8c9e725a/i);
     await expect(page.getByText(/No safe artifact/i)).toHaveCount(0);
+  });
+
+  test('disconnected or stale sources show a waiting-for-sources brief instead of a blank state', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setupDashboardMocks(page, {
+      latestResponse: {},
+      dailyValueResponse: { daily_utility_slate: null },
+      integrationStatusResponse: {
+        integrations: [
+          {
+            provider: 'google',
+            is_active: false,
+            sync_email: null,
+            last_synced_at: null,
+            missing_scopes: [],
+            needs_reconnect: false,
+            needs_reauth: false,
+            sync_stale: false,
+          },
+          {
+            provider: 'azure_ad',
+            is_active: false,
+            sync_email: null,
+            last_synced_at: null,
+            missing_scopes: [],
+            needs_reconnect: false,
+            needs_reauth: false,
+            sync_stale: false,
+          },
+        ],
+        newest_mail_signal_at: null,
+        mail_ingest_looks_stale: false,
+      },
+    });
+    await page.goto('/dashboard');
+
+    await expect(page.getByText(/WAITING FOR SOURCES/i)).toBeVisible();
+    await expect(
+      page.getByRole('heading', {
+        name: /Connect sources so Foldera can find today’s finished move\./i,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        /Foldera needs recent email, calendar, and draft context before it can safely recommend a source-backed action\./i,
+      ),
+    ).toBeVisible();
+    await expect(page.getByTestId('dashboard-connect-sources')).toBeVisible();
+    await expect(page.getByRole('link', { name: /View demo/i })).toHaveAttribute('href', '/demo');
   });
 
   test('account menu opens and sign out remains wired', async ({ page }) => {
