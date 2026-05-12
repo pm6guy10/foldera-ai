@@ -6335,3 +6335,10 @@ pm run build.
 - What changed: Updated the production smoke `Get started free` assertion to scope to `main a[href="/start"]`, matching the already-green local public route test and preserving the new public-nav contract where the header CTA is `Start free`.
 - Verification: The failing assertion was reproduced locally against production: the first visible `/start` link was the nav `Start free`, not the main CTA. Push/CI/deploy proof remains required after the scoped assertion update.
 - Unresolved issues: Push, GitHub CI, Production E2E, and deploy SHA proof are still required for this follow-up commit.
+
+## 2026-05-12 - Controller STOP clears stale executable contract after frontend deploy proof
+- MODE: Controller stop-state cleanup only.
+- Files changed: `.foldera-contract.json`, `scripts/controller-autopilot.ts`, `scripts/__tests__/controller-autopilot.test.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Verified the frontend surface contract follow-up is pushed to `main`, GitHub check-runs on `f0c1b15` are green, Production E2E is green, and production `/api/health` serves `f0c1b15` from deployment `dpl_7vFTKqtZfEkA6QG2ri5JRYs3dpdQ`. Fixed the controller STOP path so it deletes stale `.foldera-contract.json` instead of leaving a finished contract as machine-readable executable work.
+- Verification: `node node_modules/vitest/vitest.mjs run scripts/__tests__/controller-autopilot.test.ts --reporter=verbose` passed (`19/19`). `npm run build` passed. `npm run lint` passed. `npm run controller:autopilot` returned `CONTROLLER RESULT: STOP` with only external money-loop blockers and removed `.foldera-contract.json`. `npm run health` returned `RESULT: 0 FAILING`.
+- Unresolved issues: Remaining controller blockers are external: explicit paid/model proof approval and quota/access (`BL-015`, `BL-003`, `BL-005`), one real connected non-owner account (`BL-006`), passive daily-send proof window (`BL-011`), and fresh repeated-directive evidence or monitored proof (`BL-007`).

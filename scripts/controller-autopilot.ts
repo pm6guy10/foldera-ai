@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -1089,6 +1089,13 @@ function writeContractFile(repoRoot: string, item: BacklogItem | null, acceptanc
   writeFileSync(path, `${JSON.stringify(contract, null, 2)}\n`, 'utf8');
 }
 
+function clearContractFile(repoRoot: string) {
+  const path = resolve(repoRoot, '.foldera-contract.json');
+  if (existsSync(path)) {
+    unlinkSync(path);
+  }
+}
+
 function printNextCommand(item: BacklogItem | null, acceptanceGateText: string) {
   console.log('');
   console.log('NEXT COMMAND (verbatim — paste this as-is)');
@@ -1242,6 +1249,8 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
   printSeamContractReport(selectedItem, acceptanceGateText);
   if (controllerResult === 'GO') {
     writeContractFile(repoRoot, selectedItem, acceptanceGateText);
+  } else {
+    clearContractFile(repoRoot);
   }
   printNextCommand(selectedItem, acceptanceGateText);
 

@@ -726,6 +726,15 @@ Next blocker: explicit paid-proof approval required
 - **Non-owner depth remains externally blocked** — Requires one real connected non-owner account.
 `,
       });
+      writeFileSync(
+        join(repoDir, '.foldera-contract.json'),
+        JSON.stringify({
+          backlog_id: 'STALE',
+          base_commit: 'old',
+          money_loop_rung: 'dashboard_action',
+          next_command: 'Execute stale work',
+        }),
+      );
       execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
       execSync('git -c user.name=Test -c user.email=test@example.com commit -m init', {
         cwd: repoDir,
