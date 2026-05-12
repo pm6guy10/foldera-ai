@@ -1,7 +1,7 @@
 {
   "backlog_id": "GENERATED-USEFUL-CURRENT-MOVE-DAILY-VALUE",
   "generated_contract_id": "GENERATED-USEFUL-CURRENT-MOVE-DAILY-VALUE",
-  "base_commit": "87c0999fdc268fe221c76ae5facace52584d25f6",
+  "base_commit": "4e173577738f89e88d2da59d055ce6147ec26563",
   "money_loop_rung": "artifact_or_useful_current_move",
   "user_system_path": "When /api/conviction/latest has no visible pending artifact, /dashboard should still show the deterministic current best move without contradicting the approval/save path.",
   "allowed_file_patterns": [
