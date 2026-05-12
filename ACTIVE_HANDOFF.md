@@ -1,39 +1,35 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-11 19:56 PT
+Last updated: 2026-05-12 06:36 PT
 Last known production SHA: f387d93
-Last completed commit: 49eaa6e
-Current slice: Generated source-freshness contract triage
-Current mode: Source-freshness path reproven clean; generated contract is invalid
+Last completed commit: 4297f5c
+Current slice: Controller live-finding validation
+Current mode: Stale source-freshness contract suppressed; controller now stops on exact external blocker
 
 ## Current product truth
 
-- Useful-current-move fallback seam is complete and pushed in `49eaa6e`.
-- Focused route/slate/model proof passed for the daily-value path.
-- Dashboard current-best-move Playwright proof passed.
-- Source-freshness proof is already green without new edits: focused connector-health Vitest, settings stale-vs-fresh Playwright, `npm run health`, and `npm run build` all pass on the current tree.
-- Current health truth is fresh, not degraded: Gmail fresh `14h ago`, Outlook fresh `14h ago`, and `Mail cursors current`.
-- `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH` does not map to a live current finding in `ACTIVE_HANDOFF.md` or health output, so this seam is not actionable now.
+- `controller:autopilot` no longer emits `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH` from stale or absent truth.
+- Generated fallback contracts now require a live `source_truth_finding` that is literally present in the current source-truth file or current `npm run health` output.
+- Clean current health is still fresh, not degraded: Gmail fresh `1h ago`, Outlook fresh `1h ago`, and `Mail cursors current`.
+- With stale source-freshness removed, the next truthful controller state is `STOP` on exact external blockers, not a fake app-owner seam.
 
 ## Verified proof
 
-- route/slate/model: PASS `node node_modules/vitest/vitest.mjs run app/api/conviction/daily-value/__tests__/route.test.ts lib/briefing/__tests__/daily-utility-slate.test.ts tests/config/__tests__/dashboard-inbox-model.test.ts --reporter=verbose`
-- dashboard current best move: PASS `node node_modules/@playwright/test/cli.js test tests/e2e/dashboard-navigation.spec.ts --grep "current best move" --reporter=list`
-- health after seam: PASS `npm run health` -> `RESULT: 0 FAILING`
-- build after seam: PASS `npm run build`
-- source freshness seam suite: PASS `node node_modules/vitest/vitest.mjs run lib/integrations/__tests__/connector-health.test.ts app/api/integrations/status/__tests__/route.test.ts app/api/settings/run-brief/__tests__/route.test.ts scripts/__tests__/health-connectors.test.ts --reporter=verbose`
-- source freshness browser proof: PASS `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "shows stale Google clearly while Microsoft stays fresh" --reporter=list`
+- controller regressions: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/controller-autopilot.test.ts --reporter=verbose`
+- controller rerun: PASS `npm run controller:autopilot` -> exact blocker STOP, no stale `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH`
+- health: PASS `npm run health` -> `RESULT: 0 FAILING`
+- build: PASS `npm run build`
 
 ## Remaining defects in current slice
 
-1. `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH` is an invalid generated contract, because current source truth is already fresh and the contract's triggering finding is absent.
-2. The next blocker is controller selection truth, not connector freshness behavior.
+1. All remaining money-loop rungs are currently externally blocked: paid/model-backed proof, passive next-window proof, or real non-owner account setup.
+2. No live generated app-owner seam remains after live-finding validation on the current tree.
 
 ## Next exact move
 
 Start here:
 1. Do not resume `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH`.
-2. Fix controller/autopilot seam selection so generated contracts only target a live current source-truth finding.
+2. Rerun `npm run controller:autopilot` only after a real external blocker clears or a fresh live source-truth finding appears.
 
 ## Do not touch yet
 
@@ -46,8 +42,10 @@ Start here:
 
 ## External blockers
 
-- None for the source-freshness product path; this stop is a controller-contract blocker.
+- BL-015 / BL-003 / BL-005: paid or quota-blocked proof remains required.
+- BL-006: real connected non-owner account setup remains required.
+- BL-011: passive next-window proof remains required.
 
 ## Stop condition
 
-Stop on `invalid contract` for `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH` until controller selection truth is repaired.
+Stop on the exact external blocker until a real actionable backlog item or live generated finding exists again.

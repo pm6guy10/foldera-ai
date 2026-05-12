@@ -5,15 +5,18 @@ import { tmpdir } from 'node:os';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  buildTruthSnapshot,
   classifyDirtyEntries,
   findFirstActionableBacklogItem,
   findWaitingExternalBlockerBacklogItems,
   findWaitingExternalQuotaBacklogItems,
   findWaitingPassiveProofBacklogItems,
+  generatedContractHasLiveFinding,
   getBacklogEligibility,
   parseBacklogItems,
   parseSessionHistoryEntries,
   runControllerAutopilot,
+  synthesizeAppOwnerContract,
 } from '../controller-autopilot';
 
 function writeCommonControllerTruthFiles(
@@ -360,6 +363,88 @@ Status: OPEN
 });
 
 describe('controller-autopilot stop behavior', () => {
+  it('does not emit source_freshness when current health says Gmail/Outlook fresh and mail cursors current', () => {
+    const snapshot = buildTruthSnapshot(
+      `# ACTIVE HANDOFF — FOLDERA
+
+## Current product truth
+
+- Clean-tree controller once advanced to GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH.
+`,
+      `# CURRENT STATE — FOLDERA
+
+## B. WHAT IS BROKEN (REAL)
+
+- **Convergence depends on name overlap** — \`extractConvergence\` still under-matches when only adjacent calendar-title evidence exists.
+`,
+      `## 2026-05-12 - Prior seam
+- Verification: none
+`,
+      `FOLDERA HEALTH — 2026-05-12 06:25 PT
+
+BLOCKING
+✓ No stale pending_approval (>20h)
+✓ No repeated directive
+
+WARNING
+✓ Gmail fresh          1h ago · b.kapp1010@gmail.com
+✓ Outlook fresh        1h ago · b-kapp@outlook.com
+✓ Mail cursors current
+⚠ Last generation      do_nothing
+
+RESULT: 0 FAILING`,
+    );
+
+    const contract = synthesizeAppOwnerContract(snapshot);
+
+    expect(contract?.id).toBe('GENERATED-CANDIDATE-SELECTION-CONVERGENCE');
+    expect(contract?.id).not.toBe('GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH');
+  });
+
+  it('requires generated source_truth_finding to exist in current source truth or health output', () => {
+    const snapshot = buildTruthSnapshot(
+      `# ACTIVE HANDOFF — FOLDERA
+
+## Current product truth
+
+- Useful-current-move fallback seam is complete.
+`,
+      `# CURRENT STATE — FOLDERA
+
+## B. WHAT IS BROKEN (REAL)
+
+- **Convergence depends on name overlap** — \`extractConvergence\` still under-matches when only adjacent calendar-title evidence exists.
+`,
+      `## 2026-05-12 - Prior seam
+- Verification: none
+`,
+      `FOLDERA HEALTH — 2026-05-12 06:25 PT
+
+WARNING
+✓ Gmail fresh          1h ago · b.kapp1010@gmail.com
+✓ Outlook fresh        1h ago · b-kapp@outlook.com
+✓ Mail cursors current
+
+RESULT: 0 FAILING`,
+    );
+
+    const validGenerated = synthesizeAppOwnerContract(snapshot);
+
+    expect(validGenerated).not.toBeNull();
+    expect(generatedContractHasLiveFinding(validGenerated!, snapshot)).toBe(true);
+    expect(snapshot.currentStateText).toContain(validGenerated!.sourceTruthFinding!);
+    expect(
+      generatedContractHasLiveFinding(
+        {
+          ...validGenerated!,
+          generatedContractId: 'GENERATED-FAKE',
+          sourceTruthFinding: 'This finding is not present anywhere current.',
+        },
+        snapshot,
+      ),
+    ).toBe(false);
+  });
+
   it('generates a fallback app-owner contract when backlog has no actionable item but current truth still has an unresolved rung', () => {
     const logs: string[] = [];
     const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
@@ -543,6 +628,69 @@ Next blocker: next normal daily-send proof required
       expect(
         logs.some((line) =>
           line.includes('Selected backlog ID: GENERATED-USEFUL-CURRENT-MOVE-DAILY-VALUE'),
+        ),
+      ).toBe(true);
+    } finally {
+      spy.mockRestore();
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
+  it('does not regenerate a stale closed handoff source_freshness finding and advances to the next live seam', () => {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      logs.push(args.map(String).join(' '));
+    });
+
+    const repoDir = mkdtempSync(join(tmpdir(), 'controller-autopilot-'));
+    try {
+      execSync('git init', { cwd: repoDir, stdio: 'ignore' });
+      writeFileSync(
+        join(repoDir, 'FOLDERA_PRODUCTION_BACKLOG.md'),
+        `
+### BL-011
+ID: BL-011
+Status: WAITING_PASSIVE_PROOF
+Next blocker: next normal daily-send proof required
+`,
+      );
+      writeCommonControllerTruthFiles(repoDir, {
+        activeHandoff: `# ACTIVE HANDOFF — FOLDERA
+
+Last updated: 2026-05-12 06:20 PT
+Current slice: Generated source-freshness contract triage
+Current mode: Prior contract proved invalid
+
+## Current product truth
+
+- Source-freshness path is already green without new edits.
+- Current health truth is fresh, not degraded: Gmail fresh \`1h ago\`, Outlook fresh \`1h ago\`, and \`Mail cursors current\`.
+- \`GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH\` was invalid and should not be selected again.
+`,
+        currentState: `# CURRENT STATE — FOLDERA
+
+## B. WHAT IS BROKEN (REAL)
+
+- **Convergence depends on name overlap** — \`extractConvergence\` requires the entity name to appear in signal bodies; calendar titles without names may under-match.
+`,
+      });
+      execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
+      execSync('git -c user.name=Test -c user.email=test@example.com commit -m init', {
+        cwd: repoDir,
+        stdio: 'ignore',
+      });
+
+      const code = runControllerAutopilot(repoDir);
+
+      expect(code).toBe(0);
+      expect(
+        logs.some((line) =>
+          line.includes('Selected backlog ID: GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH'),
+        ),
+      ).toBe(false);
+      expect(
+        logs.some((line) =>
+          line.includes('Selected backlog ID: GENERATED-CANDIDATE-SELECTION-CONVERGENCE'),
         ),
       ).toBe(true);
     } finally {

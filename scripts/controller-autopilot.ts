@@ -555,6 +555,27 @@ function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, ' ').trim();
 }
 
+function containsNormalizedText(haystack: string, needle: string): boolean {
+  const normalizedHaystack = normalizeWhitespace(haystack).toLowerCase();
+  const normalizedNeedle = normalizeWhitespace(needle).toLowerCase();
+  return normalizedNeedle.length > 0 && normalizedHaystack.includes(normalizedNeedle);
+}
+
+function findMatchingLine(
+  text: string,
+  predicate: (line: string) => boolean,
+): string | null {
+  for (const rawLine of text.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    if (predicate(line)) {
+      return line;
+    }
+  }
+
+  return null;
+}
+
 function extractSection(markdown: string, heading: string): string {
   const escaped = escapeRegex(heading);
   const match = markdown.match(
@@ -583,7 +604,7 @@ function readHealthOutput(repoRoot: string, activeHandoffText: string): string {
   return handoffHealthMatch?.[0]?.trim() ?? 'Health output unavailable.';
 }
 
-function buildTruthSnapshot(
+export function buildTruthSnapshot(
   activeHandoffText: string,
   currentStateText: string,
   sessionHistoryText: string,
@@ -664,20 +685,72 @@ function createGeneratedContract(
   };
 }
 
-function detectConnectorFreshnessGap(snapshot: ControllerTruthSnapshot): boolean {
-  const activeConnectorTruth = `${snapshot.activeHandoffText}\n${snapshot.healthOutput}`;
-  const hasConnectorAlert = /\b(stale|disconnected|reauth_required|never_synced|refresh google|reconnect)\b/i.test(
-    activeConnectorTruth,
-  );
-  const allFresh = /\bRESULT:\s*0 FAILING\b/i.test(snapshot.healthOutput) &&
-    /\bGmail fresh\b/i.test(snapshot.healthOutput) &&
-    /\bOutlook fresh\b/i.test(snapshot.healthOutput);
+function extractLiveConnectorFreshnessFinding(
+  snapshot: ControllerTruthSnapshot,
+): string | null {
+  return findMatchingLine(snapshot.healthOutput, (line) => {
+    if (!/\b(gmail|outlook|google|microsoft|mail cursors)\b/i.test(line)) {
+      return false;
+    }
 
-  return hasConnectorAlert && !allFresh;
+    if (/\bfresh\b/i.test(line)) {
+      return false;
+    }
+
+    return /\b(stale|disconnected|reauth_required|never_synced|needs_reauth|needs_sync|sync_stale|refresh|reconnect)\b/i.test(
+      line,
+    );
+  });
 }
 
-function synthesizeAppOwnerContract(snapshot: ControllerTruthSnapshot): BacklogItem | null {
-  if (detectConnectorFreshnessGap(snapshot)) {
+function extractCurrentStateFinding(
+  currentStateText: string,
+  pattern: RegExp,
+): string | null {
+  return findMatchingLine(currentStateText, (line) => pattern.test(line));
+}
+
+function getSourceTruthText(
+  sourceTruthFile: string | null | undefined,
+  snapshot: ControllerTruthSnapshot,
+): string {
+  switch (sourceTruthFile) {
+    case 'ACTIVE_HANDOFF.md':
+      return snapshot.activeHandoffText;
+    case 'CURRENT_STATE.md':
+      return snapshot.currentStateText;
+    case 'SESSION_HISTORY.md':
+      return snapshot.sessionHistoryText;
+    default:
+      return '';
+  }
+}
+
+export function generatedContractHasLiveFinding(
+  item: BacklogItem,
+  snapshot: ControllerTruthSnapshot,
+): boolean {
+  if (!item.generatedContractId) {
+    return true;
+  }
+
+  const finding = item.sourceTruthFinding?.trim();
+  if (!finding) {
+    return false;
+  }
+
+  const sourceTruthText = getSourceTruthText(item.sourceTruthFile, snapshot);
+  return (
+    containsNormalizedText(sourceTruthText, finding) ||
+    containsNormalizedText(snapshot.healthOutput, finding)
+  );
+}
+
+export function synthesizeAppOwnerContract(
+  snapshot: ControllerTruthSnapshot,
+): BacklogItem | null {
+  const connectorFreshnessFinding = extractLiveConnectorFreshnessFinding(snapshot);
+  if (connectorFreshnessFinding) {
     return createGeneratedContract('SOURCE-FRESHNESS-CONNECTOR-HEALTH', {
       moneyLoopRung: 'source_freshness',
       title: 'Connector freshness truth must stay visible before generation',
@@ -707,14 +780,17 @@ function synthesizeAppOwnerContract(snapshot: ControllerTruthSnapshot): BacklogI
       nextBlocker:
         'Prove the stale/disconnected connector truth on the real settings + run-brief path without widening into generation or sync internals.',
       sourceTruthFile: 'ACTIVE_HANDOFF.md',
-      sourceTruthFinding:
-        'Current command state or health truth shows stale/disconnected/reauth connector state while generation can still look runnable.',
+      sourceTruthFinding: connectorFreshnessFinding,
       requiredClosureUpdate:
         'Update ACTIVE_HANDOFF.md so the current command state records the repaired connector freshness truth or the exact remaining external blocker.',
     });
   }
 
-  if (/Convergence depends on name overlap/i.test(snapshot.currentStateText)) {
+  const convergenceFinding = extractCurrentStateFinding(
+    snapshot.currentStateText,
+    /Convergence depends on name overlap/i,
+  );
+  if (convergenceFinding) {
     return createGeneratedContract('CANDIDATE-SELECTION-CONVERGENCE', {
       moneyLoopRung: 'candidate_selection',
       title: 'Calendar-title-only convergence must still surface the right candidate',
@@ -745,15 +821,18 @@ function synthesizeAppOwnerContract(snapshot: ControllerTruthSnapshot): BacklogI
       doNotCount:
         'Do not call this done from backlog emptiness, logs alone, or a code diff without convergence-focused regression proof.',
       sourceTruthFile: 'CURRENT_STATE.md',
-      sourceTruthFinding:
-        'Convergence depends on name overlap',
+      sourceTruthFinding: convergenceFinding,
       requiredClosureUpdate:
         'Update CURRENT_STATE.md to retire the name-overlap-only finding once known entity email aliases are proven to count, while preserving any broader unresolved convergence risk that still has evidence.',
     });
   }
 
+  const usefulCurrentMoveFinding = extractCurrentStateFinding(
+    snapshot.currentStateText,
+    /latest persisted generation is still historical `do_nothing`/i,
+  );
   if (
-    /latest persisted generation is still historical `do_nothing`/i.test(snapshot.currentStateText) &&
+    usefulCurrentMoveFinding &&
     /\b(daily-value|daily utility slate|current best move)\b/i.test(
       `${snapshot.currentStateText}\n${snapshot.sessionHistoryText}`,
     )
@@ -787,8 +866,7 @@ function synthesizeAppOwnerContract(snapshot: ControllerTruthSnapshot): BacklogI
       nextBlocker:
         'Keep this seam inside the deterministic current-best-move path until it is proven truthful at the dashboard surface.',
       sourceTruthFile: 'CURRENT_STATE.md',
-      sourceTruthFinding:
-        'The latest persisted generation is still historical do_nothing while daily-value carries the current best move.',
+      sourceTruthFinding: usefulCurrentMoveFinding,
       requiredClosureUpdate:
         'Update CURRENT_STATE.md when the deterministic current-best-move fallback is proven truthful or replaced by a fresher persisted artifact path, and append only a new SESSION_HISTORY receipt.',
     });
@@ -1091,8 +1169,12 @@ export function runControllerAutopilot(repoRoot = process.cwd()): number {
     sessionHistoryText,
     healthOutput,
   );
-  const generatedAppOwnerItem =
+  const synthesizedItem =
     !firstActionableItem && !hardStopReason ? synthesizeAppOwnerContract(truthSnapshot) : null;
+  const generatedAppOwnerItem =
+    synthesizedItem && generatedContractHasLiveFinding(synthesizedItem, truthSnapshot)
+      ? synthesizedItem
+      : null;
   const selectedItem = firstActionableItem ?? generatedAppOwnerItem;
 
   if (!hardStopReason && !selectedItem) {
