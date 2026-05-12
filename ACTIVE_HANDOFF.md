@@ -1,49 +1,49 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-12 10:39 PT
+Last updated: 2026-05-12 11:24 PT
 Last known production SHA: 0ea1c9a
 Last completed commit: 02e7e83
-Current slice: Dashboard dynamic viewport app-fit pass
-Current mode: Local proof is green; commit, push, and GitHub CI proof pending.
+Current slice: Frontend surface contract A-Z
+Current mode: Local proof is green; commit, push, and GitHub CI/deploy proof pending.
 
 ## Current product truth
 
-- `/dashboard` keeps the full-screen authenticated app shell shipped in `0ea1c9a`: desktop fills the viewport, mobile uses the real viewport, and Today/Sources/Recent Work/Account stay in-shell.
-- `app/dashboard/page.tsx` is 942 lines, below the 1000-line large-file threshold.
-- The authenticated dashboard lane now sees the required surfaces: `dashboard-empty-state`, mobile and desktop `Notifications` buttons, neutral non-owner account copy, write-document support/preview behavior, and post-skip empty state.
-- Mobile dashboard fit is covered in `dashboard-navigation`: the card/footer stay above the in-shell bottom nav with no fake phone wrapper or horizontal overflow.
-- The dashboard Today card now uses tighter viewport-aware spacing so desktop and mobile stay within the viewport; mobile prioritizes the finished draft surface inside the fixed app shell.
-- Public/mobile route proof is green locally for the current A-Z surface set: landing, start, login, pricing, try, blog/legal/about/security/status/founder all load without mobile horizontal overflow.
-- Current health is non-blocking: Gmail fresh `5h ago`, Outlook fresh `5h ago`, `Mail cursors current`, and last generation `do_nothing`.
+- `/dashboard` keeps the full-screen authenticated app shell already shipped on main; this slice did not reopen dashboard layout components.
+- Public landing nav is now server-auth-aware: logged-out `/` shows `Sign in` + `Start free`; logged-in `/` shows `Dashboard` instead of `Sign in`, without adding a client `/api/auth/session` poll.
+- Legacy app surfaces that use `ProductShell` now share the same matte Foldera app background, wider app-width shell, cyan-edged header card, and mobile dashboard-section rail.
+- Auth/onboarding surfaces (`/login`, `/start`, `/onboard`) now use the same premium matte app surface and centered cards without changing OAuth, onboarding, billing, source freshness, or outbound email contracts.
+- Public/mobile route proof is green locally for landing, start, login, pricing, try, blog/legal/about/security/status/founder; authenticated route proof is green for dashboard/settings/onboarding/briefings/signals.
+- Current health is non-blocking: Gmail fresh `6h ago`, Outlook fresh `6h ago`, `Mail cursors current`, and last generation `do_nothing`.
 
 ## Verified proof
 
 - build: PASS `npm run build`
 - lint: PASS `npm run lint`
 - large-file split: PASS `npx vitest run tests/config/__tests__/large-file-splits.test.ts --reporter=verbose`
-- dashboard CI lane: PASS `npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list` (`57/57`)
-- public routes: PASS `npx playwright test tests/e2e/public-routes.spec.ts --reporter=list` (`50/50`)
-- mobile visual QA: PASS `npx playwright test tests/e2e/mobile-visual-qa.spec.ts --reporter=list` (`11/11`)
-- screenshots: PASS local `/dashboard` screenshot capture at 1440x900 and 390x844; both document roots matched viewport dimensions exactly
+- public routes: PASS `npx playwright test tests/e2e/public-routes.spec.ts --reporter=list` (`52/52`)
+- dashboard navigation: PASS `PLAYWRIGHT_WEB_PORT=3011 npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list` (`19/19`)
+- authenticated routes: PASS `PLAYWRIGHT_WEB_PORT=3012 npx playwright test tests/e2e/authenticated-routes.spec.ts --reporter=list` (`38/38`)
+- mobile visual QA: PASS `PLAYWRIGHT_WEB_PORT=3013 npx playwright test tests/e2e/mobile-visual-qa.spec.ts --reporter=list` (`11/11`)
+- screenshots: PASS local captures in `%TEMP%/foldera-surface-contract-proof` for landing desktop/mobile, login mobile, start desktop, authenticated dashboard desktop/mobile, and settings mobile.
 - health: PASS `npm run health` -> `RESULT: 0 FAILING`
 
 ## Remaining defects in current slice
 
-1. Push this dashboard dynamic viewport app-fit pass.
+1. Push this frontend surface contract pass.
 2. Verify GitHub CI green on the new commit.
-3. Public-nav auth awareness remains deferred and must not be mixed into this dashboard repair.
+3. Verify deploy/production SHA once Vercel promotes the commit.
 
 ## Next exact move
 
 Start here:
-1. Commit and push the dashboard dynamic viewport app-fit pass.
+1. Commit and push the frontend surface contract pass.
 2. Verify GitHub CI green on the new commit.
-3. After CI is green, continue the A-Z route-fit pass one surface at a time; next likely seam is public-nav auth proof, not source freshness.
+3. Verify production deploy SHA after Vercel promotion.
+4. Then return to the money-loop backlog; do not reopen dashboard/app-fit unless fresh proof breaks it.
 
 ## Do not touch yet
 
 - controller/meta seams unless execution hard-fails
-- public nav/auth surfaces
 - backend/API
 - paid generation
 - outbound email
@@ -61,4 +61,4 @@ Start here:
 
 ## Stop condition
 
-Stop only when GitHub CI passes on the dashboard dynamic viewport app-fit commit.
+Stop only when GitHub CI and deploy truth pass on the frontend surface contract commit.

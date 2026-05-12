@@ -48,9 +48,9 @@ export function ProductShell({
   };
 
   return (
-    <div className="min-h-[100dvh] bg-bg text-text-primary">
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-border-subtle bg-bg/95 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+    <div className="foldera-app-surface min-h-[100dvh] bg-bg text-text-primary">
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-cyan-300/10 bg-[#02070d]/92 pt-[env(safe-area-inset-top,0px)] shadow-[0_1px_0_rgba(34,211,238,0.06)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
           <Link href="/dashboard" className="inline-flex min-h-[44px] min-w-[44px] items-center gap-3 foldera-button-radius px-1">
             <FolderaMark size="sm" decorative />
             <span className="text-sm font-black uppercase tracking-[0.12em]">Foldera</span>
@@ -73,14 +73,32 @@ export function ProductShell({
           </nav>
           <div className="flex min-h-[44px] items-center">{headerActions}</div>
         </div>
+        <nav className="mx-auto flex max-w-[1480px] gap-2 overflow-x-auto px-4 pb-3 sm:px-6 md:hidden lg:px-8" aria-label="Dashboard sections">
+          {DASHBOARD_NAV_ITEMS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                'inline-flex min-h-[36px] shrink-0 items-center whitespace-nowrap rounded-[10px] border px-3 text-[10px] font-black uppercase tracking-[0.12em] transition-colors',
+                isNavItemActive(item.panel)
+                  ? 'border-cyan-300/30 bg-cyan-300/10 text-cyan-100'
+                  : 'border-white/8 bg-white/[0.03] text-text-secondary hover:text-text-primary',
+              )}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
       </header>
 
-      <main id="main" className="mx-auto max-w-6xl px-4 pb-16 pt-24 sm:px-6 sm:pt-28">
-        <section className="border-b border-border-subtle pb-8">
-          <h1 className="text-4xl font-black tracking-tight sm:text-5xl">{title}</h1>
-          {subtitle && <p className="mt-4 max-w-3xl text-sm leading-relaxed text-text-secondary">{subtitle}</p>}
+      <main id="main" className="mx-auto max-w-[1480px] px-4 pb-16 pt-32 sm:px-6 sm:pt-32 lg:px-8">
+        <section className="relative overflow-hidden rounded-[28px] border border-cyan-300/10 bg-[#050c14]/90 px-5 py-7 shadow-[0_24px_90px_rgba(0,0,0,0.34)] sm:px-7 lg:px-8">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/55 to-transparent" aria-hidden />
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200/78">Foldera app</p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-[-0.055em] text-white sm:text-5xl">{title}</h1>
+          {subtitle && <p className="mt-4 max-w-3xl text-[15px] leading-7 text-text-secondary">{subtitle}</p>}
         </section>
-        <section className="pt-8">{children}</section>
+        <section className="pt-5 sm:pt-6">{children}</section>
       </main>
     </div>
   );

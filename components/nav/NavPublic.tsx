@@ -7,6 +7,7 @@ import { FolderaMark } from '@/components/nav/FolderaMark';
 export type NavPublicProps = {
   scrolled?: boolean;
   platformHref?: string;
+  isAuthenticated?: boolean;
 };
 
 const navLinks = [
@@ -15,7 +16,11 @@ const navLinks = [
   { label: 'Pricing', href: '/pricing' },
 ];
 
-export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavPublicProps) {
+export function NavPublic({
+  scrolled = false,
+  platformHref = '/#product',
+  isAuthenticated = false,
+}: NavPublicProps) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -40,9 +45,14 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
     scrolled || menuOpen
       ? 'border-b border-white/10 bg-[#03060bd9] shadow-[0_1px_0_rgba(34,211,238,0.08)] backdrop-blur-xl'
       : 'border-b border-white/[0.04] bg-[#03060bc4] backdrop-blur-md';
+  const primaryHref = isAuthenticated ? '/dashboard' : '/start';
+  const primaryLabel = isAuthenticated ? 'Dashboard' : 'Start free';
 
   return (
-    <nav className={`fixed inset-x-0 top-0 z-[60] pt-[env(safe-area-inset-top,0px)] transition-colors ${shellClass}`}>
+    <nav
+      aria-label="Public navigation"
+      className={`fixed inset-x-0 top-0 z-[60] pt-[env(safe-area-inset-top,0px)] transition-colors ${shellClass}`}
+    >
       <div className="mx-auto flex h-16 max-w-[1500px] items-center justify-between gap-5 px-4 sm:px-6 lg:px-8">
         <a
           href="/"
@@ -66,27 +76,29 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
         </div>
 
         <div className="hidden items-center gap-3 sm:flex">
+          {isAuthenticated ? null : (
+            <a
+              href="/login"
+              className="text-[12px] font-medium text-slate-400 transition-colors hover:text-white"
+            >
+              Sign in
+            </a>
+          )}
           <a
-            href="/login"
-            className="text-[12px] font-medium text-slate-400 transition-colors hover:text-white"
+            href={primaryHref}
+            className="inline-flex min-h-[42px] items-center gap-2 rounded-[9px] border border-cyan-300/25 bg-cyan-300 px-4 text-[12px] font-semibold text-slate-950 shadow-[0_0_22px_rgba(34,211,238,0.18)] transition-colors hover:bg-cyan-200"
           >
-            Sign in
-          </a>
-          <a
-            href="/demo"
-            className="inline-flex min-h-[42px] items-center gap-2 rounded-[9px] border border-white/18 bg-white px-4 text-[12px] font-semibold text-slate-950 shadow-[0_0_18px_rgba(255,255,255,0.10)] transition-colors hover:bg-white/90"
-          >
-            See demo
+            {primaryLabel}
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
           </a>
         </div>
 
         <div className="flex items-center gap-2 lg:hidden">
           <a
-            href="/demo"
-            className="inline-flex min-h-[38px] items-center rounded-[9px] bg-white px-3 text-[12px] font-semibold text-slate-950 shadow-[0_0_16px_rgba(255,255,255,0.10)] sm:hidden"
+            href={primaryHref}
+            className="inline-flex min-h-[38px] items-center rounded-[9px] bg-cyan-300 px-3 text-[12px] font-semibold text-slate-950 shadow-[0_0_16px_rgba(34,211,238,0.16)] sm:hidden"
           >
-            Demo
+            {isAuthenticated ? 'Dashboard' : 'Start'}
           </a>
 
           <button
@@ -143,20 +155,22 @@ export function NavPublic({ scrolled = false, platformHref = '/#product' }: NavP
                 </a>
               ))}
 
-              <a
-                href="/login"
-                onClick={() => setMenuOpen(false)}
-                className="inline-flex foldera-touch-height items-center rounded-[10px] px-3 text-sm font-medium text-slate-100 transition-colors hover:bg-white/[0.045]"
-              >
-                Sign in
-              </a>
+              {isAuthenticated ? null : (
+                <a
+                  href="/login"
+                  onClick={() => setMenuOpen(false)}
+                  className="inline-flex foldera-touch-height items-center rounded-[10px] px-3 text-sm font-medium text-slate-100 transition-colors hover:bg-white/[0.045]"
+                >
+                  Sign in
+                </a>
+              )}
 
               <a
-                href="/start"
+                href={primaryHref}
                 onClick={() => setMenuOpen(false)}
                 className="inline-flex foldera-touch-height items-center rounded-[10px] px-3 text-sm font-medium text-slate-100 transition-colors hover:bg-white/[0.045]"
               >
-                Start free
+                {primaryLabel}
               </a>
 
               <a

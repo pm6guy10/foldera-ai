@@ -2412,6 +2412,30 @@
     line-height: 1.55;
   }
 
+  .foldera-app-surface {
+    position: relative;
+    isolation: isolate;
+    overflow-x: hidden;
+    background:
+      radial-gradient(56% 42% at 72% 9%, rgba(34, 211, 238, 0.12), transparent 70%),
+      radial-gradient(44% 36% at 18% 24%, rgba(124, 58, 237, 0.09), transparent 72%),
+      linear-gradient(180deg, #010409 0%, #06111b 42%, #02050a 100%);
+  }
+
+  .foldera-app-surface::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(148, 163, 184, 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.04) 1px, transparent 1px);
+    background-size: 68px 68px;
+    mask-image: radial-gradient(ellipse 72% 56% at 50% 16%, black 12%, transparent 78%);
+    opacity: 0.55;
+  }
+
   .foldera-dashboard-stage-brief [data-testid='dashboard-brief-draft-section'] .space-y-5 > section + section {
     margin-top: clamp(10px, 1.35dvh, 16px);
   }

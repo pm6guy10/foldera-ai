@@ -137,7 +137,7 @@ function OnboardContent() {
 
   if (loadingExisting || (!isEdit && connectionState === 'loading')) {
     return (
-      <div className="min-h-[100dvh] bg-bg text-text-primary">
+      <div className="foldera-app-surface min-h-[100dvh] text-text-primary">
         <main id="main" className="mx-auto flex max-w-6xl items-center justify-center px-4 py-16 sm:px-6">
           <span className="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent" />
         </main>
@@ -148,13 +148,14 @@ function OnboardContent() {
   const connectorReady = isEdit || connectionState === 'connected';
 
   return (
-    <div className="min-h-[100dvh] bg-bg text-text-primary">
-      <main id="main" className="mx-auto flex max-w-6xl flex-col px-4 py-16 sm:px-6 sm:py-20">
-        <div className="mx-auto w-full max-w-3xl rounded-card border border-border bg-panel px-6 py-8 sm:px-10 sm:py-10">
+    <div className="foldera-app-surface min-h-[100dvh] text-text-primary">
+      <main id="main" className="mx-auto flex min-h-[100dvh] max-w-6xl flex-col justify-center px-4 py-10 sm:px-6 sm:py-14">
+        <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-[28px] border border-cyan-300/14 bg-[#050c14]/94 px-6 py-8 shadow-[0_24px_90px_rgba(0,0,0,0.44)] sm:px-10 sm:py-10">
+          <div className="accent-glow -mx-6 -mt-8 mb-8 sm:-mx-10 sm:-mt-10" />
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">
             {isEdit ? 'Edit setup' : 'Setup'}
           </p>
-          <h1 className="mt-6 text-4xl font-black tracking-tight sm:text-5xl">
+          <h1 className="mt-6 text-4xl font-semibold tracking-[-0.055em] text-white sm:text-5xl">
             {isEdit ? 'Edit your focus' : 'What matters most to you?'}
           </h1>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-text-secondary">

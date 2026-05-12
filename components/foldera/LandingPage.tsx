@@ -112,7 +112,7 @@ const heroDraft = (
   </div>
 );
 
-export function LandingPage() {
+export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -132,7 +132,11 @@ export function LandingPage() {
         <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-[#020409] to-transparent" />
       </div>
 
-      <NavPublic scrolled={scrolled} platformHref="/#how-foldera-works" />
+      <NavPublic
+        scrolled={scrolled}
+        platformHref="/#how-foldera-works"
+        isAuthenticated={isAuthenticated}
+      />
 
       <main id="main" className="relative">
         <section className="px-4 pb-12 pt-28 sm:px-6 sm:pb-14 sm:pt-32 lg:px-8 lg:pb-16">

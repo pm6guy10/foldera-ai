@@ -79,12 +79,13 @@ function StartContent() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-bg text-text-primary">
+    <div className="foldera-app-surface min-h-[100dvh] text-text-primary">
       <NavAuthMinimal variant="start" />
-      <main id="main" className="mx-auto flex max-w-6xl flex-col px-4 py-16 sm:px-6 sm:py-20">
-        <div className="mx-auto w-full max-w-2xl rounded-card border border-border bg-panel px-6 py-8 sm:px-10 sm:py-10">
+      <main id="main" className="mx-auto flex min-h-[calc(100dvh-4rem)] max-w-6xl flex-col justify-center px-4 py-10 sm:px-6 sm:py-14">
+        <div className="mx-auto w-full max-w-2xl overflow-hidden rounded-[28px] border border-cyan-300/14 bg-[#050c14]/94 px-6 py-8 shadow-[0_24px_90px_rgba(0,0,0,0.44)] sm:px-10 sm:py-10">
+          <div className="accent-glow -mx-6 -mt-8 mb-8 sm:-mx-10 sm:-mt-10" />
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Finished work when it is safe</p>
-          <h1 className="mt-6 text-4xl font-black tracking-tight sm:text-5xl">Get started with Foldera</h1>
+          <h1 className="mt-6 text-4xl font-semibold tracking-[-0.055em] text-white sm:text-5xl">Get started with Foldera</h1>
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-text-secondary">
             One secure sign-in. Foldera reads your connected context and shows finished work or the exact blocker.
           </p>
