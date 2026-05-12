@@ -119,7 +119,7 @@ export function RightPanel({
           )}
         </div>
 
-        <div className="foldera-panel foldera-dashboard-right-rail-panel h-[200px] p-5">
+        <div className="foldera-panel foldera-dashboard-right-rail-panel foldera-dashboard-upload-panel h-[200px] p-5">
           <div className="flex h-full items-center justify-center rounded-[20px] border border-dashed border-border bg-panel-raised px-5 text-center">
             <div>
               <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-border bg-panel text-text-muted">

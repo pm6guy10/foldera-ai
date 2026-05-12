@@ -1,6 +1,7 @@
 'use client';
 
 import type { ComponentProps, ReactNode } from 'react';
+import { Bell } from 'lucide-react';
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
 import { type DashboardPanelKey } from '@/components/foldera/DashboardSidebar';
 
@@ -82,7 +83,7 @@ export function DashboardMobileLayout({
     >
       <div className="flex h-[100dvh] min-h-0 flex-col">
         <header
-          className="z-20 shrink-0 border-b border-white/[0.07] bg-[#030a12]/94 px-4 pb-3 backdrop-blur"
+          className="foldera-dashboard-mobile-header z-20 shrink-0 border-b border-white/[0.07] bg-[#030a12]/94 px-4 pb-3 backdrop-blur"
           style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
         >
           <p className="foldera-eyebrow">{dateLabel}</p>
@@ -102,8 +103,17 @@ export function DashboardMobileLayout({
                 Foldera keeps the current artifact and support panels in one responsive dashboard surface.
               </p>
             </div>
-            <div className="shrink-0 rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-3 py-1.5 text-xs font-semibold text-cyan-100">
-              {activeSidebarLabel}
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                aria-label="Notifications"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-cyan-200/14 bg-white/[0.04] text-cyan-100"
+              >
+                <Bell className="h-4 w-4" aria-hidden />
+              </button>
+              <div className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-3 py-1.5 text-xs font-semibold text-cyan-100">
+                {activeSidebarLabel}
+              </div>
             </div>
           </div>
 
@@ -111,7 +121,7 @@ export function DashboardMobileLayout({
           {statusNoticeNode ? <div className="mt-4">{statusNoticeNode}</div> : null}
         </header>
 
-        <div className="min-h-0 flex-1 overflow-hidden px-4 py-3 pb-[calc(74px+env(safe-area-inset-bottom))]">
+        <div className="foldera-dashboard-mobile-stage min-h-0 flex-1 overflow-hidden px-4 py-3">
           {isTodayPanel ? (
             hasAction ? (
               <div data-testid="dashboard-panel-today" className="h-full min-h-0">
@@ -168,8 +178,7 @@ export function DashboardMobileLayout({
         </div>
 
         <nav
-          className="fixed inset-x-0 bottom-0 z-30 border-t border-white/[0.08] bg-[#030a12]/96 px-3 pt-3 backdrop-blur"
-          style={{ paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))' }}
+          className="foldera-dashboard-mobile-nav z-30 shrink-0 border-t border-white/[0.08] bg-[#030a12]/96 px-3 pt-3 backdrop-blur"
           aria-label="Dashboard sections"
         >
           <div className="grid grid-cols-4 gap-2">

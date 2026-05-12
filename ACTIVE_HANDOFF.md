@@ -1,38 +1,37 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-12 09:30 PT
+Last updated: 2026-05-12 10:07 PT
 Last known production SHA: 0ea1c9a
-Last completed commit: d654c64
-Current slice: Dashboard/UI CI-parity proof rule
-Current mode: Dashboard repair is pushed; permanent proof ladder is being encoded so local proof must match CI.
+Last completed commit: 02e7e83
+Current slice: Dashboard visual CI repair follow-up
+Current mode: Local proof matches the affected dashboard/UI CI lane; commit, push, and GitHub CI proof pending.
 
 ## Current product truth
 
 - `/dashboard` keeps the full-screen authenticated app shell shipped in `0ea1c9a`: desktop fills the viewport, mobile uses the real viewport, and Today/Sources/Recent Work/Account stay in-shell.
-- Dashboard CI repair commit `d654c64` is pushed and restores the authenticated surfaces required by CI: `dashboard-empty-state`, notification affordances, neutral non-owner account copy, write-document support text, and post-skip empty-state behavior.
-- Local proof for `d654c64` matched the affected dashboard/UI CI lane: build, lint, large-file-splits, dashboard-navigation, and authenticated-routes passed.
-- GitHub API truth for `d654c64` showed `CI`, `Health Gate`, `Production E2E`, `Deploy to Vercel`, and `semgrep` green; one duplicate `CI`-named run was still in progress when the doctrine fix started.
-- New permanent rule: for every seam, proof must include the affected CI lane. Local proof that skips the CI lane is not proof.
-- For dashboard/UI work, the permanent local gate is `npm run build`, `npm run lint`, `large-file-splits`, `dashboard-navigation`, and `authenticated-routes`.
-- Current health is non-blocking: Gmail fresh `4h ago`, Outlook fresh `4h ago`, `Mail cursors current`, and last generation `do_nothing`.
+- `app/dashboard/page.tsx` is 942 lines, below the 1000-line large-file threshold.
+- The authenticated dashboard lane now sees the required surfaces: `dashboard-empty-state`, mobile and desktop `Notifications` buttons, neutral non-owner account copy, write-document support/preview behavior, and post-skip empty state.
+- Mobile dashboard fit is covered in `dashboard-navigation`: the card/footer stay above the in-shell bottom nav with no fake phone wrapper or horizontal overflow.
+- Current health is non-blocking: Gmail fresh `5h ago`, Outlook fresh `5h ago`, `Mail cursors current`, and last generation `do_nothing`.
 
 ## Verified proof
 
-- health: PASS `npm run health` -> `RESULT: 0 FAILING`
 - build: PASS `npm run build`
 - lint: PASS `npm run lint`
-- doctrine guard: PASS `npx vitest run scripts/__tests__/brandon-doctrine.test.ts tests/config/__tests__/docs-source-of-truth.test.ts --reporter=verbose`
-- dashboard CI lane already proved for `d654c64`: PASS `npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list` (`57/57`)
+- large-file split: PASS `npx vitest run tests/config/__tests__/large-file-splits.test.ts --reporter=verbose`
+- dashboard CI lane: PASS `npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list` (`57/57`)
+- health: PASS `npm run health` -> `RESULT: 0 FAILING`
 
 ## Remaining defects in current slice
 
-1. Push the CI-parity doctrine guard and verify GitHub CI green on the new head.
-2. Public-nav auth awareness remains deferred and must not be mixed into dashboard/UI proof-rule work.
+1. Push this dashboard visual CI repair follow-up.
+2. Verify GitHub CI green on the new commit.
+3. Public-nav auth awareness remains deferred and must not be mixed into this dashboard repair.
 
 ## Next exact move
 
 Start here:
-1. Commit and push the dashboard/UI CI-parity proof rule.
+1. Commit and push the dashboard visual CI repair follow-up.
 2. Verify GitHub CI green on the new commit.
 3. After CI is green, resume customer-visible product seams; next priority remains persisted artifact path unless production deployment proof is explicitly selected.
 
@@ -49,12 +48,12 @@ Start here:
 
 ## Quarantined local drift
 
-- Stash `quarantine-dashboard-current-brief-mobile-css` preserves an uncommitted mobile current-brief stylesheet tweak that is outside this doctrine slice.
+- Stashes remain for older dashboard experiments; do not apply them into this seam unless a current proof lane requires them.
 
 ## External blockers
 
-- None for this doctrine repair; GitHub CI is the required final proof.
+- None for this dashboard repair; GitHub CI is the required final proof.
 
 ## Stop condition
 
-Stop only when GitHub CI passes on the dashboard/UI CI-parity proof-rule commit.
+Stop only when GitHub CI passes on the dashboard visual CI repair follow-up commit.

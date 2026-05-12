@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { Bell } from 'lucide-react';
 import { RightPanel, type SourceTrailItem } from '@/components/foldera/RightPanel';
 import {
   DashboardSidebar,
@@ -60,8 +61,8 @@ export function DashboardDesktopStage({
             onSelectPanel={selectPanel}
           />
 
-          <section className="flex h-[100dvh] min-h-0 min-w-0 flex-col border-l border-white/[0.07]">
-            <header className="shrink-0 border-b border-white/[0.07] px-7 py-4 2xl:px-8 2xl:py-5">
+          <section className="foldera-dashboard-main-column flex h-[100dvh] min-h-0 min-w-0 flex-col border-l border-white/[0.07]">
+            <header className="foldera-dashboard-stage-header shrink-0 border-b border-white/[0.07] px-7 py-4 2xl:px-8 2xl:py-5">
               <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#9AA7B6]">
                 {dateLabel}
               </p>
@@ -81,13 +82,22 @@ export function DashboardDesktopStage({
                     Foldera keeps Today, sources, history, and account inside one working surface so the dashboard stays grounded in the same artifact context.
                   </p>
                 </div>
-                <div className="shrink-0 rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-4 py-2 text-sm font-semibold text-cyan-100">
-                  {activeSidebarLabel}
+                <div className="flex shrink-0 items-center gap-3">
+                  <button
+                    type="button"
+                    aria-label="Notifications"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-cyan-200/14 bg-white/[0.04] text-cyan-100"
+                  >
+                    <Bell className="h-4 w-4" aria-hidden />
+                  </button>
+                  <div className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-4 py-2 text-sm font-semibold text-cyan-100">
+                    {activeSidebarLabel}
+                  </div>
                 </div>
               </div>
             </header>
 
-            <div className="flex min-h-0 flex-1 flex-col px-7 py-4 2xl:px-8 2xl:py-5">
+            <div className="foldera-dashboard-stage-body flex min-h-0 flex-1 flex-col px-7 py-4 2xl:px-8 2xl:py-5">
               {degradedStateNode ? <div className="mb-4">{degradedStateNode}</div> : null}
 
               <div className="min-h-0 flex-1">{desktopWorkspaceNode}</div>

@@ -2423,6 +2423,14 @@
     top: clamp(24px, 3.8dvh, 38px);
   }
 
+  .foldera-dashboard-stage-body {
+    padding-block: clamp(12px, 1.8dvh, 20px);
+  }
+
+  .foldera-dashboard-right-rail {
+    gap: clamp(10px, 1.5dvh, 16px);
+  }
+
   .foldera-dashboard-loading-brief {
     display: flex;
     min-height: 0;
@@ -2486,6 +2494,16 @@
   }
 
   @media (max-width: 640px) {
+    .foldera-dashboard-mobile-stage {
+      padding-inline: clamp(10px, 3.8vw, 16px);
+      padding-block: clamp(8px, 1.3dvh, 12px);
+    }
+
+    .foldera-dashboard-mobile-nav {
+      padding-top: clamp(7px, 1.1dvh, 12px);
+      padding-bottom: calc(clamp(7px, 1.1dvh, 12px) + env(safe-area-inset-bottom));
+    }
+
     .foldera-dashboard-current-brief > div > section.grid {
       grid-template-columns: minmax(0, 1fr);
       gap: 0.875rem;
@@ -2497,12 +2515,125 @@
 
     .foldera-dashboard-current-brief > div > section:first-child h2 {
       max-width: 100%;
-      font-size: 28px;
+      font-size: clamp(22px, 6.9vw, 28px);
       line-height: 1.14;
     }
 
     .foldera-dashboard-current-brief .foldera-dashboard-artifact-body {
       max-height: none;
+    }
+  }
+
+  @media (max-height: 860px) {
+    .foldera-dashboard-stage-header {
+      padding-block: clamp(10px, 1.55dvh, 16px);
+    }
+
+    .foldera-dashboard-stage-header h1 {
+      font-size: clamp(27px, 2.1vw, 34px);
+    }
+
+    .foldera-dashboard-stage-header p:last-child {
+      margin-top: 0.4rem;
+      line-height: 1.45;
+    }
+
+    .foldera-dashboard-stage-body {
+      padding-block: clamp(10px, 1.55dvh, 16px);
+    }
+
+    .foldera-dashboard-stage-brief > header {
+      height: clamp(48px, 6.4dvh, 58px);
+    }
+
+    .foldera-dashboard-stage-brief > div.absolute {
+      top: clamp(48px, 6.4dvh, 58px);
+      bottom: clamp(80px, 10.5dvh, 98px);
+      padding-block: clamp(14px, 1.8dvh, 20px);
+    }
+
+    .foldera-dashboard-stage-brief > footer {
+      height: clamp(80px, 10.5dvh, 98px);
+    }
+
+    .foldera-dashboard-stage-brief [data-testid='dashboard-brief-directive-section'] h2 {
+      font-size: clamp(25px, 2.25vw, 34px);
+      line-height: 1.12;
+    }
+
+    .foldera-dashboard-stage-brief [data-testid='dashboard-brief-why-section'] p:last-child {
+      font-size: clamp(14px, 1.08vw, 17px);
+      line-height: 1.45;
+    }
+
+    .foldera-dashboard-stage-brief [data-testid='dashboard-brief-draft-section'] > div:last-child > div {
+      font-size: clamp(13px, 0.95vw, 16px);
+      line-height: 1.45;
+    }
+
+    .foldera-dashboard-stage-brief [data-testid='dashboard-brief-directive-section'],
+    .foldera-dashboard-stage-brief [data-testid='dashboard-brief-why-section'],
+    .foldera-dashboard-stage-brief [data-testid='dashboard-brief-draft-section'] {
+      grid-template-columns: clamp(58px, 5.5vw, 92px) minmax(0, 1fr);
+    }
+
+    .foldera-dashboard-stage-brief [data-testid='dashboard-brief-why-section'],
+    .foldera-dashboard-stage-brief [data-testid='dashboard-brief-draft-section'] {
+      margin-top: clamp(10px, 1.45dvh, 18px);
+      padding-top: clamp(10px, 1.45dvh, 18px);
+    }
+
+    .foldera-dashboard-stage-brief [data-testid='dashboard-brief-source-section'] {
+      margin-top: clamp(10px, 1.35dvh, 16px);
+      padding-top: clamp(10px, 1.35dvh, 16px);
+    }
+
+    .foldera-dashboard-stage-brief footer > div:first-child {
+      top: clamp(24px, 3.4dvh, 34px);
+      font-size: clamp(12px, 0.9vw, 14px);
+    }
+
+    .foldera-dashboard-stage-brief footer > div:nth-child(2) {
+      top: clamp(18px, 2.9dvh, 26px);
+    }
+
+    .foldera-dashboard-stage-foot-btn {
+      height: 44px !important;
+      font-size: 13px;
+    }
+
+    .foldera-dashboard-stage-approve-btn {
+      height: 48px !important;
+      font-size: 15px;
+    }
+
+    .foldera-dashboard-right-rail {
+      padding-block: clamp(10px, 1.55dvh, 16px);
+    }
+
+    .foldera-dashboard-right-rail .foldera-dashboard-upload-panel {
+      height: clamp(140px, 17dvh, 180px);
+      padding: 1rem;
+    }
+  }
+
+  @media (max-height: 740px) {
+    .foldera-dashboard-stage-header p:last-child {
+      display: none;
+    }
+
+    .foldera-dashboard-right-rail .foldera-dashboard-upload-panel {
+      display: none;
+    }
+  }
+
+  @media (max-width: 640px) and (max-height: 760px) {
+    .foldera-dashboard-mobile-header p:last-child {
+      display: none;
+    }
+
+    .foldera-dashboard-mobile-header {
+      padding-bottom: 0.65rem;
     }
   }
 

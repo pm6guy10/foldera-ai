@@ -320,6 +320,38 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     expect(viewportFit.htmlScrollHeight).toBeLessThanOrEqual(viewportFit.htmlClientHeight + 1);
     expect(viewportFit.bodyScrollHeight).toBeLessThanOrEqual(viewportFit.bodyClientHeight + 1);
 
+    const appFit = await page.evaluate(() => {
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
+      const card = document.querySelector('.foldera-dashboard-stage-brief') as HTMLElement | null;
+      const footer = card?.querySelector('footer') as HTMLElement | null;
+      const rightRail = document.querySelector('.foldera-dashboard-right-rail') as HTMLElement | null;
+      const upload = document.querySelector('.foldera-dashboard-upload-panel') as HTMLElement | null;
+      const cardBox = card?.getBoundingClientRect();
+      const footerBox = footer?.getBoundingClientRect();
+      const railBox = rightRail?.getBoundingClientRect();
+      const uploadBox = upload?.getBoundingClientRect();
+      return {
+        viewportHeight,
+        viewportWidth,
+        cardHeight: cardBox?.height ?? 0,
+        cardWidth: cardBox?.width ?? 0,
+        cardBottom: cardBox?.bottom ?? 0,
+        footerBottom: footerBox?.bottom ?? 0,
+        railBottom: railBox?.bottom ?? 0,
+        uploadBottom: uploadBox?.bottom ?? 0,
+        uploadVisible: upload ? getComputedStyle(upload).display !== 'none' : false,
+      };
+    });
+    expect(appFit.cardWidth).toBeGreaterThan(appFit.viewportWidth * 0.55);
+    expect(appFit.cardHeight).toBeGreaterThan(appFit.viewportHeight * 0.62);
+    expect(appFit.cardBottom).toBeLessThanOrEqual(appFit.viewportHeight + 1);
+    expect(appFit.footerBottom).toBeLessThanOrEqual(appFit.viewportHeight + 1);
+    expect(appFit.railBottom).toBeLessThanOrEqual(appFit.viewportHeight + 1);
+    if (appFit.uploadVisible) {
+      expect(appFit.uploadBottom).toBeLessThanOrEqual(appFit.viewportHeight + 1);
+    }
+
     await expect(page.getByTestId('dashboard-figma-card-frame')).toHaveCount(0);
     await expect(page.getByTestId('dashboard-brief-directive-section')).toContainText(/Finished work/i);
     await expect(page.getByTestId('dashboard-brief-why-section')).toContainText(/Why it matters/i);
@@ -600,6 +632,35 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     expect(layout.bodyScrollHeight).toBeLessThanOrEqual(layout.bodyClientHeight + 1);
     expect(layout.shellWidth).toBeGreaterThanOrEqual(389);
     expect(layout.shellHeight).toBeGreaterThanOrEqual(844);
+
+    const mobileFit = await page.evaluate(() => {
+      const shell = document.querySelector('[data-testid="dashboard-route-shell"]') as HTMLElement | null;
+      const stage = document.querySelector('.foldera-dashboard-mobile-stage') as HTMLElement | null;
+      const nav = document.querySelector('.foldera-dashboard-mobile-nav') as HTMLElement | null;
+      const card = document.querySelector('.foldera-dashboard-current-brief') as HTMLElement | null;
+      const cardFooter = card?.querySelector('footer') as HTMLElement | null;
+      const shellBox = shell?.getBoundingClientRect();
+      const stageBox = stage?.getBoundingClientRect();
+      const navBox = nav?.getBoundingClientRect();
+      const cardBox = card?.getBoundingClientRect();
+      const footerBox = cardFooter?.getBoundingClientRect();
+      return {
+        viewportHeight: window.innerHeight,
+        shellBottom: shellBox?.bottom ?? 0,
+        stageBottom: stageBox?.bottom ?? 0,
+        navTop: navBox?.top ?? 0,
+        navBottom: navBox?.bottom ?? 0,
+        cardHeight: cardBox?.height ?? 0,
+        cardBottom: cardBox?.bottom ?? 0,
+        footerBottom: footerBox?.bottom ?? 0,
+      };
+    });
+    expect(mobileFit.shellBottom).toBeLessThanOrEqual(mobileFit.viewportHeight + 1);
+    expect(mobileFit.navBottom).toBeLessThanOrEqual(mobileFit.viewportHeight + 1);
+    expect(mobileFit.stageBottom).toBeLessThanOrEqual(mobileFit.navTop + 1);
+    expect(mobileFit.cardHeight).toBeGreaterThan(540);
+    expect(mobileFit.cardBottom).toBeLessThanOrEqual(mobileFit.navTop + 1);
+    expect(mobileFit.footerBottom).toBeLessThanOrEqual(mobileFit.navTop + 1);
   });
 
   test('mobile bottom nav swaps dashboard panels in-shell', async ({ page }) => {

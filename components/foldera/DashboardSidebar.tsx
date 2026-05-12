@@ -307,14 +307,14 @@ export function DashboardSidebar({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-text-primary">{userName}</p>
-                <p className="mt-0.5 text-xs text-text-muted">Workspace Owner</p>
+                <p className="mt-0.5 text-xs text-text-muted">Signed in</p>
               </div>
               <button
                 type="button"
                 className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-border bg-panel text-text-muted hover:text-text-primary"
                 aria-expanded={accountOpen}
                 aria-haspopup={preview ? undefined : 'menu'}
-                aria-label="Account menu"
+                aria-label="Account menu, open dashboard menu"
                 onClick={() => {
                   if (!preview) setAccountOpen((open) => !open);
                 }}
@@ -420,7 +420,7 @@ export function DashboardSidebar({
               className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] border border-border bg-panel text-text-muted hover:text-text-primary"
               aria-expanded={accountOpen}
               aria-haspopup={preview ? undefined : 'menu'}
-              aria-label="Account menu"
+              aria-label="Account menu, open dashboard menu"
               onClick={() => {
                 if (!preview) setAccountOpen((open) => !open);
               }}
