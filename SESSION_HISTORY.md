@@ -6321,3 +6321,17 @@ pm run build.
 - What changed: Closed the remaining deploy-status race by making Production E2E poll `https://www.foldera.ai/api/health` until the live production SHA equals the workflow SHA before running public route assertions. This keeps route failures tied to the commit under test instead of a previous deployment.
 - Verification: Live production `/api/health` reported `4717026` before this patch. `npm run test:prod:ci` passed locally against live production (`33 passed`, `28 skipped`) after the mobile auth gating fix; push/CI/deploy proof remains required for this workflow follow-up.
 - Unresolved issues: Push, GitHub CI, Production E2E, and deploy SHA proof are still required for this follow-up commit.
+
+## 2026-05-12 - Production Playwright config keeps deploy smoke anonymous
+- MODE: Frontend surface contract production-proof follow-up only.
+- Files changed: `playwright.prod.config.ts`, `.foldera-contract.json`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Made the production Playwright config load `tests/production/auth-state.json` only when `FOLDERA_INCLUDE_AUTH_PROD_SMOKE=true`. This aligns the browser context with the workflow contract that deploy/scheduled Production E2E is public-only by default.
+- Verification: Previous live production proof on `38cc996` reached `/api/health`; `npm run test:prod:ci` had passed locally against live production after the mobile auth gating change. Push/CI/deploy proof remains required for this config follow-up.
+- Unresolved issues: Push, GitHub CI, Production E2E, and deploy SHA proof are still required for this follow-up commit.
+
+## 2026-05-12 - Production smoke distinguishes nav Start free from main CTA copy
+- MODE: Frontend surface contract production-proof follow-up only.
+- Files changed: `tests/production/smoke.spec.ts`, `.foldera-contract.json`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Updated the production smoke `Get started free` assertion to scope to `main a[href="/start"]`, matching the already-green local public route test and preserving the new public-nav contract where the header CTA is `Start free`.
+- Verification: The failing assertion was reproduced locally against production: the first visible `/start` link was the nav `Start free`, not the main CTA. Push/CI/deploy proof remains required after the scoped assertion update.
+- Unresolved issues: Push, GitHub CI, Production E2E, and deploy SHA proof are still required for this follow-up commit.

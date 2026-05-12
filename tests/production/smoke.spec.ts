@@ -168,9 +168,9 @@ test.describe('Public: Landing page', () => {
     await page.goto('/');
     // This copy is intentionally locked and production-only. Scope the assertion to
     // the real landing /start CTAs instead of any generic page text that might move.
-    const startLinks = page.locator('a[href="/start"]:visible');
-    await expect(startLinks.first()).toBeVisible();
-    await expect(startLinks.first()).toHaveText('Get started free');
+    const startLinks = page.locator('main a[href="/start"]:visible');
+    await expect(startLinks).toHaveCount(2);
+    await expect(startLinks).toHaveText(['Get started free', 'Get started free']);
   });
 
   test('Get Started button links to /start', async ({ page }) => {

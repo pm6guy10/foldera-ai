@@ -1,10 +1,10 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-12 12:04 PT
-Last known production SHA: 4717026
-Last completed commit: 4717026
+Last updated: 2026-05-12 12:25 PT
+Last known production SHA: 38cc996
+Last completed commit: 38cc996
 Current slice: Frontend surface contract A-Z
-Current mode: Frontend surface contract is live; production E2E monitor race follow-up is locally proven and ready to push.
+Current mode: Frontend surface contract is live; production E2E public-nav assertion follow-up is locally proven and ready to push.
 
 ## Current product truth
 
@@ -13,9 +13,11 @@ Current mode: Frontend surface contract is live; production E2E monitor race fol
 - Legacy app surfaces that use `ProductShell` now share the same matte Foldera app background, wider app-width shell, cyan-edged header card, and mobile dashboard-section rail.
 - Auth/onboarding surfaces (`/login`, `/start`, `/onboard`) now use the same premium matte app surface and centered cards without changing OAuth, onboarding, billing, source freshness, or outbound email contracts.
 - Public/mobile route proof is green locally for landing, start, login, pricing, try, blog/legal/about/security/status/founder; authenticated route proof is green for dashboard/settings/onboarding/briefings/signals.
-- Production deploy proof reached `4717026` on `www.foldera.ai`; the remaining red was a Production E2E monitor race where the deploy-status workflow started before `/api/health` reported the target SHA.
+- Production deploy proof reached `38cc996` on `www.foldera.ai`; the remaining red is that `playwright.prod.config.ts` still loads checked-in production auth state globally whenever the file exists, even when deploy Production E2E is meant to be public-only.
 - Production mobile auth checks now obey the same manual `FOLDERA_INCLUDE_AUTH_PROD_SMOKE=true` flag as the rest of production E2E; automatic deploy production E2E is public-only again.
 - Production E2E now waits for `/api/health` to report the exact workflow SHA before running public route assertions, so deploy-status races fail at the SHA gate instead of producing ambiguous route-test reds.
+- Production Playwright config now uses stored auth state only when `FOLDERA_INCLUDE_AUTH_PROD_SMOKE=true`, keeping deploy/scheduled production smoke anonymous by default.
+- Production smoke now scopes locked `Get started free` copy to the main landing CTAs, while public nav remains `Start free` per the new auth-aware nav contract.
 - Current health is non-blocking: Gmail fresh `6h ago`, Outlook fresh `6h ago`, `Mail cursors current`, and last generation `do_nothing`.
 
 ## Verified proof
@@ -33,14 +35,14 @@ Current mode: Frontend surface contract is live; production E2E monitor race fol
 
 ## Remaining defects in current slice
 
-1. Push the production E2E monitor race follow-up.
+1. Push the production E2E public-nav assertion follow-up.
 2. Verify GitHub CI green on the new commit.
 3. Verify deploy/production SHA once Vercel promotes the follow-up commit.
 
 ## Next exact move
 
 Start here:
-1. Commit and push the production E2E monitor race follow-up.
+1. Commit and push the production E2E public-nav assertion follow-up.
 2. Verify GitHub CI green on the new commit.
 3. Verify production deploy SHA after Vercel promotion.
 4. Then return to the money-loop backlog; do not reopen dashboard/app-fit unless fresh proof breaks it.

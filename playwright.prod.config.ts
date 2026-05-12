@@ -3,7 +3,8 @@ import path from 'node:path';
 import { defineConfig } from '@playwright/test';
 
 const authPath = path.join(__dirname, 'tests/production/auth-state.json');
-const useAuthState = fs.existsSync(authPath);
+const includeAuthenticatedProdSmoke = process.env.FOLDERA_INCLUDE_AUTH_PROD_SMOKE === 'true';
+const useAuthState = includeAuthenticatedProdSmoke && fs.existsSync(authPath);
 
 export default defineConfig({
   testDir: './tests/production',
