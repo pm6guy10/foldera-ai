@@ -16,7 +16,9 @@
     "components/nav/NavPublic.tsx",
     "components/foldera/LandingPage.tsx",
     "components/dashboard/ProductShell.tsx",
-    "tests/e2e/public-routes.spec.ts"
+    "tests/e2e/public-routes.spec.ts",
+    "tests/production/mobile-prod-layout.spec.ts",
+    "tests/production/mobile-journey.spec.ts"
   ],
   "forbidden_file_patterns": [
     "app/api/**",
@@ -31,13 +33,13 @@
     "supabase/migrations/**",
     "app/api/stripe/**"
   ],
-  "allowed_files_raw": "`.foldera-contract.json`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`, `app/page.tsx`, `app/globals.css`, `app/login/login-inner.tsx`, `app/start/page.tsx`, `app/onboard/page.tsx`, `components/nav/NavPublic.tsx`, `components/foldera/LandingPage.tsx`, `components/dashboard/ProductShell.tsx`, `tests/e2e/public-routes.spec.ts`",
+  "allowed_files_raw": "`.foldera-contract.json`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`, `app/page.tsx`, `app/globals.css`, `app/login/login-inner.tsx`, `app/start/page.tsx`, `app/onboard/page.tsx`, `components/nav/NavPublic.tsx`, `components/foldera/LandingPage.tsx`, `components/dashboard/ProductShell.tsx`, `tests/e2e/public-routes.spec.ts`, `tests/production/mobile-prod-layout.spec.ts`, `tests/production/mobile-journey.spec.ts`",
   "forbidden_files_raw": "`app/api/**`, `app/dashboard/page.tsx`, dashboard app-fit components, `lib/**`, `supabase/migrations/**`, `app/api/stripe/**`, paid generation routes, outbound email paths, schema migrations, destructive DB actions",
   "required_local_proof": "npm run build; npm run lint; npx vitest run tests/config/__tests__/large-file-splits.test.ts --reporter=verbose; npx playwright test tests/e2e/public-routes.spec.ts --reporter=list; npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list; npx playwright test tests/e2e/authenticated-routes.spec.ts --reporter=list; npx playwright test tests/e2e/mobile-visual-qa.spec.ts --reporter=list; npm run health",
   "required_product_proof": "Landing, auth/onboarding, legacy app/settings/account surfaces, and mobile-critical routes share the Foldera visual/app contract; logged-out landing nav shows Sign in + Start free; logged-in landing nav shows Dashboard instead of Sign in; shipped dashboard app-fit remains green.",
   "required_browser_proof": "public-routes, dashboard-navigation, authenticated-routes, and mobile-visual-qa Playwright lanes plus proof-only screenshots outside the repo.",
   "acceptance_condition": "All main user-facing surfaces share one Foldera visual/app contract, public nav auth behavior is proven, dashboard app-fit remains intact, and build/lint/health are green.",
-  "stop_condition": "Stop if build, lint, public-routes, dashboard-navigation, authenticated-routes, mobile-visual-qa, health, push, or GitHub CI fails; do not broaden into backend/API, source freshness, paid generation, outbound email, Stripe, schema, or destructive DB work.",
+  "stop_condition": "Stop if build, lint, public-routes, dashboard-navigation, authenticated-routes, mobile-visual-qa, public production smoke, health, push, or GitHub CI fails; do not broaden into backend/API, source freshness, paid generation, outbound email, Stripe, schema, or destructive DB work.",
   "source_truth_file": "ACTIVE_HANDOFF.md",
   "source_truth_finding": "Public-nav auth awareness was deferred after the dashboard app-fit seam and A-Z route-fit work was next.",
   "required_closure_update": "Update ACTIVE_HANDOFF.md and append SESSION_HISTORY.md with the frontend surface contract receipt and proof results.",

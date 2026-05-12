@@ -30,7 +30,9 @@ function productionAuthStateReady(): boolean {
   }
 }
 
-const describeAuth = productionAuthStateReady() ? test.describe : test.describe.skip;
+const includeAuthenticatedProdSmoke = process.env.FOLDERA_INCLUDE_AUTH_PROD_SMOKE === 'true';
+const describeAuth =
+  includeAuthenticatedProdSmoke && productionAuthStateReady() ? test.describe : test.describe.skip;
 
 const SHOT_ROOT = path.join(__dirname, 'screenshots', 'mobile-prod');
 

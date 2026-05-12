@@ -6307,3 +6307,10 @@ pm run build.
 - Verification: `npm run build` passed. `npm run lint` passed. `npx vitest run tests/config/__tests__/large-file-splits.test.ts --reporter=verbose` passed. `npx playwright test tests/e2e/public-routes.spec.ts --reporter=list` passed (`52/52`) with logged-out and logged-in public-nav proof. `PLAYWRIGHT_WEB_PORT=3011 npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list` passed (`19/19`). `PLAYWRIGHT_WEB_PORT=3012 npx playwright test tests/e2e/authenticated-routes.spec.ts --reporter=list` passed (`38/38`). `PLAYWRIGHT_WEB_PORT=3013 npx playwright test tests/e2e/mobile-visual-qa.spec.ts --reporter=list` passed (`11/11`). `npm run health` returned `RESULT: 0 FAILING`.
 - Screenshots: Captured proof-only images outside the repo at `%TEMP%/foldera-surface-contract-proof` for landing desktop/mobile, login mobile, start desktop, authenticated dashboard desktop/mobile, and settings mobile.
 - Unresolved issues: GitHub CI and deploy/production SHA proof remain pending until this commit is pushed.
+
+## 2026-05-12 - Production E2E mobile auth monitor obeys public-only deploy contract
+- MODE: Frontend surface contract proof-harness follow-up only.
+- Files changed: `.foldera-contract.json`, `tests/production/mobile-prod-layout.spec.ts`, `tests/production/mobile-journey.spec.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Fixed the post-deploy Production E2E red by making the production mobile authenticated screenshot/journey checks obey `FOLDERA_INCLUDE_AUTH_PROD_SMOKE=true`, matching the existing deploy workflow contract that automatic production E2E is public-only. Manual authenticated production mobile proof remains available when explicitly enabled.
+- Verification: `npm run test:prod:ci` passed (`33 passed`, `28 skipped`) against live production. `npm run lint` passed. `npm run build` passed. `npm run health` returned `RESULT: 0 FAILING` with Gmail fresh `6h ago`, Outlook fresh `6h ago`, mail cursors current, and last generation `do_nothing`.
+- Unresolved issues: Push, GitHub CI, and deploy SHA proof are still required for this follow-up commit.

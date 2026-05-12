@@ -1,7 +1,7 @@
 /**
  * End-to-end mobile journey on production (real flow, screenshots, overflow).
  * Viewport 412×915 primary; 390×844 secondary.
- * Requires tests/production/auth-state.json for signed-in steps (skipped if missing/expired).
+ * Signed-in steps are manual-only and require FOLDERA_INCLUDE_AUTH_PROD_SMOKE=true.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -30,7 +30,9 @@ function productionAuthStateReady(): boolean {
   }
 }
 
-const describeAuth = productionAuthStateReady() ? test.describe : test.describe.skip;
+const includeAuthenticatedProdSmoke = process.env.FOLDERA_INCLUDE_AUTH_PROD_SMOKE === 'true';
+const describeAuth =
+  includeAuthenticatedProdSmoke && productionAuthStateReady() ? test.describe : test.describe.skip;
 
 const SHOT_ROOT = path.join(__dirname, 'screenshots', 'mobile-journey');
 
