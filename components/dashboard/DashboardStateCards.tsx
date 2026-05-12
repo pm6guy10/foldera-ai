@@ -1,7 +1,7 @@
 export function DashboardLoadingCard() {
   return (
     <article
-      className="foldera-dashboard-brief-card foldera-brief-shell h-full w-full overflow-hidden"
+      className="foldera-dashboard-brief-card foldera-brief-shell foldera-dashboard-loading-brief h-full w-full overflow-hidden"
       data-testid="dashboard-loading-card"
     >
       <header className="flex items-center justify-between border-b border-white/[0.028] px-5 py-4 sm:px-6">

@@ -1,54 +1,54 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-12 07:23 PT
-Last known production SHA: f387d93
-Last completed commit: a40f355
-Current slice: Dashboard visual acceptance
-Current mode: `/dashboard` is locally proven as the real app shell; public-nav auth proof is intentionally deferred
+Last updated: 2026-05-12 09:10 PT
+Last known production SHA: 0ea1c9a
+Last completed commit: 0ea1c9a
+Current slice: Dashboard CI repair for visual acceptance seam
+Current mode: Local proof now matches the affected CI dashboard/UI lane; commit/push and GitHub CI proof pending
 
 ## Current product truth
 
-- `/dashboard` now renders as the actual post-login app surface instead of a centered mock frame: full viewport, stable left rail, dominant center artifact, and aligned right support rail.
-- Mobile `/dashboard` now uses the real viewport with no fake phone shell or status bar; the bottom nav swaps Today, Sources, Recent Work, and Account in-shell.
-- The center stage no longer falls back to a dead loading box. Loading uses a Daily Brief skeleton, daily-value still renders the existing slate card, connected-but-idle renders a standing-by brief, and disconnected/stale inputs render a `WAITING FOR SOURCES` brief.
-- Public-nav auth awareness is intentionally not part of this seam. `NavPublic.tsx` remains deferred until `/` hydration and root static-asset serving are proven.
-- Current health remains non-blocking: Gmail fresh `2h ago`, Outlook fresh `2h ago`, `Mail cursors current`, and last generation `do_nothing`.
+- `/dashboard` keeps the full-screen authenticated app shell shipped in `0ea1c9a`: desktop fills the viewport, mobile uses the real viewport, and Today/Sources/Recent Work/Account stay in-shell.
+- The dashboard route is back under the large-file split threshold: `app/dashboard/page.tsx` is below 1000 counted lines.
+- Authenticated dashboard surfaces required by CI are restored: `dashboard-empty-state`, mobile and desktop notification affordances, neutral non-owner account copy, write-document support text, and post-skip empty-state behavior.
+- The old fake dashboard stats/search copy remains intentionally absent from the new shell; authenticated tests now assert that absence while preserving document preview/support behavior.
+- Current health is non-blocking: Gmail fresh `4h ago`, Outlook fresh `4h ago`, `Mail cursors current`, and last generation `do_nothing`.
 
 ## Verified proof
 
 - health: PASS `npm run health` -> `RESULT: 0 FAILING`
 - build: PASS `npm run build`
 - lint: PASS `npm run lint`
-- dashboard UI proof: PASS `npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list` (`19/19`)
-- fresh screenshots: PASS `artifacts/verification/dashboard-contract-desktop-fresh.png` and `artifacts/verification/dashboard-contract-mobile-fresh.png`
+- large-file split: PASS `npx vitest run tests/config/__tests__/large-file-splits.test.ts --reporter=verbose`
+- dashboard CI lane: PASS `npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list` (`57/57`)
 
 ## Remaining defects in current slice
 
-1. Public-nav auth proof is still unproven. Do not mix `NavPublic.tsx` into this seam until `/` serves its static assets correctly, hydration works, and logged-in/logged-out nav behavior is browser-proven.
-2. This slice does not change source freshness, paid generation, outbound email, Stripe, schema, or controller selection.
+1. GitHub CI proof is still pending until this repair commit is pushed and the run completes green.
+2. Public-nav auth awareness remains deferred and must not be mixed into this dashboard CI repair.
 
 ## Next exact move
 
 Start here:
-1. Push the dashboard visual acceptance seam after the final preflight/build guard clears.
-2. Next customer-visible seam: persisted artifact path, unless deployment proof for this dashboard seam is selected first.
+1. Commit and push the dashboard CI repair.
+2. Verify GitHub CI green on the new commit.
+3. After CI is green, resume customer-visible product seams; next priority remains persisted artifact path unless production deployment proof is explicitly selected.
 
 ## Do not touch yet
 
-- `components/nav/NavPublic.tsx`
-- public route tests
 - controller/meta seams unless execution hard-fails
+- public nav/auth surfaces
+- backend/API
 - paid generation
 - outbound email
 - Stripe charge
 - schema migration
 - destructive DB action
-- unrelated public homepage files
 
 ## External blockers
 
-- `/` root-route hydration and static-asset serving are not yet proven, so auth-aware public nav remains a separate unproven seam.
+- None for this CI repair; GitHub CI is the required final proof.
 
 ## Stop condition
 
-Stop after the dashboard shell seam is committed and pushed cleanly without reintroducing unproven public-nav work.
+Stop only when GitHub CI passes on the dashboard CI repair commit.

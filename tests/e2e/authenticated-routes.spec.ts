@@ -1105,11 +1105,11 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
       nextAction: DOCUMENT_DIRECTIVE_RESPONSE.discrepancy_card.next_action,
     });
     await expect(page.getByTestId('dashboard-truth-stats')).toHaveCount(0);
-    await expect(page.getByText('open threads')).toBeVisible();
-    await expect(page.getByText('need attention')).toBeVisible();
-    await expect(page.getByText('ready to move')).toBeVisible();
+    await expect(page.getByText('open threads')).toHaveCount(0);
+    await expect(page.getByText('need attention')).toHaveCount(0);
+    await expect(page.getByText('ready to move')).toHaveCount(0);
     await expect(page.getByText(/Drop a folder or document/i)).toBeVisible();
-    await expect(page.getByText(/Search Foldera/i)).toBeVisible();
+    await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /notifications/i })).toBeVisible();
     await expect(page.getByText(/^Upgrade to Pro$/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible();

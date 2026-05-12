@@ -117,6 +117,12 @@ export type DashboardDailyValueState = {
   copyLabel?: string;
 };
 
+export type DashboardSourceTrailItem = {
+  label: string;
+  detail: string;
+  meta?: string;
+};
+
 export type LoadLatestResult = {
   action: DashboardAction | null;
   dailyUtilitySlate: DailyUtilitySlate | null;
@@ -601,6 +607,67 @@ export function getDashboardDiscrepancyFrame(
   if (!frame) return null;
   const quality = action.discrepancy_quality ?? evaluateDiscrepancyCardFrame(frame);
   return quality.passes ? frame : null;
+}
+
+function evidenceItemToText(value: unknown): string | null {
+  const direct = asTrimmedString(value);
+  if (direct) return direct;
+  if (!value || typeof value !== 'object') return null;
+
+  const record = value as Record<string, unknown>;
+  return (
+    asTrimmedString(record.description) ??
+    asTrimmedString(record.detail) ??
+    asTrimmedString(record.summary) ??
+    asTrimmedString(record.title) ??
+    asTrimmedString(record.subject) ??
+    asTrimmedString(record.body) ??
+    asTrimmedString(record.text) ??
+    null
+  );
+}
+
+function evidenceItemToLabel(value: unknown): string | null {
+  if (!value || typeof value !== 'object') return null;
+  const record = value as Record<string, unknown>;
+  return (
+    formatSourceRefLabel(record.source_ref) ??
+    formatSourceRefLabel(record.sourceRef) ??
+    formatSourceRefLabel(record.ref) ??
+    formatSourceRefLabel(record.provider) ??
+    formatSourceRefLabel(record.type) ??
+    null
+  );
+}
+
+export function buildDashboardSourceTrail(
+  action: DashboardAction | null | undefined,
+): DashboardSourceTrailItem[] {
+  if (!action) return [];
+
+  const frame = getDashboardDiscrepancyFrame(action);
+  const frameEvidence = frame?.evidence
+    .map((entry) => asTrimmedString(entry))
+    .filter((entry): entry is string => Boolean(entry)) ?? [];
+  const actionEvidence = (action.evidence ?? [])
+    .map((entry) => evidenceItemToText(entry))
+    .filter((entry): entry is string => Boolean(entry));
+  const evidence = (frameEvidence.length > 0 ? frameEvidence : actionEvidence).slice(0, 4);
+  if (evidence.length === 0) return [];
+
+  const frameLabels = frame?.source_refs
+    .map((entry) => formatSourceRefLabel(entry))
+    .filter((entry): entry is string => Boolean(entry)) ?? [];
+  const actionLabels = (action.evidence ?? [])
+    .map((entry) => evidenceItemToLabel(entry))
+    .filter((entry): entry is string => Boolean(entry));
+  const labels = Array.from(new Set([...frameLabels, ...actionLabels])).slice(0, 4);
+
+  return evidence.map((detail, index) => ({
+    label: labels[index] ?? labels[0] ?? 'Connected source evidence',
+    detail,
+    meta: index === 0 ? 'Current' : undefined,
+  }));
 }
 
 export function getDashboardActionHeadline(action: DashboardAction | null | undefined): string {

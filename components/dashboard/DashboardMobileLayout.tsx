@@ -77,18 +77,18 @@ export function DashboardMobileLayout({
 
   return (
     <main
-      className="foldera-dashboard-page foldera-page min-h-[100dvh] overflow-x-hidden bg-bg text-text-primary"
+      className="foldera-dashboard-page foldera-page h-[100dvh] overflow-hidden bg-bg text-text-primary"
       data-testid="dashboard-route-shell"
     >
-      <div className="flex min-h-[100dvh] flex-col">
+      <div className="flex h-[100dvh] min-h-0 flex-col">
         <header
-          className="sticky top-0 z-20 border-b border-white/[0.07] bg-[#030a12]/94 px-4 pb-4 backdrop-blur"
+          className="z-20 shrink-0 border-b border-white/[0.07] bg-[#030a12]/94 px-4 pb-3 backdrop-blur"
           style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
         >
           <p className="foldera-eyebrow">{dateLabel}</p>
           <div className="mt-3 flex items-end justify-between gap-4">
             <div className="min-w-0">
-              <h1 className="max-w-[14ch] text-[34px] font-semibold leading-[1.08] tracking-[-0.05em] text-white">
+              <h1 className="max-w-[14ch] text-[clamp(27px,8.1vw,34px)] font-semibold leading-[1.08] tracking-[-0.05em] text-white">
                 {greetingLabel}
                 {firstName ? (
                   <>
@@ -98,7 +98,7 @@ export function DashboardMobileLayout({
                   '.'
                 )}
               </h1>
-              <p className="mt-3 max-w-[28rem] text-sm leading-6 text-text-secondary">
+              <p className="mt-2 max-w-[28rem] text-[13px] leading-5 text-text-secondary">
                 Foldera keeps the current artifact and support panels in one responsive dashboard surface.
               </p>
             </div>
@@ -111,12 +111,12 @@ export function DashboardMobileLayout({
           {statusNoticeNode ? <div className="mt-4">{statusNoticeNode}</div> : null}
         </header>
 
-        <div className="flex-1 px-4 py-4 pb-24">
+        <div className="min-h-0 flex-1 overflow-hidden px-4 py-3 pb-[calc(74px+env(safe-area-inset-bottom))]">
           {isTodayPanel ? (
             hasAction ? (
-              <div data-testid="dashboard-panel-today">
+              <div data-testid="dashboard-panel-today" className="h-full min-h-0">
                 <DailyBriefCard
-                  className="foldera-dashboard-brief-card foldera-dashboard-money-shot foldera-dashboard-current-brief w-full"
+                  className="foldera-dashboard-brief-card foldera-dashboard-money-shot foldera-dashboard-current-brief flex h-full min-h-0 w-full flex-col overflow-hidden"
                   dashboardCta
                   compact
                   directive={artifactTitle}
@@ -137,9 +137,9 @@ export function DashboardMobileLayout({
             ) : loadingLatest ? (
               loadingCard
             ) : hasLatestIssue ? (
-              <div className="min-h-[420px]">{briefingUnavailableCard}</div>
+              <div className="h-full min-h-0">{briefingUnavailableCard}</div>
             ) : (
-              <div className="min-h-[420px]">{emptyStateCard}</div>
+              <div className="h-full min-h-0">{emptyStateCard}</div>
             )
           ) : (
             supportPanelNode

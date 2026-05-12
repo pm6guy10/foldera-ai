@@ -1,5 +1,4 @@
 'use client';
-
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import ReactMarkdown from 'react-markdown';
@@ -16,6 +15,7 @@ import {
 } from '@/components/dashboard/DashboardStateCards';
 import { DashboardDesktopStage } from '@/components/dashboard/DashboardDesktopStage';
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
+import { EmptyStateCard } from '@/components/foldera/EmptyStateCard';
 import { DailyUtilitySlateCard } from '@/components/foldera/DailyUtilitySlateCard';
 import { type DashboardPanelKey } from '@/components/foldera/DashboardSidebar';
 import { DashboardWorkspacePanels } from '@/components/dashboard/DashboardWorkspacePanels';
@@ -33,6 +33,7 @@ import {
   buildMissingInputPrompt,
   buildDailyValueState,
   buildDecisionSuccessNotice,
+  buildDashboardSourceTrail,
   computeStageMetrics,
   dailyUtilitySlateClipboardText,
   getArtifactBody,
@@ -66,7 +67,6 @@ export default function DashboardPage() {
   const [activePanel, setActivePanel] = useState<DashboardPanelKey>('today');
   const isTodayPanel = activePanel === 'today';
   const activeSidebarLabel = DASHBOARD_PANEL_LABELS[activePanel];
-
   const [action, setAction] = useState<DashboardAction | null>(null);
   const [dailyUtilitySlate, setDailyUtilitySlate] = useState<DailyUtilitySlate | null>(null);
   const [loadingLatest, setLoadingLatest] = useState(true);
@@ -87,10 +87,8 @@ export default function DashboardPage() {
   const [outcomeRecorded, setOutcomeRecorded] = useState(false);
   const [locallyHiddenActionIds, setLocallyHiddenActionIds] = useState<Set<string>>(() => new Set());
   const [loadIssues, setLoadIssues] = useState<Set<DashboardLoadIssue>>(() => new Set());
-
   const loadAbortRef = useRef<AbortController | null>(null);
   const checkoutResumeAttemptedRef = useRef(false);
-
   const setLoadIssue = useCallback((issue: DashboardLoadIssue, failed: boolean) => {
     setLoadIssues((current) => {
       const next = new Set(current);
@@ -102,13 +100,11 @@ export default function DashboardPage() {
       return next;
     });
   }, []);
-
   const load = useCallback(async (cacheMode: RequestCache = 'default'): Promise<LoadLatestResult> => {
     loadAbortRef.current?.abort();
     const controller = new AbortController();
     loadAbortRef.current = controller;
     setLoadingLatest(true);
-
     try {
       const latestRes = await fetch('/api/conviction/latest', {
         signal: controller.signal,
@@ -117,7 +113,6 @@ export default function DashboardPage() {
       if (controller.signal.aborted) {
         return { action: null, dailyUtilitySlate: null, loaded: false };
       }
-
       if (!latestRes.ok) {
         setAction(null);
         setDailyUtilitySlate(null);
@@ -125,12 +120,10 @@ export default function DashboardPage() {
         setLoadIssue('latest', true);
         return { action: null, dailyUtilitySlate: null, loaded: false };
       }
-
       const latest = await latestRes.json().catch(() => ({}));
       if (controller.signal.aborted) {
         return { action: null, dailyUtilitySlate: null, loaded: false };
       }
-
       const visibleAction =
         isVisibleDashboardAction(latest) || isDashboardActionSummary(latest)
           ? (latest as DashboardAction)
@@ -180,33 +173,27 @@ export default function DashboardPage() {
       }
     }
   }, [locallyHiddenActionIds, setLoadIssue]);
-
   useEffect(() => {
     if (status === 'authenticated') {
       void load();
     }
-
     return () => {
       loadAbortRef.current?.abort();
     };
   }, [load, status]);
-
   useEffect(() => {
     if (status !== 'authenticated' || typeof window === 'undefined') {
       return;
     }
-
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get('upgraded') === 'true') {
       clearPendingCheckoutPlan();
       checkoutResumeAttemptedRef.current = true;
       return;
     }
-
     if (checkoutResumeAttemptedRef.current) {
       return;
     }
-
     checkoutResumeAttemptedRef.current = true;
     void resumePendingCheckout({
       onError: (message) =>
@@ -216,7 +203,6 @@ export default function DashboardPage() {
       },
     });
   }, [status]);
-
   const loadIntegrationStatus = useCallback(async () => {
     try {
       const response = await fetch('/api/integrations/status');
@@ -233,25 +219,21 @@ export default function DashboardPage() {
       setIntegrationStatus(null);
     }
   }, [setLoadIssue]);
-
   useEffect(() => {
     if (status !== 'authenticated') {
       setIntegrationStatus(null);
       setLoadIssue('integrations', false);
       return undefined;
     }
-
     void loadIntegrationStatus();
     return undefined;
   }, [loadIntegrationStatus, setLoadIssue, status]);
-
   useEffect(() => {
     if (status !== 'authenticated') {
       setGraphStats(null);
       setLoadIssue('graph', false);
       return;
     }
-
     let cancelled = false;
     void fetch('/api/graph/stats')
       .then((response) => {
@@ -273,12 +255,10 @@ export default function DashboardPage() {
           setGraphStats(null);
         }
       });
-
     return () => {
       cancelled = true;
     };
   }, [setLoadIssue, status]);
-
   useEffect(() => {
     if (status !== 'authenticated') {
       setHistoryItems([]);
@@ -286,7 +266,6 @@ export default function DashboardPage() {
       setLoadIssue('history', false);
       return;
     }
-
     let cancelled = false;
     setHistoryLoaded(false);
     void fetch('/api/conviction/history?limit=5')
@@ -314,12 +293,10 @@ export default function DashboardPage() {
           setHistoryLoaded(true);
         }
       });
-
     return () => {
       cancelled = true;
     };
   }, [setLoadIssue, status]);
-
   useEffect(() => {
     const updateStage = () => {
       setStageMetrics(computeStageMetrics());
@@ -329,7 +306,6 @@ export default function DashboardPage() {
     window.addEventListener('resize', updateStage);
     return () => window.removeEventListener('resize', updateStage);
   }, []);
-
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
@@ -337,7 +313,6 @@ export default function DashboardPage() {
     const previousBodyOverflow = body.style.overflow;
     const previousBodyOverflowX = body.style.overflowX;
     const previousBodyOverflowY = body.style.overflowY;
-
     if (stageMetrics.isDesktop) {
       html.style.overflow = 'hidden';
       body.style.overflow = 'hidden';
@@ -349,7 +324,6 @@ export default function DashboardPage() {
       body.style.overflowX = previousBodyOverflowX;
       body.style.overflowY = previousBodyOverflowY;
     }
-
     return () => {
       html.style.overflow = previousHtmlOverflow;
       body.style.overflow = previousBodyOverflow;
@@ -357,39 +331,32 @@ export default function DashboardPage() {
       body.style.overflowY = previousBodyOverflowY;
     };
   }, [stageMetrics.isDesktop]);
-
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
     const syncPanelFromUrl = () => {
       const params = new URLSearchParams(window.location.search);
       setActivePanel(normalizeDashboardPanel(params.get('panel')));
     };
-
     syncPanelFromUrl();
     window.addEventListener('popstate', syncPanelFromUrl);
     return () => {
       window.removeEventListener('popstate', syncPanelFromUrl);
     };
   }, []);
-
   const approvalEmailSendEnabled =
     process.env.NEXT_PUBLIC_ALLOW_APPROVAL_EMAIL_SEND === 'true' ||
     process.env.ALLOW_APPROVAL_EMAIL_SEND === 'true';
-
   const selectPanel = useCallback(
     (panel: DashboardPanelKey) => {
       if (typeof window === 'undefined') return;
       const currentPath = window.location.pathname || '/dashboard';
       if (!currentPath.startsWith('/dashboard')) return;
-
       const nextParams = new URLSearchParams(window.location.search);
       if (panel === 'today') {
         nextParams.delete('panel');
       } else {
         nextParams.set('panel', panel);
       }
-
       const query = nextParams.toString();
       const nextUrl = query ? `${currentPath}?${query}` : currentPath;
       window.history.replaceState({}, '', nextUrl);
@@ -397,12 +364,10 @@ export default function DashboardPage() {
     },
     [],
   );
-
   const runDecision = useCallback(
     async (decision: 'approve' | 'skip') => {
       if (!action || executing) return;
       setExecuting(true);
-
       try {
         const response = await fetch('/api/conviction/execute', {
           method: 'POST',
@@ -414,7 +379,6 @@ export default function DashboardPage() {
           }),
         });
         const data = await response.json().catch(() => ({}));
-
         if (!response.ok) {
           const message = (data as { error?: string }).error ?? `${decision} failed`;
           if (shouldReconcileExecuteFailure(response, message)) {
@@ -429,7 +393,6 @@ export default function DashboardPage() {
           setStatusNotice({ id: 'execute_failed', message });
           return;
         }
-
         if (
           (data as { status?: string }).status === 'failed' ||
           typeof (data as { error?: unknown }).error === 'string'
@@ -443,7 +406,6 @@ export default function DashboardPage() {
           });
           return;
         }
-
         if (decision === 'approve') {
           setExecutedActionId(action.id);
           setOutcomeRecorded(false);
@@ -479,7 +441,6 @@ export default function DashboardPage() {
     },
     [action, approvalEmailSendEnabled, executing, load],
   );
-
   const openActionDetail = useCallback(async () => {
     if (!action || !needsDashboardActionDetail(action) || action.artifact || detailLoading) return;
     setDetailLoading(true);
@@ -504,7 +465,6 @@ export default function DashboardPage() {
       setDetailLoading(false);
     }
   }, [action, detailLoading]);
-
   const submitOutcome = useCallback(
     async (outcome: 'worked' | 'didnt_work') => {
       if (!executedActionId || outcomeSubmitting || outcomeRecorded) return;
@@ -539,7 +499,6 @@ export default function DashboardPage() {
     },
     [executedActionId, outcomeRecorded, outcomeSubmitting],
   );
-
   const startStripeCheckout = useCallback(async () => {
     try {
       const response = await fetch('/api/stripe/checkout', {
@@ -555,7 +514,6 @@ export default function DashboardPage() {
       console.error(error);
     }
   }, []);
-
   const copyDraft = useCallback(async () => {
     const text = artifactClipboardText(action);
     if (!text) {
@@ -569,7 +527,6 @@ export default function DashboardPage() {
         : { id: 'copy_failed', message: 'Copy failed. Select the text manually.' },
     );
   }, [action]);
-
   const copyDailyValue = useCallback(async () => {
     const text = dailyUtilitySlateClipboardText(dailyUtilitySlate);
     if (!text) {
@@ -583,7 +540,6 @@ export default function DashboardPage() {
         : { id: 'copy_failed', message: 'Copy failed. Select the text manually.' },
     );
   }, [dailyUtilitySlate]);
-
   const sessionName = asTrimmedString(session?.user?.name) ?? 'Foldera workspace';
   const firstName = asTrimmedString(session?.user?.name)?.split(' ')[0] ?? null;
   const sidebarUserName = firstName ?? sessionName;
@@ -591,6 +547,7 @@ export default function DashboardPage() {
   const showArtifactBlur = Boolean(action?.artifact) && artifactPaywallLocked;
   const summaryNeedsDetail = Boolean(action && needsDashboardActionDetail(action) && !action.artifact);
   const discrepancyFrame = getDashboardDiscrepancyFrame(action);
+  const sourceTrailItems = buildDashboardSourceTrail(action);
   const artifactTitle =
     discrepancyFrame?.claim ?? getDashboardActionHeadline(action);
   const artifactContradiction =
@@ -652,7 +609,6 @@ export default function DashboardPage() {
     hasGraphIssue ? 'Signal summary unavailable.' : null,
     hasHistoryIssue ? 'Recent history unavailable.' : null,
   ].filter((value): value is string => Boolean(value));
-
   const artifactBodyContent = showArtifactBlur ? (
     <div
       className="relative overflow-hidden rounded-[16px] border border-border bg-panel-raised p-4"
@@ -695,7 +651,6 @@ export default function DashboardPage() {
       )}
     </div>
   );
-
   const draftBody = discrepancyFrame ? (
     <div className="space-y-5">
       <section>
@@ -748,7 +703,6 @@ export default function DashboardPage() {
       Full text is still being prepared.
     </div>
   );
-
   const cardActions = action
     ? [
         ...(summaryNeedsDetail
@@ -778,7 +732,6 @@ export default function DashboardPage() {
         },
       ]
     : [];
-
   const missingInputPrompt = buildMissingInputPrompt(dailyUtilitySlate, {
     hasIntegrationIssue,
     mailIngestLooksStale:
@@ -798,74 +751,16 @@ export default function DashboardPage() {
     integrationStatus,
     historyItems,
   );
-
   const showSourceNeededBrief =
     !dailyUtilitySlate &&
     (connectedSourceCount === 0 ||
       sourceFreshnessNeedsAttention ||
       sourceReconnectNeeded ||
       integrationStatus?.mail_ingest_looks_stale === true);
-
   const sourceNeededBriefCard = (
-    <DailyBriefCard
-      className="foldera-dashboard-brief-card foldera-dashboard-money-shot h-full w-full"
-      dashboardCta
-      stageDesktop={stageMetrics.isDesktop}
-      directive="Connect sources so Foldera can find today’s finished move."
-      whyNow="Foldera needs recent email, calendar, and draft context before it can safely recommend a source-backed action."
-      eyebrowLabel="Daily Brief"
-      directiveLabel="Directive"
-      whyLabel="Why this now"
-      draftLabel="Draft"
-      draftBody={
-        <p>
-          Once your sources are connected, this space will show the directive, why it matters now,
-          the finished draft or document, and the source trail behind it.
-        </p>
-      }
-      sourcePills={['Email', 'Calendar', 'Drafts', 'Decision notes']}
-      sourceLabel="Source trail"
-      nextStep="Next: Connect sources so Foldera can prepare the next safe artifact."
-      statusText="WAITING FOR SOURCES"
-      footerText="Foldera needs current source context first"
-      actions={[
-        { label: 'View demo', href: '/demo', kind: 'secondary' },
-        {
-          label: 'Connect sources',
-          href: '/dashboard?panel=sources',
-          kind: 'primary',
-          dataTestId: 'dashboard-connect-sources',
-        },
-      ]}
-    />
+    <div data-testid="dashboard-empty-state" className="h-full w-full"><DailyBriefCard className="foldera-dashboard-brief-card foldera-dashboard-money-shot h-full w-full" dashboardCta stageDesktop={stageMetrics.isDesktop} directive="Connect sources so Foldera can find today’s finished move." whyNow="Foldera needs recent email, calendar, and draft context before it can safely recommend a source-backed action." eyebrowLabel="Daily Brief" directiveLabel="Directive" whyLabel="Why this now" draftLabel="Draft" draftBody={<p>Once your sources are connected, this space will show the directive, why it matters now, the finished draft or document, and the source trail behind it.</p>} sourcePills={['Email', 'Calendar', 'Drafts', 'Decision notes']} sourceLabel="Source trail" nextStep="Next: Connect sources so Foldera can prepare the next safe artifact." statusText="WAITING FOR SOURCES" footerText="Foldera needs current source context first" actions={[{ label: 'View demo', href: '/demo', kind: 'secondary' }, { label: 'Connect sources', href: '/dashboard?panel=sources', kind: 'primary', dataTestId: 'dashboard-connect-sources' }]} /></div>
   );
-
-  const waitingBriefCard = (
-    <DailyBriefCard
-      className="foldera-dashboard-brief-card foldera-dashboard-money-shot h-full w-full"
-      dashboardCta
-      stageDesktop={stageMetrics.isDesktop}
-      directive="Foldera is watching for the next finished move."
-      whyNow="Today’s connected evidence has not yet cleared the bar for a source-backed artifact, so Foldera is staying current instead of forcing a weak recommendation."
-      eyebrowLabel="Daily Brief"
-      directiveLabel="Directive"
-      whyLabel="Why this now"
-      draftLabel="What appears here next"
-      draftBody={
-        <p>
-          This space will update with the next safe directive, why it matters now, the finished
-          work itself, and the evidence trail behind it.
-        </p>
-      }
-      sourcePills={['Email', 'Calendar', 'Drafts', 'Decision notes']}
-      sourceLabel="Source trail"
-      nextStep="Next: Foldera will surface the next safe artifact."
-      statusText="STANDING BY"
-      footerText="Watching connected sources"
-      actions={[{ label: 'Review sources', href: '/dashboard?panel=sources', kind: 'secondary' }]}
-    />
-  );
-
+  const waitingBriefCard = <EmptyStateCard />;
   const emptyStateCard = dailyUtilitySlate ? (
     <DailyUtilitySlateCard
       slate={dailyUtilitySlate}
@@ -881,7 +776,6 @@ export default function DashboardPage() {
   const loadingCard = <DashboardLoadingCard />;
   const degradedStateNode = <DashboardDegradedState issueLabels={degradedIssueLabels} />;
   const briefingUnavailableCard = <DashboardBriefingUnavailableCard />;
-
   const historyPanelNode = (
     <DashboardWorkspacePanels
       connectedSourcesValue={connectedSourcesValue}
@@ -899,7 +793,6 @@ export default function DashboardPage() {
       focusPanel="history"
     />
   );
-
   const sourcesPanelNode = (
     <DashboardWorkspacePanels
       connectedSourcesValue={connectedSourcesValue}
@@ -917,7 +810,6 @@ export default function DashboardPage() {
       focusPanel="sources"
     />
   );
-
   const accountPanelNode = (
     <DashboardWorkspacePanels
       connectedSourcesValue={connectedSourcesValue}
@@ -935,7 +827,6 @@ export default function DashboardPage() {
       focusPanel="account"
     />
   );
-
   const briefingCardNode = action ? (
     <div data-testid="dashboard-panel-today" className="h-full w-full">
       <DailyBriefCard
@@ -964,7 +855,6 @@ export default function DashboardPage() {
   ) : (
     emptyStateCard
   );
-
   const focusedSupportPanelNode =
     activePanel === 'history'
       ? historyPanelNode
@@ -973,7 +863,6 @@ export default function DashboardPage() {
         : activePanel === 'account'
           ? accountPanelNode
           : null;
-
   const desktopWorkspaceNode = isTodayPanel ? (
     <div data-testid="dashboard-unified-workspace" className="h-full w-full">
       <div className="h-full min-h-0 min-w-0">{briefingCardNode}</div>
@@ -981,12 +870,10 @@ export default function DashboardPage() {
   ) : (
     focusedSupportPanelNode
   );
-
   const statusNoticeNode = statusNotice ? (
     <DashboardStatusNoticeCard notice={statusNotice} />
   ) : null;
   const hiddenArtifactNode = <HiddenDashboardArtifact title={artifactTitle} body={artifactBody} />;
-
   if (!stageMeasured) {
     return (
       <main className="foldera-dashboard-stage-root text-text-primary" data-testid="pixel-lock-frame">
@@ -998,7 +885,6 @@ export default function DashboardPage() {
       </main>
     );
   }
-
   if (stageMetrics.isDesktop) {
     return (
       <DashboardDesktopStage
@@ -1017,10 +903,10 @@ export default function DashboardPage() {
         outcomeSubmitting={outcomeSubmitting}
         submitOutcome={submitOutcome}
         hiddenArtifactNode={hiddenArtifactNode}
+        sourceTrailItems={sourceTrailItems}
       />
     );
   }
-
   return (
     <DashboardMobileLayout
       activeSidebarLabel={activeSidebarLabel}

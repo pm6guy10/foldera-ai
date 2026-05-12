@@ -191,7 +191,7 @@ export function DailyBriefCard({
 
   if (stageDesktop && dashboardCta) {
     return (
-      <article className={`foldera-brief-shell relative z-10 h-full w-full rounded-[24px] ${className}`}>
+      <article className={`foldera-brief-shell foldera-dashboard-stage-brief relative z-10 h-full w-full rounded-[24px] ${className}`}>
         <header className="absolute inset-x-0 top-0 z-10 h-[68px] border-b border-white/8 px-[36px]">
           <div className="flex h-full items-center justify-between gap-3">
             <span className="text-[16px] font-semibold uppercase tracking-[0.16em] text-text-muted">{eyebrowLabel}</span>

@@ -2288,7 +2288,8 @@
 
   .foldera-dashboard-stage {
     width: 100%;
-    min-height: 100dvh;
+    height: 100dvh;
+    min-height: 0;
     opacity: 0;
   }
 
@@ -2330,7 +2331,9 @@
   }
 
   .foldera-dashboard-page.foldera-page {
-    min-height: 100dvh;
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
     background:
       radial-gradient(108% 78% at 51% -12%, rgba(17, 93, 124, 0.24), transparent 66%),
       radial-gradient(70% 54% at 85% 40%, rgba(9, 62, 88, 0.12), transparent 74%),
@@ -2357,8 +2360,101 @@
     isolation: isolate;
   }
 
+  .foldera-dashboard-stage-brief > header {
+    height: clamp(54px, 7dvh, 68px);
+    padding-inline: clamp(24px, 2.4vw, 36px);
+  }
+
+  .foldera-dashboard-stage-brief > div.absolute {
+    top: clamp(54px, 7dvh, 68px);
+    bottom: clamp(92px, 12dvh, 126px);
+    padding: clamp(18px, 2.3dvh, 28px) clamp(28px, 3.2vw, 52px);
+  }
+
+  .foldera-dashboard-stage-brief > footer {
+    height: clamp(92px, 12dvh, 126px);
+  }
+
+  .foldera-dashboard-stage-brief > p.absolute {
+    bottom: clamp(12px, 1.9dvh, 20px);
+  }
+
+  .foldera-dashboard-stage-brief [data-testid='dashboard-brief-directive-section'],
+  .foldera-dashboard-stage-brief [data-testid='dashboard-brief-why-section'],
+  .foldera-dashboard-stage-brief [data-testid='dashboard-brief-draft-section'] {
+    grid-template-columns: clamp(72px, 7vw, 126px) minmax(0, 1fr);
+  }
+
+  .foldera-dashboard-stage-brief [data-testid='dashboard-brief-why-section'],
+  .foldera-dashboard-stage-brief [data-testid='dashboard-brief-draft-section'] {
+    margin-top: clamp(16px, 2.2dvh, 28px);
+    padding-top: clamp(16px, 2.2dvh, 28px);
+  }
+
+  .foldera-dashboard-stage-brief [data-testid='dashboard-brief-source-section'] {
+    margin-top: clamp(16px, 2.2dvh, 28px);
+    padding-top: clamp(14px, 1.9dvh, 24px);
+  }
+
+  .foldera-dashboard-stage-brief [data-testid='dashboard-brief-directive-section'] h2 {
+    max-width: 24ch;
+    font-size: clamp(30px, 2.55vw, 40px);
+    line-height: 1.16;
+  }
+
+  .foldera-dashboard-stage-brief [data-testid='dashboard-brief-why-section'] p:last-child {
+    font-size: clamp(16px, 1.25vw, 20px);
+    line-height: 1.55;
+  }
+
+  .foldera-dashboard-stage-brief [data-testid='dashboard-brief-draft-section'] > div:last-child > div {
+    font-size: clamp(14px, 1.05vw, 18px);
+    line-height: 1.55;
+  }
+
+  .foldera-dashboard-stage-brief footer > div:first-child {
+    left: clamp(22px, 2.6vw, 38px);
+    top: clamp(32px, 4.5dvh, 48px);
+    font-size: clamp(13px, 1vw, 16px);
+  }
+
+  .foldera-dashboard-stage-brief footer > div:nth-child(2) {
+    right: clamp(22px, 2.7vw, 40px);
+    top: clamp(24px, 3.8dvh, 38px);
+  }
+
+  .foldera-dashboard-loading-brief {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .foldera-dashboard-loading-brief > div {
+    min-height: 0;
+    flex: 1;
+    overflow: hidden;
+    padding-block: clamp(18px, 2.2dvh, 24px);
+  }
+
+  .foldera-dashboard-loading-brief section {
+    padding-bottom: clamp(14px, 1.9dvh, 20px);
+  }
+
   .foldera-dashboard-current-brief {
     overflow-wrap: break-word;
+  }
+
+  .foldera-dashboard-current-brief > header,
+  .foldera-dashboard-current-brief > footer {
+    flex-shrink: 0;
+  }
+
+  .foldera-dashboard-current-brief > div {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(96, 236, 255, 0.34) rgba(8, 18, 28, 0.86);
   }
 
   .foldera-dashboard-current-brief > div > section:first-child h2 {
@@ -2406,7 +2502,7 @@
     }
 
     .foldera-dashboard-current-brief .foldera-dashboard-artifact-body {
-      max-height: min(50vh, 520px);
+      max-height: none;
     }
   }
 

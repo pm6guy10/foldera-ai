@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { RightPanel } from '@/components/foldera/RightPanel';
+import { RightPanel, type SourceTrailItem } from '@/components/foldera/RightPanel';
 import {
   DashboardSidebar,
   type DashboardPanelKey,
@@ -23,6 +23,7 @@ type DashboardDesktopStageProps = {
   outcomeSubmitting: 'worked' | 'didnt_work' | null;
   submitOutcome: (outcome: 'worked' | 'didnt_work') => void | Promise<void>;
   hiddenArtifactNode: ReactNode;
+  sourceTrailItems: SourceTrailItem[];
 };
 
 export function DashboardDesktopStage({
@@ -41,12 +42,13 @@ export function DashboardDesktopStage({
   outcomeSubmitting,
   submitOutcome,
   hiddenArtifactNode,
+  sourceTrailItems,
 }: DashboardDesktopStageProps) {
   return (
-    <main className="foldera-dashboard-stage-root text-text-primary" data-testid="dashboard-route-shell">
-      <div className="foldera-dashboard-stage foldera-dashboard-stage--ready">
+    <main className="foldera-dashboard-stage-root h-[100dvh] overflow-hidden text-text-primary" data-testid="dashboard-route-shell">
+      <div className="foldera-dashboard-stage foldera-dashboard-stage--ready h-full">
         <section
-          className="foldera-dashboard-shell grid min-h-[100dvh] w-full grid-cols-[236px_minmax(0,1fr)_320px] overflow-hidden"
+          className="foldera-dashboard-shell grid h-[100dvh] min-h-0 w-full grid-cols-[236px_minmax(0,1fr)_clamp(292px,22vw,340px)] overflow-hidden"
           data-testid="dashboard-app-shell"
         >
           <DashboardSidebar
@@ -58,14 +60,14 @@ export function DashboardDesktopStage({
             onSelectPanel={selectPanel}
           />
 
-          <section className="flex min-h-[100dvh] min-w-0 flex-col border-l border-white/[0.07]">
-            <header className="border-b border-white/[0.07] px-8 py-6">
+          <section className="flex h-[100dvh] min-h-0 min-w-0 flex-col border-l border-white/[0.07]">
+            <header className="shrink-0 border-b border-white/[0.07] px-7 py-4 2xl:px-8 2xl:py-5">
               <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#9AA7B6]">
                 {dateLabel}
               </p>
-              <div className="mt-4 flex items-end justify-between gap-8">
+              <div className="mt-3 flex items-end justify-between gap-8">
                 <div className="min-w-0">
-                  <h1 className="text-[38px] font-semibold leading-tight tracking-[-0.05em] text-white">
+                  <h1 className="text-[clamp(30px,2.35vw,38px)] font-semibold leading-tight tracking-[-0.05em] text-white">
                     {greetingLabel}
                     {firstName ? (
                       <>
@@ -75,7 +77,7 @@ export function DashboardDesktopStage({
                       '.'
                     )}
                   </h1>
-                  <p className="mt-3 max-w-[760px] text-[16px] leading-7 text-[#A7B3C2]">
+                  <p className="mt-2 max-w-[760px] text-[clamp(14px,0.95vw,16px)] leading-6 text-[#A7B3C2]">
                     Foldera keeps Today, sources, history, and account inside one working surface so the dashboard stays grounded in the same artifact context.
                   </p>
                 </div>
@@ -85,7 +87,7 @@ export function DashboardDesktopStage({
               </div>
             </header>
 
-            <div className="flex min-h-0 flex-1 flex-col px-8 py-6">
+            <div className="flex min-h-0 flex-1 flex-col px-7 py-4 2xl:px-8 2xl:py-5">
               {degradedStateNode ? <div className="mb-4">{degradedStateNode}</div> : null}
 
               <div className="min-h-0 flex-1">{desktopWorkspaceNode}</div>
@@ -115,8 +117,8 @@ export function DashboardDesktopStage({
             </div>
           </section>
 
-          <aside className="foldera-dashboard-right-rail flex min-h-[100dvh] min-w-0 flex-col border-l border-white/[0.07] bg-[#06101a]/78 px-5 py-6">
-            <div className="mb-4">
+          <aside className="foldera-dashboard-right-rail flex h-[100dvh] min-h-0 min-w-0 flex-col border-l border-white/[0.07] bg-[#06101a]/78 px-5 py-4 2xl:py-5">
+            <div className="mb-3 shrink-0">
               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#9AA7B6]">
                 Support
               </p>
@@ -126,7 +128,7 @@ export function DashboardDesktopStage({
             </div>
             <div className="min-h-0 flex-1">
               {isTodayPanel ? (
-                <RightPanel stageDesktop />
+                <RightPanel stageDesktop sourceTrailItems={sourceTrailItems} />
               ) : (
                 <div className="rounded-[18px] border border-white/[0.07] bg-white/[0.03] p-5">
                   <p className="text-sm leading-6 text-[#8D9AA8]">

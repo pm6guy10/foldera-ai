@@ -311,6 +311,14 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     expect(shell?.y ?? 999).toBeLessThanOrEqual(4);
     expect(shell?.width ?? 0).toBeGreaterThan(1430);
     expect(shell?.height ?? 0).toBeGreaterThan(890);
+    const viewportFit = await page.evaluate(() => ({
+      htmlClientHeight: document.documentElement.clientHeight,
+      htmlScrollHeight: document.documentElement.scrollHeight,
+      bodyClientHeight: document.body.clientHeight,
+      bodyScrollHeight: document.body.scrollHeight,
+    }));
+    expect(viewportFit.htmlScrollHeight).toBeLessThanOrEqual(viewportFit.htmlClientHeight + 1);
+    expect(viewportFit.bodyScrollHeight).toBeLessThanOrEqual(viewportFit.bodyClientHeight + 1);
 
     await expect(page.getByTestId('dashboard-figma-card-frame')).toHaveCount(0);
     await expect(page.getByTestId('dashboard-brief-directive-section')).toContainText(/Finished work/i);
@@ -320,7 +328,16 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByTestId('dashboard-brief-source-section')).toContainText('Email thread');
     await expect(page.getByTestId('dashboard-brief-source-section')).toContainText('Calendar event');
     await expect(page.getByTestId('dashboard-brief-source-section')).not.toContainText(/email:|calendar:/i);
-    await expect(page.getByText(/How this brief works/i)).toBeVisible();
+    const sourceTrailPanel = page.getByTestId('dashboard-source-trail-panel');
+    await expect(sourceTrailPanel).toBeVisible();
+    await expect(sourceTrailPanel).toContainText(/Evidence behind today's move/i);
+    await expect(sourceTrailPanel).toContainText('Email thread');
+    await expect(sourceTrailPanel).toContainText('Calendar event');
+    await expect(sourceTrailPanel).toContainText(
+      'Email thread with Alex Morgan is still awaiting Brandon response.',
+    );
+    await expect(sourceTrailPanel).toContainText('Calendar hold creates a noon decision window.');
+    await expect(sourceTrailPanel).not.toContainText(/email:|calendar:/i);
     await expect(page.getByText(/Drop a folder or document\./i)).toBeVisible();
   });
 
@@ -351,7 +368,9 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByTestId('dashboard-panel-history')).toHaveCount(0);
     await expect(page.getByTestId('dashboard-panel-sources')).toHaveCount(0);
     await expect(page.getByTestId('dashboard-panel-account')).toHaveCount(0);
-    await expect(page.getByText(/How this brief works/i)).toBeVisible();
+    await expect(page.getByTestId('dashboard-source-trail-panel')).toContainText(
+      /Evidence behind today's move/i,
+    );
     await expect(page.getByText(/Drop a folder or document\./i)).toBeVisible();
 
     await page.getByTestId('dashboard-sidebar-item-history').click();
@@ -565,7 +584,11 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
       return {
         htmlScrollWidth: html.scrollWidth,
         htmlClientWidth: html.clientWidth,
+        htmlScrollHeight: html.scrollHeight,
+        htmlClientHeight: html.clientHeight,
         bodyScrollWidth: body.scrollWidth,
+        bodyScrollHeight: body.scrollHeight,
+        bodyClientHeight: body.clientHeight,
         shellWidth: shell?.getBoundingClientRect().width ?? 0,
         shellHeight: shell?.getBoundingClientRect().height ?? 0,
       };
@@ -573,6 +596,8 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
 
     const maxScrollWidth = Math.max(layout.htmlScrollWidth, layout.bodyScrollWidth);
     expect(maxScrollWidth).toBeLessThanOrEqual(layout.htmlClientWidth + 1);
+    expect(layout.htmlScrollHeight).toBeLessThanOrEqual(layout.htmlClientHeight + 1);
+    expect(layout.bodyScrollHeight).toBeLessThanOrEqual(layout.bodyClientHeight + 1);
     expect(layout.shellWidth).toBeGreaterThanOrEqual(389);
     expect(layout.shellHeight).toBeGreaterThanOrEqual(844);
   });

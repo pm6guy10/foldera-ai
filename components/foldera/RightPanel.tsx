@@ -1,4 +1,13 @@
-import { CloudUpload, FileSearch, FileText, ClipboardList } from 'lucide-react';
+import {
+  CalendarDays,
+  CheckCircle2,
+  ClipboardList,
+  CloudUpload,
+  FileSearch,
+  FileText,
+  Inbox,
+  Link2,
+} from 'lucide-react';
 
 const rows = [
   {
@@ -21,35 +30,93 @@ const rows = [
 type RightPanelProps = {
   stageDesktop?: boolean;
   learnMoreHref?: string;
+  sourceTrailItems?: SourceTrailItem[];
 };
+
+export type SourceTrailItem = {
+  label: string;
+  detail: string;
+  meta?: string;
+};
+
+function getSourceIcon(label: string) {
+  const normalized = label.toLowerCase();
+  if (normalized.includes('calendar')) return CalendarDays;
+  if (normalized.includes('email') || normalized.includes('inbox')) return Inbox;
+  if (normalized.includes('document') || normalized.includes('draft')) return FileText;
+  if (normalized.includes('receipt') || normalized.includes('safety')) return CheckCircle2;
+  return Link2;
+}
 
 export function RightPanel({
   stageDesktop = false,
   learnMoreHref = '/#product',
+  sourceTrailItems = [],
 }: RightPanelProps) {
+  const hasSourceTrail = sourceTrailItems.length > 0;
+
   if (stageDesktop) {
     return (
       <div className="flex h-full flex-col gap-6">
         <div className="foldera-panel foldera-dashboard-right-rail-panel min-h-0 flex-1 p-6">
           <div className="flex items-center justify-between gap-3">
-            <p className="foldera-eyebrow">How this brief works</p>
+            <p className="foldera-eyebrow">{hasSourceTrail ? 'Source trail' : 'How this brief works'}</p>
             <a href={learnMoreHref} className="shrink-0 text-sm text-text-muted hover:text-text-primary">
               Learn more →
             </a>
           </div>
-          <div className="mt-5 space-y-4">
-            {rows.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 border-t border-border pt-4 first:border-t-0 first:pt-0">
-                <div className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-border bg-panel-raised text-text-secondary">
-                  <Icon className="h-4 w-4" strokeWidth={1.8} aria-hidden />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-text-primary">{title}</p>
-                  <p className="mt-1.5 text-sm leading-7 text-text-muted">{desc}</p>
-                </div>
+          {hasSourceTrail ? (
+            <div className="mt-5" data-testid="dashboard-source-trail-panel">
+              <h3 className="text-[22px] font-semibold leading-tight tracking-[-0.03em] text-white">
+                Evidence behind today&apos;s move
+              </h3>
+              <p className="mt-3 text-sm leading-7 text-text-muted">
+                Foldera is showing the current trail it used before recommending this action.
+              </p>
+              <div className="mt-5 space-y-3">
+                {sourceTrailItems.map((item) => {
+                  const Icon = getSourceIcon(item.label);
+                  return (
+                    <div
+                      key={`${item.label}-${item.detail}`}
+                      className="rounded-[18px] border border-white/[0.08] bg-white/[0.035] p-4 shadow-[0_18px_44px_rgba(0,0,0,0.18)]"
+                    >
+                      <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
+                        <div className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-cyan-200/15 bg-cyan-300/[0.07] text-cyan-100">
+                          <Icon className="h-4 w-4" strokeWidth={1.8} aria-hidden />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-text-primary">{item.label}</p>
+                            {item.meta ? (
+                              <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em] text-text-muted">
+                                {item.meta}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="mt-2 text-sm leading-6 text-text-muted">{item.detail}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="mt-5 space-y-4">
+              {rows.map(({ icon: Icon, title, desc }) => (
+                <div key={title} className="grid grid-cols-[auto_minmax(0,1fr)] gap-4 border-t border-border pt-4 first:border-t-0 first:pt-0">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-border bg-panel-raised text-text-secondary">
+                    <Icon className="h-4 w-4" strokeWidth={1.8} aria-hidden />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-text-primary">{title}</p>
+                    <p className="mt-1.5 text-sm leading-7 text-text-muted">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="foldera-panel foldera-dashboard-right-rail-panel h-[200px] p-5">

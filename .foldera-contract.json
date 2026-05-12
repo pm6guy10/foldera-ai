@@ -1,9 +1,9 @@
 {
-  "backlog_id": "DASHBOARD-VISUAL-ACCEPTANCE",
-  "generated_contract_id": "DASHBOARD-VISUAL-ACCEPTANCE",
-  "base_commit": "a40f355060501d644d06692f961afd68ee3575ab",
+  "backlog_id": "DASHBOARD-VISUAL-CI-REPAIR",
+  "generated_contract_id": "DASHBOARD-VISUAL-CI-REPAIR",
+  "base_commit": "0ea1c9ab8ead0f3e0b1c04de17193d7191f272a9",
   "money_loop_rung": "dashboard_action",
-  "user_system_path": "/dashboard authenticated app shell renders as a real customer-visible operator surface on desktop and mobile.",
+  "user_system_path": "/dashboard visual acceptance seam must pass the same dashboard/UI CI lane locally and in GitHub.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_HANDOFF.md",
@@ -15,7 +15,10 @@
     "components/dashboard/DashboardMobileLayout.tsx",
     "components/dashboard/DashboardStateCards.tsx",
     "components/foldera/DashboardSidebar.tsx",
-    "tests/e2e/dashboard-navigation.spec.ts"
+    "components/foldera/DailyBriefCard.tsx",
+    "components/foldera/RightPanel.tsx",
+    "tests/e2e/dashboard-navigation.spec.ts",
+    "tests/e2e/authenticated-routes.spec.ts"
   ],
   "forbidden_file_patterns": [
     "components/nav/NavPublic.tsx",
@@ -26,24 +29,27 @@
     "supabase/migrations/**",
     "app/api/stripe/**"
   ],
-  "allowed_files_raw": "`.foldera-contract.json`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`, `app/dashboard/dashboard-page-model.tsx`, `app/dashboard/page.tsx`, `app/globals.css`, `components/dashboard/DashboardDesktopStage.tsx`, `components/dashboard/DashboardMobileLayout.tsx`, `components/dashboard/DashboardStateCards.tsx`, `components/foldera/DashboardSidebar.tsx`, `tests/e2e/dashboard-navigation.spec.ts`",
+  "allowed_files_raw": "`.foldera-contract.json`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`, `app/dashboard/dashboard-page-model.tsx`, `app/dashboard/page.tsx`, `app/globals.css`, `components/dashboard/DashboardDesktopStage.tsx`, `components/dashboard/DashboardMobileLayout.tsx`, `components/dashboard/DashboardStateCards.tsx`, `components/foldera/DashboardSidebar.tsx`, `components/foldera/DailyBriefCard.tsx`, `components/foldera/RightPanel.tsx`, `tests/e2e/dashboard-navigation.spec.ts`, `tests/e2e/authenticated-routes.spec.ts`",
   "forbidden_files_raw": "`components/nav/NavPublic.tsx`, `tests/e2e/public-routes.spec.ts`, controller/autopilot files, `lib/**`, `supabase/migrations/**`, `app/api/stripe/**`, paid generation routes, outbound email paths, schema migrations, destructive DB actions",
-  "required_local_proof": "npm run build; npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list; npm run lint; npm run health; node node_modules/vitest/vitest.mjs run tests/config/__tests__/docs-source-of-truth.test.ts --reporter=verbose",
-  "required_product_proof": "Dashboard Playwright proof must show desktop fills the viewport as the real app shell, mobile has no fake phone frame or horizontal overflow, bottom nav swaps panels in-shell, and disconnected/stale sources show a waiting-for-sources brief.",
-  "required_browser_proof": "npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list",
-  "acceptance_condition": "/dashboard visual acceptance is proven: the authenticated dashboard renders as the full-screen operator app shell on desktop and mobile, keeps Today/Sources/Recent Work/Account in one route, preserves artifact/action wiring, and shows a grounded waiting-for-sources brief instead of a dead empty state.",
-  "stop_condition": "Stop if dashboard Playwright proof, build, lint, health, or source-of-truth guard fails; do not broaden into public nav, controller/meta, paid generation, outbound email, Stripe, schema, or destructive DB work.",
+  "required_local_proof": "npm run build; npm run lint; npx vitest run tests/config/__tests__/large-file-splits.test.ts --reporter=verbose; npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list; npm run health",
+  "required_product_proof": "The dashboard/UI CI lane must pass while preserving the full-screen dashboard app shell, empty/no-action state, notification affordances, neutral non-owner copy, write_document preview/support behavior, post-skip empty state, and source-trail/history surfaces.",
+  "required_browser_proof": "npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list",
+  "acceptance_condition": "CI passes for the dashboard visual seam while preserving the full-screen dashboard app shell and authenticated dashboard behavior.",
+  "stop_condition": "Stop if build, lint, large-file-splits, dashboard-navigation, authenticated-routes, push, or GitHub CI fails; do not broaden into public nav, controller/meta, backend/API, paid generation, Stripe, schema, or destructive DB work.",
   "source_truth_file": "ACTIVE_HANDOFF.md",
   "source_truth_finding": "Run only customer-visible product seams now. Priority: dashboard visual acceptance.",
-  "required_closure_update": "Update ACTIVE_HANDOFF.md and append SESSION_HISTORY.md with the dashboard visual acceptance receipt and next customer-visible product seam.",
+  "required_closure_update": "Update ACTIVE_HANDOFF.md and append SESSION_HISTORY.md with the dashboard visual CI repair receipt and GitHub CI result.",
   "is_user_facing": true,
-  "browser_proof_command": "npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list",
+  "browser_proof_command": "npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list",
   "anti_regression_checks": [
+    "app/dashboard/page.tsx stays at or below 1000 counted lines",
     "desktop dashboard shell fills the viewport and no longer exposes dashboard-figma-card-frame",
     "mobile dashboard has no fake phone/status-bar frame and no horizontal overflow",
-    "mobile bottom nav swaps Today, Sources, Recent Work, and Account in-shell",
-    "disconnected or stale sources render a waiting-for-sources Daily Brief with source trail and connect action",
-    "approve, skip, copy, daily-value fallback, and latest-artifact behavior remain covered by dashboard-navigation proof"
+    "mobile and desktop notification affordances remain visible where covered",
+    "neutral non-owner account copy does not say Workspace Owner or Brandon Kapp",
+    "empty/no-action and post-skip states expose dashboard-empty-state without paid scan actions",
+    "write_document preview and support text remain visible",
+    "dashboard-navigation and authenticated-routes both pass locally before push"
   ],
-  "next_command": "Run dashboard visual acceptance only. Allowed: .foldera-contract.json | ACTIVE_HANDOFF.md | SESSION_HISTORY.md | app/dashboard/dashboard-page-model.tsx | app/dashboard/page.tsx | app/globals.css | components/dashboard/DashboardDesktopStage.tsx | components/dashboard/DashboardMobileLayout.tsx | components/dashboard/DashboardStateCards.tsx | components/foldera/DashboardSidebar.tsx | tests/e2e/dashboard-navigation.spec.ts. Forbidden: components/nav/NavPublic.tsx | tests/e2e/public-routes.spec.ts | controller/autopilot files | lib/** | supabase/migrations/** | app/api/stripe/** | paid generation | outbound email | schema migrations | destructive DB actions. Proof: local=\"npm run build; npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list; npm run lint; npm run health; node node_modules/vitest/vitest.mjs run tests/config/__tests__/docs-source-of-truth.test.ts --reporter=verbose\" product=\"dashboard Playwright proof covers desktop viewport shell, mobile no fake frame/no overflow, in-shell nav, and waiting-for-sources brief.\" Stop when: proof fails or seam is committed and pushed."
+  "next_command": "Run dashboard visual CI repair only. Proof ladder: npm run build | npm run lint | npx vitest run tests/config/__tests__/large-file-splits.test.ts --reporter=verbose | npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list | npm run health. Stop only when pushed and GitHub CI is green."
 }
