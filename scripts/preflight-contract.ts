@@ -63,6 +63,86 @@ function runGit(
   };
 }
 
+const STOP_STATE_CONTRACTLESS_FILES = new Set([
+  '.foldera-contract.json',
+  'ACTIVE_HANDOFF.md',
+  'SESSION_HISTORY.md',
+  'scripts/controller-autopilot.ts',
+  'scripts/preflight-contract.ts',
+  'scripts/__tests__/controller-autopilot.test.ts',
+  'scripts/__tests__/preflight-contract.test.ts',
+]);
+
+function parseNameStatus(raw: string): { status: string; path: string }[] {
+  return raw
+    .split(/\r?\n/g)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [status = '', ...rest] = line.split(/\s+/);
+      return { status, path: normalizeRepoPath(rest.join(' ')) };
+    })
+    .filter((entry) => entry.path.length > 0);
+}
+
+function getPrePushComparisonBase(repoRoot: string): string | null {
+  const upstream = runGit(repoRoot, ['merge-base', 'origin/main', 'HEAD']);
+  if (upstream.status === 0 && upstream.stdout.trim()) {
+    return upstream.stdout.trim();
+  }
+
+  const parent = runGit(repoRoot, ['rev-parse', 'HEAD~1']);
+  if (parent.status === 0 && parent.stdout.trim()) {
+    return parent.stdout.trim();
+  }
+
+  return null;
+}
+
+function contractIsAbsentAtHead(repoRoot: string): boolean {
+  const result = runGit(repoRoot, ['cat-file', '-e', 'HEAD:.foldera-contract.json']);
+  return result.status !== 0;
+}
+
+function getContractlessStopStateFiles(
+  repoRoot: string,
+  stage: ContractValidationStage,
+): { ok: boolean; files: string[] } {
+  const diffArgs =
+    stage === 'pre-commit'
+      ? ['diff', '--cached', '--name-status']
+      : (() => {
+          const base = getPrePushComparisonBase(repoRoot);
+          return base ? ['diff', '--name-status', `${base}..HEAD`] : null;
+        })();
+
+  if (!diffArgs) {
+    return { ok: false, files: [] };
+  }
+
+  const result = runGit(repoRoot, diffArgs);
+  if (result.status !== 0) {
+    return { ok: false, files: [] };
+  }
+
+  const entries = parseNameStatus(result.stdout);
+  const files = entries.map((entry) => entry.path);
+  const deletesContract = entries.some(
+    (entry) => entry.status.startsWith('D') && entry.path === '.foldera-contract.json',
+  );
+  const onlyStopStateFiles = files.every((file) => STOP_STATE_CONTRACTLESS_FILES.has(file));
+  const isStopStateFollowUp =
+    stage === 'pre-commit' &&
+    contractIsAbsentAtHead(repoRoot) &&
+    files.length > 0 &&
+    onlyStopStateFiles;
+
+  return {
+    ok: (deletesContract && onlyStopStateFiles) || isStopStateFollowUp,
+    files,
+  };
+}
+
 function splitContractList(raw: string | null | undefined): string[] {
   if (!raw) return [];
 
@@ -225,6 +305,19 @@ export function validateContractForStage(
   stage: ContractValidationStage,
 ): ContractValidationResult {
   if (!existsSync(resolve(repoRoot, '.foldera-contract.json'))) {
+    if (stage === 'pre-commit' || stage === 'pre-push') {
+      const stopState = getContractlessStopStateFiles(repoRoot, stage);
+      if (stopState.ok) {
+        return {
+          ok: true,
+          code: 'ok',
+          message: 'Contractless controller STOP state is valid.',
+          touchedFiles: stopState.files,
+          violations: [],
+        };
+      }
+    }
+
     return {
       ok: false,
       code: 'missing_contract',

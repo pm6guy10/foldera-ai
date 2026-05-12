@@ -83,6 +83,111 @@ describe('preflight contract validation', () => {
     }
   });
 
+  it('allows a staged controller STOP cleanup to remove a stale contract', () => {
+    const { repoDir, baseCommit } = makeRepo();
+    try {
+      mkdirSync(join(repoDir, 'scripts', '__tests__'), { recursive: true });
+      writeContract(repoDir, {
+        base_commit: baseCommit,
+        allowed_file_patterns: ['scripts/controller-autopilot.ts'],
+      });
+      writeFileSync(join(repoDir, 'scripts', 'controller-autopilot.ts'), 'old\n');
+      writeFileSync(
+        join(repoDir, 'scripts', '__tests__', 'controller-autopilot.test.ts'),
+        'old\n',
+      );
+      writeFileSync(join(repoDir, 'ACTIVE_HANDOFF.md'), 'old\n');
+      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), 'old\n');
+      commitAll(repoDir, 'contract');
+
+      rmSync(join(repoDir, '.foldera-contract.json'));
+      writeFileSync(join(repoDir, 'scripts', 'controller-autopilot.ts'), 'new\n');
+      writeFileSync(
+        join(repoDir, 'scripts', '__tests__', 'controller-autopilot.test.ts'),
+        'new\n',
+      );
+      writeFileSync(join(repoDir, 'ACTIVE_HANDOFF.md'), 'new\n');
+      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), 'new\n');
+      execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
+
+      const result = validateContractForStage(repoDir, 'pre-commit');
+
+      expect(result.ok).toBe(true);
+      expect(result.code).toBe('ok');
+      expect(result.touchedFiles).toContain('.foldera-contract.json');
+    } finally {
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
+  it('allows a committed controller STOP cleanup without a contract during pre-push', () => {
+    const { repoDir, baseCommit } = makeRepo();
+    try {
+      mkdirSync(join(repoDir, 'scripts', '__tests__'), { recursive: true });
+      writeContract(repoDir, {
+        base_commit: baseCommit,
+        allowed_file_patterns: ['scripts/controller-autopilot.ts'],
+      });
+      writeFileSync(join(repoDir, 'scripts', 'controller-autopilot.ts'), 'old\n');
+      writeFileSync(
+        join(repoDir, 'scripts', '__tests__', 'controller-autopilot.test.ts'),
+        'old\n',
+      );
+      writeFileSync(join(repoDir, 'ACTIVE_HANDOFF.md'), 'old\n');
+      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), 'old\n');
+      commitAll(repoDir, 'contract');
+
+      rmSync(join(repoDir, '.foldera-contract.json'));
+      writeFileSync(join(repoDir, 'scripts', 'controller-autopilot.ts'), 'new\n');
+      writeFileSync(
+        join(repoDir, 'scripts', '__tests__', 'controller-autopilot.test.ts'),
+        'new\n',
+      );
+      writeFileSync(join(repoDir, 'ACTIVE_HANDOFF.md'), 'new\n');
+      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), 'new\n');
+      commitAll(repoDir, 'stop cleanup');
+
+      const result = validateContractForStage(repoDir, 'pre-push');
+
+      expect(result.ok).toBe(true);
+      expect(result.code).toBe('ok');
+      expect(result.touchedFiles).toContain('.foldera-contract.json');
+    } finally {
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
+  it('allows controller STOP follow-up files when HEAD is already contractless', () => {
+    const { repoDir, baseCommit } = makeRepo();
+    try {
+      mkdirSync(join(repoDir, 'scripts', '__tests__'), { recursive: true });
+      writeContract(repoDir, {
+        base_commit: baseCommit,
+        allowed_file_patterns: ['scripts/controller-autopilot.ts'],
+      });
+      writeFileSync(join(repoDir, 'scripts', 'controller-autopilot.ts'), 'old\n');
+      commitAll(repoDir, 'contract');
+
+      rmSync(join(repoDir, '.foldera-contract.json'));
+      writeFileSync(join(repoDir, 'scripts', 'controller-autopilot.ts'), 'stop\n');
+      commitAll(repoDir, 'stop cleanup');
+
+      writeFileSync(join(repoDir, 'scripts', 'preflight-contract.ts'), 'follow-up\n');
+      writeFileSync(join(repoDir, 'ACTIVE_HANDOFF.md'), 'follow-up\n');
+      execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
+
+      const result = validateContractForStage(repoDir, 'pre-commit');
+
+      expect(result.ok).toBe(true);
+      expect(result.code).toBe('ok');
+      expect(result.touchedFiles).toEqual(
+        expect.arrayContaining(['ACTIVE_HANDOFF.md', 'scripts/preflight-contract.ts']),
+      );
+    } finally {
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
   it('fails when base_commit is not an ancestor of HEAD', () => {
     const { repoDir } = makeRepo();
     try {

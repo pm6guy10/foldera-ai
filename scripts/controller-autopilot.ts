@@ -21,6 +21,7 @@ const CONTROLLER_OWNED_PATHS = new Set([
   'scripts/controller-autopilot.ts',
   'scripts/preflight-contract.ts',
   'scripts/__tests__/controller-autopilot.test.ts',
+  'scripts/__tests__/preflight-contract.test.ts',
 ]);
 
 const SOURCE_OF_TRUTH_PATHS = new Set([
