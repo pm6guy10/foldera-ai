@@ -1,18 +1,19 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-11 19:32 PT
+Last updated: 2026-05-11 19:56 PT
 Last known production SHA: f387d93
 Last completed commit: 49eaa6e
-Current slice: Connector freshness truth before generation
-Current mode: Useful-current-move seam complete; next generated contract selected
+Current slice: Generated source-freshness contract triage
+Current mode: Source-freshness path reproven clean; generated contract is invalid
 
 ## Current product truth
 
 - Useful-current-move fallback seam is complete and pushed in `49eaa6e`.
 - Focused route/slate/model proof passed for the daily-value path.
 - Dashboard current-best-move Playwright proof passed.
-- Clean-tree `npm run controller:autopilot` advanced to `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH`.
-- The next contract has `money_loop_rung: source_freshness`.
+- Source-freshness proof is already green without new edits: focused connector-health Vitest, settings stale-vs-fresh Playwright, `npm run health`, and `npm run build` all pass on the current tree.
+- Current health truth is fresh, not degraded: Gmail fresh `14h ago`, Outlook fresh `14h ago`, and `Mail cursors current`.
+- `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH` does not map to a live current finding in `ACTIVE_HANDOFF.md` or health output, so this seam is not actionable now.
 
 ## Verified proof
 
@@ -20,17 +21,19 @@ Current mode: Useful-current-move seam complete; next generated contract selecte
 - dashboard current best move: PASS `node node_modules/@playwright/test/cli.js test tests/e2e/dashboard-navigation.spec.ts --grep "current best move" --reporter=list`
 - health after seam: PASS `npm run health` -> `RESULT: 0 FAILING`
 - build after seam: PASS `npm run build`
+- source freshness seam suite: PASS `node node_modules/vitest/vitest.mjs run lib/integrations/__tests__/connector-health.test.ts app/api/integrations/status/__tests__/route.test.ts app/api/settings/run-brief/__tests__/route.test.ts scripts/__tests__/health-connectors.test.ts --reporter=verbose`
+- source freshness browser proof: PASS `npx playwright test tests/e2e/authenticated-routes.spec.ts --grep "shows stale Google clearly while Microsoft stays fresh" --reporter=list`
 
 ## Remaining defects in current slice
 
-1. Next generated contract is `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH`.
-2. Current continuation is blocked by unexpected dirty dashboard source edits outside the generated contract scope.
+1. `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH` is an invalid generated contract, because current source truth is already fresh and the contract's triggering finding is absent.
+2. The next blocker is controller selection truth, not connector freshness behavior.
 
 ## Next exact move
 
 Start here:
-1. Resume the Daily Contract Loop with `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH`.
-2. Stay inside `money_loop_rung: source_freshness`.
+1. Do not resume `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH`.
+2. Fix controller/autopilot seam selection so generated contracts only target a live current source-truth finding.
 
 ## Do not touch yet
 
@@ -43,8 +46,8 @@ Start here:
 
 ## External blockers
 
-- None for the shipped useful-current-move seam.
+- None for the source-freshness product path; this stop is a controller-contract blocker.
 
 ## Stop condition
 
-Stop on the next generated contract's exact blocker, failed proof, invalid contract, or wrong/missing `money_loop_rung`.
+Stop on `invalid contract` for `GENERATED-SOURCE-FRESHNESS-CONNECTOR-HEALTH` until controller selection truth is repaired.
