@@ -188,6 +188,37 @@ describe('preflight contract validation', () => {
     }
   });
 
+  it('allows pre-push receipt follow-up files when the pushed range is already contractless', () => {
+    const { repoDir, baseCommit } = makeRepo();
+    try {
+      mkdirSync(join(repoDir, 'scripts', '__tests__'), { recursive: true });
+      writeContract(repoDir, {
+        base_commit: baseCommit,
+        allowed_file_patterns: ['scripts/controller-autopilot.ts'],
+      });
+      writeFileSync(join(repoDir, 'scripts', 'controller-autopilot.ts'), 'old\n');
+      commitAll(repoDir, 'contract');
+
+      rmSync(join(repoDir, '.foldera-contract.json'));
+      writeFileSync(join(repoDir, 'scripts', 'controller-autopilot.ts'), 'stop\n');
+      commitAll(repoDir, 'stop cleanup');
+
+      writeFileSync(join(repoDir, 'ACTIVE_HANDOFF.md'), 'receipt\n');
+      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), 'receipt\n');
+      commitAll(repoDir, 'receipt cleanup');
+
+      const result = validateContractForStage(repoDir, 'pre-push');
+
+      expect(result.ok).toBe(true);
+      expect(result.code).toBe('ok');
+      expect(result.touchedFiles).toEqual(
+        expect.arrayContaining(['ACTIVE_HANDOFF.md', 'SESSION_HISTORY.md']),
+      );
+    } finally {
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
   it('fails when base_commit is not an ancestor of HEAD', () => {
     const { repoDir } = makeRepo();
     try {

@@ -22,7 +22,7 @@ Current mode: Controller STOP is valid; no executable contract remains on disk.
 ## Verified proof
 
 - controller stop: PASS `npm run controller:autopilot` -> `CONTROLLER RESULT: STOP`; `.foldera-contract.json` removed; no blocking dirty files.
-- controller/preflight regression: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/controller-autopilot.test.ts scripts/__tests__/preflight-contract.test.ts --reporter=verbose` (`32/32`).
+- controller/preflight regression: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/controller-autopilot.test.ts scripts/__tests__/preflight-contract.test.ts --reporter=verbose` (`33/33`).
 - build/lint: PASS `npm run build`; PASS `npm run lint`.
 - health: PASS `npm run health` -> `RESULT: 0 FAILING`.
 - production SHA: PASS `https://www.foldera.ai/api/health` -> `a6fdeec`, deployment `dpl_662ia9cV6ezkQkFTeAzVKFajP5mC`.

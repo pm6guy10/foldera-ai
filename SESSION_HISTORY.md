@@ -6345,7 +6345,7 @@ pm run build.
 
 ## 2026-05-12 - Controller STOP cleanup is live on production
 - MODE: Deploy/source-truth receipt only.
-- Files changed: `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
-- What changed: Confirmed the controller STOP cleanup commits reached `main`, GitHub checks for `a6fdeec` completed with no failures, and production `/api/health` now serves `a6fdeec` from Vercel deployment `dpl_662ia9cV6ezkQkFTeAzVKFajP5mC`.
-- Verification: GitHub check-runs for `a6fdeecd445473ce29b4b32ed61b2783898fe39d` completed successfully or were intentionally skipped by workflow scope; `https://www.foldera.ai/api/health` reported `revision.git_sha=a6fdeecd445473ce29b4b32ed61b2783898fe39d`; `npm run controller:autopilot` returned `CONTROLLER RESULT: STOP` with no dirty-file blockers.
+- Files changed: `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`, `scripts/preflight-contract.ts`, `scripts/__tests__/preflight-contract.test.ts`.
+- What changed: Confirmed the controller STOP cleanup commits reached `main`, GitHub checks for `a6fdeec` completed with no failures, and production `/api/health` served `a6fdeec` from Vercel deployment `dpl_662ia9cV6ezkQkFTeAzVKFajP5mC`. Tightened the contractless pre-push exception so receipt-only STOP follow-up commits can push after `origin/main` is already contractless, while arbitrary missing-contract work still fails.
+- Verification: GitHub check-runs for `a6fdeecd445473ce29b4b32ed61b2783898fe39d` completed successfully or were intentionally skipped by workflow scope; `https://www.foldera.ai/api/health` reported `revision.git_sha=a6fdeecd445473ce29b4b32ed61b2783898fe39d`; `npm run controller:autopilot` returned `CONTROLLER RESULT: STOP` with no dirty-file blockers; `node node_modules/vitest/vitest.mjs run scripts/__tests__/preflight-contract.test.ts --reporter=verbose` passed (`14/14`); `npm run lint` passed.
 - Unresolved issues: Same exact external blockers remain: paid/model proof approval and quota/access, real non-owner account, passive daily-send proof window, and fresh repeated-directive evidence or monitored proof.

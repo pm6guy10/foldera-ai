@@ -132,7 +132,6 @@ function getContractlessStopStateFiles(
   );
   const onlyStopStateFiles = files.every((file) => STOP_STATE_CONTRACTLESS_FILES.has(file));
   const isStopStateFollowUp =
-    stage === 'pre-commit' &&
     contractIsAbsentAtHead(repoRoot) &&
     files.length > 0 &&
     onlyStopStateFiles;
