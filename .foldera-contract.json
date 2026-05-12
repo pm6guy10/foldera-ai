@@ -18,7 +18,8 @@
     "components/dashboard/ProductShell.tsx",
     "tests/e2e/public-routes.spec.ts",
     "tests/production/mobile-prod-layout.spec.ts",
-    "tests/production/mobile-journey.spec.ts"
+    "tests/production/mobile-journey.spec.ts",
+    ".github/workflows/production-e2e.yml"
   ],
   "forbidden_file_patterns": [
     "app/api/**",
@@ -33,7 +34,7 @@
     "supabase/migrations/**",
     "app/api/stripe/**"
   ],
-  "allowed_files_raw": "`.foldera-contract.json`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`, `app/page.tsx`, `app/globals.css`, `app/login/login-inner.tsx`, `app/start/page.tsx`, `app/onboard/page.tsx`, `components/nav/NavPublic.tsx`, `components/foldera/LandingPage.tsx`, `components/dashboard/ProductShell.tsx`, `tests/e2e/public-routes.spec.ts`, `tests/production/mobile-prod-layout.spec.ts`, `tests/production/mobile-journey.spec.ts`",
+  "allowed_files_raw": "`.foldera-contract.json`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`, `app/page.tsx`, `app/globals.css`, `app/login/login-inner.tsx`, `app/start/page.tsx`, `app/onboard/page.tsx`, `components/nav/NavPublic.tsx`, `components/foldera/LandingPage.tsx`, `components/dashboard/ProductShell.tsx`, `tests/e2e/public-routes.spec.ts`, `tests/production/mobile-prod-layout.spec.ts`, `tests/production/mobile-journey.spec.ts`, `.github/workflows/production-e2e.yml`",
   "forbidden_files_raw": "`app/api/**`, `app/dashboard/page.tsx`, dashboard app-fit components, `lib/**`, `supabase/migrations/**`, `app/api/stripe/**`, paid generation routes, outbound email paths, schema migrations, destructive DB actions",
   "required_local_proof": "npm run build; npm run lint; npx vitest run tests/config/__tests__/large-file-splits.test.ts --reporter=verbose; npx playwright test tests/e2e/public-routes.spec.ts --reporter=list; npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list; npx playwright test tests/e2e/authenticated-routes.spec.ts --reporter=list; npx playwright test tests/e2e/mobile-visual-qa.spec.ts --reporter=list; npm run health",
   "required_product_proof": "Landing, auth/onboarding, legacy app/settings/account surfaces, and mobile-critical routes share the Foldera visual/app contract; logged-out landing nav shows Sign in + Start free; logged-in landing nav shows Dashboard instead of Sign in; shipped dashboard app-fit remains green.",

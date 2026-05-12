@@ -6314,3 +6314,10 @@ pm run build.
 - What changed: Fixed the post-deploy Production E2E red by making the production mobile authenticated screenshot/journey checks obey `FOLDERA_INCLUDE_AUTH_PROD_SMOKE=true`, matching the existing deploy workflow contract that automatic production E2E is public-only. Manual authenticated production mobile proof remains available when explicitly enabled.
 - Verification: `npm run test:prod:ci` passed (`33 passed`, `28 skipped`) against live production. `npm run lint` passed. `npm run build` passed. `npm run health` returned `RESULT: 0 FAILING` with Gmail fresh `6h ago`, Outlook fresh `6h ago`, mail cursors current, and last generation `do_nothing`.
 - Unresolved issues: Push, GitHub CI, and deploy SHA proof are still required for this follow-up commit.
+
+## 2026-05-12 - Production E2E waits for the deployed SHA before route proof
+- MODE: Frontend surface contract production-proof follow-up only.
+- Files changed: `.github/workflows/production-e2e.yml`, `.foldera-contract.json`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Closed the remaining deploy-status race by making Production E2E poll `https://www.foldera.ai/api/health` until the live production SHA equals the workflow SHA before running public route assertions. This keeps route failures tied to the commit under test instead of a previous deployment.
+- Verification: Live production `/api/health` reported `4717026` before this patch. `npm run test:prod:ci` passed locally against live production (`33 passed`, `28 skipped`) after the mobile auth gating fix; push/CI/deploy proof remains required for this workflow follow-up.
+- Unresolved issues: Push, GitHub CI, Production E2E, and deploy SHA proof are still required for this follow-up commit.

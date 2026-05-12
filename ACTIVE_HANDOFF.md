@@ -1,10 +1,10 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-12 11:52 PT
-Last known production SHA: eddf41c
-Last completed commit: eddf41c
+Last updated: 2026-05-12 12:04 PT
+Last known production SHA: 4717026
+Last completed commit: 4717026
 Current slice: Frontend surface contract A-Z
-Current mode: Frontend surface contract is live; production E2E harness follow-up is locally proven and ready to push.
+Current mode: Frontend surface contract is live; production E2E monitor race follow-up is locally proven and ready to push.
 
 ## Current product truth
 
@@ -13,8 +13,9 @@ Current mode: Frontend surface contract is live; production E2E harness follow-u
 - Legacy app surfaces that use `ProductShell` now share the same matte Foldera app background, wider app-width shell, cyan-edged header card, and mobile dashboard-section rail.
 - Auth/onboarding surfaces (`/login`, `/start`, `/onboard`) now use the same premium matte app surface and centered cards without changing OAuth, onboarding, billing, source freshness, or outbound email contracts.
 - Public/mobile route proof is green locally for landing, start, login, pricing, try, blog/legal/about/security/status/founder; authenticated route proof is green for dashboard/settings/onboarding/briefings/signals.
-- Production deploy proof reached `eddf41c` on `www.foldera.ai`; the only red after deploy was a production E2E harness mismatch where automatic mobile production tests still ran authenticated checks from a stale checked-in auth state.
+- Production deploy proof reached `4717026` on `www.foldera.ai`; the remaining red was a Production E2E monitor race where the deploy-status workflow started before `/api/health` reported the target SHA.
 - Production mobile auth checks now obey the same manual `FOLDERA_INCLUDE_AUTH_PROD_SMOKE=true` flag as the rest of production E2E; automatic deploy production E2E is public-only again.
+- Production E2E now waits for `/api/health` to report the exact workflow SHA before running public route assertions, so deploy-status races fail at the SHA gate instead of producing ambiguous route-test reds.
 - Current health is non-blocking: Gmail fresh `6h ago`, Outlook fresh `6h ago`, `Mail cursors current`, and last generation `do_nothing`.
 
 ## Verified proof
@@ -32,14 +33,14 @@ Current mode: Frontend surface contract is live; production E2E harness follow-u
 
 ## Remaining defects in current slice
 
-1. Push the production E2E harness follow-up.
+1. Push the production E2E monitor race follow-up.
 2. Verify GitHub CI green on the new commit.
 3. Verify deploy/production SHA once Vercel promotes the follow-up commit.
 
 ## Next exact move
 
 Start here:
-1. Commit and push the production E2E harness follow-up.
+1. Commit and push the production E2E monitor race follow-up.
 2. Verify GitHub CI green on the new commit.
 3. Verify production deploy SHA after Vercel promotion.
 4. Then return to the money-loop backlog; do not reopen dashboard/app-fit unless fresh proof breaks it.
