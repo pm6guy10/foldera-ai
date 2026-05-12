@@ -23,9 +23,16 @@ This ladder is the operational definition of production truth.
 - `Works` means observable product behavior, not logs alone.
 - `Broken` means a failed observable condition at the rung being claimed.
 - `Proof` must be a build command, test command, Playwright journey, or explicit manual UI check.
+- Proof must include the affected CI lane. Local proof that omits the CI check capable of failing the seam does not count.
 - A change does not count if it only updates docs, screenshots, visual polish, SEO, refactors, or unrelated tests.
 - Browser/product proof is the closure standard: files changed, tests passed, docs updated, CI green, logs, screenshots, and build output are never product success by themselves.
 - If browser/product proof is missing or fails, the verdict is NOT DONE.
+
+For dashboard/UI work, the permanent proof gate is:
+- `npm run build`
+- `npm run lint`
+- `npx vitest run tests/config/__tests__/large-file-splits.test.ts --reporter=verbose`
+- `npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list`
 
 ### 1. Command-center scan completes end-to-end
 

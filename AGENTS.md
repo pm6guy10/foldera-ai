@@ -151,6 +151,14 @@ The next move requires product policy, weak-data acceptance, environment access,
 
 ## Verification Doctrine
 
+Proof must match the affected CI lane. Local proof that skips the CI check which would fail for the seam is not proof.
+
+For dashboard/UI work, the permanent gate is:
+- `npm run build`
+- `npm run lint`
+- `npx vitest run tests/config/__tests__/large-file-splits.test.ts --reporter=verbose`
+- `npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list`
+
 ### Deterministic / harness / internal hardening work
 Use:
 - focused tests
