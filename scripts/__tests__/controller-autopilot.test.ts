@@ -724,6 +724,92 @@ Next blocker: next normal daily-send proof required
     }
   });
 
+  it('does not stop as all-external when current truth says selected-move persistence still needs hosted proof', () => {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      logs.push(args.map(String).join(' '));
+    });
+
+    const repoDir = mkdtempSync(join(tmpdir(), 'controller-autopilot-'));
+    try {
+      execSync('git init', { cwd: repoDir, stdio: 'ignore' });
+      writeFileSync(
+        join(repoDir, 'FOLDERA_PRODUCTION_BACKLOG.md'),
+        `
+### BL-015
+ID: BL-015
+Status: WAITING_PAID_PROOF
+Next blocker: explicit paid-proof approval required
+
+### BL-011
+ID: BL-011
+Status: WAITING_PASSIVE_PROOF
+Next blocker: next normal daily-send proof required
+`,
+      );
+      writeCommonControllerTruthFiles(repoDir, {
+        activeHandoff: `# ACTIVE HANDOFF — FOLDERA
+
+## Current product truth
+
+- The selected WorkSourceWA current move now has a deterministic no-paid document artifact path.
+
+## Verified proof
+
+- health: PASS \`npm run health\` -> \`RESULT: 0 FAILING\`.
+- winner/autopsy: PASS \`npm run winner:autopsy\` -> selected WorkSourceWA Tier 1 \`admin_deadline_decision_packet\`.
+
+## Remaining defects in current slice
+
+- None for CI action-runtime warnings.
+`,
+        currentState: `# CURRENT STATE — FOLDERA
+
+## A. WHAT IS WORKING
+
+- **Selected WorkSourceWA move can persist without paid generation** — 2026-05-13 selected-move persistence proof added a no-paid \`source=winner_truth\` generate mode that converts the selected WorkSourceWA \`deadline_staleness\` winner into a deterministic \`write_document\` artifact and persists the normal \`pending_approval\` action shape.
+
+## B. WHAT IS BROKEN (REAL)
+
+- **Selected WorkSourceWA persistence still needs hosted proof after deployment** — the no-paid route and regression tests prove the selected-move-to-artifact path locally. Production has not yet served this code until the current commit is pushed/deployed and \`/api/health\` reports the new SHA.
+`,
+        sessionHistory: `## 2026-05-13 - Selected WorkSourceWA move persists through no-paid artifact path
+- Verification: \`npm run winner:autopsy\` still selected the WorkSourceWA Tier 1 \`admin_deadline_decision_packet\`.
+- Unresolved issues: Hosted CI/deploy and production \`/api/health\` SHA proof are pending until this commit is pushed and deployed.
+`,
+      });
+      execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
+      execSync('git -c user.name=Test -c user.email=test@example.com commit -m init', {
+        cwd: repoDir,
+        stdio: 'ignore',
+      });
+
+      const code = runControllerAutopilot(repoDir);
+      const contract = JSON.parse(
+        readFileSync(join(repoDir, '.foldera-contract.json'), 'utf8'),
+      ) as { backlog_id: string; source_truth_finding?: string };
+
+      expect(code).toBe(0);
+      expect(
+        logs.some((line) =>
+          line.includes('Selected backlog ID: GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT'),
+        ),
+      ).toBe(true);
+      expect(
+        logs.some((line) =>
+          line.includes('HARD STOP REASON: All remaining money-loop rungs are externally blocked'),
+        ),
+      ).toBe(false);
+      expect(contract.backlog_id).toBe('GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT');
+      expect(contract.source_truth_finding).toContain(
+        'Selected WorkSourceWA persistence still needs hosted proof after deployment',
+      );
+    } finally {
+      spy.mockRestore();
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
   it('does not regenerate a stale closed handoff source_freshness finding and advances to the next live seam', () => {
     const logs: string[] = [];
     const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {

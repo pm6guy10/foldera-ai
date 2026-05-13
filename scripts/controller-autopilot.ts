@@ -828,10 +828,19 @@ export function synthesizeAppOwnerContract(
     });
   }
 
-  const selectedMovePersistenceFinding = extractCurrentStateFinding(
-    snapshot.currentStateText,
-    /Selected WorkSourceWA move is not yet persisted as an artifact\/action/i,
-  );
+  const selectedMovePersistenceFinding =
+    extractCurrentStateFinding(
+      snapshot.currentStateText,
+      /Selected WorkSourceWA move is not yet persisted as an artifact\/action/i,
+    ) ??
+    extractCurrentStateFinding(
+      snapshot.currentStateText,
+      /Selected WorkSourceWA persistence still needs hosted proof after deployment/i,
+    ) ??
+    extractCurrentStateFinding(
+      snapshot.currentStateText,
+      /Selected WorkSourceWA persistence still needs no-paid execution proof/i,
+    );
   if (selectedMovePersistenceFinding) {
     return createGeneratedContract('SELECTED-MOVE-TO-PERSISTED-ARTIFACT', {
       moneyLoopRung: 'persisted_action_history',
