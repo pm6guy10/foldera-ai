@@ -49,7 +49,6 @@ Current mode: Deterministic selection bug shipped; controller selection is being
 
 ## Next exact move
 
-Start here:
 1. Rerun `npm run controller:autopilot`.
 2. Execute only the generated selected-move persistence contract if it emits `GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT`.
 3. Do not use `proof:golden-artifact`; do not run paid/model generation without explicit approval.
@@ -64,10 +63,6 @@ Start here:
 - destructive DB action
 - fake non-owner accounts or fabricated production data
 - dashboard/app-fit or public surface polish without fresh failing proof
-
-## Quarantined local drift
-
-- Stashes remain for older dashboard experiments; do not apply them unless a current proof lane requires them.
 
 ## External blockers
 
