@@ -1,8 +1,8 @@
 # ACTIVE HANDOFF — FOLDERA
 
 Last updated: 2026-05-13 12:56 PT
-Last known production SHA: 7b129f4
-Last completed code commit: 7b129f4
+Last known production SHA: 6b0c163
+Last completed code commit: 6b0c163
 Current slice: Release gate status controller
 Current mode: Controller/docs only; no product features, no UI polish, no paid generation, no outbound email, no Stripe, no schema.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
@@ -12,7 +12,7 @@ Release gate status: BLOCKED_EXTERNAL
 ## Current product truth
 
 - Health is non-blocking: Gmail fresh, Outlook fresh, mail cursors current, and last generation is `write_document`.
-- Production `/api/health` serves `7b129f41ca59e7cc4129157cb4d065c3ee47f249`; `origin/main` matches.
+- Production `/api/health` serves `6b0c163564a8646075ef904c1f82a2ff441c7a36`, deployment `dpl_3Jd2tsD8CGoAeVWkvdB9TpZLsMwP`.
 - Production still has selected-move artifact `8aca653a-f0a1-46e9-9af4-323c5cee539b` as owner `pending_approval` `write_document`; that is not non-owner beta proof.
 - Real non-owner depth remains externally blocked until one real non-owner connects Google or Microsoft.
 - Mock-only beta harness map now exists at `NON_OWNER_BETA_HARNESS_MAP.md`.
@@ -24,7 +24,7 @@ Release gate status: BLOCKED_EXTERNAL
 ## Verified proof
 
 - health: PASS `npm run health` -> `RESULT: 0 FAILING`.
-- release truth: PASS production `/api/health` -> `7b129f41ca59e7cc4129157cb4d065c3ee47f249`.
+- release truth: PASS production `/api/health` -> `6b0c163564a8646075ef904c1f82a2ff441c7a36`.
 - build: PASS `npm run build`.
 - release gate unit: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/release-gate-status.test.ts --reporter=verbose` (`3/3`).
 - preflight contract unit: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/preflight-contract.test.ts --reporter=verbose` (`16/16`).
@@ -33,11 +33,11 @@ Release gate status: BLOCKED_EXTERNAL
 - dashboard/API proof: PASS latest/history/execute/dashboard-model tests (`26/26`).
 - auth/onboarding/connect proof: PASS auth/onboard/google/microsoft tests (`12/12`).
 - exclusion grep: PASS `acceptance-gate.ts` excludes `OWNER_USER_ID` and `TEST_USER_ID`; harness id differs from both.
-- production SHA: PASS `https://www.foldera.ai/api/health` -> `7b129f41ca59e7cc4129157cb4d065c3ee47f249`.
+- production SHA: PASS `https://www.foldera.ai/api/health` -> `6b0c163564a8646075ef904c1f82a2ff441c7a36`, deployment `dpl_3Jd2tsD8CGoAeVWkvdB9TpZLsMwP`.
 
 ## Remaining defects in current slice
 
-- Commit/push and post-deploy `/api/health` proof are still pending for the release gate controller.
+- None for the release gate controller.
 - Mock proof is not real beta readiness.
 - Real beta readiness still requires one real connected non-owner account.
 
