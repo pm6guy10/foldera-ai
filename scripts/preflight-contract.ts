@@ -92,6 +92,8 @@ const QUALITY_GATE_CONTRACTLESS_FILES = new Set([
   'docs/QUALITY_GATES.md',
   'scripts/quality-gate-status.ts',
   'scripts/__tests__/quality-gate-status.test.ts',
+  'scripts/decision-trace-gate-status.ts',
+  'scripts/__tests__/decision-trace-gate-status.test.ts',
   'scripts/preflight-contract.ts',
   'scripts/__tests__/preflight-contract.test.ts',
 ]);
@@ -260,8 +262,10 @@ function getContractlessQualityGateFiles(
   const files = parseTouchedFiles(result.stdout);
   const touchesQualityGate =
     files.includes('scripts/quality-gate-status.ts') ||
+    files.includes('scripts/decision-trace-gate-status.ts') ||
     files.includes('docs/QUALITY_GATES.md') ||
-    files.includes('scripts/__tests__/quality-gate-status.test.ts');
+    files.includes('scripts/__tests__/quality-gate-status.test.ts') ||
+    files.includes('scripts/__tests__/decision-trace-gate-status.test.ts');
   const onlyQualityGateFiles =
     files.length > 0 && files.every((file) => QUALITY_GATE_CONTRACTLESS_FILES.has(file));
 

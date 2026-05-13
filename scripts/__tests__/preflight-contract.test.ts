@@ -314,6 +314,48 @@ describe('preflight contract validation', () => {
     }
   });
 
+  it('allows decision-trace quality-gate controller files without a product contract', () => {
+    const { repoDir } = makeRepo();
+    try {
+      mkdirSync(join(repoDir, 'docs'), { recursive: true });
+      mkdirSync(join(repoDir, 'scripts', '__tests__'), { recursive: true });
+      writeValidActiveHandoff(repoDir, 'decision trace quality gate controller');
+      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), '## Receipt\n- decision trace gate\n');
+      writeFileSync(join(repoDir, 'package.json'), '{"scripts":{"gate:decision-trace":"tsx scripts/decision-trace-gate-status.ts"}}\n');
+      writeFileSync(join(repoDir, 'docs', 'QUALITY_GATES.md'), '# Quality gates\n');
+      writeFileSync(join(repoDir, 'scripts', 'decision-trace-gate-status.ts'), 'export {}\n');
+      writeFileSync(
+        join(repoDir, 'scripts', '__tests__', 'decision-trace-gate-status.test.ts'),
+        'export {}\n',
+      );
+      writeFileSync(join(repoDir, 'scripts', 'preflight-contract.ts'), 'export {}\n');
+      writeFileSync(
+        join(repoDir, 'scripts', '__tests__', 'preflight-contract.test.ts'),
+        'export {}\n',
+      );
+      execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
+
+      const result = validateContractForStage(repoDir, 'pre-commit');
+
+      expect(result.ok).toBe(true);
+      expect(result.code).toBe('ok');
+      expect(result.touchedFiles).toEqual(
+        expect.arrayContaining([
+          'ACTIVE_HANDOFF.md',
+          'SESSION_HISTORY.md',
+          'package.json',
+          'docs/QUALITY_GATES.md',
+          'scripts/decision-trace-gate-status.ts',
+          'scripts/__tests__/decision-trace-gate-status.test.ts',
+          'scripts/preflight-contract.ts',
+          'scripts/__tests__/preflight-contract.test.ts',
+        ]),
+      );
+    } finally {
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
   it('allows visual-gate controller files without a product contract', () => {
     const { repoDir } = makeRepo();
     try {

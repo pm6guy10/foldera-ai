@@ -17,6 +17,12 @@ One command answers the current executable visual-quality question:
 npm run gate:visual
 ```
 
+One command answers the current executable decision-trace question:
+
+```bash
+npm run gate:decision-trace
+```
+
 The command reports the current release gate result when available, then evaluates the current quality gate from deterministic proof. It must not run paid generation, send email, touch Stripe, change schema, fabricate beta proof, or count owner-only proof as customer proof.
 
 ## Core Quality Rule
@@ -106,6 +112,29 @@ Executable proof must stay gate-only: `npm run gate:visual` may pass from determ
 
 Pass: real-user comprehension, artifact quality, and visual trust are proven before asking for money.
 Fail: pricing or paid-user push before quality proof.
+
+### QG_13_DECISION_TRACE_QUALITY
+
+Pass: Foldera can show, in user-safe language, why a move won before anyone is asked to test it.
+Fail: an artifact appears as magic output, a candidate explanation is hidden, rejected candidates are omitted, the source trail does not support the winner, the why-now reason is missing, internal scoring/debug terms leak, confidence percentages are shown, or private owner context appears in public/demo trace proof.
+
+Executable proof must stay deterministic and user-safe. `npm run gate:decision-trace` must require:
+
+- sources read
+- source freshness
+- candidate list
+- blocked/rejected candidates
+- winner selected, or clear no-safe-move
+- why this won
+- why now
+- evidence/source trail that supports the winner
+- proposed finished move
+- approval/save/skip state
+- what would make Foldera send nothing
+
+The gate must not expose private model chain-of-thought, raw decrypted private content beyond approved snippets, internal debug garbage, confidence percentages, Brandon/private owner context in public/demo proof, paid generation, outbound email, Stripe, schema changes, fake users, or beta-readiness claims.
+
+Current deterministic fixture proof covers: no safe move, one source-backed move, rejected generic candidate, rejected stale/source-poor candidate, selected deadline/reply-gap/decision packet, and the required bad-trace classes.
 
 ## Definition of Done for Quality Work
 
