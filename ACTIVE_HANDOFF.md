@@ -1,20 +1,20 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-13 09:40 PT
-Last known production SHA: 0d24414
-Last completed code commit: 0d24414
-Current slice: Controller selected-move source-truth repair
-Current mode: Controller now emits the selected-move persistence contract from current truth.
+Last updated: 2026-05-13 10:00 PT
+Last known production SHA: 73aed8b
+Last completed code commit: 73aed8b
+Current slice: Selected WorkSourceWA move persistence proven
+Current mode: No-paid selected-move artifact is pending approval in production.
 
 ## Current product truth
 
 - Frontend surface contract A-Z is shipped on `main`; controller STOP cleanup is live in production.
-- Health is non-blocking: Gmail fresh, Outlook fresh, mail cursors current, and last generation is `do_nothing`.
-- Candidate selection over-filtering is fixed; no-paid winner truth selects the WorkSourceWA account-activity deadline as Tier 1 `admin_deadline_decision_packet`.
-- Controller selection is aligned to emit `GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT` for the next no-paid selected-move persistence seam.
+- Health is non-blocking: Gmail fresh, Outlook fresh, mail cursors current, and last generation is `write_document`.
+- Candidate selection over-filtering is fixed enough for the WorkSourceWA account-activity deadline to persist as a no-paid artifact.
+- Controller selection is aligned to emit live generated contracts from current source truth.
 - The selected WorkSourceWA current move now has a deterministic no-paid document artifact path and a selected-winner generate mode that persists a real `pending_approval` action shape.
 - CI warning class found on historical `#994` is fixed: `changes` uses `dorny/paths-filter@v4`, and CI artifact handoffs use Node-24-runtime artifact actions.
-- Read-only DB truth on 2026-05-13 shows the latest owner rows are still skipped `do_nothing`; no selected-move `pending_approval` row exists yet.
+- Production DB now has selected-move artifact `8aca653a-f0a1-46e9-9af4-323c5cee539b` as `pending_approval` `write_document`.
 
 ## Verified proof
 
@@ -37,17 +37,19 @@ Current mode: Controller now emits the selected-move persistence contract from c
 - controller STOP verification: PASS read-only Supabase latest owner actions -> newest `40790ab9...` is skipped `do_nothing`; `npm run winner:autopsy` still selects WorkSourceWA Tier 1.
 - controller regression: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/controller-autopilot.test.ts --reporter=verbose` (`21/21`).
 - controller result: PASS `npm run controller:autopilot` -> `GO`, `GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT`.
+- product proof: PASS production no-paid `POST /api/conviction/generate?source=winner_truth` persisted `8aca653a...` with title `WorkSourceWA account activity closeout` and `brief_origin=selected_move_generate`.
+- readback proof: PASS read-only Supabase latest owner action -> `pending_approval` `write_document`; health now reports last generation `write_document`.
 
 ## Remaining defects in current slice
 
-- None for controller source-truth selection after the local patch.
-- Hosted CI/deploy proof for this controller patch is pending until commit/push.
+- None for selected-move persistence.
+- Next controller run must stop or emit only a fresh contract after the selected-move source truth is closed.
 
 ## Next exact move
 
-1. Commit/push the controller selector repair after preflight/build proof.
+1. Commit/push this selected-move closure receipt.
 2. Rerun `npm run controller:autopilot` from clean `main`.
-3. Execute only `GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT`.
+3. Continue only if it emits a fresh no-paid contract.
 4. Do not use `proof:golden-artifact`; do not run paid/model generation without explicit approval.
 
 ## Do not touch yet
