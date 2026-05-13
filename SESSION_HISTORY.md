@@ -6377,3 +6377,10 @@ pm run build.
 - What changed: Root-caused the `Emit selected move persistence contract #995` unit failure to a late CI-only docs guard: `ACTIVE_HANDOFF.md` exceeded the 80-line cockpit cap on `f075162`, and the local preflight/push gate did not validate that invariant. Added preflight validation for the active handoff markers and `<= 80` line cap so oversized command-state handoffs fail before commit/push gates can pass, and added a regression fixture that proves an 82-line handoff is rejected before it reaches CI.
 - Verification: `npm run health` passed with `RESULT: 0 FAILING`; `node node_modules/vitest/vitest.mjs run scripts/__tests__/preflight-contract.test.ts tests/config/__tests__/docs-source-of-truth.test.ts --reporter=verbose` passed (`18/18`); `git diff --check` passed; `npm run build` passed; `npm run lint` passed; `npm run preflight -- --stage=pre-commit` passed after clearing an ignored stale `.foldera-contract.json` from the prior selected-move seam.
 - Unresolved issues: Commit, push, remote `main` SHA proof, and hosted CI/deploy truth remain pending for this guard commit.
+
+## 2026-05-13 - Active handoff preflight guard shipped and hosted-green
+- MODE: Delivery receipt only.
+- Files changed: `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Recorded that the preflight guard commit `d569129` was pushed to `main`, deployed, and hosted-green. Returned the next command state to the selected WorkSourceWA move persistence seam.
+- Verification: `origin/main` matched `d569129751ad54fdec44ecc47c0e41edbbd35c8b`; GitHub CI, docs-fast CI, Health Gate, Semgrep, Deploy to Vercel, and Production E2E all completed successfully for `d569129`; `https://www.foldera.ai/api/health` reported `revision.git_sha=d569129751ad54fdec44ecc47c0e41edbbd35c8b` and deployment `dpl_3MEDN7reR1X76MwQgpH1zbV3gqpS`.
+- Unresolved issues: Product runtime was not changed. The next product-loop seam remains selected-move persistence for the WorkSourceWA current move, with no paid generation or golden artifact proof unless explicitly approved.

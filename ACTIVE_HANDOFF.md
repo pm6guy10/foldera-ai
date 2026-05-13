@@ -1,20 +1,20 @@
 # ACTIVE HANDOFF — FOLDERA
 
 Last updated: 2026-05-13 07:22 PT
-Last known production SHA: b78b2ac
-Last completed code commit: b78b2ac
+Last known production SHA: d569129
+Last completed code commit: d569129
 Current slice: CI/source-truth guard
-Current mode: Root-cause fix for the `ACTIVE_HANDOFF.md` line-cap CI failure; product runtime unchanged.
+Current mode: Root-cause fix shipped; next move returns to selected-move persistence.
 
 ## Current product truth
 
-- Frontend surface contract A-Z is shipped on `main`; controller STOP cleanup is live in production, and the latest proven production SHA remains `b78b2ac`.
+- Frontend surface contract A-Z is shipped on `main`; controller STOP cleanup is live in production.
 - Health is non-blocking: Gmail fresh, Outlook fresh, mail cursors current, and last generation is `do_nothing`.
 - Candidate selection over-filtering is fixed; no-paid winner truth selects the WorkSourceWA account-activity deadline as Tier 1 `admin_deadline_decision_packet`.
 - Controller selection is aligned to emit `GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT` for the next no-paid selected-move persistence seam.
 - The selected WorkSourceWA current move is still not persisted as an artifact/action/history row.
 - The docs CI failure on `f075162` was caused by `ACTIVE_HANDOFF.md` growing past the 80-line cockpit cap before GitHub unit CI caught it.
-- Root-cause guard: preflight now validates `ACTIVE_HANDOFF.md` markers and the `<= 80` line cap before commit/push gates can pass.
+- Root-cause guard is shipped: preflight now validates `ACTIVE_HANDOFF.md` markers and the `<= 80` line cap before commit/push gates can pass.
 
 ## Verified proof
 
@@ -25,19 +25,21 @@ Current mode: Root-cause fix for the `ACTIVE_HANDOFF.md` line-cap CI failure; pr
 - diff hygiene: PASS `git diff --check`.
 - build/lint: PASS `npm run build`; PASS `npm run lint`.
 - preflight: PASS `npm run preflight -- --stage=pre-commit` after clearing an ignored stale `.foldera-contract.json` from the prior selected-move seam.
+- push/remote: PASS `git push origin main`; `origin/main` -> `d569129751ad54fdec44ecc47c0e41edbbd35c8b`.
+- hosted truth: PASS GitHub CI, docs-fast CI, Health Gate, Semgrep, Deploy to Vercel, and Production E2E for `d569129`.
+- production SHA: PASS `https://www.foldera.ai/api/health` -> `d569129`, deployment `dpl_3MEDN7reR1X76MwQgpH1zbV3gqpS`.
 
 ## Remaining defects in current slice
 
-- None for the local docs/source guard after focused proof.
-- Commit, push, and hosted CI/deploy truth are still pending for this guard commit.
+- None for the docs/source guard.
+- Product runtime is unchanged; the selected WorkSourceWA move remains the next product-loop seam.
 
 ## Next exact move
 
-1. Run `npm run preflight -- --stage=pre-commit`, `npm run build`, and the focused docs/preflight guard tests.
-2. Commit and push the guard to `main`.
-3. Verify remote `main` points at the pushed commit and check the hosted CI/deploy truth available for that commit.
-4. After this seam is shipped, rerun `npm run controller:autopilot` and execute only `GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT` if emitted.
-5. Do not use `proof:golden-artifact`; do not run paid/model generation without explicit approval.
+1. Rerun `npm run controller:autopilot`.
+2. Execute only `GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT` if emitted.
+3. Do not use `proof:golden-artifact`; do not run paid/model generation without explicit approval.
+4. Stop at the exact no-paid persistence blocker if deterministic artifact/action/history proof cannot proceed.
 
 ## Do not touch yet
 
@@ -58,4 +60,4 @@ Current mode: Root-cause fix for the `ACTIVE_HANDOFF.md` line-cap CI failure; pr
 
 ## Stop condition
 
-Stop when this guard is pushed and hosted truth is checked, or when a concrete delivery blocker prevents push/verification.
+Stop when the controller returns `STOP` with only external blockers, or when the selected-move persistence seam is proven or exactly blocked.
