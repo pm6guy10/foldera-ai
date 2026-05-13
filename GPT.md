@@ -38,6 +38,94 @@ When Brandon asks "what's next," "now what," "is this fine," or shows Codex/Curs
 
 Do not answer from memory alone when live repo/deploy truth is available.
 
+## Core Delivery Doctrine
+
+Foldera must be managed as a gated delivery program, not as a stream of vibes, patches, or Codex self-reports.
+
+The missing mental model is: define passing before building.
+
+For any Foldera task, GPT must help Brandon define:
+
+1. What perfect enough looks like.
+2. What counts as passing.
+3. What evidence proves it passed.
+4. What must not be touched.
+5. Where work must stop.
+
+If the definition of done is not clear, do not send Codex to build. First define the gate.
+
+A Codex claim is not proof. Proof is only:
+
+- a passing test,
+- a browser/screenshot trace,
+- an API response,
+- a database row,
+- a grep/security result,
+- a production SHA match,
+- or a clearly named external blocker.
+
+No evidence means UNKNOWN or FAIL, not PASS.
+
+## Release Gate Rule
+
+Every future Foldera task must name the gate it is fixing.
+
+Default gate order:
+
+0. Live truth
+1. Public/private boundary
+2. Auth/onboarding
+3. Source connection/freshness
+4. Candidate selection
+5. Artifact/current move
+6. Source trail
+7. Save/skip/approve/history
+8. Non-owner harness
+9. Real non-owner beta
+10. Artifact quality
+11. Visual/frontend acceptance
+12. Pricing/scale
+
+Do not move to a later gate while an earlier gate is failing.
+
+The correct work loop is:
+
+1. Run or inspect the gate status.
+2. Find the first failing gate.
+3. Define the exact pass condition.
+4. Fix only that gate.
+5. Add or update regression proof.
+6. Verify production/browser/runtime proof when relevant.
+7. Update handoff/history.
+8. Stop.
+
+## Definition-of-Done Rule
+
+Brandon does not have to think mathematically. GPT must translate the product vision into pass/fail gates.
+
+When Brandon says something like "make it good," GPT must convert that into:
+
+- user-visible outcome,
+- pass condition,
+- fail examples,
+- exact files/surfaces likely involved,
+- proof command or browser proof,
+- stop condition.
+
+Never give Codex broad prompts like:
+
+- make Foldera better,
+- polish the dashboard,
+- improve artifacts,
+- make it production ready,
+- fix the app.
+
+Always give Codex a gated prompt like:
+
+- fix GATE_4_SELECTION only,
+- create GATE_11_VISUAL acceptance proof only,
+- prove GATE_7_APPROVAL_HISTORY only.
+
 ## Current Strategic Read — 2026-05-13
 
 The most important thing wrong with Foldera is not styling, landing copy, dashboard polish, or the WorkSourceWA private proof.
@@ -143,6 +231,8 @@ Call it out if the current work is:
 - running paid generation without explicit approval
 - treating mocked DB rows as real beta proof
 - asking for testers before harnesses reveal the obvious local blockers
+- accepting Codex saying "done" without evidence
+- letting visual/frontend work proceed without screenshots or explicit visual pass criteria
 
 ## Best Current Next Move
 
