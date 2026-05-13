@@ -1,10 +1,10 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-13 08:25 PT
-Last known production SHA: 8c2f114
-Last completed code commit: 8c2f114
+Last updated: 2026-05-13 08:44 PT
+Last known production SHA: 0d24414
+Last completed code commit: 0d24414
 Current slice: CI Node 24 action-runtime hardening
-Current mode: Updating CI action majors only; product runtime unchanged.
+Current mode: Workflow action-runtime bump shipped; product runtime unchanged.
 
 ## Current product truth
 
@@ -15,7 +15,7 @@ Current mode: Updating CI action majors only; product runtime unchanged.
 - The selected WorkSourceWA current move now has a deterministic no-paid document artifact path and a selected-winner generate mode that persists a real `pending_approval` action shape.
 - The docs CI failure on `f075162` was caused by `ACTIVE_HANDOFF.md` growing past the 80-line cockpit cap before GitHub unit CI caught it.
 - Root-cause guard is shipped: preflight now validates `ACTIVE_HANDOFF.md` markers and the `<= 80` line cap before commit/push gates can pass.
-- CI warning class found on historical `#994`: `changes` uses `dorny/paths-filter@v3` and CI artifact handoffs use Node-20-runtime artifact actions.
+- CI warning class found on historical `#994` is fixed: `changes` uses `dorny/paths-filter@v4`, and CI artifact handoffs use Node-24-runtime artifact actions.
 
 ## Verified proof
 
@@ -33,16 +33,18 @@ Current mode: Updating CI action majors only; product runtime unchanged.
 - winner/autopsy: PASS `npm run winner:autopsy` -> selected WorkSourceWA Tier 1 `admin_deadline_decision_packet`.
 - current build/health: PASS `npm run health` -> `RESULT: 0 FAILING`; PASS `npm run build`.
 - CI action-runtime local proof: PASS `ci.yml` YAML parse; PASS docs source-of-truth test; `ACTIVE_HANDOFF.md` is under 80 lines.
+- CI action-runtime hosted proof: PASS GitHub `changes`, `unit`, `build`, `e2e`, `e2e-smoke`, `e2e-authenticated`, `e2e-quarantine`, `deploy`, `Health Gate`, and `Production E2E` for `0d24414`; payments skipped by scope.
+- production SHA: PASS `https://www.foldera.ai/api/health` -> `0d24414`, deployment `dpl_5avsrW9znqVZmPcvyyqS1ypAKRNG`.
 
 ## Remaining defects in current slice
 
 - None for the docs/source guard.
-- CI Node 20 action warning is not a red check today, but must be removed before GitHub forces Node 24 action runtime defaults.
+- None for CI Node 20 action-runtime warnings in the main CI workflow.
 
 ## Next exact move
 
-1. Run preflight/build, commit, and push the CI action-runtime bump.
-2. Verify `changes`, `build`, `unit`, artifact handoff e2e lanes, deploy, and production `/api/health` SHA for the pushed commit.
+1. Rerun `npm run controller:autopilot`.
+2. Continue only if it emits a fresh no-paid contract; otherwise stop on external blockers.
 3. Do not use `proof:golden-artifact`; do not run paid/model generation without explicit approval.
 4. After deploy proof, rerun controller and continue only if it emits a fresh no-paid contract.
 

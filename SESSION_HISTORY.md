@@ -6398,3 +6398,10 @@ pm run build.
 - What changed: Historical run `#994` showed a non-blocking GitHub Actions warning for `dorny/paths-filter@v3` running on Node 20. Updated CI action majors to Node-24-runtime releases: `dorny/paths-filter@v4`, `actions/upload-artifact@v6`, and `actions/download-artifact@v7`, preserving existing filters, artifact names, paths, and hidden `.next` upload behavior.
 - Verification: `ci.yml` parses as YAML; `tests/config/__tests__/docs-source-of-truth.test.ts` passed (`3/3`); `npm run health` passed with `RESULT: 0 FAILING`; `ACTIVE_HANDOFF.md` stayed below the 80-line cap.
 - Unresolved issues: Hosted GitHub Actions proof is pending until this workflow-only commit is pushed; the real proof is a clean `changes` job without the Node 20 warning plus artifact handoff lanes still passing.
+
+## 2026-05-13 - CI action runtime hosted proof complete
+- MODE: Delivery receipt only.
+- Files changed: `ACTIVE_HANDOFF.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.
+- What changed: Recorded hosted proof for `0d24414`, the Node-24 action-runtime CI hardening commit.
+- Verification: GitHub `changes`, `unit`, `build`, `e2e`, `e2e-smoke`, `e2e-authenticated`, `e2e-quarantine`, `deploy`, Health Gate, Deploy to Vercel, and Production E2E all passed for `0d24414`; `e2e-payments` skipped by scope; production `/api/health` reported `revision.git_sha=0d2441474bc4dc04e1d6a5d8c49cbf795c501515` and deployment `dpl_5avsrW9znqVZmPcvyyqS1ypAKRNG`.
+- Unresolved issues: None for the main CI Node 20 action-runtime warning class.
