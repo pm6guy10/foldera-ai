@@ -3,13 +3,13 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 describe('documentation source-of-truth boundaries', () => {
-  it('keeps the operating constitution and boot contract present as repo-owned doctrine', () => {
+  it('keeps the operating constitution and gate-first boot contract present as repo-owned doctrine', () => {
     const operatingSystem = fs.readFileSync(path.join(process.cwd(), 'FOLDERA_OPERATING_SYSTEM.md'), 'utf8');
     const codexStart = fs.readFileSync(path.join(process.cwd(), 'CODEX_START.md'), 'utf8');
     const activeHandoff = fs.readFileSync(path.join(process.cwd(), 'ACTIVE_HANDOFF.md'), 'utf8');
     const readOrder =
       codexStart.match(
-        /Read these first, in order:\r?\n\r?\n([\s\S]*?)\r?\n\r?\nThen continue execution autonomously\./,
+        /Read these before acting:\r?\n\r?\n([\s\S]*?)\r?\n\r?\n## Prime Directive/,
       )?.[1] ?? '';
 
     expect(operatingSystem).toContain('Foldera is not a dashboard.');
@@ -17,11 +17,22 @@ describe('documentation source-of-truth boundaries', () => {
     expect(operatingSystem).toContain('Produce finished value.');
     expect(operatingSystem).toContain('Safely self-prepare or self-recover.');
     expect(operatingSystem).toContain('Ask for one irreducible blocker');
-    expect(codexStart).toContain("You are Foldera's acting senior operator.");
-    expect(readOrder.trimStart()).toMatch(/^1\. `ACTIVE_HANDOFF\.md`/);
-    expect(codexStart).toContain('FOLDERA_OPERATING_SYSTEM.md');
-    expect(codexStart).toContain('Everything else is owned by you.');
-    expect(codexStart).toContain('max_seams: 5');
+    expect(codexStart).toContain("You are Foldera's acting senior operator and app owner.");
+    expect(codexStart).toContain('move Foldera through the first failing gate with proof');
+    expect(readOrder.trimStart()).toMatch(/^1\. `GPT\.md`/);
+    expect(readOrder).toContain('`ACTIVE_HANDOFF.md`');
+    expect(readOrder).toContain('`CURRENT_STATE.md`');
+    expect(readOrder).toContain('`SYSTEM_RUNBOOK.md`');
+    expect(readOrder).toContain('`docs/RELEASE_GATES.md`');
+    expect(readOrder).toContain('`docs/QUALITY_GATES.md`');
+    expect(codexStart).toContain('No Codex self-certification counts.');
+    expect(codexStart).toContain('`npm run health`');
+    expect(codexStart).toContain('`npm run gate:status`');
+    expect(codexStart).toContain('`npm run gate:quality`');
+    expect(codexStart).toContain('`npm run gate:visual`');
+    expect(codexStart).toContain('Fix only the first failing gate.');
+    expect(codexStart).toContain('Foldera is not beta-ready unless release, quality, and visual gates agree.');
+    expect(codexStart).toContain('Maximum seams per run: 5.');
     expect(activeHandoff).toContain('# ACTIVE HANDOFF');
     expect(activeHandoff).toContain('Current slice:');
     expect(activeHandoff).toContain('## Next exact move');
