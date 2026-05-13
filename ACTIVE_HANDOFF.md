@@ -1,8 +1,8 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-13 11:15 PT
-Last known production SHA: bd480af
-Last completed code commit: pending local verification commit
+Last updated: 2026-05-13 11:23 PT
+Last known production SHA: 4b964ab
+Last completed code commit: 4b964ab
 Current slice: Promise-chain rung 2 repeatable WorkSourceWA winner
 Current mode: Stop after this first-rung fix; do not continue into UI, controller, paid proof, or artifact polish.
 
@@ -24,6 +24,8 @@ Current mode: Stop after this first-rung fix; do not continue into UI, controlle
 - acceptance-path proof: PASS selected-move generation/artifact/latest-history/daily-value/execute tests (`46/46`) across the focused files run this slice.
 - build/lint: PASS `npm run build`; PASS `npm run lint`.
 - read-only production DB proof: row `8aca653a...` remains `pending_approval`, `write_document`, title `WorkSourceWA account activity closeout`, source refs `3`, `paid_flag=false`.
+- production deploy truth: PASS Vercel deployment `dpl_GSE4Nuj5P8aoiTiRkUGt6n7QSpKa` is READY for commit `4b964abdc4acbb20604ef9c359f165db6286019f`.
+- production SHA: PASS `https://www.foldera.ai/api/health` -> `4b964abdc4acbb20604ef9c359f165db6286019f`.
 
 ## Remaining defects in current slice
 
@@ -32,9 +34,8 @@ Current mode: Stop after this first-rung fix; do not continue into UI, controlle
 
 ## Next exact move
 
-1. Commit and push only the promise-chain audit/fix files plus receipt docs.
-2. Verify production deploy SHA for the pushed commit.
-3. Stop. Do not continue into artifact polish, UI, controller, paid generation, or source-trail cleanup unless Brandon explicitly asks.
+1. Stop.
+2. Do not continue into artifact polish, UI, controller, paid generation, or source-trail cleanup unless Brandon explicitly asks.
 
 ## Do not touch yet
 
@@ -55,4 +56,4 @@ Current mode: Stop after this first-rung fix; do not continue into UI, controlle
 
 ## Stop condition
 
-Stop after the first broken promise-chain rung is committed, pushed, and production SHA is verified.
+Stop now: the first broken promise-chain rung is committed, pushed, and production SHA is verified.
