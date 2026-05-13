@@ -74,6 +74,29 @@ const STOP_STATE_CONTRACTLESS_FILES = new Set([
   'scripts/__tests__/preflight-contract.test.ts',
 ]);
 
+const ACTIVE_HANDOFF_MAX_LINES = 80;
+
+function validateActiveHandoffCockpit(repoRoot: string): string | null {
+  const handoffPath = resolve(repoRoot, 'ACTIVE_HANDOFF.md');
+  if (!existsSync(handoffPath)) {
+    return null;
+  }
+
+  const activeHandoff = readFileSync(handoffPath, 'utf8');
+  const lineCount = activeHandoff.split(/\r?\n/).length;
+  if (lineCount > ACTIVE_HANDOFF_MAX_LINES) {
+    return `ACTIVE_HANDOFF.md is ${lineCount} lines; keep the current command-state cockpit at <= ${ACTIVE_HANDOFF_MAX_LINES} lines before pushing.`;
+  }
+
+  for (const requiredText of ['# ACTIVE HANDOFF', 'Current slice:', '## Next exact move']) {
+    if (!activeHandoff.includes(requiredText)) {
+      return `ACTIVE_HANDOFF.md is missing required cockpit marker: ${requiredText}`;
+    }
+  }
+
+  return null;
+}
+
 function parseNameStatus(raw: string): { status: string; path: string }[] {
   return raw
     .split(/\r?\n/g)
@@ -304,6 +327,17 @@ export function validateContractForStage(
   repoRoot: string,
   stage: ContractValidationStage,
 ): ContractValidationResult {
+  const activeHandoffError = validateActiveHandoffCockpit(repoRoot);
+  if (activeHandoffError) {
+    return {
+      ok: false,
+      code: 'invalid_contract',
+      message: activeHandoffError,
+      touchedFiles: ['ACTIVE_HANDOFF.md'],
+      violations: ['ACTIVE_HANDOFF.md'],
+    };
+  }
+
   if (!existsSync(resolve(repoRoot, '.foldera-contract.json'))) {
     if (stage === 'pre-commit' || stage === 'pre-push') {
       const stopState = getContractlessStopStateFiles(repoRoot, stage);

@@ -70,6 +70,19 @@ function writeContract(
   );
 }
 
+function writeValidActiveHandoff(repoDir: string, currentSlice: string) {
+  writeFileSync(
+    join(repoDir, 'ACTIVE_HANDOFF.md'),
+    `# ACTIVE HANDOFF
+Current slice: ${currentSlice}
+
+## Next exact move
+
+1. Continue the verified controller path.
+`,
+  );
+}
+
 describe('preflight contract validation', () => {
   it('fails when the contract file is missing', () => {
     const { repoDir } = makeRepo();
@@ -96,7 +109,7 @@ describe('preflight contract validation', () => {
         join(repoDir, 'scripts', '__tests__', 'controller-autopilot.test.ts'),
         'old\n',
       );
-      writeFileSync(join(repoDir, 'ACTIVE_HANDOFF.md'), 'old\n');
+      writeValidActiveHandoff(repoDir, 'old controller state');
       writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), 'old\n');
       commitAll(repoDir, 'contract');
 
@@ -106,7 +119,7 @@ describe('preflight contract validation', () => {
         join(repoDir, 'scripts', '__tests__', 'controller-autopilot.test.ts'),
         'new\n',
       );
-      writeFileSync(join(repoDir, 'ACTIVE_HANDOFF.md'), 'new\n');
+      writeValidActiveHandoff(repoDir, 'controller stop cleanup');
       writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), 'new\n');
       execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
 
@@ -133,7 +146,7 @@ describe('preflight contract validation', () => {
         join(repoDir, 'scripts', '__tests__', 'controller-autopilot.test.ts'),
         'old\n',
       );
-      writeFileSync(join(repoDir, 'ACTIVE_HANDOFF.md'), 'old\n');
+      writeValidActiveHandoff(repoDir, 'old controller state');
       writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), 'old\n');
       commitAll(repoDir, 'contract');
 
@@ -143,7 +156,7 @@ describe('preflight contract validation', () => {
         join(repoDir, 'scripts', '__tests__', 'controller-autopilot.test.ts'),
         'new\n',
       );
-      writeFileSync(join(repoDir, 'ACTIVE_HANDOFF.md'), 'new\n');
+      writeValidActiveHandoff(repoDir, 'controller stop cleanup');
       writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), 'new\n');
       commitAll(repoDir, 'stop cleanup');
 
@@ -173,7 +186,7 @@ describe('preflight contract validation', () => {
       commitAll(repoDir, 'stop cleanup');
 
       writeFileSync(join(repoDir, 'scripts', 'preflight-contract.ts'), 'follow-up\n');
-      writeFileSync(join(repoDir, 'ACTIVE_HANDOFF.md'), 'follow-up\n');
+      writeValidActiveHandoff(repoDir, 'receipt follow-up');
       writeFileSync(join(repoDir, 'CURRENT_STATE.md'), 'follow-up\n');
       execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
 
@@ -208,7 +221,7 @@ describe('preflight contract validation', () => {
       writeFileSync(join(repoDir, 'scripts', 'controller-autopilot.ts'), 'stop\n');
       commitAll(repoDir, 'stop cleanup');
 
-      writeFileSync(join(repoDir, 'ACTIVE_HANDOFF.md'), 'receipt\n');
+      writeValidActiveHandoff(repoDir, 'receipt cleanup');
       writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), 'receipt\n');
       commitAll(repoDir, 'receipt cleanup');
 
@@ -219,6 +232,34 @@ describe('preflight contract validation', () => {
       expect(result.touchedFiles).toEqual(
         expect.arrayContaining(['ACTIVE_HANDOFF.md', 'SESSION_HISTORY.md']),
       );
+    } finally {
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
+  it('rejects an oversized active handoff before it can reach CI', () => {
+    const { repoDir, baseCommit } = makeRepo();
+    try {
+      writeContract(repoDir, {
+        base_commit: baseCommit,
+        allowed_file_patterns: ['ACTIVE_HANDOFF.md'],
+      });
+      const oversizedHandoff = [
+        '# ACTIVE HANDOFF',
+        'Current slice: CI guard',
+        '## Next exact move',
+        ...Array.from({ length: 78 }, (_, index) => `line ${index + 1}`),
+      ].join('\n');
+      writeFileSync(join(repoDir, 'ACTIVE_HANDOFF.md'), `${oversizedHandoff}\n`);
+      execSync('git add ACTIVE_HANDOFF.md', { cwd: repoDir, stdio: 'ignore' });
+
+      const result = validateContractForStage(repoDir, 'pre-commit');
+
+      expect(result.ok).toBe(false);
+      expect(result.code).toBe('invalid_contract');
+      expect(result.message).toContain('ACTIVE_HANDOFF.md is 82 lines');
+      expect(result.message).toContain('<= 80 lines');
+      expect(result.violations).toEqual(['ACTIVE_HANDOFF.md']);
     } finally {
       rmSync(repoDir, { recursive: true, force: true });
     }
