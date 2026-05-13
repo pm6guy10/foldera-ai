@@ -20,70 +20,155 @@ import {
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
 import { processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
+import { getWinnerTruthReport } from '@/lib/system/winner-truth';
+import type { ConvictionDirective, EvidenceItem } from '@/lib/briefing/types';
 
 export const dynamic = 'force-dynamic';
 
+type WinnerTruthCard = {
+  claim?: unknown;
+  contradiction?: unknown;
+  risk?: unknown;
+  evidence?: unknown;
+  next_action?: unknown;
+  why_now?: unknown;
+  source_refs?: unknown;
+  confidence?: unknown;
+};
+
+function asString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => (typeof entry === 'string' ? entry.trim() : null))
+    .filter((entry): entry is string => Boolean(entry));
+}
+
+function evidenceTypeForSourceRef(value: string | null | undefined): EvidenceItem['type'] {
+  if (!value) return 'signal';
+  if (value.startsWith('commitment:')) return 'commitment';
+  if (value.startsWith('goal:')) return 'goal';
+  if (value.startsWith('pattern:') || value.startsWith('candidate:')) return 'pattern';
+  return 'signal';
+}
+
+function normalizeConfidence(value: unknown): number {
+  if (typeof value !== 'number' || Number.isNaN(value)) return 82;
+  if (value <= 1) return Math.round(value * 100);
+  return Math.round(Math.max(0, Math.min(100, value)));
+}
+
+function buildSelectedMoveDirective(card: WinnerTruthCard): ConvictionDirective | null {
+  const claim = asString(card.claim);
+  const nextAction = asString(card.next_action);
+  const risk = asString(card.risk);
+  const whyNow = asString(card.why_now);
+  if (!claim || !nextAction || !risk) return null;
+
+  const sourceRefs = asStringArray(card.source_refs);
+  const cardEvidence = asStringArray(card.evidence);
+  const evidence: EvidenceItem[] = cardEvidence.length > 0
+    ? cardEvidence.map((description, index) => ({
+        type: evidenceTypeForSourceRef(sourceRefs[index]),
+        description,
+      }))
+    : [{ type: 'signal', description: claim }];
+
+  return {
+    directive: nextAction,
+    action_type: 'write_document',
+    confidence: normalizeConfidence(card.confidence),
+    reason: whyNow ?? risk,
+    evidence,
+    requires_search: false,
+    discrepancyClass: 'deadline_staleness',
+  };
+}
+
+async function generateSelectedMoveDirective(userId: string): Promise<ConvictionDirective | null> {
+  const report = await getWinnerTruthReport(userId);
+  const winner = report.current_winner;
+  if (winner.verdict !== 'selected' || !winner.discrepancy_card) return null;
+  return buildSelectedMoveDirective(winner.discrepancy_card);
+}
 
 export async function POST(request: Request) {
   const auth = await resolveUser(request);
   if (auth instanceof NextResponse) return auth;
   const { userId } = auth;
+  const url = new URL(request.url);
+  const useSelectedMove = url.searchParams.get('source') === 'winner_truth';
 
   try {
-    // Extract entities/commitments/topics from unprocessed sync signals
-    // Race with 7s timeout so we never blow the Hobby tier 10s limit
-    try {
-      const SIGNAL_TIMEOUT_MS = 7000;
-      const extraction = await Promise.race([
-        processUnextractedSignals(userId),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), SIGNAL_TIMEOUT_MS)),
-      ]);
-      if (extraction === null) {
+    let directive: ConvictionDirective | null = null;
+
+    if (useSelectedMove) {
+      directive = await generateSelectedMoveDirective(userId);
+      if (!directive) {
+        return NextResponse.json(
+          { error: 'No selected move available for deterministic persistence' },
+          { status: 409 },
+        );
+      }
+    } else {
+      // Extract entities/commitments/topics from unprocessed sync signals
+      // Race with 7s timeout so we never blow the Hobby tier 10s limit
+      try {
+        const SIGNAL_TIMEOUT_MS = 7000;
+        const extraction = await Promise.race([
+          processUnextractedSignals(userId),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), SIGNAL_TIMEOUT_MS)),
+        ]);
+        if (extraction === null) {
+          logStructuredEvent({
+            event: 'conviction_generate_extraction_timeout',
+            level: 'warn',
+            userId,
+            artifactType: null,
+            generationStatus: 'signal_extraction_timeout',
+            details: {
+              scope: 'conviction/generate',
+              timeout_ms: SIGNAL_TIMEOUT_MS,
+            },
+          });
+        } else if (extraction.signals_processed > 0) {
+          logStructuredEvent({
+            event: 'conviction_generate_extraction_complete',
+            userId,
+            artifactType: null,
+            generationStatus: 'signal_extraction_complete',
+            details: {
+              scope: 'conviction/generate',
+              signals_processed: extraction.signals_processed,
+              entities_upserted: extraction.entities_upserted,
+              commitments_created: extraction.commitments_created,
+              topics_merged: extraction.topics_merged,
+            },
+          });
+        }
+      } catch (extractErr: unknown) {
+        // Non-fatal — directive generation can still proceed with existing data
         logStructuredEvent({
-          event: 'conviction_generate_extraction_timeout',
+          event: 'conviction_generate_extraction_failed',
           level: 'warn',
           userId,
           artifactType: null,
-          generationStatus: 'signal_extraction_timeout',
+          generationStatus: 'signal_extraction_failed',
           details: {
             scope: 'conviction/generate',
-            timeout_ms: SIGNAL_TIMEOUT_MS,
-          },
-        });
-      } else if (extraction.signals_processed > 0) {
-        logStructuredEvent({
-          event: 'conviction_generate_extraction_complete',
-          userId,
-          artifactType: null,
-          generationStatus: 'signal_extraction_complete',
-          details: {
-            scope: 'conviction/generate',
-            signals_processed: extraction.signals_processed,
-            entities_upserted: extraction.entities_upserted,
-            commitments_created: extraction.commitments_created,
-            topics_merged: extraction.topics_merged,
+            error: extractErr instanceof Error ? extractErr.message : String(extractErr),
           },
         });
       }
-    } catch (extractErr: unknown) {
-      // Non-fatal — directive generation can still proceed with existing data
-      logStructuredEvent({
-        event: 'conviction_generate_extraction_failed',
-        level: 'warn',
-        userId,
-        artifactType: null,
-        generationStatus: 'signal_extraction_failed',
-        details: {
-          scope: 'conviction/generate',
-          error: extractErr instanceof Error ? extractErr.message : String(extractErr),
-        },
+
+      // Generate the directive
+      directive = await generateDirective(userId, {
+        dryRun: process.env.FOLDERA_DRY_RUN === 'true',
       });
     }
-
-    // Generate the directive
-    const directive = await generateDirective(userId, {
-      dryRun: process.env.FOLDERA_DRY_RUN === 'true',
-    });
 
     // Check for generation failure sentinel
     if (directive.directive === '__GENERATION_FAILED__') {
@@ -143,12 +228,13 @@ export async function POST(request: Request) {
         confidence:       directive.confidence,
         reason:           directive.reason,
         evidence:         directive.evidence,
+        artifact,
         status:           'pending_approval',
         generated_at:     new Date().toISOString(),
         execution_result: buildDirectiveExecutionResult({
           directive,
           artifact,
-          briefOrigin: 'dashboard_generate',
+          briefOrigin: useSelectedMove ? 'selected_move_generate' : 'dashboard_generate',
         }),
       })
       .select('id, generated_at, status, execution_result')

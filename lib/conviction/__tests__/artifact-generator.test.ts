@@ -815,4 +815,60 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     expect(title).toMatch(/^Interview Week Execution Brief/);
     expect(content).toMatch(/Tue, Apr 21|Wed, Apr 22|Thu, Apr 23/);
   });
+
+  it('renders the selected WorkSourceWA admin-deadline move deterministically without Anthropic', async () => {
+    const directive: any = {
+      action_type: 'write_document',
+      directive:
+        'Write a decision memo that closes "Deadline closing: Complete at least one account activity (apply for job, create/update resume, save job/search, or register)" with the owner, next action, and deadline.',
+      reason:
+        'Deadline is TODAY and last movement was 19 days ago — execution gap is now visible to stakeholders.',
+      confidence: 86,
+      evidence: [
+        {
+          type: 'commitment',
+          description:
+            'Complete at least one account activity (apply for job, create/update resume, save job/search, or register) to ensure account moves to new WorkSourceWA site.',
+        },
+        {
+          type: 'commitment',
+          description:
+            'Active commitment, last updated 19 days ago; 0 day(s) until deadline with no movement.',
+        },
+      ],
+      requires_search: false,
+      discrepancyClass: 'deadline_staleness',
+    };
+
+    const result = await generateArtifact('user-1', directive);
+
+    expect(mockCreate).not.toHaveBeenCalled();
+    const { title, content } = expectDocumentArtifactShape(result, {
+      minTitleLength: 20,
+      minLength: 360,
+      minParagraphs: 4,
+      requiredTerms: [
+        'WorkSourceWA',
+        'account activity',
+        'FINAL RECOMMENDATION',
+        'OWNER',
+        'NEXT PHYSICAL STEP',
+        'CONSEQUENCE IF NO MOVEMENT',
+        'SOURCE TRAIL',
+      ],
+      requiredRegexes: [/apply for a job|create or update the resume|save a job\/search|register/i],
+      forbiddenPatterns: ['DRY RUN', 'Verification brief', 'Objective:', 'Execution Notes:'],
+    });
+    expect(title).toContain('WorkSourceWA');
+    expect(getArtifactPersistenceIssues('write_document', result, directive)).toEqual([]);
+    expect(
+      validateDirectiveForPersistence({
+        userId: 'user-1',
+        directive,
+        artifact: result,
+        candidateType: 'discrepancy',
+      }),
+    ).toEqual([]);
+    expect(content).toContain('complete one account activity now');
+  });
 });

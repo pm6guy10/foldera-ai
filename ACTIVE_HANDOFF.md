@@ -1,10 +1,10 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-13 07:22 PT
+Last updated: 2026-05-13 07:58 PT
 Last known production SHA: d569129
 Last completed code commit: d569129
-Current slice: CI/source-truth guard
-Current mode: Root-cause fix shipped; next move returns to selected-move persistence.
+Current slice: Selected move -> persisted artifact
+Current mode: No-paid deterministic selected-move persistence fixed locally; push/deploy proof pending.
 
 ## Current product truth
 
@@ -12,7 +12,7 @@ Current mode: Root-cause fix shipped; next move returns to selected-move persist
 - Health is non-blocking: Gmail fresh, Outlook fresh, mail cursors current, and last generation is `do_nothing`.
 - Candidate selection over-filtering is fixed; no-paid winner truth selects the WorkSourceWA account-activity deadline as Tier 1 `admin_deadline_decision_packet`.
 - Controller selection is aligned to emit `GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT` for the next no-paid selected-move persistence seam.
-- The selected WorkSourceWA current move is still not persisted as an artifact/action/history row.
+- The selected WorkSourceWA current move now has a deterministic no-paid document artifact path and a selected-winner generate mode that persists a real `pending_approval` action shape.
 - The docs CI failure on `f075162` was caused by `ACTIVE_HANDOFF.md` growing past the 80-line cockpit cap before GitHub unit CI caught it.
 - Root-cause guard is shipped: preflight now validates `ACTIVE_HANDOFF.md` markers and the `<= 80` line cap before commit/push gates can pass.
 
@@ -28,18 +28,21 @@ Current mode: Root-cause fix shipped; next move returns to selected-move persist
 - push/remote: PASS `git push origin main`; `origin/main` -> `d569129751ad54fdec44ecc47c0e41edbbd35c8b`.
 - hosted truth: PASS GitHub CI, docs-fast CI, Health Gate, Semgrep, Deploy to Vercel, and Production E2E for `d569129`.
 - production SHA: PASS `https://www.foldera.ai/api/health` -> `d569129`, deployment `dpl_3MEDN7reR1X76MwQgpH1zbV3gqpS`.
+- selected-move persistence regression: PASS `node node_modules/vitest/vitest.mjs run lib/conviction/__tests__/artifact-generator.test.ts lib/conviction/__tests__/artifact-generator-contract.test.ts app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts app/api/conviction/history/__tests__/route.test.ts app/api/conviction/daily-value/__tests__/route.test.ts app/api/conviction/latest/__tests__/selected-move-generate.test.ts --reporter=verbose` (`41/41`).
+- winner/autopsy: PASS `npm run winner:autopsy` -> selected WorkSourceWA Tier 1 `admin_deadline_decision_packet`.
+- current build/health: PASS `npm run health` -> `RESULT: 0 FAILING`; PASS `npm run build`.
 
 ## Remaining defects in current slice
 
 - None for the docs/source guard.
-- Product runtime is unchanged; the selected WorkSourceWA move remains the next product-loop seam.
+- Local deterministic selected-move persistence is fixed; hosted deploy/CI proof is pending until commit/push.
 
 ## Next exact move
 
-1. Rerun `npm run controller:autopilot`.
-2. Execute only `GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT` if emitted.
+1. Run preflight, commit, and push the selected-move persistence fix.
+2. Verify hosted CI/deploy truth and production `/api/health` SHA for the pushed commit.
 3. Do not use `proof:golden-artifact`; do not run paid/model generation without explicit approval.
-4. Stop at the exact no-paid persistence blocker if deterministic artifact/action/history proof cannot proceed.
+4. After deploy proof, rerun controller and continue only if it emits a fresh no-paid contract.
 
 ## Do not touch yet
 

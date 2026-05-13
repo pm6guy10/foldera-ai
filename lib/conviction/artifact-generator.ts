@@ -318,11 +318,13 @@ function buildInterviewWeekPrepPackArtifact(cluster: InterviewWeekCluster): Docu
     ...whatToIgnore,
   ].join('\n');
 
-  return {
+  const artifact = {
     type: 'document',
     title,
     content,
-  };
+  } as DocumentArtifact;
+
+  return artifact;
 }
 
 function deriveGoalLabel(goalText: string): string {
@@ -482,6 +484,91 @@ function buildBehavioralPatternArtifact(directive: ConvictionDirective): Documen
   };
 }
 
+function extractQuotedTarget(value: string): string | null {
+  const match = value.match(/"([^"]{8,180})"/);
+  return match?.[1]?.trim() ?? null;
+}
+
+function inferAdminDeadlineTarget(directive: ConvictionDirective): string {
+  const combined = [
+    directive.directive,
+    directive.reason ?? '',
+    ...(directive.evidence ?? []).map((entry) => entry.description),
+  ].join('\n');
+  const quoted = extractQuotedTarget(combined);
+  if (quoted) return cleanText(quoted);
+  const evidenceLine = directive.evidence
+    ?.map((entry) => cleanText(entry.description))
+    .find((entry) => /\b(?:worksource|account activity|job seeker|deadline|due|commitment)\b/i.test(entry));
+  if (evidenceLine) return evidenceLine.slice(0, 140);
+  return cleanText(directive.directive).slice(0, 140) || 'the current admin deadline';
+}
+
+function isAdminDeadlineDirective(directive: ConvictionDirective): boolean {
+  if (directive.action_type !== 'write_document') return false;
+  const combined = [
+    directive.directive,
+    directive.reason ?? '',
+    directive.discrepancyClass ?? '',
+    ...(directive.evidence ?? []).map((entry) => entry.description),
+  ].join('\n');
+  return (
+    directive.discrepancyClass === 'deadline_staleness' ||
+    /\b(?:admin_deadline|deadline closing|commitment due|account activity|worksourcewa|worksource|job seeker account)\b/i.test(combined)
+  );
+}
+
+function buildAdminDeadlineDecisionPacket(directive: ConvictionDirective): DocumentArtifact {
+  const combined = [
+    directive.directive,
+    directive.reason ?? '',
+    ...(directive.evidence ?? []).map((entry) => entry.description),
+  ].join('\n');
+  const deadlineAnchor = extractDeadlineAnchor(combined) ?? 'today';
+  const target = inferAdminDeadlineTarget(directive);
+  const isWorkSource = /\b(?:worksourcewa|worksource|account activity|job seeker account)\b/i.test(combined);
+  const title = isWorkSource
+    ? 'WorkSourceWA account activity closeout'
+    : `Deadline closeout: ${sentenceCaseTopic(target)}`.slice(0, 120);
+  const nextStep = isWorkSource
+    ? 'complete one account activity now: apply for a job, create or update the resume, save a job/search, or register, then mark the account transition closed'
+    : `complete the single closing action for ${target}`;
+  const consequence = directive.reason && /\b(?:risk|deadline|slip|stalled|gap|window|visible|stakeholders?)\b/i.test(directive.reason)
+    ? directive.reason.replace(/[.!?]+$/, '')
+    : `if this stays open past ${deadlineAnchor}, the deadline remains unresolved and the next cycle inherits avoidable recovery work`;
+  const sourceTrail = (directive.evidence ?? [])
+    .map((entry) => cleanText(entry.description))
+    .filter((entry) => entry.length > 0)
+    .slice(0, 3);
+
+  const content = [
+    'EXECUTION BRIEF',
+    `FINAL RECOMMENDATION: close ${target} ${deadlineAnchor === 'today' ? 'today' : `by ${deadlineAnchor}`} with one concrete account-owner move, not another reminder.`,
+    '',
+    'OWNER: the account owner closes this loop and treats it as done only after the required activity is completed.',
+    '',
+    `NEXT PHYSICAL STEP: ${nextStep}.`,
+    '',
+    `DEADLINE: ${deadlineAnchor}.`,
+    '',
+    `CONSEQUENCE IF NO MOVEMENT: ${consequence}.`,
+    '',
+    'SOURCE TRAIL',
+    ...(sourceTrail.length > 0 ? sourceTrail.map((entry) => `- ${entry}`) : ['- Current winner evidence selected this as the safest deadline-backed move.']),
+    '',
+    'APPROVAL NOTE',
+    'Save this packet only after the action above is actually the move you want to use for the deadline closeout.',
+  ].join('\n');
+
+  return {
+    type: 'document',
+    document_purpose: isWorkSource ? 'WorkSourceWA account activity closeout packet' : 'Admin deadline decision packet',
+    target_reader: 'Account owner',
+    title,
+    content,
+  } as DocumentArtifact & { document_purpose: string; target_reader: string };
+}
+
 export async function generateArtifact(
   userId: string,
   directive: ConvictionDirective,
@@ -490,6 +577,9 @@ export async function generateArtifact(
     const embedded = (directive as ConvictionDirective & { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
     if (!embedded && directive.discrepancyClass === 'behavioral_pattern') {
       return buildBehavioralPatternArtifact(directive);
+    }
+    if (!embedded && isAdminDeadlineDirective(directive)) {
+      return buildAdminDeadlineDecisionPacket(directive);
     }
   }
 
