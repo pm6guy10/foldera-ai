@@ -218,4 +218,43 @@ describe('discrepancy-card frame contract', () => {
     expect(generic.passes).toBe(false);
     expect(generic.blocked_by).toContain('noisy_pattern_memory');
   });
+
+  it('does not learn noisy memory from operational auto-suppressed proof rows', () => {
+    const memory = deriveDiscrepancyPatternMemory([
+      {
+        status: 'skipped',
+        skip_reason: 'Auto-suppressed pending action for dev brain-receipt force-fresh run.',
+        action_type: 'write_document',
+        directive_text: 'Event is 3 days away with no calendar block or preparation.',
+        execution_result: {
+          discrepancy_quality: {
+            pattern_keys: ['discrepancy:exposure', 'candidate:discrepancy', 'action:write_document'],
+          },
+        },
+      },
+    ]);
+
+    expect(memory.penalizedPatternKeys).not.toContain('discrepancy:exposure');
+    expect(memory.blockedPatternKeys).not.toContain('discrepancy:exposure');
+    expect(memory.blockedPatternKeys).not.toContain('candidate:discrepancy');
+  });
+
+  it('does not hard-block broad candidate category keys from no-send receipts', () => {
+    const memory = deriveDiscrepancyPatternMemory([
+      {
+        status: 'skipped',
+        action_type: 'do_nothing',
+        directive_text: 'Nothing cleared the bar today after evaluating candidates.',
+        execution_result: {
+          discrepancy_quality: {
+            blocked_by: ['missing_risk'],
+            rejection_reason: 'missing_risk',
+            pattern_keys: ['candidate:discrepancy', 'action:do_nothing'],
+          },
+        },
+      },
+    ]);
+
+    expect(memory.blockedPatternKeys).not.toContain('candidate:discrepancy');
+  });
 });

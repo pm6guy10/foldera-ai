@@ -1,10 +1,10 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-12 17:46 PT
-Last known production SHA: a6fdeec
-Last completed code commit: 601afc8
-Current slice: Persisted artifact path proof
-Current mode: Proof mode; no product/frontend changes because the current owner-day path blocks before persistence.
+Last updated: 2026-05-12 19:09 PT
+Last known production SHA: b78b2ac
+Last completed code commit: b78b2ac
+Current slice: Briefing quality / candidate selection
+Current mode: Deterministic selection bug fixed locally; no frontend, persistence plumbing, paid generation, or golden proof touched.
 
 ## Current product truth
 
@@ -13,13 +13,15 @@ Current mode: Proof mode; no product/frontend changes because the current owner-
 - Legacy app surfaces that use `ProductShell` share the matte Foldera app background, wider app-width shell, cyan-edged header card, and mobile dashboard-section rail.
 - Auth/onboarding surfaces (`/login`, `/start`, `/onboard`) use the same premium matte app surface and centered cards without changing OAuth, onboarding, billing, source freshness, or outbound email contracts.
 - Production mobile auth checks, production Playwright auth state, and production smoke CTA assertions now match the public-only deploy contract.
-- Production deploy truth: `https://www.foldera.ai/api/health` reports `revision.git_sha=a6fdeecd445473ce29b4b32ed61b2783898fe39d`, `git_ref=main`, `deployment_id=dpl_662ia9cV6ezkQkFTeAzVKFajP5mC`, `vercel_env=production`.
-- GitHub truth for `a6fdeec` is green: commit check-runs include successful health, static verification, unit/build/e2e, deploy, and deploy-triggered CI gates; authenticated/payments/quarantine lanes were skipped by workflow scope.
+- Production deploy truth: `https://www.foldera.ai/api/health` reports `revision.git_sha=b78b2ac78bb2cb83e763b6ac9725626495be827a`, `git_ref=main`, `deployment_id=dpl_FSKhoE98wGWjmVfYrubCLp8mNcgF`, `vercel_env=production`.
+- GitHub truth for `b78b2ac` is green: commit check-runs include successful health, static verification, unit/build/e2e, deploy, and deploy-triggered CI gates; authenticated/payments/quarantine lanes were skipped by workflow scope.
 - Controller truth: `npm run controller:autopilot` returns `CONTROLLER RESULT: STOP` because all remaining money-loop rungs are externally blocked by paid/model-backed proof, passive proof, quota/access, real non-owner account, or fresh external proof.
 - The controller now clears stale `.foldera-contract.json` on STOP so future runs cannot execute an already-finished contract.
-- Current health is non-blocking: Gmail fresh `12h ago`, Outlook fresh `12h ago`, `Mail cursors current`, and last generation `do_nothing`.
-- Persisted artifact path truth: deterministic approve/skip/latest/detail/history tests pass, and past production `write_document` artifacts remain visible in history, but the current owner-day path has `0` pending approval actions and `/api/conviction/daily-value` has no slate because winner truth is `no_safe_artifact_today`.
-- First broken rung for persisted-artifact work: `candidate selected/current best move -> artifact/current move`. Do not force a fake golden artifact or paid generation to bypass this; reopen only when a fresh safe candidate exists or Brandon explicitly approves a paid/model-backed proof.
+- Current health is non-blocking: Gmail fresh `14h ago`, Outlook fresh `14h ago`, `Mail cursors current`, and last generation `do_nothing`.
+- Persisted artifact path truth: deterministic approve/skip/latest/detail/history tests pass, and past production `write_document` artifacts remain visible in history.
+- Candidate selection truth: previous no-safe result was an over-filtering bug. Pattern memory learned from operational auto-suppressed proof rows and broad `candidate:discrepancy` keys, blocking a real Tier 1 WorkSourceWA admin-deadline candidate.
+- Current no-paid winner truth after the fix: `npm run winner:autopsy` returns `current_winner.verdict=selected` for `Deadline closing: Complete at least one account activity...`, tier `tier_1`, artifact family `admin_deadline_decision_packet`.
+- Daily-value state after the fix: deterministic winner-truth builds a non-null `daily_utility_slate.primary_move` for the selected WorkSourceWA account-activity deadline, without paid generation or persistence.
 - Contractless STOP preflight now allows `CURRENT_STATE.md` alongside `ACTIVE_HANDOFF.md` and `SESSION_HISTORY.md` for source-truth receipts, so valid proof-mode blockers can be committed without fabricating a controller contract.
 
 ## Verified proof
@@ -28,28 +30,29 @@ Current mode: Proof mode; no product/frontend changes because the current owner-
 - controller/preflight regression: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/controller-autopilot.test.ts scripts/__tests__/preflight-contract.test.ts --reporter=verbose` (`33/33`).
 - build/lint: PASS `npm run build`; PASS `npm run lint`.
 - health: PASS `npm run health` -> `RESULT: 0 FAILING`.
-- production SHA: PASS `https://www.foldera.ai/api/health` -> `a6fdeec`, deployment `dpl_662ia9cV6ezkQkFTeAzVKFajP5mC`.
-- GitHub CI/deploy: PASS check-runs on `a6fdeec` all completed with no failures.
+- production SHA: PASS `https://www.foldera.ai/api/health` -> `b78b2ac`, deployment `dpl_FSKhoE98wGWjmVfYrubCLp8mNcgF`.
+- GitHub CI/deploy: PASS check-runs on `b78b2ac` all completed with no failures.
 - Previously proven frontend surface contract: build, lint, large-file split, public routes, dashboard navigation, authenticated routes, mobile visual QA, production public smoke, and proof screenshots.
 - persisted-artifact focused tests: PASS `npx vitest run lib/conviction/__tests__/execute-action.test.ts app/api/conviction/execute/__tests__/route.test.ts 'app/api/conviction/actions/[id]/__tests__/route.test.ts' app/api/conviction/history/__tests__/route.test.ts app/api/conviction/daily-value/__tests__/route.test.ts app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts lib/briefing/__tests__/daily-utility-slate.test.ts --reporter=verbose` (`50/50`).
-- winner/autopsy: PASS `npm run winner:autopsy` -> `current_winner.verdict=no_safe_artifact_today`; action needed is to inspect blockers before forcing generation.
-- live DB read-only proof: PASS latest owner actions are recent `do_nothing` no-send rows; `tkg_action_summaries` has `0` pending approvals; user-facing history still contains the May 9 skipped `write_document` artifact previews.
-- daily-value state: PASS deterministic winner-truth read returns `daily_utility_slate=null` because no current Tier 1/Tier 2 candidate proved a fresh grounded discrepancy.
+- winner/autopsy before fix: PASS `npm run winner:autopsy` -> `current_winner.verdict=no_safe_artifact_today`; blockers showed a Tier 1 admin-deadline candidate blocked by noisy-pattern memory.
+- winner/autopsy after fix: PASS `npm run winner:autopsy` -> `current_winner.verdict=selected`, selected Tier 1 `admin_deadline_decision_packet`.
+- daily-value state after fix: PASS deterministic winner-truth read returns a non-null `daily_utility_slate.primary_move` for the selected WorkSourceWA account-activity deadline.
+- candidate-selection regression: PASS `node node_modules/vitest/vitest.mjs run lib/briefing/__tests__/discrepancy-card-frame.test.ts lib/briefing/__tests__/winner-selection.test.ts lib/briefing/__tests__/positive-winner-contract.test.ts --reporter=verbose` (`44/44`).
 - contractless receipt preflight: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/preflight-contract.test.ts --reporter=verbose`.
 - build: PASS `npm run build`.
 
 ## Remaining defects in current slice
 
 - None for the frontend surface contract or controller STOP cleanup.
-- Persisted artifact path is not currently product-code broken after a selected artifact exists; it is blocked before persistence because no current safe candidate/current best move exists.
+- Candidate selection over-filtering is fixed locally and proven. No current frontend or persistence-plumbing defect is open in this slice.
 
 ## Next exact move
 
 Start here:
 1. Rerun `npm run controller:autopilot`.
-2. If moving persisted-artifact work, start from `npm run winner:autopsy` and prove whether a fresh safe candidate exists before touching persistence.
-3. If winner truth is still `no_safe_artifact_today` and daily-value is null, stop on the exact pre-persistence blocker instead of inserting forced golden data or reopening frontend.
-4. Only reopen money-loop work when one blocker becomes actionable: explicit paid/model-proof approval and quota, next passive send window, a real connected non-owner account, or fresh repeated-directive failure evidence.
+2. If continuing the WorkSourceWA selected move, stay no-paid and prove whether deterministic artifact generation can create a safe pending action/history record from the selected Tier 1 candidate.
+3. Do not use `proof:golden-artifact`; do not run paid/model generation without explicit approval.
+4. Only reopen external money-loop work when one blocker becomes actionable: explicit paid/model-proof approval and quota, next passive send window, a real connected non-owner account, or fresh repeated-directive failure evidence.
 
 ## Do not touch yet
 

@@ -235,6 +235,10 @@ export function deriveDiscrepancyPatternKeys(input: {
   });
 }
 
+function isOperationalSkipReason(value: string): boolean {
+  return /\b(?:auto[-\s]?suppressed|force[-\s]?fresh|already[-\s]?sent|dev\s+brain[-\s]?receipt)\b/i.test(value);
+}
+
 export function evaluateDiscrepancyCardFrame(
   frame: DiscrepancyCardFrame | null | undefined,
   options: { patternMemory?: DiscrepancyPatternMemory | null } = {},
@@ -508,10 +512,11 @@ export function deriveDiscrepancyPatternMemory(rows: ActionHistoryRow[]): Discre
     if (keys.length === 0) continue;
     const status = asString(row.status)?.toLowerCase() ?? '';
     const skipReason = asString(row.skip_reason)?.toLowerCase() ?? '';
+    const operationalSkip = isOperationalSkipReason(skipReason);
     const execution = asRecord(row.execution_result);
     const quality = asRecord(execution?.discrepancy_quality);
     const rejected =
-      status === 'skipped' ||
+      (status === 'skipped' && !operationalSkip) ||
       status === 'draft_rejected' ||
       status === 'rejected' ||
       skipReason === 'not_relevant' ||
@@ -550,6 +555,7 @@ export function deriveDiscrepancyPatternMemory(rows: ActionHistoryRow[]): Discre
     penalizedPatternKeys: allKeys.filter((key) => (negativeCounts.get(key) ?? 0) > 0),
     blockedPatternKeys: allKeys.filter((key) => {
       if (key.startsWith('action:')) return false;
+      if (key.startsWith('candidate:')) return false;
       return (
         (blockedCounts.get(key) ?? 0) > 0 ||
         (negativeCounts.get(key) ?? 0) >= 2 ||
