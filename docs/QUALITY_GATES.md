@@ -5,6 +5,14 @@ Quality gates answer: is the path worth using?
 
 A technically valid artifact is not enough. Foldera passes quality only when the user can understand, trust, and act on the result without Brandon explaining it.
 
+One command answers the current executable quality question:
+
+```bash
+npm run gate:quality
+```
+
+The command reports the current release gate result when available, then evaluates the current quality gate from deterministic proof. It must not run paid generation, send email, touch Stripe, change schema, fabricate beta proof, or count owner-only proof as customer proof.
+
 ## Core Quality Rule
 
 An artifact exists is not a pass.
@@ -78,6 +86,8 @@ Fail: user needs Brandon to explain the product.
 
 Pass: artifact rubric exists, bad examples fail, good examples pass, and low-value artifacts are regression-locked.
 Fail: artifact exists but is generic, summary-only, fake, unsupported, or not action-ready.
+
+Executable proof starts with deterministic fixtures. The controller must reject generic prep checklists, coaching, reminder-only output, summary-only output, source-free advice, vague follow-ups, fake urgency, fake obligation, relationship pressure, no-next-move output, inbox/calendar restatement, and artifacts that tell the user what to do instead of delivering finished work. It may pass source-backed decision packets, follow-up drafts, meeting prep with specific source gaps, vendor/customer next-step drafts, stale-document follow-ups, clear no-safe-move explanations, and approval-ready documents.
 
 ### QG_11_VISUAL_FRONTEND_QUALITY
 

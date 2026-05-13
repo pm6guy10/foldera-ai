@@ -4,6 +4,13 @@
 
 Operating doctrine pointer: see [FOLDERA_OPERATING_DOCTRINE.md](/C:/Users/b-kap/foldera-ai/FOLDERA_OPERATING_DOCTRINE.md) for the durable owner/operator seam order and current stop condition.
 
+## 2026-05-13 - QG_10 artifact quality controller
+- MODE: Quality gate controller only; no UI polish, frontend redesign, paid generation, outbound email, Stripe, schema, fake users, beta-readiness claim, or owner-only proof as customer proof.
+- Files changed: `scripts/quality-gate-status.ts`, `scripts/__tests__/quality-gate-status.test.ts`, `scripts/preflight-contract.ts`, `scripts/__tests__/preflight-contract.test.ts`, `package.json`, `docs/QUALITY_GATES.md`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Added executable `npm run gate:quality`. The command reports the current release gate result, then evaluates `QG_10_ARTIFACT_QUALITY` from deterministic fixtures. The first fixture suite rejects generic prep, coaching, reminder-only output, summary-only output, source-free advice, vague follow-ups, fake urgency, fake obligation, fake relationship pressure, no-next-move output, source restatement, and "tell the user what to do" artifacts while accepting source-backed action-ready examples.
+- Verification: TDD red failed on missing `scripts/quality-gate-status.ts`; preflight red failed on missing contractless quality-gate allowance; `npm run health` passed with `RESULT: 0 FAILING`; `npm run build` passed; `npm run gate:status` reported release gate `GATE_9_REAL_NON_OWNER_BETA`, `BLOCKED_EXTERNAL`; focused quality unit passed (`5/5`); preflight contract unit passed (`17/17`); `npm run gate:quality` reported release gate `GATE_9_REAL_NON_OWNER_BETA - BLOCKED_EXTERNAL`, quality gate `QG_10_ARTIFACT_QUALITY`, `STATUS: PASS`, `FIRST_FAILING_QUALITY_GATE: NONE`, with 13 bad fixtures rejected and 7 good fixtures accepted.
+- Unresolved issues: Release remains blocked by the real non-owner account requirement. QG_10 is fixture-proven only; do not continue into visual polish, pricing, beta outreach, paid generation, or artifact improvement without a new quality-gate scope.
+
 ## 2026-05-13 - Release gate status controller
 - MODE: Release gate controller only; no product features, UI polish, landing copy, paid generation, outbound email, Stripe, schema, fake users, or Brandon owner data as beta proof.
 - Files changed: `docs/RELEASE_GATES.md`, `scripts/release-gate-status.ts`, `scripts/__tests__/release-gate-status.test.ts`, `scripts/preflight-contract.ts`, `scripts/__tests__/preflight-contract.test.ts`, `package.json`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.

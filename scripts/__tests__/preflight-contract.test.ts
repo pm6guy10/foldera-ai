@@ -272,6 +272,48 @@ describe('preflight contract validation', () => {
     }
   });
 
+  it('allows quality-gate controller files without a product contract', () => {
+    const { repoDir } = makeRepo();
+    try {
+      mkdirSync(join(repoDir, 'docs'), { recursive: true });
+      mkdirSync(join(repoDir, 'scripts', '__tests__'), { recursive: true });
+      writeValidActiveHandoff(repoDir, 'quality gate status controller');
+      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), '## Receipt\n- quality gate\n');
+      writeFileSync(join(repoDir, 'package.json'), '{"scripts":{"gate:quality":"tsx scripts/quality-gate-status.ts"}}\n');
+      writeFileSync(join(repoDir, 'docs', 'QUALITY_GATES.md'), '# Quality gates\n');
+      writeFileSync(join(repoDir, 'scripts', 'quality-gate-status.ts'), 'export {}\n');
+      writeFileSync(
+        join(repoDir, 'scripts', '__tests__', 'quality-gate-status.test.ts'),
+        'export {}\n',
+      );
+      writeFileSync(join(repoDir, 'scripts', 'preflight-contract.ts'), 'export {}\n');
+      writeFileSync(
+        join(repoDir, 'scripts', '__tests__', 'preflight-contract.test.ts'),
+        'export {}\n',
+      );
+      execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
+
+      const result = validateContractForStage(repoDir, 'pre-commit');
+
+      expect(result.ok).toBe(true);
+      expect(result.code).toBe('ok');
+      expect(result.touchedFiles).toEqual(
+        expect.arrayContaining([
+          'ACTIVE_HANDOFF.md',
+          'SESSION_HISTORY.md',
+          'package.json',
+          'docs/QUALITY_GATES.md',
+          'scripts/quality-gate-status.ts',
+          'scripts/__tests__/quality-gate-status.test.ts',
+          'scripts/preflight-contract.ts',
+          'scripts/__tests__/preflight-contract.test.ts',
+        ]),
+      );
+    } finally {
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
   it('rejects an oversized active handoff before it can reach CI', () => {
     const { repoDir, baseCommit } = makeRepo();
     try {
