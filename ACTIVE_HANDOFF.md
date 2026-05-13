@@ -1,59 +1,53 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-13 11:23 PT
+Last updated: 2026-05-13 11:44 PT
 Last known production SHA: 4b964ab
-Last completed code commit: 4b964ab
-Current slice: Promise-chain rung 2 repeatable WorkSourceWA winner
-Current mode: Stop after this first-rung fix; do not continue into UI, controller, paid proof, or artifact polish.
+Last completed code commit: current harness commit pending push
+Current slice: Non-owner beta mock harness map + first missing harness
+Current mode: Harness only; no UI polish, no paid generation, no outbound email, no Stripe, no schema.
 
 ## Current product truth
 
 - Health is non-blocking: Gmail fresh, Outlook fresh, mail cursors current, and last generation is `write_document`.
-- Production has selected-move artifact `8aca653a-f0a1-46e9-9af4-323c5cee539b` as `pending_approval` `write_document`, title `WorkSourceWA account activity closeout`, `brief_origin=selected_move_generate`.
-- Latest/history readback for that row was previously production-proven; this slice did not touch UI or readback code.
-- First broken promise-chain rung was `FINDS WHAT MATTERS`: valid pending discrepancy cards with `blocked_by: []` were being learned as noisy blocked patterns, so the current WorkSourceWA class could be selected once and then vetoed on replay.
-- `winner:autopsy` now selects the WorkSourceWA Tier 1 `admin_deadline_decision_packet` again with fresh providers, `graph_drift: []`, and no `action_needed`.
-- Small 90-day rolling-window behavioral graph aging is ignored only when no newer signal exists and 14/30-day counts remain stable; genuinely stale graph state still blocks.
+- Production still has selected-move artifact `8aca653a-f0a1-46e9-9af4-323c5cee539b` as owner `pending_approval` `write_document`; that is not non-owner beta proof.
+- Real non-owner depth remains externally blocked until one real non-owner connects Google or Microsoft.
+- Mock-only beta harness map now exists at `NON_OWNER_BETA_HARNESS_MAP.md`.
+- First missing harness is implemented in `tests/e2e/non-owner-beta-harness.spec.ts`.
+- The harness uses `33333333-3333-4333-8333-333333333333`, explicitly not `OWNER_USER_ID` or `TEST_USER_ID`.
+- The harness proves simulated `/start` -> `/onboard` no-token block -> connected-source dashboard path -> waiting/no-safe-move -> source-backed artifact -> source trail -> Save/Skip controls -> approval with no outbound send attempts -> history readback.
 
 ## Verified proof
 
-- health: PASS `npm run health` -> `RESULT: 0 FAILING`, last generation `write_document`.
-- selector autopsy: PASS `npm run winner:autopsy` -> `current_winner.verdict=selected`, WorkSourceWA Tier 1 `admin_deadline_decision_packet`, no future findings.
-- focused regressions: PASS `npx vitest run lib/briefing/__tests__/discrepancy-card-frame.test.ts --reporter=verbose` (`10/10`).
-- graph proof: PASS `npx vitest run lib/signals/__tests__/behavioral-graph.test.ts --reporter=verbose` (`4/4`).
-- acceptance-path proof: PASS selected-move generation/artifact/latest-history/daily-value/execute tests (`46/46`) across the focused files run this slice.
-- build/lint: PASS `npm run build`; PASS `npm run lint`.
-- read-only production DB proof: row `8aca653a...` remains `pending_approval`, `write_document`, title `WorkSourceWA account activity closeout`, source refs `3`, `paid_flag=false`.
-- production deploy truth: PASS Vercel deployment `dpl_GSE4Nuj5P8aoiTiRkUGt6n7QSpKa` is READY for commit `4b964abdc4acbb20604ef9c359f165db6286019f`.
-- production SHA: PASS `https://www.foldera.ai/api/health` -> `4b964abdc4acbb20604ef9c359f165db6286019f`.
+- health: PASS `npm run health` -> `RESULT: 0 FAILING`.
+- build: PASS `npm run build`.
+- focused browser proof: PASS `npx playwright test tests/e2e/non-owner-beta-harness.spec.ts --reporter=list` (`4/4`).
+- dashboard/API proof: PASS latest/history/execute/dashboard-model tests (`26/26`).
+- auth/onboarding/connect proof: PASS auth/onboard/google/microsoft tests (`12/12`).
+- exclusion grep: PASS `acceptance-gate.ts` excludes `OWNER_USER_ID` and `TEST_USER_ID`; harness id differs from both.
 
 ## Remaining defects in current slice
 
-- None for rung 2 repeatable selection.
-- The artifact can still be cleaner and more "holy crap", but that is the next rung and was intentionally not touched.
+- None for the first missing mock harness.
+- Mock proof is not real beta readiness.
+- Real beta readiness still requires one real connected non-owner account.
 
 ## Next exact move
 
-1. Stop.
-2. Do not continue into artifact polish, UI, controller, paid generation, or source-trail cleanup unless Brandon explicitly asks.
+1. Commit and push this harness/map slice to `main`.
+2. Verify deploy/production SHA because repo state changed.
+3. Stop if the only remaining blocker is still one real non-owner tester connecting Google or Microsoft.
 
-## Do not touch yet
+## Do not touch
 
-- paid generation without explicit approval
-- outbound email without explicit approval
-- Stripe charge
-- schema migration or destructive DB action
-- landing page, demo/marketing UI, dashboard polish
-- controller/meta unless proof-blocking
-- fake non-owner accounts or fabricated production data
+- landing copy or frontend polish
+- controller/meta
+- Brandon owner data as proof
+- fabricated production users
+- paid generation
+- outbound email
+- Stripe
+- schema or destructive DB actions
 
-## External blockers
+## External blocker
 
-- `BL-015`: waiting on explicit paid/model-backed owner money-shot proof.
-- `BL-003` and `BL-005`: waiting on paid model quota/access before fresh approved production proof.
-- `BL-006`: waiting on one real connected non-owner account.
-- `BL-011`: waiting on the next natural daily-send passive proof window.
-
-## Stop condition
-
-Stop now: the first broken promise-chain rung is committed, pushed, and production SHA is verified.
+- One real non-owner tester must connect Google or Microsoft before real beta readiness can be claimed.
