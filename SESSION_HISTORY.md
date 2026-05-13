@@ -6433,3 +6433,10 @@ pm run build.
 - What changed: Reapplied the latest readback patch under the current generated controller contract after commit `1242f47` made the source-truth finding selectable. Selected-move generated rows below the normal send-confidence threshold can now enter the same strict artifact/discrepancy validation path as higher-confidence pending actions.
 - Verification: Contract proof passed: selected latest/history/daily-value/generator tests (`41/41`), `npm run winner:autopsy` exited successfully and correctly did not force a repeat generation, `npm run health` passed with `RESULT: 0 FAILING`, docs source-truth guard passed, `npm run build` passed, and `npm run lint` passed.
 - Unresolved issues: Preflight, commit/push, production SHA, and authenticated production `/api/conviction/latest` row proof are still pending.
+
+## 2026-05-13 - Selected WorkSourceWA latest readback production proof
+- MODE: Closure receipt for generated contract `GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT`; no paid generation, outbound email, Stripe, schema, destructive DB action, or frontend changes.
+- Files changed: `ACTIVE_HANDOFF.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`.
+- What changed: Recorded production closure for the latest/history readback seam. The selected WorkSourceWA row now survives the normal latest endpoint despite confidence `45`, while still passing strict artifact/discrepancy validation before display.
+- Verification: Vercel deployment `dpl_5BTucyL2ouGVVUTDiRaHJLCk3a85` is READY for commit `bd480af53cd174d979579ff05fd57a7a013c31a4`; production `/api/health` reports SHA `bd480af53cd174d979579ff05fd57a7a013c31a4`; authenticated production `/api/conviction/latest` returns row `8aca653a-f0a1-46e9-9af4-323c5cee539b` with `brief_origin=selected_move_generate`, confidence `45`, `finished_artifact_verdict=strict_artifact_selected`, and a detail URL; `/api/conviction/history?limit=5` returns the same row first with artifact preview.
+- Unresolved issues: Commit/push this closure receipt, rerun controller from clean `main`, and stop only if it returns verified external blockers.
