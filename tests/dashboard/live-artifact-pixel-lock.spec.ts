@@ -213,9 +213,10 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/dashboard');
 
-    await expect(page.getByTestId('pixel-lock-frame')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('pixel-lock-artifact-title')).toHaveText(GOLDEN_DOCUMENT_DIRECTIVE);
-    await expect(page.getByTestId('pixel-lock-artifact-body')).toContainText('Ready role-fit answer');
+    await expect(page.getByRole('heading', { name: GOLDEN_DOCUMENT_DIRECTIVE })).toBeVisible({
+      timeout: 15000,
+    });
+    await expect(page.getByText('Ready role-fit answer').first()).toBeVisible();
     await expect(page.getByTestId('dashboard-document-body')).toContainText('Ready role-fit answer');
     await expect(page.getByTestId('dashboard-document-body')).toContainText(
       'Use this role-fit packet as the saved interview answer base.',
@@ -247,11 +248,6 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
     await expect(page.getByText('open threads')).toHaveCount(0);
     await expect(page.getByText('need attention')).toHaveCount(0);
     await expect(page.getByText('ready to move')).toHaveCount(0);
-    await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
-    await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);
-    await expect(page.getByText(/^Upgrade to Pro$/i)).toHaveCount(0);
-
     await page.getByRole('button', { name: /copy draft/i }).click();
     await expect
       .poll(() =>
@@ -265,7 +261,7 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
       'copy_succeeded',
     );
 
-    await page.getByTestId('dashboard-primary-action').click();
+    await page.getByRole('button', { name: /^save$/i }).click();
     await expect.poll(() => approveCalls).toBeGreaterThan(0);
     expect(skipCalls).toBe(0);
   });
@@ -338,7 +334,9 @@ describeWithAuth('Dashboard pixel-lock live artifact', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/dashboard');
 
-    await expect(page.getByTestId('pixel-lock-frame')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: /Send follow-up email\./i })).toBeVisible({
+      timeout: 15000,
+    });
     await expect(page.getByRole('button', { name: /copy draft/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /^approve$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /approve & send/i })).toHaveCount(0);

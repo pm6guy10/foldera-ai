@@ -20,6 +20,7 @@
     "health": "npx tsx scripts/health.ts",
     "gate:status": "npx tsx scripts/release-gate-status.ts",
     "gate:quality": "npx tsx scripts/quality-gate-status.ts",
+    "gate:visual": "npx tsx scripts/visual-gate-status.ts",
     "preflight": "node scripts/run-local-tsx.cjs scripts/preflight.ts",
     "controller:autopilot": "npx tsx scripts/controller-autopilot.ts",
     "proof:golden-artifact": "npx tsx scripts/force-golden-artifact.ts",

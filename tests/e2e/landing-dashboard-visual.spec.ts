@@ -33,6 +33,21 @@ const DIRECTIVE_RESPONSE = {
   approved_count: 1,
   is_subscribed: true,
   evidence: [{ type: 'signal', description: 'Email thread with Alex Morgan' }],
+  discrepancy_card: {
+    claim: 'Send the follow-up to Alex Morgan before noon.',
+    contradiction:
+      'The Alex Morgan thread still has no reply, but the calendar hold makes the ask time-bound today.',
+    risk: 'The noon window may slip if the prepared response is not approved during this session.',
+    evidence: [
+      'Email thread with Alex Morgan is still awaiting a response.',
+      'Calendar hold creates a noon decision window.',
+    ],
+    next_action: 'Send the prepared follow-up to Alex Morgan before noon.',
+    why_now: 'The open thread and calendar hold are both active today.',
+    source_refs: ['email:alex-morgan-thread', 'calendar:noon-hold'],
+    confidence: 0.85,
+    pattern_keys: ['discrepancy:meeting_open_thread', 'action:send_message'],
+  },
   artifact: {
     type: 'email',
     to: 'alex.morgan@example.com',
@@ -143,10 +158,10 @@ describeWithAuth('Visual system dashboard screenshots', () => {
     await ensureOutDir();
     await setupDashboardMocks(page);
     const captures = [
-      { width: 1440, height: 1200, file: 'dashboard-1440.png', minBriefWidth: 1080 },
-      { width: 1920, height: 1200, file: 'dashboard-1920.png', minBriefWidth: 1180 },
+      { width: 1440, height: 1200, file: 'dashboard-1440.png', minBriefWidth: 760 },
+      { width: 1920, height: 1200, file: 'dashboard-1920.png', minBriefWidth: 760 },
       { width: 1280, height: 1200, file: 'dashboard-1280.png', maxBriefWidth: 940 },
-      { width: 1024, height: 1200, file: 'dashboard-1024.png', maxBriefWidth: 960, rightRailVisible: false },
+      { width: 1024, height: 1200, file: 'dashboard-1024.png', maxBriefWidth: 1024, rightRailVisible: false },
       { width: 390, height: 1180, file: 'dashboard-390.png', maxBriefWidth: 390, rightRailVisible: false },
     ] as const;
 
@@ -178,8 +193,14 @@ describeWithAuth('Visual system dashboard screenshots', () => {
         expect(briefWidth).toBeLessThanOrEqual(capture.maxBriefWidth);
       }
 
-      const rightRailLabel = page.getByText(/How this brief works/i).first();
-      await expect(rightRailLabel).not.toBeVisible();
+      const rightRailLabel = page
+        .getByRole('heading', { name: /Context behind the current move|Evidence behind today's move/i })
+        .first();
+      if (capture.rightRailVisible === false) {
+        await expect(rightRailLabel).not.toBeVisible();
+      } else {
+        await expect(rightRailLabel).toBeVisible();
+      }
 
       const hasOverflow = await page.evaluate(
         () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

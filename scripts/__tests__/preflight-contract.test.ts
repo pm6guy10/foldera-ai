@@ -314,6 +314,54 @@ describe('preflight contract validation', () => {
     }
   });
 
+  it('allows visual-gate controller files without a product contract', () => {
+    const { repoDir } = makeRepo();
+    try {
+      mkdirSync(join(repoDir, 'docs'), { recursive: true });
+      mkdirSync(join(repoDir, 'tests', 'dashboard'), { recursive: true });
+      mkdirSync(join(repoDir, 'tests', 'e2e'), { recursive: true });
+      mkdirSync(join(repoDir, 'scripts', '__tests__'), { recursive: true });
+      writeValidActiveHandoff(repoDir, 'visual gate status controller');
+      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), '## Receipt\n- visual gate\n');
+      writeFileSync(join(repoDir, 'package.json'), '{"scripts":{"gate:visual":"tsx scripts/visual-gate-status.ts"}}\n');
+      writeFileSync(join(repoDir, 'docs', 'QUALITY_GATES.md'), '# Quality gates\n');
+      writeFileSync(join(repoDir, 'tests', 'dashboard', 'live-artifact-pixel-lock.spec.ts'), 'export {}\n');
+      writeFileSync(join(repoDir, 'tests', 'e2e', 'landing-dashboard-visual.spec.ts'), 'export {}\n');
+      writeFileSync(join(repoDir, 'scripts', 'visual-gate-status.ts'), 'export {}\n');
+      writeFileSync(
+        join(repoDir, 'scripts', '__tests__', 'visual-gate-status.test.ts'),
+        'export {}\n',
+      );
+      writeFileSync(join(repoDir, 'scripts', 'preflight-contract.ts'), 'export {}\n');
+      writeFileSync(
+        join(repoDir, 'scripts', '__tests__', 'preflight-contract.test.ts'),
+        'export {}\n',
+      );
+      execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
+
+      const result = validateContractForStage(repoDir, 'pre-commit');
+
+      expect(result.ok).toBe(true);
+      expect(result.code).toBe('ok');
+      expect(result.touchedFiles).toEqual(
+        expect.arrayContaining([
+          'ACTIVE_HANDOFF.md',
+          'SESSION_HISTORY.md',
+          'package.json',
+          'docs/QUALITY_GATES.md',
+          'tests/dashboard/live-artifact-pixel-lock.spec.ts',
+          'tests/e2e/landing-dashboard-visual.spec.ts',
+          'scripts/visual-gate-status.ts',
+          'scripts/__tests__/visual-gate-status.test.ts',
+          'scripts/preflight-contract.ts',
+          'scripts/__tests__/preflight-contract.test.ts',
+        ]),
+      );
+    } finally {
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
   it('rejects an oversized active handoff before it can reach CI', () => {
     const { repoDir, baseCommit } = makeRepo();
     try {

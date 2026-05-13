@@ -96,6 +96,19 @@ const QUALITY_GATE_CONTRACTLESS_FILES = new Set([
   'scripts/__tests__/preflight-contract.test.ts',
 ]);
 
+const VISUAL_GATE_CONTRACTLESS_FILES = new Set([
+  'ACTIVE_HANDOFF.md',
+  'SESSION_HISTORY.md',
+  'package.json',
+  'docs/QUALITY_GATES.md',
+  'tests/dashboard/live-artifact-pixel-lock.spec.ts',
+  'tests/e2e/landing-dashboard-visual.spec.ts',
+  'scripts/visual-gate-status.ts',
+  'scripts/__tests__/visual-gate-status.test.ts',
+  'scripts/preflight-contract.ts',
+  'scripts/__tests__/preflight-contract.test.ts',
+]);
+
 const ACTIVE_HANDOFF_MAX_LINES = 80;
 
 function validateActiveHandoffCockpit(repoRoot: string): string | null {
@@ -254,6 +267,41 @@ function getContractlessQualityGateFiles(
 
   return {
     ok: contractIsAbsentAtHead(repoRoot) && touchesQualityGate && onlyQualityGateFiles,
+    files,
+  };
+}
+
+function getContractlessVisualGateFiles(
+  repoRoot: string,
+  stage: ContractValidationStage,
+): { ok: boolean; files: string[] } {
+  const diffArgs =
+    stage === 'pre-commit'
+      ? ['diff', '--cached', '--name-only']
+      : (() => {
+          const base = getPrePushComparisonBase(repoRoot);
+          return base ? ['diff', '--name-only', `${base}..HEAD`] : null;
+        })();
+
+  if (!diffArgs) {
+    return { ok: false, files: [] };
+  }
+
+  const result = runGit(repoRoot, diffArgs);
+  if (result.status !== 0) {
+    return { ok: false, files: [] };
+  }
+
+  const files = parseTouchedFiles(result.stdout);
+  const touchesVisualGate =
+    files.includes('scripts/visual-gate-status.ts') ||
+    files.includes('docs/QUALITY_GATES.md') ||
+    files.includes('scripts/__tests__/visual-gate-status.test.ts');
+  const onlyVisualGateFiles =
+    files.length > 0 && files.every((file) => VISUAL_GATE_CONTRACTLESS_FILES.has(file));
+
+  return {
+    ok: contractIsAbsentAtHead(repoRoot) && touchesVisualGate && onlyVisualGateFiles,
     files,
   };
 }
@@ -461,6 +509,17 @@ export function validateContractForStage(
           code: 'ok',
           message: 'Contractless quality-gate controller update is valid.',
           touchedFiles: qualityGateState.files,
+          violations: [],
+        };
+      }
+
+      const visualGateState = getContractlessVisualGateFiles(repoRoot, stage);
+      if (visualGateState.ok) {
+        return {
+          ok: true,
+          code: 'ok',
+          message: 'Contractless visual-gate controller update is valid.',
+          touchedFiles: visualGateState.files,
           violations: [],
         };
       }

@@ -11,6 +11,12 @@ One command answers the current executable quality question:
 npm run gate:quality
 ```
 
+One command answers the current executable visual-quality question:
+
+```bash
+npm run gate:visual
+```
+
 The command reports the current release gate result when available, then evaluates the current quality gate from deterministic proof. It must not run paid generation, send email, touch Stripe, change schema, fabricate beta proof, or count owner-only proof as customer proof.
 
 ## Core Quality Rule
@@ -93,6 +99,8 @@ Executable proof starts with deterministic fixtures. The controller must reject 
 
 Pass: screenshots prove the UI supports the product loop: current move, source trail, and controls are visible and trustworthy.
 Fail: Codex claims UI is good without screenshots or mechanical visual proof.
+
+Executable proof must stay gate-only: `npm run gate:visual` may pass from deterministic mock visual proof when QG_10 is passing, current move/source trail/controls are covered, dashboard desktop/mobile screenshots exist with overflow checks, and the proof is labeled mock-only rather than real beta proof.
 
 ### QG_12_PRICING_SCALE_QUALITY
 
