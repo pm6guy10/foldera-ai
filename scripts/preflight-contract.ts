@@ -66,6 +66,7 @@ function runGit(
 const STOP_STATE_CONTRACTLESS_FILES = new Set([
   '.foldera-contract.json',
   'ACTIVE_HANDOFF.md',
+  'CURRENT_STATE.md',
   'SESSION_HISTORY.md',
   'scripts/controller-autopilot.ts',
   'scripts/preflight-contract.ts',

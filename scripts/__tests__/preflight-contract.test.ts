@@ -174,6 +174,7 @@ describe('preflight contract validation', () => {
 
       writeFileSync(join(repoDir, 'scripts', 'preflight-contract.ts'), 'follow-up\n');
       writeFileSync(join(repoDir, 'ACTIVE_HANDOFF.md'), 'follow-up\n');
+      writeFileSync(join(repoDir, 'CURRENT_STATE.md'), 'follow-up\n');
       execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
 
       const result = validateContractForStage(repoDir, 'pre-commit');
@@ -181,7 +182,11 @@ describe('preflight contract validation', () => {
       expect(result.ok).toBe(true);
       expect(result.code).toBe('ok');
       expect(result.touchedFiles).toEqual(
-        expect.arrayContaining(['ACTIVE_HANDOFF.md', 'scripts/preflight-contract.ts']),
+        expect.arrayContaining([
+          'ACTIVE_HANDOFF.md',
+          'CURRENT_STATE.md',
+          'scripts/preflight-contract.ts',
+        ]),
       );
     } finally {
       rmSync(repoDir, { recursive: true, force: true });
