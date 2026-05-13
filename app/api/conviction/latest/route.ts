@@ -37,6 +37,7 @@ type PendingRankingRow = {
   id?: unknown;
   confidence?: unknown;
   generated_at?: unknown;
+  brief_origin?: unknown;
 };
 
 function jsonReadCache(payload: unknown): NextResponse {
@@ -57,6 +58,13 @@ function isPendingRankingRow(value: unknown): value is PendingRankingRow {
   if (!value || typeof value !== 'object') return false;
   const row = value as PendingRankingRow;
   return typeof row.id === 'string' && typeof row.confidence === 'number';
+}
+
+function canEnterPendingRanking(row: PendingRankingRow): boolean {
+  return (
+    (typeof row.confidence === 'number' && row.confidence >= MIN_PENDING_CONFIDENCE) ||
+    row.brief_origin === 'selected_move_generate'
+  );
 }
 
 function asString(value: unknown): string | null {
@@ -167,7 +175,7 @@ export async function GET(request: Request) {
       return generatedAt >= startOfTodayIso();
     });
     const rankedCandidates = (todaysCandidates.length > 0 ? todaysCandidates : rankingRows).filter(
-      (candidate) => candidate.confidence >= MIN_PENDING_CONFIDENCE,
+      canEnterPendingRanking,
     );
     const selectedCandidate = rankedCandidates[0];
 

@@ -20,7 +20,7 @@ type SupabaseMockOptions = {
   slateReceipts?: Record<string, unknown>[];
 };
 
-const PENDING_RANKING_SELECT = 'id, confidence, generated_at, status';
+const PENDING_RANKING_SELECT = 'id, confidence, generated_at, status, brief_origin';
 const PENDING_SUMMARY_SELECT =
   'id, status, action_type, confidence, generated_at, approved_at, executed_at, directive_text, reason, skip_reason, outcome_closed, artifact_type, artifact_title, brief_origin, artifact_preview, discrepancy_claim, discrepancy_contradiction, discrepancy_risk, discrepancy_evidence, discrepancy_next_action, discrepancy_why_now, discrepancy_source_refs, discrepancy_confidence, is_no_send, no_send_reason, generation_outcome, outcome_type';
 const SLATE_RECEIPT_SELECT =
@@ -76,6 +76,12 @@ function buildSupabaseMock(options: SupabaseMockOptions) {
     confidence: action.confidence,
     generated_at: action.generated_at,
     status: action.status,
+    brief_origin:
+      action.execution_result &&
+      typeof action.execution_result === 'object' &&
+      typeof (action.execution_result as Record<string, unknown>).brief_origin === 'string'
+        ? (action.execution_result as Record<string, unknown>).brief_origin
+        : null,
   }));
   const pendingLimit = vi.fn().mockResolvedValue({ data: pendingRankingRows, error: null });
   const pendingOrderGenerated = vi.fn().mockReturnValue({ limit: pendingLimit });
@@ -367,6 +373,49 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(supabase.spies.pendingSummaryMaybeSingle).toHaveBeenCalledTimes(1);
     expect(mockBuildContextGreeting).not.toHaveBeenCalled();
     expect(supabase.spies.getUserById).not.toHaveBeenCalled();
+  });
+
+  it('shows a selected-move generated artifact below the normal send-confidence threshold', async () => {
+    const supabase = buildSupabaseMock({
+      pendingActions: [
+        buildPendingAction({
+          id: 'selected-move-action',
+          confidence: 45,
+          directive_text: 'Prepare WorkSourceWA account activity closeout.',
+          artifact: {
+            type: 'document',
+            title: 'WorkSourceWA account activity closeout',
+            content: 'Close out the WorkSourceWA account activity trail before the deadline.',
+          },
+          execution_result: {
+            brief_origin: 'selected_move_generate',
+            discrepancy_card: VALID_DISCREPANCY_CARD,
+            discrepancy_quality: {
+              passes: true,
+              quality_score: 0.88,
+              blocked_by: [],
+              pattern_keys: VALID_DISCREPANCY_CARD.pattern_keys,
+              rejection_reason: null,
+            },
+          },
+        }),
+      ],
+      consumedCount: 0,
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'none' });
+
+    const res = await callLatest();
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(body.id).toBe('selected-move-action');
+    expect(body.confidence).toBe(45);
+    expect(body.brief_origin).toBe('selected_move_generate');
+    expect(body.finished_artifact_verdict).toBe('strict_artifact_selected');
+    expect(body.detail_required).toBe(true);
+    expect(body.detail_url).toBe('/api/conviction/actions/selected-move-action');
+    expect(mockBuildContextGreeting).not.toHaveBeenCalled();
   });
 
   it('hides a pending artifact that cannot prove a discrepancy card frame', async () => {
