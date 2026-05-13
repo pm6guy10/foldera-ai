@@ -525,10 +525,13 @@ export function deriveDiscrepancyPatternMemory(rows: ActionHistoryRow[]): Discre
       status === 'approved' ||
       status === 'executed' ||
       status === 'sent';
+    const blockedBy = Array.isArray(quality?.blocked_by)
+      ? quality.blocked_by.filter((reason) => typeof reason === 'string' && reason.trim().length > 0)
+      : [];
     const blocked =
       status === 'no_send' ||
       asString(quality?.rejection_reason) != null ||
-      Array.isArray(quality?.blocked_by);
+      blockedBy.length > 0;
 
     for (const key of keys) {
       if (accepted) positiveCounts.set(key, (positiveCounts.get(key) ?? 0) + 1);

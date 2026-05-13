@@ -257,4 +257,30 @@ describe('discrepancy-card frame contract', () => {
 
     expect(memory.blockedPatternKeys).not.toContain('candidate:discrepancy');
   });
+
+  it('does not treat valid pending discrepancy cards with empty blockers as noisy memory', () => {
+    const memory = deriveDiscrepancyPatternMemory([
+      {
+        status: 'pending_approval',
+        action_type: 'write_document',
+        directive_text: 'WorkSourceWA account activity closeout',
+        execution_result: {
+          discrepancy_quality: {
+            passes: true,
+            blocked_by: [],
+            rejection_reason: null,
+            pattern_keys: [
+              'discrepancy:deadline_staleness',
+              'discrepancy:exposure',
+              'action:write_document',
+            ],
+          },
+        },
+      },
+    ]);
+
+    expect(memory.penalizedPatternKeys).not.toContain('discrepancy:deadline_staleness');
+    expect(memory.blockedPatternKeys).not.toContain('discrepancy:deadline_staleness');
+    expect(memory.blockedPatternKeys).not.toContain('discrepancy:exposure');
+  });
 });

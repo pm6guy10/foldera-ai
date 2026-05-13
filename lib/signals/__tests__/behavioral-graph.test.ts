@@ -151,4 +151,40 @@ describe('behavioral graph', () => {
     const { auditBehavioralGraphConsistency } = await import('../behavioral-graph');
     await expect(auditBehavioralGraphConsistency('user-1')).resolves.toEqual([]);
   });
+
+  it('ignores small 90-day rolling-window drift when no newer signal exists', async () => {
+    const entity = {
+      id: 'entity-1',
+      name: 'brandon kapp',
+      display_name: 'Brandon Kapp',
+      total_interactions: 96,
+      last_interaction: '2026-05-01T16:25:56.000Z',
+      patterns: {
+        bx_stats: {
+          signal_count_14d: 1,
+          signal_count_30d: 12,
+          signal_count_90d: 96,
+        },
+      },
+      patterns_updated_at: '2026-05-05T11:52:44.601Z',
+    };
+    const signals = [
+      {
+        extracted_entities: ['entity-1'],
+        occurred_at: '2026-05-01T16:25:56.000Z',
+      },
+      ...Array.from({ length: 11 }, () => ({
+        extracted_entities: ['entity-1'],
+        occurred_at: '2026-04-15T16:32:19.372Z',
+      })),
+      ...Array.from({ length: 82 }, () => ({
+        extracted_entities: ['entity-1'],
+        occurred_at: '2026-03-10T16:32:19.372Z',
+      })),
+    ];
+    createServerClient.mockReturnValue(buildSupabaseMock({ entities: [entity], signals }));
+
+    const { auditBehavioralGraphConsistency } = await import('../behavioral-graph');
+    await expect(auditBehavioralGraphConsistency('user-1')).resolves.toEqual([]);
+  });
 });
