@@ -11,6 +11,13 @@ Operating doctrine pointer: see [FOLDERA_OPERATING_DOCTRINE.md](/C:/Users/b-kap/
 - Verification: `npm run health` passed with `RESULT: 0 FAILING`; release gate unit test passed (`3/3`) after red fail on missing module; preflight contract regression passed (`16/16`) after red fail on missing release-gate allowance; `npm run gate:status` printed `CURRENT_GATE: GATE_9_REAL_NON_OWNER_BETA`, `FIRST_FAILING_GATE: GATE_9_REAL_NON_OWNER_BETA`, `STATUS: BLOCKED_EXTERNAL`; `npm run build` passed; `npx playwright test tests/e2e/non-owner-beta-harness.spec.ts --reporter=list` passed (`4/4`); grep proof confirmed `OWNER_USER_ID` and `TEST_USER_ID` exclusions in `lib/cron/acceptance-gate.ts` and harness identity differs from both; pre-push reran preflight, e2e assertion lint, build, and public smoke (`52/52`); production `/api/health` reported `6b0c163564a8646075ef904c1f82a2ff441c7a36`, deployment `dpl_3Jd2tsD8CGoAeVWkvdB9TpZLsMwP`.
 - Unresolved issues: GATE_9 remains externally blocked until exactly one real non-owner account connects Google or Microsoft. Mock proof still does not count as real beta readiness.
 
+## 2026-05-13 - GATE_9 external blocker verified
+- MODE: Release truth only after `npm run gate:status`; no product code, UI polish, paid generation, outbound email, Stripe, schema, fake users, or Brandon owner data as beta proof.
+- Files changed: `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Verified the first failing release gate is a real external blocker, not a stale controller result. `npm run gate:status` stops at `GATE_9_REAL_NON_OWNER_BETA` with `STATUS: BLOCKED_EXTERNAL`.
+- Verification: `npm run health` passed with `RESULT: 0 FAILING`; `npm run gate:status` reported GATE_9 as the first failing gate; read-only production `user_tokens` query excluding `OWNER_USER_ID` and `TEST_USER_ID` returned `connectedNonOwnerTokenRows: 0` and `connectedNonOwnerUserIds: []`; production `/api/health` reported `6b0c163564a8646075ef904c1f82a2ff441c7a36`, deployment `dpl_3Jd2tsD8CGoAeVWkvdB9TpZLsMwP`.
+- Unresolved issues: The valid stop reason is real non-owner account required. Next move is external: one real tester connects Google or Microsoft, then rerun `npm run gate:status`.
+
 ## 2026-05-10 - Durable operating doctrine pointer added
 - MODE: Docs-only operating doctrine seam.
 - Files changed: `FOLDERA_OPERATING_DOCTRINE.md`, `SESSION_HISTORY.md`, `FOLDERA_PRODUCTION_BACKLOG.md`.

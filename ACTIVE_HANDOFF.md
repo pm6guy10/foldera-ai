@@ -1,10 +1,10 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-13 12:56 PT
+Last updated: 2026-05-13 13:26 PT
 Last known production SHA: 6b0c163
-Last completed code commit: 6b0c163
-Current slice: Release gate status controller
-Current mode: Controller/docs only; no product features, no UI polish, no paid generation, no outbound email, no Stripe, no schema.
+Last completed code commit: b67600e
+Current slice: GATE_9_REAL_NON_OWNER_BETA external blocker verified
+Current mode: Release truth only; no product features, no UI polish, no paid generation, no outbound email, no Stripe, no schema.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
 First failing release gate: GATE_9_REAL_NON_OWNER_BETA
 Release gate status: BLOCKED_EXTERNAL
@@ -19,7 +19,8 @@ Release gate status: BLOCKED_EXTERNAL
 - First missing harness is implemented in `tests/e2e/non-owner-beta-harness.spec.ts`.
 - The harness uses `33333333-3333-4333-8333-333333333333`, explicitly not `OWNER_USER_ID` or `TEST_USER_ID`.
 - The harness proves simulated `/start` -> `/onboard` no-token block -> connected-source dashboard path -> waiting/no-safe-move -> source-backed artifact -> source trail -> Save/Skip controls -> approval with no outbound send attempts -> history readback.
-- Release gate controller work is in progress: `docs/RELEASE_GATES.md`, `scripts/release-gate-status.ts`, and `npm run gate:status`.
+- Release gate controller is shipped and live; `npm run gate:status` is the current release program.
+- Read-only production token proof found `0` connected non-owner Google/Microsoft provider rows after excluding `OWNER_USER_ID` and `TEST_USER_ID`.
 
 ## Verified proof
 
@@ -29,6 +30,7 @@ Release gate status: BLOCKED_EXTERNAL
 - release gate unit: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/release-gate-status.test.ts --reporter=verbose` (`3/3`).
 - preflight contract unit: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/preflight-contract.test.ts --reporter=verbose` (`16/16`).
 - gate status: PASS `npm run gate:status` -> first failing gate `GATE_9_REAL_NON_OWNER_BETA`, `BLOCKED_EXTERNAL`.
+- GATE_9 DB proof: PASS read-only `user_tokens` query excluding owner/test IDs -> `connectedNonOwnerTokenRows: 0`, `connectedNonOwnerUserIds: []`.
 - focused browser proof: PASS `npx playwright test tests/e2e/non-owner-beta-harness.spec.ts --reporter=list` (`4/4`).
 - dashboard/API proof: PASS latest/history/execute/dashboard-model tests (`26/26`).
 - auth/onboarding/connect proof: PASS auth/onboard/google/microsoft tests (`12/12`).
@@ -43,10 +45,9 @@ Release gate status: BLOCKED_EXTERNAL
 
 ## Next exact move
 
-1. Finish `npm run gate:status`.
-2. Prove health, build, gate status, harness, and reserved-user exclusion.
-3. Commit and push the release gate controller.
-4. Stop at GATE_9 unless a real non-owner tester connects Google or Microsoft.
+1. Stop.
+2. Do not build product work, polish UI, fabricate users, or count owner/mock proof.
+3. Resume only when one real non-owner tester connects Google or Microsoft, then rerun `npm run gate:status` and prove GATE_9 from real provider rows.
 
 ## Do not touch
 
