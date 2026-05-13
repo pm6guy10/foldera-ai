@@ -6454,3 +6454,10 @@ pm run build.
 - What changed: Added the requested 13-state harness map and implemented the first missing simulated non-owner beta harness. The Playwright harness uses a non-owner/non-`TEST_USER_ID` identity, covers `/start`, no-token onboarding block, connected Google/Microsoft source states, dashboard waiting/no-safe-move state, one source-backed artifact/current move, source trail, Save/Skip controls, approval without outbound send attempts, and history readback.
 - Verification: `npm run health` passed with `RESULT: 0 FAILING`; `npm run build` passed; `npx playwright test tests/e2e/non-owner-beta-harness.spec.ts --reporter=list` passed (`4/4`); focused dashboard/API Vitest slice passed (`26/26`); focused auth/onboarding/connect Vitest slice passed (`12/12`); grep proof confirmed `OWNER_USER_ID` and `TEST_USER_ID` are excluded from `NON_OWNER_DEPTH` and the harness ID differs from both.
 - Unresolved issues: Mock proof does not claim real beta readiness. The only remaining beta blocker is external: one real non-owner tester connecting Google or Microsoft.
+
+## 2026-05-13 - Non-owner beta harness production receipt
+- MODE: Receipt-only production truth for the non-owner beta mock harness; no product behavior changed.
+- Files changed: `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Recorded that the non-owner beta harness commit reached production.
+- Verification: `origin/main` matched `cc67c233b76ab1dac4884bbd68229cc21dacdf8c`; production `/api/health` reported `revision.git_sha=cc67c233b76ab1dac4884bbd68229cc21dacdf8c` and deployment `dpl_GfjHyEx9PxbmmtH7hvNrzdfTUXuy`.
+- Unresolved issues: Mock proof does not claim real beta readiness. The only remaining beta blocker is external: one real non-owner tester connecting Google or Microsoft.

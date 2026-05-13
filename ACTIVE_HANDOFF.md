@@ -1,8 +1,8 @@
 # ACTIVE HANDOFF — FOLDERA
 
 Last updated: 2026-05-13 11:44 PT
-Last known production SHA: 4b964ab
-Last completed code commit: current harness commit pending push
+Last known production SHA: cc67c23
+Last completed code commit: cc67c23
 Current slice: Non-owner beta mock harness map + first missing harness
 Current mode: Harness only; no UI polish, no paid generation, no outbound email, no Stripe, no schema.
 
@@ -24,6 +24,7 @@ Current mode: Harness only; no UI polish, no paid generation, no outbound email,
 - dashboard/API proof: PASS latest/history/execute/dashboard-model tests (`26/26`).
 - auth/onboarding/connect proof: PASS auth/onboard/google/microsoft tests (`12/12`).
 - exclusion grep: PASS `acceptance-gate.ts` excludes `OWNER_USER_ID` and `TEST_USER_ID`; harness id differs from both.
+- production SHA: PASS `https://www.foldera.ai/api/health` -> `cc67c233b76ab1dac4884bbd68229cc21dacdf8c`, deployment `dpl_GfjHyEx9PxbmmtH7hvNrzdfTUXuy`.
 
 ## Remaining defects in current slice
 
@@ -33,9 +34,9 @@ Current mode: Harness only; no UI polish, no paid generation, no outbound email,
 
 ## Next exact move
 
-1. Commit and push this harness/map slice to `main`.
-2. Verify deploy/production SHA because repo state changed.
-3. Stop if the only remaining blocker is still one real non-owner tester connecting Google or Microsoft.
+1. Stop.
+2. Do not claim real beta readiness from mocks.
+3. Resume only when one real non-owner tester connects Google or Microsoft, or when asked for another mock harness state.
 
 ## Do not touch
 
