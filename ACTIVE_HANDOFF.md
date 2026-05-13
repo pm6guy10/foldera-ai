@@ -1,56 +1,36 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-13 10:00 PT
+Last updated: 2026-05-13 10:04 PT
 Last known production SHA: 73aed8b
 Last completed code commit: 73aed8b
-Current slice: Selected WorkSourceWA move persistence proven
-Current mode: No-paid selected-move artifact is pending approval in production.
+Current slice: Selected WorkSourceWA move latest visibility
+Current mode: Generated contract `GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT`; no paid generation, outbound email, Stripe, schema, or destructive DB action.
 
 ## Current product truth
 
-- Frontend surface contract A-Z is shipped on `main`; controller STOP cleanup is live in production.
 - Health is non-blocking: Gmail fresh, Outlook fresh, mail cursors current, and last generation is `write_document`.
-- Candidate selection over-filtering is fixed enough for the WorkSourceWA account-activity deadline to persist as a no-paid artifact.
 - Controller selection is aligned to emit live generated contracts from current source truth.
-- The selected WorkSourceWA current move now has a deterministic no-paid document artifact path and a selected-winner generate mode that persists a real `pending_approval` action shape.
-- CI warning class found on historical `#994` is fixed: `changes` uses `dorny/paths-filter@v4`, and CI artifact handoffs use Node-24-runtime artifact actions.
-- Production DB now has selected-move artifact `8aca653a-f0a1-46e9-9af4-323c5cee539b` as `pending_approval` `write_document`.
+- Production has selected-move artifact `8aca653a-f0a1-46e9-9af4-323c5cee539b` as `pending_approval` `write_document`, title `WorkSourceWA account activity closeout`, `brief_origin=selected_move_generate`.
+- History readback shows the row, but production `/api/conviction/latest` hid it because the selected-move artifact has confidence `45`, below the normal send-confidence ranking threshold.
+- Current code patch allows `brief_origin=selected_move_generate` rows through the first latest ranking gate while preserving the existing artifact/discrepancy validation before display.
 
 ## Verified proof
 
-- health: PASS `npm run health` -> `RESULT: 0 FAILING`.
-- docs/source guard before patch: CI failed `tests/config/__tests__/docs-source-of-truth.test.ts` because `ACTIVE_HANDOFF.md` had 83 lines.
-- local current handoff before patch: 77 lines after commit `74854b3`, confirming the narrow trim fixed the symptom but not the preflight gap.
-- focused regression: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/preflight-contract.test.ts tests/config/__tests__/docs-source-of-truth.test.ts --reporter=verbose` (`18/18`).
-- diff hygiene: PASS `git diff --check`.
-- build/lint: PASS `npm run build`; PASS `npm run lint`.
-- preflight: PASS `npm run preflight -- --stage=pre-commit` after clearing an ignored stale `.foldera-contract.json` from the prior selected-move seam.
-- push/remote: PASS `git push origin main`; `origin/main` -> `d569129751ad54fdec44ecc47c0e41edbbd35c8b`.
-- hosted truth: PASS GitHub CI, docs-fast CI, Health Gate, Semgrep, Deploy to Vercel, and Production E2E for `d569129`.
-- production SHA: PASS `https://www.foldera.ai/api/health` -> `8c2f114`, deployment `dpl_6kQQEHVidSABAX7NNpUF32Gh8cNo`.
-- selected-move persistence regression: PASS `node node_modules/vitest/vitest.mjs run lib/conviction/__tests__/artifact-generator.test.ts lib/conviction/__tests__/artifact-generator-contract.test.ts app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts app/api/conviction/history/__tests__/route.test.ts app/api/conviction/daily-value/__tests__/route.test.ts app/api/conviction/latest/__tests__/selected-move-generate.test.ts --reporter=verbose` (`41/41`).
-- winner/autopsy: PASS `npm run winner:autopsy` -> selected WorkSourceWA Tier 1 `admin_deadline_decision_packet`.
-- current build/health: PASS `npm run health` -> `RESULT: 0 FAILING`; PASS `npm run build`.
-- CI action-runtime local proof: PASS `ci.yml` YAML parse; PASS docs source-of-truth test; `ACTIVE_HANDOFF.md` is under 80 lines.
-- CI action-runtime hosted proof: PASS GitHub `changes`, `unit`, `build`, `e2e`, `e2e-smoke`, `e2e-authenticated`, `e2e-quarantine`, `deploy`, `Health Gate`, and `Production E2E` for `0d24414`; payments skipped by scope.
-- production SHA: PASS `https://www.foldera.ai/api/health` -> `0d24414`, deployment `dpl_5avsrW9znqVZmPcvyyqS1ypAKRNG`.
-- controller STOP verification: PASS read-only Supabase latest owner actions -> newest `40790ab9...` is skipped `do_nothing`; `npm run winner:autopsy` still selects WorkSourceWA Tier 1.
-- controller regression: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/controller-autopilot.test.ts --reporter=verbose` (`21/21`).
-- controller result: PASS `npm run controller:autopilot` -> `GO`, `GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT`.
-- product proof: PASS production no-paid `POST /api/conviction/generate?source=winner_truth` persisted `8aca653a...` with title `WorkSourceWA account activity closeout` and `brief_origin=selected_move_generate`.
-- readback proof: PASS read-only Supabase latest owner action -> `pending_approval` `write_document`; health now reports last generation `write_document`.
+- controller fix shipped: commit `73aed8b0179e60448fc2baf099a093d6d5d2f84c` pushed to `main`; production `/api/health` reports deployment `dpl_8ybJyxxrhMN8a45wh1h4rTBUEvrp`.
+- selected-move persistence receipt shipped: commit `88db21b` pushed to `main`; production DB row `8aca653a...` exists as pending approval.
+- health: PASS `npm run health` -> `RESULT: 0 FAILING`, last generation `write_document`.
+- selected latest regression: PASS `node node_modules/vitest/vitest.mjs run app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts app/api/conviction/history/__tests__/route.test.ts app/api/conviction/daily-value/__tests__/route.test.ts lib/conviction/__tests__/artifact-generator.test.ts lib/conviction/__tests__/artifact-generator-contract.test.ts --reporter=verbose` (`41/41`).
 
 ## Remaining defects in current slice
 
-- None for selected-move persistence.
-- Next controller run must stop or emit only a fresh contract after the selected-move source truth is closed.
+- Need build/lint/preflight, commit/push, deploy proof, and authenticated production `/api/conviction/latest` readback for row `8aca653a...`.
 
 ## Next exact move
 
-1. Commit/push this selected-move closure receipt.
-2. Rerun `npm run controller:autopilot` from clean `main`.
-3. Continue only if it emits a fresh no-paid contract.
-4. Do not use `proof:golden-artifact`; do not run paid/model generation without explicit approval.
+1. Run health, build, lint, docs/source-truth guard, and preflight.
+2. Commit/push the latest visibility patch and receipt docs.
+3. Verify production SHA and authenticated `/api/conviction/latest` returns row `8aca653a...`.
+4. Rerun `npm run controller:autopilot` from clean `main`.
 
 ## Do not touch yet
 
@@ -71,4 +51,4 @@ Current mode: No-paid selected-move artifact is pending approval in production.
 
 ## Stop condition
 
-Stop when the controller returns `STOP` with only external blockers, or when the selected-move persistence seam is proven or exactly blocked.
+Stop when selected-move latest readback is production-proven and the controller returns `STOP` with only external blockers, or when an exact blocker is proven.

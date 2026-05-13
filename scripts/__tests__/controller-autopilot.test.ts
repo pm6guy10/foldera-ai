@@ -810,6 +810,73 @@ Next blocker: next normal daily-send proof required
     }
   });
 
+  it('emits the selected-move contract when persisted selected moves are hidden from latest', () => {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      logs.push(args.map(String).join(' '));
+    });
+
+    const repoDir = mkdtempSync(join(tmpdir(), 'controller-autopilot-'));
+    try {
+      execSync('git init', { cwd: repoDir, stdio: 'ignore' });
+      writeFileSync(
+        join(repoDir, 'FOLDERA_PRODUCTION_BACKLOG.md'),
+        `
+### BL-015
+ID: BL-015
+Status: WAITING_PAID_PROOF
+Next blocker: explicit paid-proof approval required
+
+### BL-011
+ID: BL-011
+Status: WAITING_PASSIVE_PROOF
+Next blocker: next normal daily-send proof required
+`,
+      );
+      writeCommonControllerTruthFiles(repoDir, {
+        currentState: `# CURRENT STATE — FOLDERA
+
+## A. WHAT IS WORKING
+
+- **Selected WorkSourceWA move persisted without paid generation** — Production row \`8aca653a-f0a1-46e9-9af4-323c5cee539b\` is \`pending_approval\`, \`write_document\`, title \`WorkSourceWA account activity closeout\`, and \`brief_origin=selected_move_generate\`.
+- **Selected WorkSourceWA latest visibility handles no-paid selected moves** — 2026-05-13 readback found the persisted selected-move row visible in history but hidden from \`/api/conviction/latest\` because its confidence is \`45\`, below the normal send-confidence ranking threshold.
+
+## B. WHAT IS BROKEN (REAL)
+
+- **Owner money-shot production proof** — Future proof still requires one explicitly approved paid owner run after quota returns.
+`,
+        sessionHistory: `## 2026-05-13 - Selected WorkSourceWA move persisted as pending approval
+- Verification: Production read-only DB proof showed row 8aca653a exists as pending_approval write_document.
+- Unresolved issues: Authenticated latest readback still needs proof.
+`,
+      });
+      execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
+      execSync('git -c user.name=Test -c user.email=test@example.com commit -m init', {
+        cwd: repoDir,
+        stdio: 'ignore',
+      });
+
+      const code = runControllerAutopilot(repoDir);
+      const contract = JSON.parse(
+        readFileSync(join(repoDir, '.foldera-contract.json'), 'utf8'),
+      ) as { backlog_id: string; source_truth_finding?: string };
+
+      expect(code).toBe(0);
+      expect(
+        logs.some((line) =>
+          line.includes('Selected backlog ID: GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT'),
+        ),
+      ).toBe(true);
+      expect(contract.backlog_id).toBe('GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT');
+      expect(contract.source_truth_finding).toContain(
+        'Selected WorkSourceWA latest visibility handles no-paid selected moves',
+      );
+    } finally {
+      spy.mockRestore();
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
   it('does not regenerate a stale closed handoff source_freshness finding and advances to the next live seam', () => {
     const logs: string[] = [];
     const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {

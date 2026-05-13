@@ -840,6 +840,10 @@ export function synthesizeAppOwnerContract(
     extractCurrentStateFinding(
       snapshot.currentStateText,
       /Selected WorkSourceWA persistence still needs no-paid execution proof/i,
+    ) ??
+    extractCurrentStateFinding(
+      snapshot.currentStateText,
+      /Selected WorkSourceWA latest visibility handles no-paid selected moves/i,
     );
   if (selectedMovePersistenceFinding) {
     return createGeneratedContract('SELECTED-MOVE-TO-PERSISTED-ARTIFACT', {
