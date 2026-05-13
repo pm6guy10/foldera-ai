@@ -237,6 +237,41 @@ describe('preflight contract validation', () => {
     }
   });
 
+  it('allows release-gate controller files without a product contract', () => {
+    const { repoDir } = makeRepo();
+    try {
+      mkdirSync(join(repoDir, 'docs'), { recursive: true });
+      mkdirSync(join(repoDir, 'scripts', '__tests__'), { recursive: true });
+      writeValidActiveHandoff(repoDir, 'release gate status controller');
+      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), '## Receipt\n- release gate\n');
+      writeFileSync(join(repoDir, 'package.json'), '{"scripts":{"gate:status":"tsx scripts/release-gate-status.ts"}}\n');
+      writeFileSync(join(repoDir, 'docs', 'RELEASE_GATES.md'), '# Release gates\n');
+      writeFileSync(join(repoDir, 'scripts', 'release-gate-status.ts'), 'export {}\n');
+      writeFileSync(
+        join(repoDir, 'scripts', '__tests__', 'release-gate-status.test.ts'),
+        'export {}\n',
+      );
+      execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
+
+      const result = validateContractForStage(repoDir, 'pre-commit');
+
+      expect(result.ok).toBe(true);
+      expect(result.code).toBe('ok');
+      expect(result.touchedFiles).toEqual(
+        expect.arrayContaining([
+          'ACTIVE_HANDOFF.md',
+          'SESSION_HISTORY.md',
+          'package.json',
+          'docs/RELEASE_GATES.md',
+          'scripts/release-gate-status.ts',
+          'scripts/__tests__/release-gate-status.test.ts',
+        ]),
+      );
+    } finally {
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
   it('rejects an oversized active handoff before it can reach CI', () => {
     const { repoDir, baseCommit } = makeRepo();
     try {

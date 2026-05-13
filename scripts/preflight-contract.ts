@@ -74,6 +74,17 @@ const STOP_STATE_CONTRACTLESS_FILES = new Set([
   'scripts/__tests__/preflight-contract.test.ts',
 ]);
 
+const RELEASE_GATE_CONTRACTLESS_FILES = new Set([
+  'ACTIVE_HANDOFF.md',
+  'SESSION_HISTORY.md',
+  'package.json',
+  'docs/RELEASE_GATES.md',
+  'scripts/release-gate-status.ts',
+  'scripts/__tests__/release-gate-status.test.ts',
+  'scripts/preflight-contract.ts',
+  'scripts/__tests__/preflight-contract.test.ts',
+]);
+
 const ACTIVE_HANDOFF_MAX_LINES = 80;
 
 function validateActiveHandoffCockpit(repoRoot: string): string | null {
@@ -162,6 +173,41 @@ function getContractlessStopStateFiles(
 
   return {
     ok: (deletesContract && onlyStopStateFiles) || isStopStateFollowUp,
+    files,
+  };
+}
+
+function getContractlessReleaseGateFiles(
+  repoRoot: string,
+  stage: ContractValidationStage,
+): { ok: boolean; files: string[] } {
+  const diffArgs =
+    stage === 'pre-commit'
+      ? ['diff', '--cached', '--name-only']
+      : (() => {
+          const base = getPrePushComparisonBase(repoRoot);
+          return base ? ['diff', '--name-only', `${base}..HEAD`] : null;
+        })();
+
+  if (!diffArgs) {
+    return { ok: false, files: [] };
+  }
+
+  const result = runGit(repoRoot, diffArgs);
+  if (result.status !== 0) {
+    return { ok: false, files: [] };
+  }
+
+  const files = parseTouchedFiles(result.stdout);
+  const touchesReleaseGate =
+    files.includes('scripts/release-gate-status.ts') ||
+    files.includes('docs/RELEASE_GATES.md') ||
+    files.includes('scripts/__tests__/release-gate-status.test.ts');
+  const onlyReleaseGateFiles =
+    files.length > 0 && files.every((file) => RELEASE_GATE_CONTRACTLESS_FILES.has(file));
+
+  return {
+    ok: contractIsAbsentAtHead(repoRoot) && touchesReleaseGate && onlyReleaseGateFiles,
     files,
   };
 }
@@ -347,6 +393,17 @@ export function validateContractForStage(
           code: 'ok',
           message: 'Contractless controller STOP state is valid.',
           touchedFiles: stopState.files,
+          violations: [],
+        };
+      }
+
+      const releaseGateState = getContractlessReleaseGateFiles(repoRoot, stage);
+      if (releaseGateState.ok) {
+        return {
+          ok: true,
+          code: 'ok',
+          message: 'Contractless release-gate controller update is valid.',
+          touchedFiles: releaseGateState.files,
           violations: [],
         };
       }
