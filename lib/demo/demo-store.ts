@@ -50,7 +50,7 @@ export const useDemoStore = create<State>((set) => ({
       const event: AuditEvent = {
         id: `e-${Date.now()}`,
         ts: nowStamp(),
-        actor: "Brandon",
+        actor: "Jordan",
         action: "Edited",
         briefId: id,
         briefTitle: brief.title,
@@ -72,7 +72,7 @@ export const useDemoStore = create<State>((set) => ({
       const approved: AuditEvent = {
         id: `a-${Date.now()}`,
         ts,
-        actor: "Brandon",
+        actor: "Jordan",
         action: "Approved",
         briefId: id,
         briefTitle: brief.title,

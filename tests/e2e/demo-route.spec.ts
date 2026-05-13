@@ -9,7 +9,7 @@ test.describe("/demo demo-flow transplant", () => {
     await page.goto("/demo");
 
     await expect(
-      page.getByRole("heading", { name: "Good afternoon, Brandon." }),
+      page.getByRole("heading", { name: "Good afternoon, Jordan." }),
     ).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Executive Briefing" }),
@@ -17,7 +17,7 @@ test.describe("/demo demo-flow transplant", () => {
     await expect(page.getByRole("link", { name: "Audit Log" })).toBeVisible();
     await expect(
       page.getByRole("heading", {
-        name: "Send the follow-up to Alex Morgan before noon.",
+        name: "Send the customer follow-up before noon.",
       }),
     ).toBeVisible();
     await expect(
@@ -35,6 +35,7 @@ test.describe("/demo demo-flow transplant", () => {
     await expect(
       page.getByText("SOURCE TRAIL", { exact: true }),
     ).toBeVisible();
+    await expect(page.getByText(/Riley Chen/i).first()).toBeVisible();
 
     await page.getByRole("button", { name: /Approve & send/i }).click();
     await expect(
@@ -48,6 +49,6 @@ test.describe("/demo demo-flow transplant", () => {
     await expect(
       page.getByRole("heading", { name: "Audit Log" }),
     ).toBeVisible();
-    await expect(page.getByText(/Alex Morgan/i).first()).toBeVisible();
+    await expect(page.getByText(/Send the customer follow-up before noon/i).first()).toBeVisible();
   });
 });

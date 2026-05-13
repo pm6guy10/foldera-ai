@@ -53,7 +53,7 @@ export function ApproveDialog({
                 <div className="mt-3 text-xs tracking-wider text-demo-muted-foreground">TO</div>
                 <div className="mt-1 text-sm">{brief.draft.to}</div>
                 <div className="mt-3 text-xs tracking-wider text-demo-muted-foreground">SEND AS</div>
-                <div className="mt-1 text-sm">Brandon · brandon@acme.com</div>
+                <div className="mt-1 text-sm">Jordan · jordan@example.com</div>
                 <div className="mt-3 text-xs tracking-wider text-demo-muted-foreground">PREVIEW</div>
                 <p className="mt-1 line-clamp-2 text-sm text-demo-foreground/80">{summary}</p>
               </div>

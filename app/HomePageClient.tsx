@@ -20,13 +20,13 @@ import { NavPublic } from '@/components/nav/NavPublic';
 import { FolderaLogo } from '@/components/foldera/FolderaLogo';
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
 
-const briefDraft = `Hi Alex —
+const briefDraft = `Hi Riley —
 
 Following up on the update from yesterday.
 I pulled the latest status and can send the finalized version by noon unless you want one adjustment first.
 
 Best,
-Brandon`;
+Jordan`;
 
 const heroFeatures = [
   {
@@ -167,7 +167,7 @@ function ProductMockup() {
               <p className="mt-2 text-xs leading-5 text-[#8D9AA8]">Unlock team features, custom playbooks, and integrations.</p>
             </div>
             <div className="rounded-[16px] border border-[#1B2530] bg-white/[0.03] p-4">
-              <p className="text-sm font-semibold text-white">Brandon</p>
+              <p className="text-sm font-semibold text-white">Jordan</p>
               <p className="mt-1 text-xs text-[#7A8594]">Workspace Owner</p>
             </div>
           </div>
@@ -178,7 +178,7 @@ function ProductMockup() {
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.26em] text-[#9AA7B6]">Thursday, April 23</p>
               <h2 className="mt-5 text-[30px] font-semibold leading-tight tracking-[-0.05em] text-white sm:text-[40px]">
-                Good evening, Brandon.
+                Good evening, Jordan.
               </h2>
               <div className="mt-4 flex flex-wrap gap-5 text-sm text-[#A7B3C2]">
                 <span><strong className="text-2xl text-white">5</strong> open threads</span>
@@ -196,7 +196,7 @@ function ProductMockup() {
           <div className="mt-8">
             <DailyBriefCard
               className="shadow-[0_0_54px_rgba(34,211,238,0.18)]"
-              directive="Send the follow-up to Alex Morgan before noon."
+              directive="Send the customer follow-up before noon."
               whyNow="You have an open thread with no reply, the ask is time-bound, and the current hold on your calendar makes this the cleanest unblocker today."
               draftBody={<div className="whitespace-pre-line">{briefDraft}</div>}
               sourcePills={['Email thread', 'Calendar hold', 'Last draft', 'Connected inbox']}

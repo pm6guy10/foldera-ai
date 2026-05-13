@@ -3,7 +3,7 @@ import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
 import { DashboardSidebar } from '@/components/foldera/DashboardSidebar';
 import { RightPanel } from '@/components/foldera/RightPanel';
 
-const briefDraft = `Hi Alex —
+const briefDraft = `Hi Riley —
 
 Following up on the update from yesterday.
 I pulled the latest status and can send the finalized version by noon unless you want one adjustment first.
@@ -77,7 +77,7 @@ export function DashboardPreview() {
               <DailyBriefCard
                 className="w-full"
                 dashboardCta
-                directive="Send the follow-up to Alex Morgan before noon."
+                directive="Send the customer follow-up before noon."
                 whyNow="You have an open thread with no reply, the ask is time-bound, and the current hold on your calendar makes this the cleanest unblocker today."
                 draftLabel="FOLLOW-UP EMAIL"
                 draftBody={<div className="whitespace-pre-line">{briefDraft}</div>}

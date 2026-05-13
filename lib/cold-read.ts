@@ -68,14 +68,14 @@ export function generateColdRead(ctx: VisitorContext): ColdRead {
   if (ctx.scenario === 'job') {
     if (ctx.timeOfDay === 'late_night') {
       return {
-        observation: `It's ${displayHour}${ampm} and you're looking at job search tools instead of sleeping.`,
-        subtext: "That's not research. That's the 2am anxiety loop: refresh LinkedIn, check email, wonder if you should have worded that cover letter differently. The silence between submitting and hearing back is louder at night. You're not lazy \u2014 you're exhausted from applying into a void and getting nothing back but form rejections and silence.",
+        observation: `It's ${displayHour}${ampm} and you're checking a hiring packet instead of sleeping.`,
+        subtext: "That's not research. That's the 2am operations loop: reopen the thread, check the calendar hold, wonder if the packet is missing one source before review. The delay is louder at night because the decision still needs one clean owner, one deadline, and one finished update.",
         confidence: 39,
       };
     }
     return {
-      observation: `${ctx.dayOfWeek}. You clicked the job hunt scenario.`,
-      subtext: "Here's what that pattern usually looks like from the outside: dozens of applications, a few callbacks that went nowhere, and a growing suspicion that the problem isn't your resume. The 'one more application' compulsion is a coping mechanism \u2014 it feels productive but it's keeping you from the harder question of whether you're targeting the right role at all. Meanwhile, the recruiter emails pile up unanswered because none of them feel quite right.",
+      observation: `${ctx.dayOfWeek}. You clicked the hiring packet scenario.`,
+      subtext: "Here's what that pattern usually looks like from the outside: one decision thread, one stale draft, one calendar review hold, and a packet that is close but not yet sendable. The useful move is not another note. It is the finished update with the source trail attached.",
       confidence: 41,
     };
   }

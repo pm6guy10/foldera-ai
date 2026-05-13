@@ -107,7 +107,7 @@ const gridBackdropStyle = {
 
 const heroDraft = (
   <div className="space-y-4">
-    <p>Hi Alex — attached is the finalized board update with the churn revisions folded in.</p>
+    <p>Hi Riley — attached is the finalized board update with the churn revisions folded in.</p>
     <p>If this clears your review, I can send the revised version before 11:30 PT today.</p>
   </div>
 );
@@ -355,7 +355,7 @@ function HeroProofRail() {
 
         <DailyBriefCard
           className="shadow-[0_0_34px_rgba(34,211,238,0.12)]"
-          directive="Reply to Alex Morgan before the board hold expires."
+          directive="Send the board update before the review hold expires."
           whyNow="The thread has been open for six days, tomorrow's board review depends on the answer, and Foldera pulled the exact draft that already matches the latest context."
           draftBody={heroDraft}
           sourcePills={['Email thread', 'Calendar hold', 'Stale draft', 'Decision note']}

@@ -31,7 +31,7 @@ export function MobilePreview({ className = '' }: MobilePreviewProps) {
                   Directive
                 </p>
                 <h3 className="mt-1 text-[14px] font-semibold leading-snug text-text-primary">
-                  Send the follow-up to Alex Morgan before noon.
+                  Send the customer follow-up before noon.
                 </h3>
               </div>
             </div>
@@ -44,7 +44,7 @@ export function MobilePreview({ className = '' }: MobilePreviewProps) {
             </div>
 
             <div className="rounded-[16px] border border-border bg-panel-raised px-3.5 py-3 text-[12.5px] leading-6 text-text-primary">
-              <p>Hi Alex —</p>
+              <p>Hi Riley —</p>
               <p className="mt-2">
                 I pulled the latest status and can send the finalized version by noon unless you want one adjustment first.
               </p>

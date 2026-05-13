@@ -25,7 +25,7 @@ export function DemoDashboardPage() {
         <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-demo-muted-foreground">
           {today}
         </div>
-        <h1 className="mt-2 text-3xl font-semibold leading-tight md:text-4xl">Good afternoon, Brandon.</h1>
+        <h1 className="mt-2 text-3xl font-semibold leading-tight md:text-4xl">Good afternoon, Jordan.</h1>
 
         <div className="mt-6 flex flex-wrap items-center gap-x-8 gap-y-3 text-sm">
           <div className="flex items-center gap-2">

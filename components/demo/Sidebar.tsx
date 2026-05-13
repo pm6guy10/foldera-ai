@@ -89,10 +89,10 @@ export function Sidebar() {
 
       <div className="flex items-center gap-3 border-t border-demo-border px-4 py-4">
         <div className="grid h-9 w-9 place-items-center rounded-full bg-demo-secondary text-sm font-medium">
-          B
+          J
         </div>
         <div className="flex-1">
-          <div className="text-sm font-medium">Brandon</div>
+          <div className="text-sm font-medium">Jordan</div>
           <div className="text-xs text-demo-muted-foreground">Workspace Owner</div>
         </div>
         <ChevronDown className="h-4 w-4 text-demo-muted-foreground" />

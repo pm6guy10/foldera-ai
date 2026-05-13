@@ -76,7 +76,7 @@ export function ProductPreviewPanel() {
                   <span className="text-accent">Ready to send</span>
                 </div>
                 <p className="mt-4 text-[24px] font-semibold leading-8 tracking-[-0.05em] text-text-primary">
-                  Send the follow-up to Alex Morgan before noon.
+                  Send the customer follow-up before noon.
                 </p>
                 <button type="button" className="mt-6 flex min-h-[44px] w-full items-center justify-center rounded-[12px] bg-accent text-sm font-semibold text-slate-950">
                   Approve &amp; send
