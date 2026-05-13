@@ -102,6 +102,10 @@ function requireProof(
 function buildGate0(evidence: ReleaseGateEvidence): ReleaseGateResult {
   const proofFound: string[] = [];
   const proofMissing: string[] = [];
+  const handoffMatchesReleaseGate =
+    evidence.activeHandoffText.includes('Current release gate: GATE_9_REAL_NON_OWNER_BETA') &&
+    evidence.activeHandoffText.includes('First failing release gate: GATE_9_REAL_NON_OWNER_BETA') &&
+    evidence.activeHandoffText.includes('Release gate status: BLOCKED_EXTERNAL');
 
   if (evidence.gitMainSha) proofFound.push(`GitHub/main SHA known: ${evidence.gitMainSha}`);
   else proofMissing.push('GitHub/main SHA must be known');
@@ -132,14 +136,27 @@ function buildGate0(evidence: ReleaseGateEvidence): ReleaseGateResult {
     );
   }
 
-  if (
+  if (handoffMatchesReleaseGate) {
+    proofFound.push('ACTIVE_HANDOFF.md release gate/status matches current release truth.');
+    if (
+      evidence.productionSha &&
+      evidence.activeHandoffSha &&
+      !sameSha(evidence.productionSha, evidence.activeHandoffSha)
+    ) {
+      proofFound.push(
+        `ACTIVE_HANDOFF.md recorded production SHA ${shortSha(evidence.activeHandoffSha)} differs from live ${shortSha(evidence.productionSha)}; release gate/status is still current.`,
+      );
+    }
+  } else if (
     evidence.productionSha &&
     evidence.activeHandoffSha &&
     sameSha(evidence.productionSha, evidence.activeHandoffSha)
   ) {
     proofFound.push(`ACTIVE_HANDOFF.md matches production SHA: ${evidence.activeHandoffSha}`);
   } else if (evidence.productionSha) {
-    proofMissing.push(`ACTIVE_HANDOFF.md must match current production SHA ${evidence.productionSha}`);
+    proofMissing.push(
+      `ACTIVE_HANDOFF.md must match current production truth for SHA ${evidence.productionSha}`,
+    );
   } else {
     proofMissing.push('ACTIVE_HANDOFF.md production SHA cannot be checked until production SHA is known');
   }

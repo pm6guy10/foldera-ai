@@ -84,7 +84,7 @@ describe('release gate status', () => {
     expect(report.firstFailingGate.id).toBe('GATE_0_LIVE_TRUTH');
     expect(report.firstFailingGate.status).toBe('FAIL');
     expect(report.firstFailingGate.proofMissing).toContain(
-      'ACTIVE_HANDOFF.md must match current production SHA c939e296ce12c29acc87bd1fde6f7d0c2fa59c88',
+      'ACTIVE_HANDOFF.md must match current production truth for SHA c939e296ce12c29acc87bd1fde6f7d0c2fa59c88',
     );
   });
 
@@ -98,6 +98,23 @@ describe('release gate status', () => {
     expect(report.gates[0]?.status).toBe('PASS');
     expect(report.gates[0]?.proofFound.join('\n')).toContain(
       'GitHub/main differs from current production',
+    );
+  });
+
+  it('does not fail live truth when the handoff gate/status is current but its recorded production SHA is from a prior receipt', () => {
+    const report = buildReleaseGateReport({
+      ...BASE_EVIDENCE,
+      productionSha: 'b67600e55bfe6dbb1fe5bb318b99d5a524745edf',
+      healthSha: 'b67600e55bfe6dbb1fe5bb318b99d5a524745edf',
+      activeHandoffSha: '6b0c163564a8646075ef904c1f82a2ff441c7a36',
+      activeHandoffText:
+        'Current release gate: GATE_9_REAL_NON_OWNER_BETA\nFirst failing release gate: GATE_9_REAL_NON_OWNER_BETA\nRelease gate status: BLOCKED_EXTERNAL\nLast known production SHA: 6b0c163',
+    });
+
+    expect(report.gates[0]?.status).toBe('PASS');
+    expect(report.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
+    expect(report.gates[0]?.proofFound.join('\n')).toContain(
+      'ACTIVE_HANDOFF.md release gate/status matches current release truth',
     );
   });
 });

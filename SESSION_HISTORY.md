@@ -18,6 +18,13 @@ Operating doctrine pointer: see [FOLDERA_OPERATING_DOCTRINE.md](/C:/Users/b-kap/
 - Verification: `npm run health` passed with `RESULT: 0 FAILING`; `npm run gate:status` reported GATE_9 as the first failing gate; read-only production `user_tokens` query excluding `OWNER_USER_ID` and `TEST_USER_ID` returned `connectedNonOwnerTokenRows: 0` and `connectedNonOwnerUserIds: []`; production `/api/health` reported `6b0c163564a8646075ef904c1f82a2ff441c7a36`, deployment `dpl_3Jd2tsD8CGoAeVWkvdB9TpZLsMwP`.
 - Unresolved issues: The valid stop reason is real non-owner account required. Next move is external: one real tester connects Google or Microsoft, then rerun `npm run gate:status`.
 
+## 2026-05-13 - GATE_0 receipt-drift controller fix
+- MODE: Gate controller fix only after `npm run gate:status` failed GATE_0 on a receipt-only production deploy; no product code, UI polish, paid generation, outbound email, Stripe, schema, fake users, or Brandon owner data as beta proof.
+- Files changed: `scripts/release-gate-status.ts`, `scripts/__tests__/release-gate-status.test.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Fixed GATE_0 so `ACTIVE_HANDOFF.md` is judged against current release gate/status truth instead of requiring the handoff to embed the exact SHA of receipt-only deployments. Live GitHub/main, Vercel production SHA, and `/api/health` SHA are still reported.
+- Verification: release-gate unit test passed (`5/5`) including the new receipt-drift regression; `npm run gate:status` returned `CURRENT_GATE: GATE_9_REAL_NON_OWNER_BETA`, `FIRST_FAILING_GATE: GATE_9_REAL_NON_OWNER_BETA`, `STATUS: BLOCKED_EXTERNAL`.
+- Unresolved issues: GATE_9 remains externally blocked until one real non-owner account connects Google or Microsoft.
+
 ## 2026-05-10 - Durable operating doctrine pointer added
 - MODE: Docs-only operating doctrine seam.
 - Files changed: `FOLDERA_OPERATING_DOCTRINE.md`, `SESSION_HISTORY.md`, `FOLDERA_PRODUCTION_BACKLOG.md`.
