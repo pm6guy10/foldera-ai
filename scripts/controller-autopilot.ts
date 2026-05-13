@@ -828,6 +828,47 @@ export function synthesizeAppOwnerContract(
     });
   }
 
+  const selectedMovePersistenceFinding = extractCurrentStateFinding(
+    snapshot.currentStateText,
+    /Selected WorkSourceWA move is not yet persisted as an artifact\/action/i,
+  );
+  if (selectedMovePersistenceFinding) {
+    return createGeneratedContract('SELECTED-MOVE-TO-PERSISTED-ARTIFACT', {
+      moneyLoopRung: 'persisted_action_history',
+      title: 'Selected current move must become a persisted artifact/action record',
+      userFacingPath:
+        'A no-paid selected Tier 1 current move should either become a persisted useful artifact/action/history record or stop at the exact model-backed generation requirement.',
+      startingTrigger:
+        'Current truth says winner/autopsy selects a Tier 1 WorkSourceWA admin-deadline current move, but that move is not yet persisted as an artifact/action/history row.',
+      endingSuccessState:
+        'Deterministic proof shows the selected move can persist and be read back through latest/history APIs, or names the exact first code or external blocker before persistence.',
+      problem:
+        'Foldera can now select a safe current move, but the next money-loop rung is unproven: selected move -> persisted action/history artifact.',
+      protectedContracts:
+        'Do not touch frontend, do not use proof:golden-artifact, do not run paid/model generation, do not send outbound email, do not change Stripe, schema, or destructive DB behavior.',
+      allowedFiles:
+        '`lib/conviction/artifact-generator.ts`, `lib/conviction/artifact-generator-compat.ts`, `lib/conviction/action-read-shapes.ts`, `lib/conviction/__tests__/artifact-generator.test.ts`, `lib/conviction/__tests__/artifact-generator-contract.test.ts`, `app/api/conviction/generate/route.ts`, `app/api/conviction/latest/route.ts`, `app/api/conviction/history/route.ts`, `app/api/conviction/latest/__tests__/*`, `app/api/conviction/history/__tests__/*`, `app/api/conviction/daily-value/__tests__/route.test.ts`, `ACTIVE_HANDOFF.md`, `CURRENT_STATE.md`, `SESSION_HISTORY.md`',
+      forbiddenFiles:
+        '`app/dashboard/**`, `components/**`, `lib/briefing/generator.ts`, `lib/cron/**`, `supabase/migrations/**`, `app/api/stripe/**`, outbound email paths, paid generation proof paths, `scripts/proof-golden-artifact*`',
+      requiredLocalProof:
+        'node node_modules/vitest/vitest.mjs run lib/conviction/__tests__/artifact-generator.test.ts lib/conviction/__tests__/artifact-generator-contract.test.ts app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts app/api/conviction/history/__tests__/route.test.ts app/api/conviction/daily-value/__tests__/route.test.ts --reporter=verbose; npm run winner:autopsy; npm run health; npm run build',
+      requiredProductionProof:
+        'No paid production proof by default. Use no-paid API/replay proof only; stop before any paid/model-backed generation, outbound email, schema action, or destructive DB action.',
+      isUserFacing: false,
+      browserProofCommand: null,
+      doneMeans:
+        'The selected WorkSourceWA move either has a deterministic persisted artifact/action/history proof through latest/history APIs, or the exact first external/model-backed blocker is named without fake data.',
+      nextBlocker:
+        'Prove selected move -> persisted action/history without frontend, golden artifact proof, paid generation, outbound email, Stripe, or schema/destructive DB actions.',
+      doNotCount:
+        'Do not count winner selection alone, daily-value alone, fake golden artifacts, frontend proof, or paid/model generation without explicit approval.',
+      sourceTruthFile: 'CURRENT_STATE.md',
+      sourceTruthFinding: selectedMovePersistenceFinding,
+      requiredClosureUpdate:
+        'Update CURRENT_STATE.md, ACTIVE_HANDOFF.md, and SESSION_HISTORY.md with persisted output proof or the exact selected-move persistence blocker.',
+    });
+  }
+
   const usefulCurrentMoveFinding = extractCurrentStateFinding(
     snapshot.currentStateText,
     /latest persisted generation is still historical `do_nothing`/i,

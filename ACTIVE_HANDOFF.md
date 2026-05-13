@@ -1,10 +1,10 @@
 # ACTIVE HANDOFF — FOLDERA
 
-Last updated: 2026-05-12 19:09 PT
+Last updated: 2026-05-12 19:22 PT
 Last known production SHA: b78b2ac
 Last completed code commit: b78b2ac
 Current slice: Briefing quality / candidate selection
-Current mode: Deterministic selection bug fixed locally; no frontend, persistence plumbing, paid generation, or golden proof touched.
+Current mode: Deterministic selection bug shipped; controller selection is being aligned so the next no-paid selected-move persistence seam is emitted instead of a stale all-external STOP.
 
 ## Current product truth
 
@@ -15,7 +15,7 @@ Current mode: Deterministic selection bug fixed locally; no frontend, persistenc
 - Production mobile auth checks, production Playwright auth state, and production smoke CTA assertions now match the public-only deploy contract.
 - Production deploy truth: `https://www.foldera.ai/api/health` reports `revision.git_sha=b78b2ac78bb2cb83e763b6ac9725626495be827a`, `git_ref=main`, `deployment_id=dpl_FSKhoE98wGWjmVfYrubCLp8mNcgF`, `vercel_env=production`.
 - GitHub truth for `b78b2ac` is green: commit check-runs include successful health, static verification, unit/build/e2e, deploy, and deploy-triggered CI gates; authenticated/payments/quarantine lanes were skipped by workflow scope.
-- Controller truth: `npm run controller:autopilot` returns `CONTROLLER RESULT: STOP` because all remaining money-loop rungs are externally blocked by paid/model-backed proof, passive proof, quota/access, real non-owner account, or fresh external proof.
+- Controller truth: after the candidate-selection fix, source truth has one deterministic no-paid next rung: selected WorkSourceWA current move -> persisted artifact/action/history proof. Controller selection is patched to emit that generated contract instead of a stale all-external STOP.
 - The controller now clears stale `.foldera-contract.json` on STOP so future runs cannot execute an already-finished contract.
 - Current health is non-blocking: Gmail fresh `14h ago`, Outlook fresh `14h ago`, `Mail cursors current`, and last generation `do_nothing`.
 - Persisted artifact path truth: deterministic approve/skip/latest/detail/history tests pass, and past production `write_document` artifacts remain visible in history.
@@ -38,19 +38,20 @@ Current mode: Deterministic selection bug fixed locally; no frontend, persistenc
 - winner/autopsy after fix: PASS `npm run winner:autopsy` -> `current_winner.verdict=selected`, selected Tier 1 `admin_deadline_decision_packet`.
 - daily-value state after fix: PASS deterministic winner-truth read returns a non-null `daily_utility_slate.primary_move` for the selected WorkSourceWA account-activity deadline.
 - candidate-selection regression: PASS `node node_modules/vitest/vitest.mjs run lib/briefing/__tests__/discrepancy-card-frame.test.ts lib/briefing/__tests__/winner-selection.test.ts lib/briefing/__tests__/positive-winner-contract.test.ts --reporter=verbose` (`44/44`).
+- controller selection regression: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/controller-autopilot.test.ts --reporter=verbose` (`20/20`).
 - contractless receipt preflight: PASS `node node_modules/vitest/vitest.mjs run scripts/__tests__/preflight-contract.test.ts --reporter=verbose`.
 - build: PASS `npm run build`.
 
 ## Remaining defects in current slice
 
 - None for the frontend surface contract or controller STOP cleanup.
-- Candidate selection over-filtering is fixed locally and proven. No current frontend or persistence-plumbing defect is open in this slice.
+- Candidate selection over-filtering is fixed and pushed. The selected-move persistence path remains unexecuted; controller selection is patched so future runs can receive that generated contract.
 
 ## Next exact move
 
 Start here:
 1. Rerun `npm run controller:autopilot`.
-2. If continuing the WorkSourceWA selected move, stay no-paid and prove whether deterministic artifact generation can create a safe pending action/history record from the selected Tier 1 candidate.
+2. Execute only the generated selected-move persistence contract if it emits `GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT`.
 3. Do not use `proof:golden-artifact`; do not run paid/model generation without explicit approval.
 4. Only reopen external money-loop work when one blocker becomes actionable: explicit paid/model-proof approval and quota, next passive send window, a real connected non-owner account, or fresh repeated-directive failure evidence.
 

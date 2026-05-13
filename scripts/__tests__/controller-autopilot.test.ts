@@ -636,6 +636,94 @@ Next blocker: next normal daily-send proof required
     }
   });
 
+  it('generates a selected-move persistence contract when winner truth is selected but no artifact action is persisted', () => {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+      logs.push(args.map(String).join(' '));
+    });
+
+    const repoDir = mkdtempSync(join(tmpdir(), 'controller-autopilot-'));
+    try {
+      execSync('git init', { cwd: repoDir, stdio: 'ignore' });
+      writeFileSync(
+        join(repoDir, 'FOLDERA_PRODUCTION_BACKLOG.md'),
+        `
+### BL-015
+ID: BL-015
+Status: WAITING_PAID_PROOF
+Next blocker: explicit paid-proof approval required
+
+### BL-011
+ID: BL-011
+Status: WAITING_PASSIVE_PROOF
+Next blocker: next normal daily-send proof required
+`,
+      );
+      writeCommonControllerTruthFiles(repoDir, {
+        currentState: `# CURRENT STATE — FOLDERA
+
+## A. WHAT IS WORKING
+
+- **Candidate selection no longer learns broad false-negative memory from proof mechanics** — \`npm run winner:autopsy\` now selects the WorkSourceWA account-activity deadline as a Tier 1 \`admin_deadline_decision_packet\`.
+
+## B. WHAT IS BROKEN (REAL)
+
+- **Selected WorkSourceWA move is not yet persisted as an artifact/action** — no-paid proof now selects a Tier 1 admin-deadline current move, but this was only winner-truth/daily-value proof. No paid generation, golden artifact proof, outbound email, or persistence write was run in this slice.
+`,
+        sessionHistory: `## 2026-05-12 - Candidate selection memory stops over-filtering current admin-deadline moves
+- Verification: winner/autopsy selected the WorkSourceWA account-activity deadline as Tier 1 admin_deadline_decision_packet.
+- Unresolved issues: The selected WorkSourceWA current move is not yet persisted as a finished artifact/action/history row.
+`,
+      });
+      execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
+      execSync('git -c user.name=Test -c user.email=test@example.com commit -m init', {
+        cwd: repoDir,
+        stdio: 'ignore',
+      });
+
+      const code = runControllerAutopilot(repoDir);
+      const contract = JSON.parse(
+        readFileSync(join(repoDir, '.foldera-contract.json'), 'utf8'),
+      ) as {
+        backlog_id: string;
+        generated_contract_id?: string;
+        money_loop_rung: string;
+        allowed_file_patterns: string[];
+        forbidden_file_patterns: string[];
+        source_truth_file?: string;
+        source_truth_finding?: string;
+        required_local_proof: string;
+        required_product_proof?: string;
+      };
+
+      expect(code).toBe(0);
+      expect(
+        logs.some((line) =>
+          line.includes('Selected backlog ID: GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT'),
+        ),
+      ).toBe(true);
+      expect(contract.backlog_id).toBe('GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT');
+      expect(contract.generated_contract_id).toBe(
+        'GENERATED-SELECTED-MOVE-TO-PERSISTED-ARTIFACT',
+      );
+      expect(contract.money_loop_rung).toBe('persisted_action_history');
+      expect(contract.source_truth_file).toBe('CURRENT_STATE.md');
+      expect(contract.source_truth_finding).toContain(
+        'Selected WorkSourceWA move is not yet persisted as an artifact/action',
+      );
+      expect(contract.allowed_file_patterns).toContain(
+        'lib/conviction/artifact-generator.ts',
+      );
+      expect(contract.allowed_file_patterns).toContain('CURRENT_STATE.md');
+      expect(contract.forbidden_file_patterns).toContain('app/dashboard/**');
+      expect(contract.required_local_proof).toContain('npm run winner:autopsy');
+      expect(contract.required_product_proof).toContain('No paid production proof by default');
+    } finally {
+      spy.mockRestore();
+      rmSync(repoDir, { recursive: true, force: true });
+    }
+  });
+
   it('does not regenerate a stale closed handoff source_freshness finding and advances to the next live seam', () => {
     const logs: string[] = [];
     const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
