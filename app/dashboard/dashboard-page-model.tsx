@@ -610,6 +610,7 @@ export function getDashboardDiscrepancyFrame(
   const frame = directFrame ?? buildDiscrepancyFrameFromActionPayload(action as Record<string, unknown>);
   if (!frame) return null;
   const quality = action.discrepancy_quality ?? evaluateDiscrepancyCardFrame(frame);
+  if (!quality.passes && isDocumentCollectionRequirementsRecord(action)) return frame;
   return quality.passes ? frame : null;
 }
 

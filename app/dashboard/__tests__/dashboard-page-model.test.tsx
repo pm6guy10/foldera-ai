@@ -138,4 +138,44 @@ describe('dashboard discrepancy visibility contract', () => {
       nextAction: 'Paste the submission link and list/upload the candidate documents.',
     });
   });
+
+  it('allows a summary-only document collection requirements packet even when it is intentionally blocked from finished-artifact quality', () => {
+    const summaryOnlyAction = {
+      id: 'document-collection-summary',
+      directive:
+        'Write a decision memo that closes "Submit high-quality .docx documents for document collection" with the owner, next action, and deadline.',
+      action_type: 'write_document',
+      artifact_title: 'Requirements needed: Submit high-quality .docx documents for document collection',
+      discrepancy_card: {
+        claim: 'Commitment due in 0d: Submit high-quality .docx documents for document collection',
+        contradiction:
+          'The document collection deadline is now, but no owned document sources or submission destination are captured.',
+        risk: 'Missing the submission window risks losing the accepted commitment opportunity.',
+        evidence: [
+          '$50 per accepted document.',
+          'Files must be real .docx documents.',
+        ],
+        next_action: 'Paste the submission link and list/upload the candidate documents.',
+        why_now: 'The submission deadline is today.',
+        source_refs: ['commitment:document-collection'],
+        confidence: 0.45,
+        pattern_keys: ['discrepancy:deadline_staleness', 'action:write_document'],
+      },
+      discrepancy_quality: {
+        passes: false,
+        quality_score: 0.8,
+        blocked_by: ['weak_risk'],
+        pattern_keys: ['discrepancy:deadline_staleness', 'action:write_document'],
+        rejection_reason: 'weak_risk',
+      },
+      detail_required: true,
+      detail_url: '/api/conviction/actions/document-collection-summary',
+    } as DashboardAction & { artifact_title: string };
+
+    expect(isDocumentCollectionRequirementsAction(summaryOnlyAction)).toBe(true);
+    expect(isDashboardActionSummary(summaryOnlyAction)).toBe(true);
+    expect(getDashboardDiscrepancyFrame(summaryOnlyAction)?.next_action).toBe(
+      'Paste the submission link and list/upload the candidate documents.',
+    );
+  });
 });
