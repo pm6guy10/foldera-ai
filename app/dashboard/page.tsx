@@ -617,7 +617,12 @@ export default function DashboardPage() {
     asTrimmedString(action?.reason) ??
     'Foldera surfaced the single move that matters most right now.';
   const artifactBody = getArtifactBody(action?.artifact);
-  const draftLabel = writeDocument ? 'Document' : 'Ready text';
+  const readinessLabel = documentCollectionRequirements ? 'Inputs needed' : 'Finished work';
+  const draftLabel = documentCollectionRequirements
+    ? 'Requirements packet'
+    : writeDocument
+      ? 'Document'
+      : 'Ready text';
   const copyActionLabel = 'Copy draft';
   const skipActionLabel = 'Skip';
   const primaryActionLabel = writeDocument
@@ -764,17 +769,19 @@ export default function DashboardPage() {
       {artifactBody ? (
         <section>
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
-            Finished work
+            {readinessLabel}
           </p>
           <div className="mt-2">{artifactBodyContent}</div>
         </section>
       ) : summaryNeedsDetail ? (
         <section>
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
-            Finished work
+            {readinessLabel}
           </p>
           <div className="mt-2 rounded-[16px] border border-border bg-panel-raised p-4 text-sm text-text-secondary">
-            Open the finished artifact to inspect the exact draft before acting.
+            {documentCollectionRequirements
+              ? 'Open the requirements packet to inspect the missing inputs before acting.'
+              : 'Open the finished artifact to inspect the exact draft before acting.'}
           </div>
         </section>
       ) : null}
@@ -793,7 +800,11 @@ export default function DashboardPage() {
     ? [
         ...(summaryNeedsDetail
           ? [{
-              label: detailLoading ? 'Opening…' : 'Open finished work',
+              label: detailLoading
+                ? 'Opening…'
+                : documentCollectionRequirements
+                  ? 'Open requirements packet'
+                  : 'Open finished work',
               kind: 'secondary' as const,
               onClick: () => void openActionDetail(),
               disabled: detailLoading,
@@ -887,8 +898,8 @@ export default function DashboardPage() {
         stageDesktop={stageMetrics.isDesktop}
         directive={artifactTitle}
         whyNow={artifactContradiction}
-        eyebrowLabel="Finished work"
-        directiveLabel="Finished work"
+        eyebrowLabel={readinessLabel}
+        directiveLabel={readinessLabel}
         whyLabel="Why it matters"
         draftLabel={draftLabel}
         draftBody={draftBody}
