@@ -6530,4 +6530,11 @@ pm run build.
 - Files changed: `docs/WINNER_EVIDENCE_RISK_REVIEW.md`, `lib/briefing/discrepancy-detector.ts`, `lib/briefing/__tests__/discrepancy-card-frame.test.ts`, `lib/briefing/__tests__/discrepancy-detector.test.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
 - What changed: Root-caused the closest candidate rejection to exposure `why_now` text that said "not a reminder" while failing to name deadline/submission risk. Reframed imminent exposure candidates to surface the existing evidence: deadline now, zero artifacts, missing submission window, and accepted commitment opportunity. The discrepancy-card evaluator was not weakened.
 - Verification: `npx vitest run lib/briefing/__tests__/discrepancy-card-frame.test.ts lib/briefing/__tests__/discrepancy-detector.test.ts --reporter=verbose` passed (`122/122`); `npm run health` passed with `RESULT: 0 FAILING`; `npm run winner:autopsy` now selects the Tier 1 document-collection `admin_deadline_decision_packet` with no no-safe reason; `npm run gate:decision-trace` passed; `npm run build` passed.
-- Unresolved issues: Commit/push and production `/api/health` SHA proof remain pending for this slice.
+- Unresolved issues: Production receipt update remains to be committed after live SHA proof.
+
+## 2026-05-13 - Winner exposure risk framing production receipt
+- MODE: Delivery receipt only; no product behavior changed, no UI polish, no paid generation, no outbound email, no Stripe, no schema, and no beta-readiness claim.
+- Files changed: `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Recorded that the winner exposure risk-framing commit reached production.
+- Verification: `origin/main` accepted commit `76a8ff6fa35990d098787bcdbbf8ae3575074ec4`; production `/api/health` reported `revision.git_sha=76a8ff6fa35990d098787bcdbbf8ae3575074ec4`.
+- Unresolved issues: Release still remains externally blocked on one real non-owner Google or Microsoft connection. Owner-private winner truth now has a selected document-collection deadline move.
