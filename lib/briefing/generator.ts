@@ -7459,12 +7459,27 @@ function artifactPrimaryBodyOrContent(art: Record<string, unknown>): string {
   return '';
 }
 
+function isDocumentCollectionRequirementsNeededArtifact(artifact: unknown): boolean {
+  if (!artifact || typeof artifact !== 'object') return false;
+  const art = artifact as Record<string, unknown>;
+  const text = [
+    String(art.title ?? ''),
+    String(art.document_purpose ?? ''),
+    artifactPrimaryBodyOrContent(art),
+  ].join('\n');
+  return (
+    /\bdocument collection\b/i.test(text) &&
+    /\brequirements-needed packet\b/i.test(text)
+  );
+}
+
 function persistedDirectiveLooksLikePaymentDeadline(input: {
   directive: ConvictionDirective;
   matchedGoalCategory?: string | null;
   artifact: unknown;
 }): boolean {
   try {
+    if (isDocumentCollectionRequirementsNeededArtifact(input.artifact)) return false;
     if (input.matchedGoalCategory === 'financial') return true;
     const art = input.artifact as Record<string, unknown>;
     const ac = artifactPrimaryBodyOrContent(art);
