@@ -6608,3 +6608,10 @@ pm run build.
 - What changed: Added a narrow readiness classifier for `write_document` winners with three states: `FINISHED_ARTIFACT_READY`, `REQUIREMENTS_NEEDED`, and `NO_SAFE_ARTIFACT`. The generation route now stores readiness in `execution_result`; no-safe write-document output returns validation instead of persisting fake work; latest/detail/history/dashboard readback expose or derive the same state; stale selected-move mismatch returns `NO_SAFE_ARTIFACT`.
 - Verification: Startup final gate was green for `origin/main` SHA `9b0c67fdcbb0d9b7693f42514c99d2ffb62caf0c`; production `/api/health` served the same SHA; `npm run health` passed with `RESULT: 0 FAILING`; focused readiness/readback tests were written red first and now pass locally (`35/35` across classifier, selected generate, latest, detail, history, and dashboard model slices).
 - Unresolved issues: Required winner autopsy, decision-trace gate, build, commit/push, GitHub CI, Vercel, and production SHA proof remain before closing the seam.
+
+## 2026-05-14 - Artifact readiness contract pushed and final-gate aligned
+- MODE: Artifact readiness contract receipt only; no UI polish, no broad feature, no paid generation, no outbound email, no Stripe, no schema, no weakened quality bars, and no fake content.
+- Files changed: `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Recorded the artifact-readiness final-gate proof and restored the required release-gate status lines in `ACTIVE_HANDOFF.md` so `gate:decision-trace` can distinguish the real external beta blocker from live-truth drift.
+- Verification: Artifact-readiness commit `f2a81bcc8c49f303a2fe507f7e5fb599b58c27f8` reached GitHub Actions green, Vercel deployment `dpl_8gnjwEdKPUzWNNgFZ3PuHVHfC2Vr` READY, and production `/api/health` served the same SHA.
+- Unresolved issues: This receipt update still needs its own push and exact-SHA GitHub/Vercel verification before the session can close.

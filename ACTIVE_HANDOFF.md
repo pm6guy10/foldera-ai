@@ -1,11 +1,14 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-14 07:49 PT
+Last updated: 2026-05-14 08:26 PT
 Current slice: Artifact readiness contract
 Current mode: no UI polish, no broad feature, no paid generation, no outbound email, no Stripe, no schema, no weakened quality bars, no fake content.
-Current main commit before slice: 9b0c67fdcbb0d9b7693f42514c99d2ffb62caf0c
-GitHub CI status before slice: GREEN for `9b0c67fdcbb0d9b7693f42514c99d2ffb62caf0c`
-Vercel status before slice: GREEN for `9b0c67fdcbb0d9b7693f42514c99d2ffb62caf0c`; deployment `dpl_45YNT1csW4ysizcMKmU2WrZx8rG9`
+Last known production SHA: f2a81bcc8c49f303a2fe507f7e5fb599b58c27f8
+GitHub CI status: GREEN for `f2a81bcc8c49f303a2fe507f7e5fb599b58c27f8`
+Vercel status: GREEN for `f2a81bcc8c49f303a2fe507f7e5fb599b58c27f8`; deployment `dpl_8gnjwEdKPUzWNNgFZ3PuHVHfC2Vr`
+Current release gate: GATE_9_REAL_NON_OWNER_BETA
+First failing release gate: GATE_9_REAL_NON_OWNER_BETA
+Release gate status: BLOCKED_EXTERNAL
 Done rule: Foldera cannot be called done unless GitHub CI and Vercel are both green for the exact final `origin/main` commit.
 
 ## Current Truth
@@ -17,16 +20,19 @@ Done rule: Foldera cannot be called done unless GitHub CI and Vercel are both gr
 
 ## Verified Proof
 
-- Startup final gate: GitHub Actions and Vercel were green for `9b0c67fdcbb0d9b7693f42514c99d2ffb62caf0c`.
-- Startup production `/api/health` served SHA `9b0c67fdcbb0d9b7693f42514c99d2ffb62caf0c`.
+- GitHub Actions and Vercel are green for artifact-readiness commit `f2a81bcc8c49f303a2fe507f7e5fb599b58c27f8`.
+- Production `/api/health` served SHA `f2a81bcc8c49f303a2fe507f7e5fb599b58c27f8`.
 - `npm run health` passed with `RESULT: 0 FAILING`.
-- Focused artifact readiness/readback tests were written red first and now pass locally.
+- `npm run winner:autopsy` selected the document-collection write_document winner.
+- `npm run gate:decision-trace` decision-trace lane passed; release gate remains externally blocked at real non-owner beta.
+- Focused artifact readiness/readback tests were written red first and pass locally (`35/35`).
+- `npm run build` passed.
 
 ## Next exact move
 
-1. Run `npm run winner:autopsy`, `npm run gate:decision-trace`, focused readiness/readback tests, and `npm run build`.
-2. Commit and push the slice.
-3. Verify GitHub Actions, Vercel deployment, and production `/api/health` for the final `origin/main` commit.
+1. Commit and push this handoff gate-alignment receipt.
+2. Verify GitHub Actions, Vercel deployment, and production `/api/health` for the final `origin/main` commit.
+3. Stop; finished document generation still requires Brandon-owned source files/bodies and submission destination.
 
 ## Do Not Touch
 
