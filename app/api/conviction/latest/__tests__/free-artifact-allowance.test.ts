@@ -530,6 +530,107 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(mockGetWinnerTruthReport).toHaveBeenCalledWith('u-test');
   });
 
+  it('hides a selected-move artifact when there is no current winner to match', async () => {
+    mockGetWinnerTruthReport.mockResolvedValue({
+      current_winner: {
+        verdict: 'none',
+        discrepancy_card: null,
+      },
+    });
+    const supabase = buildSupabaseMock({
+      pendingActions: [
+        buildPendingAction({
+          id: 'orphan-selected-move',
+          confidence: 45,
+          directive_text: 'Prepare WorkSourceWA account activity closeout.',
+          artifact: {
+            type: 'document',
+            title: 'WorkSourceWA account activity closeout',
+            content: 'Close out the WorkSourceWA account activity trail before the deadline.',
+          },
+          execution_result: {
+            brief_origin: 'selected_move_generate',
+            selected_winner_fingerprint:
+              'claim:deadline closing complete at least one account activity|refs:commitment:old-worksource',
+            discrepancy_card: {
+              ...VALID_DISCREPANCY_CARD,
+              claim: 'Deadline closing: Complete at least one account activity',
+              source_refs: ['commitment:old-worksource'],
+            },
+            discrepancy_quality: {
+              passes: true,
+              quality_score: 0.88,
+              blocked_by: [],
+              pattern_keys: VALID_DISCREPANCY_CARD.pattern_keys,
+              rejection_reason: null,
+            },
+          },
+        }),
+      ],
+      consumedCount: 0,
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'none' });
+
+    const res = await callLatest();
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(body.id).toBeUndefined();
+    expect(body.finished_artifact_verdict).toBe('no_finished_artifact');
+    expect(body.artifact_readiness_state).toBe('NO_SAFE_ARTIFACT');
+    expect(body.no_safe_artifact_reason).toContain('stale_selected_move_artifact');
+    expect(mockGetWinnerTruthReport).toHaveBeenCalledWith('u-test');
+  });
+
+  it('fails closed when the selected-move current-winner check errors or times out', async () => {
+    mockGetWinnerTruthReport.mockRejectedValue(new Error('winner_truth_check_timeout'));
+    const supabase = buildSupabaseMock({
+      pendingActions: [
+        buildPendingAction({
+          id: 'timeout-selected-move',
+          confidence: 45,
+          directive_text: 'Prepare WorkSourceWA account activity closeout.',
+          artifact: {
+            type: 'document',
+            title: 'WorkSourceWA account activity closeout',
+            content: 'Close out the WorkSourceWA account activity trail before the deadline.',
+          },
+          execution_result: {
+            brief_origin: 'selected_move_generate',
+            selected_winner_fingerprint:
+              'claim:deadline closing complete at least one account activity|refs:commitment:old-worksource',
+            discrepancy_card: {
+              ...VALID_DISCREPANCY_CARD,
+              claim: 'Deadline closing: Complete at least one account activity',
+              source_refs: ['commitment:old-worksource'],
+            },
+            discrepancy_quality: {
+              passes: true,
+              quality_score: 0.88,
+              blocked_by: [],
+              pattern_keys: VALID_DISCREPANCY_CARD.pattern_keys,
+              rejection_reason: null,
+            },
+          },
+        }),
+      ],
+      consumedCount: 0,
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'none' });
+
+    const res = await callLatest();
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(body.id).toBeUndefined();
+    expect(body.finished_artifact_verdict).toBe('no_finished_artifact');
+    expect(body.artifact_readiness_state).toBe('NO_SAFE_ARTIFACT');
+    expect(body.no_safe_artifact_reason).toContain('stale_selected_move_artifact');
+    expect(mockGetWinnerTruthReport).toHaveBeenCalledWith('u-test');
+  });
+
   it('shows a current selected-move requirements-needed packet even when its blocker card is not a finished discrepancy', async () => {
     mockCurrentWinner({
       ...VALID_DISCREPANCY_CARD,
