@@ -512,10 +512,6 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
       'REQUIREMENTS-NEEDED PACKET',
       'KNOWN REQUIREMENTS FROM SOURCE',
       '- Files must be real .docx documents.',
-      'MISSING BEFORE FINISHED .DOCX WORK',
-      '- Owned candidate .docx files or source document bodies.',
-      'ARTIFACT BEHAVIOR',
-      'Foldera should produce this requirements-needed packet instead of pretending it can write or submit the documents.',
     ].join('\n');
     const supabase = buildSupabaseMock({
       pendingActions: [

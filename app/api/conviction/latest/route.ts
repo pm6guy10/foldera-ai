@@ -89,8 +89,8 @@ function isRequirementsNeededPacketSummary(action: ActionSummaryRow | null | und
   return (
     action?.brief_origin === 'selected_move_generate' &&
     /\brequirements needed\b/i.test(text) &&
-    /\brequirements-needed packet\b/i.test(text) &&
-    /\bmissing before finished \.docx work\b/i.test(text)
+    /\bdocument collection\b/i.test(text) &&
+    /\b(?:requirements-needed packet|\.docx documents)\b/i.test(text)
   );
 }
 
