@@ -101,7 +101,12 @@ function isRollingWindowBoundaryDrift(entry: BehavioralGraphDriftEntry): boolean
   const delta14 = Math.abs(entry.stored.signal_count_14d - entry.actual.signal_count_14d);
   const delta30 = Math.abs(entry.stored.signal_count_30d - entry.actual.signal_count_30d);
   const delta90 = Math.abs(entry.stored.signal_count_90d - entry.actual.signal_count_90d);
-  return delta14 <= 1 && delta30 <= 1 && delta90 <= 2;
+  const countsOnlyAgedOut =
+    entry.actual.signal_count_14d <= entry.stored.signal_count_14d &&
+    entry.actual.signal_count_30d <= entry.stored.signal_count_30d &&
+    entry.actual.signal_count_90d <= entry.stored.signal_count_90d &&
+    (delta14 > 0 || delta30 > 0 || delta90 > 0);
+  return countsOnlyAgedOut || (delta14 <= 1 && delta30 <= 1 && delta90 <= 2);
 }
 
 function buildEmptyCounts(): SignalWindowCounts {

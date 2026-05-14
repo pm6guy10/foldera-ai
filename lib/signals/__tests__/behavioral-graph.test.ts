@@ -187,4 +187,73 @@ describe('behavioral graph', () => {
     const { auditBehavioralGraphConsistency } = await import('../behavioral-graph');
     await expect(auditBehavioralGraphConsistency('user-1')).resolves.toEqual([]);
   });
+
+  it('ignores larger monotonic rolling-window aging when no newer signal exists', async () => {
+    const entity = {
+      id: 'entity-1',
+      name: 'alex crisler',
+      display_name: 'Alex Crisler',
+      total_interactions: 11,
+      last_interaction: '2026-04-15T22:42:05.000Z',
+      patterns: {
+        bx_stats: {
+          signal_count_14d: 2,
+          signal_count_30d: 10,
+          signal_count_90d: 11,
+        },
+      },
+      patterns_updated_at: '2026-05-05T11:55:21.896Z',
+    };
+    const signals = [
+      ...Array.from({ length: 7 }, () => ({
+        extracted_entities: ['entity-1'],
+        occurred_at: '2026-04-15T22:42:05.000Z',
+      })),
+      ...Array.from({ length: 4 }, () => ({
+        extracted_entities: ['entity-1'],
+        occurred_at: '2026-03-10T16:32:19.372Z',
+      })),
+    ];
+    createServerClient.mockReturnValue(buildSupabaseMock({ entities: [entity], signals }));
+
+    const { auditBehavioralGraphConsistency } = await import('../behavioral-graph');
+    await expect(auditBehavioralGraphConsistency('user-1')).resolves.toEqual([]);
+  });
+
+  it('still reports drift when newer signal activity exists after graph computation', async () => {
+    const entity = {
+      id: 'entity-1',
+      name: 'alex crisler',
+      display_name: 'Alex Crisler',
+      total_interactions: 11,
+      last_interaction: '2026-05-13T22:42:05.000Z',
+      patterns: {
+        bx_stats: {
+          signal_count_14d: 2,
+          signal_count_30d: 10,
+          signal_count_90d: 11,
+        },
+      },
+      patterns_updated_at: '2026-05-13T11:55:21.896Z',
+    };
+    const signals = [
+      ...Array.from({ length: 12 }, () => ({
+        extracted_entities: ['entity-1'],
+        occurred_at: '2026-05-13T22:42:05.000Z',
+      })),
+    ];
+    createServerClient.mockReturnValue(buildSupabaseMock({ entities: [entity], signals }));
+
+    const { auditBehavioralGraphConsistency } = await import('../behavioral-graph');
+    const result = await auditBehavioralGraphConsistency('user-1');
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      name: 'Alex Crisler',
+      actual: {
+        signal_count_14d: 12,
+        signal_count_30d: 12,
+        signal_count_90d: 12,
+      },
+    });
+  });
 });
