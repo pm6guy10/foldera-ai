@@ -1,53 +1,59 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-14 14:09 PT
-Current slice: Adversarial Proof Audit - Phase 0 Operating Truth
+Last updated: 2026-05-14 15:35 PT
+Current slice: Adversarial Readback Attack - stopped on final CI gate
 Current mode: audit only; no product code, no UI polish, no paid generation, no outbound email, no Stripe, no schema, no fake users, no fake source rows.
-Current origin/main SHA at handoff update: `c11bd5e4fd565d3b01813f0865630710aed18060`
-Last verified runtime/product SHA: `3933f24e31512bd34e329b26f69eece0db4759fb`
-Latest externally verified receipt/docs SHA before this self-referential handoff edit: `c11bd5e4fd565d3b01813f0865630710aed18060`
-This receipt-only handoff/history wording edit: final SHA must be verified externally from `origin/main`, GitHub Actions, Vercel, and production `/api/health`; do not embed its own SHA here.
-Commit kind: receipt/docs-only operating-truth correction after runtime/product readback proof.
-GitHub CI status for latest externally verified receipt/docs SHA before this edit: success for `CI #287`, `Health Gate #606`, `Deploy to Vercel #958`, and `Production E2E #1186`.
-Vercel status for latest externally verified receipt/docs SHA before this edit: READY for `c11bd5e4fd565d3b01813f0865630710aed18060`; deployment `dpl_FNfoD627pV5mbjvjfs6jbrkiad35`.
-Production /api/health SHA before this edit: `c11bd5e4fd565d3b01813f0865630710aed18060`
-Safe to proceed to next seam: NO in this audit. Phase 0 found stale operating truth, so product/readback attack must stop after this operating-truth receipt is corrected and externally verified.
-Current release gate: GATE_9_REAL_NON_OWNER_BETA
-First failing release gate: GATE_9_REAL_NON_OWNER_BETA
-Release gate status: BLOCKED_EXTERNAL
-Receipt rule: Product/runtime commits require GitHub CI, Vercel, and production `/api/health` for the exact SHA. Receipt-only commits may record the last verified runtime/product SHA plus external proof of the receipt commit, without requiring this file to name its own commit SHA.
+Current origin/main SHA at handoff update: `2795975bfa5fc2142c4c9867800407742abcaa3c`
+Latest commit: `Harden selected-move readback fallback tests`
+GitHub Actions status for current origin/main: `CI #1025` failed in `unit`; `Health Gate #608`, `semgrep #1526`, and `Production E2E #1188` passed; `Deploy to Vercel #960` skipped.
+Vercel status for current origin/main: READY for `2795975bfa5fc2142c4c9867800407742abcaa3c`; deployment `dpl_GBbsh2PRiWvhxr8wZxghyzJjCtm3`.
+Production /api/health SHA: `2795975bfa5fc2142c4c9867800407742abcaa3c`
+Current release gate claim: `GATE_9_REAL_NON_OWNER_BETA` remains externally blocked, but final CI is red before that blocker can be treated as the only blocker.
+First failing internal proof: `tests/config/__tests__/large-file-splits.test.ts` reports `app/dashboard/page.tsx` at `1008` lines, over the `1000` line threshold.
+Stop condition: `NOT DONE - internal gate drift before GATE_9`.
+Receipt rule: Product/runtime commits require GitHub CI, Vercel, and production `/api/health` for the exact SHA. Receipt-only commits may record external proof without requiring this file to embed the SHA of its own future commit.
 
 ## Current Truth
 
-- Phase 0 live truth disagreed with the handoff before the operating-truth correction: live `origin/main` and production served `da1678029876992ce4c38ebc8304815625675b05`, while the handoff still described `3933f24e31512bd34e329b26f69eece0db4759fb` as current and said a receipt push was pending.
-- The active `.foldera-contract.json` was also stale for this audit because it still allowed only the previous checklist file; it now permits only this operating-truth correction.
-- The latest commit `Add real non-owner beta proof checklist` changed `docs/REAL_NON_OWNER_BETA_PROOF_CHECKLIST.md` only.
-- GitHub Actions, Vercel, and production `/api/health` agree on the latest externally verified receipt/docs SHA before this self-referential edit.
-- The last runtime/product readback proof remains `3933f24e31512bd34e329b26f69eece0db4759fb`: latest, detail, history, and dashboard agreed on row `d17931e4-ab3d-4d75-9775-61b6c58b22b4` as `REQUIREMENTS_NEEDED`.
-- Finished `.docx` work remains blocked by Brandon-owned source files/bodies, document topics/titles, and submission URL/upload destination.
+- Phase 0 passed for the restarted audit: local HEAD, `origin/main`, GitHub Actions, Vercel, and production `/api/health` agreed on `de2722eaeda0af3ba4585a57eb158ff12894bfff` before the readback attack continued.
+- Readback attack found latest/detail/history/dashboard currently agree on selected row `d17931e4-ab3d-4d75-9775-61b6c58b22b4` as `REQUIREMENTS_NEEDED`.
+- Current winner from `winner:autopsy`: `Commitment due in 0d: Submit high-quality .docx documents for document collection`.
+- Current selected winner fingerprint: `claim:commitment due in 0d: submit high-quality .docx documents for document collection|refs:commitment:1d0e3ecb-899c-4ec1-96d0-748485678dfe`.
+- The stale WorkSourceWA row `8aca653a-f0a1-46e9-9af4-323c5cee539b` remains historical/skipped and did not appear as current latest/dashboard.
+- The requirements packet is specific enough for the current blocker: known requirements, exact missing inputs, and next action are visible; no fake `.docx` body was produced.
+- Real non-owner beta proof is still external: read-only DB proof found zero connected non-owner, non-test, non-mock Google/Microsoft token rows after excluding `OWNER_USER_ID` and `TEST_USER_ID`.
+- Final proof is not green because GitHub CI failed before the external beta blocker.
 
 ## Verified Proof
 
 - `npm run health` passed with `RESULT: 0 FAILING`.
-- `npm run gate:status` passed GATE_0 live truth and stopped at `GATE_9_REAL_NON_OWNER_BETA` with `BLOCKED_EXTERNAL`.
-- Docs source-of-truth test passed (`3/3`).
-- `npm run build` passed.
-- GitHub Actions for `c11bd5e4fd565d3b01813f0865630710aed18060` completed successfully.
-- Vercel deployment `dpl_FNfoD627pV5mbjvjfs6jbrkiad35` is `READY`.
-- Production `/api/health` served `c11bd5e4fd565d3b01813f0865630710aed18060`.
-- Phase 0 audit found `ACTIVE_HANDOFF.md` and `SESSION_HISTORY.md` stale before this correction.
+- `npm run gate:status` stopped at `GATE_9_REAL_NON_OWNER_BETA` with `BLOCKED_EXTERNAL`.
+- `npm run gate:quality` passed.
+- `npm run gate:visual` passed.
+- `npm run winner:autopsy` selected the document-collection winner.
+- `npm run gate:decision-trace` passed.
+- Focused readiness/latest/detail/history/dashboard unit tests passed (`39/39`).
+- Focused dashboard readback/render tests passed (`2/2`).
+- Production authenticated latest/detail/history/dashboard readback agreed on row `d17931e4-ab3d-4d75-9775-61b6c58b22b4` as `REQUIREMENTS_NEEDED`.
+- Read-only DB beta proof found no real connected non-owner token rows.
+- `npm run build` passed locally.
+- GitHub `CI #1025` failed on `tests/config/__tests__/large-file-splits.test.ts`.
+- Vercel deployment `dpl_GBbsh2PRiWvhxr8wZxghyzJjCtm3` is `READY`.
+- Production `/api/health` serves `2795975bfa5fc2142c4c9867800407742abcaa3c`.
 
 ## Next exact move
 
-1. Stop this adversarial audit as `NOT DONE - operating truth stale`.
-2. Commit and push only this receipt wording correction.
-3. Verify GitHub Actions, Vercel READY, and production `/api/health` for the final receipt-only commit externally, without editing this file again only to embed its own SHA.
-4. Restart the adversarial proof audit from Phase 0 before attacking artifact readback or quality gates.
+1. Fix only the CI gate drift in `app/dashboard/page.tsx` enough to bring it back under the `1000` line split threshold.
+2. Run `npx vitest run tests/config/__tests__/large-file-splits.test.ts --reporter=verbose`.
+3. Run the required dashboard CI lane after that narrow split fix.
+4. Commit, push, and verify GitHub CI, Vercel READY, and production `/api/health` for the exact final SHA.
+5. Resume the adversarial audit only after CI is green.
 
 ## Do Not Touch
 
-- Product/readback code
-- UI polish or broad editor/file-management UX
+- UI redesign or polish
+- Broad artifact rewrite
+- Upload/file-management system
 - Paid generation
 - Outbound email
 - Stripe or pricing
