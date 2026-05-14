@@ -106,6 +106,11 @@ describe('POST /api/conviction/generate selected winner mode', () => {
         }),
         execution_result: expect.objectContaining({
           brief_origin: 'selected_move_generate',
+          selected_winner_fingerprint: expect.stringContaining('claim:deadline closing: complete at least one account activity'),
+          selected_winner_claim: expect.stringContaining('Deadline closing'),
+          selected_winner_source_refs: expect.arrayContaining([
+            'commitment:2aeae0a5-0ce8-4554-8e81-2234a7f68da1',
+          ]),
           artifact: expect.objectContaining({
             title: expect.stringContaining('WorkSourceWA'),
           }),

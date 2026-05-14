@@ -21,6 +21,7 @@ import { generateArtifact } from '@/lib/conviction/artifact-generator';
 import { processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { getWinnerTruthReport } from '@/lib/system/winner-truth';
+import { buildSelectedWinnerFingerprint } from '@/lib/conviction/selected-winner-fingerprint';
 import type { ConvictionDirective, EvidenceItem } from '@/lib/briefing/types';
 
 export const dynamic = 'force-dynamic';
@@ -34,6 +35,12 @@ type WinnerTruthCard = {
   why_now?: unknown;
   source_refs?: unknown;
   confidence?: unknown;
+};
+
+type SelectedWinnerIdentity = {
+  selected_winner_fingerprint: string;
+  selected_winner_claim: string;
+  selected_winner_source_refs: string[];
 };
 
 function asString(value: unknown): string | null {
@@ -88,11 +95,31 @@ function buildSelectedMoveDirective(card: WinnerTruthCard): ConvictionDirective 
   };
 }
 
-async function generateSelectedMoveDirective(userId: string): Promise<ConvictionDirective | null> {
+function buildSelectedWinnerIdentity(card: WinnerTruthCard): SelectedWinnerIdentity | null {
+  const claim = asString(card.claim);
+  const sourceRefs = asStringArray(card.source_refs);
+  const fingerprint = buildSelectedWinnerFingerprint({ claim, source_refs: sourceRefs });
+  if (!claim || !fingerprint) return null;
+  return {
+    selected_winner_fingerprint: fingerprint,
+    selected_winner_claim: claim,
+    selected_winner_source_refs: sourceRefs,
+  };
+}
+
+async function generateSelectedMoveDirective(userId: string): Promise<{
+  directive: ConvictionDirective;
+  identity: SelectedWinnerIdentity | null;
+} | null> {
   const report = await getWinnerTruthReport(userId);
   const winner = report.current_winner;
   if (winner.verdict !== 'selected' || !winner.discrepancy_card) return null;
-  return buildSelectedMoveDirective(winner.discrepancy_card);
+  const directive = buildSelectedMoveDirective(winner.discrepancy_card);
+  if (!directive) return null;
+  return {
+    directive,
+    identity: buildSelectedWinnerIdentity(winner.discrepancy_card),
+  };
 }
 
 export async function POST(request: Request) {
@@ -104,15 +131,18 @@ export async function POST(request: Request) {
 
   try {
     let directive: ConvictionDirective | null = null;
+    let selectedWinnerIdentity: SelectedWinnerIdentity | null = null;
 
     if (useSelectedMove) {
-      directive = await generateSelectedMoveDirective(userId);
-      if (!directive) {
+      const selectedMove = await generateSelectedMoveDirective(userId);
+      if (!selectedMove) {
         return NextResponse.json(
           { error: 'No selected move available for deterministic persistence' },
           { status: 409 },
         );
       }
+      directive = selectedMove.directive;
+      selectedWinnerIdentity = selectedMove.identity;
     } else {
       // Extract entities/commitments/topics from unprocessed sync signals
       // Race with 7s timeout so we never blow the Hobby tier 10s limit
@@ -235,6 +265,7 @@ export async function POST(request: Request) {
           directive,
           artifact,
           briefOrigin: useSelectedMove ? 'selected_move_generate' : 'dashboard_generate',
+          extras: selectedWinnerIdentity ?? undefined,
         }),
       })
       .select('id, generated_at, status, execution_result')

@@ -14,6 +14,8 @@ import { CONFIDENCE_SEND_THRESHOLD } from '@/lib/config/constants';
 import { getSubscriptionStatus } from '@/lib/auth/subscription';
 import { evaluateDiscrepancyCardFrame } from '@/lib/briefing/discrepancy-card-frame';
 import { buildDailyUtilitySlateFromReceipts } from '@/lib/briefing/daily-utility-slate';
+import { getWinnerTruthReport } from '@/lib/system/winner-truth';
+import { buildSelectedWinnerFingerprint } from '@/lib/conviction/selected-winner-fingerprint';
 import { jsonWithReadOnlyUserCache } from '@/lib/utils/read-only-user-cache';
 import {
   ACTION_RANKING_SELECT,
@@ -77,6 +79,51 @@ function hasSummaryArtifact(action: ActionSummaryRow | null | undefined): boolea
       asString(action?.artifact_title) ||
       asString(action?.artifact_preview),
   );
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+async function selectedMoveMatchesCurrentWinner(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  actionId: unknown,
+): Promise<boolean> {
+  const id = asString(actionId);
+  if (!id) return false;
+
+  try {
+    const { data, error } = await supabase
+      .from('tkg_actions')
+      .select('execution_result')
+      .eq('user_id', userId)
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(error.message ?? JSON.stringify(error));
+    }
+
+    const executionResult = asRecord(data?.execution_result);
+    const storedFingerprint = asString(executionResult?.selected_winner_fingerprint);
+    if (!storedFingerprint) return false;
+
+    const report = await getWinnerTruthReport(userId);
+    const currentWinner = report.current_winner;
+    if (currentWinner.verdict !== 'selected' || !currentWinner.discrepancy_card) return false;
+
+    const currentFingerprint = buildSelectedWinnerFingerprint(currentWinner.discrepancy_card);
+    return Boolean(currentFingerprint && currentFingerprint === storedFingerprint);
+  } catch (error) {
+    console.warn(
+      '[conviction/latest] selected_move_generate current-winner check failed:',
+      error instanceof Error ? error.message : String(error),
+    );
+    return false;
+  }
 }
 
 async function getConsumedFreeArtifactCount(
@@ -195,6 +242,17 @@ export async function GET(request: Request) {
 
       if (selectedSummary) {
         selectedAction = selectedSummary as ActionSummaryRow;
+      }
+    }
+
+    if (selectedAction?.brief_origin === 'selected_move_generate') {
+      const matchesCurrentWinner = await selectedMoveMatchesCurrentWinner(
+        supabase,
+        userId,
+        selectedAction.id,
+      );
+      if (!matchesCurrentWinner) {
+        selectedAction = null;
       }
     }
 

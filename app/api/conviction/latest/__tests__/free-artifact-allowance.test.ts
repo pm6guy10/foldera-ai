@@ -6,12 +6,14 @@ const mockCreateServerClient = vi.fn();
 const mockApiErrorForRoute = vi.fn();
 const mockBuildContextGreeting = vi.fn();
 const mockGetSubscriptionStatus = vi.fn();
+const mockGetWinnerTruthReport = vi.fn();
 
 vi.mock('@/lib/auth/resolve-user', () => ({ resolveUser: mockResolveUser }));
 vi.mock('@/lib/db/client', () => ({ createServerClient: mockCreateServerClient }));
 vi.mock('@/lib/utils/api-error', () => ({ apiErrorForRoute: mockApiErrorForRoute }));
 vi.mock('@/lib/briefing/context-builder', () => ({ buildContextGreeting: mockBuildContextGreeting }));
 vi.mock('@/lib/auth/subscription', () => ({ getSubscriptionStatus: mockGetSubscriptionStatus }));
+vi.mock('@/lib/system/winner-truth', () => ({ getWinnerTruthReport: mockGetWinnerTruthReport }));
 
 type SupabaseMockOptions = {
   pendingActions: Record<string, unknown>[];
@@ -234,6 +236,21 @@ function buildSupabaseMock(options: SupabaseMockOptions) {
       if (config?.head) {
         return { eq: consumedCountEqUser };
       }
+      if (columns === 'execution_result') {
+        return {
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockImplementation((_column: string, value: unknown) => ({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: {
+                  execution_result:
+                    options.pendingActions.find((action) => action.id === value)?.execution_result ?? null,
+                },
+                error: null,
+              }),
+            })),
+          }),
+        };
+      }
       if (columns === PENDING_RANKING_SELECT) {
         return { eq: pendingEqUser };
       }
@@ -321,6 +338,15 @@ function buildPendingAction(overrides?: Partial<Record<string, unknown>>): Recor
   };
 }
 
+function mockCurrentWinner(card = VALID_DISCREPANCY_CARD) {
+  mockGetWinnerTruthReport.mockResolvedValue({
+    current_winner: {
+      verdict: 'selected',
+      discrepancy_card: card,
+    },
+  });
+}
+
 async function callLatest() {
   const { GET } = await import('../route');
   return GET(new Request('http://localhost/api/conviction/latest'));
@@ -343,6 +369,7 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     );
     mockResolveUser.mockResolvedValue({ userId: 'u-test' });
     mockBuildContextGreeting.mockResolvedValue('Today. 0 active commitments. Top priority: None set.');
+    mockCurrentWinner();
   });
 
   it('pending_approval alone does not consume the free artifact', async () => {
@@ -389,6 +416,8 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
           },
           execution_result: {
             brief_origin: 'selected_move_generate',
+            selected_winner_fingerprint:
+              'claim:packet owner confirmation is ready for review.|refs:artifact:packet-metadata,signal:owner-confirmation',
             discrepancy_card: VALID_DISCREPANCY_CARD,
             discrepancy_quality: {
               passes: true,
@@ -416,6 +445,61 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(body.detail_required).toBe(true);
     expect(body.detail_url).toBe('/api/conviction/actions/selected-move-action');
     expect(mockBuildContextGreeting).not.toHaveBeenCalled();
+  });
+
+  it('hides a stale selected-move artifact when it no longer matches the current winner', async () => {
+    mockCurrentWinner({
+      ...VALID_DISCREPANCY_CARD,
+      claim: 'Commitment due in 0d: Submit high-quality .docx documents for document collection',
+      source_refs: ['commitment:1d0e3ecb-899c-4ec1-96d0-748485678dfe'],
+    });
+    const supabase = buildSupabaseMock({
+      pendingActions: [
+        buildPendingAction({
+          id: 'old-worksource-action',
+          confidence: 45,
+          directive_text: 'Prepare WorkSourceWA account activity closeout.',
+          artifact: {
+            type: 'document',
+            title: 'WorkSourceWA account activity closeout',
+            content: 'Close out the WorkSourceWA account activity trail before the deadline.',
+          },
+          execution_result: {
+            brief_origin: 'selected_move_generate',
+            selected_winner_fingerprint:
+              'claim:deadline closing complete at least one account activity|refs:commitment:old-worksource',
+            discrepancy_card: {
+              ...VALID_DISCREPANCY_CARD,
+              claim: 'Deadline closing: Complete at least one account activity',
+              source_refs: ['commitment:old-worksource'],
+            },
+            discrepancy_quality: {
+              passes: true,
+              quality_score: 0.88,
+              blocked_by: [],
+              pattern_keys: VALID_DISCREPANCY_CARD.pattern_keys,
+              rejection_reason: null,
+            },
+          },
+        }),
+      ],
+      consumedCount: 0,
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'none' });
+
+    const res = await callLatest();
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(body.id).toBeUndefined();
+    expect(body.finished_artifact_verdict).toBe('no_finished_artifact');
+    expect(body.daily_utility_slate).toEqual(
+      expect.objectContaining({
+        finished_artifact_verdict: 'no_finished_artifact',
+      }),
+    );
+    expect(mockGetWinnerTruthReport).toHaveBeenCalledWith('u-test');
   });
 
   it('hides a pending artifact that cannot prove a discrepancy card frame', async () => {
@@ -636,12 +720,16 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(source).not.toContain('execution_result, artifact');
   });
 
-  it('does not run winner-truth diagnostics on the normal dashboard latest route', async () => {
-    const source = await import('node:fs/promises').then((fs) =>
-      fs.readFile(new URL('../route.ts', import.meta.url), 'utf8'),
-    );
+  it('does not run winner-truth diagnostics for ordinary pending artifacts', async () => {
+    const supabase = buildSupabaseMock({
+      pendingActions: [buildPendingAction()],
+      consumedCount: 0,
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'none' });
 
-    expect(source).not.toContain('@/lib/system/winner-truth');
-    expect(source).not.toContain('getWinnerTruthReport');
+    const res = await callLatest();
+    expect(res.status).toBe(200);
+    expect(mockGetWinnerTruthReport).not.toHaveBeenCalled();
   });
 });
