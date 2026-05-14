@@ -502,6 +502,71 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(mockGetWinnerTruthReport).toHaveBeenCalledWith('u-test');
   });
 
+  it('shows a current selected-move requirements-needed packet even when its blocker card is not a finished discrepancy', async () => {
+    mockCurrentWinner({
+      ...VALID_DISCREPANCY_CARD,
+      claim: 'Commitment due in 0d: Submit high-quality .docx documents for document collection',
+      source_refs: ['commitment:1d0e3ecb-899c-4ec1-96d0-748485678dfe'],
+    });
+    const packetContent = [
+      'REQUIREMENTS-NEEDED PACKET',
+      'KNOWN REQUIREMENTS FROM SOURCE',
+      '- Files must be real .docx documents.',
+      'MISSING BEFORE FINISHED .DOCX WORK',
+      '- Owned candidate .docx files or source document bodies.',
+      'ARTIFACT BEHAVIOR',
+      'Foldera should produce this requirements-needed packet instead of pretending it can write or submit the documents.',
+    ].join('\n');
+    const supabase = buildSupabaseMock({
+      pendingActions: [
+        buildPendingAction({
+          id: 'requirements-packet-action',
+          confidence: 45,
+          directive_text:
+            'Write a decision memo that closes "Submit high-quality .docx documents for document collection" with the owner, next action, and deadline.',
+          artifact: {
+            type: 'document',
+            title: 'Requirements needed: Submit high-quality .docx documents for document collection',
+            content: packetContent,
+          },
+          execution_result: {
+            brief_origin: 'selected_move_generate',
+            selected_winner_fingerprint:
+              'claim:commitment due in 0d: submit high-quality .docx documents for document collection|refs:commitment:1d0e3ecb-899c-4ec1-96d0-748485678dfe',
+            discrepancy_card: {
+              ...VALID_DISCREPANCY_CARD,
+              claim:
+                'Write a decision memo that closes "Submit high-quality .docx documents for document collection" with the owner, next action, and deadline.',
+              risk: 'Source requirements are known, but owned .docx bodies and submission destination are missing.',
+              next_action: 'Requirements needed: Submit high-quality .docx documents for document collection',
+              source_refs: ['commitment:1'],
+            },
+            discrepancy_quality: {
+              passes: false,
+              quality_score: 0.8,
+              blocked_by: ['weak_risk', 'reminder_without_risk'],
+              pattern_keys: ['discrepancy:deadline_staleness', 'action:write_document'],
+              rejection_reason: 'weak_risk; reminder_without_risk',
+            },
+          },
+        }),
+      ],
+      consumedCount: 0,
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'active' });
+
+    const res = await callLatest();
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(body.id).toBe('requirements-packet-action');
+    expect(body.artifact_title).toBe('Requirements needed: Submit high-quality .docx documents for document collection');
+    expect(body.finished_artifact_verdict).toBe('strict_artifact_selected');
+    expect(body.daily_utility_slate).toBeNull();
+    expect(mockBuildContextGreeting).not.toHaveBeenCalled();
+  });
+
   it('hides a pending artifact that cannot prove a discrepancy card frame', async () => {
     const supabase = buildSupabaseMock({
       pendingActions: [

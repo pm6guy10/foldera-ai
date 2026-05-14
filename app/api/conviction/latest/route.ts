@@ -81,6 +81,19 @@ function hasSummaryArtifact(action: ActionSummaryRow | null | undefined): boolea
   );
 }
 
+function isRequirementsNeededPacketSummary(action: ActionSummaryRow | null | undefined): boolean {
+  const text = [
+    asString(action?.artifact_title) ?? '',
+    asString(action?.artifact_preview) ?? '',
+  ].join('\n');
+  return (
+    action?.brief_origin === 'selected_move_generate' &&
+    /\brequirements needed\b/i.test(text) &&
+    /\brequirements-needed packet\b/i.test(text) &&
+    /\bmissing before finished \.docx work\b/i.test(text)
+  );
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -291,7 +304,12 @@ export async function GET(request: Request) {
 
     const discrepancyCard = buildDiscrepancyCardFromSummary(selectedAction);
     const discrepancyQuality = evaluateDiscrepancyCardFrame(discrepancyCard);
-    if (!hasSummaryArtifact(selectedAction) || !discrepancyCard || !discrepancyQuality.passes) {
+    const requirementsNeededPacket = isRequirementsNeededPacketSummary(selectedAction);
+    if (
+      !hasSummaryArtifact(selectedAction) ||
+      !discrepancyCard ||
+      (!discrepancyQuality.passes && !requirementsNeededPacket)
+    ) {
       try {
         contextGreeting = await buildContextGreeting(userId);
       } catch {
