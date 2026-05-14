@@ -1,8 +1,8 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-05-13 22:03 PT
-Last known production SHA: fc1f9a9704dd5931b091ec64d32a814c478c5d53
-Last completed code commit: pending document requirements seam push
+Last known production SHA: b3abc3a075ca77edf7fa2dbeceb63bc8073e223a
+Last completed code commit: b3abc3a
 Current slice: Document-collection artifact requirements
 Current mode: no new gate, no proof packet, no UI polish, no paid generation, no outbound email, no Stripe, no schema, no quality-bar weakening, no fake document content.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
@@ -33,7 +33,7 @@ Visual gate status: PASS
 - focused requirements proof: PASS `npx vitest run lib/conviction/__tests__/artifact-generator.test.ts --reporter=verbose` -> `22/22`.
 - decision trace gate: PASS `npm run gate:decision-trace` -> `FIRST_FAILING_DECISION_TRACE_GATE: NONE`.
 - build: PASS `npm run build`.
-- production: not rechecked for this local code change before push/deploy; last known production SHA remains `fc1f9a9704dd5931b091ec64d32a814c478c5d53`.
+- production: PASS Vercel deployment `dpl_FL5Xq2BFyTuVEvtXjJ2r1UhBvCen` is `READY`; production `/api/health` reports `revision.git_sha=b3abc3a075ca77edf7fa2dbeceb63bc8073e223a`.
 
 ## Remaining blockers
 
