@@ -36,6 +36,8 @@ const PENDING_SUMMARY_SELECT = ACTION_SUMMARY_SELECT;
 const SLATE_RECEIPT_SELECT = ACTION_SLATE_SELECT;
 const CONSUMED_FREE_ARTIFACT_STATUSES = ['approved', 'executed', 'skipped'] as const;
 const SLATE_RECEIPT_STATUSES = ['skipped', 'executed', 'approved'] as const;
+const WINNER_TRUTH_CHECK_TIMEOUT_MS = 8_000;
+const SOURCE_FRESHNESS_SKEW_MS = 60_000;
 
 type PendingRankingRow = {
   id?: unknown;
@@ -110,10 +112,73 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
+async function selectedMoveHasFreshSourceSnapshot(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+  generatedAt: unknown,
+): Promise<boolean> {
+  const generatedAtText = asString(generatedAt);
+  if (!generatedAtText) return false;
+
+  const generatedMs = new Date(generatedAtText).getTime();
+  if (Number.isNaN(generatedMs)) return false;
+
+  try {
+    const [{ data: tokenRows, error: tokenError }, { data: laterSignals, error: signalError }] =
+      await Promise.all([
+        supabase
+          .from('user_tokens')
+          .select('provider, last_synced_at, disconnected_at')
+          .eq('user_id', userId)
+          .in('provider', ['google', 'microsoft']),
+        supabase
+          .from('tkg_signals')
+          .select('id')
+          .eq('user_id', userId)
+          .gt('created_at', generatedAtText)
+          .limit(1),
+      ]);
+
+    if (tokenError || signalError) return false;
+    if (Array.isArray(laterSignals) && laterSignals.length > 0) return false;
+
+    const providerRows = Array.isArray(tokenRows) ? tokenRows : [];
+    if (providerRows.length === 0) return false;
+
+    return providerRows.every((row) => {
+      if (row?.disconnected_at != null) return false;
+      const syncedAt = asString(row?.last_synced_at);
+      if (!syncedAt) return false;
+      const syncedMs = new Date(syncedAt).getTime();
+      return !Number.isNaN(syncedMs) && syncedMs <= generatedMs + SOURCE_FRESHNESS_SKEW_MS;
+    });
+  } catch {
+    return false;
+  }
+}
+
+async function getWinnerTruthReportWithTimeout(userId: string) {
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      getWinnerTruthReport(userId),
+      new Promise<never>((_resolve, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error('winner_truth_check_timeout')),
+          WINNER_TRUTH_CHECK_TIMEOUT_MS,
+        );
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
+
 async function selectedMoveMatchesCurrentWinner(
   supabase: ReturnType<typeof createServerClient>,
   userId: string,
   actionId: unknown,
+  generatedAt: unknown,
 ): Promise<boolean> {
   const id = asString(actionId);
   if (!id) return false;
@@ -134,7 +199,11 @@ async function selectedMoveMatchesCurrentWinner(
     const storedFingerprint = asString(executionResult?.selected_winner_fingerprint);
     if (!storedFingerprint) return false;
 
-    const report = await getWinnerTruthReport(userId);
+    if (await selectedMoveHasFreshSourceSnapshot(supabase, userId, generatedAt)) {
+      return true;
+    }
+
+    const report = await getWinnerTruthReportWithTimeout(userId);
     const currentWinner = report.current_winner;
     if (currentWinner.verdict !== 'selected' || !currentWinner.discrepancy_card) return false;
 
@@ -274,6 +343,7 @@ export async function GET(request: Request) {
         supabase,
         userId,
         selectedAction.id,
+        selectedAction.generated_at,
       );
       if (!matchesCurrentWinner) {
         selectedAction = null;

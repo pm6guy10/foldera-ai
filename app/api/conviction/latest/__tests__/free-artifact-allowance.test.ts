@@ -20,6 +20,8 @@ type SupabaseMockOptions = {
   consumedCount: number;
   accountCreatedAt?: string | null;
   slateReceipts?: Record<string, unknown>[];
+  sourceProviders?: Record<string, unknown>[];
+  laterSignals?: Record<string, unknown>[];
 };
 
 const PENDING_RANKING_SELECT = 'id, confidence, generated_at, status, brief_origin';
@@ -287,11 +289,32 @@ function buildSupabaseMock(options: SupabaseMockOptions) {
     data: { user: { created_at: options.accountCreatedAt ?? '2026-01-02T00:00:00.000Z' } },
     error: null,
   });
+  const sourceProviderIn = vi.fn().mockResolvedValue({
+    data: options.sourceProviders ?? [],
+    error: null,
+  });
+  const sourceProviderEq = vi.fn().mockReturnValue({ in: sourceProviderIn });
+  const laterSignalLimit = vi.fn().mockResolvedValue({
+    data: options.laterSignals ?? [],
+    error: null,
+  });
+  const laterSignalGt = vi.fn().mockReturnValue({ limit: laterSignalLimit });
+  const laterSignalEq = vi.fn().mockReturnValue({ gt: laterSignalGt });
 
   const from = vi.fn().mockImplementation((table: string) => {
     if (table === 'tkg_actions') return { select: tkgActionsSelect };
     if (table === 'tkg_action_summaries') return { select: summarySelect };
     if (table === 'user_subscriptions') return { update: userSubscriptionUpdate };
+    if (table === 'user_tokens') {
+      return {
+        select: vi.fn().mockReturnValue({ eq: sourceProviderEq }),
+      };
+    }
+    if (table === 'tkg_signals') {
+      return {
+        select: vi.fn().mockReturnValue({ eq: laterSignalEq }),
+      };
+    }
     throw new Error(`Unexpected table: ${table}`);
   });
 
@@ -309,6 +332,8 @@ function buildSupabaseMock(options: SupabaseMockOptions) {
       tkgActionsSelect,
       summarySelect,
       getUserById,
+      sourceProviderIn,
+      laterSignalLimit,
     },
   };
 }
@@ -571,6 +596,69 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     );
     expect(body.daily_utility_slate).toBeNull();
     expect(mockBuildContextGreeting).not.toHaveBeenCalled();
+  });
+
+  it('accepts a selected-move packet from a fresh source snapshot without recalculating winner truth', async () => {
+    mockGetWinnerTruthReport.mockRejectedValue(new Error('winner truth should not run'));
+    const packetContent = [
+      'REQUIREMENTS-NEEDED PACKET',
+      'KNOWN REQUIREMENTS FROM SOURCE',
+      '- Files must be real .docx documents.',
+    ].join('\n');
+    const supabase = buildSupabaseMock({
+      pendingActions: [
+        buildPendingAction({
+          id: 'fresh-requirements-packet',
+          confidence: 45,
+          generated_at: '2026-05-14T13:16:41.408Z',
+          directive_text:
+            'Write a decision memo that closes "Submit high-quality .docx documents for document collection" with the owner, next action, and deadline.',
+          artifact: {
+            type: 'document',
+            title: 'Requirements needed: Submit high-quality .docx documents for document collection',
+            content: packetContent,
+          },
+          execution_result: {
+            brief_origin: 'selected_move_generate',
+            selected_winner_fingerprint:
+              'claim:commitment due in 0d: submit high-quality .docx documents for document collection|refs:commitment:1d0e3ecb-899c-4ec1-96d0-748485678dfe',
+            discrepancy_card: {
+              ...VALID_DISCREPANCY_CARD,
+              claim:
+                'Write a decision memo that closes "Submit high-quality .docx documents for document collection" with the owner, next action, and deadline.',
+              risk: 'Source requirements are known, but owned .docx bodies and submission destination are missing.',
+              next_action: 'Requirements needed: Submit high-quality .docx documents for document collection',
+              source_refs: ['commitment:1'],
+            },
+            discrepancy_quality: {
+              passes: false,
+              quality_score: 0.8,
+              blocked_by: ['weak_risk', 'reminder_without_risk'],
+              pattern_keys: ['discrepancy:deadline_staleness', 'action:write_document'],
+              rejection_reason: 'weak_risk; reminder_without_risk',
+            },
+          },
+        }),
+      ],
+      consumedCount: 0,
+      sourceProviders: [
+        { provider: 'google', last_synced_at: '2026-05-14T11:03:04.708Z', disconnected_at: null },
+        { provider: 'microsoft', last_synced_at: '2026-05-14T11:02:59.447Z', disconnected_at: null },
+      ],
+      laterSignals: [],
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'active' });
+
+    const res = await callLatest();
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(body.id).toBe('fresh-requirements-packet');
+    expect(body.artifact_readiness_state).toBe('REQUIREMENTS_NEEDED');
+    expect(mockGetWinnerTruthReport).not.toHaveBeenCalled();
+    expect(supabase.spies.sourceProviderIn).toHaveBeenCalledWith('provider', ['google', 'microsoft']);
+    expect(supabase.spies.laterSignalLimit).toHaveBeenCalledWith(1);
   });
 
   it('hides a pending artifact that cannot prove a discrepancy card frame', async () => {
