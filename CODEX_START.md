@@ -53,6 +53,28 @@ NOT DONE - GitHub CI red.
 
 Then name the exact workflow, job, step, and error. Fix only that CI failure, push the fix, and re-check GitHub CI before making any product claim.
 
+## Live-Truth Receipt Rule
+
+`ACTIVE_HANDOFF.md` must separate runtime/product truth from receipt-only truth.
+
+Required fields:
+
+- current `origin/main` SHA at handoff update time
+- last verified runtime/product SHA
+- latest receipt/docs SHA or explicit receipt-only self-SHA status
+- GitHub CI status for the latest `origin/main` SHA
+- Vercel deployment status for the latest `origin/main` SHA
+- production `/api/health` SHA
+- whether the latest commit is product/runtime or receipt-only
+- whether it is safe to proceed
+
+Durable rule:
+
+- A product/runtime commit must be verified by GitHub CI, Vercel, and production `/api/health` for that exact SHA.
+- A receipt-only commit may record the previously verified runtime/product SHA plus external proof of the receipt commit.
+- Do not require `ACTIVE_HANDOFF.md` to embed the SHA of the commit that contains its own edit; that is self-referential and creates infinite docs-only drift.
+- `ACTIVE_HANDOFF.md` is stale only if it misstates verified truth or omits the latest receipt status, not merely because a receipt-only edit created a newer SHA.
+
 ## Required Startup Order
 
 Run this order every session:

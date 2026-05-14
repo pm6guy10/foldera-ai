@@ -79,6 +79,25 @@ NOT DONE - GitHub CI red.
 
 Then name the exact failing workflow, job, step, and error. Do not call the product ready, done, shipped, or beta-ready from Vercel success alone.
 
+## Live-Truth Receipt Rule
+
+Treat product/runtime commits and receipt-only commits differently.
+
+Product/runtime commits must be verified by GitHub CI, Vercel, and production `/api/health` for the exact SHA before any product done claim.
+
+Receipt-only commits may record the last verified runtime/product SHA plus the external proof status for the docs commit. Do not mark `ACTIVE_HANDOFF.md` stale only because it cannot embed the SHA of the commit that contains its own edit. That requirement is self-referential. It is stale only when it misstates verified truth or omits the latest receipt status.
+
+The owner snapshot should separately report:
+
+- current `origin/main` SHA
+- last verified runtime/product SHA
+- latest receipt/docs SHA when externally known, or the explicit self-SHA status
+- GitHub CI status
+- Vercel status
+- production `/api/health` SHA
+- whether the latest commit changed product/runtime behavior or receipts only
+- whether it is safe to proceed
+
 ## Core Delivery Doctrine
 
 Foldera must be managed as a gated delivery program, not as a stream of vibes, patches, or Codex self-reports.

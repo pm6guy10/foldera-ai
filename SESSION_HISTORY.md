@@ -6615,3 +6615,10 @@ pm run build.
 - What changed: Recorded the artifact-readiness final-gate proof and restored the required release-gate status lines in `ACTIVE_HANDOFF.md` so `gate:decision-trace` can distinguish the real external beta blocker from live-truth drift.
 - Verification: Artifact-readiness commit `f2a81bcc8c49f303a2fe507f7e5fb599b58c27f8` reached GitHub Actions green, Vercel deployment `dpl_8gnjwEdKPUzWNNgFZ3PuHVHfC2Vr` READY, and production `/api/health` served the same SHA.
 - Unresolved issues: This receipt update still needs its own push and exact-SHA GitHub/Vercel verification before the session can close.
+
+## 2026-05-14 - Live-truth receipt rule repair
+- MODE: Operating-doc receipt rule repair only; no product work, UI polish, paid generation, outbound email, Stripe, schema, or artifact behavior change.
+- Files changed: `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`, `CODEX_START.md`, `GPT.md`.
+- What changed: Split live-truth receipt semantics so `ACTIVE_HANDOFF.md` records current origin/main, last verified runtime/product SHA, receipt-only self-SHA status, GitHub CI, Vercel, production `/api/health`, commit kind, and safe-to-proceed state separately. This removes the impossible rule that a docs file must embed the SHA of the commit created by editing that same file.
+- Verification: Pre-repair truth from origin/main, GitHub Actions, Vercel, and production `/api/health` all agreed on `0767452d248e773c688c27bce74643e31438c169`; `npm run health` passed with `RESULT: 0 FAILING`. Final receipt-only commit proof must be read externally from `origin/main`, GitHub Actions, Vercel, and production `/api/health` after push.
+- Unresolved issues: None for the rule semantics after external proof confirms the final receipt-only commit. This entry intentionally does not embed its own final commit SHA because that would recreate the self-referential loop.

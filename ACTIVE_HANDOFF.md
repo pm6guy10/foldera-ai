@@ -1,38 +1,40 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-14 08:26 PT
-Current slice: Artifact readiness contract
+Last updated: 2026-05-14 08:44 PT
+Current slice: Live-truth receipt rule repair
 Current mode: no UI polish, no broad feature, no paid generation, no outbound email, no Stripe, no schema, no weakened quality bars, no fake content.
-Last known production SHA: f2a81bcc8c49f303a2fe507f7e5fb599b58c27f8
-GitHub CI status: GREEN for `f2a81bcc8c49f303a2fe507f7e5fb599b58c27f8`
-Vercel status: GREEN for `f2a81bcc8c49f303a2fe507f7e5fb599b58c27f8`; deployment `dpl_8gnjwEdKPUzWNNgFZ3PuHVHfC2Vr`
+Current origin/main SHA at handoff update: `0767452d248e773c688c27bce74643e31438c169`
+Last verified runtime/product SHA (production SHA): `0767452d248e773c688c27bce74643e31438c169`
+Latest receipt/docs SHA: this handoff update is receipt-only; exact self-SHA is assigned after commit/push and must be verified externally from `origin/main`, not embedded into this file.
+Commit kind: receipt-only operating-doc repair; product/runtime unchanged.
+GitHub CI status for latest origin/main SHA: GREEN for `0767452d248e773c688c27bce74643e31438c169`
+Vercel status for latest origin/main SHA: READY for `0767452d248e773c688c27bce74643e31438c169`; deployment `dpl_M218bhTH53hwaMEj325CsZRsNWz9`
+Production /api/health SHA: `0767452d248e773c688c27bce74643e31438c169`
+Safe to proceed to next seam: YES after this receipt-only commit is pushed and GitHub CI/Vercel/health are checked for the final `origin/main` SHA; no product proof is implied by this docs commit.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
 First failing release gate: GATE_9_REAL_NON_OWNER_BETA
 Release gate status: BLOCKED_EXTERNAL
-Done rule: Foldera cannot be called done unless GitHub CI and Vercel are both green for the exact final `origin/main` commit.
+Done rule: Product/runtime commits require GitHub CI, Vercel, and production `/api/health` for the exact SHA. Receipt-only commits may record the last verified runtime/product SHA plus external proof of the receipt commit, without requiring this file to name its own commit SHA.
 
 ## Current Truth
 
-- `write_document` winners now need a product-wide artifact readiness contract, not only the document-collection special case.
-- The intended states are `FINISHED_ARTIFACT_READY`, `REQUIREMENTS_NEEDED`, and `NO_SAFE_ARTIFACT`.
-- Latest/detail/history/dashboard must agree on the visible state, and stale selected-move artifacts must not represent changed winners.
-- This slice must stay inside the artifact readiness/readback path and must not continue document-generation feature work.
+- The previous live-truth receipt format used one production SHA slot, which made receipt-only commits appear stale by construction.
+- `ACTIVE_HANDOFF.md` cannot truthfully embed the exact SHA of the commit that contains the embedding edit; that would create an infinite docs-only SHA loop.
+- The durable rule is to separate current origin/main, verified runtime/product SHA, receipt/docs commit status, GitHub CI, Vercel, production health, commit kind, and proceed/stop state.
+- `ACTIVE_HANDOFF.md` is stale only when it misstates verified truth or omits receipt status, not merely because a docs-only commit created a newer SHA.
 
 ## Verified Proof
 
-- GitHub Actions and Vercel are green for artifact-readiness commit `f2a81bcc8c49f303a2fe507f7e5fb599b58c27f8`.
-- Production `/api/health` served SHA `f2a81bcc8c49f303a2fe507f7e5fb599b58c27f8`.
+- Pre-repair origin/main, GitHub CI, Vercel, and production `/api/health` all agree on `0767452d248e773c688c27bce74643e31438c169`.
 - `npm run health` passed with `RESULT: 0 FAILING`.
-- `npm run winner:autopsy` selected the document-collection write_document winner.
-- `npm run gate:decision-trace` decision-trace lane passed; release gate remains externally blocked at real non-owner beta.
-- Focused artifact readiness/readback tests were written red first and pass locally (`35/35`).
-- `npm run build` passed.
+- Final proof for this receipt-only commit must check the new `origin/main` SHA in GitHub Actions, Vercel deployment status when deployed, and production `/api/health`.
 
 ## Next exact move
 
-1. Commit and push this handoff gate-alignment receipt.
-2. Verify GitHub Actions, Vercel deployment, and production `/api/health` for the final `origin/main` commit.
-3. Stop; finished document generation still requires Brandon-owned source files/bodies and submission destination.
+1. Push this receipt-rule repair to `main`.
+2. Verify GitHub Actions for the final receipt-only `origin/main` SHA.
+3. Verify Vercel deployment status if Vercel deploys the receipt-only SHA, and confirm production `/api/health`.
+4. Then proceed to Production Readback Proof; finished document generation still requires Brandon-owned source files/bodies and submission destination.
 
 ## Do Not Touch
 
