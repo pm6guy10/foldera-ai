@@ -18,6 +18,7 @@ import {
   validateDirectiveForPersistence,
 } from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
+import { decryptWithStatus } from '@/lib/encryption';
 import { processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { getWinnerTruthReport } from '@/lib/system/winner-truth';
@@ -68,6 +69,93 @@ function normalizeConfidence(value: unknown): number {
   return Math.round(Math.max(0, Math.min(100, value)));
 }
 
+function extractSourceId(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function sourceRefId(ref: string, prefix: string): string | null {
+  return ref.startsWith(`${prefix}:`) ? ref.slice(prefix.length + 1).trim() || null : null;
+}
+
+function compactRelevantSourceExcerpt(text: string): string {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  const anchors = [
+    'document collection',
+    'What qualifies',
+    'What makes a high-quality submission',
+    'What won',
+    'Deadline:',
+    'Submit your documents',
+  ];
+  const lower = normalized.toLowerCase();
+  const anchorIndexes = anchors
+    .map((anchor) => lower.indexOf(anchor.toLowerCase()))
+    .filter((index) => index >= 0)
+    .sort((a, b) => a - b);
+  const start = anchorIndexes.length > 0 ? Math.max(0, anchorIndexes[0] - 220) : 0;
+  return normalized.slice(start, start + 1800);
+}
+
+async function hydrateSelectedMoveSourceEvidence(
+  userId: string,
+  sourceRefs: string[],
+): Promise<EvidenceItem[]> {
+  const commitmentIds = sourceRefs
+    .map((ref) => sourceRefId(ref, 'commitment'))
+    .filter((id): id is string => Boolean(id));
+  if (commitmentIds.length === 0) return [];
+
+  const supabase = createServerClient();
+  const { data: commitments, error: commitmentError } = await supabase
+    .from('tkg_commitments')
+    .select('id, description, status, category, due_at, source_id, created_at, updated_at')
+    .eq('user_id', userId)
+    .in('id', commitmentIds);
+  if (commitmentError || !commitments || commitments.length === 0) return [];
+
+  const hydrated: EvidenceItem[] = commitments.map((row) => ({
+    type: 'commitment',
+    description: [
+      `Source commitment row ${row.id}: ${row.description}`,
+      row.status ? `status=${row.status}` : null,
+      row.category ? `category=${row.category}` : null,
+      row.due_at ? `due_at=${row.due_at}` : null,
+    ].filter(Boolean).join('; '),
+  }));
+
+  const sourceSignalIds = commitments
+    .map((row) => extractSourceId(row.source_id))
+    .filter((id): id is string => Boolean(id));
+  if (sourceSignalIds.length === 0) return hydrated;
+
+  const { data: signals, error: signalError } = await supabase
+    .from('tkg_signals')
+    .select('id, source, type, author, occurred_at, content')
+    .eq('user_id', userId)
+    .in('id', sourceSignalIds);
+  if (signalError || !signals) return hydrated;
+
+  for (const row of signals) {
+    const decrypted = decryptWithStatus(String(row.content ?? ''));
+    if (decrypted.usedFallback) continue;
+    const excerpt = compactRelevantSourceExcerpt(decrypted.plaintext);
+    if (!excerpt) continue;
+    hydrated.push({
+      type: 'signal',
+      description: [
+        `Source signal row ${row.id}`,
+        row.source ? `${row.source}/${row.type ?? 'unknown_type'}` : null,
+        row.author ? `from ${row.author}` : null,
+        row.occurred_at ? `occurred_at=${row.occurred_at}` : null,
+        excerpt,
+      ].filter(Boolean).join('; '),
+    });
+  }
+
+  return hydrated;
+}
+
 function buildSelectedMoveDirective(card: WinnerTruthCard): ConvictionDirective | null {
   const claim = asString(card.claim);
   const nextAction = asString(card.next_action);
@@ -116,6 +204,14 @@ async function generateSelectedMoveDirective(userId: string): Promise<{
   if (winner.verdict !== 'selected' || !winner.discrepancy_card) return null;
   const directive = buildSelectedMoveDirective(winner.discrepancy_card);
   if (!directive) return null;
+  const sourceRefs = asStringArray(winner.discrepancy_card.source_refs);
+  const hydratedEvidence = await hydrateSelectedMoveSourceEvidence(userId, sourceRefs);
+  if (hydratedEvidence.length > 0) {
+    directive.evidence = [
+      ...directive.evidence,
+      ...hydratedEvidence,
+    ];
+  }
   return {
     directive,
     identity: buildSelectedWinnerIdentity(winner.discrepancy_card),

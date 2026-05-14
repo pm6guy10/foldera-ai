@@ -504,6 +504,91 @@ function inferAdminDeadlineTarget(directive: ConvictionDirective): string {
   return cleanText(directive.directive).slice(0, 140) || 'the current admin deadline';
 }
 
+type DocumentProductionRequirementAssessment = {
+  isDocumentProduction: boolean;
+  canProduceFinishedDocument: boolean;
+  knownRequirements: string[];
+  missingRequirements: string[];
+};
+
+function assessDocumentProductionRequirements(directive: ConvictionDirective): DocumentProductionRequirementAssessment {
+  const combined = [
+    directive.directive,
+    directive.reason ?? '',
+    (directive as ConvictionDirective & { fullContext?: string }).fullContext ?? '',
+    ...(directive.evidence ?? []).map((entry) => entry.description),
+  ].join('\n');
+  const normalized = combined.replace(/\s+/g, ' ').trim();
+  const isDocumentProduction =
+    directive.action_type === 'write_document' &&
+    /\b(?:document collection|accepted document|accepted documents|professional-grade .?docx|\.docx documents?|high-quality documents?)\b/i.test(normalized);
+
+  if (!isDocumentProduction) {
+    return {
+      isDocumentProduction: false,
+      canProduceFinishedDocument: false,
+      knownRequirements: [],
+      missingRequirements: [],
+    };
+  }
+
+  const knownRequirements: string[] = [];
+  if ((/\$50\b/i.test(normalized) || /\b50\s+dollars?\b/i.test(normalized)) && /\baccepted documents?\b/i.test(normalized)) {
+    knownRequirements.push('$50 per accepted document.');
+  }
+  if (/(?:true\s+)?\.docx\b|\bdocx documents?\b/i.test(normalized)) {
+    knownRequirements.push('Files must be real .docx documents.');
+  }
+  if (/\b(?:personally own|sole rights holder|created and own|own the rights|original author)\b/i.test(normalized)) {
+    knownRequirements.push('The submitter must own the rights and be the original author.');
+  }
+  if (/\b(?:structurally rich|tables|charts|toc|table of contents|headers\/footers|footnotes|embedded data|forms)\b/i.test(normalized)) {
+    knownRequirements.push('Strong submissions are structurally rich: tables, charts, TOCs, headers/footers, footnotes, forms, or embedded data.');
+  }
+  if (/\b(?:ai-generated|pdfs? converted|confidential|personal information|company names|nda|employer|client-owned|scrub)\b/i.test(normalized)) {
+    knownRequirements.push('Do not submit AI-generated, PDF-converted, confidential, employer/client-owned, NDA-covered, or identifying content.');
+  }
+  const deadline = normalized.match(/\b(?:Deadline:\s*)?\d{1,2}\/\d{1,2}\/\d{4}(?:[^.\n]{0,40})?|\b\d{4}-\d{2}-\d{2}T[^\s,]+/i)?.[0];
+  if (deadline) {
+    knownRequirements.push(`Deadline evidence: ${cleanText(deadline)}.`);
+  }
+  if (/\blogged into a google account\b/i.test(normalized)) {
+    knownRequirements.push('Submission requires being logged into a Google account.');
+  }
+
+  const hasConcreteOwnedSourceContent =
+    /\b(?:candidate document content|owned document content|source document body|attached .?docx|attached document|file content|document draft|draft body|ready document)\b/i.test(normalized) &&
+    !/\b(?:missing|needed|required before|not captured|not available|lacks?)\b/i.test(normalized);
+  const hasConcreteDocumentTopic =
+    /\b(?:candidate document title|document title|document topic|topic selected|source topic)\b/i.test(normalized) &&
+    !/\b(?:missing|needed|required before|not captured|not available|lacks?)\b/i.test(normalized);
+  const hasCapturedSubmissionDestination =
+    /\bsubmit\b[^.\n]{0,160}\bhttps?:\/\/\S+/i.test(normalized) ||
+    /\bhttps?:\/\/\S+[^.\n]{0,160}\bsubmit\b/i.test(normalized) ||
+    /\b(?:submission url|submission link|upload portal|submit to|send to)\b/i.test(normalized);
+
+  const missingRequirements: string[] = [];
+  if (!hasConcreteOwnedSourceContent) {
+    missingRequirements.push('Owned candidate .docx files or source document bodies.');
+  }
+  if (!hasConcreteDocumentTopic) {
+    missingRequirements.push('Specific document topics, titles, or which owned documents to use.');
+  }
+  if (!hasCapturedSubmissionDestination) {
+    missingRequirements.push('Captured submission URL, upload destination, or exact handoff location.');
+  }
+  if (knownRequirements.length === 0) {
+    missingRequirements.push('Accepted-document requirements and rejection rules.');
+  }
+
+  return {
+    isDocumentProduction: true,
+    canProduceFinishedDocument: missingRequirements.length === 0,
+    knownRequirements: [...new Set(knownRequirements)],
+    missingRequirements,
+  };
+}
+
 function isAdminDeadlineDirective(directive: ConvictionDirective): boolean {
   if (directive.action_type !== 'write_document') return false;
   const combined = [
@@ -516,6 +601,59 @@ function isAdminDeadlineDirective(directive: ConvictionDirective): boolean {
     directive.discrepancyClass === 'deadline_staleness' ||
     /\b(?:admin_deadline|deadline closing|commitment due|account activity|worksourcewa|worksource|job seeker account)\b/i.test(combined)
   );
+}
+
+function buildDocumentRequirementsNeededPacket(
+  directive: ConvictionDirective,
+  assessment: DocumentProductionRequirementAssessment,
+): DocumentArtifact {
+  const combined = [
+    directive.directive,
+    directive.reason ?? '',
+    ...(directive.evidence ?? []).map((entry) => entry.description),
+  ].join('\n');
+  const deadlineAnchor = extractDeadlineAnchor(combined) ?? 'today';
+  const target = inferAdminDeadlineTarget(directive);
+  const sourceTrail = (directive.evidence ?? [])
+    .map((entry) => cleanText(entry.description))
+    .filter((entry) => entry.length > 0)
+    .slice(0, 5);
+  const knownRequirements = assessment.knownRequirements.length > 0
+    ? assessment.knownRequirements
+    : ['The source trail proves a document-production commitment, but the detailed acceptance rules are not available in the current artifact input.'];
+
+  const content = [
+    'REQUIREMENTS-NEEDED PACKET',
+    `FINAL RECOMMENDATION: submit nothing and do not draft fake .docx content until the missing source requirements below are present for ${target}.`,
+    '',
+    'OWNER: Brandon owns the decision to provide the missing source files/details; Foldera owns stopping before invented document content.',
+    '',
+    `NEXT PHYSICAL STEP: open the source Handshake document-collection email and capture the missing inputs below before any .docx-ready draft is produced.`,
+    '',
+    `DEADLINE: ${deadlineAnchor}.`,
+    '',
+    'KNOWN REQUIREMENTS FROM SOURCE',
+    ...knownRequirements.map((entry) => `- ${entry}`),
+    '',
+    'MISSING BEFORE FINISHED .DOCX WORK',
+    ...assessment.missingRequirements.map((entry) => `- ${entry}`),
+    '',
+    'SOURCE TRAIL',
+    ...(sourceTrail.length > 0 ? sourceTrail.map((entry) => `- ${entry}`) : ['- Current winner evidence selected this as the safest deadline-backed move.']),
+    '',
+    'ARTIFACT BEHAVIOR',
+    'Foldera should produce this requirements-needed packet instead of pretending it can write or submit the documents. Once the missing owned document content and submission destination are present, the artifact can become finished .docx-ready work.',
+    '',
+    'CONSEQUENCE IF NO MOVEMENT: if this stays open past the deadline, the opportunity can be lost; if Foldera invents the documents instead, the result becomes untrustworthy.',
+  ].join('\n');
+
+  return {
+    type: 'document',
+    document_purpose: 'Document collection requirements-needed packet',
+    target_reader: 'Document owner',
+    title: `Requirements needed: ${sentenceCaseTopic(target)}`.slice(0, 120),
+    content,
+  } as DocumentArtifact & { document_purpose: string; target_reader: string };
 }
 
 function buildAdminDeadlineDecisionPacket(directive: ConvictionDirective): DocumentArtifact {
@@ -575,6 +713,10 @@ export async function generateArtifact(
 ): Promise<ConvictionArtifact | null> {
   if (directive.action_type === 'write_document') {
     const embedded = (directive as ConvictionDirective & { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    const documentProductionAssessment = assessDocumentProductionRequirements(directive);
+    if (!embedded && documentProductionAssessment.isDocumentProduction && !documentProductionAssessment.canProduceFinishedDocument) {
+      return buildDocumentRequirementsNeededPacket(directive, documentProductionAssessment);
+    }
     if (!embedded && directive.discrepancyClass === 'behavioral_pattern') {
       return buildBehavioralPatternArtifact(directive);
     }

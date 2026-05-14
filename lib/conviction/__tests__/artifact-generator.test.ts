@@ -871,4 +871,73 @@ describe('artifact-generator — analysis dump leak prevention', () => {
     ).toEqual([]);
     expect(content).toContain('complete one account activity now');
   });
+
+  it('renders a requirements-needed packet for document collection when owned .docx content is missing', async () => {
+    const directive: any = {
+      action_type: 'write_document',
+      directive:
+        'Write a decision memo that closes "Submit high-quality .docx documents for document collection" with the owner, next action, and deadline.',
+      reason:
+        'Deadline is in 0 day(s) with zero artifacts; missing the submission window risks losing the accepted commitment opportunity.',
+      confidence: 82,
+      evidence: [
+        {
+          type: 'commitment',
+          description:
+            'Source commitment row 1d0e3ecb-899c-4ec1-96d0-748485678dfe: Submit high-quality .docx documents for document collection project ($50 per accepted document); status=active; category=deliver_document; due_at=2026-05-15T00:00:00+00:00',
+        },
+        {
+          type: 'signal',
+          description:
+            'Source signal row 1215e4fd-0d8b-4e47-9a67-0f855d2e8a2f; outlook/email_received; from handshake@g.joinhandshake.com; occurred_at=2026-05-12T13:46:24+00:00; Handshake AI is still accepting submissions for our document collection project. We are looking for high-quality .docx documents in areas like finance, consulting, legal, data science, or software engineering. You must personally own the rights to any document you submit. We are paying $50 per accepted document. To submit files, you must be logged into a Google account. What qualifies: Professional-grade .docx documents you created and own; structurally rich files with tables, charts, TOCs, headers/footers, footnotes, forms, or embedded data. What will not be accepted: AI-generated content, PDFs converted to Word, lightly formatted drafts, broken files, confidential information, company names, or personal information. Deadline: 5/15/2026, Friday, at 11:59 PM PT.',
+        },
+      ],
+      requires_search: false,
+      discrepancyClass: 'deadline_staleness',
+    };
+
+    const result = await generateArtifact('user-1', directive);
+
+    expect(mockCreate).not.toHaveBeenCalled();
+    const { title, content } = expectDocumentArtifactShape(result, {
+      minTitleLength: 20,
+      minLength: 700,
+      minParagraphs: 8,
+      titleRequiredTerms: ['Requirements needed'],
+      requiredTerms: [
+        'REQUIREMENTS-NEEDED PACKET',
+        '$50 per accepted document',
+        'Files must be real .docx documents',
+        'structurally rich',
+        'Owned candidate .docx files or source document bodies',
+        'Specific document topics, titles, or which owned documents to use',
+        'Captured submission URL, upload destination, or exact handoff location',
+        'do not draft fake .docx content',
+      ],
+      requiredRegexes: [
+        /^FINAL RECOMMENDATION:/m,
+        /^OWNER:/m,
+        /^NEXT PHYSICAL STEP:/m,
+        /^KNOWN REQUIREMENTS FROM SOURCE/m,
+        /^MISSING BEFORE FINISHED \.DOCX WORK/m,
+        /^CONSEQUENCE IF NO MOVEMENT:/m,
+      ],
+      forbiddenPatterns: [
+        'Here is the completed .docx',
+        'Lorem ipsum',
+        'meeting notes',
+      ],
+    });
+    expect(title).toContain('Submit high-quality .docx documents');
+    expect(getArtifactPersistenceIssues('write_document', result, directive)).toEqual([]);
+    expect(
+      validateDirectiveForPersistence({
+        userId: 'user-1',
+        directive,
+        artifact: result,
+        candidateType: 'discrepancy',
+      }),
+    ).toEqual([]);
+    expect(content).not.toMatch(/completed document body|final document draft/i);
+  });
 });

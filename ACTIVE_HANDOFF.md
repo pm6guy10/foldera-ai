@@ -1,10 +1,10 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-13 20:33 PT
+Last updated: 2026-05-13 22:03 PT
 Last known production SHA: fc1f9a9704dd5931b091ec64d32a814c478c5d53
-Last completed code commit: fc1f9a9
-Current slice: Winner artifact pipe alignment
-Current mode: Winner -> artifact pipe alignment only; no new gate, no proof packet, no UI polish, no paid generation, no outbound email, no Stripe, no schema, no beta-readiness claim, do not weaken quality bars or fake document content.
+Last completed code commit: pending document requirements seam push
+Current slice: Document-collection artifact requirements
+Current mode: no new gate, no proof packet, no UI polish, no paid generation, no outbound email, no Stripe, no schema, no quality-bar weakening, no fake document content.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
 First failing release gate: GATE_9_REAL_NON_OWNER_BETA
 Release gate status: BLOCKED_EXTERNAL
@@ -18,42 +18,33 @@ Visual gate status: PASS
 ## Current truth
 
 - Health is non-blocking: Gmail fresh, Outlook fresh, mail cursors current, and last generation is `write_document`.
-- Production `/api/health` served winner artifact pipe alignment commit `fc1f9a9704dd5931b091ec64d32a814c478c5d53`.
-- Release gate stops at `GATE_9_REAL_NON_OWNER_BETA` because no real connected non-owner account exists.
-- `npm run gate:quality` reports `QG_10_ARTIFACT_QUALITY` as `PASS` from deterministic fixtures only.
-- `npm run gate:visual` reports `QG_11_VISUAL_FRONTEND_QUALITY` as `PASS` from deterministic mock visual/browser proof only.
-- `npm run gate:decision-trace` reports `QG_13_DECISION_TRACE_QUALITY` as `PASS` from deterministic fixtures only.
-- `npm run winner:autopsy` selects the document-collection deadline candidate. The earlier no-safe result was caused by exposure risk text hiding real deadline/submission risk as `weak_risk; reminder_without_risk`.
-- Live artifact inspection found no persisted artifact for the document-collection winner; latest pending artifact is still the older WorkSourceWA selected-move row.
-- Local pipe fix now fingerprints selected-move artifacts and hides stale `selected_move_generate` rows when the current winner changes.
-- `docs/WINNER_EVIDENCE_RISK_REVIEW.md` names the closest candidate, evidence found/missing, exact files/rules, and narrow fix.
+- `npm run winner:autopsy` selects the document-collection deadline candidate: `Commitment due in 0d: Submit high-quality .docx documents for document collection`.
+- Source rows now prove more than the sparse winner card: the linked Handshake emails include accepted-document requirements, `$50 per accepted document`, true `.docx`, ownership/IP rules, rejection rules, Google-login submission context, and deadline `May 15, 2026 at 11:59 PM PT`.
+- Source rows still do not include Brandon-owned candidate document bodies/files, specific document titles/topics to submit, or a captured submission URL/upload destination.
+- The deterministic selected-move path now hydrates source evidence from the linked commitment/source signal and produces a requirements-needed packet when document-production content is insufficient.
+- Foldera must not claim finished `.docx` work for this winner until owned source document content and submission destination exist.
 - Mock, owner, fixture, screenshot, and deterministic proof do not claim beta readiness.
 
 ## Verified proof
 
 - health: PASS `npm run health` -> `RESULT: 0 FAILING`.
-- release gate: PASS/BLOCKED_EXTERNAL `npm run gate:status` -> first failing release gate `GATE_9_REAL_NON_OWNER_BETA`.
-- quality gate: PASS `npm run gate:quality` -> `FIRST_FAILING_QUALITY_GATE: NONE`.
-- visual gate: PASS `npm run gate:visual` -> `FIRST_FAILING_VISUAL_GATE: NONE`.
+- winner autopsy: PASS `npm run winner:autopsy` -> selected Tier 1 document-collection deadline winner; no graph drift; no action needed.
+- source truth: PASS read-only Supabase source query -> current commitment `1d0e3ecb-899c-4ec1-96d0-748485678dfe`, current source signal `1215e4fd-0d8b-4e47-9a67-0f855d2e8a2f`, earlier detailed source signal `9362af29-0b5d-47f3-a9f2-267bff2cd4d5`.
+- focused requirements proof: PASS `npx vitest run lib/conviction/__tests__/artifact-generator.test.ts --reporter=verbose` -> `22/22`.
 - decision trace gate: PASS `npm run gate:decision-trace` -> `FIRST_FAILING_DECISION_TRACE_GATE: NONE`.
-- focused weak-risk proof: PASS `npx vitest run lib/briefing/__tests__/discrepancy-card-frame.test.ts lib/briefing/__tests__/discrepancy-detector.test.ts --reporter=verbose` -> `122/122`.
-- winner autopsy: PASS `npm run winner:autopsy` -> selected Tier 1 `admin_deadline_decision_packet`; no graph drift; no action needed; no no-safe reason.
-- live artifact inspection: PASS read-only DB proof -> zero `tkg_actions` rows match `document collection`; latest pending row is WorkSourceWA.
-- focused alignment proof: PASS `npx vitest run app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts app/api/conviction/latest/__tests__/selected-move-generate.test.ts --reporter=verbose` -> `15/15`.
 - build: PASS `npm run build`.
-- production: PASS `/api/health` -> `revision.git_sha=fc1f9a9704dd5931b091ec64d32a814c478c5d53`.
+- production: not rechecked for this local code change before push/deploy; last known production SHA remains `fc1f9a9704dd5931b091ec64d32a814c478c5d53`.
 
 ## Remaining blockers
 
+- The document-collection winner cannot truthfully produce finished `.docx` content until Brandon-owned candidate documents/source bodies and a real submission destination are available.
 - Real beta readiness still requires one real non-owner tester to connect Google or Microsoft.
-- Owner-private winner truth selects the document-collection deadline move, but no matching finished `.docx` artifact exists yet because source content/requirements are missing.
-- Do not use fake users, owner data, `TEST_USER_ID`, mock harnesses, or deterministic fixtures as beta proof.
 
 ## Next exact move
 
-1. Handle document-collection artifact readiness: do not claim finished `.docx` work until real document content/source requirements exist.
-2. If no source bundle exists, produce a clean missing-content stop instead of a decision packet pretending to be finished documents.
-3. Return to the external beta blocker only after owner-private current artifact truth is no longer misleading.
+1. If selected-move generation is run for the document-collection winner, verify the persisted artifact is the requirements-needed packet, not a generic decision memo.
+2. If Brandon provides owned document files/source bodies and the submission destination, graduate this path from requirements-needed packet to finished `.docx`-ready work.
+3. Do not return to beta-readiness claims until the external non-owner connection blocker is solved.
 
 ## Do not touch
 
