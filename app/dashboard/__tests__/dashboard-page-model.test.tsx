@@ -105,6 +105,7 @@ describe('dashboard discrepancy visibility contract', () => {
       directive:
         'Write a decision memo that closes "Submit high-quality .docx documents for document collection" with the owner, next action, and deadline.',
       action_type: 'write_document',
+      artifact_readiness_state: 'REQUIREMENTS_NEEDED',
       artifact: {
         type: 'document',
         title: 'Requirements needed: Submit high-quality .docx documents for document collection',
@@ -132,6 +133,7 @@ describe('dashboard discrepancy visibility contract', () => {
     };
 
     expect(isDocumentCollectionRequirementsAction(action)).toBe(true);
+    expect(action.artifact_readiness_state).toBe('REQUIREMENTS_NEEDED');
     expect(getDocumentCollectionIntakePrompt(action)).toEqual({
       heading: 'To finish this, provide',
       detail: 'owned .docx/source files, document topics/titles, and submission URL.',
@@ -145,6 +147,7 @@ describe('dashboard discrepancy visibility contract', () => {
       directive:
         'Write a decision memo that closes "Submit high-quality .docx documents for document collection" with the owner, next action, and deadline.',
       action_type: 'write_document',
+      artifact_readiness_state: 'REQUIREMENTS_NEEDED',
       artifact_title: 'Requirements needed: Submit high-quality .docx documents for document collection',
       discrepancy_card: {
         claim: 'Commitment due in 0d: Submit high-quality .docx documents for document collection',
@@ -174,6 +177,7 @@ describe('dashboard discrepancy visibility contract', () => {
 
     expect(isDocumentCollectionRequirementsAction(summaryOnlyAction)).toBe(true);
     expect(isDashboardActionSummary(summaryOnlyAction)).toBe(true);
+    expect(summaryOnlyAction.artifact_readiness_state).toBe('REQUIREMENTS_NEEDED');
     expect(getDashboardDiscrepancyFrame(summaryOnlyAction)?.next_action).toBe(
       'Paste the submission link and list/upload the candidate documents.',
     );

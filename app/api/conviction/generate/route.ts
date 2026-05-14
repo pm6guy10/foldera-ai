@@ -23,6 +23,7 @@ import { processUnextractedSignals } from '@/lib/signals/signal-processor';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { getWinnerTruthReport } from '@/lib/system/winner-truth';
 import { buildSelectedWinnerFingerprint } from '@/lib/conviction/selected-winner-fingerprint';
+import { classifyWriteDocumentReadiness } from '@/lib/conviction/artifact-readiness';
 import type { ConvictionDirective, EvidenceItem } from '@/lib/briefing/types';
 
 export const dynamic = 'force-dynamic';
@@ -324,6 +325,21 @@ export async function POST(request: Request) {
     }
 
     if (!artifact) {
+      if (directive.action_type === 'write_document') {
+        const artifactReadiness = classifyWriteDocumentReadiness({
+          directive: directive as unknown as Record<string, unknown>,
+          artifact: null,
+          persistenceIssues: ['artifact is required before persistence'],
+        });
+        return NextResponse.json(
+          {
+            error: 'No safe artifact available for this write_document winner',
+            artifact_readiness: artifactReadiness,
+            artifact_readiness_state: artifactReadiness.state,
+          },
+          { status: 422 },
+        );
+      }
       return NextResponse.json(
         { error: 'Artifact generation failed' },
         { status: 500 },
@@ -337,9 +353,27 @@ export async function POST(request: Request) {
       artifact,
       candidateType,
     });
-    if (persistenceIssues.length > 0) {
+    const artifactReadiness =
+      directive.action_type === 'write_document'
+        ? classifyWriteDocumentReadiness({
+            directive: directive as unknown as Record<string, unknown>,
+            artifact,
+            persistenceIssues,
+          })
+        : undefined;
+
+    if (persistenceIssues.length > 0 || artifactReadiness?.state === 'NO_SAFE_ARTIFACT') {
       return NextResponse.json(
-        { error: 'Directive rejected by validation gate', issues: persistenceIssues },
+        {
+          error: 'Directive rejected by validation gate',
+          issues: persistenceIssues,
+          ...(artifactReadiness
+            ? {
+                artifact_readiness: artifactReadiness,
+                artifact_readiness_state: artifactReadiness.state,
+              }
+            : {}),
+        },
         { status: 422 },
       );
     }
@@ -362,7 +396,10 @@ export async function POST(request: Request) {
           directive,
           artifact,
           briefOrigin: useSelectedMove ? 'selected_move_generate' : 'dashboard_generate',
-          extras: selectedWinnerIdentity ?? undefined,
+          extras: {
+            ...(selectedWinnerIdentity ?? {}),
+            ...(artifactReadiness ? { artifact_readiness: artifactReadiness } : {}),
+          },
         }),
       })
       .select('id, generated_at, status, execution_result')
@@ -379,6 +416,12 @@ export async function POST(request: Request) {
       status:          action.status,
       generatedAt:     action.generated_at,
       executionResult: action.execution_result,
+      ...(artifactReadiness
+        ? {
+            artifact_readiness: artifactReadiness,
+            artifact_readiness_state: artifactReadiness.state,
+          }
+        : {}),
       artifact,
     });
   } catch (err: unknown) {

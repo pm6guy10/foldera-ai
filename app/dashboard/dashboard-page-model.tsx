@@ -32,6 +32,7 @@ export type DashboardAction = {
   id: string;
   directive?: string;
   action_type?: string;
+  artifact_readiness_state?: 'FINISHED_ARTIFACT_READY' | 'REQUIREMENTS_NEEDED' | 'NO_SAFE_ARTIFACT';
   reason?: string;
   evidence?: unknown[];
   artifact?: DashboardArtifact | null;

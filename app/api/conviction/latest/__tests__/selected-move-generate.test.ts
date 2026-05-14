@@ -123,6 +123,10 @@ describe('POST /api/conviction/generate selected winner mode', () => {
           selected_winner_source_refs: expect.arrayContaining([
             'commitment:2aeae0a5-0ce8-4554-8e81-2234a7f68da1',
           ]),
+          artifact_readiness: expect.objectContaining({
+            state: 'FINISHED_ARTIFACT_READY',
+            reason: expect.stringContaining('finished work'),
+          }),
           artifact: expect.objectContaining({
             title: expect.stringContaining('WorkSourceWA'),
           }),
@@ -142,6 +146,7 @@ describe('POST /api/conviction/generate selected winner mode', () => {
       expect.objectContaining({
         id: 'selected-action-1',
         status: 'pending_approval',
+        artifact_readiness_state: 'FINISHED_ARTIFACT_READY',
         artifact: expect.objectContaining({
           title: expect.stringContaining('WorkSourceWA'),
         }),

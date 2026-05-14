@@ -37,7 +37,7 @@ describe('GET /api/conviction/history', () => {
         {
           id: 'a1',
           status: 'executed',
-          action_type: 'send_message',
+          action_type: 'write_document',
           confidence: 77,
           generated_at: '2026-04-01T12:00:00Z',
           directive_text: 'Reach out to Sam about the proposal deadline tomorrow.',
@@ -71,6 +71,7 @@ describe('GET /api/conviction/history', () => {
         status: string;
         has_artifact?: boolean;
         artifact_preview?: string;
+        artifact_readiness_state?: string;
       }>;
     };
     expect(body.items).toHaveLength(1);
@@ -78,12 +79,55 @@ describe('GET /api/conviction/history', () => {
     expect(body.items[0].status).toBe('executed');
     expect(body.items[0].directive_preview).toContain('Sam');
     expect(body.items[0].has_artifact).toBe(true);
+    expect(body.items[0].artifact_readiness_state).toBe('FINISHED_ARTIFACT_READY');
     expect(body.items[0].artifact_preview).toContain('Proposal deadline');
     expect(body.items[0].artifact_preview).toContain('checking whether the proposal');
     expect(mockSelect).toHaveBeenCalledWith(
       'id, status, action_type, confidence, generated_at, directive_text, artifact_preview, is_no_send, no_send_reason',
     );
     expect(mockEq).toHaveBeenCalledWith('user_id', 'u1');
+  });
+
+  it('marks requirements-needed packet history rows with the same readiness state as latest/detail', async () => {
+    mockResolveUser.mockResolvedValue({ userId: 'u1' });
+    const mockLimit = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 'requirements-1',
+          status: 'pending_approval',
+          action_type: 'write_document',
+          confidence: 45,
+          generated_at: '2026-05-14T12:00:00Z',
+          directive_text: 'Submit high-quality .docx documents for document collection.',
+          artifact_preview:
+            'Requirements needed: Submit high-quality .docx documents for document collection - REQUIREMENTS-NEEDED PACKET. To finish this, provide: owned .docx/source files, document topics/titles, and submission URL.',
+          is_no_send: false,
+          no_send_reason: null,
+        },
+      ],
+      error: null,
+    });
+    const mockOrder = vi.fn().mockReturnValue({ limit: mockLimit });
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: mockEq,
+      }),
+    });
+
+    const { GET } = await import('../route');
+    const res = await GET(new Request('http://localhost/api/conviction/history?limit=1'));
+    const body = (await res.json()) as {
+      items: Array<{ id: string; artifact_readiness_state?: string; artifact_preview?: string }>;
+    };
+
+    expect(res.status).toBe(200);
+    expect(body.items[0]).toEqual(
+      expect.objectContaining({
+        id: 'requirements-1',
+        artifact_readiness_state: 'REQUIREMENTS_NEEDED',
+      }),
+    );
   });
 
   it('hides no-send tombstones and internal failure rows from Recent Work', async () => {

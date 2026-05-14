@@ -11,6 +11,7 @@ import { createServerClient } from '@/lib/db/client';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { ACTION_HISTORY_SELECT } from '@/lib/conviction/action-read-shapes';
 import { jsonWithReadOnlyUserCache } from '@/lib/utils/read-only-user-cache';
+import { deriveArtifactReadinessFromSummary } from '@/lib/conviction/artifact-readiness';
 
 export const dynamic = 'force-dynamic';
 
@@ -97,6 +98,11 @@ export async function GET(request: Request) {
       .slice(0, limit)
       .map((r) => {
         const artifact_preview = previewText(r.artifact_preview);
+        const readiness = deriveArtifactReadinessFromSummary({
+          action_type: r.action_type,
+          artifact_preview,
+          finished_artifact_verdict: artifact_preview ? 'strict_artifact_selected' : 'no_finished_artifact',
+        });
         return {
           id: r.id,
           status: r.status,
@@ -106,6 +112,7 @@ export async function GET(request: Request) {
           directive_preview: previewText(r.directive_text),
           has_artifact: artifact_preview.length > 0,
           artifact_preview,
+          artifact_readiness_state: readiness.state,
         };
       });
 

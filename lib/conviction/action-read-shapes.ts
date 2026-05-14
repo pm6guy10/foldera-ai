@@ -2,6 +2,10 @@ import {
   buildDiscrepancyFrameFromActionPayload,
   evaluateDiscrepancyCardFrame,
 } from '@/lib/briefing/discrepancy-card-frame';
+import {
+  deriveArtifactReadinessFromSummary,
+  type ArtifactReadiness,
+} from '@/lib/conviction/artifact-readiness';
 
 export const ACTION_DETAIL_SELECT =
   'id, action_type, directive_text, reason, confidence, evidence, status, generated_at, approved_at, executed_at, execution_result, artifact';
@@ -117,12 +121,23 @@ export function buildDashboardActionPayload(
   userId: string,
 ) {
   const artifact = extractArtifact(action);
+  const executionResult = asRecord(action.execution_result) ?? undefined;
+  const artifactReadiness =
+    asRecord(executionResult?.artifact_readiness) as ArtifactReadiness | null;
   const discrepancyCard = buildDiscrepancyFrameFromActionPayload({
     ...action,
     artifact,
-    executionResult: action.execution_result,
+    executionResult,
   });
   const discrepancyQuality = evaluateDiscrepancyCardFrame(discrepancyCard);
+  const derivedReadiness =
+    artifactReadiness ??
+    deriveArtifactReadinessFromSummary({
+      action_type: action.action_type,
+      artifact_title: artifact?.title ?? artifact?.subject,
+      artifact_preview: artifact?.content ?? artifact?.body ?? artifact?.text ?? artifact?.context,
+      finished_artifact_verdict: artifact ? 'strict_artifact_selected' : 'no_finished_artifact',
+    });
 
   return {
     id: action.id,
@@ -136,8 +151,10 @@ export function buildDashboardActionPayload(
     generatedAt: action.generated_at,
     approvedAt: action.approved_at ?? undefined,
     executedAt: action.executed_at ?? undefined,
-    executionResult: asRecord(action.execution_result) ?? undefined,
+    executionResult,
     artifact,
+    artifact_readiness: derivedReadiness,
+    artifact_readiness_state: derivedReadiness.state,
     discrepancy_card: discrepancyCard,
     discrepancy_quality: discrepancyQuality,
   };

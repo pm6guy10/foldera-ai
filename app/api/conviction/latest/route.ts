@@ -16,6 +16,7 @@ import { evaluateDiscrepancyCardFrame } from '@/lib/briefing/discrepancy-card-fr
 import { buildDailyUtilitySlateFromReceipts } from '@/lib/briefing/daily-utility-slate';
 import { getWinnerTruthReport } from '@/lib/system/winner-truth';
 import { buildSelectedWinnerFingerprint } from '@/lib/conviction/selected-winner-fingerprint';
+import { deriveArtifactReadinessFromSummary, type ArtifactReadiness } from '@/lib/conviction/artifact-readiness';
 import { jsonWithReadOnlyUserCache } from '@/lib/utils/read-only-user-cache';
 import {
   ACTION_RANKING_SELECT,
@@ -40,6 +41,14 @@ type PendingRankingRow = {
   confidence?: unknown;
   generated_at?: unknown;
   brief_origin?: unknown;
+};
+
+const NO_SAFE_ARTIFACT_READINESS: ArtifactReadiness = {
+  state: 'NO_SAFE_ARTIFACT',
+  reason: 'No safe artifact is visible for the current winner.',
+  source_evidence: 'present_but_insufficient',
+  known_requirements: [],
+  missing_inputs: [],
 };
 
 function jsonReadCache(payload: unknown): NextResponse {
@@ -240,6 +249,7 @@ export async function GET(request: Request) {
     const selectedCandidate = rankedCandidates[0];
 
     let selectedAction: ActionSummaryRow | null = null;
+    let blockedReadiness: ArtifactReadiness | null = null;
     if (selectedCandidate?.id) {
       const { data: selectedSummary, error: selectedSummaryError } = await supabase
         .from('tkg_action_summaries')
@@ -266,6 +276,10 @@ export async function GET(request: Request) {
       );
       if (!matchesCurrentWinner) {
         selectedAction = null;
+        blockedReadiness = {
+          ...NO_SAFE_ARTIFACT_READINESS,
+          reason: 'stale_selected_move_artifact: stored winner fingerprint no longer matches current winner.',
+        };
       }
     }
 
@@ -298,7 +312,10 @@ export async function GET(request: Request) {
         free_artifact_remaining: freeArtifactRemaining,
         artifact_paywall_locked: false,
         finished_artifact_verdict: 'no_finished_artifact',
+        artifact_readiness: blockedReadiness ?? NO_SAFE_ARTIFACT_READINESS,
+        artifact_readiness_state: (blockedReadiness ?? NO_SAFE_ARTIFACT_READINESS).state,
         daily_utility_slate: dailyUtilitySlate,
+        ...(blockedReadiness ? { no_safe_artifact_reason: blockedReadiness.reason } : {}),
       });
     }
 
@@ -317,6 +334,11 @@ export async function GET(request: Request) {
       }
 
       const dailyUtilitySlate = await buildDailyUtilitySlatePayload(supabase, userId);
+      const rejectionReason = discrepancyQuality.rejection_reason ?? 'missing_discrepancy_card';
+      const artifactReadiness: ArtifactReadiness = {
+        ...NO_SAFE_ARTIFACT_READINESS,
+        reason: rejectionReason,
+      };
 
       return jsonReadCache({
         context_greeting: contextGreeting,
@@ -326,18 +348,26 @@ export async function GET(request: Request) {
         free_artifact_remaining: freeArtifactRemaining,
         artifact_paywall_locked: false,
         finished_artifact_verdict: 'no_finished_artifact',
+        artifact_readiness: artifactReadiness,
+        artifact_readiness_state: artifactReadiness.state,
         daily_utility_slate: dailyUtilitySlate,
-        no_safe_artifact_reason: discrepancyQuality.rejection_reason ?? 'missing_discrepancy_card',
+        no_safe_artifact_reason: rejectionReason,
         blocked_latest_action: {
           id: selectedAction.id,
           title: selectedAction.directive_text,
           blocked_by: discrepancyQuality.blocked_by,
-          rejection_reason: discrepancyQuality.rejection_reason ?? 'missing_discrepancy_card',
+          rejection_reason: rejectionReason,
         },
       });
     }
 
     const artifactPaywallLocked = hasSummaryArtifact(selectedAction) && !proUnlocked && !freeArtifactRemaining;
+    const artifactReadiness = deriveArtifactReadinessFromSummary({
+      action_type: selectedAction.action_type,
+      artifact_title: selectedAction.artifact_title,
+      artifact_preview: selectedAction.artifact_preview,
+      finished_artifact_verdict: 'strict_artifact_selected',
+    });
     return jsonReadCache({
       id: selectedAction.id,
       userId,
@@ -357,6 +387,8 @@ export async function GET(request: Request) {
       detail_required: true,
       detail_url: `/api/conviction/actions/${selectedAction.id}`,
       finished_artifact_verdict: 'strict_artifact_selected',
+      artifact_readiness: artifactReadiness,
+      artifact_readiness_state: artifactReadiness.state,
       daily_utility_slate: null,
       context_greeting: null,
       account_created_at: null,

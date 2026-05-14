@@ -51,6 +51,13 @@ describe('GET /api/conviction/actions/[id]', () => {
           content: 'Assign Holly as owner before 4 PM PT.',
         },
         execution_result: {
+          artifact_readiness: {
+            state: 'FINISHED_ARTIFACT_READY',
+            source_evidence: 'sufficient',
+            reason: 'Write-document artifact is finished work and has source evidence.',
+            missing_inputs: [],
+            known_requirements: [],
+          },
           discrepancy_card: {
             claim: 'Finalize the packet owner memo.',
             contradiction: 'The packet is due today, but the owner is still missing.',
@@ -90,11 +97,15 @@ describe('GET /api/conviction/actions/[id]', () => {
     );
     expect(body.executionResult).toEqual(
       expect.objectContaining({
+        artifact_readiness: expect.objectContaining({
+          state: 'FINISHED_ARTIFACT_READY',
+        }),
         discrepancy_card: expect.objectContaining({
           claim: 'Finalize the packet owner memo.',
         }),
       }),
     );
+    expect(body.artifact_readiness_state).toBe('FINISHED_ARTIFACT_READY');
     expect(select).toHaveBeenCalledWith(
       'id, action_type, directive_text, reason, confidence, evidence, status, generated_at, approved_at, executed_at, execution_result, artifact',
     );

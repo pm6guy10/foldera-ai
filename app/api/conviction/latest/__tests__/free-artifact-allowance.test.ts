@@ -442,6 +442,7 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(body.confidence).toBe(45);
     expect(body.brief_origin).toBe('selected_move_generate');
     expect(body.finished_artifact_verdict).toBe('strict_artifact_selected');
+    expect(body.artifact_readiness_state).toBe('FINISHED_ARTIFACT_READY');
     expect(body.detail_required).toBe(true);
     expect(body.detail_url).toBe('/api/conviction/actions/selected-move-action');
     expect(mockBuildContextGreeting).not.toHaveBeenCalled();
@@ -494,6 +495,8 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
 
     expect(body.id).toBeUndefined();
     expect(body.finished_artifact_verdict).toBe('no_finished_artifact');
+    expect(body.artifact_readiness_state).toBe('NO_SAFE_ARTIFACT');
+    expect(body.no_safe_artifact_reason).toContain('stale_selected_move_artifact');
     expect(body.daily_utility_slate).toEqual(
       expect.objectContaining({
         finished_artifact_verdict: 'no_finished_artifact',
@@ -559,6 +562,13 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(body.id).toBe('requirements-packet-action');
     expect(body.artifact_title).toBe('Requirements needed: Submit high-quality .docx documents for document collection');
     expect(body.finished_artifact_verdict).toBe('strict_artifact_selected');
+    expect(body.artifact_readiness_state).toBe('REQUIREMENTS_NEEDED');
+    expect(body.artifact_readiness).toEqual(
+      expect.objectContaining({
+        state: 'REQUIREMENTS_NEEDED',
+        missing_inputs: expect.arrayContaining(['owned .docx/source files', 'submission URL']),
+      }),
+    );
     expect(body.daily_utility_slate).toBeNull();
     expect(mockBuildContextGreeting).not.toHaveBeenCalled();
   });
@@ -593,6 +603,7 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     );
     expect(body.artifact_paywall_locked).toBe(false);
     expect(body.finished_artifact_verdict).toBe('no_finished_artifact');
+    expect(body.artifact_readiness_state).toBe('NO_SAFE_ARTIFACT');
     expect(body.daily_utility_slate).toEqual(
       expect.objectContaining({
         finished_artifact_verdict: 'no_finished_artifact',
