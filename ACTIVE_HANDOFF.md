@@ -1,16 +1,16 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-14 10:16 PT
-Current slice: Production Readback Proof for Artifact Readiness Contract
-Current mode: no broad product work, no UI polish, no paid generation, no outbound email, no Stripe, no schema, no fake content.
-Current origin/main SHA at handoff update: `3933f24e31512bd34e329b26f69eece0db4759fb`
+Last updated: 2026-05-14 13:58 PT
+Current slice: Adversarial Proof Audit - Phase 0 Operating Truth
+Current mode: audit only; no product code, no UI polish, no paid generation, no outbound email, no Stripe, no schema, no fake users, no fake source rows.
+Current origin/main SHA at handoff update: `da1678029876992ce4c38ebc8304815625675b05`
 Last verified runtime/product SHA: `3933f24e31512bd34e329b26f69eece0db4759fb`
-Latest receipt/docs SHA: this receipt-only handoff/history update is assigned after commit/push and must be verified externally from `origin/main`, not embedded into this file.
-Commit kind: runtime/product readback fix followed by receipt-only docs update.
-GitHub CI status for latest runtime SHA: pending final hosted check for this receipt push; local health, focused readback tests, decision trace, and build passed before receipt.
-Vercel status for latest runtime SHA: READY for `3933f24e31512bd34e329b26f69eece0db4759fb`; deployment `dpl_CHXRSmNWKERdPrc4HdNbVAVhk9wB`
-Production /api/health SHA: `3933f24e31512bd34e329b26f69eece0db4759fb`
-Safe to proceed to next seam: YES only after this receipt-only commit is pushed and GitHub CI, Vercel, production `/api/health`, and readback are checked for the final `origin/main` SHA.
+Latest externally verified receipt/docs SHA: `da1678029876992ce4c38ebc8304815625675b05`
+Commit kind: receipt/docs-only checklist addition after runtime/product readback proof.
+GitHub CI status for latest origin/main SHA: success for `CI #286`, `Health Gate #605`, `Deploy to Vercel #957`, and `Production E2E #1185`.
+Vercel status for latest origin/main SHA: READY for `da1678029876992ce4c38ebc8304815625675b05`; deployment `dpl_cYQfUXhZAQHtC1t4DUi8bPm8vkcA`.
+Production /api/health SHA: `da1678029876992ce4c38ebc8304815625675b05`
+Safe to proceed to next seam: NO in this audit. Phase 0 found stale operating truth, so product/readback attack must stop after this operating-truth receipt is corrected and externally verified.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
 First failing release gate: GATE_9_REAL_NON_OWNER_BETA
 Release gate status: BLOCKED_EXTERNAL
@@ -18,36 +18,37 @@ Receipt rule: Product/runtime commits require GitHub CI, Vercel, and production 
 
 ## Current Truth
 
-- Current winner: `Commitment due in 0d: Submit high-quality .docx documents for document collection`.
-- Current winner fingerprint: `claim:commitment due in 0d: submit high-quality .docx documents for document collection|refs:commitment:1d0e3ecb-899c-4ec1-96d0-748485678dfe`.
-- Readback state: `REQUIREMENTS_NEEDED`.
-- Production latest/detail/history/dashboard all read row `d17931e4-ab3d-4d75-9775-61b6c58b22b4` as `REQUIREMENTS_NEEDED`.
-- Stale WorkSourceWA selected-move readback is absent from dashboard and current APIs.
-- Missing-source document collection does not appear as a finished `.docx` artifact; it asks for owned `.docx/source files`, document topics/titles, and submission URL.
+- Phase 0 live truth disagreed with the handoff before this update: live `origin/main` and production served `da1678029876992ce4c38ebc8304815625675b05`, while the handoff still described `3933f24e31512bd34e329b26f69eece0db4759fb` as current and said a receipt push was pending.
+- The active `.foldera-contract.json` was also stale for this audit because it still allowed only the previous checklist file; it now permits only this operating-truth correction.
+- The latest commit `Add real non-owner beta proof checklist` changed `docs/REAL_NON_OWNER_BETA_PROOF_CHECKLIST.md` only.
+- GitHub Actions, Vercel, and production `/api/health` agree on the latest receipt/docs SHA.
+- The last runtime/product readback proof remains `3933f24e31512bd34e329b26f69eece0db4759fb`: latest, detail, history, and dashboard agreed on row `d17931e4-ab3d-4d75-9775-61b6c58b22b4` as `REQUIREMENTS_NEEDED`.
+- Finished `.docx` work remains blocked by Brandon-owned source files/bodies, document topics/titles, and submission URL/upload destination.
 
 ## Verified Proof
 
 - `npm run health` passed with `RESULT: 0 FAILING`.
-- `npm run winner:autopsy` selected the document-collection commitment winner.
-- `npm run gate:decision-trace` passed with `STATUS: PASS`.
-- Focused readiness/readback tests passed (`37/37`).
+- `npm run gate:status` passed GATE_0 live truth and stopped at `GATE_9_REAL_NON_OWNER_BETA` with `BLOCKED_EXTERNAL`.
+- Docs source-of-truth test passed (`3/3`).
 - `npm run build` passed.
-- Production `/api/health` served `3933f24e31512bd34e329b26f69eece0db4759fb`.
-- Authenticated production readback confirmed latest, detail, history, and dashboard agreement on `REQUIREMENTS_NEEDED`.
+- GitHub Actions for `da1678029876992ce4c38ebc8304815625675b05` completed successfully.
+- Vercel deployment `dpl_cYQfUXhZAQHtC1t4DUi8bPm8vkcA` is `READY`.
+- Production `/api/health` served `da1678029876992ce4c38ebc8304815625675b05`.
+- Phase 0 audit found `ACTIVE_HANDOFF.md` and `SESSION_HISTORY.md` stale before this correction.
 
 ## Next exact move
 
-1. Push this receipt-only handoff/history commit to `main`.
-2. Verify GitHub Actions for the final receipt-only `origin/main` SHA.
-3. Verify Vercel READY and production `/api/health` for the final receipt-only SHA.
-4. Re-run production readback once final receipt deployment is live.
-5. Then stop; finished `.docx` work remains blocked by Brandon-owned source files/bodies, document topics/titles, and submission URL/upload destination.
+1. Stop this adversarial audit as `NOT DONE - operating truth stale`.
+2. Commit and push only this operating-truth correction.
+3. Verify GitHub Actions, Vercel READY, and production `/api/health` for the final receipt-only commit externally.
+4. Restart the adversarial proof audit from Phase 0 before attacking artifact readback or quality gates.
 
 ## Do Not Touch
 
+- Product/readback code
 - UI polish or broad editor/file-management UX
 - Paid generation
 - Outbound email
 - Stripe or pricing
 - Schema or destructive DB actions
-- Fake document, email, deadline, or source content
+- Fake users, source rows, document content, deadlines, emails, or beta proof

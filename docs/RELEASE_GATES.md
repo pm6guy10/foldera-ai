@@ -123,6 +123,8 @@ Pass requires:
 - no `TEST_USER_ID`
 - user reaches a clear state or source-backed move
 
+Detailed proof checklist: `docs/REAL_NON_OWNER_BETA_PROOF_CHECKLIST.md`.
+
 Until that proof exists, this gate must remain:
 
 ```text
