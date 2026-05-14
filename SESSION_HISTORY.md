@@ -6551,4 +6551,11 @@ pm run build.
 - Files changed: `app/api/conviction/generate/route.ts`, `app/api/conviction/latest/route.ts`, `app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts`, `app/api/conviction/latest/__tests__/selected-move-generate.test.ts`, `lib/conviction/selected-winner-fingerprint.ts`, `docs/WINNER_ARTIFACT_PIPE_ALIGNMENT.md`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
 - What changed: Root-caused the mismatch to `/api/conviction/latest` trusting any `brief_origin=selected_move_generate` row by origin alone. Selected-move generation now stores a stable winner fingerprint in `execution_result`, and latest readback hides selected-move rows whose stored fingerprint is missing or no longer matches current winner truth. Ordinary pending artifacts do not run winner-truth diagnostics.
 - Verification: `npm run health` passed with `RESULT: 0 FAILING`; `npm run winner:autopsy` selected the document-collection deadline winner; read-only Supabase proof showed latest pending selected-move artifact is old WorkSourceWA and no `document collection` action rows exist; focused latest/generate tests passed (`15/15`); `npm run gate:decision-trace` passed; `npm run build` passed.
-- Unresolved issues: Commit/push and production `/api/health` SHA proof remain pending. The current winner still cannot honestly produce finished `.docx` documents until source content, accepted-document requirements, and submission details exist.
+- Unresolved issues: Production receipt update remains to be committed after live SHA proof. The current winner still cannot honestly produce finished `.docx` documents until source content, accepted-document requirements, and submission details exist.
+
+## 2026-05-13 - Winner artifact pipe alignment production receipt
+- MODE: Delivery receipt only; no product behavior changed beyond recording proof.
+- Files changed: `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Recorded production proof for the selected-winner fingerprint/readback fix.
+- Verification: `origin/main` accepted commit `fc1f9a9704dd5931b091ec64d32a814c478c5d53`; production `/api/health` reported `revision.git_sha=fc1f9a9704dd5931b091ec64d32a814c478c5d53`.
+- Unresolved issues: The stale WorkSourceWA selected-move readback path is fixed in code and live. The document-collection winner still needs source content/accepted-document requirements before Foldera can claim finished `.docx` work.

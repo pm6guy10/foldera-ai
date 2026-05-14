@@ -1,8 +1,8 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-13 20:23 PT
-Last known production SHA: adf89225843613afc0a76916175b95508d935485
-Last completed code commit: pending
+Last updated: 2026-05-13 20:33 PT
+Last known production SHA: fc1f9a9704dd5931b091ec64d32a814c478c5d53
+Last completed code commit: fc1f9a9
 Current slice: Winner artifact pipe alignment
 Current mode: Winner -> artifact pipe alignment only; no new gate, no proof packet, no UI polish, no paid generation, no outbound email, no Stripe, no schema, no beta-readiness claim, do not weaken quality bars or fake document content.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
@@ -18,7 +18,7 @@ Visual gate status: PASS
 ## Current truth
 
 - Health is non-blocking: Gmail fresh, Outlook fresh, mail cursors current, and last generation is `write_document`.
-- Production `/api/health` served live winner artifact inspection commit `adf89225843613afc0a76916175b95508d935485`.
+- Production `/api/health` served winner artifact pipe alignment commit `fc1f9a9704dd5931b091ec64d32a814c478c5d53`.
 - Release gate stops at `GATE_9_REAL_NON_OWNER_BETA` because no real connected non-owner account exists.
 - `npm run gate:quality` reports `QG_10_ARTIFACT_QUALITY` as `PASS` from deterministic fixtures only.
 - `npm run gate:visual` reports `QG_11_VISUAL_FRONTEND_QUALITY` as `PASS` from deterministic mock visual/browser proof only.
@@ -41,7 +41,7 @@ Visual gate status: PASS
 - live artifact inspection: PASS read-only DB proof -> zero `tkg_actions` rows match `document collection`; latest pending row is WorkSourceWA.
 - focused alignment proof: PASS `npx vitest run app/api/conviction/latest/__tests__/free-artifact-allowance.test.ts app/api/conviction/latest/__tests__/selected-move-generate.test.ts --reporter=verbose` -> `15/15`.
 - build: PASS `npm run build`.
-- production: pending for this local pipe fix until commit push and deployment.
+- production: PASS `/api/health` -> `revision.git_sha=fc1f9a9704dd5931b091ec64d32a814c478c5d53`.
 
 ## Remaining blockers
 
@@ -51,9 +51,9 @@ Visual gate status: PASS
 
 ## Next exact move
 
-1. Commit and push the winner artifact pipe alignment fix.
-2. Verify production `/api/health` serves the pushed SHA.
-3. Then handle document-collection artifact readiness: do not claim finished `.docx` work until real document content/source requirements exist.
+1. Handle document-collection artifact readiness: do not claim finished `.docx` work until real document content/source requirements exist.
+2. If no source bundle exists, produce a clean missing-content stop instead of a decision packet pretending to be finished documents.
+3. Return to the external beta blocker only after owner-private current artifact truth is no longer misleading.
 
 ## Do not touch
 
