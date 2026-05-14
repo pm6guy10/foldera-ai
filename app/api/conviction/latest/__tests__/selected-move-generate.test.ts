@@ -23,6 +23,11 @@ vi.mock('@/lib/briefing/generator', async () => {
 
 function buildInsertMock() {
   let insertedPayload: Record<string, unknown> | null = null;
+  const emptyRead = {
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    in: vi.fn().mockResolvedValue({ data: [], error: null }),
+  };
   const single = vi.fn().mockResolvedValue({
     data: {
       id: 'selected-action-1',
@@ -39,6 +44,7 @@ function buildInsertMock() {
   });
   mockCreateServerClient.mockReturnValue({
     from: vi.fn().mockImplementation((table: string) => {
+      if (table === 'tkg_commitments' || table === 'tkg_signals') return emptyRead;
       if (table !== 'tkg_actions') throw new Error(`Unexpected table: ${table}`);
       return { insert };
     }),
@@ -54,6 +60,12 @@ describe('POST /api/conviction/generate selected winner mode', () => {
       NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 }),
     );
     mockResolveUser.mockResolvedValue({ userId: 'u-test' });
+  });
+
+  it('allows enough runtime for winner-truth scoring before the deterministic write', async () => {
+    const { maxDuration } = await import('../../generate/route');
+
+    expect(maxDuration).toBeGreaterThanOrEqual(120);
   });
 
   it('persists the selected WorkSourceWA winner as a real pending artifact without paid generation', async () => {

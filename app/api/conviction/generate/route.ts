@@ -26,6 +26,7 @@ import { buildSelectedWinnerFingerprint } from '@/lib/conviction/selected-winner
 import type { ConvictionDirective, EvidenceItem } from '@/lib/briefing/types';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 120;
 
 type WinnerTruthCard = {
   claim?: unknown;
