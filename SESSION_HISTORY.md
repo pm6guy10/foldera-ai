@@ -6538,3 +6538,10 @@ pm run build.
 - What changed: Recorded that the winner exposure risk-framing commit reached production.
 - Verification: `origin/main` accepted commit `76a8ff6fa35990d098787bcdbbf8ae3575074ec4`; production `/api/health` reported `revision.git_sha=76a8ff6fa35990d098787bcdbbf8ae3575074ec4`.
 - Unresolved issues: Release still remains externally blocked on one real non-owner Google or Microsoft connection. Owner-private winner truth now has a selected document-collection deadline move.
+
+## 2026-05-13 - Live winner artifact inspection finds no matching artifact
+- MODE: Live winner artifact inspection only; no gate, proof packet, UI polish, paid generation, outbound email, Stripe, schema, beta-readiness claim, quality-bar weakening, or fake winner.
+- Files changed: `docs/LIVE_WINNER_ARTIFACT_INSPECTION.md`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Inspected the selected document-collection deadline winner against persisted current artifacts. The winner is right, but no `tkg_actions` row exists for `document collection`; latest pending action is still the older WorkSourceWA selected-move artifact.
+- Verification: `npm run health` passed with `RESULT: 0 FAILING`; `npm run winner:autopsy` selected `Commitment due in 0d: Submit high-quality .docx documents for document collection`; `npm run gate:decision-trace` passed; read-only production DB proof found zero matching `document collection` action rows and latest pending row `8aca653a-f0a1-46e9-9af4-323c5cee539b` titled `WorkSourceWA account activity closeout`.
+- Unresolved issues: Next code seam is stale selected-move readback plus document-collection artifact readiness. Foldera must not show an old selected-move artifact as proof for a changed winner, and it must not claim finished `.docx` work without actual document content or accepted-document requirements.
