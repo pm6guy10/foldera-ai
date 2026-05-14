@@ -600,8 +600,8 @@ function extractExposure(
       why_now: schedulingEvidence.length > 0
         ? `Scheduling instructions and deadline pressure are both present; the artifact should move appointment confirmation, not produce generic prep.`
         : daysUntilDue <= 2
-          ? `Due in ${daysUntilDue} day(s) with zero artifacts — this is not a reminder, it is an exposure gap`
-          : `Commitment approaching deadline with no visible execution — the gap is widening daily`,
+          ? `Deadline is in ${daysUntilDue} day(s) with zero artifacts; missing the submission window risks losing the accepted commitment opportunity.`
+          : `Commitment approaching deadline with no visible execution; missing the submission window creates delivery risk.`,
     };
 
     results.push({

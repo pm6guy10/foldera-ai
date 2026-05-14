@@ -70,6 +70,52 @@ describe('discrepancy-card frame contract', () => {
     expect(result.rejection_reason).toBeNull();
   });
 
+  it('keeps the weak-risk bar while accepting deadline exposure framed as real risk', () => {
+    const oldReminderDefense = evaluateDiscrepancyCardFrame({
+      claim: 'Commitment due in 0d: Submit high-quality .docx documents',
+      contradiction:
+        'Expected: commitment accepted, but current state has no execution artifact with 0 days remaining.',
+      risk: 'Due in 0 day(s) with zero artifacts - this is not a reminder, it is an exposure gap',
+      evidence: [
+        'Commitment: Submit high-quality .docx documents for document collection project ($50 per accepted document).',
+        'due_at=2026-05-15T00:00:00+00:00, days_until_due=0, status=active',
+      ],
+      next_action:
+        'Write the document-submission decision memo with owner, next action, and same-day deadline.',
+      why_now: 'Due in 0 day(s) with zero artifacts - this is not a reminder, it is an exposure gap',
+      source_refs: ['commitment:1d0e3ecb-899c-4ec1-96d0-748485678dfe'],
+      confidence: 0.45,
+      pattern_keys: ['discrepancy:exposure', 'candidate:discrepancy', 'action:write_document'],
+    });
+
+    expect(oldReminderDefense.passes).toBe(false);
+    expect(oldReminderDefense.blocked_by).toEqual(
+      expect.arrayContaining(['weak_risk', 'reminder_without_risk']),
+    );
+
+    const realRisk = evaluateDiscrepancyCardFrame({
+      claim: 'Commitment due in 0d: Submit high-quality .docx documents',
+      contradiction:
+        'Expected: commitment accepted, but current state has no execution artifact with 0 days remaining.',
+      risk:
+        'Deadline is in 0 day(s) with zero artifacts; missing the submission window risks losing the accepted commitment opportunity.',
+      evidence: [
+        'Commitment: Submit high-quality .docx documents for document collection project ($50 per accepted document).',
+        'due_at=2026-05-15T00:00:00+00:00, days_until_due=0, status=active',
+      ],
+      next_action:
+        'Write the document-submission decision memo with owner, next action, and same-day deadline.',
+      why_now:
+        'Deadline is in 0 day(s) with zero artifacts; missing the submission window risks losing the accepted commitment opportunity.',
+      source_refs: ['commitment:1d0e3ecb-899c-4ec1-96d0-748485678dfe'],
+      confidence: 0.45,
+      pattern_keys: ['discrepancy:exposure', 'candidate:discrepancy', 'action:write_document'],
+    });
+
+    expect(realRisk.passes).toBe(true);
+    expect(realRisk.blocked_by).toEqual([]);
+  });
+
   it('rejects title-shaped next actions that do not name a concrete move', () => {
     const result = evaluateDiscrepancyCardFrame({
       ...GOOD_FRAME,

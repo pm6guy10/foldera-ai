@@ -1,10 +1,10 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-13 18:16 PT
-Last known production SHA: c5fda9eb608deb674e03e5c002eea88b381346f2
-Last completed code commit: c5fda9e
-Current slice: Winner trace root cause
-Current mode: Winner trace root-cause only; no proof packet, no new gate, no UI polish, no paid generation, no outbound email, no Stripe, no schema, no beta-readiness claim.
+Last updated: 2026-05-13 18:35 PT
+Last known production SHA: 6867cd8962ecce18cc472a3d21a7a864e8f0500b
+Last completed code commit: pending
+Current slice: Winner evidence/risk framing
+Current mode: Evidence/risk framing only; no new gate, no proof packet, no UI polish, no paid generation, no outbound email, no Stripe, no schema, no beta-readiness claim, do not weaken discrepancy-card quality.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
 First failing release gate: GATE_9_REAL_NON_OWNER_BETA
 Release gate status: BLOCKED_EXTERNAL
@@ -18,13 +18,13 @@ Visual gate status: PASS
 ## Current truth
 
 - Health is non-blocking: Gmail fresh, Outlook fresh, mail cursors current, and last generation is `write_document`.
-- Production `/api/health` served winner trace root-cause commit `c5fda9eb608deb674e03e5c002eea88b381346f2` from deployment `dpl_FAGL3fyyBT17aiHEUr4VfQB4W3iC`.
+- Production `/api/health` last served receipt commit `6867cd8962ecce18cc472a3d21a7a864e8f0500b`.
 - Release gate stops at `GATE_9_REAL_NON_OWNER_BETA` because no real connected non-owner account exists.
 - `npm run gate:quality` reports `QG_10_ARTIFACT_QUALITY` as `PASS` from deterministic fixtures only.
 - `npm run gate:visual` reports `QG_11_VISUAL_FRONTEND_QUALITY` as `PASS` from deterministic mock visual/browser proof only.
 - `npm run gate:decision-trace` reports `QG_13_DECISION_TRACE_QUALITY` as `PASS` from deterministic fixtures only.
-- `npm run winner:autopsy` now cleanly returns `no_safe_artifact_today` with `graph_drift: []`, `action_needed: []`, and the reason `weak_risk; reminder_without_risk`.
-- `docs/WINNER_TRACE_ROOT_CAUSE.md` names the exact files/rules: graph false blocker in `lib/signals/behavioral-graph.ts` / `lib/system/winner-truth.ts`; winner rejection in `lib/briefing/discrepancy-card-frame.ts`.
+- `npm run winner:autopsy` now selects the document-collection deadline candidate. The earlier no-safe result was caused by exposure risk text hiding real deadline/submission risk as `weak_risk; reminder_without_risk`.
+- `docs/WINNER_EVIDENCE_RISK_REVIEW.md` names the closest candidate, evidence found/missing, exact files/rules, and narrow fix.
 - Mock, owner, fixture, screenshot, and deterministic proof do not claim beta readiness.
 
 ## Verified proof
@@ -34,20 +34,21 @@ Visual gate status: PASS
 - quality gate: PASS `npm run gate:quality` -> `FIRST_FAILING_QUALITY_GATE: NONE`.
 - visual gate: PASS `npm run gate:visual` -> `FIRST_FAILING_VISUAL_GATE: NONE`.
 - decision trace gate: PASS `npm run gate:decision-trace` -> `FIRST_FAILING_DECISION_TRACE_GATE: NONE`.
-- winner autopsy: PASS `npm run winner:autopsy` -> `no_safe_artifact_today`; no graph drift; no action needed; weak-risk/reminder-only is the clean reason.
-- production: PASS `/api/health` -> `revision.git_sha=c5fda9eb608deb674e03e5c002eea88b381346f2`.
+- focused weak-risk proof: PASS `npx vitest run lib/briefing/__tests__/discrepancy-card-frame.test.ts lib/briefing/__tests__/discrepancy-detector.test.ts --reporter=verbose` -> `122/122`.
+- winner autopsy: PASS `npm run winner:autopsy` -> selected Tier 1 `admin_deadline_decision_packet`; no graph drift; no action needed; no no-safe reason.
+- production: pending for this local slice until commit push and deployment.
 
 ## Remaining blockers
 
 - Real beta readiness still requires one real non-owner tester to connect Google or Microsoft.
-- Current owner-private winner truth is clean no-winner: the nearest candidate is not trustworthy enough because it is weak-risk / reminder-only.
+- Owner-private winner truth now selects the document-collection deadline move because missing risk evidence is hydrated and visible.
 - Do not use fake users, owner data, `TEST_USER_ID`, mock harnesses, or deterministic fixtures as beta proof.
 
 ## Next exact move
 
-1. Stop on the external release blocker until one real non-owner account connects.
-2. After that connection exists, rerun `npm run health`, `npm run gate:status`, `npm run gate:quality`, and `npm run gate:visual`.
-3. If working the owner-private winner path instead, improve the selected candidate's evidence/risk framing or input hydration; do not weaken the discrepancy-card quality bar.
+1. Commit and push the winner evidence/risk framing slice.
+2. Verify production `/api/health` serves the pushed SHA.
+3. Then return to the external release blocker: one real non-owner account must connect Google or Microsoft.
 
 ## Do not touch
 

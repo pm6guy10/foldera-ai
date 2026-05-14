@@ -204,6 +204,22 @@ describe('extractExposure (class: exposure)', () => {
     expect(result.filter((d) => d.class === 'exposure')).toHaveLength(1);
   });
 
+  it('frames imminent exposure as deadline risk, not a reminder defense', () => {
+    const result = detectDiscrepancies({
+      entities: [],
+      commitments: [makeCommitment({ due_at: daysFromNowISO(1) })],
+      goals: [],
+      decryptedSignals: [],
+      now: NOW,
+    });
+
+    const exposure = result.find((d) => d.class === 'exposure');
+    expect(exposure?.trigger?.why_now).toMatch(/deadline/i);
+    expect(exposure?.trigger?.why_now).toMatch(/missing the submission window/i);
+    expect(exposure?.trigger?.why_now).toMatch(/risk/i);
+    expect(exposure?.trigger?.why_now).not.toMatch(/reminder/i);
+  });
+
   it('does NOT fire for commitment due more than 7 days out', () => {
     const result = detectDiscrepancies({
       entities: [],
