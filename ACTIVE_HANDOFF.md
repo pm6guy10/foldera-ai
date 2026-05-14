@@ -1,40 +1,47 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-14 08:44 PT
-Current slice: Live-truth receipt rule repair
-Current mode: no UI polish, no broad feature, no paid generation, no outbound email, no Stripe, no schema, no weakened quality bars, no fake content.
-Current origin/main SHA at handoff update: `0767452d248e773c688c27bce74643e31438c169`
-Last verified runtime/product SHA (production SHA): `0767452d248e773c688c27bce74643e31438c169`
-Latest receipt/docs SHA: this handoff update is receipt-only; exact self-SHA is assigned after commit/push and must be verified externally from `origin/main`, not embedded into this file.
-Commit kind: receipt-only operating-doc repair; product/runtime unchanged.
-GitHub CI status for latest origin/main SHA: GREEN for `0767452d248e773c688c27bce74643e31438c169`
-Vercel status for latest origin/main SHA: READY for `0767452d248e773c688c27bce74643e31438c169`; deployment `dpl_M218bhTH53hwaMEj325CsZRsNWz9`
-Production /api/health SHA: `0767452d248e773c688c27bce74643e31438c169`
-Safe to proceed to next seam: YES after this receipt-only commit is pushed and GitHub CI/Vercel/health are checked for the final `origin/main` SHA; no product proof is implied by this docs commit.
+Last updated: 2026-05-14 10:16 PT
+Current slice: Production Readback Proof for Artifact Readiness Contract
+Current mode: no broad product work, no UI polish, no paid generation, no outbound email, no Stripe, no schema, no fake content.
+Current origin/main SHA at handoff update: `3933f24e31512bd34e329b26f69eece0db4759fb`
+Last verified runtime/product SHA: `3933f24e31512bd34e329b26f69eece0db4759fb`
+Latest receipt/docs SHA: this receipt-only handoff/history update is assigned after commit/push and must be verified externally from `origin/main`, not embedded into this file.
+Commit kind: runtime/product readback fix followed by receipt-only docs update.
+GitHub CI status for latest runtime SHA: pending final hosted check for this receipt push; local health, focused readback tests, decision trace, and build passed before receipt.
+Vercel status for latest runtime SHA: READY for `3933f24e31512bd34e329b26f69eece0db4759fb`; deployment `dpl_CHXRSmNWKERdPrc4HdNbVAVhk9wB`
+Production /api/health SHA: `3933f24e31512bd34e329b26f69eece0db4759fb`
+Safe to proceed to next seam: YES only after this receipt-only commit is pushed and GitHub CI, Vercel, production `/api/health`, and readback are checked for the final `origin/main` SHA.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
 First failing release gate: GATE_9_REAL_NON_OWNER_BETA
 Release gate status: BLOCKED_EXTERNAL
-Done rule: Product/runtime commits require GitHub CI, Vercel, and production `/api/health` for the exact SHA. Receipt-only commits may record the last verified runtime/product SHA plus external proof of the receipt commit, without requiring this file to name its own commit SHA.
+Receipt rule: Product/runtime commits require GitHub CI, Vercel, and production `/api/health` for the exact SHA. Receipt-only commits may record the last verified runtime/product SHA plus external proof of the receipt commit, without requiring this file to name its own commit SHA.
 
 ## Current Truth
 
-- The previous live-truth receipt format used one production SHA slot, which made receipt-only commits appear stale by construction.
-- `ACTIVE_HANDOFF.md` cannot truthfully embed the exact SHA of the commit that contains the embedding edit; that would create an infinite docs-only SHA loop.
-- The durable rule is to separate current origin/main, verified runtime/product SHA, receipt/docs commit status, GitHub CI, Vercel, production health, commit kind, and proceed/stop state.
-- `ACTIVE_HANDOFF.md` is stale only when it misstates verified truth or omits receipt status, not merely because a docs-only commit created a newer SHA.
+- Current winner: `Commitment due in 0d: Submit high-quality .docx documents for document collection`.
+- Current winner fingerprint: `claim:commitment due in 0d: submit high-quality .docx documents for document collection|refs:commitment:1d0e3ecb-899c-4ec1-96d0-748485678dfe`.
+- Readback state: `REQUIREMENTS_NEEDED`.
+- Production latest/detail/history/dashboard all read row `d17931e4-ab3d-4d75-9775-61b6c58b22b4` as `REQUIREMENTS_NEEDED`.
+- Stale WorkSourceWA selected-move readback is absent from dashboard and current APIs.
+- Missing-source document collection does not appear as a finished `.docx` artifact; it asks for owned `.docx/source files`, document topics/titles, and submission URL.
 
 ## Verified Proof
 
-- Pre-repair origin/main, GitHub CI, Vercel, and production `/api/health` all agree on `0767452d248e773c688c27bce74643e31438c169`.
 - `npm run health` passed with `RESULT: 0 FAILING`.
-- Final proof for this receipt-only commit must check the new `origin/main` SHA in GitHub Actions, Vercel deployment status when deployed, and production `/api/health`.
+- `npm run winner:autopsy` selected the document-collection commitment winner.
+- `npm run gate:decision-trace` passed with `STATUS: PASS`.
+- Focused readiness/readback tests passed (`37/37`).
+- `npm run build` passed.
+- Production `/api/health` served `3933f24e31512bd34e329b26f69eece0db4759fb`.
+- Authenticated production readback confirmed latest, detail, history, and dashboard agreement on `REQUIREMENTS_NEEDED`.
 
 ## Next exact move
 
-1. Push this receipt-rule repair to `main`.
+1. Push this receipt-only handoff/history commit to `main`.
 2. Verify GitHub Actions for the final receipt-only `origin/main` SHA.
-3. Verify Vercel deployment status if Vercel deploys the receipt-only SHA, and confirm production `/api/health`.
-4. Then proceed to Production Readback Proof; finished document generation still requires Brandon-owned source files/bodies and submission destination.
+3. Verify Vercel READY and production `/api/health` for the final receipt-only SHA.
+4. Re-run production readback once final receipt deployment is live.
+5. Then stop; finished `.docx` work remains blocked by Brandon-owned source files/bodies, document topics/titles, and submission URL/upload destination.
 
 ## Do Not Touch
 
