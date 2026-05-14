@@ -27,6 +27,7 @@ import {
 } from '@/lib/conviction/action-read-shapes';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 const MIN_PENDING_CONFIDENCE = CONFIDENCE_SEND_THRESHOLD;
 const PENDING_RANKING_LIMIT = 5;
 const FREE_ARTIFACT_ALLOWANCE = 3;

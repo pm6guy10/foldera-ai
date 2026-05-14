@@ -68,6 +68,12 @@ describe('POST /api/conviction/generate selected winner mode', () => {
     expect(maxDuration).toBeGreaterThanOrEqual(120);
   });
 
+  it('allows enough runtime for latest selected-move winner validation', async () => {
+    const { maxDuration } = await import('../route');
+
+    expect(maxDuration).toBeGreaterThanOrEqual(60);
+  });
+
   it('persists the selected WorkSourceWA winner as a real pending artifact without paid generation', async () => {
     const db = buildInsertMock();
     mockGetWinnerTruthReport.mockResolvedValue({
