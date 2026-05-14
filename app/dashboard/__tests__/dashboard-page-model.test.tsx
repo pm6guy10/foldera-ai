@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   getDashboardDiscrepancyFrame,
+  getDocumentCollectionIntakePrompt,
   inferSourcePills,
+  isDocumentCollectionRequirementsAction,
   isDashboardActionSummary,
   isVisibleDashboardAction,
   needsDashboardActionDetail,
@@ -95,5 +97,45 @@ describe('dashboard discrepancy visibility contract', () => {
     expect(isVisibleDashboardAction(summaryOnlyAction)).toBe(false);
     expect(needsDashboardActionDetail(summaryOnlyAction)).toBe(true);
     expect(isDashboardActionSummary(summaryOnlyAction)).toBe(true);
+  });
+
+  it('recognizes the document collection requirements packet as a targeted intake state', () => {
+    const action: DashboardAction = {
+      id: 'document-collection-action',
+      directive:
+        'Write a decision memo that closes "Submit high-quality .docx documents for document collection" with the owner, next action, and deadline.',
+      action_type: 'write_document',
+      artifact: {
+        type: 'document',
+        title: 'Requirements needed: Submit high-quality .docx documents for document collection',
+        content: [
+          'REQUIREMENTS-NEEDED PACKET',
+          'To finish this, provide: owned .docx/source files, document topics/titles, and submission URL.',
+          'Paste the submission link and list/upload the candidate documents.',
+        ].join('\n'),
+      },
+      discrepancy_card: {
+        claim: 'Commitment due in 0d: Submit high-quality .docx documents for document collection',
+        contradiction:
+          'The document collection deadline is now, but no owned document sources or submission destination are captured.',
+        risk: 'Missing the submission window risks losing the accepted commitment opportunity.',
+        evidence: [
+          '$50 per accepted document.',
+          'Files must be real .docx documents.',
+        ],
+        next_action: 'Paste the submission link and list/upload the candidate documents.',
+        why_now: 'The submission deadline is today.',
+        source_refs: ['commitment:document-collection'],
+        confidence: 0.82,
+        pattern_keys: ['discrepancy:deadline_staleness', 'action:write_document'],
+      },
+    };
+
+    expect(isDocumentCollectionRequirementsAction(action)).toBe(true);
+    expect(getDocumentCollectionIntakePrompt(action)).toEqual({
+      heading: 'To finish this, provide',
+      detail: 'owned .docx/source files, document topics/titles, and submission URL.',
+      nextAction: 'Paste the submission link and list/upload the candidate documents.',
+    });
   });
 });

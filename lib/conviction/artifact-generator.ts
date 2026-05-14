@@ -1,5 +1,9 @@
 import type { ConvictionArtifact, ConvictionDirective, DocumentArtifact } from '@/lib/briefing/types';
 import {
+  DOCUMENT_COLLECTION_NEXT_ACTION_TEXT,
+  DOCUMENT_COLLECTION_TO_FINISH_TEXT,
+} from '@/lib/conviction/document-collection-intake';
+import {
   generateArtifact as generateArtifactCompat,
   getSendMessageRecipientGroundingIssues,
   getArtifactPersistenceIssues,
@@ -628,6 +632,9 @@ function buildDocumentRequirementsNeededPacket(
     '',
     'OWNER: Brandon owns the decision to provide the missing source files/details; Foldera owns stopping before invented document content.',
     '',
+    DOCUMENT_COLLECTION_TO_FINISH_TEXT,
+    DOCUMENT_COLLECTION_NEXT_ACTION_TEXT,
+    '',
     `NEXT PHYSICAL STEP: open the source Handshake document-collection email and capture the missing inputs below before any .docx-ready draft is produced.`,
     '',
     `DEADLINE: ${deadlineAnchor}.`,
@@ -651,6 +658,7 @@ function buildDocumentRequirementsNeededPacket(
     type: 'document',
     document_purpose: 'Document collection requirements-needed packet',
     target_reader: 'Document owner',
+    recommended_action: DOCUMENT_COLLECTION_NEXT_ACTION_TEXT,
     title: `Requirements needed: ${sentenceCaseTopic(target)}`.slice(0, 120),
     content,
   } as DocumentArtifact & { document_purpose: string; target_reader: string };

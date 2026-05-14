@@ -906,6 +906,8 @@ describe('artifact-generator — analysis dump leak prevention', () => {
       titleRequiredTerms: ['Requirements needed'],
       requiredTerms: [
         'REQUIREMENTS-NEEDED PACKET',
+        'To finish this, provide: owned .docx/source files, document topics/titles, and submission URL.',
+        'Paste the submission link and list/upload the candidate documents.',
         '$50 per accepted document',
         'Files must be real .docx documents',
         'structurally rich',

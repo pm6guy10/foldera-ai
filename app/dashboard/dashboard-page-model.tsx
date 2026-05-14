@@ -3,6 +3,10 @@
 import type { ReactNode } from 'react';
 import { formatRelativeTime } from '@/lib/ui/provider-display';
 import { formatSourceRefLabel, formatSourceRefLabels } from '@/lib/briefing/source-ref-labels';
+import {
+  getDocumentCollectionIntakePrompt,
+  isDocumentCollectionRequirementsRecord,
+} from '@/lib/conviction/document-collection-intake';
 import type { DashboardPanelKey } from '@/components/foldera/DashboardSidebar';
 import {
   buildDiscrepancyFrameFromActionPayload,
@@ -753,6 +757,12 @@ export function isDailyUtilitySlate(value: unknown): value is DailyUtilitySlate 
 export function isWriteDocumentAction(action: DashboardAction | null): boolean {
   return action?.action_type === 'write_document' || action?.artifact?.type === 'document';
 }
+
+export function isDocumentCollectionRequirementsAction(action: DashboardAction | null): boolean {
+  return isDocumentCollectionRequirementsRecord(action);
+}
+
+export { getDocumentCollectionIntakePrompt };
 
 export function buildDecisionSuccessNotice(
   action: DashboardAction | null,

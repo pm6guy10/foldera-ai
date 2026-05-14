@@ -26,6 +26,8 @@ type DashboardMobileLayoutProps = {
   draftBody: ReactNode;
   sourcePills: string[];
   writeDocument: boolean;
+  nextStep: string;
+  statusText: string;
   cardActions: DailyBriefActions;
   loadingLatest: boolean;
   loadingCard: ReactNode;
@@ -57,6 +59,8 @@ export function DashboardMobileLayout({
   draftBody,
   sourcePills,
   writeDocument,
+  nextStep,
+  statusText,
   cardActions,
   loadingLatest,
   loadingCard,
@@ -138,8 +142,8 @@ export function DashboardMobileLayout({
                   draftBody={draftBody}
                   sourcePills={sourcePills}
                   sourceLabel="Source trail"
-                  nextStep={writeDocument ? 'Next: Save to record' : 'Next: Await response'}
-                  statusText={writeDocument ? 'READY TO SAVE' : 'READY TO APPROVE'}
+                  nextStep={nextStep}
+                  statusText={statusText}
                   footerText="Grounded in connected sources"
                   actions={cardActions}
                 />

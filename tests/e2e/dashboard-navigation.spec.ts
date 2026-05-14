@@ -152,6 +152,7 @@ async function setupDashboardMocks(
     detailResponse?: unknown;
     dailyValueResponse?: unknown;
     integrationStatusResponse?: unknown;
+    documentCollectionIntakeBodies?: unknown[];
   } = {},
 ) {
   await seedAuthenticatedSession(page);
@@ -248,6 +249,21 @@ async function setupDashboardMocks(
   await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ buckets: [], freeText: null }));
   await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(options.latestResponse ?? DIRECTIVE_RESPONSE));
   await page.route(matchApiPrefix('/api/conviction/actions/'), async (route) => {
+    if (
+      new URL(route.request().url()).pathname.endsWith('/document-collection-intake') &&
+      route.request().method() === 'POST'
+    ) {
+      options.documentCollectionIntakeBodies?.push(route.request().postDataJSON());
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: json({
+          ok: true,
+          action_id: 'action-doc-collection',
+          intake_status: 'inputs_provided',
+        }),
+      });
+    }
     detailRequestCount += 1;
     return route.fulfill({
       status: 200,
@@ -573,6 +589,87 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByTestId('dashboard-document-body')).toContainText(
       'Following up on the update from yesterday.',
     );
+  });
+
+  test('document collection requirements packet shows no-schema intake capture', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const intakeBodies: unknown[] = [];
+    await setupDashboardMocks(page, {
+      documentCollectionIntakeBodies: intakeBodies,
+      latestResponse: {
+        id: 'action-doc-collection',
+        directive:
+          'Requirements needed: Submit high-quality .docx documents for document collection',
+        action_type: 'write_document',
+        confidence: 82,
+        reason:
+          'Deadline is in 0 day(s) with zero artifacts; missing the submission window risks losing the accepted commitment opportunity.',
+        status: 'pending_approval',
+        approved_count: 1,
+        is_subscribed: true,
+        free_artifact_remaining: true,
+        artifact_paywall_locked: false,
+        finished_artifact_verdict: 'strict_artifact_selected',
+        artifact_title:
+          'Requirements needed: Submit high-quality .docx documents for document collection',
+        detail_required: true,
+        detail_url: '/api/conviction/actions/action-doc-collection',
+        discrepancy_card: {
+          claim:
+            'Commitment due in 0d: Submit high-quality .docx documents for document collection',
+          contradiction:
+            'The document collection deadline is now, but no owned document sources or submission destination are captured.',
+          risk: 'Source requirements are known, but owned .docx bodies and submission destination are missing.',
+          evidence: [
+            '$50 per accepted document.',
+            'Files must be real .docx documents.',
+            'Do not submit AI-generated, confidential, employer/client-owned, NDA-covered, or identifying content.',
+          ],
+          next_action: 'Paste the submission link and list/upload the candidate documents.',
+          why_now: 'The submission deadline is today.',
+          source_refs: ['commitment:document-collection'],
+          confidence: 0.82,
+          pattern_keys: ['discrepancy:deadline_staleness', 'action:write_document'],
+        },
+        discrepancy_quality: {
+          passes: true,
+          quality_score: 0.9,
+          blocked_by: [],
+          pattern_keys: ['discrepancy:deadline_staleness', 'action:write_document'],
+          rejection_reason: null,
+        },
+      },
+    });
+    await page.goto('/dashboard');
+
+    const intake = page.getByTestId('document-collection-intake');
+    await expect(intake).toContainText(
+      'To finish this, provide',
+    );
+    await expect(intake).toContainText(
+      'owned .docx/source files, document topics/titles, and submission URL.',
+    );
+    await expect(intake).toContainText(
+      'Paste the submission link and list/upload the candidate documents.',
+    );
+
+    await intake.getByLabel('Submission link').fill('https://forms.gle/submission');
+    await intake
+      .getByLabel('Candidate documents / source bodies')
+      .fill('1. Owned benefits appeal memo - source body pasted. 2. Owned resume review checklist.');
+    await intake.getByRole('button', { name: /save inputs/i }).click();
+
+    await expect(page.getByTestId('dashboard-status-notice')).toHaveAttribute(
+      'data-status-id',
+      'document_collection_intake_saved',
+    );
+    expect(intakeBodies).toEqual([
+      {
+        submission_url: 'https://forms.gle/submission',
+        candidate_documents:
+          '1. Owned benefits appeal memo - source body pasted. 2. Owned resume review checklist.',
+      },
+    ]);
   });
 
   test('snooze action posts skip decision', async ({ page }) => {

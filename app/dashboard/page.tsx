@@ -36,6 +36,7 @@ import {
   buildDashboardSourceTrail,
   computeStageMetrics,
   dailyUtilitySlateClipboardText,
+  getDocumentCollectionIntakePrompt,
   getArtifactBody,
   getDashboardActionHeadline,
   getDashboardDiscrepancyFrame,
@@ -44,6 +45,7 @@ import {
   inferSourcePills,
   isDashboardActionSummary,
   isDailyUtilitySlate,
+  isDocumentCollectionRequirementsAction,
   isVisibleDashboardAction,
   isWriteDocumentAction,
   needsDashboardActionDetail,
@@ -81,6 +83,9 @@ export default function DashboardPage() {
   const [outcomeSubmitting, setOutcomeSubmitting] = useState<null | 'worked' | 'didnt_work'>(
     null,
   );
+  const [documentIntakeSubmissionUrl, setDocumentIntakeSubmissionUrl] = useState('');
+  const [documentIntakeCandidateDocuments, setDocumentIntakeCandidateDocuments] = useState('');
+  const [documentIntakeSubmitting, setDocumentIntakeSubmitting] = useState(false);
   const [stageMetrics, setStageMetrics] = useState<StageMetrics>(DEFAULT_STAGE_METRICS);
   const [stageMeasured, setStageMeasured] = useState(false);
   const [executedActionId, setExecutedActionId] = useState<string | null>(null);
@@ -540,10 +545,66 @@ export default function DashboardPage() {
         : { id: 'copy_failed', message: 'Copy failed. Select the text manually.' },
     );
   }, [dailyUtilitySlate]);
+  const submitDocumentCollectionIntake = useCallback(async () => {
+    if (!action?.id || documentIntakeSubmitting) return;
+    const submissionUrl = documentIntakeSubmissionUrl.trim();
+    const candidateDocuments = documentIntakeCandidateDocuments.trim();
+    if (!submissionUrl || !candidateDocuments) {
+      setStatusNotice({
+        id: 'document_collection_intake_missing',
+        message: 'Paste the submission link and list the owned candidate documents first.',
+      });
+      return;
+    }
+    setDocumentIntakeSubmitting(true);
+    try {
+      const response = await fetch(
+        `/api/conviction/actions/${action.id}/document-collection-intake`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            submission_url: submissionUrl,
+            candidate_documents: candidateDocuments,
+          }),
+        },
+      );
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setStatusNotice({
+          id: 'document_collection_intake_failed',
+          message:
+            typeof payload?.error === 'string'
+              ? payload.error
+              : 'Could not save document inputs right now.',
+        });
+        return;
+      }
+      setStatusNotice({
+        id: 'document_collection_intake_saved',
+        message:
+          'Inputs saved. Foldera can produce the finished submission packet from these owned inputs next.',
+      });
+    } catch {
+      setStatusNotice({
+        id: 'document_collection_intake_failed',
+        message: 'Could not save document inputs right now.',
+      });
+    } finally {
+      setDocumentIntakeSubmitting(false);
+    }
+  }, [
+    action?.id,
+    documentIntakeCandidateDocuments,
+    documentIntakeSubmissionUrl,
+    documentIntakeSubmitting,
+  ]);
   const sessionName = asTrimmedString(session?.user?.name) ?? 'Foldera workspace';
   const firstName = asTrimmedString(session?.user?.name)?.split(' ')[0] ?? null;
   const sidebarUserName = firstName ?? sessionName;
   const writeDocument = isWriteDocumentAction(action);
+  const documentCollectionRequirements = isDocumentCollectionRequirementsAction(action);
+  const documentCollectionPrompt = getDocumentCollectionIntakePrompt(action);
   const showArtifactBlur = Boolean(action?.artifact) && artifactPaywallLocked;
   const summaryNeedsDetail = Boolean(action && needsDashboardActionDetail(action) && !action.artifact);
   const discrepancyFrame = getDashboardDiscrepancyFrame(action);
@@ -559,10 +620,22 @@ export default function DashboardPage() {
   const copyActionLabel = 'Copy draft';
   const skipActionLabel = 'Skip';
   const primaryActionLabel = writeDocument
-    ? 'Save'
+    ? documentCollectionRequirements
+      ? 'Save packet'
+      : 'Save'
     : approvalEmailSendEnabled
       ? 'Approve & send'
       : 'Approve';
+  const dashboardNextStep = documentCollectionRequirements
+    ? 'Next: Paste the submission link and list/upload the candidate documents.'
+    : writeDocument
+      ? 'Next: Save to record'
+      : 'Next: Await response';
+  const dashboardStatusText = documentCollectionRequirements
+    ? 'INPUTS NEEDED'
+    : writeDocument
+      ? 'READY TO SAVE'
+      : 'READY TO APPROVE';
   const showOutcomeActions =
     Boolean(executedActionId) &&
     (statusNotice?.id === 'approve_saved_document' ||
@@ -651,6 +724,48 @@ export default function DashboardPage() {
       )}
     </div>
   );
+  const documentCollectionIntakeNode = documentCollectionPrompt ? (
+    <section
+      className="rounded-[16px] border border-cyan-200/12 bg-cyan-300/[0.04] p-4"
+      data-testid="document-collection-intake"
+    >
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+        {documentCollectionPrompt.heading}
+      </p>
+      <p className="mt-2 text-text-primary">{documentCollectionPrompt.detail}</p>
+      <p className="mt-2 text-text-secondary">{documentCollectionPrompt.nextAction}</p>
+      <div className="mt-4 grid gap-3">
+        <label className="grid gap-1.5 text-sm font-medium text-text-primary">
+          Submission link
+          <input
+            type="url"
+            value={documentIntakeSubmissionUrl}
+            onChange={(event) => setDocumentIntakeSubmissionUrl(event.target.value)}
+            placeholder="https://..."
+            className="rounded-[12px] border border-border bg-panel px-3 py-2 text-sm text-text-primary outline-none focus:border-cyan-300/40"
+          />
+        </label>
+        <label className="grid gap-1.5 text-sm font-medium text-text-primary">
+          Candidate documents / source bodies
+          <textarea
+            value={documentIntakeCandidateDocuments}
+            onChange={(event) => setDocumentIntakeCandidateDocuments(event.target.value)}
+            rows={4}
+            placeholder="List each owned .docx, title/topic, or paste the source body notes."
+            className="resize-none rounded-[12px] border border-border bg-panel px-3 py-2 text-sm leading-6 text-text-primary outline-none focus:border-cyan-300/40"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={() => void submitDocumentCollectionIntake()}
+          disabled={documentIntakeSubmitting}
+          className="foldera-button-secondary w-full justify-center"
+        >
+          {documentIntakeSubmitting ? 'Saving inputs...' : 'Save inputs'}
+        </button>
+      </div>
+    </section>
+  ) : null;
   const draftBody = discrepancyFrame ? (
     <div className="space-y-5">
       <section>
@@ -675,6 +790,7 @@ export default function DashboardPage() {
         </p>
         <p className="mt-2 text-text-primary">{discrepancyFrame.next_action}</p>
       </section>
+      {documentCollectionIntakeNode}
       {artifactBody ? (
         <section>
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
@@ -842,8 +958,8 @@ export default function DashboardPage() {
         draftBody={draftBody}
         sourcePills={inferSourcePills(action)}
         sourceLabel="Source trail"
-        nextStep={writeDocument ? 'Next: Save to record' : 'Next: Await response'}
-        statusText={writeDocument ? 'READY TO SAVE' : 'READY TO APPROVE'}
+        nextStep={dashboardNextStep}
+        statusText={dashboardStatusText}
         footerText="Grounded in connected sources"
         actions={cardActions}
       />
@@ -926,6 +1042,8 @@ export default function DashboardPage() {
       draftBody={draftBody}
       sourcePills={action ? inferSourcePills(action) : []}
       writeDocument={writeDocument}
+      nextStep={dashboardNextStep}
+      statusText={dashboardStatusText}
       cardActions={cardActions}
       loadingLatest={loadingLatest}
       loadingCard={loadingCard}
