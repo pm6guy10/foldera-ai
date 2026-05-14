@@ -1,10 +1,10 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-13 16:31 PT
-Last known production SHA: e861d2d3f8a4b5fa92c5d4c591e267bad8f39fce
-Last completed code commit: e861d2d
-Current slice: Release truth gate stop
-Current mode: Gate controller only; no UI polish, no paid generation, no outbound email, no Stripe, no schema, no fake users, no owner-only beta proof.
+Last updated: 2026-05-13 17:50 PT
+Last known production SHA: 9bff35ddc1f065c208fb1cac9db5941717da670e
+Last completed code commit: 9bff35d
+Current slice: Winner proof packet
+Current mode: Winner proof packet only; no UI polish, no frontend redesign, no paid generation, no outbound email, no Stripe, no schema, no fake users, no beta-readiness claim.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
 First failing release gate: GATE_9_REAL_NON_OWNER_BETA
 Release gate status: BLOCKED_EXTERNAL
@@ -18,10 +18,13 @@ Visual gate status: PASS
 ## Current truth
 
 - Health is non-blocking: Gmail fresh, Outlook fresh, mail cursors current, and last generation is `write_document`.
-- Production `/api/health` serves `e861d2d3f8a4b5fa92c5d4c591e267bad8f39fce` from deployment `dpl_aqTH5NrTsNjvtckm2bfMnVwT2pT4`.
+- Production `/api/health` serves `9bff35ddc1f065c208fb1cac9db5941717da670e` from deployment `dpl_3jLKGYF1L2gu8PEr7FkrMRCq1afZ`.
 - Release gate stops at `GATE_9_REAL_NON_OWNER_BETA` because no real connected non-owner account exists.
 - `npm run gate:quality` reports `QG_10_ARTIFACT_QUALITY` as `PASS` from deterministic fixtures only.
 - `npm run gate:visual` reports `QG_11_VISUAL_FRONTEND_QUALITY` as `PASS` from deterministic mock visual/browser proof only.
+- `npm run gate:decision-trace` reports `QG_13_DECISION_TRACE_QUALITY` as `PASS` from deterministic fixtures only.
+- `npm run winner:autopsy` currently returns `no_safe_artifact_today`; the apparent selected candidate fails discrepancy-card quality as weak risk / reminder-only, and graph drift is a current blocker.
+- `docs/WINNER_PROOF_PACKET.md` now separates production proof, owner-private proof, mock proof, and missing proof in plain English.
 - Mock, owner, fixture, screenshot, and deterministic proof do not claim beta readiness.
 
 ## Verified proof
@@ -30,18 +33,21 @@ Visual gate status: PASS
 - release gate: PASS/BLOCKED_EXTERNAL `npm run gate:status` -> first failing release gate `GATE_9_REAL_NON_OWNER_BETA`.
 - quality gate: PASS `npm run gate:quality` -> `FIRST_FAILING_QUALITY_GATE: NONE`.
 - visual gate: PASS `npm run gate:visual` -> `FIRST_FAILING_VISUAL_GATE: NONE`.
-- production: PASS `/api/health` -> `revision.git_sha=e861d2d3f8a4b5fa92c5d4c591e267bad8f39fce`.
+- decision trace gate: PASS `npm run gate:decision-trace` -> `FIRST_FAILING_DECISION_TRACE_GATE: NONE`.
+- winner autopsy: BLOCKER `npm run winner:autopsy` -> `no_safe_artifact_today`; current blocker is behavioral graph drift.
+- production: PASS `/api/health` -> `revision.git_sha=9bff35ddc1f065c208fb1cac9db5941717da670e`.
 
 ## Remaining blockers
 
 - Real beta readiness still requires one real non-owner tester to connect Google or Microsoft.
+- Current owner-private winner proof requires graph repair before claiming a new selected artifact today.
 - Do not use fake users, owner data, `TEST_USER_ID`, mock harnesses, or deterministic fixtures as beta proof.
 
 ## Next exact move
 
 1. Stop on the external release blocker until one real non-owner account connects.
 2. After that connection exists, rerun `npm run health`, `npm run gate:status`, `npm run gate:quality`, and `npm run gate:visual`.
-3. Fix only the first failing gate from that fresh run.
+3. If working the owner-private winner path instead, repair behavioral graph drift before producing a new selected artifact proof.
 
 ## Do not touch
 
