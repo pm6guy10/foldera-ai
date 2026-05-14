@@ -7,6 +7,7 @@ import {
   DashboardStatusNoticeCard,
   HiddenDashboardArtifact,
 } from '@/components/dashboard/DashboardChromeExtras';
+import { DocumentCollectionIntakePanel } from '@/components/dashboard/DocumentCollectionIntakePanel';
 import { DashboardMobileLayout } from '@/components/dashboard/DashboardMobileLayout';
 import {
   DashboardBriefingUnavailableCard,
@@ -725,46 +726,15 @@ export default function DashboardPage() {
     </div>
   );
   const documentCollectionIntakeNode = documentCollectionPrompt ? (
-    <section
-      className="rounded-[16px] border border-cyan-200/12 bg-cyan-300/[0.04] p-4"
-      data-testid="document-collection-intake"
-    >
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
-        {documentCollectionPrompt.heading}
-      </p>
-      <p className="mt-2 text-text-primary">{documentCollectionPrompt.detail}</p>
-      <p className="mt-2 text-text-secondary">{documentCollectionPrompt.nextAction}</p>
-      <div className="mt-4 grid gap-3">
-        <label className="grid gap-1.5 text-sm font-medium text-text-primary">
-          Submission link
-          <input
-            type="url"
-            value={documentIntakeSubmissionUrl}
-            onChange={(event) => setDocumentIntakeSubmissionUrl(event.target.value)}
-            placeholder="https://..."
-            className="rounded-[12px] border border-border bg-panel px-3 py-2 text-sm text-text-primary outline-none focus:border-cyan-300/40"
-          />
-        </label>
-        <label className="grid gap-1.5 text-sm font-medium text-text-primary">
-          Candidate documents / source bodies
-          <textarea
-            value={documentIntakeCandidateDocuments}
-            onChange={(event) => setDocumentIntakeCandidateDocuments(event.target.value)}
-            rows={4}
-            placeholder="List each owned .docx, title/topic, or paste the source body notes."
-            className="resize-none rounded-[12px] border border-border bg-panel px-3 py-2 text-sm leading-6 text-text-primary outline-none focus:border-cyan-300/40"
-          />
-        </label>
-        <button
-          type="button"
-          onClick={() => void submitDocumentCollectionIntake()}
-          disabled={documentIntakeSubmitting}
-          className="foldera-button-secondary w-full justify-center"
-        >
-          {documentIntakeSubmitting ? 'Saving inputs...' : 'Save inputs'}
-        </button>
-      </div>
-    </section>
+    <DocumentCollectionIntakePanel
+      prompt={documentCollectionPrompt}
+      submissionUrl={documentIntakeSubmissionUrl}
+      candidateDocuments={documentIntakeCandidateDocuments}
+      submitting={documentIntakeSubmitting}
+      onSubmissionUrlChange={setDocumentIntakeSubmissionUrl}
+      onCandidateDocumentsChange={setDocumentIntakeCandidateDocuments}
+      onSubmit={() => void submitDocumentCollectionIntake()}
+    />
   ) : null;
   const draftBody = discrepancyFrame ? (
     <div className="space-y-5">
@@ -892,7 +862,7 @@ export default function DashboardPage() {
   const loadingCard = <DashboardLoadingCard />;
   const degradedStateNode = <DashboardDegradedState issueLabels={degradedIssueLabels} />;
   const briefingUnavailableCard = <DashboardBriefingUnavailableCard />;
-  const historyPanelNode = (
+  const renderWorkspacePanel = (focusPanel: 'history' | 'sources' | 'account') => (
     <DashboardWorkspacePanels
       connectedSourcesValue={connectedSourcesValue}
       hasIntegrationIssue={hasIntegrationIssue}
@@ -906,41 +876,7 @@ export default function DashboardPage() {
       recentHistory={recentHistory}
       userName={sidebarUserName}
       onSourceSynced={() => void loadIntegrationStatus()}
-      focusPanel="history"
-    />
-  );
-  const sourcesPanelNode = (
-    <DashboardWorkspacePanels
-      connectedSourcesValue={connectedSourcesValue}
-      hasIntegrationIssue={hasIntegrationIssue}
-      connectedSourceCount={connectedSourceCount}
-      latestSignalLabel={latestSignalLabel}
-      sourceSummaryRows={sourceSummaryRows}
-      googleIntegration={googleIntegration}
-      microsoftIntegration={microsoftIntegration}
-      historyLoaded={historyLoaded}
-      hasHistoryIssue={hasHistoryIssue}
-      recentHistory={recentHistory}
-      userName={sidebarUserName}
-      onSourceSynced={() => void loadIntegrationStatus()}
-      focusPanel="sources"
-    />
-  );
-  const accountPanelNode = (
-    <DashboardWorkspacePanels
-      connectedSourcesValue={connectedSourcesValue}
-      hasIntegrationIssue={hasIntegrationIssue}
-      connectedSourceCount={connectedSourceCount}
-      latestSignalLabel={latestSignalLabel}
-      sourceSummaryRows={sourceSummaryRows}
-      googleIntegration={googleIntegration}
-      microsoftIntegration={microsoftIntegration}
-      historyLoaded={historyLoaded}
-      hasHistoryIssue={hasHistoryIssue}
-      recentHistory={recentHistory}
-      userName={sidebarUserName}
-      onSourceSynced={() => void loadIntegrationStatus()}
-      focusPanel="account"
+      focusPanel={focusPanel}
     />
   );
   const briefingCardNode = action ? (
@@ -973,11 +909,11 @@ export default function DashboardPage() {
   );
   const focusedSupportPanelNode =
     activePanel === 'history'
-      ? historyPanelNode
+      ? renderWorkspacePanel('history')
       : activePanel === 'sources'
-        ? sourcesPanelNode
+        ? renderWorkspacePanel('sources')
         : activePanel === 'account'
-          ? accountPanelNode
+          ? renderWorkspacePanel('account')
           : null;
   const desktopWorkspaceNode = isTodayPanel ? (
     <div data-testid="dashboard-unified-workspace" className="h-full w-full">

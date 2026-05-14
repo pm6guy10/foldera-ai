@@ -1,63 +1,49 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-14 06:35 PT
-Last known production SHA: 639beb97095f4b48fba6762513c350e4df94468d
-Last completed code commit: 639beb9
-Current slice: Document-collection intake workflow
-Current mode: no new gate, no proof packet, no UI polish, no paid generation, no outbound email, no Stripe, no schema, no fake `.docx`, no beta-readiness claim.
-Current release gate: GATE_9_REAL_NON_OWNER_BETA
-First failing release gate: GATE_9_REAL_NON_OWNER_BETA
-Release gate status: BLOCKED_EXTERNAL
-Current quality gate: QG_10_ARTIFACT_QUALITY
-First failing quality gate: NONE
-Quality gate status: PASS
-Current visual gate: QG_11_VISUAL_FRONTEND_QUALITY
-First failing visual gate: NONE
-Visual gate status: PASS
+Last updated: 2026-05-14 06:58 PT
+Current slice: GitHub CI final-gate enforcement
+Current mode: no product work, no UI polish, no paid generation, no outbound email, no Stripe, no schema, no feature continuation.
+Current main commit: 6f0275ead9bc55e89075ab90467d8f3149c8d4d6
+GitHub CI status: RED
+GitHub CI run: CI #1019, run `25863078234`
+GitHub CI failing job: `unit`
+GitHub CI failing step: `Vitest`
+GitHub CI failing error: `tests/config/__tests__/large-file-splits.test.ts` expected `app/dashboard/page.tsx` line count `1061` to be <= `1000`.
+Vercel status: GREEN
+Vercel deployment: `dpl_GoEf99ATTkPbEVd8BEi8dyYoqePe`
+Vercel production SHA: 6f0275ead9bc55e89075ab90467d8f3149c8d4d6
+Done rule: Foldera cannot be called done unless GitHub CI and Vercel are both green for the exact current `origin/main` commit.
 
-## Current truth
+## Current Truth
 
 - `npm run health` is green: Gmail fresh, Outlook fresh, mail cursors current, last generation is `write_document`, and `RESULT: 0 FAILING`.
-- `npm run winner:autopsy` still selects `Commitment due in 0d: Submit high-quality .docx documents for document collection`.
-- `npm run gate:decision-trace` still passes with `FIRST_FAILING_DECISION_TRACE_GATE: NONE`.
-- Production `/api/health` serves commit `639beb97095f4b48fba6762513c350e4df94468d`.
-- No-paid selected-winner generation persisted row `d17931e4-ab3d-4d75-9775-61b6c58b22b4`.
-- `/api/conviction/latest` returns row `d17931e4-ab3d-4d75-9775-61b6c58b22b4`, `detail_url=/api/conviction/actions/d17931e4-ab3d-4d75-9775-61b6c58b22b4`, and next action `Paste the submission link and list/upload the candidate documents.`
-- `/api/conviction/history?limit=2` has the new row first, ahead of the older requirements packet and without stale WorkSourceWA.
-- Detail/DB readback shows the exact ask: `To finish this, provide: owned .docx/source files, document topics/titles, and submission URL.`
-- Detail/DB readback preserves known source requirements: `.docx`, `$50 per accepted document`, ownership/IP rules, rejection rules, Google-login context, and the May 15, 2026 deadline.
-- Detail/DB readback lists missing ingredients: owned candidate files/source bodies, topics/titles, and submission URL/upload destination.
-- Finished `.docx` work remains blocked until Brandon provides those owned inputs and destination.
-- No schema, upload storage, document editor, paid generation, outbound email, Stripe, or fake `.docx` content was added.
+- `origin/main` currently points at `6f0275ead9bc55e89075ab90467d8f3149c8d4d6`.
+- GitHub Actions for that commit include a failed `CI` workflow run even though Vercel deployed successfully.
+- The latest Codex report missed the red CI because the repo boot/final-report contract required production SHA proof but did not require GitHub Actions proof for the exact commit.
+- The only active fix is the CI failure plus final-gate doctrine. Do not continue document-collection or other product work.
 
-## Verified proof
+## Verified Proof
 
-- Required truth commands: `npm run health`, `npm run winner:autopsy`, `npm run gate:decision-trace`.
-- Focused tests: latest/generate/action-detail/intake/dashboard/generator slice passed `49/49`.
-- Dashboard intake proof: `npx playwright test tests/e2e/dashboard-navigation.spec.ts --grep "document collection requirements packet" --reporter=list` passed.
-- Build: `npm run build` passed and includes `/api/conviction/actions/[id]/document-collection-intake`.
-- Vercel deployment `dpl_9h55iTkP5Jjf4YuKKx8uTPHcdnUU` for commit `639beb9` is `READY`.
-- Production `/api/health` reports SHA `639beb97095f4b48fba6762513c350e4df94468d`.
-- Production API/DB proof confirms latest/detail/history row `d17931e4-ab3d-4d75-9775-61b6c58b22b4` is the updated requirements-needed packet.
-
-## Remaining blockers
-
-- Dashboard visibility patch is locally verified and awaiting commit/push/deploy proof.
-- Real finished submission packet still requires Brandon-owned `.docx` files/source bodies, document topics/titles, and submission URL/upload destination.
-- Real beta readiness still requires one real non-owner tester to connect Google or Microsoft.
+- GitHub Actions API: `CI` run `25863078234` for commit `6f0275e` concluded `failure`.
+- GitHub job API: job `unit` failed; step `Vitest` failed.
+- GitHub job log: `large-file-splits.test.ts` failed at line 14 with `expected 1061 to be less than or equal to 1000`.
+- Focused failing unit test reproduced locally, then passed after mechanical extraction: `npx vitest run tests/config/__tests__/large-file-splits.test.ts --reporter=verbose`.
 
 ## Next exact move
 
-1. Commit and push the dashboard visibility patch.
-2. Verify Vercel production SHA for the new commit.
-3. Re-check production dashboard shows the intake panel and exact missing-input ask.
-4. Record final handoff/history receipt.
+1. Finish the narrow code split that reduces `app/dashboard/page.tsx` below 1000 lines without changing behavior.
+2. Update `CODEX_START.md`, `GPT.md`, this handoff, and append `SESSION_HISTORY.md` with the GitHub CI final-gate rule.
+3. Run `npm run health`, focused failing unit test, and `npm run build`.
+4. Commit and push.
+5. Check GitHub Actions for the new current `main` commit.
+6. Check Vercel deployment for the new current `main` commit.
 
-## Do not touch
+## Do Not Touch
 
-- UI polish or frontend redesign
+- Product behavior beyond the mechanical CI split
+- UI polish or redesign
 - Paid generation
 - Outbound email
 - Stripe or pricing
 - Schema or destructive DB actions
-- Fake users, fake `.docx` content, or beta-readiness claims
+- New feature work

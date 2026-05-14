@@ -41,7 +41,7 @@ If not, say so plainly and name the next gate or proof gap.
 
 When Brandon asks "what's next," "now what," "is this fine," or shows Codex/Cursor logs, run this sequence before advising:
 
-1. Check GitHub repo state for `pm6guy10/foldera-ai`.
+1. Check GitHub repo state for `pm6guy10/foldera-ai`, including the latest GitHub Actions runs for the exact current `main` commit.
 2. Check latest Vercel production deployment, SHA, state, and message.
 3. Check Supabase only when runtime/database truth matters: migrations, source rows, actions, tokens, logs, or health.
 4. Read `ACTIVE_HANDOFF.md` first for current live receipt.
@@ -59,6 +59,25 @@ When Brandon asks "what's next," "now what," "is this fine," or shows Codex/Curs
     - stop condition
 
 Do not answer from memory alone when live repo/deploy truth is available.
+
+## GitHub CI Final Gate
+
+When Codex claims work is done, GPT must verify GitHub Actions for the exact pushed `main` commit before accepting the claim.
+
+Vercel deployment success is not enough. A final owner snapshot must include:
+
+- current `origin/main` commit
+- latest GitHub Actions workflow/job result for that commit
+- Vercel production deployment status for that commit
+- whether `ACTIVE_HANDOFF.md` records both statuses
+
+If GitHub CI is red, missing, stale, cancelled, or still running, the correct owner verdict is:
+
+```text
+NOT DONE - GitHub CI red.
+```
+
+Then name the exact failing workflow, job, step, and error. Do not call the product ready, done, shipped, or beta-ready from Vercel success alone.
 
 ## Core Delivery Doctrine
 

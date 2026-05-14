@@ -33,6 +33,26 @@ No Codex self-certification counts. A pass requires evidence:
 
 No evidence means UNKNOWN or FAIL, not PASS.
 
+## GitHub CI Final Gate
+
+GitHub Actions is part of done. Vercel success does not replace GitHub CI.
+
+Before any final report that says `DONE`, `done`, `fixed`, `complete`, `shipped`, `ready`, or equivalent:
+
+1. Confirm the current `main` commit is pushed to `origin/main`.
+2. Check the latest GitHub Actions runs for that exact commit.
+3. Confirm required jobs are green or explicitly skipped by path rules.
+4. Check Vercel production deployment status for that exact commit.
+5. Confirm `ACTIVE_HANDOFF.md` records both GitHub CI status and Vercel status for that commit.
+
+If GitHub CI is red, cancelled, missing, stale, or still running, stop product work. The final report must say:
+
+```text
+NOT DONE - GitHub CI red.
+```
+
+Then name the exact workflow, job, step, and error. Fix only that CI failure, push the fix, and re-check GitHub CI before making any product claim.
+
 ## Required Startup Order
 
 Run this order every session:
@@ -104,9 +124,10 @@ A seam is done only when:
 5. source truth is updated if needed
 6. `ACTIVE_HANDOFF.md` and `SESSION_HISTORY.md` are updated
 7. commit is pushed to `main`
-8. deploy/health SHA is verified when applicable
-9. gate/controller is rerun
-10. next failing gate, next valid contract, or exact blocker is named
+8. GitHub Actions status is checked for the exact pushed commit
+9. deploy/health SHA is verified when applicable
+10. gate/controller is rerun
+11. next failing gate, next valid contract, or exact blocker is named
 
 ## Daily Loop
 
@@ -132,7 +153,9 @@ Report only:
 - seams completed
 - commit hashes
 - proof run
+- GitHub CI result for the exact `origin/main` commit
 - production SHA if deployed
+- Vercel deployment result for the exact `origin/main` commit
 - exact stop reason
 - next autonomous move
 
