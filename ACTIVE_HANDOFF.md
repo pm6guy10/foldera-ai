@@ -1,17 +1,21 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-15 11:15 PT
-Current slice: GATE_9_REAL_NON_OWNER_BETA proof mode; verification-only, no product/backend/schema/Stripe/paid/outbound/fake-data work.
+Last updated: 2026-05-15 13:20 PT
+Current slice: Outcome Autopsy / Playbooks seam; deterministic CWU gold-standard artifact and `/dashboard/playbooks` proof view.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
 First failing release gate: GATE_9_REAL_NON_OWNER_BETA after live-truth receipt alignment.
 Release gate status: BLOCKED_EXTERNAL
 Last known production SHA: `18371dbf4a3e48e0998c92e4e22204e0b804c3c4`.
 Latest product/runtime SHA verified: `18371dbf4a3e48e0998c92e4e22204e0b804c3c4`.
-Latest receipt/docs status: this GATE_9 proof receipt is self-SHA pending until the final pushed receipt commit is verified externally; do not require this file to embed its own future SHA.
+Latest receipt/docs status: Outcome Autopsy seam has local proof and is pending commit/push/deploy verification; do not require this file to embed its own future SHA.
 
 ## Current Truth
 
-- Local HEAD and `origin/main` are aligned at `18371dbf4a3e48e0998c92e4e22204e0b804c3c4`.
+- Local Outcome Autopsy / Playbooks seam adds a deterministic `/api/outcome-autopsy/latest` artifact builder and a `/dashboard/playbooks` proof view.
+- CWU Access Specialist now renders as the gold-standard autopsy: offer received and accepted, $46,000 salary, 2026-06-16 tentative start, second-round work sample as the strongest artifact, redacted/synthetic-only handling for third-party student documentation, and evidence-vs-inference separation.
+- Local proof passed for the isolated seam: focused autopsy unit tests, real stored-row CWU proof with pollution exclusions, `/dashboard/playbooks` Playwright proof on an isolated port after clean build, `npm run lint`, and `npm run build`.
+- Unrelated owner-canary / acceptance-gate work is shelved in temporary stashes and is not part of this seam commit.
+- Previous live truth before this seam: Local HEAD and `origin/main` were aligned at `18371dbf4a3e48e0998c92e4e22204e0b804c3c4`.
 - GitHub Actions for that SHA are green: `CI` runs `25931486377` and `25931486534`, `Health Gate` run `25931486401`, `semgrep` run `25931486391`, `Production E2E` run `25931613176`, and `Deploy to Vercel` runs `25931494966` / `25931919864` completed successfully.
 - Vercel production deployment `dpl_54fgcku2vTXqGELLWy9aarA73voU` is `READY` for commit `18371dbf4a3e48e0998c92e4e22204e0b804c3c4`.
 - Production `https://www.foldera.ai/api/health` returned `status=ok`, `build=18371db`, and `revision.git_sha=18371dbf4a3e48e0998c92e4e22204e0b804c3c4`.
