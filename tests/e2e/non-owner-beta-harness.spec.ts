@@ -253,7 +253,7 @@ describeAuthMocked('Non-owner beta simulated first path', () => {
       timeout: 15000,
     });
     await expect(page.getByRole('button', { name: /continue to dashboard/i })).toBeDisabled();
-    await expect(page.getByRole('button', { name: /skip for now/i })).toBeDisabled();
+    await expect(page.getByRole('button', { name: /skip for now/i })).toHaveCount(0);
     await expect(page.getByRole('link', { name: /connect google/i })).toHaveAttribute(
       'href',
       '/api/google/connect',

@@ -1526,8 +1526,14 @@ describeAuthMocked('Onboarding /onboard — connector step', () => {
 
     await expect(page.getByRole('heading', { name: /connect one source/i })).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/Foldera needs one connected mailbox or calendar before it can prepare a first read/i)).toBeVisible();
+    await expect(page.getByText(/Foldera only reads connected source context/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /continue to dashboard/i })).toBeDisabled();
-    await expect(page.getByRole('button', { name: /skip for now/i })).toBeDisabled();
+    await expect(page.getByRole('button', { name: /skip for now/i })).toHaveCount(0);
+    await expect(page.getByText(/what matters most to you/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^career$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^relationships$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^finances$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^health$/i })).toHaveCount(0);
     await expect(page.getByRole('link', { name: /connect google/i })).toBeVisible();
     await expect(page.getByRole('link', { name: /connect microsoft/i })).toBeVisible();
 
@@ -1545,6 +1551,80 @@ describeAuthMocked('Onboarding /onboard — connector step', () => {
     const response = await googleConnectResponse;
     expect(response.status()).toBe(307);
     expect(response.headers()['location']).toContain('https://accounts.google.com/o/oauth2/v2/auth');
+  });
+
+  test('connected first-run source can continue without focus-area setup', async ({ page }) => {
+    await setupOnboardingMocks(page, {
+      integrationsResponse: {
+        integrations: [
+          {
+            provider: 'google',
+            is_active: true,
+            sync_email: 'test@gmail.com',
+            needs_reauth: false,
+          },
+        ],
+      },
+    });
+
+    let setupPayload: { buckets?: unknown; skipped?: unknown } | null = null;
+    await page.route(matchApiPath('/api/onboard/set-goals'), async (route) => {
+      if (route.request().method() === 'POST') {
+        setupPayload = route.request().postDataJSON() as { buckets?: unknown; skipped?: unknown };
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: json({ ok: true, count: 0 }) });
+    });
+
+    await page.goto('/onboard');
+
+    await expect(page.getByRole('heading', { name: /connect one source/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Source connected. Foldera can check it now/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /continue to dashboard/i })).toBeEnabled();
+    await expect(page.getByRole('button', { name: /skip for now/i })).toHaveCount(0);
+    await expect(page.getByText(/what matters most to you/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^career$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^relationships$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^finances$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^health$/i })).toHaveCount(0);
+
+    const setupSaved = page.waitForResponse((response) => {
+      try {
+        return new URL(response.url()).pathname === '/api/onboard/set-goals';
+      } catch {
+        return false;
+      }
+    });
+    await page.getByRole('button', { name: /continue to dashboard/i }).click();
+    await setupSaved;
+    expect(setupPayload).toMatchObject({ buckets: [], skipped: false });
+  });
+
+  test('edit mode still exposes intentional focus editing without a source gate', async ({ page }) => {
+    await seedAuthenticatedSession(page, { hasOnboarded: true });
+    await attachCheckoutGuards(page);
+    await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+    await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+    await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+    await page.route(matchApiPath('/api/onboard/set-goals'), (route) => {
+      if (route.request().method() === 'POST') {
+        return route.fulfill({ status: 200, contentType: 'application/json', body: json({ ok: true, count: 1 }) });
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: json({ buckets: ['Career growth'], freeText: null }),
+      });
+    });
+
+    await page.goto('/onboard?edit=true');
+
+    await expect(page.getByRole('heading', { name: /edit your focus/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: /^career$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^relationships$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^finances$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^health$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^save$/i })).toBeEnabled();
+    await expect(page.getByRole('link', { name: /^cancel$/i })).toHaveAttribute('href', '/dashboard/settings');
   });
 
   test('connected first-run user resumes pending Pro checkout after setup', async ({ page }) => {
