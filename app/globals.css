@@ -2365,18 +2365,14 @@
     padding-inline: clamp(24px, 2.4vw, 36px);
   }
 
-  .foldera-dashboard-stage-brief > div.absolute {
-    top: clamp(54px, 7dvh, 68px);
-    bottom: clamp(92px, 12dvh, 126px);
+  .foldera-dashboard-stage-brief-body {
     padding: clamp(18px, 2.3dvh, 28px) clamp(28px, 3.2vw, 52px);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(96, 236, 255, 0.34) rgba(8, 18, 28, 0.86);
   }
 
   .foldera-dashboard-stage-brief > footer {
     height: clamp(92px, 12dvh, 126px);
-  }
-
-  .foldera-dashboard-stage-brief > p.absolute {
-    bottom: clamp(12px, 1.9dvh, 20px);
   }
 
   .foldera-dashboard-stage-brief [data-testid='dashboard-brief-directive-section'],
@@ -2446,15 +2442,13 @@
     margin-top: clamp(4px, 0.7dvh, 8px);
   }
 
-  .foldera-dashboard-stage-brief footer > div:first-child {
-    left: clamp(22px, 2.6vw, 38px);
-    top: clamp(32px, 4.5dvh, 48px);
-    font-size: clamp(13px, 1vw, 16px);
+  .foldera-dashboard-stage-brief-footer {
+    padding-inline: clamp(22px, 2.6vw, 38px);
+    padding-block: clamp(10px, 1.5dvh, 14px);
   }
 
-  .foldera-dashboard-stage-brief footer > div:nth-child(2) {
-    right: clamp(22px, 2.7vw, 40px);
-    top: clamp(24px, 3.8dvh, 38px);
+  .foldera-dashboard-stage-brief-footer > div > div:first-child > div:first-child {
+    font-size: clamp(13px, 1vw, 16px);
   }
 
   .foldera-dashboard-stage-body {
@@ -2552,7 +2546,25 @@
     }
 
     .foldera-dashboard-current-brief > div {
+      display: flex;
+      flex-direction: column;
       padding: 1rem;
+    }
+
+    .foldera-dashboard-current-brief [data-testid='dashboard-brief-directive-section'] {
+      order: 1;
+    }
+
+    .foldera-dashboard-current-brief [data-testid='dashboard-brief-why-section'] {
+      order: 2;
+    }
+
+    .foldera-dashboard-current-brief [data-testid='dashboard-brief-source-section'] {
+      order: 3;
+    }
+
+    .foldera-dashboard-current-brief [data-testid='dashboard-brief-draft-section'] {
+      order: 4;
     }
 
     .foldera-dashboard-current-brief > footer {
@@ -2601,14 +2613,12 @@
       height: clamp(48px, 6.4dvh, 58px);
     }
 
-    .foldera-dashboard-stage-brief > div.absolute {
-      top: clamp(48px, 6.4dvh, 58px);
-      bottom: clamp(80px, 10.5dvh, 98px);
+    .foldera-dashboard-stage-brief-body {
       padding-block: clamp(14px, 1.8dvh, 20px);
     }
 
     .foldera-dashboard-stage-brief > footer {
-      height: clamp(80px, 10.5dvh, 98px);
+      height: clamp(86px, 9.5dvh, 92px);
     }
 
     .foldera-dashboard-stage-brief [data-testid='dashboard-brief-directive-section'] h2 {
@@ -2643,22 +2653,21 @@
       padding-top: clamp(10px, 1.35dvh, 16px);
     }
 
-    .foldera-dashboard-stage-brief footer > div:first-child {
-      top: clamp(24px, 3.4dvh, 34px);
+    .foldera-dashboard-stage-brief-footer {
+      padding-block: clamp(8px, 1dvh, 10px);
+    }
+
+    .foldera-dashboard-stage-brief-footer > div > div:first-child > div:first-child {
       font-size: clamp(12px, 0.9vw, 14px);
     }
 
-    .foldera-dashboard-stage-brief footer > div:nth-child(2) {
-      top: clamp(18px, 2.9dvh, 26px);
-    }
-
     .foldera-dashboard-stage-foot-btn {
-      height: 44px !important;
+      height: 40px !important;
       font-size: 13px;
     }
 
     .foldera-dashboard-stage-approve-btn {
-      height: 48px !important;
+      height: 44px !important;
       font-size: 15px;
     }
 
@@ -2667,7 +2676,7 @@
     }
 
     .foldera-dashboard-right-rail .foldera-dashboard-upload-panel {
-      height: clamp(140px, 17dvh, 180px);
+      height: clamp(122px, 14.5dvh, 158px);
       padding: 1rem;
     }
   }

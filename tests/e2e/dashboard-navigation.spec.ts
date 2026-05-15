@@ -345,10 +345,12 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
       const viewportWidth = window.innerWidth;
       const card = document.querySelector('.foldera-dashboard-stage-brief') as HTMLElement | null;
       const footer = card?.querySelector('footer') as HTMLElement | null;
+      const body = card?.querySelector('.foldera-dashboard-stage-brief-body') as HTMLElement | null;
       const rightRail = document.querySelector('.foldera-dashboard-right-rail') as HTMLElement | null;
       const upload = document.querySelector('.foldera-dashboard-upload-panel') as HTMLElement | null;
       const cardBox = card?.getBoundingClientRect();
       const footerBox = footer?.getBoundingClientRect();
+      const bodyBox = body?.getBoundingClientRect();
       const railBox = rightRail?.getBoundingClientRect();
       const uploadBox = upload?.getBoundingClientRect();
       return {
@@ -357,6 +359,8 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
         cardHeight: cardBox?.height ?? 0,
         cardWidth: cardBox?.width ?? 0,
         cardBottom: cardBox?.bottom ?? 0,
+        bodyBottom: bodyBox?.bottom ?? 0,
+        footerTop: footerBox?.top ?? 0,
         footerBottom: footerBox?.bottom ?? 0,
         railBottom: railBox?.bottom ?? 0,
         uploadBottom: uploadBox?.bottom ?? 0,
@@ -366,6 +370,7 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     expect(appFit.cardWidth).toBeGreaterThan(appFit.viewportWidth * 0.55);
     expect(appFit.cardHeight).toBeGreaterThan(appFit.viewportHeight * 0.62);
     expect(appFit.cardBottom).toBeLessThanOrEqual(appFit.viewportHeight + 1);
+    expect(appFit.bodyBottom).toBeLessThanOrEqual(appFit.footerTop + 1);
     expect(appFit.footerBottom).toBeLessThanOrEqual(appFit.viewportHeight + 1);
     expect(appFit.railBottom).toBeLessThanOrEqual(appFit.viewportHeight + 1);
     if (appFit.uploadVisible) {
@@ -693,7 +698,7 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(slate).toBeVisible({ timeout: 7000 });
     await expect(page.getByTestId('dashboard-loading-card')).toHaveCount(0);
     await expect(slate.getByText(/Foldera checked today/i)).toBeVisible();
-    await expect(slate.getByText(/Needs fresher source/i)).toBeVisible();
+    await expect(slate.getByText(/Held back safely/i)).toBeVisible();
     await expect(slate.getByText(/stored artifact no longer matches the current work/i).first()).toBeVisible();
     await expect(slate.getByText(/Source trail/i)).toBeVisible();
     await expect(slate.getByText(/Foldera held back/i).first()).toBeVisible();
@@ -785,6 +790,20 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     expect(mobileFit.cardHeight).toBeGreaterThan(540);
     expect(mobileFit.cardBottom).toBeLessThanOrEqual(mobileFit.navTop + 1);
     expect(mobileFit.footerBottom).toBeLessThanOrEqual(mobileFit.navTop + 1);
+
+    const sourceTrailFit = await page.evaluate(() => {
+      const source = document.querySelector(
+        '[data-testid="dashboard-brief-source-section"]',
+      ) as HTMLElement | null;
+      const box = source?.getBoundingClientRect();
+      return {
+        visible:
+          Boolean(box) &&
+          (box?.top ?? 0) < window.innerHeight &&
+          (box?.bottom ?? 0) > 0,
+      };
+    });
+    expect(sourceTrailFit.visible).toBe(true);
   });
 
   test('mobile bottom nav swaps dashboard panels in-shell', async ({ page }) => {
@@ -836,6 +855,26 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByText(/No safe finished work today/i)).toHaveCount(0);
     await expect(page.getByText(/No safe artifact/i)).toHaveCount(0);
     await expect(page.getByText(/stale_status_without_current_artifact_facts/i)).toHaveCount(0);
+  });
+
+  test('no-safe dashboard humanizes weak pressure receipt text', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setupDashboardMocks(page, {
+      latestResponse: {
+        artifact_readiness_state: 'NO_SAFE_ARTIFACT',
+        finished_artifact_verdict: 'no_finished_artifact',
+        no_safe_artifact_reason: 'NO REAL PRESSURE',
+      },
+    });
+    await page.goto('/dashboard');
+
+    const slate = page.getByTestId('dashboard-daily-utility-slate');
+    await expect(slate).toBeVisible({ timeout: 7000 });
+    await expect(slate).toContainText('Held back safely');
+    await expect(slate).toContainText(
+      'The current source trail does not show enough real pressure for finished work.',
+    );
+    await expect(slate).not.toContainText('NO REAL PRESSURE');
   });
 
   test('empty latest state promotes the current best move from deterministic daily value', async ({ page }) => {

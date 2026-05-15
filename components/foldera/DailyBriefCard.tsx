@@ -191,8 +191,8 @@ export function DailyBriefCard({
 
   if (stageDesktop && dashboardCta) {
     return (
-      <article className={`foldera-brief-shell foldera-dashboard-stage-brief relative z-10 h-full w-full rounded-[24px] ${className}`}>
-        <header className="absolute inset-x-0 top-0 z-10 h-[68px] border-b border-white/8 px-[36px]">
+      <article className={`foldera-brief-shell foldera-dashboard-stage-brief relative z-10 flex h-full w-full flex-col overflow-hidden rounded-[24px] ${className}`}>
+        <header className="z-10 h-[68px] shrink-0 border-b border-white/8 px-[36px]">
           <div className="flex h-full items-center justify-between gap-3">
             <span className="text-[16px] font-semibold uppercase tracking-[0.16em] text-text-muted">{eyebrowLabel}</span>
             <div className="flex items-center gap-3">
@@ -202,7 +202,7 @@ export function DailyBriefCard({
           </div>
         </header>
 
-        <div className="absolute inset-x-0 bottom-[126px] top-[68px] z-10 overflow-y-auto px-[52px] py-[28px]">
+        <div className="foldera-dashboard-stage-brief-body z-10 min-h-0 flex-1 overflow-y-auto px-[52px] py-[28px]">
           <section
             className="grid grid-cols-[126px_minmax(0,1fr)] gap-0"
             data-testid="dashboard-brief-directive-section"
@@ -269,37 +269,41 @@ export function DailyBriefCard({
           </section>
         </div>
 
-        <footer className="absolute inset-x-0 bottom-0 z-20 h-[126px] border-t border-white/8">
-          <div className="absolute left-[38px] top-[48px] flex items-center gap-2.5 text-[16px] text-text-muted">
-            <Shield className="h-5 w-5 shrink-0 text-text-secondary" aria-hidden="true" />
-            <span>{footerText}</span>
-          </div>
-          <div className="absolute right-[40px] top-[38px] flex items-start gap-3">
-            {otherActions.map((action) => {
-              const stageClass = action.kind === 'amber' ? 'w-[194px] h-[52px]' : 'w-[176px] h-[52px]';
-              return (
-                <ActionButton
-                  key={action.label}
-                  action={{ ...action, className: `foldera-dashboard-stage-foot-btn ${stageClass}` }}
-                  dashboardCta
-                  stageDesktop
-                />
-              );
-            })}
-            {primaryAction ? (
-              <div className="flex w-[252px] flex-col items-center">
-                <ActionButton
-                  action={{ ...primaryAction, className: 'h-[56px] w-[252px] whitespace-nowrap' }}
-                  dashboardCta
-                  stageDesktop
-                />
+        <footer className="foldera-dashboard-stage-brief-footer z-20 h-[126px] shrink-0 border-t border-white/8 px-[38px] py-[14px]">
+          <div className="flex h-full min-h-0 flex-col justify-center gap-2">
+            <div className="flex min-h-0 items-center justify-between gap-5">
+              <div className="flex min-w-0 items-center gap-2.5 text-[16px] text-text-muted">
+                <Shield className="h-5 w-5 shrink-0 text-text-secondary" aria-hidden="true" />
+                <span className="min-w-0 truncate">{footerText}</span>
               </div>
-            ) : null}
+              <div className="flex shrink-0 items-center gap-3">
+                {otherActions.map((action) => {
+                  const stageClass = action.kind === 'amber' ? 'h-[52px] w-[150px]' : 'h-[52px] w-[156px]';
+                  return (
+                    <ActionButton
+                      key={action.label}
+                      action={{ ...action, className: `foldera-dashboard-stage-foot-btn ${stageClass}` }}
+                      dashboardCta
+                      stageDesktop
+                    />
+                  );
+                })}
+                {primaryAction ? (
+                  <div className="flex w-[252px] flex-col items-center">
+                    <ActionButton
+                  action={{ ...primaryAction, className: 'h-[56px] w-[224px] whitespace-nowrap' }}
+                      dashboardCta
+                      stageDesktop
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            <p className="text-center text-[14px] leading-tight text-text-muted">
+              {nextStep}
+            </p>
           </div>
         </footer>
-        <p className="absolute bottom-[20px] left-0 right-0 text-center text-[14px] leading-tight text-text-muted">
-          {nextStep}
-        </p>
       </article>
     );
   }

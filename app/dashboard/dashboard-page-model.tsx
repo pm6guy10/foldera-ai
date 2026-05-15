@@ -305,6 +305,12 @@ export function buildMissingInputPrompt(
 function sanitizeDailyValueText(value: string | null | undefined, fallback: string): string {
   const trimmed = asTrimmedString(value);
   if (!trimmed) return fallback;
+  if (/\bNO REAL PRESSURE\b/i.test(trimmed)) {
+    return trimmed.replace(
+      /\b(?:Why Foldera stopped:\s*)?NO REAL PRESSURE\b/gi,
+      'The current source trail does not show enough real pressure for finished work.',
+    );
+  }
   if (INTERNAL_MISSING_INPUT_PATTERNS.some((pattern) => pattern.test(trimmed))) {
     return fallback;
   }
@@ -340,6 +346,9 @@ function friendlyNoSafeArtifactReason(reason: string | null): string {
   }
   if (/\brecipient\b/.test(normalized)) {
     return 'Foldera needs a grounded recipient before it can finish a safe message.';
+  }
+  if (/\bno real pressure\b/.test(normalized)) {
+    return 'The current source trail does not show enough real pressure for finished work.';
   }
 
   return sanitizeDailyValueText(trimmed, 'The evidence was not strong enough for finished work.');
@@ -488,6 +497,8 @@ export function buildDailyValueState(
   const statusLabel =
     hasPrimaryMove
       ? 'Current best move'
+      : slate?.finished_artifact_verdict === 'no_finished_artifact'
+        ? 'Held back safely'
       : missingInputPrompt?.kind === 'freshness'
       ? 'Needs fresher source'
       : missingInputPrompt?.kind === 'recipient'

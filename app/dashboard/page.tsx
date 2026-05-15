@@ -885,7 +885,7 @@ export default function DashboardPage() {
         sourceLabel="Source trail"
         nextStep={dashboardNextStep}
         statusText={dashboardStatusText}
-        footerText="Grounded in connected sources"
+        footerText="Source grounded"
         actions={cardActions}
       />
     </div>

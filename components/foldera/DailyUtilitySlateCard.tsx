@@ -40,6 +40,12 @@ function evidenceKey(item: DailyUtilitySlateItem, entry: string): string {
 }
 
 function friendlySlateText(value: string, fallback: string): string {
+  if (/\bNO REAL PRESSURE\b/i.test(value)) {
+    return value.replace(
+      /\b(?:Why Foldera stopped:\s*)?NO REAL PRESSURE\b/gi,
+      'The current source trail does not show enough real pressure for finished work.',
+    );
+  }
   if (/\bmissing_[a-z0-9_]+\b|\bweak_[a-z0-9_]+\b|\bstale_[a-z0-9_]+\b|\b[a-z]+_[a-z0-9_]+_[a-z0-9_]+\b/i.test(value)) {
     return fallback;
   }
@@ -48,6 +54,9 @@ function friendlySlateText(value: string, fallback: string): string {
 
 function friendlyStopReason(reason: string): string {
   const normalized = reason.replace(/[_-]+/g, ' ').toLowerCase();
+  if (/\bno real pressure\b/.test(normalized)) {
+    return 'The current source trail does not show enough real pressure for finished work.';
+  }
   if (/\bstale\b|\bfresher\b|\bcurrent artifact facts\b/.test(normalized)) {
     return 'Foldera needs fresher source data before it can finish this safely.';
   }
@@ -172,26 +181,26 @@ export function DailyUtilitySlateCard({
 
   return (
     <div
-      className="foldera-dashboard-brief-card foldera-brief-shell h-full w-full overflow-y-auto px-5 py-6 sm:px-8 sm:py-8"
+      className="foldera-dashboard-brief-card foldera-brief-shell h-full w-full overflow-y-auto px-5 py-5 sm:px-7 sm:py-6"
       data-testid="dashboard-daily-utility-slate"
     >
-      <div className="mx-auto grid min-h-full w-full max-w-[1060px] gap-7 xl:grid-cols-[minmax(0,0.95fr)_minmax(340px,0.78fr)] xl:items-center">
+      <div className="mx-auto grid min-h-full w-full max-w-[1060px] gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(340px,0.78fr)] xl:items-start">
         <section className="min-w-0">
           <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
             <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
             {missingInputPrompt?.heading ?? 'Today'}
           </div>
-          <h2 className="mt-5 max-w-[700px] text-[30px] font-semibold leading-[1.05] tracking-[-0.02em] text-text-primary sm:text-[42px] lg:text-[48px]">
+          <h2 className="mt-4 max-w-[700px] text-[30px] font-semibold leading-[1.05] tracking-[-0.02em] text-text-primary sm:text-[38px] lg:text-[42px]">
             {dailyValueState.heading}
           </h2>
           <p className="mt-4 inline-flex rounded-full border border-amber-300/20 bg-amber-300/8 px-3 py-1.5 text-sm font-semibold text-amber-200">
             {dailyValueState.statusLabel}
           </p>
-          <p className="mt-5 max-w-[620px] text-[16px] leading-7 text-text-secondary sm:text-[17px] sm:leading-8">
+          <p className="mt-4 max-w-[620px] text-[16px] leading-7 text-text-secondary sm:text-[17px] sm:leading-7">
             {dailyValueState.summary}
           </p>
           {dailyValueState.actionHref && dailyValueState.actionLabel ? (
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-wrap gap-3">
               <Link href={dailyValueState.actionHref} className="foldera-button-secondary">
                 {dailyValueState.actionLabel}
               </Link>
@@ -208,7 +217,7 @@ export function DailyUtilitySlateCard({
               ) : null}
             </div>
           ) : canCopy ? (
-            <div className="mt-6">
+            <div className="mt-5">
               <button
                 type="button"
                 className="foldera-button-primary"
@@ -221,7 +230,7 @@ export function DailyUtilitySlateCard({
             </div>
           ) : null}
 
-          <div className="mt-8 grid gap-3 text-sm text-text-secondary lg:max-w-[700px]">
+          <div className="mt-6 grid gap-3 text-sm text-text-secondary lg:max-w-[700px]">
             {dailyValueState.valueBlocks.map((block) => (
               <article key={block.label} className="rounded-[14px] border border-white/10 bg-white/[0.025] p-4">
                 <div className="flex items-center gap-2">
