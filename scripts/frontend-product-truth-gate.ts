@@ -24,7 +24,22 @@ const requiredDocPhrases = [
   'interaction audit',
   'banned-copy audit',
   'finished, requirements-needed, and no-safe states',
+  'production current desktop 1440x900',
+  'production current mobile 390x844',
+  'Foldera held back because the evidence was not strong enough.',
+  '## Layout Contract',
+  'layout contract result',
+  'API-only or backend-only proof is not a frontend pass',
   'may not say DONE, PROVEN, or next blocker is GATE_9',
+];
+
+const requiredReceiptPhrases = [
+  'gate:frontend',
+  'screenshot matrix',
+  'interaction matrix',
+  'banned-copy audit',
+  'layout contract',
+  'production current screenshots',
 ];
 
 function readText(relativePath: string): string {
@@ -94,6 +109,27 @@ results.push(
   result('latest history references gate:frontend', /gate:frontend/i.test(latestHistorySlice), 'SESSION_HISTORY.md'),
   result('latest history references screenshot matrix', /screenshot matrix/i.test(latestHistorySlice), 'SESSION_HISTORY.md'),
   result('latest history references interaction matrix', /interaction matrix/i.test(latestHistorySlice), 'SESSION_HISTORY.md'),
+);
+
+for (const phrase of requiredReceiptPhrases) {
+  const pattern = new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+  results.push(
+    result(`handoff frontend receipt phrase: ${phrase}`, pattern.test(handoff), 'ACTIVE_HANDOFF.md'),
+    result(`latest history frontend receipt phrase: ${phrase}`, pattern.test(latestHistorySlice), 'SESSION_HISTORY.md'),
+  );
+}
+
+results.push(
+  result(
+    'backend-only frontend done claim is blocked',
+    /API-only or backend-only proof is not a frontend pass/i.test(readText(docPath)),
+    docPath,
+  ),
+  result(
+    'layout contract is executable doctrine',
+    /## Layout Contract/i.test(readText(docPath)) && /text hidden behind footer controls/i.test(readText(docPath)),
+    docPath,
+  ),
 );
 
 const doctrineFiles = ['CODEX_START.md', 'GPT.md', 'docs/QUALITY_GATES.md', docPath];

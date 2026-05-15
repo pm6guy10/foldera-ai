@@ -66,6 +66,19 @@ describe('frontend product truth gate', () => {
     expect(doc).toContain('interaction audit');
     expect(doc).toContain('banned-copy audit');
     expect(doc).toContain('may not say DONE, PROVEN, or next blocker is GATE_9');
+    expect(doc).toContain('production current desktop 1440x900');
+    expect(doc).toContain('production current mobile 390x844');
+    expect(doc).toContain('## Layout Contract');
+    expect(doc).toContain('Foldera held back because the evidence was not strong enough.');
+    expect(doc).toContain('API-only or backend-only proof is not a frontend pass');
+
+    const gateScript = fs.readFileSync(
+      path.join(ROOT, 'scripts/frontend-product-truth-gate.ts'),
+      'utf8',
+    );
+    expect(gateScript).toContain('production current screenshots');
+    expect(gateScript).toContain('layout contract');
+    expect(gateScript).toContain('backend-only frontend done claim');
   });
 
   it('keeps banned backend/internal copy out of dashboard UI source strings', () => {

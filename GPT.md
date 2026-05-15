@@ -83,7 +83,7 @@ Then name the exact failing workflow, job, step, and error. Do not call the prod
 
 When Codex claims dashboard/frontend work is done, GPT must require `npm run gate:frontend` proof before accepting the claim or allowing the next blocker to be called GATE_9.
 
-The frontend proof must include committed screenshot baselines, an interaction audit, a banned-copy audit, production current screenshots when live frontend proof is claimed, and deterministic fixtures for finished, requirements-needed, and no-safe states. If any piece is missing, say:
+The frontend proof must include committed screenshot baselines, an interaction audit, a banned-copy audit, layout contract proof, production current screenshots when live frontend proof is claimed, and deterministic fixtures for finished, requirements-needed, and no-safe states. API-only or backend-only proof is not a frontend pass. If any piece is missing, say:
 
 ```text
 NOT DONE - frontend regression lock incomplete.

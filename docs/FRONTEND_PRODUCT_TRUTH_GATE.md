@@ -2,6 +2,8 @@
 
 This gate protects dashboard/frontend proof. It is regression prevention, not visual polish.
 
+The dashboard money shot must read as one focused executive surface: one current move or honest held-back state, one visible artifact state, a source trail, and safe controls. The visual reference is the dark Foldera command-center direction: compact hierarchy, cyan/emerald accents, restrained support rail, and no debug/admin language.
+
 ## Command
 
 ```bash
@@ -19,12 +21,24 @@ The gate requires:
 - banned-copy audit for backend/internal phrases in visible dashboard UI
 - frontend receipt proof in `ACTIVE_HANDOFF.md` and `SESSION_HISTORY.md`
 - production current screenshots attached or referenced when the frontend claim is about the live app
+- proof that API-only or backend-only proof is not a frontend pass
 
 The fixture screenshots are deterministic mocked-auth proof only. They must not use production owner data, write fake DB rows, or be called beta proof.
 
 ## Snapshot Matrix
 
-Committed Playwright baselines must cover:
+Frontend/dashboard work is not done without screenshot proof for:
+
+- production current desktop 1440x900
+- production current mobile 390x844
+- finished-artifact-ready fixture desktop 1440x900
+- finished-artifact-ready fixture mobile 390x844
+- requirements-needed fixture desktop 1440x900
+- requirements-needed fixture mobile 390x844
+- no-safe-artifact fixture desktop 1440x900
+- no-safe-artifact fixture mobile 390x844
+
+Committed Playwright baselines must cover the deterministic fixture states:
 
 - finished-artifact-ready desktop 1440x900
 - finished-artifact-ready mobile 390x844
@@ -43,6 +57,8 @@ Each state must prove:
 - no backend/internal copy
 - state label visible
 - main action obvious
+
+Production-current screenshots may use mocked auth and intercepted deterministic API responses only to prove deployed frontend rendering without exposing private owner data. They must be labeled as frontend/runtime proof, not beta proof or production-data proof.
 
 ## Interaction Matrix
 
@@ -102,6 +118,35 @@ These phrases may not appear in visible dashboard UI:
 
 Internal mentions are allowed only in docs, tests, comments, or backend logs. They are not allowed as visible user-facing dashboard copy.
 
+Allowed human copy examples:
+
+- "Foldera held back because the evidence was not strong enough."
+- "No finished action today."
+- "This needs more input before Foldera can finish it."
+- "Ready to save."
+- "Inputs needed."
+- "Checked today."
+- "Why Foldera held back."
+- "Source trail."
+- "What you can do next."
+
+## Layout Contract
+
+These are hard failures for dashboard/frontend work:
+
+- text hidden behind footer controls
+- clipped source trail
+- mobile cramping title, reason, action, or source
+- loading skeleton after latest/readback resolves
+- horizontal overflow
+- right rail fighting the main card
+- desktop reading like stacked debug cards
+- finished state lacking visible source, control, or action
+- requirements state hiding missing inputs
+- no-safe state feeling like a fallback/debug dump
+
+The main card may scroll internally when content is long, but footer controls must remain visually separate from the body text. The source trail rail may scroll internally, but it may not clip or cover the support/upload panel.
+
 ## Receipt Rule
 
 For dashboard/frontend work, the latest receipt must reference:
@@ -110,6 +155,10 @@ For dashboard/frontend work, the latest receipt must reference:
 - screenshot matrix result
 - interaction matrix result
 - banned-copy audit result
+- layout contract result
 - production current screenshots when live frontend proof is claimed
+- whether production-current screenshots used mocked auth/intercepted data and therefore are not beta proof
 
 If any item is missing, the frontend claim is incomplete.
+
+API-only or backend-only proof is not a frontend pass. A final dashboard/frontend report may not say DONE, PROVEN, or next blocker is GATE_9 unless screenshot, interaction, copy, layout, and production-current receipt proof all pass.

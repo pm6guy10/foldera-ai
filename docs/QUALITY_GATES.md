@@ -114,7 +114,7 @@ Fail: Codex claims UI is good without screenshots or mechanical visual proof.
 
 Executable proof must stay gate-only: `npm run gate:visual` may pass from deterministic mock visual proof when QG_10 is passing, current move/source trail/controls are covered, dashboard desktop/mobile screenshots exist with overflow checks, and the proof is labeled mock-only rather than real beta proof.
 
-Dashboard/frontend work has a stricter lock in `docs/FRONTEND_PRODUCT_TRUTH_GATE.md`. Codex may not say DONE, PROVEN, or next blocker is GATE_9 for dashboard/frontend work unless `npm run gate:frontend` passes. The frontend gate requires committed screenshot baselines, interaction audit coverage, banned-copy audit coverage, production current screenshots when live frontend proof is claimed, and deterministic fixtures for finished, requirements-needed, and no-safe states.
+Dashboard/frontend work has a stricter lock in `docs/FRONTEND_PRODUCT_TRUTH_GATE.md`. Codex may not say DONE, PROVEN, or next blocker is GATE_9 for dashboard/frontend work unless `npm run gate:frontend` passes. The frontend gate requires committed screenshot baselines, interaction audit coverage, banned-copy audit coverage, layout contract proof, production current screenshots when live frontend proof is claimed, and deterministic fixtures for finished, requirements-needed, and no-safe states. API-only or backend-only proof is not a frontend pass.
 
 ### QG_12_PRICING_SCALE_QUALITY
 
