@@ -2544,13 +2544,34 @@
     }
 
     .foldera-dashboard-current-brief > div > section.grid > div:first-child {
-      justify-self: start;
+      display: none;
+    }
+
+    .foldera-dashboard-current-brief > header {
+      padding: 0.75rem 1rem;
+    }
+
+    .foldera-dashboard-current-brief > div {
+      padding: 1rem;
+    }
+
+    .foldera-dashboard-current-brief > footer {
+      padding: 0.75rem 1rem;
     }
 
     .foldera-dashboard-current-brief > div > section:first-child h2 {
       max-width: 100%;
-      font-size: clamp(22px, 6.9vw, 28px);
+      font-size: clamp(20px, 6.2vw, 26px);
       line-height: 1.14;
+    }
+
+    .foldera-dashboard-current-brief > footer .foldera-dashboard-action-btn {
+      min-height: 42px;
+      padding-inline: 0.875rem;
+    }
+
+    .foldera-dashboard-current-brief > footer .foldera-dashboard-approve-btn {
+      min-height: 48px;
     }
 
     .foldera-dashboard-current-brief .foldera-dashboard-artifact-body {
@@ -2558,7 +2579,7 @@
     }
   }
 
-  @media (max-height: 860px) {
+  @media (max-height: 920px) {
     .foldera-dashboard-stage-header {
       padding-block: clamp(10px, 1.55dvh, 16px);
     }

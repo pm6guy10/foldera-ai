@@ -151,6 +151,7 @@ async function setupDashboardMocks(
     latestResponse?: unknown;
     detailResponse?: unknown;
     dailyValueResponse?: unknown;
+    hangDailyValue?: boolean;
     integrationStatusResponse?: unknown;
     documentCollectionIntakeBodies?: unknown[];
   } = {},
@@ -271,10 +272,13 @@ async function setupDashboardMocks(
       body: json(options.detailResponse ?? DIRECTIVE_RESPONSE),
     });
   });
-  await page.route(
-    matchApiPath('/api/conviction/daily-value'),
-    fulfillJson(options.dailyValueResponse ?? { daily_utility_slate: null }),
-  );
+  await page.route(matchApiPath('/api/conviction/daily-value'), async (route) => {
+    if (options.hangDailyValue) {
+      await new Promise(() => undefined);
+      return;
+    }
+    return fulfillJson(options.dailyValueResponse ?? { daily_utility_slate: null })(route);
+  });
   await page.route(matchApiPath('/api/conviction/history'), fulfillJson(HISTORY_RESPONSE));
   await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
     if (route.request().method() !== 'POST') return route.continue();
@@ -670,6 +674,29 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
           '1. Owned benefits appeal memo - source body pasted. 2. Owned resume review checklist.',
       },
     ]);
+  });
+
+  test('no-safe latest state does not get stuck when daily value fallback stalls', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await setupDashboardMocks(page, {
+      hangDailyValue: true,
+      latestResponse: {
+        artifact_readiness_state: 'NO_SAFE_ARTIFACT',
+        finished_artifact_verdict: 'no_finished_artifact',
+        no_safe_artifact_reason:
+          'stale_selected_move_artifact: stored winner fingerprint no longer matches current winner.',
+      },
+    });
+    await page.goto('/dashboard');
+
+    const slate = page.getByTestId('dashboard-daily-utility-slate');
+    await expect(slate).toBeVisible({ timeout: 7000 });
+    await expect(page.getByTestId('dashboard-loading-card')).toHaveCount(0);
+    await expect(slate.getByText(/Foldera checked today/i)).toBeVisible();
+    await expect(slate.getByText(/Needs fresher source/i)).toBeVisible();
+    await expect(slate.getByText(/stored artifact no longer matches the current work/i).first()).toBeVisible();
+    await expect(slate.getByText(/Source trail/i)).toBeVisible();
+    await expect(slate.getByText(/Foldera held back/i).first()).toBeVisible();
   });
 
   test('snooze action posts skip decision', async ({ page }) => {

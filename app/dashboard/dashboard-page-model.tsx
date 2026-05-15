@@ -311,6 +311,69 @@ function sanitizeDailyValueText(value: string | null | undefined, fallback: stri
   return trimmed.replace(/\bFoldera stopped\b/gi, 'Foldera held back');
 }
 
+function readRecordField(value: unknown, key: string): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return (value as Record<string, unknown>)[key];
+}
+
+function friendlyNoSafeArtifactReason(reason: string | null): string {
+  const trimmed = asTrimmedString(reason);
+  if (!trimmed) {
+    return 'The evidence was not strong enough for finished work.';
+  }
+
+  const normalized = trimmed.replace(/[_-]+/g, ' ').toLowerCase();
+  if (
+    /\bstale selected move artifact\b/.test(normalized) ||
+    /\bstored winner fingerprint\b/.test(normalized)
+  ) {
+    return 'The stored artifact no longer matches the current work.';
+  }
+  if (/\bmissing source document bod/.test(normalized) || /\bsource document bod/.test(normalized)) {
+    return 'Foldera needs the source document body before it can finish this safely.';
+  }
+  if (/\bsubmission url\b|\bsubmission link\b/.test(normalized)) {
+    return 'Foldera needs the submission link before it can finish this safely.';
+  }
+  if (/\binsufficient\b|\bweak\b|\btoo thin\b|\bsource\b/.test(normalized)) {
+    return 'Foldera needs stronger source evidence before it can finish this safely.';
+  }
+  if (/\brecipient\b/.test(normalized)) {
+    return 'Foldera needs a grounded recipient before it can finish a safe message.';
+  }
+
+  return sanitizeDailyValueText(trimmed, 'The evidence was not strong enough for finished work.');
+}
+
+export function buildNoSafeArtifactSlate(latest: unknown): DailyUtilitySlate | null {
+  const readiness = asTrimmedString(readRecordField(latest, 'artifact_readiness_state'));
+  const verdict = asTrimmedString(readRecordField(latest, 'finished_artifact_verdict'));
+  const reason = friendlyNoSafeArtifactReason(
+    asTrimmedString(readRecordField(latest, 'no_safe_artifact_reason')) ??
+      asTrimmedString(readRecordField(latest, 'artifact_readiness_reason')) ??
+      asTrimmedString(readRecordField(latest, 'reason')),
+  );
+
+  if (readiness !== 'NO_SAFE_ARTIFACT' && verdict !== 'no_finished_artifact') {
+    return null;
+  }
+
+  return {
+    finished_artifact_verdict: 'no_finished_artifact',
+    watch_item: {
+      title: 'No safe finished work today',
+      status: 'watch_item',
+      evidence: [
+        reason,
+        'Foldera checked the latest work receipt before holding back.',
+      ],
+      why_it_matters: 'Foldera held back instead of showing stale or unsupported work.',
+      no_action_reason: reason,
+      source_refs: ['Latest work receipt'],
+    },
+  };
+}
+
 function getSlateItems(slate: DailyUtilitySlate | null | undefined): DailyUtilitySlateItem[] {
   if (!slate) return [];
   return [

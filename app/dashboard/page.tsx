@@ -31,6 +31,7 @@ import {
   asTrimmedString,
   buildMissingInputPrompt,
   buildDailyValueState,
+  buildNoSafeArtifactSlate,
   buildDecisionSuccessNotice,
   buildDashboardSourceTrail,
   computeStageMetrics,
@@ -63,6 +64,9 @@ import {
   type LoadLatestResult,
   type StageMetrics,
 } from './dashboard-page-model';
+
+const DAILY_VALUE_FALLBACK_TIMEOUT_MS = 4500;
+
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const [activePanel, setActivePanel] = useState<DashboardPanelKey>('today');
@@ -137,11 +141,18 @@ export default function DashboardPage() {
       let slate =
         !action && isDailyUtilitySlate(latest?.daily_utility_slate)
           ? latest.daily_utility_slate
-          : null;
+          : buildNoSafeArtifactSlate(latest);
       if (!action) {
+        const dailyValueController = new AbortController();
+        const abortDailyValue = () => dailyValueController.abort();
+        const dailyValueTimeout = window.setTimeout(
+          abortDailyValue,
+          DAILY_VALUE_FALLBACK_TIMEOUT_MS,
+        );
+        controller.signal.addEventListener('abort', abortDailyValue, { once: true });
         try {
           const dailyValueRes = await fetch('/api/conviction/daily-value', {
-            signal: controller.signal,
+            signal: dailyValueController.signal,
             cache: cacheMode,
           });
           if (!controller.signal.aborted && dailyValueRes.ok) {
@@ -152,6 +163,9 @@ export default function DashboardPage() {
           }
         } catch {
           // The receipt-backed latest slate remains the fallback if live daily value is unavailable.
+        } finally {
+          window.clearTimeout(dailyValueTimeout);
+          controller.signal.removeEventListener('abort', abortDailyValue);
         }
       }
       if (controller.signal.aborted) {

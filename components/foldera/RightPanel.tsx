@@ -58,7 +58,7 @@ export function RightPanel({
   if (stageDesktop) {
     return (
       <div className="flex h-full flex-col gap-6">
-        <div className="foldera-panel foldera-dashboard-right-rail-panel min-h-0 flex-1 p-6">
+        <div className="foldera-panel foldera-dashboard-right-rail-panel min-h-0 flex-1 overflow-y-auto p-6">
           <div className="flex items-center justify-between gap-3">
             <p className="foldera-eyebrow">{hasSourceTrail ? 'Source trail' : 'How this brief works'}</p>
             <a href={learnMoreHref} className="shrink-0 text-sm text-text-muted hover:text-text-primary">
