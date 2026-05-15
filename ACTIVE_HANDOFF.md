@@ -1,13 +1,16 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-14 16:45 PT
-Current slice: Dashboard line split CI drift repaired and externally verified.
+Last updated: 2026-05-14 18:05 PT
+Current slice: Receipt truth correction after dashboard line split CI repair.
 Current mode: no product work, no UI polish, no paid generation, no outbound email, no Stripe, no schema, no artifact generation/readback changes, no beta proof.
 Last verified runtime/product SHA: `80f6be7163a50f6e6ddb3557c292bd984e9d682d`
 Latest product commit: `Split dashboard artifact body component`
-GitHub Actions status for verified SHA: `CI #1026`, `Health Gate #610`, `semgrep #1527`, `Production E2E #1190`, and `Deploy to Vercel #962` all succeeded.
-Vercel status for verified SHA: READY; deployment `dpl_7fSh74PXguRbqopLzH6yt77L8Rnd`.
-Production /api/health SHA: `80f6be7163a50f6e6ddb3557c292bd984e9d682d`
+Last externally verified receipt/proof SHA: `63a4bd7c6f94544af944a5ab5ddaaefc2f72d37a`
+Latest externally verified receipt commit: `Record dashboard split CI repair proof`
+GitHub Actions status for last externally verified receipt/proof SHA: `CI #290`, `Health Gate #611`, `Production E2E #1191`, and `Deploy to Vercel #963` all succeeded.
+Vercel status for last externally verified receipt/proof SHA: READY; deployment `dpl_Dp4Lkm4fSX3FZoNcnER9aPiTKKpA`.
+Production /api/health SHA: `63a4bd7c6f94544af944a5ab5ddaaefc2f72d37a`
+This edit is receipt-only: no product/runtime behavior changed. The commit containing this edit must be verified externally after push; this file must not embed its own future SHA.
 Receipt rule: Product/runtime commits require GitHub CI, Vercel, and production `/api/health` for the exact SHA. Receipt-only commits may record external proof without requiring this file to embed the SHA of its own future commit.
 
 ## Current Truth
@@ -16,7 +19,7 @@ Receipt rule: Product/runtime commits require GitHub CI, Vercel, and production 
 - The repair was intentionally mechanical: the dashboard artifact body rendering moved to `components/dashboard/DashboardArtifactBody.tsx`.
 - `app/dashboard/page.tsx` is now `971` lines by local line count and passes the split guard.
 - No product behavior, route behavior, artifact generation/readback logic, schema, Stripe, paid generation, outbound email, fake source data, fake users, or beta proof changed.
-- The earlier internal blocker before `GATE_9_REAL_NON_OWNER_BETA` is resolved for SHA `80f6be7163a50f6e6ddb3557c292bd984e9d682d`.
+- The earlier internal blocker before `GATE_9_REAL_NON_OWNER_BETA` is resolved and receipt-verified through SHA `63a4bd7c6f94544af944a5ab5ddaaefc2f72d37a`.
 - Real non-owner beta proof remains external. Finished `.docx` work remains blocked by Brandon-owned source files/bodies, document topics/titles, and submission URL/upload destination.
 
 ## Verified Proof
@@ -27,8 +30,8 @@ Receipt rule: Product/runtime commits require GitHub CI, Vercel, and production 
 - `npm run health` passed with `RESULT: 0 FAILING`.
 - `npm run build` passed locally and in the pre-push gate.
 - GitHub Actions for `80f6be7163a50f6e6ddb3557c292bd984e9d682d` all succeeded.
-- Vercel deployment `dpl_7fSh74PXguRbqopLzH6yt77L8Rnd` is `READY`.
-- Production `/api/health` serves `80f6be7163a50f6e6ddb3557c292bd984e9d682d`.
+- Vercel deployment `dpl_7fSh74PXguRbqopLzH6yt77L8Rnd` was `READY` for the product/runtime SHA.
+- Receipt commit `63a4bd7c6f94544af944a5ab5ddaaefc2f72d37a` reached GitHub Actions success, Vercel READY deployment `dpl_Dp4Lkm4fSX3FZoNcnER9aPiTKKpA`, and production `/api/health` served that same SHA.
 
 ## Next exact move
 
