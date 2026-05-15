@@ -1,41 +1,39 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-14 18:05 PT
-Current slice: Receipt truth correction after dashboard line split CI repair.
-Current mode: no product work, no UI polish, no paid generation, no outbound email, no Stripe, no schema, no artifact generation/readback changes, no beta proof.
-Last verified runtime/product SHA: `80f6be7163a50f6e6ddb3557c292bd984e9d682d`
-Latest product commit: `Split dashboard artifact body component`
-Last externally verified receipt/proof SHA: `63a4bd7c6f94544af944a5ab5ddaaefc2f72d37a`
-Latest externally verified receipt commit: `Record dashboard split CI repair proof`
-GitHub Actions status for last externally verified receipt/proof SHA: `CI #290`, `Health Gate #611`, `Production E2E #1191`, and `Deploy to Vercel #963` all succeeded.
-Vercel status for last externally verified receipt/proof SHA: READY; deployment `dpl_Dp4Lkm4fSX3FZoNcnER9aPiTKKpA`.
-Production /api/health SHA: `63a4bd7c6f94544af944a5ab5ddaaefc2f72d37a`
-This edit is receipt-only: no product/runtime behavior changed. The commit containing this edit must be verified externally after push; this file must not embed its own future SHA.
-Receipt rule: Product/runtime commits require GitHub CI, Vercel, and production `/api/health` for the exact SHA. Receipt-only commits may record external proof without requiring this file to embed the SHA of its own future commit.
+Last updated: 2026-05-14 18:55 PT
+Current slice: Adversarial proof ledger after receipt truth pass.
+Current mode: no UI polish, no broad feature, no paid generation, no outbound email, no Stripe, no schema, no fake users/source rows/documents/deadlines/emails/beta proof.
+Current release gate: GATE_9_REAL_NON_OWNER_BETA
+First failing release gate: GATE_9_REAL_NON_OWNER_BETA
+Release gate status: BLOCKED_EXTERNAL
+Last known production SHA: `55342e1f808de111de9544702efa6f7bbf57132c`
+Last verified runtime/product SHA: `55342e1f808de111de9544702efa6f7bbf57132c`
+Latest product commit: `Relax health for requirements blocker packets`
+Latest receipt/docs status: this handoff/history edit is receipt-only and must be verified externally after push; do not require this file to embed its own future SHA.
 
 ## Current Truth
 
-- The CI drift was real: `tests/config/__tests__/large-file-splits.test.ts` previously reported `app/dashboard/page.tsx` at `1008` lines, above the `1000` threshold.
-- The repair was intentionally mechanical: the dashboard artifact body rendering moved to `components/dashboard/DashboardArtifactBody.tsx`.
-- `app/dashboard/page.tsx` is now `971` lines by local line count and passes the split guard.
-- No product behavior, route behavior, artifact generation/readback logic, schema, Stripe, paid generation, outbound email, fake source data, fake users, or beta proof changed.
-- The earlier internal blocker before `GATE_9_REAL_NON_OWNER_BETA` is resolved and receipt-verified through SHA `63a4bd7c6f94544af944a5ab5ddaaefc2f72d37a`.
-- Real non-owner beta proof remains external. Finished `.docx` work remains blocked by Brandon-owned source files/bodies, document topics/titles, and submission URL/upload destination.
+- `55342e1f808de111de9544702efa6f7bbf57132c` is live in production health via deployment `dpl_F28rEMS9TDFGVRykyJYfyTwdpLmQ`.
+- GitHub CI #1028, Health Gate #614, semgrep #1529, Deploy to Vercel #966, and Production E2E #1194 succeeded for `55342e1f808de111de9544702efa6f7bbf57132c`.
+- The prior document-collection selected-move packet is historical only. Production `/api/conviction/latest` now fails closed with `NO_SAFE_ARTIFACT` and reason `stale_selected_move_artifact` when the current winner changed.
+- Dashboard production proof no longer renders the stale document-collection requirements title as the current move.
+- Health no longer counts source-backed requirements-needed blocker packets as stale actionable pending approvals.
+- Current winner truth is Project Mosaic. No paid generation or fake artifact was run to create a new finished artifact.
+- Real non-owner beta proof remains external: Foldera still needs one real non-owner Google or Microsoft connection, excluding owner/test accounts.
 
 ## Verified Proof
 
-- `npx vitest run tests/config/__tests__/large-file-splits.test.ts --reporter=verbose` passed.
-- `npx playwright test tests/e2e/dashboard-navigation.spec.ts -g "summary-only latest payload|document collection requirements packet" --reporter=list` passed.
-- `npx vitest run app/dashboard/__tests__/dashboard-page-model.test.tsx --reporter=verbose` passed.
 - `npm run health` passed with `RESULT: 0 FAILING`.
-- `npm run build` passed locally and in the pre-push gate.
-- GitHub Actions for `80f6be7163a50f6e6ddb3557c292bd984e9d682d` all succeeded.
-- Vercel deployment `dpl_7fSh74PXguRbqopLzH6yt77L8Rnd` was `READY` for the product/runtime SHA.
-- Receipt commit `63a4bd7c6f94544af944a5ab5ddaaefc2f72d37a` reached GitHub Actions success, Vercel READY deployment `dpl_Dp4Lkm4fSX3FZoNcnER9aPiTKKpA`, and production `/api/health` served that same SHA.
+- Focused artifact/readback tests passed: latest, detail, history, dashboard model, and artifact readiness slices.
+- Focused dashboard Playwright readback tests passed for summary-only and document-collection requirements packet paths.
+- `npm run gate:quality`, `npm run gate:visual`, and `npm run gate:decision-trace` passed their deterministic gates; each still reported GATE_0 before this receipt update.
+- `npm run winner:autopsy` selected `Commitment due in 1d: Issue Project Mosaic pay once document review is complete`.
+- `npm run build` and `npm run lint` passed before push.
+- Read-only DB proof found the only stale pending approval over 20h was a requirements-needed selected-move blocker packet, not a finished actionable approval.
 
 ## Next exact move
 
-Resume the adversarial readback audit or release-gate verification from the now-green `main`; do not reopen the dashboard split unless fresh CI proof fails again.
+Verify this receipt-only commit externally, then stop at `GATE_9_REAL_NON_OWNER_BETA` unless a real connected non-owner tester exists.
 
 ## Do Not Touch
 
