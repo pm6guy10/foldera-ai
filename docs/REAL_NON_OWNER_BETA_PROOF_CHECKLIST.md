@@ -19,6 +19,9 @@ Purpose: prove Foldera's first real non-owner beta loop without using Brandon ow
 - No mock harness rows counted as beta proof.
 - No owner-only run counted as beta proof.
 - No Brandon-controlled Outlook/Hotmail canary account counted as beta proof.
+- No token-only proof counted as beta proof.
+- No welcome-email-only proof counted as beta proof.
+- No unprocessed-signal-only proof counted as beta proof.
 
 ## Required Proof Steps
 
@@ -26,10 +29,11 @@ Purpose: prove Foldera's first real non-owner beta loop without using Brandon ow
 2. Confirm Google or Microsoft connection succeeds after provider consent.
 3. Confirm production proof excludes `OWNER_USER_ID`, `TEST_USER_ID`, and `OWNER_CANARY_USER_IDS`.
 4. Confirm source status/readback after connection.
-5. Confirm Foldera shows either one source-backed move or one clear waiting/no-safe-move state.
-6. Confirm the source trail is visible and supports the shown move or waiting state.
-7. Confirm approve/save/skip controls behave safely and do not send outbound email unless an explicit send flag is enabled.
-8. Confirm latest/history readback records the result.
+5. Confirm first-run readiness shows connected source, signal count, processed/unprocessed count, last checked, next check timing, exact reason no action exists, and "nothing was sent" truth.
+6. Confirm Foldera shows either one source-backed move or one clear waiting/no-safe-move state.
+7. Confirm the source trail is visible and supports the shown move or waiting state.
+8. Confirm approve/save/skip controls behave safely and do not send outbound email unless an explicit send flag is enabled.
+9. Confirm latest/history readback records the result.
 
 ## Stop/Fail Conditions
 
@@ -39,9 +43,10 @@ Purpose: prove Foldera's first real non-owner beta loop without using Brandon ow
 - Stop if proof requires fabricated database rows.
 - Stop if source connection requires credentials or provider consent Brandon cannot supply in-product.
 - Stop if the tester reaches a confusing or contradictory state after connection.
+- Stop if the tester has only a token row, a welcome email, or only unprocessed signals without a clear first-run readiness state.
 - Stop if latest, dashboard, source trail, controls, or history disagree.
 - Stop if any proof path would send outbound email, charge Stripe, run paid generation, mutate schema, or use fake beta evidence without explicit approval.
 
 ## Passing Condition
 
-The gate passes only when one real non-owner account connects Google or Microsoft in production, reaches a clear source-backed move or waiting/no-safe-move state, sees a supporting source trail, and can save, skip, or approve safely with history/readback proof.
+The gate passes only when one real non-owner account connects Google or Microsoft in production and reaches either a source-backed move or a clear first-run waiting/no-safe state with source counts, processed/unprocessed counts, reason, next action, source trail, "nothing was sent" truth, and safe history/readback proof.

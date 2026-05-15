@@ -119,6 +119,24 @@ describe('release gate status', () => {
     );
   });
 
+  it('does not fail live truth when GATE_9 is recorded as passed from a prior production receipt', () => {
+    const report = buildReleaseGateReport({
+      ...BASE_EVIDENCE,
+      productionSha: 'b67600e55bfe6dbb1fe5bb318b99d5a524745edf',
+      healthSha: 'b67600e55bfe6dbb1fe5bb318b99d5a524745edf',
+      activeHandoffSha: '6b0c163564a8646075ef904c1f82a2ff441c7a36',
+      activeHandoffText:
+        'Current release gate: GATE_9_REAL_NON_OWNER_BETA\nFirst failing release gate: NONE\nRelease gate status: PASS\nLast known production SHA: 6b0c163',
+      realNonOwnerProof: [
+        'real non-owner first-run state: connected source Google; signal_count=1; processed_signal_count=0; unprocessed_signal_count=1; reason=not enough evidence; next_action=Check sources now; nothing_sent=true',
+      ],
+    });
+
+    expect(report.gates[0]?.status).toBe('PASS');
+    expect(report.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
+    expect(report.firstFailingGate.status).toBe('PASS');
+  });
+
   it('fails selection proof when owner canary user ids are not excluded from real beta proof', () => {
     const report = buildReleaseGateReport({
       ...BASE_EVIDENCE,
@@ -133,5 +151,35 @@ describe('release gate status', () => {
     expect(report.firstFailingGate.proofMissing).toContain(
       'OWNER_USER_ID, TEST_USER_ID, and OWNER_CANARY_USER_IDS exclusion proof missing',
     );
+  });
+
+  it('does not pass GATE_9 from token-only, welcome-only, or unprocessed-signal-only proof', () => {
+    const report = buildReleaseGateReport({
+      ...BASE_EVIDENCE,
+      realNonOwnerProof: [
+        'real non-owner token exists for google',
+        'welcome email sent to real non-owner',
+        'one gmail signal exists but processed=false',
+      ],
+    });
+
+    expect(report.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
+    expect(report.firstFailingGate.status).toBe('BLOCKED_EXTERNAL');
+    expect(report.firstFailingGate.reason).toContain('first-run value proof is incomplete');
+    expect(report.firstFailingGate.proofMissing).toContain(
+      'Real non-owner must reach a clear first-run state with source counts, reason, and next action, or a source-backed move.',
+    );
+  });
+
+  it('passes GATE_9 only from a clear first-run state or source-backed move', () => {
+    const report = buildReleaseGateReport({
+      ...BASE_EVIDENCE,
+      realNonOwnerProof: [
+        'real non-owner first-run state: connected source Google; signal_count=1; processed_signal_count=0; unprocessed_signal_count=1; reason=not enough evidence; next_action=Check sources now; nothing_sent=true',
+      ],
+    });
+
+    expect(report.firstFailingGate.status).toBe('PASS');
+    expect(report.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
   });
 });

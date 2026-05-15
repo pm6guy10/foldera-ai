@@ -124,8 +124,11 @@ describe('POST /api/onboard/set-goals', () => {
     expect(sendResendEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         subject: 'Welcome to Foldera',
+        text: expect.stringContaining('first read depends on source freshness'),
       }),
     );
+    expect(sendResendEmail.mock.calls[0]?.[0]?.text).toContain('Nothing was sent.');
+    expect(sendResendEmail.mock.calls[0]?.[0]?.text).not.toMatch(/first read arrives tomorrow/i);
     expect(mockSupabase.auth.admin.updateUserById).toHaveBeenCalledWith(
       'user-1',
       expect.objectContaining({

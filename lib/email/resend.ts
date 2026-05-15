@@ -400,9 +400,9 @@ export function renderWelcomeEmailHtml(baseUrl: string): string {
         </td></tr>
         <tr><td style="padding:28px 24px;border-radius:${EMAIL_RADIUS_CARD_OUTER};background:${EMAIL_CARD};border:1px solid ${EMAIL_BORDER_CYAN_STRONG};">
           <p style="margin:0 0 8px 0;font-family:${EMAIL_FONT_STACK};font-size:10px;font-weight:900;letter-spacing:0.2em;text-transform:uppercase;color:${EMAIL_CYAN};">You&apos;re connected</p>
-          <p style="margin:0 0 16px 0;font-family:${EMAIL_FONT_STACK};font-size:18px;font-weight:700;color:#ffffff;line-height:1.35;">Your first read arrives tomorrow morning.</p>
-          <p style="margin:0 0 12px 0;font-family:${EMAIL_FONT_STACK};font-size:14px;color:#a1a1aa;line-height:1.65;">Foldera reviews your recent activity, finds what&apos;s slipping, and delivers one directive with finished work attached.</p>
-          <p style="margin:0 0 24px 0;font-family:${EMAIL_FONT_STACK};font-size:14px;color:#a1a1aa;line-height:1.65;">No prompts. No setup. Just approve or skip.</p>
+          <p style="margin:0 0 16px 0;font-family:${EMAIL_FONT_STACK};font-size:18px;font-weight:700;color:#ffffff;line-height:1.35;">Foldera is checking your sources now.</p>
+          <p style="margin:0 0 12px 0;font-family:${EMAIL_FONT_STACK};font-size:14px;color:#a1a1aa;line-height:1.65;">Your first read depends on source freshness and enough useful mail/calendar activity.</p>
+          <p style="margin:0 0 24px 0;font-family:${EMAIL_FONT_STACK};font-size:14px;color:#a1a1aa;line-height:1.65;">If there is not enough evidence yet, the dashboard will say what Foldera found and what to do next. Nothing was sent.</p>
           <a href="${dash}" style="display:inline-block;padding:14px 28px;background:#ffffff;color:#000000;font-family:${EMAIL_FONT_STACK};font-size:11px;font-weight:900;letter-spacing:0.15em;text-transform:uppercase;text-decoration:none;border-radius:${EMAIL_RADIUS_INNER};box-shadow:0 0 40px rgba(255,255,255,0.2);">View your dashboard</a>
         </td></tr>
         <tr><td style="padding-top:28px;text-align:center;">

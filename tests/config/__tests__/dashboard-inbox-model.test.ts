@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildDailyValueState,
+  buildFirstRunReadinessSlate,
   buildMissingInputPrompt,
   dailyUtilitySlateClipboardText,
   getIntegrationMetaLine,
@@ -174,5 +175,70 @@ describe('dashboard finished-work inbox model', () => {
     expect(getIntegrationStateClass(integration)).toContain('amber');
     expect(getIntegrationMetaLine(integration)).toContain('Fresh sync needed');
     expect(getIntegrationMetaLine(integration)).not.toMatch(/missing_|weak_|candidate|gate|blocker/i);
+  });
+
+  it('turns first-run source readiness into human-readable dashboard value', () => {
+    const slate = buildFirstRunReadinessSlate({
+      status: 'connected_but_not_enough_evidence',
+      connected: true,
+      providers: ['Google'],
+      signal_count: 1,
+      processed_signal_count: 0,
+      unprocessed_signal_count: 1,
+      action_count: 0,
+      pipeline_run_count: 0,
+      last_checked_at: '2026-05-15T22:33:55.815Z',
+      next_check_timing: 'Next check: use Check sources now, or wait for the next scheduled source refresh.',
+      headline: 'Foldera connected Google, but only found 1 usable item so far.',
+      reason: 'Foldera has 1 source item: 0 processed, 1 waiting. That is not enough evidence for a safe move yet.',
+      next_action: 'Check again after more mail/calendar activity, or connect another source.',
+      nothing_sent_label: 'Nothing was sent.',
+      can_check_now: true,
+      value_proof_ready: true,
+    });
+
+    expect(slate?.watch_item?.title).toBe('Foldera connected Google, but only found 1 usable item so far.');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('0 processed, 1 waiting');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Nothing was sent.');
+    expect(slate?.watch_item?.next_action).toBe(
+      'Check again after more mail/calendar activity, or connect another source.',
+    );
+
+    const state = buildDailyValueState(
+      slate,
+      null,
+      { integrations: [{ provider: 'google', is_active: true, needs_sync: true }] },
+      [],
+    );
+
+    expect(state.summary).toBe('Foldera connected Google, but only found 1 usable item so far.');
+    expect(state.actionHref).toBe('/dashboard?panel=sources');
+    expect(state.actionLabel).toBe('Check sources now');
+  });
+
+  it('can display a connected-and-syncing source state without making it GATE_9 value proof', () => {
+    const slate = buildFirstRunReadinessSlate({
+      status: 'connected_and_syncing',
+      connected: true,
+      providers: ['Google'],
+      signal_count: 0,
+      processed_signal_count: 0,
+      unprocessed_signal_count: 0,
+      action_count: 0,
+      pipeline_run_count: 0,
+      last_checked_at: null,
+      next_check_timing: 'Next check: use Check sources now, or wait for the next scheduled source refresh.',
+      headline: 'Foldera connected Google and is checking sources now.',
+      reason: 'Foldera has not found usable source items yet: 0 processed, 0 waiting.',
+      next_action: 'Check again after more mail/calendar activity, or connect another source.',
+      nothing_sent_label: 'Nothing was sent.',
+      can_check_now: true,
+      value_proof_ready: false,
+    });
+
+    expect(slate?.watch_item?.title).toBe('Foldera connected Google and is checking sources now.');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('0 source items: 0 processed, 0 waiting');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Next check: use Check sources now');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Nothing was sent.');
   });
 });

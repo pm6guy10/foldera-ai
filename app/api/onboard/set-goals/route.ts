@@ -143,11 +143,11 @@ export async function POST(req: NextRequest) {
           const baseUrl = (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
           const bodyText = `Welcome to Foldera.
 
-You're connected. Your first read arrives tomorrow morning.
+You're connected. Foldera is checking your sources now.
 
-Foldera will scan your last 90 days of email, find what's slipping, and deliver one directive with finished work attached.
+Your first read depends on source freshness and enough useful mail/calendar activity. If there is not enough evidence yet, the dashboard will say what Foldera found and what to do next.
 
-No prompts. No setup. Just approve or skip.
+Nothing was sent. Foldera will not send anything without your approval.
 
 View your dashboard: ${baseUrl}/dashboard`;
           const sendResult = await sendResendEmail({

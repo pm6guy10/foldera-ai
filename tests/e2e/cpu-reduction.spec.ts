@@ -116,7 +116,7 @@ describeAuthMocked('CPU reduction surfaces', () => {
 
     await page.goto('/dashboard/settings?google_connected=true');
     await expect(
-      page.getByText(/Google connected\. Scheduled sync will pick this up shortly\./i),
+      page.getByText(/Google connected\. Open Sources to check source activity now\./i),
     ).toBeVisible({ timeout: 15000 });
     await page.waitForTimeout(500);
 

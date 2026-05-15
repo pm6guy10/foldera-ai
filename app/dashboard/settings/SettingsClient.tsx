@@ -202,7 +202,7 @@ export default function SettingsClient() {
       await refreshGraphStats().catch(() => {});
 
       setSyncStatus(
-        `${provider === 'google' ? 'Google' : 'Microsoft'} connected. Scheduled sync will pick this up shortly.`,
+        `${provider === 'google' ? 'Google' : 'Microsoft'} connected. Open Sources to check source activity now.`,
       );
       setTimeout(() => setSyncStatus(null), 6000);
     })();

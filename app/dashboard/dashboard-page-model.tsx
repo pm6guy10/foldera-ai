@@ -74,6 +74,32 @@ export type IntegrationStatusPayload = {
   mail_ingest_looks_stale?: boolean;
 };
 
+export type FirstRunSourceReadinessStatus =
+  | 'no_connected_source'
+  | 'connected_and_syncing'
+  | 'connected_but_no_usable_signals'
+  | 'connected_but_not_enough_evidence'
+  | 'connected_with_usable_signals';
+
+export type FirstRunSourceReadinessPayload = {
+  status: FirstRunSourceReadinessStatus;
+  connected: boolean;
+  providers: string[];
+  signal_count: number;
+  processed_signal_count: number;
+  unprocessed_signal_count: number;
+  action_count: number;
+  pipeline_run_count: number;
+  last_checked_at: string | null;
+  next_check_timing: string;
+  headline: string;
+  reason: string;
+  next_action: string;
+  nothing_sent_label: string;
+  can_check_now: boolean;
+  value_proof_ready: boolean;
+};
+
 export type IntegrationStatusItem = {
   provider?: string;
   is_active?: boolean;
@@ -533,8 +559,12 @@ export function buildDailyValueState(
         protectedItem?.no_action_reason ?? protectedItem?.why_it_matters,
         'Foldera held back rather than inventing a draft from weak or stale evidence.',
       );
+  const sourceReadinessItem =
+    !hasPrimaryMove && firstItem?.source_refs?.some((entry) => entry === 'source_readiness') === true;
   const smallestUnlock =
-    (hasPrimaryMove
+    (sourceReadinessItem
+      ? sanitizeDailyValueText(firstItem?.next_action, 'Check sources again when new mail or calendar activity exists.')
+      : hasPrimaryMove
       ? sanitizeDailyValueText(firstItem?.next_action, 'Turn this into finished work on the next safe generation run.')
       : missingInputPrompt?.detail) ??
     (activeSources > 0
@@ -548,17 +578,58 @@ export function buildDailyValueState(
     summary:
       (hasPrimaryMove
         ? sanitizeDailyValueText(firstItem?.title, 'Foldera found a current move worth preparing.')
-        : missingInputPrompt?.prompt) ??
+        : sourceReadinessItem
+          ? sanitizeDailyValueText(firstItem?.title, '')
+        : missingInputPrompt?.prompt ?? sanitizeDailyValueText(firstItem?.title, '')) ??
       'No finished artifact cleared the trust check, but the dashboard still shows the useful read.',
     valueBlocks: [
       { label: 'What changed', body: whatChanged },
       { label: 'What Foldera protected', body: protectedBody },
       { label: 'Smallest unlock', body: smallestUnlock },
     ],
-    actionHref: missingInputPrompt?.actionHref ?? (activeSources > 0 ? undefined : '/api/google/connect'),
-    actionLabel: missingInputPrompt?.actionLabel ?? (activeSources > 0 ? undefined : 'Connect Google'),
+    actionHref:
+      sourceReadinessItem
+        ? '/dashboard?panel=sources'
+        : missingInputPrompt?.actionHref ?? (activeSources > 0 ? undefined : '/api/google/connect'),
+    actionLabel:
+      sourceReadinessItem
+        ? 'Check sources now'
+        : missingInputPrompt?.actionLabel ?? (activeSources > 0 ? undefined : 'Connect Google'),
     copyText: copyText || undefined,
     copyLabel: hasPrimaryMove ? 'Copy brief' : copyText ? 'Copy read' : undefined,
+  };
+}
+
+export function buildFirstRunReadinessSlate(
+  readiness: FirstRunSourceReadinessPayload | null | undefined,
+): DailyUtilitySlate | null {
+  if (!readiness?.connected) return null;
+
+  const sourceCountLabel = `${readiness.signal_count} source item${readiness.signal_count === 1 ? '' : 's'}: ${readiness.processed_signal_count} processed, ${readiness.unprocessed_signal_count} waiting`;
+  const providerLabel = readiness.providers.length > 0
+    ? `Connected source${readiness.providers.length === 1 ? '' : 's'}: ${readiness.providers.join(', ')}`
+    : 'Connected source';
+  const lastChecked = asTrimmedString(readiness.last_checked_at)
+    ? `Last checked: ${formatRelativeTime(readiness.last_checked_at)}`
+    : 'Last checked: waiting for the first completed source check';
+
+  return {
+    finished_artifact_verdict: 'no_finished_artifact',
+    watch_item: {
+      title: readiness.headline,
+      status: 'watch_item',
+      evidence: [
+        providerLabel,
+        sourceCountLabel,
+        lastChecked,
+        readiness.next_check_timing,
+        readiness.nothing_sent_label,
+      ],
+      why_it_matters: readiness.reason,
+      no_action_reason: readiness.reason,
+      next_action: readiness.next_action,
+      source_refs: ['source_readiness'],
+    },
   };
 }
 

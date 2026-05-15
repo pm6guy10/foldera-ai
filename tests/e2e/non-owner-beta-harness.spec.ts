@@ -44,6 +44,44 @@ const GOOGLE_CONNECTED = {
   mail_ingest_looks_stale: false,
 };
 
+const GOOGLE_FIRST_RUN_CONNECTED = {
+  integrations: [
+    {
+      provider: 'google',
+      is_active: true,
+      sync_email: 'beta-harness@gmail.example',
+      last_synced_at: null,
+      needs_reconnect: false,
+      needs_reauth: false,
+      needs_sync: true,
+      sync_stale: false,
+      status: 'never_synced',
+      missing_scopes: [],
+    },
+  ],
+  newest_mail_signal_at: '2026-05-13T13:45:00.000Z',
+  mail_ingest_looks_stale: false,
+};
+
+const FIRST_RUN_READINESS = {
+  status: 'connected_but_not_enough_evidence',
+  connected: true,
+  providers: ['Google'],
+  signal_count: 1,
+  processed_signal_count: 0,
+  unprocessed_signal_count: 1,
+  action_count: 0,
+  pipeline_run_count: 0,
+  last_checked_at: '2026-05-13T13:45:00.000Z',
+  next_check_timing: 'Next check: use Check sources now, or wait for the next scheduled source refresh.',
+  headline: 'Foldera connected Google, but only found 1 usable item so far.',
+  reason: 'Foldera has 1 source item: 0 processed, 1 waiting. That is not enough evidence for a safe move yet.',
+  next_action: 'Check again after more mail/calendar activity, or connect another source.',
+  nothing_sent_label: 'Nothing was sent.',
+  can_check_now: true,
+  value_proof_ready: true,
+};
+
 const MICROSOFT_CONNECTED = {
   integrations: [
     {
@@ -217,6 +255,14 @@ async function attachCommonMocks(page: Page) {
     lastSignalAt: '2026-05-13T13:45:00.000Z',
     lastSignalSource: 'google',
   }));
+  await page.route(matchApiPath('/api/source-readiness'), fulfillJson({
+    ...FIRST_RUN_READINESS,
+    status: 'connected_with_usable_signals',
+    processed_signal_count: 4,
+    unprocessed_signal_count: 0,
+    headline: 'Foldera connected Google and found 4 processed source items.',
+    reason: 'Foldera has processed source evidence, but no safe action exists yet.',
+  }));
 }
 
 test.describe('Non-owner beta harness map', () => {
@@ -268,15 +314,36 @@ describeAuthMocked('Non-owner beta simulated first path', () => {
     await seedSession(page, { hasOnboarded: false });
     await attachCommonMocks(page);
 
-    let integrationState: unknown = GOOGLE_CONNECTED;
+    let integrationState: unknown = GOOGLE_FIRST_RUN_CONNECTED;
+    let sourceReadinessState: unknown = FIRST_RUN_READINESS;
     let latestState: unknown = {};
     let dailyValueState: unknown = NO_SAFE_MOVE;
     let executeCalls = 0;
     let outboundSendAttempts = 0;
+    let sourceCheckCalls = 0;
 
     await page.route(matchApiPath('/api/integrations/status'), (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: json(integrationState) }),
     );
+    await page.route(matchApiPath('/api/source-readiness'), (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: json(sourceReadinessState) }),
+    );
+    await page.route(matchApiPath('/api/google/sync-now'), (route) => {
+      sourceCheckCalls += 1;
+      sourceReadinessState = {
+        ...FIRST_RUN_READINESS,
+        processed_signal_count: 1,
+        unprocessed_signal_count: 0,
+        headline: 'Foldera connected Google and found 1 processed source item.',
+        reason: 'Foldera has processed source evidence, but no safe action exists yet.',
+      };
+      integrationState = GOOGLE_CONNECTED;
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: json({ ok: true, total: 1, gmail_signals: 1, calendar_signals: 0, drive_signals: 0 }),
+      });
+    });
     await page.route(matchApiPath('/api/onboard/set-goals'), fulfillJson({ ok: true, count: 2 }));
     await page.route(matchApiPath('/api/conviction/latest'), (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: json(latestState) }),
@@ -337,8 +404,18 @@ describeAuthMocked('Non-owner beta simulated first path', () => {
     await page.goto('/dashboard');
 
     await expect(page.getByText(/Foldera checked today/i)).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.getByRole('heading', { name: /Foldera connected Google, but only found 1 usable item so far\./i }),
+    ).toBeVisible();
+    await expect(page.getByText(/1 source item: 0 processed, 1 waiting/i).first()).toBeVisible();
+    await expect(page.getByText(/Nothing was sent\./i).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: /check sources now/i })).toBeVisible();
     await expect(page.getByText(/What Foldera protected/i)).toBeVisible();
     await expect(page.getByText(/No safe artifact/i)).toHaveCount(0);
+
+    await page.getByRole('link', { name: /check sources now/i }).click();
+    await expect(page.getByTestId('dashboard-panel-sources')).toBeVisible({ timeout: 15000 });
+    await expect.poll(() => sourceCheckCalls).toBe(1);
 
     integrationState = MICROSOFT_CONNECTED;
     await page.goto('/dashboard?panel=sources');

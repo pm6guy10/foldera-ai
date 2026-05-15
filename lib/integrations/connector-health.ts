@@ -221,7 +221,7 @@ export function buildConnectorHealthEntries(
       missing_scopes: missingScopes,
       needs_reauth: needsReauth,
       needs_reconnect: needsReconnect,
-      needs_sync: status === 'stale',
+      needs_sync: status === 'stale' || status === 'never_synced',
       sync_stale:
         status === 'stale' &&
         hasValidLastSync &&

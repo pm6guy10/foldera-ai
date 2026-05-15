@@ -32,6 +32,7 @@ import {
   asTrimmedString,
   buildMissingInputPrompt,
   buildDailyValueState,
+  buildFirstRunReadinessSlate,
   buildNoSafeArtifactSlate,
   buildDecisionSuccessNotice,
   buildDashboardSourceTrail,
@@ -60,6 +61,7 @@ import {
   type DashboardLoadIssue,
   type DashboardStatusNotice,
   type DailyUtilitySlate,
+  type FirstRunSourceReadinessPayload,
   type GraphStatsPayload,
   type IntegrationStatusPayload,
   type LoadLatestResult,
@@ -77,6 +79,7 @@ export default function DashboardPage() {
   const [dailyUtilitySlate, setDailyUtilitySlate] = useState<DailyUtilitySlate | null>(null);
   const [loadingLatest, setLoadingLatest] = useState(true);
   const [integrationStatus, setIntegrationStatus] = useState<IntegrationStatusPayload | null>(null);
+  const [sourceReadiness, setSourceReadiness] = useState<FirstRunSourceReadinessPayload | null>(null);
   const [graphStats, setGraphStats] = useState<GraphStatsPayload | null>(null);
   const [historyItems, setHistoryItems] = useState<DashboardHistoryItem[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -247,6 +250,27 @@ export default function DashboardPage() {
     void loadIntegrationStatus();
     return undefined;
   }, [loadIntegrationStatus, setLoadIssue, status]);
+  const loadSourceReadiness = useCallback(async () => {
+    try {
+      const response = await fetch('/api/source-readiness');
+      if (!response.ok) {
+        setSourceReadiness(null);
+        return;
+      }
+      const payload = (await response.json().catch(() => null)) as FirstRunSourceReadinessPayload | null;
+      setSourceReadiness(payload);
+    } catch {
+      setSourceReadiness(null);
+    }
+  }, []);
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      setSourceReadiness(null);
+      return undefined;
+    }
+    void loadSourceReadiness();
+    return undefined;
+  }, [loadSourceReadiness, status]);
   useEffect(() => {
     if (status !== 'authenticated') {
       setGraphStats(null);
@@ -547,7 +571,8 @@ export default function DashboardPage() {
     );
   }, [action]);
   const copyDailyValue = useCallback(async () => {
-    const text = dailyUtilitySlateClipboardText(dailyUtilitySlate);
+    const slateForCopy = buildFirstRunReadinessSlate(sourceReadiness) ?? dailyUtilitySlate;
+    const text = dailyUtilitySlateClipboardText(slateForCopy);
     if (!text) {
       setStatusNotice({ id: 'copy_failed', message: 'Nothing available to copy.' });
       return;
@@ -558,7 +583,7 @@ export default function DashboardPage() {
         ? { id: 'copy_daily_value_succeeded', message: "Copied today's read." }
         : { id: 'copy_failed', message: 'Copy failed. Select the text manually.' },
     );
-  }, [dailyUtilitySlate]);
+  }, [dailyUtilitySlate, sourceReadiness]);
   const submitDocumentCollectionIntake = useCallback(async () => {
     if (!action?.id || documentIntakeSubmitting) return;
     const submissionUrl = documentIntakeSubmissionUrl.trim();
@@ -808,13 +833,18 @@ export default function DashboardPage() {
         },
       ]
     : [];
-  const missingInputPrompt = buildMissingInputPrompt(dailyUtilitySlate, {
+  const firstRunReadinessSlate =
+    !action && !dailyUtilitySlate?.primary_move
+      ? buildFirstRunReadinessSlate(sourceReadiness)
+      : null;
+  const displayDailyUtilitySlate = firstRunReadinessSlate ?? dailyUtilitySlate;
+  const missingInputPrompt = buildMissingInputPrompt(displayDailyUtilitySlate, {
     hasIntegrationIssue,
     mailIngestLooksStale:
       integrationStatus?.mail_ingest_looks_stale === true || sourceFreshnessNeedsAttention,
   });
   const dailyValueState = buildDailyValueState(
-    dailyUtilitySlate,
+    displayDailyUtilitySlate,
     hasLatestIssue
       ? 'latest'
       : hasIntegrationIssue
@@ -828,7 +858,7 @@ export default function DashboardPage() {
     historyItems,
   );
   const showSourceNeededBrief =
-    !dailyUtilitySlate &&
+    !displayDailyUtilitySlate &&
     (connectedSourceCount === 0 ||
       sourceFreshnessNeedsAttention ||
       sourceReconnectNeeded ||
@@ -837,9 +867,9 @@ export default function DashboardPage() {
     <div data-testid="dashboard-empty-state" className="h-full w-full"><DailyBriefCard className="foldera-dashboard-brief-card foldera-dashboard-money-shot h-full w-full" dashboardCta stageDesktop={stageMetrics.isDesktop} directive="Connect sources so Foldera can find today’s finished move." whyNow="Foldera needs recent email, calendar, and draft context before it can safely recommend a source-backed action." eyebrowLabel="Daily Brief" directiveLabel="Directive" whyLabel="Why this now" draftLabel="Draft" draftBody={<p>Once your sources are connected, this space will show the directive, why it matters now, the finished draft or document, and the source trail behind it.</p>} sourcePills={['Email', 'Calendar', 'Drafts', 'Decision notes']} sourceLabel="Source trail" nextStep="Next: Connect sources so Foldera can prepare the next safe artifact." statusText="WAITING FOR SOURCES" footerText="Foldera needs current source context first" actions={[{ label: 'View demo', href: '/demo', kind: 'secondary' }, { label: 'Connect sources', href: '/dashboard?panel=sources', kind: 'primary', dataTestId: 'dashboard-connect-sources' }]} /></div>
   );
   const waitingBriefCard = <EmptyStateCard />;
-  const emptyStateCard = dailyUtilitySlate ? (
+  const emptyStateCard = displayDailyUtilitySlate ? (
     <DailyUtilitySlateCard
-      slate={dailyUtilitySlate}
+      slate={displayDailyUtilitySlate}
       missingInputPrompt={missingInputPrompt}
       dailyValueState={dailyValueState}
       onCopyDailyValue={() => void copyDailyValue()}
@@ -865,7 +895,10 @@ export default function DashboardPage() {
       hasHistoryIssue={hasHistoryIssue}
       recentHistory={recentHistory}
       userName={sidebarUserName}
-      onSourceSynced={() => void loadIntegrationStatus()}
+      onSourceSynced={() => {
+        void loadIntegrationStatus();
+        void loadSourceReadiness();
+      }}
       focusPanel={focusPanel}
     />
   );

@@ -2,7 +2,6 @@
 
 import type { DailyUtilitySlateItem } from '@/lib/briefing/daily-utility-slate';
 import type { DashboardDailyValueState } from '@/app/dashboard/dashboard-page-model';
-import Link from 'next/link';
 import { CircleSlash2, Copy, ListChecks, ShieldCheck, Sparkles } from 'lucide-react';
 
 type DailyUtilitySlateCardPayload = {
@@ -105,7 +104,7 @@ function SlateItemCard({
           Evidence
         </p>
         <ul className="mt-2 space-y-2 text-sm leading-6 text-text-secondary">
-          {item.evidence.slice(0, 4).map((entry) => (
+          {item.evidence.slice(0, 5).map((entry) => (
             <li key={evidenceKey(item, entry)} className="flex gap-2">
               <span className="mt-[0.72em] h-1.5 w-1.5 shrink-0 rounded-full bg-accent/70" aria-hidden />
               <span>
@@ -203,9 +202,9 @@ export function DailyUtilitySlateCard({
           </p>
           {dailyValueState.actionHref && dailyValueState.actionLabel ? (
             <div className="mt-5 flex flex-wrap gap-3">
-              <Link href={dailyValueState.actionHref} className="foldera-button-secondary">
+              <a href={dailyValueState.actionHref} className="foldera-button-secondary">
                 {dailyValueState.actionLabel}
-              </Link>
+              </a>
               {canCopy ? (
                 <button
                   type="button"
