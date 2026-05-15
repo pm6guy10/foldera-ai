@@ -9,6 +9,14 @@ export interface HealthCheckRow {
   line: string;
 }
 
+export interface StalePendingApprovalHealthRow {
+  id?: unknown;
+  action_type?: unknown;
+  directive_text?: unknown;
+  artifact?: unknown;
+  execution_result?: unknown;
+}
+
 function iconForStatus(status: HealthCheckStatus): string {
   switch (status) {
     case 'fail':
@@ -52,6 +60,38 @@ export function warningCheck(
 
 export function countBlockingFailures(checks: HealthCheckRow[]): number {
   return checks.filter((check) => check.group === 'blocking' && check.status === 'fail').length;
+}
+
+function textFrom(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (!value || typeof value !== 'object') return '';
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return '';
+  }
+}
+
+function isRequirementsNeededSelectedMoveBlocker(row: StalePendingApprovalHealthRow): boolean {
+  const text = [
+    textFrom(row.directive_text),
+    textFrom(row.artifact),
+    textFrom(row.execution_result),
+  ].join('\n');
+
+  return (
+    row.action_type === 'write_document' &&
+    /\bselected_move_generate\b/i.test(text) &&
+    /\brequirements[- ]needed\b/i.test(text) &&
+    /\bdocument collection\b/i.test(text) &&
+    /\b(?:owned \.docx\/source files|submission URL|MISSING BEFORE FINISHED \.DOCX WORK)\b/i.test(text)
+  );
+}
+
+export function countActionableStalePendingApprovals(
+  rows: StalePendingApprovalHealthRow[],
+): number {
+  return rows.filter((row) => !isRequirementsNeededSelectedMoveBlocker(row)).length;
 }
 
 /**

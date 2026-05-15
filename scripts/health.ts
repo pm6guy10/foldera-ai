@@ -15,6 +15,7 @@ import {
 import {
   blockingCheck,
   buildRepeatedDirectiveCheck,
+  countActionableStalePendingApprovals,
   countBlockingFailures,
   isHealthCiRelaxedMode,
   type HealthCheckRow,
@@ -120,15 +121,15 @@ async function main() {
     const staleCutoff = new Date(
       now - STALE_PENDING_APPROVAL_MAX_AGE_HOURS * 60 * 60 * 1000,
     ).toISOString();
-    const { count: staleCount, error } = await supabase
+    const { data: staleRows, error } = await supabase
       .from('tkg_actions')
-      .select('id', { count: 'exact', head: true })
+      .select('id, action_type, directive_text, artifact, execution_result')
       .eq('user_id', userId)
       .eq('status', 'pending_approval')
       .lt('generated_at', staleCutoff);
 
     if (error) throw new Error(error.message);
-    const n = staleCount ?? 0;
+    const n = countActionableStalePendingApprovals(staleRows ?? []);
     checks.push(
       blockingCheck(
         `No stale pending_approval (>${STALE_PENDING_APPROVAL_MAX_AGE_HOURS}h)`,
