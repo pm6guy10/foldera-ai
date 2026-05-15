@@ -21,6 +21,14 @@ const BANNED_USER_FACING_PHRASES = [
   'deterministic fixture',
   'stored winner fingerprint',
   'current receipt',
+  'Recent Work support',
+  'Sources support',
+  'Account support',
+  'Foldera keeps this panel inside the same app shell',
+  'Drop a folder or document',
+  'Foldera will get to work instantly',
+  'Same-place controls',
+  'legacy rooms',
 ];
 
 const UI_SOURCE_ROOTS = [
@@ -71,6 +79,10 @@ describe('frontend product truth gate', () => {
     expect(doc).toContain('## Layout Contract');
     expect(doc).toContain('Foldera held back because the evidence was not strong enough.');
     expect(doc).toContain('API-only or backend-only proof is not a frontend pass');
+    expect(doc).toContain('real-user surface checks');
+    expect(doc).toContain('Recent Work rows may not show raw artifact or generated body text');
+    expect(doc).toContain('dashboard performance timing proof');
+    expect(doc).toContain('common viewport density');
 
     const gateScript = fs.readFileSync(
       path.join(ROOT, 'scripts/frontend-product-truth-gate.ts'),
@@ -79,6 +91,7 @@ describe('frontend product truth gate', () => {
     expect(gateScript).toContain('production current screenshots');
     expect(gateScript).toContain('layout contract');
     expect(gateScript).toContain('backend-only frontend done claim');
+    expect(gateScript).toContain('real-user surface checks');
   });
 
   it('keeps banned backend/internal copy out of dashboard UI source strings', () => {

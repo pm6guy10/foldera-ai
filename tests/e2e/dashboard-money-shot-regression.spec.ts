@@ -40,6 +40,17 @@ const BANNED_VISIBLE_COPY = [
   'current receipt',
 ];
 
+const BANNED_DASHBOARD_SHELL_COPY = [
+  'Recent Work support',
+  'Sources support',
+  'Account support',
+  'Foldera keeps this panel inside the same app shell',
+  'Drop a folder or document',
+  'Foldera will get to work instantly',
+  'Same-place controls',
+  'legacy rooms',
+];
+
 const FINISHED_ACTION = {
   id: 'money-shot-finished-001',
   directive: 'Save the Project Mosaic payment decision packet before the review window closes.',
@@ -185,6 +196,21 @@ const HISTORY_RESPONSE = {
   ],
 };
 
+const RAW_HISTORY_RESPONSE = {
+  items: [
+    {
+      id: 'hist-raw-requirements',
+      status: 'pending_approval',
+      action_type: 'write_document',
+      generated_at: '2026-05-14T08:00:00.000Z',
+      directive_preview: 'REQUIREMENTS-NEEDED PACKET FINAL RECOMMENDATION',
+      has_artifact: false,
+      artifact_preview:
+        'submit nothing and do not dr... Submit high-quality .docx documents for document collection. Submit high-quality .docx documents for document collection.',
+    },
+  ],
+};
+
 function json(data: unknown) {
   return JSON.stringify(data);
 }
@@ -245,7 +271,12 @@ async function seedAuthenticatedSession(page: Page) {
 async function setupMoneyShotDashboard(
   page: Page,
   state: MoneyShotState,
-  options: { messageAction?: boolean; syncableSource?: boolean } = {},
+  options: {
+    messageAction?: boolean;
+    syncableSource?: boolean;
+    historyResponse?: typeof HISTORY_RESPONSE;
+    slowSupportingApisMs?: number;
+  } = {},
 ) {
   await seedAuthenticatedSession(page);
 
@@ -299,6 +330,14 @@ async function setupMoneyShotDashboard(
   const executeDecisions: string[] = [];
   const detailCalls: string[] = [];
   const syncCalls: string[] = [];
+  const supportingDelay = options.slowSupportingApisMs ?? 0;
+
+  const fulfillSupportingJson = (data: unknown) => async (route: Route) => {
+    if (supportingDelay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, supportingDelay));
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: json(data) });
+  };
 
   await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
   await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
@@ -316,7 +355,7 @@ async function setupMoneyShotDashboard(
   await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
   await page.route(
     matchApiPath('/api/integrations/status'),
-    fulfillJson({
+    fulfillSupportingJson({
       integrations: [
         {
           provider: 'google',
@@ -346,7 +385,7 @@ async function setupMoneyShotDashboard(
   );
   await page.route(
     matchApiPath('/api/graph/stats'),
-    fulfillJson({
+    fulfillSupportingJson({
       signalsTotal: 12,
       commitmentsActive: 2,
       patternsActive: 1,
@@ -365,7 +404,7 @@ async function setupMoneyShotDashboard(
     });
   });
   await page.route(matchApiPath('/api/conviction/daily-value'), fulfillJson({ daily_utility_slate: null }));
-  await page.route(matchApiPath('/api/conviction/history'), fulfillJson(HISTORY_RESPONSE));
+  await page.route(matchApiPath('/api/conviction/history'), fulfillSupportingJson(options.historyResponse ?? HISTORY_RESPONSE));
   await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
     if (route.request().method() !== 'POST') return route.continue();
     const parsed = route.request().postDataJSON() as { decision?: string };
@@ -399,7 +438,7 @@ async function assertMoneyShotIntegrity(page: Page, state: MoneyShotState) {
   await expect(page.getByTestId('dashboard-loading-card')).toHaveCount(0);
 
   const visibleText = await page.locator('body').innerText();
-  for (const banned of BANNED_VISIBLE_COPY) {
+  for (const banned of [...BANNED_VISIBLE_COPY, ...BANNED_DASHBOARD_SHELL_COPY]) {
     expect(visibleText.toLowerCase()).not.toContain(banned.toLowerCase());
   }
 
@@ -447,6 +486,21 @@ async function assertMoneyShotIntegrity(page: Page, state: MoneyShotState) {
   }
 }
 
+async function dashboardTimingProof(page: Page) {
+  const started = Date.now();
+  await page.goto('/dashboard');
+  await expect(page.getByTestId('dashboard-route-shell')).toBeVisible();
+  const firstNonLoadingMs = Date.now() - started;
+  await expect(page.getByTestId('dashboard-panel-today')).toBeVisible();
+  const mainContentMs = Date.now() - started;
+  await expect(page.getByTestId('dashboard-primary-action')).toBeVisible();
+  const currentActionMs = Date.now() - started;
+  console.log(
+    `DASHBOARD_TIMING first_non_loading_ms=${firstNonLoadingMs} main_content_ms=${mainContentMs} current_action_ms=${currentActionMs}`,
+  );
+  return { firstNonLoadingMs, mainContentMs, currentActionMs };
+}
+
 describeAuthMocked('Dashboard money-shot regression lock', () => {
   for (const state of ['finished', 'requirements', 'no-safe'] as const) {
     for (const viewport of [
@@ -460,6 +514,129 @@ describeAuthMocked('Dashboard money-shot regression lock', () => {
         await assertMoneyShotIntegrity(page, state);
         await expect(page.getByTestId('dashboard-route-shell')).toHaveScreenshot(
           `money-shot-${state}-${viewport.name}.png`,
+          { animations: 'disabled', maxDiffPixelRatio: 0.01 },
+        );
+      });
+    }
+  }
+
+  test('dashboard panels do not expose shell filler, active fake upload, or raw history text', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setupMoneyShotDashboard(page, 'finished', { historyResponse: RAW_HISTORY_RESPONSE });
+    await page.goto('/dashboard');
+
+    await expect(page.getByRole('button', { name: /notifications unavailable/i })).toHaveCount(0);
+    await expect(page.getByRole('status', { name: /notifications unavailable/i })).toBeVisible();
+    await expect(page.getByText(/Uploads coming later/i)).toBeVisible();
+
+    for (const panel of ['history', 'sources', 'account'] as const) {
+      await page.getByTestId(`dashboard-sidebar-item-${panel}`).click();
+      await expect(page.getByTestId(`dashboard-panel-${panel}`)).toBeVisible();
+      const visibleText = await page.locator('body').innerText();
+      for (const banned of BANNED_DASHBOARD_SHELL_COPY) {
+        expect(visibleText.toLowerCase()).not.toContain(banned.toLowerCase());
+      }
+    }
+
+    await page.getByTestId('dashboard-sidebar-item-history').click();
+    const historyPanel = page.getByTestId('dashboard-panel-history');
+    await expect(historyPanel).toBeVisible();
+    await expect(historyPanel).toContainText(/Document collection inputs needed/i);
+    await expect(historyPanel).toContainText(/Needs review/i);
+    await expect(historyPanel).toContainText(/Safe outcome/i);
+    await expect(historyPanel).not.toContainText(/REQUIREMENTS-NEEDED PACKET/i);
+    await expect(historyPanel).not.toContainText(/FINAL RECOMMENDATION/i);
+    await expect(historyPanel).not.toContainText(/submit nothing/i);
+    await expect(historyPanel).not.toContainText(/Submit high-quality \.docx/i);
+  });
+
+  test('source and account panels show useful real-user state', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setupMoneyShotDashboard(page, 'finished');
+    await page.goto('/dashboard');
+
+    await page.getByTestId('dashboard-sidebar-item-sources').click();
+    const sourcesPanel = page.getByTestId('dashboard-panel-sources');
+    await expect(sourcesPanel).toContainText(/Active sources/i);
+    await expect(sourcesPanel).toContainText(/Last checked/i);
+    await expect(sourcesPanel).toContainText(/Evidence readiness/i);
+    await expect(sourcesPanel).toContainText(/What Foldera is waiting for/i);
+    await expect(sourcesPanel).not.toContainText(/support/i);
+
+    await page.getByTestId('dashboard-sidebar-item-account').click();
+    const accountPanel = page.getByTestId('dashboard-panel-account');
+    await expect(accountPanel).toContainText(/Signed in/i);
+    await expect(accountPanel).toContainText(/Connected sources/i);
+    await expect(accountPanel).toContainText(/No outbound by default/i);
+    await expect(page.getByRole('button', { name: /^sign out$/i })).toBeVisible();
+    await expect(accountPanel).not.toContainText(/Same-place controls/i);
+    await expect(accountPanel).not.toContainText(/legacy rooms/i);
+  });
+
+  for (const viewport of [
+    { name: 'compact-desktop', width: 1366, height: 768 },
+    { name: 'standard-desktop', width: 1440, height: 900 },
+    { name: 'wide-desktop', width: 1920, height: 1080 },
+    { name: 'mobile', width: 390, height: 844 },
+  ] as const) {
+    test(`dashboard common viewport containment ${viewport.name}`, async ({ page }) => {
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await setupMoneyShotDashboard(page, 'finished');
+      await page.goto('/dashboard');
+      await assertMoneyShotIntegrity(page, 'finished');
+
+      const fit = await page.evaluate(() => {
+        const stage = document.querySelector('.foldera-dashboard-stage-brief') as HTMLElement | null;
+        const stageBox = stage?.getBoundingClientRect();
+        const mainColumn = document.querySelector('.foldera-dashboard-main-column') as HTMLElement | null;
+        const mainBox = mainColumn?.getBoundingClientRect();
+        return {
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+          stageWidth: stageBox?.width ?? 0,
+          stageHeight: stageBox?.height ?? 0,
+          mainWidth: mainBox?.width ?? 0,
+          htmlOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+        };
+      });
+
+      expect(fit.htmlOverflow).toBe(false);
+      if (viewport.width >= 1100) {
+        expect(fit.stageWidth).toBeGreaterThan(720);
+        expect(fit.stageWidth).toBeLessThanOrEqual(1180);
+        expect(fit.mainWidth).toBeLessThanOrEqual(1180);
+      }
+    });
+  }
+
+  test('dashboard reaches first real content quickly even when supporting APIs lag', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await setupMoneyShotDashboard(page, 'finished', { slowSupportingApisMs: 900 });
+    const timing = await dashboardTimingProof(page);
+
+    expect(timing.firstNonLoadingMs).toBeLessThan(1800);
+    expect(timing.mainContentMs).toBeLessThan(2200);
+    expect(timing.currentActionMs).toBeLessThan(2200);
+  });
+
+  for (const panel of ['today', 'history', 'sources', 'account'] as const) {
+    for (const viewport of [
+      { name: 'desktop', width: 1440, height: 900 },
+      { name: 'mobile', width: 390, height: 844 },
+    ] as const) {
+      test(`dashboard ${panel} panel screenshot ${viewport.name}`, async ({ page }) => {
+        await page.setViewportSize({ width: viewport.width, height: viewport.height });
+        await setupMoneyShotDashboard(page, 'finished', { historyResponse: RAW_HISTORY_RESPONSE });
+        await page.goto('/dashboard');
+        if (panel !== 'today') {
+          const selector =
+            viewport.name === 'mobile'
+              ? `dashboard-mobile-tab-${panel}`
+              : `dashboard-sidebar-item-${panel}`;
+          await page.getByTestId(selector).click();
+        }
+        await expect(page.getByTestId('dashboard-route-shell')).toHaveScreenshot(
+          `dashboard-real-user-${panel}-${viewport.name}.png`,
           { animations: 'disabled', maxDiffPixelRatio: 0.01 },
         );
       });
@@ -494,12 +671,13 @@ describeAuthMocked('Dashboard money-shot regression lock', () => {
     }
   });
 
-  test('desktop navigation, account menu, disabled bell, learn-more, and upgrade controls are real', async ({ page }) => {
+  test('desktop navigation, account menu, notification status, learn-more, and upgrade controls are real', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     const refs = await setupMoneyShotDashboard(page, 'finished');
     await page.goto('/dashboard');
 
-    await expect(page.getByRole('button', { name: /notifications unavailable/i })).toBeDisabled();
+    await expect(page.getByRole('button', { name: /notifications unavailable/i })).toHaveCount(0);
+    await expect(page.getByRole('status', { name: /notifications unavailable/i })).toBeVisible();
     await expect(page.getByRole('status', { name: /current dashboard section: today/i })).toBeVisible();
 
     await page.getByTestId('dashboard-sidebar-item-history').click();
@@ -536,6 +714,8 @@ describeAuthMocked('Dashboard money-shot regression lock', () => {
     await setupMoneyShotDashboard(page, 'finished');
     await page.goto('/dashboard');
     await expect(page.getByTestId('dashboard-source-trail-panel')).toBeVisible();
+    await expect(page.getByText(/Uploads coming later/i)).toBeVisible();
+    await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
 
     const sourceCardContract = await page.evaluate(() => {
       const sourcePanel = document.querySelector('[data-testid="dashboard-source-trail-panel"]');
@@ -610,7 +790,8 @@ describeAuthMocked('Dashboard money-shot regression lock', () => {
     await setupMoneyShotDashboard(page, 'no-safe');
     await page.goto('/dashboard');
 
-    await expect(page.getByRole('button', { name: /notifications unavailable/i })).toBeDisabled();
+    await expect(page.getByRole('button', { name: /notifications unavailable/i })).toHaveCount(0);
+    await expect(page.getByRole('status', { name: /notifications unavailable/i })).toBeVisible();
     await expect(page.getByRole('status', { name: /current dashboard section: today/i })).toBeVisible();
     await expect(page.getByText(/Held back safely/i)).toBeVisible();
     await page.getByRole('button', { name: /copy read/i }).click();

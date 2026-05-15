@@ -119,14 +119,20 @@ export function RightPanel({
           )}
         </div>
 
-        <div className="foldera-panel foldera-dashboard-right-rail-panel foldera-dashboard-upload-panel h-[140px] p-4">
+        <div
+          className="foldera-panel foldera-dashboard-right-rail-panel foldera-dashboard-upload-panel h-[140px] p-4"
+          aria-disabled="true"
+        >
           <div className="flex h-full items-center justify-center rounded-[16px] border border-dashed border-border bg-panel-raised px-4 text-center">
             <div>
               <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-border bg-panel text-text-muted">
                 <CloudUpload className="h-5 w-5" aria-hidden />
               </div>
               <p className="mt-3 text-sm font-medium leading-snug text-text-primary">
-                Drop a folder or document.
+                Uploads coming later
+              </p>
+              <p className="mt-1 text-xs leading-5 text-text-muted">
+                Use Sources for live evidence today.
               </p>
             </div>
           </div>
@@ -162,17 +168,20 @@ export function RightPanel({
         </div>
       </div>
 
-      <div className="foldera-panel foldera-dashboard-right-rail-panel p-5">
+      <div
+        className="foldera-panel foldera-dashboard-right-rail-panel p-5"
+        aria-disabled="true"
+      >
         <div className="flex min-h-[168px] items-center justify-center rounded-[20px] border border-dashed border-border bg-panel-raised px-5 text-center">
           <div>
             <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full border border-border bg-panel text-text-muted">
               <CloudUpload className="h-5 w-5" aria-hidden />
             </div>
             <p className="mt-4 text-base font-medium leading-snug text-text-primary">
-              Drop a folder or document.
+              Uploads coming later
             </p>
             <p className="mt-2 text-sm leading-7 text-text-muted">
-              Foldera will get to work instantly.
+              Use connected sources for live evidence today.
             </p>
           </div>
         </div>

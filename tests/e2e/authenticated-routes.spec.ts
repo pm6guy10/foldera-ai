@@ -911,7 +911,8 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByText('ready to move')).toHaveCount(0);
     await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
     await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /notifications/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);
+    await expect(page.getByRole('status', { name: /notifications unavailable/i })).toBeVisible();
     await expect(page.getByText(/^Upgrade to Pro$/i)).toHaveCount(0);
     await expect.poll(async () =>
       page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
@@ -1108,9 +1109,11 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByText('open threads')).toHaveCount(0);
     await expect(page.getByText('need attention')).toHaveCount(0);
     await expect(page.getByText('ready to move')).toHaveCount(0);
-    await expect(page.getByText(/Drop a folder or document/i)).toBeVisible();
+    await expect(page.getByText(/Uploads coming later/i)).toBeVisible();
+    await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
     await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /notifications/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);
+    await expect(page.getByRole('status', { name: /notifications unavailable/i })).toBeVisible();
     await expect(page.getByText(/^Upgrade to Pro$/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /approve & send/i })).toHaveCount(0);

@@ -17,8 +17,10 @@ Codex may not say DONE, PROVEN, or next blocker is GATE_9 for dashboard/frontend
 The gate requires:
 
 - screenshot baselines for finished, requirements-needed, and no-safe states on desktop and mobile
+- real-user surface checks for Today, Recent Work, Sources, and Account on desktop and mobile
 - interaction audit coverage for visible dashboard controls
 - banned-copy audit for backend/internal phrases in visible dashboard UI
+- dashboard performance timing proof for first non-loading state, main content, and current action
 - frontend receipt proof in `ACTIVE_HANDOFF.md` and `SESSION_HISTORY.md`
 - production current screenshots attached or referenced when the frontend claim is about the live app
 - proof that API-only or backend-only proof is not a frontend pass
@@ -46,6 +48,14 @@ Committed Playwright baselines must cover the deterministic fixture states:
 - requirements-needed mobile 390x844
 - no-safe-artifact desktop 1440x900
 - no-safe-artifact mobile 390x844
+- Today panel desktop 1440x900
+- Today panel mobile 390x844
+- Recent Work panel desktop 1440x900
+- Recent Work panel mobile 390x844
+- Sources panel desktop 1440x900
+- Sources panel mobile 390x844
+- Account panel desktop 1440x900
+- Account panel mobile 390x844
 
 Each state must prove:
 
@@ -57,6 +67,12 @@ Each state must prove:
 - no backend/internal copy
 - state label visible
 - main action obvious
+- support rail may not contain generic support filler
+- Recent Work rows may not show raw artifact or generated body text
+- fake upload/drop cards may not appear active
+- fake notification controls may not appear active
+- source and account panels must show useful real-user state
+- common viewport density must hold at 1366x768, 1440x900, 1920x1080, and 390x844
 
 Production-current screenshots may use mocked auth and intercepted deterministic API responses only to prove deployed frontend rendering without exposing private owner data. They must be labeled as frontend/runtime proof, not beta proof or production-data proof.
 
@@ -77,7 +93,7 @@ Current required coverage:
 | Recent Work nav | `NAVIGATION` | Selects Recent Work in-shell |
 | Sources nav | `NAVIGATION` | Selects Sources in-shell |
 | Account nav | `NAVIGATION` | Selects Account in-shell |
-| Notification bell | `DISABLED_WITH_REASON` | Disabled with accessible reason |
+| Notification bell | `DISABLED_WITH_REASON` | Non-button disabled status or hidden until live alerts exist |
 | Today/Account pill | `DISABLED_WITH_REASON` | Status-only with accessible current-section label |
 | Learn more | `NAVIGATION` | Has a destination |
 | Upgrade to Pro | `NAVIGATION` | Has a destination; no Stripe call in the gate |
@@ -91,7 +107,7 @@ Current required coverage:
 | Approve | `WORKING_ACTION` | Posts approve and shows no-send feedback |
 | Sign out | `WORKING_ACTION` | Calls sign-out endpoint |
 | Source trail cards | `DISABLED_WITH_REASON` | Not clickable-looking unless wired |
-| Support/upload card | `DISABLED_WITH_REASON` | Not clickable-looking unless wired |
+| Support/upload card | `DISABLED_WITH_REASON` | Says uploads are coming later, or is hidden; never active-looking unless wired |
 | Account controls | `WORKING_ACTION` | Account panel controls are reachable |
 | Icon-only buttons | `WORKING_ACTION` or `DISABLED_WITH_REASON` | Every visible icon button has an accessible label |
 
@@ -115,6 +131,14 @@ These phrases may not appear in visible dashboard UI:
 - `deterministic fixture`
 - `stored winner fingerprint`
 - `current receipt`
+- `Recent Work support`
+- `Sources support`
+- `Account support`
+- `Foldera keeps this panel inside the same app shell`
+- `Drop a folder or document`
+- `Foldera will get to work instantly`
+- `Same-place controls`
+- `legacy rooms`
 
 Internal mentions are allowed only in docs, tests, comments, or backend logs. They are not allowed as visible user-facing dashboard copy.
 
@@ -129,6 +153,9 @@ Allowed human copy examples:
 - "Why Foldera held back."
 - "Source trail."
 - "What you can do next."
+- "Uploads coming later."
+- "Evidence readiness."
+- "Connected sources."
 
 ## Layout Contract
 
@@ -144,8 +171,25 @@ These are hard failures for dashboard/frontend work:
 - finished state lacking visible source, control, or action
 - requirements state hiding missing inputs
 - no-safe state feeling like a fallback/debug dump
+- common viewport density failing at 1366x768, 1440x900, 1920x1080, or 390x844
+- dashboard content reaching first non-loading state, main content, or current action too slowly in mocked-auth frontend proof
 
 The main card may scroll internally when content is long, but footer controls must remain visually separate from the body text. The source trail rail may scroll internally, but it may not clip or cover the support/upload panel.
+
+## Real-User Surface Checks
+
+`npm run gate:frontend` must fail when the dashboard exposes shell/filler UI that looks like an unfinished product surface.
+
+Hard failures:
+
+- support rail may not contain generic support filler such as "Recent Work support", "Sources support", or app-shell explanation copy
+- Recent Work rows may not show raw artifact or generated body text; show title, status, date, type, and safe outcome only
+- fake upload/drop cards may not appear active
+- fake notification controls may not appear active
+- Sources must show connected sources, last checked state, evidence readiness, and what Foldera is waiting for
+- Account must show signed-in identity, connected source summary, no-outbound default, and sign out
+- dashboard performance timing proof must report first non-loading state, main content visible, and current action visible
+- common viewport density must be exercised at 1366x768, 1440x900, 1920x1080, and 390x844
 
 ## Receipt Rule
 

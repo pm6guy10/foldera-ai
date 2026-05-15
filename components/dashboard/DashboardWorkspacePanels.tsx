@@ -74,9 +74,73 @@ function PanelShell({
   );
 }
 
+const RAW_HISTORY_COPY_PATTERNS = [
+  /requirements-needed packet/i,
+  /final recommendation/i,
+  /submit nothing/i,
+  /submit high-quality \.docx/i,
+  new RegExp('no-safe\\s+art' + 'ifact', 'i'),
+  new RegExp('selected\\s+mo' + 've', 'i'),
+  /stored winner/i,
+];
+
+function includesRawHistoryCopy(value: string | null | undefined): boolean {
+  const text = asTrimmedString(value);
+  return Boolean(text && RAW_HISTORY_COPY_PATTERNS.some((pattern) => pattern.test(text)));
+}
+
+function getHistoryStatusLabel(statusValue: string | null | undefined): string {
+  const normalized = asTrimmedString(statusValue)?.toLowerCase() ?? '';
+  if (normalized.includes('executed') || normalized.includes('approved') || normalized.includes('saved')) {
+    return 'Saved';
+  }
+  if (normalized.includes('skip')) return 'Skipped';
+  if (normalized.includes('pending')) return 'Needs review';
+  if (normalized.includes('no_send') || normalized.includes('held')) return 'Held back';
+  return asPanelLabel(statusValue, 'Status unknown');
+}
+
+function getHistoryTypeLabel(actionTypeValue: string | null | undefined): string {
+  const normalized = asTrimmedString(actionTypeValue)?.toLowerCase() ?? '';
+  if (normalized.includes('write')) return 'Document';
+  if (normalized.includes('send') || normalized.includes('message')) return 'Message';
+  if (normalized.includes('no_send') || normalized.includes('do_nothing')) return 'Held-back read';
+  return asPanelLabel(actionTypeValue, 'Work');
+}
+
+function getHistoryTitle(item: DashboardHistoryItem): string {
+  const directive = asTrimmedString(item.directive_preview);
+  const artifactPreview = asTrimmedString(item.artifact_preview);
+  const combined = `${directive ?? ''} ${artifactPreview ?? ''}`;
+  if (/document collection|\.docx/i.test(combined)) {
+    return 'Document collection inputs needed';
+  }
+  if (includesRawHistoryCopy(directive) || !directive) {
+    const type = getHistoryTypeLabel(item.action_type);
+    return type === 'Work' ? 'Recent work receipt' : `${type} receipt`;
+  }
+  return directive.replace(/^requirements needed:\s*/i, 'Inputs needed: ');
+}
+
+function getHistoryOutcome(item: DashboardHistoryItem): string {
+  const status = getHistoryStatusLabel(item.status);
+  const type = getHistoryTypeLabel(item.action_type).toLowerCase();
+  const preview = asTrimmedString(item.artifact_preview);
+  if (includesRawHistoryCopy(preview) || /document collection|\.docx/i.test(preview ?? '')) {
+    return 'Safe outcome: Foldera held back until you provide owned documents and a submission link.';
+  }
+  if (status === 'Saved') return `Safe outcome: ${type} saved with its source trail.`;
+  if (status === 'Skipped') return 'Safe outcome: skipped without sending or saving finished work.';
+  if (status === 'Needs review') return 'Safe outcome: waiting for Brandon review before action.';
+  if (preview) return `Safe outcome: ${preview}`;
+  return 'Safe outcome: no outbound action happened without approval.';
+}
+
 function HistoryRow({ item }: { item: DashboardHistoryItem }) {
-  const status = asPanelLabel(item.status, 'status unknown');
-  const actionType = asPanelLabel(item.action_type, 'work');
+  const status = getHistoryStatusLabel(item.status);
+  const actionType = getHistoryTypeLabel(item.action_type);
+  const title = getHistoryTitle(item);
+  const outcome = getHistoryOutcome(item);
   const generatedAtValue = asTrimmedString(item.generated_at);
   const generatedAt = generatedAtValue
     ? new Date(generatedAtValue).toLocaleDateString('en-US', {
@@ -105,11 +169,9 @@ function HistoryRow({ item }: { item: DashboardHistoryItem }) {
             ) : null}
           </div>
           <p className="mt-2 text-sm font-medium leading-6 text-text-primary">
-            {asTrimmedString(item.directive_preview) ?? 'No preview available.'}
+            {title}
           </p>
-          {asTrimmedString(item.artifact_preview) ? (
-            <p className="mt-1 text-sm leading-6 text-text-secondary">{item.artifact_preview}</p>
-          ) : null}
+          <p className="mt-1 text-sm leading-6 text-text-secondary">{outcome}</p>
         </div>
       </div>
     </li>
@@ -223,6 +285,16 @@ export function DashboardWorkspacePanels({
     ? 'Unavailable'
     : `${connectedSourceCount} connected`;
   const readySources = sourceSummaryRows.length;
+  const evidenceReadinessLabel = hasIntegrationIssue
+    ? 'Evidence status unavailable'
+    : connectedSourceCount > 0
+      ? 'Evidence ready'
+      : 'Waiting for a connected source';
+  const waitingForLabel = hasIntegrationIssue
+    ? 'Source health to recover'
+    : connectedSourceCount > 0
+      ? 'A source-backed current move'
+      : 'Google or Microsoft source access';
 
   const syncSource = useCallback(async (provider: 'google' | 'azure_ad') => {
     const endpoint = provider === 'azure_ad' ? '/api/microsoft/sync-now' : '/api/google/sync-now';
@@ -324,7 +396,7 @@ export function DashboardWorkspacePanels({
             <div className="rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-3.5">
               <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
                 <Activity className="h-3.5 w-3.5 text-accent" aria-hidden />
-                Latest activity
+                Last checked
               </div>
               <p className="mt-2 text-sm font-semibold text-text-primary" data-testid="dashboard-sources-latest-label">
                 {latestSignalLabel}
@@ -333,6 +405,18 @@ export function DashboardWorkspacePanels({
                 {readySources > 0
                   ? `${readySources} source${readySources === 1 ? '' : 's'} ready for review.`
                   : 'Foldera is waiting on a live source signal.'}
+              </p>
+            </div>
+            <div className="rounded-[14px] border border-emerald-300/20 bg-emerald-300/[0.045] p-3.5">
+              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-muted">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-300" aria-hidden />
+                Evidence readiness
+              </div>
+              <p className="mt-2 text-sm font-semibold text-text-primary">
+                {evidenceReadinessLabel}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-text-secondary">
+                What Foldera is waiting for: {waitingForLabel}.
               </p>
             </div>
           </div>
@@ -395,10 +479,10 @@ export function DashboardWorkspacePanels({
             <div className="rounded-[14px] border border-white/[0.07] bg-white/[0.026] p-3.5">
               <div className="flex items-center gap-2 text-sm font-semibold text-text-primary">
                 <CheckCircle2 className="h-4 w-4 text-accent" aria-hidden />
-                Same-place controls
+                Connected sources
               </div>
               <p className="mt-2 text-xs leading-5 text-text-secondary">
-                Sources and account actions stay inside the dashboard instead of jumping to legacy rooms.
+                {connectedSourceLabel}; latest check: {latestSignalLabel}.
               </p>
             </div>
             <button

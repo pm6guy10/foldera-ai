@@ -25,6 +25,7 @@ type DashboardDesktopStageProps = {
   submitOutcome: (outcome: 'worked' | 'didnt_work') => void | Promise<void>;
   hiddenArtifactNode: ReactNode;
   sourceTrailItems: SourceTrailItem[];
+  sidePanelNode?: ReactNode;
 };
 
 export function DashboardDesktopStage({
@@ -44,12 +45,22 @@ export function DashboardDesktopStage({
   submitOutcome,
   hiddenArtifactNode,
   sourceTrailItems,
+  sidePanelNode,
 }: DashboardDesktopStageProps) {
+  const rightRailLabel = isTodayPanel ? 'Source trail' : activeSidebarLabel;
+  const rightRailTitle = isTodayPanel
+    ? 'Context behind the current move'
+    : activePanel === 'history'
+      ? 'Clean work receipts'
+      : activePanel === 'sources'
+        ? 'Source state'
+        : 'Trust controls';
+
   return (
     <main className="foldera-dashboard-stage-root h-[100dvh] overflow-hidden text-text-primary" data-testid="dashboard-route-shell">
       <div className="foldera-dashboard-stage foldera-dashboard-stage--ready h-full">
         <section
-          className="foldera-dashboard-shell grid h-[100dvh] min-h-0 w-full grid-cols-[236px_minmax(0,1fr)_clamp(292px,22vw,340px)] overflow-hidden"
+          className="foldera-dashboard-shell grid h-[100dvh] min-h-0 w-full justify-center grid-cols-[236px_minmax(0,1160px)_clamp(292px,22vw,340px)] overflow-hidden"
           data-testid="dashboard-app-shell"
         >
           <DashboardSidebar
@@ -79,19 +90,18 @@ export function DashboardDesktopStage({
                     )}
                   </h1>
                   <p className="mt-2 max-w-[760px] text-[clamp(14px,0.95vw,16px)] leading-6 text-[#A7B3C2]">
-                    Foldera keeps Today, sources, history, and account inside one working surface so the dashboard stays grounded in the same artifact context.
+                    Today shows the current safe move, why it matters, the source trail, and the next action.
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">
-                  <button
-                    type="button"
+                  <div
+                    role="status"
                     aria-label="Notifications unavailable until live alerts are connected"
                     title="Notifications unavailable until live alerts are connected"
-                    disabled
                     className="inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-full border border-cyan-200/14 bg-white/[0.04] text-cyan-100 opacity-70"
                   >
                     <Bell className="h-4 w-4" aria-hidden />
-                  </button>
+                  </div>
                   <div
                     role="status"
                     aria-label={`Current dashboard section: ${activeSidebarLabel}`}
@@ -136,22 +146,16 @@ export function DashboardDesktopStage({
           <aside className="foldera-dashboard-right-rail flex h-[100dvh] min-h-0 min-w-0 flex-col border-l border-white/[0.07] bg-[#06101a]/78 px-5 py-4 2xl:py-5">
             <div className="mb-3 shrink-0">
               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#9AA7B6]">
-                Support
+                {rightRailLabel}
               </p>
               <h2 className="mt-2 text-[18px] font-semibold text-white">
-                {isTodayPanel ? 'Context behind the current move' : `${activeSidebarLabel} support`}
+                {rightRailTitle}
               </h2>
             </div>
             <div className="min-h-0 flex-1">
               {isTodayPanel ? (
                 <RightPanel stageDesktop sourceTrailItems={sourceTrailItems} />
-              ) : (
-                <div className="rounded-[18px] border border-white/[0.07] bg-white/[0.03] p-5">
-                  <p className="text-sm leading-6 text-[#8D9AA8]">
-                    Foldera keeps this panel inside the same app shell so the artifact, source trail, and account context never jump into a separate surface.
-                  </p>
-                </div>
-              )}
+              ) : sidePanelNode}
             </div>
           </aside>
         </section>

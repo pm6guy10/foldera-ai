@@ -104,19 +104,18 @@ export function DashboardMobileLayout({
                 )}
               </h1>
               <p className="mt-2 max-w-[28rem] text-[13px] leading-5 text-text-secondary">
-                Foldera keeps the current artifact and support panels in one responsive dashboard surface.
+                Today shows the current safe move, source trail, and next action.
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
+              <div
+                role="status"
                 aria-label="Notifications unavailable until live alerts are connected"
                 title="Notifications unavailable until live alerts are connected"
-                disabled
                 className="inline-flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-full border border-cyan-200/14 bg-white/[0.04] text-cyan-100 opacity-70"
               >
                 <Bell className="h-4 w-4" aria-hidden />
-              </button>
+              </div>
               <div
                 role="status"
                 aria-label={`Current dashboard section: ${activeSidebarLabel}`}

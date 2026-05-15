@@ -14,6 +14,7 @@ import {
   DashboardLoadingCard,
 } from '@/components/dashboard/DashboardStateCards';
 import { DashboardDesktopStage } from '@/components/dashboard/DashboardDesktopStage';
+import { DashboardContextRail } from '@/components/dashboard/DashboardContextRail';
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
 import { EmptyStateCard } from '@/components/foldera/EmptyStateCard';
 import { DailyUtilitySlateCard } from '@/components/foldera/DailyUtilitySlateCard';
@@ -904,6 +905,17 @@ export default function DashboardPage() {
         : activePanel === 'account'
           ? renderWorkspacePanel('account')
           : null;
+  const rightRailPanelNode = !isTodayPanel ? (
+    <DashboardContextRail
+      activePanel={activePanel}
+      historyLoaded={historyLoaded}
+      recentHistoryCount={recentHistory.length}
+      hasIntegrationIssue={hasIntegrationIssue}
+      connectedSourceCount={connectedSourceCount}
+      latestSignalLabel={latestSignalLabel}
+      sidebarUserName={sidebarUserName}
+    />
+  ) : null;
   const desktopWorkspaceNode = isTodayPanel ? (
     <div data-testid="dashboard-unified-workspace" className="h-full w-full">
       <div className="h-full min-h-0 min-w-0">{briefingCardNode}</div>
@@ -945,6 +957,7 @@ export default function DashboardPage() {
         submitOutcome={submitOutcome}
         hiddenArtifactNode={hiddenArtifactNode}
         sourceTrailItems={sourceTrailItems}
+        sidePanelNode={rightRailPanelNode}
       />
     );
   }

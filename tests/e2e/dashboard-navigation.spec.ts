@@ -395,7 +395,8 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     );
     await expect(sourceTrailPanel).toContainText('Calendar hold creates a noon decision window.');
     await expect(sourceTrailPanel).not.toContainText(/email:|calendar:/i);
-    await expect(page.getByText(/Drop a folder or document\./i)).toBeVisible();
+    await expect(page.getByText(/Uploads coming later/i)).toBeVisible();
+    await expect(page.getByText(/Drop a folder or document\./i)).toHaveCount(0);
   });
 
   test('clicking each sidebar item keeps the app shell on /dashboard', async ({ page }) => {
@@ -428,7 +429,8 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByTestId('dashboard-source-trail-panel')).toContainText(
       /Evidence behind today's move/i,
     );
-    await expect(page.getByText(/Drop a folder or document\./i)).toBeVisible();
+    await expect(page.getByText(/Uploads coming later/i)).toBeVisible();
+    await expect(page.getByText(/Drop a folder or document\./i)).toHaveCount(0);
 
     await page.getByTestId('dashboard-sidebar-item-history').click();
     await expect(page.getByTestId('dashboard-panel-history')).toBeVisible();
@@ -438,8 +440,9 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(page.getByText(/Source readiness/i)).toBeVisible();
 
     await page.getByTestId('dashboard-sidebar-item-account').click();
-    await expect(page.getByTestId('dashboard-panel-account')).toBeVisible();
-    await expect(page.getByText(/Trust controls/i)).toBeVisible();
+    const accountPanel = page.getByTestId('dashboard-panel-account');
+    await expect(accountPanel).toBeVisible();
+    await expect(accountPanel).toContainText(/Trust controls/i);
   });
 
   test('dashboard brand mark returns to the public landing page', async ({ page }) => {

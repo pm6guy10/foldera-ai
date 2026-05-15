@@ -16,6 +16,14 @@ const requiredSnapshotNames = [
   'money-shot-requirements-mobile',
   'money-shot-no-safe-desktop',
   'money-shot-no-safe-mobile',
+  'dashboard-real-user-today-desktop',
+  'dashboard-real-user-today-mobile',
+  'dashboard-real-user-history-desktop',
+  'dashboard-real-user-history-mobile',
+  'dashboard-real-user-sources-desktop',
+  'dashboard-real-user-sources-mobile',
+  'dashboard-real-user-account-desktop',
+  'dashboard-real-user-account-mobile',
 ];
 
 const requiredDocPhrases = [
@@ -31,6 +39,13 @@ const requiredDocPhrases = [
   'layout contract result',
   'API-only or backend-only proof is not a frontend pass',
   'may not say DONE, PROVEN, or next blocker is GATE_9',
+  'real-user surface checks',
+  'support rail may not contain generic support filler',
+  'Recent Work rows may not show raw artifact or generated body text',
+  'fake upload/drop cards may not appear active',
+  'fake notification controls may not appear active',
+  'dashboard performance timing proof',
+  'common viewport density',
 ];
 
 const requiredReceiptPhrases = [
@@ -89,6 +104,11 @@ results.push(
   result('visual snapshots use toHaveScreenshot', spec.includes('toHaveScreenshot'), specPath),
   result('interaction test is present', spec.includes('copy, skip, save, approve, and requirements packet controls give feedback'), specPath),
   result('rendered banned-copy test is present', spec.includes('BANNED_VISIBLE_COPY'), specPath),
+  result('real-user surface checks are present', spec.includes('BANNED_DASHBOARD_SHELL_COPY'), specPath),
+  result('raw Recent Work guard is present', spec.includes('raw history text'), specPath),
+  result('performance timing proof is present', spec.includes('DASHBOARD_TIMING'), specPath),
+  result('common viewport density proof is present', spec.includes('common viewport containment'), specPath),
+  result('panel screenshot proof is present', spec.includes('dashboard-real-user-${panel}-${viewport.name}.png'), specPath),
 );
 
 const snapshotFiles = findFiles('tests/e2e', (file) =>
