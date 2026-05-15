@@ -99,6 +99,19 @@ function requireProof(
   else proofMissing.push(missing);
 }
 
+function requireReservedUserExclusionProof(
+  proof: string[],
+  found: string[],
+  proofMissing: string[],
+) {
+  const required = ['OWNER_USER_ID', 'TEST_USER_ID', 'OWNER_CANARY_USER_IDS'];
+  const missing = required.filter((name) => !proof.some((entry) => entry.includes(name)));
+  if (proof.length > 0) found.push(...proof);
+  if (missing.length > 0) {
+    proofMissing.push('OWNER_USER_ID, TEST_USER_ID, and OWNER_CANARY_USER_IDS exclusion proof missing');
+  }
+}
+
 function buildGate0(evidence: ReleaseGateEvidence): ReleaseGateResult {
   const proofFound: string[] = [];
   const proofMissing: string[] = [];
@@ -246,12 +259,7 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
   const gate4Found: string[] = [];
   const gate4Missing: string[] = [];
   requireProof(evidence.selectionProof, 'Selection proof missing', gate4Found, gate4Missing);
-  requireProof(
-    evidence.ownerAndTestExclusionProof,
-    'OWNER_USER_ID and TEST_USER_ID exclusion proof missing',
-    gate4Found,
-    gate4Missing,
-  );
+  requireReservedUserExclusionProof(evidence.ownerAndTestExclusionProof, gate4Found, gate4Missing);
   gates.push(
     gate4Missing.length
       ? failGate(
@@ -263,7 +271,7 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
         )
       : passGate(
           'GATE_4_SELECTION',
-          'Selection proof exists and reserved owner/test users are excluded from non-owner proof.',
+          'Selection proof exists and reserved owner/test/canary users are excluded from non-owner proof.',
           gate4Found,
         ),
   );
@@ -368,7 +376,7 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
           [],
           [
             'Exactly one real non-owner account must connect Google or Microsoft.',
-            'No fake rows, OWNER_USER_ID, TEST_USER_ID, or mock harness may count as real beta proof.',
+            'No fake rows, OWNER_USER_ID, TEST_USER_ID, OWNER_CANARY_USER_IDS, or mock harness may count as real beta proof.',
           ],
           GATE_9_NEXT_MOVE,
           'BLOCKED_EXTERNAL',
@@ -500,6 +508,9 @@ export async function gatherReleaseGateEvidence(
   const testExcluded =
     acceptanceGate.includes(".neq('user_id', TEST_USER_ID)") ||
     acceptanceGate.includes('.neq("user_id", TEST_USER_ID)');
+  const ownerCanaryExcluded =
+    acceptanceGate.includes('OWNER_CANARY_USER_IDS') ||
+    acceptanceGate.includes('getOwnerCanaryUserIds');
 
   return {
     gitMainSha,
@@ -520,8 +531,8 @@ export async function gatherReleaseGateEvidence(
       'NON_OWNER_BETA_HARNESS_MAP.md maps source states; tests/e2e/non-owner-beta-harness.spec.ts exercises connected/no-safe/source-backed states.',
     ),
     selectionProof: proofIf(
-      ownerExcluded && testExcluded,
-      'lib/cron/acceptance-gate.ts excludes OWNER_USER_ID and TEST_USER_ID in NON_OWNER_DEPTH.',
+      ownerExcluded && testExcluded && ownerCanaryExcluded,
+      'lib/cron/acceptance-gate.ts excludes OWNER_USER_ID, TEST_USER_ID, and OWNER_CANARY_USER_IDS in NON_OWNER_DEPTH.',
     ),
     artifactProof: proofIf(
       /SOURCE_BACKED_ACTION|NO_SAFE_MOVE/i.test(harnessSpec),
@@ -549,6 +560,7 @@ export async function gatherReleaseGateEvidence(
     ownerAndTestExclusionProof: [
       ...proofIf(ownerExcluded, 'lib/cron/acceptance-gate.ts has .neq(user_id, OWNER_USER_ID).'),
       ...proofIf(testExcluded, 'lib/cron/acceptance-gate.ts has .neq(user_id, TEST_USER_ID).'),
+      ...proofIf(ownerCanaryExcluded, 'lib/cron/acceptance-gate.ts excludes OWNER_CANARY_USER_IDS.'),
     ],
   };
 }

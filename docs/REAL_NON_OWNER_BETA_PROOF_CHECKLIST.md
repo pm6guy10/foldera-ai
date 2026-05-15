@@ -7,6 +7,7 @@ Purpose: prove Foldera's first real non-owner beta loop without using Brandon ow
 - One real non-owner account signs in.
 - The account is not `OWNER_USER_ID`.
 - The account is not `TEST_USER_ID`.
+- The account is not listed in `OWNER_CANARY_USER_IDS`.
 - The account connects Google or Microsoft only through the normal login and provider consent flow.
 
 ## Forbidden Proof
@@ -17,12 +18,13 @@ Purpose: prove Foldera's first real non-owner beta loop without using Brandon ow
 - No copied Brandon/owner data.
 - No mock harness rows counted as beta proof.
 - No owner-only run counted as beta proof.
+- No Brandon-controlled Outlook/Hotmail canary account counted as beta proof.
 
 ## Required Proof Steps
 
 1. Confirm the tester can sign in.
 2. Confirm Google or Microsoft connection succeeds after provider consent.
-3. Confirm production proof excludes `OWNER_USER_ID` and `TEST_USER_ID`.
+3. Confirm production proof excludes `OWNER_USER_ID`, `TEST_USER_ID`, and `OWNER_CANARY_USER_IDS`.
 4. Confirm source status/readback after connection.
 5. Confirm Foldera shows either one source-backed move or one clear waiting/no-safe-move state.
 6. Confirm the source trail is visible and supports the shown move or waiting state.
@@ -33,6 +35,7 @@ Purpose: prove Foldera's first real non-owner beta loop without using Brandon ow
 
 - Stop if the only connected account is Brandon/owner.
 - Stop if the only connected account is `TEST_USER_ID`.
+- Stop if the only connected account is listed in `OWNER_CANARY_USER_IDS`.
 - Stop if proof requires fabricated database rows.
 - Stop if source connection requires credentials or provider consent Brandon cannot supply in-product.
 - Stop if the tester reaches a confusing or contradictory state after connection.

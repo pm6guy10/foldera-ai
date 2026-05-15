@@ -19,7 +19,7 @@ import { createServerClient } from '@/lib/db/client';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { renderPlaintextEmailHtml, sendResendEmail } from '@/lib/email/resend';
 import { OWNER_USER_ID } from '@/lib/auth/constants';
-import { TEST_USER_ID } from '@/lib/config/constants';
+import { getOwnerCanaryUserIds, TEST_USER_ID } from '@/lib/config/constants';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -370,13 +370,19 @@ async function checkNonOwnerDepth(): Promise<CheckResult> {
   todayStart.setUTCHours(0, 0, 0, 0);
   const todayStartIso = todayStart.toISOString();
 
-  const { data: connectedRows, error: tokenError } = await supabase
+  let connectedQuery = supabase
     .from('user_tokens')
     .select('user_id')
     .is('disconnected_at', null)
     .not('access_token', 'is', null)
     .neq('user_id', OWNER_USER_ID)
     .neq('user_id', TEST_USER_ID);
+
+  for (const canaryUserId of getOwnerCanaryUserIds()) {
+    connectedQuery = connectedQuery.neq('user_id', canaryUserId);
+  }
+
+  const { data: connectedRows, error: tokenError } = await connectedQuery;
 
   if (tokenError) {
     return { check: 'NON_OWNER_DEPTH', pass: false, detail: `user_tokens lookup failed: ${tokenError.message}` };

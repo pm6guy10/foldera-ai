@@ -25,7 +25,7 @@ const BASE_EVIDENCE: ReleaseGateEvidence = {
     'tests/e2e/non-owner-beta-harness.spec.ts covers no-token, connected, no-safe-move, source-backed states',
   ],
   selectionProof: [
-    'lib/cron/acceptance-gate.ts excludes OWNER_USER_ID and TEST_USER_ID from NON_OWNER_DEPTH',
+    'lib/cron/acceptance-gate.ts excludes OWNER_USER_ID, TEST_USER_ID, and OWNER_CANARY_USER_IDS from NON_OWNER_DEPTH',
   ],
   artifactProof: [
     'tests/e2e/non-owner-beta-harness.spec.ts covers source-backed move and no-safe-move',
@@ -44,6 +44,7 @@ const BASE_EVIDENCE: ReleaseGateEvidence = {
   ownerAndTestExclusionProof: [
     'lib/cron/acceptance-gate.ts has .neq("user_id", OWNER_USER_ID)',
     'lib/cron/acceptance-gate.ts has .neq("user_id", TEST_USER_ID)',
+    'lib/cron/acceptance-gate.ts excludes OWNER_CANARY_USER_IDS',
   ],
 };
 
@@ -115,6 +116,22 @@ describe('release gate status', () => {
     expect(report.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
     expect(report.gates[0]?.proofFound.join('\n')).toContain(
       'ACTIVE_HANDOFF.md release gate/status matches current release truth',
+    );
+  });
+
+  it('fails selection proof when owner canary user ids are not excluded from real beta proof', () => {
+    const report = buildReleaseGateReport({
+      ...BASE_EVIDENCE,
+      ownerAndTestExclusionProof: [
+        'lib/cron/acceptance-gate.ts has .neq("user_id", OWNER_USER_ID)',
+        'lib/cron/acceptance-gate.ts has .neq("user_id", TEST_USER_ID)',
+      ],
+    });
+
+    expect(report.firstFailingGate.id).toBe('GATE_4_SELECTION');
+    expect(report.firstFailingGate.status).toBe('FAIL');
+    expect(report.firstFailingGate.proofMissing).toContain(
+      'OWNER_USER_ID, TEST_USER_ID, and OWNER_CANARY_USER_IDS exclusion proof missing',
     );
   });
 });

@@ -290,6 +290,46 @@ describe('runAcceptanceGate', () => {
     });
   });
 
+  it('fails NON_OWNER_DEPTH when a Brandon-controlled owner canary has Microsoft depth evidence', async () => {
+    const canaryUserId = '44444444-4444-4444-8444-444444444444';
+    process.env.OWNER_CANARY_USER_IDS = canaryUserId;
+    mockDb.user_tokens = mockDb.user_tokens.filter((row) => row.user_id !== 'non-owner-1');
+    mockDb.user_tokens.push({
+      user_id: canaryUserId,
+      provider: 'microsoft',
+      email: 'b-kapp-canary@hotmail.com',
+      access_token: 'canary-token',
+      refresh_token: 'canary-refresh',
+      expires_at: Date.now() + 24 * 60 * 60 * 1000,
+      disconnected_at: null,
+    });
+    mockDb.user_subscriptions = [{ user_id: canaryUserId, plan: 'trial', status: 'active' }];
+    mockDb.tkg_actions = [{
+      id: 'canary-action-1',
+      user_id: canaryUserId,
+      action_type: 'do_nothing',
+      status: 'skipped',
+      execution_result: { outcome_type: 'no_send' },
+      generated_at: new Date().toISOString(),
+    }];
+    authUsers.delete('non-owner-1');
+    authUsers.set(canaryUserId, { id: canaryUserId, email: 'b-kapp-canary@hotmail.com' });
+
+    try {
+      const { runAcceptanceGate } = await import('../acceptance-gate');
+      const result = await runAcceptanceGate();
+      const nonOwnerCheck = result.checks.find((check) => check.check === 'NON_OWNER_DEPTH');
+
+      expect(nonOwnerCheck).toMatchObject({
+        check: 'NON_OWNER_DEPTH',
+        pass: false,
+        detail: 'No connected non-owner users (owner-only run).',
+      });
+    } finally {
+      delete process.env.OWNER_CANARY_USER_IDS;
+    }
+  });
+
   it('passes NON_OWNER_DEPTH when a real non-owner has active subscription and persisted evidence', async () => {
     const { runAcceptanceGate } = await import('../acceptance-gate');
     const result = await runAcceptanceGate();

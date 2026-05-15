@@ -241,11 +241,20 @@ describe('preflight contract validation', () => {
     const { repoDir } = makeRepo();
     try {
       mkdirSync(join(repoDir, 'docs'), { recursive: true });
+      mkdirSync(join(repoDir, 'lib', 'config'), { recursive: true });
+      mkdirSync(join(repoDir, 'lib', 'cron', '__tests__'), { recursive: true });
+      mkdirSync(join(repoDir, 'lib', 'ops'), { recursive: true });
       mkdirSync(join(repoDir, 'scripts', '__tests__'), { recursive: true });
       writeValidActiveHandoff(repoDir, 'release gate status controller');
       writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), '## Receipt\n- release gate\n');
       writeFileSync(join(repoDir, 'package.json'), '{"scripts":{"gate:status":"tsx scripts/release-gate-status.ts"}}\n');
       writeFileSync(join(repoDir, 'docs', 'RELEASE_GATES.md'), '# Release gates\n');
+      writeFileSync(join(repoDir, 'docs', 'REAL_NON_OWNER_BETA_PROOF_CHECKLIST.md'), '# Beta proof\n');
+      writeFileSync(join(repoDir, 'docs', 'OWNER_CANARY_TEST_RUNBOOK.md'), '# Canary\n');
+      writeFileSync(join(repoDir, 'lib', 'config', 'constants.ts'), 'export {}\n');
+      writeFileSync(join(repoDir, 'lib', 'cron', 'acceptance-gate.ts'), 'export {}\n');
+      writeFileSync(join(repoDir, 'lib', 'cron', '__tests__', 'acceptance-gate.test.ts'), 'export {}\n');
+      writeFileSync(join(repoDir, 'lib', 'ops', 'beta-readiness.ts'), 'export {}\n');
       writeFileSync(join(repoDir, 'scripts', 'release-gate-status.ts'), 'export {}\n');
       writeFileSync(
         join(repoDir, 'scripts', '__tests__', 'release-gate-status.test.ts'),
@@ -263,6 +272,12 @@ describe('preflight contract validation', () => {
           'SESSION_HISTORY.md',
           'package.json',
           'docs/RELEASE_GATES.md',
+          'docs/REAL_NON_OWNER_BETA_PROOF_CHECKLIST.md',
+          'docs/OWNER_CANARY_TEST_RUNBOOK.md',
+          'lib/config/constants.ts',
+          'lib/cron/acceptance-gate.ts',
+          'lib/cron/__tests__/acceptance-gate.test.ts',
+          'lib/ops/beta-readiness.ts',
           'scripts/release-gate-status.ts',
           'scripts/__tests__/release-gate-status.test.ts',
         ]),

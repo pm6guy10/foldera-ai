@@ -89,6 +89,21 @@ export const APPROVAL_LOOKBACK_MS = MS_7D;
  */
 export const TEST_USER_ID = '22222222-2222-2222-2222-222222222222';
 
+export const OWNER_CANARY_USER_IDS_ENV = 'OWNER_CANARY_USER_IDS';
+
+/**
+ * Brandon-controlled accounts used for owner-run connector canaries.
+ * These accounts can exercise OAuth/sync safely but must never count as real
+ * non-owner beta proof. Configure as comma/space separated UUIDs.
+ */
+export function getOwnerCanaryUserIds(): string[] {
+  const raw = process.env[OWNER_CANARY_USER_IDS_ENV] ?? '';
+  return raw
+    .split(/[\s,]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+}
+
 /**
  * Nightly `/api/cron/nightly-ops` scales `resolveSignalBacklogMode().maxSignals` by this factor
  * so backlog drains faster. Daily-brief signal processing is unchanged.

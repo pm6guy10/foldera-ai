@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '../db/client';
 import { createServerClient } from '../db/client';
-import { INTEGRATIONS_SYNC_STALE_MS, MS_14D, MS_30D } from '../config/constants';
+import { getOwnerCanaryUserIds, INTEGRATIONS_SYNC_STALE_MS, MS_14D, MS_30D } from '../config/constants';
 import { OWNER_USER_ID } from '../auth/constants';
 import type { ConvictionArtifact, ConvictionDirective } from '../briefing/types';
 import { isSendWorthy } from '../cron/daily-brief-generate';
@@ -109,6 +109,10 @@ function providerDisplay(provider: string): string {
   if (provider === 'google') return 'google';
   if (provider === 'microsoft') return 'microsoft';
   return provider || 'unknown';
+}
+
+function isOwnerCanaryUserId(userId: string): boolean {
+  return getOwnerCanaryUserIds().includes(userId);
 }
 
 function artifactFromActionRow(row: any): Record<string, unknown> | null {
@@ -315,6 +319,10 @@ export async function buildBetaReadinessReport(
     if (!latestArtifactValid) blockers.push(`artifact_invalid (${latestArtifactInvalidReason ?? 'unknown'})`);
   }
 
+  const targetUserId = String(authUser.id);
+  const ownerControlledCanary = isOwnerCanaryUserId(targetUserId);
+  const ownerControlledUser = targetUserId === OWNER_USER_ID || ownerControlledCanary;
+
   // Final readiness rules (explicit)
   const ready =
     userExists &&
@@ -323,15 +331,19 @@ export async function buildBetaReadinessReport(
     (recentSignalsCount30d > 0) &&
     latestDirectiveExists &&
     latestArtifactExists &&
-    latestArtifactValid;
+    latestArtifactValid &&
+    !ownerControlledUser;
 
-  if (String(authUser.id) === OWNER_USER_ID) {
+  if (targetUserId === OWNER_USER_ID) {
     blockers.push('warning_target_is_owner_user (spec asked for non-Brandon)');
+  }
+  if (ownerControlledCanary) {
+    blockers.push('warning_target_is_owner_canary_user (connector canary only; not real beta proof)');
   }
 
   return {
     target: ident,
-    user_id: String(authUser.id),
+    user_id: targetUserId,
     email: authUser.email ?? null,
     user_exists: userExists,
     account_exists: accountExists,

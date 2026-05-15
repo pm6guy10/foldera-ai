@@ -68,7 +68,7 @@ Pass requires:
 - candidates can be listed
 - blocked candidates explain why
 - winner or no-safe-move is deterministic
-- `OWNER_USER_ID` and `TEST_USER_ID` are excluded from non-owner proof
+- `OWNER_USER_ID`, `TEST_USER_ID`, and `OWNER_CANARY_USER_IDS` are excluded from non-owner proof
 
 ### GATE_5_ARTIFACT_OR_CURRENT_MOVE
 
@@ -121,9 +121,11 @@ Pass requires:
 - no fake rows
 - no `OWNER_USER_ID`
 - no `TEST_USER_ID`
+- no `OWNER_CANARY_USER_IDS`
 - user reaches a clear state or source-backed move
 
 Detailed proof checklist: `docs/REAL_NON_OWNER_BETA_PROOF_CHECKLIST.md`.
+Owner-controlled Microsoft Outlook/Hotmail canaries are connector proof only. They must stay in `OWNER_CANARY_USER_IDS` and must not clear real non-owner beta.
 
 Until that proof exists, this gate must remain:
 

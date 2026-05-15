@@ -1,20 +1,21 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-15 13:20 PT
-Current slice: Outcome Autopsy / Playbooks seam; deterministic CWU gold-standard artifact and `/dashboard/playbooks` proof view.
+Last updated: 2026-05-15 13:27 PT
+Current slice: Owner-controlled Microsoft canary guard; not real non-owner beta proof.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
 First failing release gate: GATE_9_REAL_NON_OWNER_BETA after live-truth receipt alignment.
 Release gate status: BLOCKED_EXTERNAL
 Last known production SHA: `18371dbf4a3e48e0998c92e4e22204e0b804c3c4`.
 Latest product/runtime SHA verified: `18371dbf4a3e48e0998c92e4e22204e0b804c3c4`.
-Latest receipt/docs status: Outcome Autopsy seam has local proof and is pending commit/push/deploy verification; do not require this file to embed its own future SHA.
+Latest receipt/docs status: Owner canary guard has local proof and is pending commit/push/deploy verification; do not require this file to embed its own future SHA.
 
 ## Current Truth
 
-- Local Outcome Autopsy / Playbooks seam adds a deterministic `/api/outcome-autopsy/latest` artifact builder and a `/dashboard/playbooks` proof view.
-- CWU Access Specialist now renders as the gold-standard autopsy: offer received and accepted, $46,000 salary, 2026-06-16 tentative start, second-round work sample as the strongest artifact, redacted/synthetic-only handling for third-party student documentation, and evidence-vs-inference separation.
-- Local proof passed for the isolated seam: focused autopsy unit tests, real stored-row CWU proof with pollution exclusions, `/dashboard/playbooks` Playwright proof on an isolated port after clean build, `npm run lint`, and `npm run build`.
-- Unrelated owner-canary / acceptance-gate work is shelved in temporary stashes and is not part of this seam commit.
+- Owner-controlled Outlook/Hotmail canary accounts are now excluded from real non-owner proof through `OWNER_CANARY_USER_IDS`.
+- `NON_OWNER_DEPTH` excludes `OWNER_USER_ID`, `TEST_USER_ID`, and every `OWNER_CANARY_USER_IDS` value before checking subscriptions or persisted action evidence.
+- `npm run gate:status` cannot pass real non-owner beta from owner, test, canary, mock, or fabricated evidence.
+- `docs/OWNER_CANARY_TEST_RUNBOOK.md` contains the exact Microsoft canary steps: configure `OWNER_CANARY_USER_IDS`, connect Microsoft normally, verify honest source status, and never convert canary evidence into beta proof.
+- Local proof passed for the isolated guard: focused acceptance/release-gate tests, preflight contract regression, `npm run health`, `npm run gate:status`, `npm run gate:frontend`, `npm run build`, and `npm run lint`.
 - Previous live truth before this seam: Local HEAD and `origin/main` were aligned at `18371dbf4a3e48e0998c92e4e22204e0b804c3c4`.
 - GitHub Actions for that SHA are green: `CI` runs `25931486377` and `25931486534`, `Health Gate` run `25931486401`, `semgrep` run `25931486391`, `Production E2E` run `25931613176`, and `Deploy to Vercel` runs `25931494966` / `25931919864` completed successfully.
 - Vercel production deployment `dpl_54fgcku2vTXqGELLWy9aarA73voU` is `READY` for commit `18371dbf4a3e48e0998c92e4e22204e0b804c3c4`.
@@ -40,13 +41,13 @@ Latest receipt/docs status: Outcome Autopsy seam has local proof and is pending 
 
 ## Decision
 
-`NOT DONE - GATE_9 still externally blocked.`
+`PROVEN - Brandon-controlled Outlook/Hotmail can test Microsoft connection without counting as real beta.`
 
 Exact blocker: one real non-owner user must sign in and connect Google or Microsoft through the normal production OAuth flow. Do not count owner data, the reserved test user, mock harness rows, fabricated rows, or local fixtures as beta proof.
 
 ## Next exact move
 
-Get one real non-owner tester to connect Google or Microsoft in production, then rerun the same GATE_9 proof path and verify the user reaches one clear state: source-backed move, no-safe-move, or waiting/needs-input, with source trail and safe save/skip/approve/history behavior.
+Canary test path: add the b-kapp Outlook/Hotmail auth UUID to `OWNER_CANARY_USER_IDS`, connect Microsoft through the normal product flow, verify dashboard or `/api/integrations/status` source status, verify one honest connected/stale/reconnect/no-safe/waiting state, and rerun `npm run gate:status` to confirm real non-owner beta remains externally blocked until a separate non-Brandon tester connects.
 
 ## Do Not Touch
 
