@@ -25,6 +25,7 @@ import {
   resumePendingCheckout,
 } from '@/lib/billing/pending-checkout';
 import { formatRelativeTime, providerDisplayName } from '@/lib/ui/provider-display';
+import { useDashboardSourceStatus } from './use-dashboard-source-status';
 import {
   DASHBOARD_PANEL_LABELS,
   DEFAULT_STAGE_METRICS,
@@ -61,9 +62,7 @@ import {
   type DashboardLoadIssue,
   type DashboardStatusNotice,
   type DailyUtilitySlate,
-  type FirstRunSourceReadinessPayload,
   type GraphStatsPayload,
-  type IntegrationStatusPayload,
   type LoadLatestResult,
   type StageMetrics,
 } from './dashboard-page-model';
@@ -78,8 +77,6 @@ export default function DashboardPage() {
   const [action, setAction] = useState<DashboardAction | null>(null);
   const [dailyUtilitySlate, setDailyUtilitySlate] = useState<DailyUtilitySlate | null>(null);
   const [loadingLatest, setLoadingLatest] = useState(true);
-  const [integrationStatus, setIntegrationStatus] = useState<IntegrationStatusPayload | null>(null);
-  const [sourceReadiness, setSourceReadiness] = useState<FirstRunSourceReadinessPayload | null>(null);
   const [graphStats, setGraphStats] = useState<GraphStatsPayload | null>(null);
   const [historyItems, setHistoryItems] = useState<DashboardHistoryItem[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -112,6 +109,12 @@ export default function DashboardPage() {
       return next;
     });
   }, []);
+  const {
+    integrationStatus,
+    sourceReadiness,
+    loadIntegrationStatus,
+    loadSourceReadiness,
+  } = useDashboardSourceStatus(status, setLoadIssue);
   const load = useCallback(async (cacheMode: RequestCache = 'default'): Promise<LoadLatestResult> => {
     loadAbortRef.current?.abort();
     const controller = new AbortController();
@@ -225,52 +228,6 @@ export default function DashboardPage() {
       },
     });
   }, [status]);
-  const loadIntegrationStatus = useCallback(async () => {
-    try {
-      const response = await fetch('/api/integrations/status');
-      if (!response.ok) {
-        setLoadIssue('integrations', true);
-        setIntegrationStatus(null);
-        return;
-      }
-      const payload = (await response.json().catch(() => null)) as IntegrationStatusPayload | null;
-      setLoadIssue('integrations', payload === null);
-      setIntegrationStatus(payload);
-    } catch {
-      setLoadIssue('integrations', true);
-      setIntegrationStatus(null);
-    }
-  }, [setLoadIssue]);
-  useEffect(() => {
-    if (status !== 'authenticated') {
-      setIntegrationStatus(null);
-      setLoadIssue('integrations', false);
-      return undefined;
-    }
-    void loadIntegrationStatus();
-    return undefined;
-  }, [loadIntegrationStatus, setLoadIssue, status]);
-  const loadSourceReadiness = useCallback(async () => {
-    try {
-      const response = await fetch('/api/source-readiness');
-      if (!response.ok) {
-        setSourceReadiness(null);
-        return;
-      }
-      const payload = (await response.json().catch(() => null)) as FirstRunSourceReadinessPayload | null;
-      setSourceReadiness(payload);
-    } catch {
-      setSourceReadiness(null);
-    }
-  }, []);
-  useEffect(() => {
-    if (status !== 'authenticated') {
-      setSourceReadiness(null);
-      return undefined;
-    }
-    void loadSourceReadiness();
-    return undefined;
-  }, [loadSourceReadiness, status]);
   useEffect(() => {
     if (status !== 'authenticated') {
       setGraphStats(null);

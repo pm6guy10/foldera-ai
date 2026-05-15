@@ -22,12 +22,13 @@ Release gate status: PASS
 ## Verification
 
 - Read-only Supabase query: PASS for real non-owner exclusion and first-run source counts above; no fabricated rows and no mock harness counted.
-- Focused unit/model/gate/onboarding/source-readiness tests: PASS, `5` files / `24` tests.
+- Focused unit/model/gate/onboarding/source-readiness plus CI guard tests: PASS, `7` files / `28` tests.
 - `npm run health`: PASS, `RESULT: 0 FAILING`; warning only `Last generation do_nothing`.
 - `npm run gate:status`: PASS through `GATE_9_REAL_NON_OWNER_BETA`; proof found is the real non-owner first-run state with source counts, reason, next action, and nothing-sent truth.
 - `npm run build`: PASS; `/api/source-readiness` is included in the production bundle.
 - `npm run lint`: PASS.
 - Focused non-owner Playwright path: PASS, `6/6`; it proves dashboard source-readiness copy, `Check sources now`, existing no-paid sync path, source-backed move, source trail, Save/Skip, no outbound send attempt, and history readback.
+- CI guard repair proof: `app/dashboard/page.tsx` is `986` lines after extracting source-status loading into `app/dashboard/use-dashboard-source-status.ts`; `tests/config/__tests__/large-file-splits.test.ts` and `tests/config/__tests__/docs-source-of-truth.test.ts` passed.
 - `npm run gate:frontend`: PASS; screenshot matrix, interaction matrix, banned-copy audit, layout contract, and production current screenshots receipt markers all passed the frontend product truth gate.
 
 ## Decision
@@ -36,7 +37,7 @@ Release gate status: PASS
 
 The final commit must still be pushed to main, then verified through GitHub CI, Vercel READY, and production `/api/health` for the exact final `origin/main` SHA.
 
-## Next Exact Move
+## Next exact move
 
 Commit and push the repair, then verify GitHub CI, Vercel READY, and production `/api/health`. If any live-truth source disagrees, stop on that exact drift.
 
