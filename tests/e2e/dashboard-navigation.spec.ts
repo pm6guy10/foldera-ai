@@ -187,18 +187,25 @@ async function setupDashboardMocks(
   });
 
   let signOutCallCount = 0;
+  let isSignedIn = true;
   const executeDecisions: string[] = [];
   let detailRequestCount = 0;
 
-  await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+  await page.route(matchApiPath('/api/auth/session'), (route) =>
+    fulfillJson(isSignedIn ? SESSION_RESPONSE : { user: null, expires: future })(route),
+  );
   await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
   await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
   await page.route(matchApiPath('/api/auth/signout'), async (route) => {
     if (route.request().method() !== 'POST') return route.continue();
     signOutCallCount += 1;
+    isSignedIn = false;
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
+      headers: {
+        'set-cookie': 'next-auth.session-token=; Max-Age=0; Path=/; SameSite=Lax',
+      },
       body: json({ url: '/login' }),
     });
   });
@@ -999,5 +1006,15 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(signOutButton).toBeVisible();
     await signOutButton.click();
     await expect.poll(() => refs.getSignOutCallCount()).toBe(1);
+
+    await expect(page.getByRole('button', { name: /continue with google/i })).toBeVisible({
+      timeout: 15000,
+    });
+    await expect(page.getByRole('button', { name: /continue with microsoft/i })).toBeVisible();
+
+    await page.goto('/dashboard');
+    await expect.poll(() => new URL(page.url()).pathname).toBe('/login');
+    await expect(page.getByText(/Brandon Kapp|test@foldera\.ai/i)).toHaveCount(0);
+    await expect(page.getByText(/choose an account/i)).toBeVisible();
   });
 });

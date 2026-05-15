@@ -33,6 +33,8 @@ describe('GET /api/microsoft/connect', () => {
     expect(location).toContain(
       'redirect_uri=https%3A%2F%2Fwww.foldera.ai%2Fapi%2Fmicrosoft%2Fcallback',
     );
+    const authorizeUrl = new URL(location!);
+    expect(authorizeUrl.searchParams.get('prompt')).toBe('select_account');
     expect(cookieSet).toHaveBeenCalledTimes(1);
   });
 });

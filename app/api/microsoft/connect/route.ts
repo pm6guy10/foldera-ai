@@ -9,6 +9,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
+import { MICROSOFT_ACCOUNT_CHOICE_PROMPT } from '@/lib/auth/oauth-account-choice';
 import { randomBytes } from 'crypto';
 import { cookies } from 'next/headers';
 
@@ -71,7 +72,7 @@ export async function GET() {
     redirect_uri: redirectUri,
     scope: SCOPES,
     state,
-    prompt: 'consent',
+    prompt: MICROSOFT_ACCOUNT_CHOICE_PROMPT,
     response_mode: 'query',
   });
 

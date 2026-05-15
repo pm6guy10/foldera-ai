@@ -18,6 +18,19 @@ vi.mock('@/lib/auth/user-tokens', () => ({
   softDisconnectAfterFatalOAuthRefresh,
 }));
 
+function getAuthorizationPrompt(provider: any): string | null {
+  const authorization = provider?.options?.authorization ?? provider?.authorization;
+  if (typeof authorization === 'string') {
+    try {
+      return new URL(authorization).searchParams.get('prompt');
+    } catch {
+      return null;
+    }
+  }
+
+  return authorization?.params?.prompt ?? null;
+}
+
 describe('auth session refresh', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -101,5 +114,20 @@ describe('auth session refresh', () => {
     expect(token).toMatchObject({ error: 'RefreshAccessTokenError' });
     expect(softDisconnectAfterFatalOAuthRefresh).not.toHaveBeenCalled();
     expect(saveUserToken).not.toHaveBeenCalled();
+  });
+
+  it('asks Google sign-in to show account choice while preserving consent', async () => {
+    const { getAuthOptions } = await import('../auth-options');
+    const provider = getAuthOptions().providers.find((candidate) => candidate.id === 'google') as any;
+    const prompt = getAuthorizationPrompt(provider);
+
+    expect(prompt?.split(/\s+/)).toEqual(expect.arrayContaining(['consent', 'select_account']));
+  });
+
+  it('asks Microsoft sign-in to show account choice', async () => {
+    const { getAuthOptions } = await import('../auth-options');
+    const provider = getAuthOptions().providers.find((candidate) => candidate.id === 'azure-ad') as any;
+
+    expect(getAuthorizationPrompt(provider)).toBe('select_account');
   });
 });

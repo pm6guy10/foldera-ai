@@ -384,6 +384,9 @@ test.describe('Start page /start', () => {
     const [signInRequest] = await Promise.all([signInRequestPromise, signInResponsePromise]);
 
     expect(new URL(signInRequest.url()).pathname).toBe('/api/auth/signin/google');
+    expect(new URL(signInRequest.url()).searchParams.get('prompt')?.split(/\s+/)).toEqual(
+      expect.arrayContaining(['consent', 'select_account']),
+    );
     expect(signInRequest.method()).toBe('POST');
   });
 
@@ -470,6 +473,7 @@ test.describe('Login page /login', () => {
     const [signInRequest] = await Promise.all([signInRequestPromise, signInResponsePromise]);
 
     expect(new URL(signInRequest.url()).pathname).toBe('/api/auth/signin/azure-ad');
+    expect(new URL(signInRequest.url()).searchParams.get('prompt')).toBe('select_account');
     expect(signInRequest.method()).toBe('POST');
   });
 

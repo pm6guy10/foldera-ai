@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { NavAuthMinimal } from '@/components/nav/NavPublic';
+import {
+  getAccountChoiceAuthorizationParams,
+  type FolderaOAuthProvider,
+} from '@/lib/auth/oauth-account-choice';
 
 const SIGN_IN_TIMEOUT_MS = 7000;
 
@@ -12,7 +16,7 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
   const oauthError = errorParam ? 'Sign-in failed. Please try again or use a different account.' : null;
   const errorMessage = actionError ?? oauthError;
 
-  async function handleSignIn(provider: 'google' | 'azure-ad') {
+  async function handleSignIn(provider: FolderaOAuthProvider) {
     setActionError(null);
     setLoadingProvider(provider);
     const timeout = window.setTimeout(() => {
@@ -21,7 +25,11 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
     }, SIGN_IN_TIMEOUT_MS);
 
     try {
-      await signIn(provider, { callbackUrl: callbackUrl ?? '/dashboard' });
+      await signIn(
+        provider,
+        { callbackUrl: callbackUrl ?? '/dashboard' },
+        getAccountChoiceAuthorizationParams(provider),
+      );
     } catch {
       window.clearTimeout(timeout);
       setLoadingProvider(null);
@@ -39,6 +47,9 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
           <h1 className="mt-6 text-4xl font-semibold tracking-[-0.055em] text-white sm:text-5xl">Sign in</h1>
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-text-secondary">
             Continue with Google or Microsoft to open your dashboard.
+          </p>
+          <p className="mt-3 max-w-xl text-xs leading-relaxed text-text-muted">
+            Using a different account? Sign out first, then Google or Microsoft will ask you to choose an account.
           </p>
 
           {errorMessage && (
@@ -83,9 +94,9 @@ function OAuthButton({
   children,
 }: {
   label: string;
-  provider: 'google' | 'azure-ad';
+  provider: FolderaOAuthProvider;
   loadingProvider: string | null;
-  onClick: (provider: 'google' | 'azure-ad') => void;
+  onClick: (provider: FolderaOAuthProvider) => void;
   children: React.ReactNode;
 }) {
   const loading = loadingProvider === provider;

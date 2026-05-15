@@ -1,55 +1,50 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-15 14:05 PT
-Current slice: Outcome Learning Engine; CWU Evidence Packet, feedback ledger, and deterministic pattern memory.
-Current release gate: GATE_9_REAL_NON_OWNER_BETA
-First failing release gate: GATE_9_REAL_NON_OWNER_BETA after live-truth receipt alignment.
-Release gate status: BLOCKED_EXTERNAL
-Last known production SHA: `aaa241c27bb36e2d0bb82314e30bbaa5ab0b3922`.
-Latest product/runtime SHA verified: `aaa241c27bb36e2d0bb82314e30bbaa5ab0b3922`.
-Latest receipt/docs status: Outcome Learning Engine has local proof and real pattern-metric DB readback; this local product slice is pending commit/push/external CI/Vercel/production-health verification.
+Last updated: 2026-05-15 15:22 PT
+Current slice: Auth account switching and Google OAuth redirect proof.
+Current `origin/main`: `58f78bd374e1fb493ef08e4ab621ed4f7c66cc87`.
+Production deployment: `dpl_QyQS8cyfsCjagxSHdKDWERefxVCA`, `READY`.
+Production `/api/health`: `status=ok`, `build=58f78bd`, `revision.git_sha=58f78bd374e1fb493ef08e4ab621ed4f7c66cc87`.
+Current release gate: `GATE_9_REAL_NON_OWNER_BETA`.
+Release gate status: `BLOCKED_EXTERNAL`.
 
 ## Current Truth
 
-- `/api/outcome-autopsy/latest` now returns the existing deterministic CWU Outcome Autopsy plus a deterministic Outcome Learning snapshot.
-- `/dashboard/playbooks` now shows `What Foldera learned`, raw Evidence Packet, interpreted learning signals, recommendation feedback ledger, and pattern memory for the completed CWU Access Specialist outcome.
-- The learning layer is deterministic and count-based. It does not call paid models, send email, touch Stripe, build prediction scores, or claim causality beyond the source trail.
-- Raw evidence is separated from interpreted signals. The redacted/synthetic student case packet is marked `third_party_sensitive` and `redacted`; raw student/medical facts are not displayed or stored as learning proof.
-- CWU pattern memory was written idempotently into `tkg_pattern_metrics` for the owner user with `outcome_learning:*` hashes. Readback found 9 rows: judgment-heavy service coordination, compliance documentation, disability/access support, presentation strength, reference risk, overshare risk, low-pay bridge with future leverage, broad generalist risk, and direct title match required.
-- Existing release state remains unchanged: gates are green through GATE_8 and `GATE_9_REAL_NON_OWNER_BETA` is externally blocked because no real connected non-owner account exists.
+- Production, Vercel, and `origin/main` agree on `58f78bd374e1fb493ef08e4ab621ed4f7c66cc87`.
+- NextAuth production cookies are shared only on Vercel `foldera.ai` hosts via `.foldera.ai`; local `next start` keeps host-only cookies so Playwright and localhost auth still work.
+- Dashboard sign-out uses `SIGN_OUT_CALLBACK_URL=/?signedOut=1`; focused Playwright now proves the signed-in owner can sign out, return to login, and cannot see Brandon's dashboard after sign-out.
+- Google sign-in and `/api/google/connect` now request account choice with `prompt=consent select_account`.
+- Microsoft sign-in and `/api/microsoft/connect` now request account choice with `prompt=select_account`.
+- Required Google Cloud redirect URIs are documented and guarded for both NextAuth and standalone connector callbacks on `www.foldera.ai`, `foldera.ai`, and localhost.
+- Connector proof is not beta proof. `GATE_9_REAL_NON_OWNER_BETA` still needs one real non-owner account to sign in and connect Google or Microsoft in production.
 
-## Local Proof
+## Verification
 
 - `npm run health`: PASS, `RESULT: 0 FAILING`.
-- `npm run gate:status`: PASS through GATE_8, stopped at external `GATE_9_REAL_NON_OWNER_BETA`.
-- `npm run gate:quality`: PASS.
-- `npm run gate:visual`: PASS.
-- `npm run gate:frontend`: PASS before product edits; focused Playbooks proof then passed after edits.
-- Focused unit proof: `npx vitest run lib/outcome-learning/__tests__/outcome-learning-engine.test.ts lib/outcome-autopsy/__tests__/outcome-autopsy.test.ts tests/config/__tests__/large-file-splits.test.ts --reporter=verbose` passed `5/5`.
-- Real stored-row proof: `npm run outcome:learning -- "CWU Access Specialist"` returned a CWU autopsy plus learning snapshot from stored TKG rows and seed context.
-- Pattern memory write/readback: `npm run outcome:learning -- --persist-patterns "CWU Access Specialist"` inserted the 9 deterministic `outcome_learning:*` rows; read-only Supabase query confirmed all 9 rows in `tkg_pattern_metrics`.
-- Browser proof: `PLAYWRIGHT_WEB_PORT=3012 BASE_URL=http://127.0.0.1:3012 npx playwright test tests/e2e/outcome-autopsy.spec.ts --reporter=list` passed.
-- Adjacent dashboard proof: `PLAYWRIGHT_WEB_PORT=3014 BASE_URL=http://127.0.0.1:3014 npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list` passed `60/60`.
+- `npm run gate:status`: PASS through `GATE_8`, stops honestly at external `GATE_9_REAL_NON_OWNER_BETA`.
+- Vercel READY and production `/api/health` SHA proof passed for `58f78bd374e1fb493ef08e4ab621ed4f7c66cc87`.
+- Focused Vitest: auth provider prompts, Google/Microsoft connector authorize URLs, and Google redirect docs passed (`9/9`).
+- Focused Playwright: dashboard sign-out/account reset, public Google/Microsoft sign-in account-choice requests, and settings connector redirects passed.
+- `npm run build`: PASS after clearing stale generated `.next` output from the first failed build attempt.
+- `npm run gate:frontend`: PASS; browser screenshot matrix and interaction matrix passed; banned-copy audit and layout contract passed; production current screenshots are not newly claimed for this auth/config seam.
 - `npm run lint`: PASS.
-- `npm run build`: PASS.
 
 ## Decision
 
-`LOCAL PROOF PASSED - Outcome Learning Engine current seam is ready for commit/push/external verification.`
+`PROVEN - clean account-switching proof and Google OAuth redirect guards are local-main verified.`
 
-External release blocker remains: one real non-owner user must sign in and connect Google or Microsoft through the normal production OAuth flow. Do not count owner data, reserved test user, owner canaries, mock harness rows, fabricated rows, or local fixtures as beta proof.
+The remaining Google `redirect_uri_mismatch` fix is external: the Google Cloud Console OAuth client must include all four production redirect URIs from `docs/GOOGLE_OAUTH_REDIRECTS.md`.
 
 ## Next exact move
 
-Commit and push only the Outcome Learning Engine files, then verify the pushed `origin/main` SHA through GitHub Actions, Vercel READY, and production `/api/health`.
+Manual external step: update the Google Cloud Console OAuth client with all four production redirect URIs. Then one real non-owner user must sign in and connect Google or Microsoft in production for `GATE_9_REAL_NON_OWNER_BETA`.
 
 ## Do Not Touch
 
-- Stripe/payment behavior
-- Auth/OAuth behavior
-- Paid generation
+- Schema, migrations, migration-history repair, or destructive SQL
+- Paid generation or model-backed proof
 - Outbound email
-- Schema rewrites or broad migration repair
+- Stripe
 - Fake users, token rows, source rows, artifacts, documents, deadlines, emails, or beta proof
-- Public demo using Brandon private data
+- Artifact-selection or artifact-generation logic
 - Unrelated dashboard polish

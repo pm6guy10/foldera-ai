@@ -4,6 +4,10 @@ import GoogleProvider from 'next-auth/providers/google';
 import AzureADProvider from 'next-auth/providers/azure-ad';
 import { resolveSupabaseAuthUserId } from '@/lib/auth/supabase-auth-user';
 import { hasCompletedOnboarding } from '@/lib/auth/onboarding-state';
+import {
+  GOOGLE_ACCOUNT_CHOICE_PROMPT,
+  MICROSOFT_ACCOUNT_CHOICE_PROMPT,
+} from '@/lib/auth/oauth-account-choice';
 
 const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60;
 const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
@@ -200,7 +204,7 @@ export function getAuthOptions(): NextAuthOptions {
             'https://www.googleapis.com/auth/drive.readonly',
           ].join(' '),
           access_type: 'offline',
-          prompt: 'consent',
+          prompt: GOOGLE_ACCOUNT_CHOICE_PROMPT,
         },
       },
     }),
@@ -215,6 +219,7 @@ export function getAuthOptions(): NextAuthOptions {
         authorization: {
           params: {
             scope: 'openid profile email User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Tasks.Read offline_access',
+            prompt: MICROSOFT_ACCOUNT_CHOICE_PROMPT,
           },
         },
       })

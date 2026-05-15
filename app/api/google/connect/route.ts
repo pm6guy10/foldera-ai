@@ -11,6 +11,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
+import { GOOGLE_ACCOUNT_CHOICE_PROMPT } from '@/lib/auth/oauth-account-choice';
 import { google } from 'googleapis';
 import { randomBytes } from 'crypto';
 import { cookies } from 'next/headers';
@@ -72,7 +73,7 @@ export async function GET() {
 
   const authUrl = oauth2Client.generateAuthUrl({
     access_type: 'offline',
-    prompt: 'consent',
+    prompt: GOOGLE_ACCOUNT_CHOICE_PROMPT,
     scope: SCOPES,
     state,
   });

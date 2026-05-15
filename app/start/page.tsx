@@ -9,6 +9,10 @@ import {
   clearPendingCheckoutPlan,
   writePendingCheckoutPlan,
 } from '@/lib/billing/pending-checkout';
+import {
+  getAccountChoiceAuthorizationParams,
+  type FolderaOAuthProvider,
+} from '@/lib/auth/oauth-account-choice';
 const SIGN_IN_TIMEOUT_MS = 7000;
 
 function OAuthButton({
@@ -19,9 +23,9 @@ function OAuthButton({
   children,
 }: {
   label: string;
-  provider: 'google' | 'azure-ad';
+  provider: FolderaOAuthProvider;
   loadingProvider: string | null;
-  onClick: (provider: 'google' | 'azure-ad') => void;
+  onClick: (provider: FolderaOAuthProvider) => void;
   children: React.ReactNode;
 }) {
   const loading = loadingProvider === provider;
@@ -61,7 +65,7 @@ function StartContent() {
     }
   }, [searchParams]);
 
-  const handleSignIn = async (provider: 'google' | 'azure-ad') => {
+  const handleSignIn = async (provider: FolderaOAuthProvider) => {
     setLoadingProvider(provider);
     setError(null);
     const timeout = window.setTimeout(() => {
@@ -70,7 +74,7 @@ function StartContent() {
     }, SIGN_IN_TIMEOUT_MS);
 
     try {
-      await signIn(provider, { callbackUrl: '/dashboard' });
+      await signIn(provider, { callbackUrl: '/dashboard' }, getAccountChoiceAuthorizationParams(provider));
     } catch {
       window.clearTimeout(timeout);
       setLoadingProvider(null);
@@ -88,6 +92,9 @@ function StartContent() {
           <h1 className="mt-6 text-4xl font-semibold tracking-[-0.055em] text-white sm:text-5xl">Get started with Foldera</h1>
           <p className="mt-4 max-w-xl text-sm leading-relaxed text-text-secondary">
             One secure sign-in. Foldera reads your connected context and shows finished work or the exact blocker.
+          </p>
+          <p className="mt-3 max-w-xl text-xs leading-relaxed text-text-muted">
+            Using a different account? Sign out first, then Google or Microsoft will ask you to choose an account.
           </p>
 
           {error && (
