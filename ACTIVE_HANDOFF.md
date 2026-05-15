@@ -4,6 +4,7 @@ Last updated: 2026-05-15 11:15 PT
 Current slice: GATE_9_REAL_NON_OWNER_BETA proof mode; verification-only, no product/backend/schema/Stripe/paid/outbound/fake-data work.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
 First failing release gate: GATE_9_REAL_NON_OWNER_BETA after live-truth receipt alignment.
+Release gate status: BLOCKED_EXTERNAL
 Last known production SHA: `18371dbf4a3e48e0998c92e4e22204e0b804c3c4`.
 Latest product/runtime SHA verified: `18371dbf4a3e48e0998c92e4e22204e0b804c3c4`.
 Latest receipt/docs status: this GATE_9 proof receipt is self-SHA pending until the final pushed receipt commit is verified externally; do not require this file to embed its own future SHA.
