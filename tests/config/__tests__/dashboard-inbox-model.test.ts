@@ -93,7 +93,7 @@ describe('dashboard finished-work inbox model', () => {
     );
 
     expect(state.heading).toBe('Foldera checked today');
-    expect(state.statusLabel).toBe('Needs fresher source');
+    expect(state.statusLabel).toBe('Held back safely');
     expect(state.valueBlocks.map((block) => block.label)).toEqual([
       'What changed',
       'What Foldera protected',

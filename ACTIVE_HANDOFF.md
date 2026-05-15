@@ -1,12 +1,12 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-15 07:31 PT
-Current slice: Dashboard money-shot frontend redline; containment, hierarchy, and trust repair.
+Last updated: 2026-05-15 07:51 PT
+Current slice: Dashboard money-shot frontend redline; containment, hierarchy, trust repair, and final CI assertion alignment.
 Current mode: no backend artifact rewrite, no paid generation, no outbound email, no Stripe, no schema, no fake production data, no fake beta proof.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
 First failing release gate: GATE_9_REAL_NON_OWNER_BETA
 Release gate status: BLOCKED_EXTERNAL
-Latest product commit: this dashboard redline fix commit; exact self-SHA must be verified externally after push.
+Latest product commit: dashboard redline fix plus focused dashboard-model assertion repair; exact self-SHA must be verified externally after push.
 Latest receipt/docs status: receipt-only self-SHA wording may lag the final push; runtime truth and screenshot proof are the governing receipt.
 
 ## Current Truth
@@ -26,13 +26,14 @@ Latest receipt/docs status: receipt-only self-SHA wording may lag the final push
 - `npm run gate:quality`, `npm run gate:visual`, and `npm run gate:decision-trace` passed.
 - `npm run winner:autopsy` selected `Commitment due in 1d: Issue Project Mosaic pay once document review is complete`.
 - `npm run build` passed.
+- `npm run test:ci:unit` passed after aligning the dashboard no-safe status assertion with the new `Held back safely` customer-facing label.
 - Focused dashboard/authenticated browser proof passed: `npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list` (`60 passed`).
 - Focused redline regression proof passed: desktop body/footer containment, mobile source-trail visibility, stalled no-safe fallback, and humanized no-safe pressure copy.
 - Screenshot proof saved under `%TEMP%\\foldera-dashboard-redline-before-2026-05-15T13-55-17-593Z`, `%TEMP%\\foldera-dashboard-prod-before-2026-05-15T13-56-15-015Z`, `%TEMP%\\foldera-dashboard-redline-after-final2-2026-05-15T14-20-47-619Z`, and `%TEMP%\\foldera-dashboard-redline-after-final3-2026-05-15T14-26-38-568Z`.
 
 ## Next exact move
 
-Push this fix to `main`, verify GitHub CI, Vercel READY, production `/api/health`, and production dashboard screenshots for the final commit. Then stop at the first remaining blocker: one real non-owner Google or Microsoft connection.
+Commit and push the focused CI assertion repair, then verify GitHub CI, Vercel READY, production `/api/health`, and production dashboard screenshots for the final commit. Then stop at the first remaining blocker: one real non-owner Google or Microsoft connection.
 
 ## Do Not Touch
 
