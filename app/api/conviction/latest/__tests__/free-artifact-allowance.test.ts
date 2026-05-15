@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextResponse } from 'next/server';
 
 const mockResolveUser = vi.fn();
@@ -397,6 +397,10 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     mockCurrentWinner();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('pending_approval alone does not consume the free artifact', async () => {
     const supabase = buildSupabaseMock({
       pendingActions: [buildPendingAction()],
@@ -700,6 +704,8 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
   });
 
   it('accepts a selected-move packet from a fresh source snapshot without recalculating winner truth', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-14T13:30:00.000Z'));
     mockGetWinnerTruthReport.mockRejectedValue(new Error('winner truth should not run'));
     const packetContent = [
       'REQUIREMENTS-NEEDED PACKET',
@@ -760,6 +766,74 @@ describe('GET /api/conviction/latest free artifact allowance contract', () => {
     expect(mockGetWinnerTruthReport).not.toHaveBeenCalled();
     expect(supabase.spies.sourceProviderIn).toHaveBeenCalledWith('provider', ['google', 'microsoft']);
     expect(supabase.spies.laterSignalLimit).toHaveBeenCalledWith(1);
+  });
+
+  it('does not let source freshness hide time-driven selected-winner drift', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-05-15T01:30:00.000Z'));
+    mockCurrentWinner({
+      ...VALID_DISCREPANCY_CARD,
+      claim: 'Commitment due in 1d: Issue Project Mosaic pay once document review is complete',
+      source_refs: ['commitment:3b557b14-df16-48a2-af9c-abe049e1ebe3'],
+    });
+    const packetContent = [
+      'REQUIREMENTS-NEEDED PACKET',
+      'KNOWN REQUIREMENTS FROM SOURCE',
+      '- Files must be real .docx documents.',
+    ].join('\n');
+    const supabase = buildSupabaseMock({
+      pendingActions: [
+        buildPendingAction({
+          id: 'yesterday-document-collection-packet',
+          confidence: 45,
+          generated_at: '2026-05-14T13:16:41.408Z',
+          directive_text:
+            'Write a decision memo that closes "Submit high-quality .docx documents for document collection" with the owner, next action, and deadline.',
+          artifact: {
+            type: 'document',
+            title: 'Requirements needed: Submit high-quality .docx documents for document collection',
+            content: packetContent,
+          },
+          execution_result: {
+            brief_origin: 'selected_move_generate',
+            selected_winner_fingerprint:
+              'claim:commitment due in 0d: submit high-quality .docx documents for document collection|refs:commitment:1d0e3ecb-899c-4ec1-96d0-748485678dfe',
+            discrepancy_card: {
+              ...VALID_DISCREPANCY_CARD,
+              claim:
+                'Write a decision memo that closes "Submit high-quality .docx documents for document collection" with the owner, next action, and deadline.',
+              risk: 'Source requirements are known, but owned .docx bodies and submission destination are missing.',
+              next_action: 'Requirements needed: Submit high-quality .docx documents for document collection',
+              source_refs: ['commitment:1'],
+            },
+            discrepancy_quality: {
+              passes: false,
+              quality_score: 0.8,
+              blocked_by: ['weak_risk', 'reminder_without_risk'],
+              pattern_keys: ['discrepancy:deadline_staleness', 'action:write_document'],
+              rejection_reason: 'weak_risk; reminder_without_risk',
+            },
+          },
+        }),
+      ],
+      consumedCount: 0,
+      sourceProviders: [
+        { provider: 'google', last_synced_at: '2026-05-14T11:03:04.708Z', disconnected_at: null },
+        { provider: 'microsoft', last_synced_at: '2026-05-14T11:02:59.447Z', disconnected_at: null },
+      ],
+      laterSignals: [],
+    });
+    mockCreateServerClient.mockReturnValue(supabase);
+    mockGetSubscriptionStatus.mockResolvedValue({ status: 'active' });
+
+    const res = await callLatest();
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(body.id).toBeUndefined();
+    expect(body.artifact_readiness_state).toBe('NO_SAFE_ARTIFACT');
+    expect(body.no_safe_artifact_reason).toContain('stale_selected_move_artifact');
+    expect(mockGetWinnerTruthReport).toHaveBeenCalledWith('u-test');
   });
 
   it('hides a pending artifact that cannot prove a discrepancy card frame', async () => {

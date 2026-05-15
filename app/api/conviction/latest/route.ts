@@ -122,6 +122,7 @@ async function selectedMoveHasFreshSourceSnapshot(
 
   const generatedMs = new Date(generatedAtText).getTime();
   if (Number.isNaN(generatedMs)) return false;
+  if (generatedAtText < startOfTodayIso()) return false;
 
   try {
     const [{ data: tokenRows, error: tokenError }, { data: laterSignals, error: signalError }] =
