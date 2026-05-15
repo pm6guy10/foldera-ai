@@ -85,12 +85,18 @@ export function DashboardDesktopStage({
                 <div className="flex shrink-0 items-center gap-3">
                   <button
                     type="button"
-                    aria-label="Notifications"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-cyan-200/14 bg-white/[0.04] text-cyan-100"
+                    aria-label="Notifications unavailable until live alerts are connected"
+                    title="Notifications unavailable until live alerts are connected"
+                    disabled
+                    className="inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-full border border-cyan-200/14 bg-white/[0.04] text-cyan-100 opacity-70"
                   >
                     <Bell className="h-4 w-4" aria-hidden />
                   </button>
-                  <div className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-4 py-2 text-sm font-semibold text-cyan-100">
+                  <div
+                    role="status"
+                    aria-label={`Current dashboard section: ${activeSidebarLabel}`}
+                    className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-4 py-2 text-sm font-semibold text-cyan-100"
+                  >
                     {activeSidebarLabel}
                   </div>
                 </div>
@@ -142,7 +148,7 @@ export function DashboardDesktopStage({
               ) : (
                 <div className="rounded-[18px] border border-white/[0.07] bg-white/[0.03] p-5">
                   <p className="text-sm leading-6 text-[#8D9AA8]">
-                    Foldera keeps this panel inside the same app shell so the artifact, source trail, and account context never jump into a separate mock room.
+                    Foldera keeps this panel inside the same app shell so the artifact, source trail, and account context never jump into a separate surface.
                   </p>
                 </div>
               )}

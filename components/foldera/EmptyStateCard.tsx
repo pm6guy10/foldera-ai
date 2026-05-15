@@ -25,7 +25,7 @@ export function EmptyStateCard() {
             Foldera checked today.
           </h2>
           <p className="mt-5 max-w-[680px] text-[16px] leading-8 text-text-secondary">
-            No finished artifact cleared the safety bar, but Foldera is still watching source freshness and recent decisions.
+            No finished artifact cleared the trust check, but Foldera is still watching source status and recent decisions.
           </p>
         </div>
 

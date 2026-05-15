@@ -79,6 +79,18 @@ NOT DONE - GitHub CI red.
 
 Then name the exact failing workflow, job, step, and error. Do not call the product ready, done, shipped, or beta-ready from Vercel success alone.
 
+## Frontend Product Truth Gate
+
+When Codex claims dashboard/frontend work is done, GPT must require `npm run gate:frontend` proof before accepting the claim or allowing the next blocker to be called GATE_9.
+
+The frontend proof must include committed screenshot baselines, an interaction audit, a banned-copy audit, production current screenshots when live frontend proof is claimed, and deterministic fixtures for finished, requirements-needed, and no-safe states. If any piece is missing, say:
+
+```text
+NOT DONE - frontend regression lock incomplete.
+```
+
+Do not accept API-only proof, owner-private production data, or temporary `%TEMP%` screenshots as the durable frontend gate.
+
 ## Live-Truth Receipt Rule
 
 Treat product/runtime commits and receipt-only commits differently.

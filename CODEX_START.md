@@ -83,11 +83,12 @@ Run this order every session:
 2. `npm run gate:status` if it exists
 3. `npm run gate:quality` if it exists
 4. `npm run gate:visual` if it exists
-5. If a gate command is missing and that gate layer is now required, create the missing gate command before product work.
-6. Fix only the first failing gate.
-7. If no gate command exists yet, run `npm run controller:autopilot` and execute only a valid, current contract.
-8. If a controller contract is stale or invalid, fix controller/source-truth selection instead of doing fake work.
-9. If the controller stops, verify the stop reason is real.
+5. `npm run gate:frontend` if the seam touches dashboard/frontend product truth.
+6. If a gate command is missing and that gate layer is now required, create the missing gate command before product work.
+7. Fix only the first failing gate.
+8. If no gate command exists yet, run `npm run controller:autopilot` and execute only a valid, current contract.
+9. If a controller contract is stale or invalid, fix controller/source-truth selection instead of doing fake work.
+10. If the controller stops, verify the stop reason is real.
 
 ## Gate Priority
 
@@ -98,6 +99,8 @@ Run this order every session:
 Foldera is not beta-ready unless release, quality, and visual gates agree.
 
 Technical pass is not enough. An artifact existing is not enough. A mock passing is not market proof.
+
+Dashboard/frontend rule: Codex may not say DONE, PROVEN, or next blocker is GATE_9 for dashboard/frontend work unless `npm run gate:frontend` passes. That means committed screenshot baselines pass, interaction audit passes, banned-copy audit passes, production current screenshots are attached or referenced when live proof is claimed, and fixtures cover finished, requirements-needed, and no-safe states.
 
 ## Valid Stop Reasons
 

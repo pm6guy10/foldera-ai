@@ -12,7 +12,7 @@ export default function IntegrationsPage() {
       <section className="rounded-card border border-border bg-panel p-6">
         <h2 className="text-2xl font-bold tracking-tight text-text-primary">Source controls live in the dashboard</h2>
         <p className="mt-3 text-sm leading-relaxed text-text-secondary">
-          Foldera now keeps connected account health, source freshness, and account controls inside one dashboard surface.
+          Foldera now keeps connected account health, source status, and account controls inside one dashboard surface.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link

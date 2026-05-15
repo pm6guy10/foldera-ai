@@ -110,12 +110,18 @@ export function DashboardMobileLayout({
             <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
-                aria-label="Notifications"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-cyan-200/14 bg-white/[0.04] text-cyan-100"
+                aria-label="Notifications unavailable until live alerts are connected"
+                title="Notifications unavailable until live alerts are connected"
+                disabled
+                className="inline-flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-full border border-cyan-200/14 bg-white/[0.04] text-cyan-100 opacity-70"
               >
                 <Bell className="h-4 w-4" aria-hidden />
               </button>
-              <div className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-3 py-1.5 text-xs font-semibold text-cyan-100">
+              <div
+                role="status"
+                aria-label={`Current dashboard section: ${activeSidebarLabel}`}
+                className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-3 py-1.5 text-xs font-semibold text-cyan-100"
+              >
                 {activeSidebarLabel}
               </div>
             </div>

@@ -345,7 +345,7 @@ export default function SystemClient() {
                       {day.classification === 'useful_artifact'
                         ? 'Useful artifact'
                         : day.classification === 'no_safe_artifact'
-                          ? 'Precise no-safe-artifact'
+                        ? 'Precise held-back artifact'
                           : 'Garbage regression'}
                     </p>
                     <p className="mt-1 text-xs text-text-secondary">{day.summary}</p>

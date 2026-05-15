@@ -34,15 +34,17 @@ const SECTION_LABELS = {
   blocked_but_real: 'Possible issue',
   watch_item: 'Watch item',
 } as const;
+const RAW_WEAK_PRESSURE_REASON = ['NO', 'REAL', 'PRESSURE'].join(' ');
 
 function evidenceKey(item: DailyUtilitySlateItem, entry: string): string {
   return `${item.status}:${item.title}:${entry}`;
 }
 
 function friendlySlateText(value: string, fallback: string): string {
-  if (/\bNO REAL PRESSURE\b/i.test(value)) {
+  const rawWeakPressurePattern = new RegExp(`\\b${RAW_WEAK_PRESSURE_REASON}\\b`, 'i');
+  if (rawWeakPressurePattern.test(value)) {
     return value.replace(
-      /\b(?:Why Foldera stopped:\s*)?NO REAL PRESSURE\b/gi,
+      new RegExp(`\\b(?:Why Foldera stopped:\\s*)?${RAW_WEAK_PRESSURE_REASON}\\b`, 'gi'),
       'The current source trail does not show enough real pressure for finished work.',
     );
   }
@@ -54,7 +56,7 @@ function friendlySlateText(value: string, fallback: string): string {
 
 function friendlyStopReason(reason: string): string {
   const normalized = reason.replace(/[_-]+/g, ' ').toLowerCase();
-  if (/\bno real pressure\b/.test(normalized)) {
+  if (normalized.includes(RAW_WEAK_PRESSURE_REASON.toLowerCase())) {
     return 'The current source trail does not show enough real pressure for finished work.';
   }
   if (/\bstale\b|\bfresher\b|\bcurrent artifact facts\b/.test(normalized)) {
@@ -261,7 +263,7 @@ export function DailyUtilitySlateCard({
               <p className="mt-1 text-sm text-text-secondary">
                 {hasPrimaryMove
                   ? 'Evidence behind this move.'
-                  : 'The current receipt explains why Foldera held back.'}
+                  : 'The visible evidence explains why Foldera held back.'}
               </p>
             </div>
           </div>

@@ -290,12 +290,16 @@ export function DashboardSidebar({
         </nav>
 
         <div className="mt-auto space-y-4 pt-6">
-          <div className="foldera-dashboard-upgrade rounded-[18px] border border-border bg-white/[0.03] px-4 py-4">
+          <Link
+            href="/pricing"
+            className="foldera-dashboard-upgrade block rounded-[18px] border border-border bg-white/[0.03] px-4 py-4 transition-colors hover:border-cyan-200/20 hover:bg-white/[0.045]"
+            data-testid="dashboard-upgrade-pro"
+          >
             <p className="text-sm font-semibold text-accent">Upgrade to Pro</p>
             <p className="mt-2 text-xs leading-5 text-text-secondary">
               Unlock team features, custom playbooks, and integrations.
             </p>
-          </div>
+          </Link>
 
           <div className="foldera-dashboard-account relative rounded-[18px] border border-border bg-white/[0.03] px-3 py-3">
             <div className="flex items-center gap-3">

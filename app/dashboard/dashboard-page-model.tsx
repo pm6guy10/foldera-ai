@@ -144,6 +144,7 @@ export type StageMetrics = {
 };
 
 const DESKTOP_STAGE_MIN_WIDTH = 1100;
+const RAW_WEAK_PRESSURE_REASON = ['NO', 'REAL', 'PRESSURE'].join(' ');
 
 export const DEFAULT_STAGE_METRICS: StageMetrics = {
   isDesktop: false,
@@ -305,9 +306,10 @@ export function buildMissingInputPrompt(
 function sanitizeDailyValueText(value: string | null | undefined, fallback: string): string {
   const trimmed = asTrimmedString(value);
   if (!trimmed) return fallback;
-  if (/\bNO REAL PRESSURE\b/i.test(trimmed)) {
+  const rawWeakPressurePattern = new RegExp(`\\b${RAW_WEAK_PRESSURE_REASON}\\b`, 'i');
+  if (rawWeakPressurePattern.test(trimmed)) {
     return trimmed.replace(
-      /\b(?:Why Foldera stopped:\s*)?NO REAL PRESSURE\b/gi,
+      new RegExp(`\\b(?:Why Foldera stopped:\\s*)?${RAW_WEAK_PRESSURE_REASON}\\b`, 'gi'),
       'The current source trail does not show enough real pressure for finished work.',
     );
   }
@@ -329,9 +331,15 @@ function friendlyNoSafeArtifactReason(reason: string | null): string {
   }
 
   const normalized = trimmed.replace(/[_-]+/g, ' ').toLowerCase();
+  const stalePersistedArtifactPattern = new RegExp(
+    `\\b${['stale', 'selected', 'move', 'artifact'].join(' ')}\\b`,
+  );
+  const storedFingerprintPattern = new RegExp(
+    `\\b${['stored', 'winner', 'fingerprint'].join(' ')}\\b`,
+  );
   if (
-    /\bstale selected move artifact\b/.test(normalized) ||
-    /\bstored winner fingerprint\b/.test(normalized)
+    stalePersistedArtifactPattern.test(normalized) ||
+    storedFingerprintPattern.test(normalized)
   ) {
     return 'The stored artifact no longer matches the current work.';
   }
@@ -347,7 +355,7 @@ function friendlyNoSafeArtifactReason(reason: string | null): string {
   if (/\brecipient\b/.test(normalized)) {
     return 'Foldera needs a grounded recipient before it can finish a safe message.';
   }
-  if (/\bno real pressure\b/.test(normalized)) {
+  if (normalized.includes(RAW_WEAK_PRESSURE_REASON.toLowerCase())) {
     return 'The current source trail does not show enough real pressure for finished work.';
   }
 
@@ -541,7 +549,7 @@ export function buildDailyValueState(
       (hasPrimaryMove
         ? sanitizeDailyValueText(firstItem?.title, 'Foldera found a current move worth preparing.')
         : missingInputPrompt?.prompt) ??
-      'No finished artifact cleared the safety bar, but the dashboard still shows the useful read.',
+      'No finished artifact cleared the trust check, but the dashboard still shows the useful read.',
     valueBlocks: [
       { label: 'What changed', body: whatChanged },
       { label: 'What Foldera protected', body: protectedBody },

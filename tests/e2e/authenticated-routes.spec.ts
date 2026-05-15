@@ -821,7 +821,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(page.getByTestId('dashboard-empty-state')).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole('heading', { name: 'Foldera checked today.' })).toBeVisible({ timeout: 15000 });
     await expect(
-      page.getByText(/No finished artifact cleared the safety bar, but Foldera is still watching source freshness and recent decisions/i),
+      page.getByText(/No finished artifact cleared the trust check, but Foldera is still watching source status and recent decisions/i),
     ).toBeVisible();
     await expect(page.getByText('What changed')).toBeVisible();
     await expect(page.getByText('What Foldera protected')).toBeVisible();
