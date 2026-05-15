@@ -31,6 +31,7 @@
     "peek:pipeline-winner": "npx tsx scripts/peek-pipeline-winner.ts",
     "winner:autopsy": "npx tsx scripts/winner-autopsy.ts",
     "outcome:autopsy": "npx tsx scripts/outcome-autopsy.ts",
+    "outcome:learning": "npx tsx scripts/outcome-learning.ts",
     "winner:replay:3day": "npx tsx scripts/winner-replay-3day.ts",
     "prod:dry-run-plain": "npx tsx scripts/prod-dry-run-plain.ts",
     "check:pipeline-heartbeat": "npx tsx scripts/pipeline-cron-heartbeat-check.ts",

@@ -13,10 +13,11 @@ import {
 
 import { ProductShell } from '@/components/dashboard/ProductShell';
 import type { OutcomeAutopsyArtifact } from '@/lib/outcome-autopsy/outcome-autopsy';
+import type { OutcomeLearningSnapshot } from '@/lib/outcome-learning/outcome-learning-engine';
 
 type LoadState =
   | { status: 'loading' }
-  | { status: 'ready'; artifact: OutcomeAutopsyArtifact }
+  | { status: 'ready'; artifact: OutcomeAutopsyArtifact; learning: OutcomeLearningSnapshot | null }
   | { status: 'empty'; message: string }
   | { status: 'error'; message: string };
 
@@ -66,7 +67,13 @@ function AutopsyList({
   );
 }
 
-function AutopsyView({ artifact }: { artifact: OutcomeAutopsyArtifact }) {
+function AutopsyView({
+  artifact,
+  learning,
+}: {
+  artifact: OutcomeAutopsyArtifact;
+  learning: OutcomeLearningSnapshot | null;
+}) {
   const positiveSignals = artifact.strongest_positive_signals;
   const decisiveActions = artifact.decisive_actions;
   const timeline = artifact.timeline;
@@ -77,6 +84,10 @@ function AutopsyView({ artifact }: { artifact: OutcomeAutopsyArtifact }) {
   const evidenceVsInference = artifact.evidence_vs_inference;
   const futureRolesToPrioritize = artifact.future_roles_to_prioritize ?? [];
   const futureRolesToSkip = artifact.future_roles_to_skip ?? [];
+  const rawEvidence = learning?.evidence_packet.raw_evidence ?? [];
+  const interpretedSignals = learning?.outcome_signal_layer ?? [];
+  const feedbackLedger = learning?.recommendation_feedback_ledger ?? [];
+  const patternMemory = learning?.pattern_memory_updates ?? [];
 
   return (
     <div className="space-y-5" data-testid="outcome-autopsy-view">
@@ -144,6 +155,52 @@ function AutopsyView({ artifact }: { artifact: OutcomeAutopsyArtifact }) {
           </div>
           <p className="mt-3 text-base font-semibold text-white">{artifact.gold_standard_seed.label}</p>
           <p className="mt-2 text-sm leading-6 text-[#C9D2DE]">{artifact.gold_standard_seed.privacy_policy}</p>
+        </section>
+      ) : null}
+
+      {learning ? (
+        <section className="rounded-[24px] border border-emerald-200/12 bg-[#06130f]/90 p-5 lg:p-6" data-testid="what-foldera-learned">
+          <div className="flex items-center gap-3">
+            <Repeat2 className="h-5 w-5 text-emerald-200" aria-hidden />
+            <h2 className="text-sm font-black uppercase tracking-[0.14em] text-white">
+              What Foldera learned
+            </h2>
+          </div>
+          <p className="mt-3 text-lg font-semibold leading-7 text-white">
+            {learning.what_foldera_learned.outcome}
+          </p>
+          <div className="mt-5 grid gap-4 lg:grid-cols-3">
+            <div className="rounded-[18px] border border-white/[0.08] bg-white/[0.025] p-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-100">
+                Worked
+              </p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-[#B8C4D2]">
+                {learning.what_foldera_learned.what_worked.slice(0, 3).map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-[18px] border border-white/[0.08] bg-white/[0.025] p-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100">
+                Repeat
+              </p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-[#B8C4D2]">
+                {learning.what_foldera_learned.what_to_repeat.slice(0, 3).map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-[18px] border border-white/[0.08] bg-white/[0.025] p-4">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-100">
+                Avoid
+              </p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-[#B8C4D2]">
+                {learning.what_foldera_learned.what_to_avoid.slice(0, 3).map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </section>
       ) : null}
 
@@ -254,6 +311,64 @@ function AutopsyView({ artifact }: { artifact: OutcomeAutopsyArtifact }) {
         </section>
       ) : null}
 
+      {learning ? (
+        <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <section className="rounded-[24px] border border-cyan-200/10 bg-[#07111c]/90 p-5 lg:p-6">
+            <div className="flex items-center gap-3">
+              <ListChecks className="h-5 w-5 text-cyan-200" aria-hidden />
+              <h2 className="text-sm font-black uppercase tracking-[0.14em] text-white">
+                Evidence packet
+              </h2>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-[#B8C4D2]">{learning.evidence_packet.summary}</p>
+            <div className="mt-4 space-y-3">
+              {rawEvidence.slice(0, 7).map((item) => (
+                <article key={item.id} className="rounded-[16px] border border-white/[0.08] bg-white/[0.025] p-4">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">
+                      {classLabel(item.artifact_type)}
+                    </span>
+                    <span className="rounded-full border border-white/[0.08] bg-white/[0.035] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#C9D2DE]">
+                      {classLabel(item.sensitivity_level)}
+                    </span>
+                    <span className="rounded-full border border-white/[0.08] bg-white/[0.035] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#C9D2DE]">
+                      {classLabel(item.redaction_status)}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-white">{item.title}</p>
+                  <p className="mt-2 text-sm leading-6 text-[#AEBBCD]">{item.source_summary}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-[24px] border border-emerald-200/12 bg-[#07111c]/90 p-5 lg:p-6">
+            <div className="flex items-center gap-3">
+              <Route className="h-5 w-5 text-emerald-200" aria-hidden />
+              <h2 className="text-sm font-black uppercase tracking-[0.14em] text-white">
+                Interpreted learning
+              </h2>
+            </div>
+            <div className="mt-4 space-y-3">
+              {interpretedSignals.slice(0, 7).map((signal) => (
+                <article key={signal.id} className="rounded-[16px] border border-white/[0.08] bg-white/[0.025] p-4">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-emerald-200/14 bg-emerald-300/[0.06] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100">
+                      {classLabel(signal.signal_label)}
+                    </span>
+                    <span className="rounded-full border border-white/[0.08] bg-white/[0.035] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#C9D2DE]">
+                      {signal.causal_status === 'proven' ? 'proven evidence' : `${signal.causal_status} pattern`}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-white">{classLabel(signal.evidence_artifact_id)}</p>
+                  <p className="mt-2 text-sm leading-6 text-[#AEBBCD]">{signal.explanation}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        </section>
+      ) : null}
+
       <section className="grid gap-5 lg:grid-cols-3">
         <AutopsyList
           title="What worked"
@@ -284,6 +399,49 @@ function AutopsyView({ artifact }: { artifact: OutcomeAutopsyArtifact }) {
             items={futureRolesToSkip}
             icon={<AlertTriangle className="h-5 w-5" aria-hidden />}
           />
+        </section>
+      ) : null}
+
+      {learning ? (
+        <section className="grid gap-5 lg:grid-cols-2">
+          <section className="rounded-[24px] border border-cyan-200/10 bg-[#07111c]/90 p-5">
+            <h2 className="text-sm font-black uppercase tracking-[0.14em] text-white">
+              Recommendation feedback ledger
+            </h2>
+            <div className="mt-4 space-y-3">
+              {feedbackLedger.slice(0, 5).map((entry) => (
+                <article key={entry.id} className="rounded-[16px] border border-white/[0.08] bg-white/[0.025] p-4">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">
+                      {classLabel(entry.user_response)}
+                    </span>
+                    <span className="rounded-full border border-white/[0.08] bg-white/[0.035] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#C9D2DE]">
+                      {classLabel(entry.outcome_label)}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-white">{entry.recommendation_text}</p>
+                  <p className="mt-2 text-sm leading-6 text-[#AEBBCD]">{entry.learning_note}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-[24px] border border-emerald-200/12 bg-[#07111c]/90 p-5">
+            <h2 className="text-sm font-black uppercase tracking-[0.14em] text-white">
+              Pattern memory
+            </h2>
+            <div className="mt-4 space-y-3">
+              {patternMemory.slice(0, 7).map((pattern) => (
+                <article key={pattern.pattern_hash} className="rounded-[16px] border border-white/[0.08] bg-white/[0.025] p-4">
+                  <p className="text-sm font-semibold text-white">{classLabel(pattern.pattern_key)}</p>
+                  <p className="mt-2 text-xs font-black uppercase tracking-[0.12em] text-emerald-100">
+                    Observed {pattern.times_observed} / Positive {pattern.times_associated_with_positive_outcome} / Negative {pattern.times_associated_with_negative_outcome}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-[#AEBBCD]">{pattern.learning_note}</p>
+                </article>
+              ))}
+            </div>
+          </section>
         </section>
       ) : null}
 
@@ -339,7 +497,11 @@ export default function PlaybooksPage() {
         const payload = await response.json().catch(() => ({}));
         if (cancelled) return;
         if (response.ok && payload?.artifact) {
-          setState({ status: 'ready', artifact: payload.artifact as OutcomeAutopsyArtifact });
+          setState({
+            status: 'ready',
+            artifact: payload.artifact as OutcomeAutopsyArtifact,
+            learning: (payload.learning ?? null) as OutcomeLearningSnapshot | null,
+          });
         } else if (response.status === 404) {
           setState({
             status: 'empty',
@@ -372,7 +534,7 @@ export default function PlaybooksPage() {
         </section>
       ) : null}
 
-      {state.status === 'ready' ? <AutopsyView artifact={state.artifact} /> : null}
+      {state.status === 'ready' ? <AutopsyView artifact={state.artifact} learning={state.learning} /> : null}
 
       {state.status === 'empty' || state.status === 'error' ? (
         <section className="rounded-[24px] border border-amber-200/12 bg-[#07111c]/90 p-6">

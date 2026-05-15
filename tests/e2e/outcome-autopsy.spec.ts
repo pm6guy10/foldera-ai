@@ -270,6 +270,148 @@ const OUTCOME_AUTOPSY_PAYLOAD = {
       ],
     },
   },
+  learning: {
+    generated_at: '2026-05-15T12:00:00.000Z',
+    source: 'deterministic_outcome_learning',
+    goal_id: 'goal-job-stability',
+    evidence_packet: {
+      summary:
+        'Raw evidence is archived separately from interpreted outcome signals. Sensitive student/medical material is represented only through redacted or synthetic reasoning summaries.',
+      raw_evidence: [
+        {
+          id: 'interview_prompt',
+          artifact_type: 'interview_prompt',
+          title: 'Second-round Access Planning Meeting prompt',
+          source_date: '2026-05-03T12:00:00.000Z',
+          source_summary:
+            'Second-round email required a 15-minute Access Planning Meeting presentation, documentation assessment, reasonable-accommodation judgment, interactive-process reasoning, and a written case-note example.',
+          sensitivity_level: 'confidential',
+          redaction_status: 'not_needed',
+          linked_goal_id: 'goal-job-stability',
+          linked_action_ids: [],
+          linked_signal_ids: ['second_round_prompt_email'],
+          source_ref: 'seed:second_round_prompt_email',
+          importance: 'high_signal',
+        },
+        {
+          id: 'case_packet_redacted',
+          artifact_type: 'case_packet_redacted',
+          title: 'Redacted/synthetic student documentation summary',
+          source_date: '2026-05-03T12:00:00.000Z',
+          source_summary:
+            'Redacted/synthetic case packet preserves only the reasoning structure: functional limits, requested accommodations, needed clarification, neutral case note, and minimal faculty/campus coordination.',
+          sensitivity_level: 'third_party_sensitive',
+          redaction_status: 'redacted',
+          linked_goal_id: 'goal-job-stability',
+          linked_action_ids: [],
+          linked_signal_ids: ['redacted_case_packet'],
+          source_ref: 'seed:redacted_case_packet',
+          importance: 'high_signal',
+        },
+        {
+          id: 'offer_letter',
+          artifact_type: 'offer_letter',
+          title: 'Official offer letter',
+          source_date: '2026-05-14T18:00:00.000Z',
+          source_summary:
+            'Official CWU offer confirmed the final result, salary, start-date target, and background-check contingency.',
+          sensitivity_level: 'confidential',
+          redaction_status: 'not_needed',
+          linked_goal_id: 'goal-job-stability',
+          linked_action_ids: [],
+          linked_signal_ids: ['official_offer_letter'],
+          source_ref: 'seed:official_offer_letter',
+          importance: 'high_signal',
+        },
+      ],
+    },
+    outcome_signal_layer: [
+      {
+        id: 'signal-proof-of-fit-interview-prompt',
+        signal_label: 'proof_of_fit',
+        evidence_artifact_id: 'interview_prompt',
+        confidence: 'high',
+        causal_status: 'inferred',
+        explanation:
+          'The realistic work sample tested the actual job logic: access planning, documentation review, interactive-process reasoning, and student-centered judgment.',
+        supporting_source_refs: ['seed:second_round_prompt_email'],
+      },
+      {
+        id: 'signal-conversion-offer',
+        signal_label: 'outcome_confirmed',
+        evidence_artifact_id: 'offer_letter',
+        confidence: 'high',
+        causal_status: 'proven',
+        explanation:
+          'The offer letter confirms the outcome. It does not prove which earlier action produced that outcome.',
+        supporting_source_refs: ['seed:official_offer_letter'],
+      },
+    ],
+    recommendation_feedback_ledger: [
+      {
+        id: 'ledger:action-cwu-follow-up',
+        user_id: MOCK_USER_ID,
+        goal_id: 'goal-job-stability',
+        action_id: 'action-cwu-follow-up',
+        recommendation_type: 'send_message',
+        recommendation_text: 'Send the Access Specialist follow-up to Kendall with concrete availability.',
+        intended_outcome: 'Move the CWU hiring process toward a scheduled interview.',
+        confidence_reasoning_summary: 'CWU had called, and the next useful move was availability.',
+        source_signal_ids: ['sig-cwu-follow-up'],
+        created_at: '2026-04-23T15:30:00.000Z',
+        user_response: 'completed',
+        user_response_reason: 'Follow-up was useful.',
+        downstream_outcome_signal_id: null,
+        outcome_label: 'helped',
+        learning_note:
+          'Completed or approved action aligned with the outcome path; treat as likely useful in this context, not proof of sole cause.',
+        persistence_basis: ['tkg_actions', 'tkg_signals'],
+      },
+    ],
+    pattern_memory_updates: [
+      {
+        pattern_key: 'judgment_heavy_service_coordination',
+        pattern_hash: 'outcome_learning:judgment_heavy_service_coordination',
+        domain: 'career_outcome',
+        times_observed: 1,
+        times_associated_with_positive_outcome: 1,
+        times_associated_with_negative_outcome: 0,
+        user_feedback_alignment: 'aligned',
+        example_goal_ids: ['goal-job-stability'],
+        strongest_supporting_signal_ids: ['cwu-seed-realistic-job-simulation'],
+        last_seen_at: '2026-05-15T12:00:00.000Z',
+        learning_note:
+          'Winning context: messy human-service system plus judgment, documentation, and coordination.',
+      },
+      {
+        pattern_key: 'presentation_strength',
+        pattern_hash: 'outcome_learning:presentation_strength',
+        domain: 'career_outcome',
+        times_observed: 1,
+        times_associated_with_positive_outcome: 1,
+        times_associated_with_negative_outcome: 0,
+        user_feedback_alignment: 'aligned',
+        example_goal_ids: ['goal-job-stability'],
+        strongest_supporting_signal_ids: ['cwu-seed-realistic-job-simulation'],
+        last_seen_at: '2026-05-15T12:00:00.000Z',
+        learning_note:
+          'The process favored a realistic presentation/work sample where Brandon could show live reasoning.',
+      },
+    ],
+    what_foldera_learned: {
+      outcome:
+        'CWU Access Specialist: Offer received and accepted from Central Washington University for Access Specialist',
+      what_worked: ['The role matched judgment-heavy service coordination inside a messy human-support system.'],
+      what_did_not_work: ['Generic job-search activity did not become decisive evidence.'],
+      what_to_repeat: ['Treat every work sample, case scenario, presentation, or writing prompt as the highest-leverage conversion moment.'],
+      what_to_avoid: ['Do not volunteer DVA/legal/reference-risk context unless directly asked.'],
+      similar_future_opportunities_to_prioritize: ['Access or disability coordination'],
+      similar_future_opportunities_to_skip: ['Pure call center roles'],
+    },
+    uncertainty_notes: [
+      'Foldera can confirm the outcome and the evidence sequence, but the conversion mechanism remains inferred unless a source explicitly states why the offer was made.',
+    ],
+  },
 };
 
 describeAuthMocked('Outcome Autopsy playbook view', () => {
@@ -285,11 +427,19 @@ describeAuthMocked('Outcome Autopsy playbook view', () => {
     await expect(page.getByText('Inferred, not proven')).toBeVisible();
     await expect(page.getByText('$46,000', { exact: true })).toBeVisible();
     await expect(page.getByText('CWU Access Specialist Outcome Autopsy Gold Standard')).toBeVisible();
+    await expect(page.getByTestId('what-foldera-learned')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'What Foldera learned' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Evidence packet' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Interpreted learning' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Recommendation feedback ledger' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Pattern memory' })).toBeVisible();
+    await expect(page.getByText('proof of fit').first()).toBeVisible();
+    await expect(page.getByText('judgment heavy service coordination').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Strongest signals' })).toBeVisible();
     await expect(page.getByText('Follow-up email gave Kendall concrete availability').first()).toBeVisible();
     await expect(page.getByText('Second-round Access Planning Meeting prompt').first()).toBeVisible();
     await expect(page.getByText('third party sensitive').first()).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Evidence' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Evidence', exact: true })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Inference' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Generic events kept out' })).toBeVisible();
     await expect(page.getByText('It is background context only, not strong evidence for the outcome.')).toBeVisible();

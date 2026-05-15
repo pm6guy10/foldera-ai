@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
-import { getOutcomeAutopsyForUser } from '@/lib/outcome-autopsy/outcome-autopsy';
+import { getOutcomeLearningForUser } from '@/lib/outcome-learning/outcome-learning-engine';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -15,11 +15,11 @@ export async function GET(request: Request) {
   const query = url.searchParams.get('q') || 'CWU Access Specialist';
 
   try {
-    const artifact = await getOutcomeAutopsyForUser(createServerClient(), auth.userId, {
+    const result = await getOutcomeLearningForUser(createServerClient(), auth.userId, {
       query,
     });
 
-    if (!artifact) {
+    if (!result) {
       return NextResponse.json(
         {
           ok: false,
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       );
     }
 
-    return NextResponse.json({ ok: true, artifact });
+    return NextResponse.json({ ok: true, artifact: result.artifact, learning: result.learning });
   } catch (error) {
     return apiErrorForRoute(error, 'outcome-autopsy/latest');
   }
