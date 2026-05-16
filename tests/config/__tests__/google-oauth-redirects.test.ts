@@ -57,7 +57,9 @@ describe('Google OAuth redirect configuration docs', () => {
     expect(docs).toContain('/api/microsoft/connect');
     expect(docs).toContain('does not clear GATE_9_REAL_NON_OWNER_BETA');
     expect(releaseGates).toContain('GATE_9_REAL_NON_OWNER_BETA');
-    expect(releaseGates).toContain('exactly one real non-owner account connects Google or Microsoft');
+    expect(releaseGates).toContain('micro1 satisfies the real non-owner connection');
+    expect(releaseGates).toContain('source-backed action for micro1');
+    expect(releaseGates).toContain('explicit tester feedback');
     expect(betaChecklist).toContain('No fabricated auth users.');
     expect(betaChecklist).toContain('The account connects Google or Microsoft only through the normal login and provider consent flow.');
   });
