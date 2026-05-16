@@ -7,10 +7,11 @@ Product/runtime commit proven in production: `421671b4ac9c814ff9659740d5c5442031
 Latest Vercel production deployment for the product commit: `dpl_D51RiCPTrFdyvXYgm4gbev7nQuuS`, READY.
 Production `/api/health` for the product commit: `status=ok`, `build=421671b`, `revision.git_sha=421671b4ac9c814ff9659740d5c544203119e116`, `vercel_env=production`.
 GitHub Actions for the product commit: PASS (`build`, `unit`, `e2e`, `e2e-smoke`, `e2e-authenticated`, `e2e-quarantine`, `verify-static`, `health`, `semgrep`; `e2e-payments` skipped).
-Current release gate: `GATE_9_REAL_NON_OWNER_BETA`
-Release gate status: `BLOCKED_EXTERNAL`
-Current quality gate: `QG_10_ARTIFACT_QUALITY` PASS
-Current visual gate: `QG_11_VISUAL_FRONTEND_QUALITY` PASS
+Current release gate: GATE_9_REAL_NON_OWNER_BETA
+First failing release gate: GATE_9_REAL_NON_OWNER_BETA
+Release gate status: BLOCKED_EXTERNAL
+Current quality gate: QG_10_ARTIFACT_QUALITY PASS
+Current visual gate: QG_11_VISUAL_FRONTEND_QUALITY PASS
 
 ## Current Truth
 
