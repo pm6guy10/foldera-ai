@@ -73,10 +73,16 @@ const FIRST_RUN_READINESS = {
   action_count: 0,
   pipeline_run_count: 0,
   last_checked_at: '2026-05-13T13:45:00.000Z',
+  newest_signal_at: '2026-05-13T13:45:00.000Z',
   next_check_timing: 'Next check: use Check sources now, or wait for the next scheduled source refresh.',
   headline: 'Foldera connected Google, but only found 1 usable item so far.',
   reason: 'Foldera has 1 source item: 0 processed, 1 waiting. That is not enough evidence for a safe move yet.',
-  next_action: 'Check again after more mail/calendar activity, or connect another source.',
+  next_action: 'Check sources now to process waiting metadata, or connect another source.',
+  metadata_summary: 'Metadata says Google is connected and 1 Gmail/calendar item has arrived.',
+  why_no_finished_move:
+    'No finished move exists because 0 source items have been processed and no action or pipeline run exists yet.',
+  value_unlock_next:
+    'Check sources now to process the waiting item, or connect another source if this inbox is too thin.',
   nothing_sent_label: 'Nothing was sent.',
   can_check_now: true,
   value_proof_ready: true,
@@ -408,6 +414,9 @@ describeAuthMocked('Non-owner beta simulated first path', () => {
       page.getByRole('heading', { name: /Foldera connected Google, but only found 1 usable item so far\./i }),
     ).toBeVisible();
     await expect(page.getByText(/1 source item: 0 processed, 1 waiting/i).first()).toBeVisible();
+    await expect(page.getByText(/Newest signal/i).first()).toBeVisible();
+    await expect(page.getByText(/Metadata says Google is connected/i).first()).toBeVisible();
+    await expect(page.getByText(/No finished move exists because 0 source items have been processed/i).first()).toBeVisible();
     await expect(page.getByText(/Nothing was sent\./i).first()).toBeVisible();
     await expect(page.getByRole('link', { name: /check sources now/i })).toBeVisible();
     await expect(page.getByText(/What Foldera protected/i)).toBeVisible();

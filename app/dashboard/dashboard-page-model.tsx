@@ -91,10 +91,14 @@ export type FirstRunSourceReadinessPayload = {
   action_count: number;
   pipeline_run_count: number;
   last_checked_at: string | null;
+  newest_signal_at: string | null;
   next_check_timing: string;
   headline: string;
   reason: string;
   next_action: string;
+  metadata_summary: string;
+  why_no_finished_move: string;
+  value_unlock_next: string;
   nothing_sent_label: string;
   can_check_now: boolean;
   value_proof_ready: boolean;
@@ -612,6 +616,9 @@ export function buildFirstRunReadinessSlate(
   const lastChecked = asTrimmedString(readiness.last_checked_at)
     ? `Last checked: ${formatRelativeTime(readiness.last_checked_at)}`
     : 'Last checked: waiting for the first completed source check';
+  const newestSignal = asTrimmedString(readiness.newest_signal_at)
+    ? `Newest signal: ${formatRelativeTime(readiness.newest_signal_at)}`
+    : 'Newest signal: waiting for first source metadata';
 
   return {
     finished_artifact_verdict: 'no_finished_artifact',
@@ -621,13 +628,15 @@ export function buildFirstRunReadinessSlate(
       evidence: [
         providerLabel,
         sourceCountLabel,
+        newestSignal,
         lastChecked,
+        readiness.metadata_summary,
         readiness.next_check_timing,
         readiness.nothing_sent_label,
       ],
-      why_it_matters: readiness.reason,
-      no_action_reason: readiness.reason,
-      next_action: readiness.next_action,
+      why_it_matters: readiness.metadata_summary || readiness.reason,
+      no_action_reason: readiness.why_no_finished_move || readiness.reason,
+      next_action: readiness.value_unlock_next || readiness.next_action,
       source_refs: ['source_readiness'],
     },
   };

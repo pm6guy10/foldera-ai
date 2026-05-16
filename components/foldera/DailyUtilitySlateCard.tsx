@@ -104,7 +104,7 @@ function SlateItemCard({
           Evidence
         </p>
         <ul className="mt-2 space-y-2 text-sm leading-6 text-text-secondary">
-          {item.evidence.slice(0, 5).map((entry) => (
+          {item.evidence.slice(0, 7).map((entry) => (
             <li key={evidenceKey(item, entry)} className="flex gap-2">
               <span className="mt-[0.72em] h-1.5 w-1.5 shrink-0 rounded-full bg-accent/70" aria-hidden />
               <span>

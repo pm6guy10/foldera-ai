@@ -49,11 +49,11 @@ const BASE_EVIDENCE: ReleaseGateEvidence = {
 };
 
 describe('release gate status', () => {
-  it('reports GATE_9 as the first failing gate when all local/mock gates pass but real non-owner proof is absent', () => {
+  it('reports GATE_9A as the first failing gate when all local/mock gates pass but real non-owner proof is absent', () => {
     const report = buildReleaseGateReport(BASE_EVIDENCE);
 
-    expect(report.currentGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
-    expect(report.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
+    expect(report.currentGate.id).toBe('GATE_9A_FIRST_RUN_ACTIVATION');
+    expect(report.firstFailingGate.id).toBe('GATE_9A_FIRST_RUN_ACTIVATION');
     expect(report.firstFailingGate.status).toBe('BLOCKED_EXTERNAL');
     expect(report.firstFailingGate.reason).toBe('No real connected non-owner account exists.');
     expect(report.firstFailingGate.nextMove).toBe(
@@ -65,8 +65,8 @@ describe('release gate status', () => {
   it('formats the deterministic release-controller summary lines', () => {
     const formatted = formatReleaseGateReport(buildReleaseGateReport(BASE_EVIDENCE));
 
-    expect(formatted).toContain('CURRENT_GATE: GATE_9_REAL_NON_OWNER_BETA');
-    expect(formatted).toContain('FIRST_FAILING_GATE: GATE_9_REAL_NON_OWNER_BETA');
+    expect(formatted).toContain('CURRENT_GATE: GATE_9A_FIRST_RUN_ACTIVATION');
+    expect(formatted).toContain('FIRST_FAILING_GATE: GATE_9A_FIRST_RUN_ACTIVATION');
     expect(formatted).toContain('STATUS: BLOCKED_EXTERNAL');
     expect(formatted).toContain('REASON: No real connected non-owner account exists.');
     expect(formatted).toContain('NEXT_MOVE: Get one real tester to connect Google or Microsoft.');
@@ -95,7 +95,7 @@ describe('release gate status', () => {
       gitMainSha: '7b129f4e11111111111111111111111111111111',
     });
 
-    expect(report.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
+    expect(report.firstFailingGate.id).toBe('GATE_9A_FIRST_RUN_ACTIVATION');
     expect(report.gates[0]?.status).toBe('PASS');
     expect(report.gates[0]?.proofFound.join('\n')).toContain(
       'GitHub/main differs from current production',
@@ -113,28 +113,32 @@ describe('release gate status', () => {
     });
 
     expect(report.gates[0]?.status).toBe('PASS');
-    expect(report.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
+    expect(report.firstFailingGate.id).toBe('GATE_9A_FIRST_RUN_ACTIVATION');
     expect(report.gates[0]?.proofFound.join('\n')).toContain(
       'ACTIVE_HANDOFF.md release gate/status matches current release truth',
     );
   });
 
-  it('does not fail live truth when GATE_9 is recorded as passed from a prior production receipt', () => {
+  it('does not fail live truth when first-run activation is recorded from a prior production receipt', () => {
     const report = buildReleaseGateReport({
       ...BASE_EVIDENCE,
       productionSha: 'b67600e55bfe6dbb1fe5bb318b99d5a524745edf',
       healthSha: 'b67600e55bfe6dbb1fe5bb318b99d5a524745edf',
       activeHandoffSha: '6b0c163564a8646075ef904c1f82a2ff441c7a36',
       activeHandoffText:
-        'Current release gate: GATE_9_REAL_NON_OWNER_BETA\nFirst failing release gate: NONE\nRelease gate status: PASS\nLast known production SHA: 6b0c163',
+        'Current release gate: GATE_9A_FIRST_RUN_ACTIVATION\nFirst failing release gate: GATE_9_REAL_NON_OWNER_BETA\nRelease gate status: WAITING_FULL_BETA\nLast known production SHA: 6b0c163',
       realNonOwnerProof: [
         'real non-owner first-run state: connected source Google; signal_count=1; processed_signal_count=0; unprocessed_signal_count=1; reason=not enough evidence; next_action=Check sources now; nothing_sent=true',
       ],
     });
 
     expect(report.gates[0]?.status).toBe('PASS');
+    expect(report.gates.find((gate) => gate.id === 'GATE_9A_FIRST_RUN_ACTIVATION')?.status).toBe(
+      'PASS',
+    );
     expect(report.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
-    expect(report.firstFailingGate.status).toBe('PASS');
+    expect(report.firstFailingGate.status).toBe('BLOCKED_EXTERNAL');
+    expect(report.firstFailingGate.reason).toContain('Full beta proof still requires');
   });
 
   it('fails selection proof when owner canary user ids are not excluded from real beta proof', () => {
@@ -153,7 +157,7 @@ describe('release gate status', () => {
     );
   });
 
-  it('does not pass GATE_9 from token-only, welcome-only, or unprocessed-signal-only proof', () => {
+  it('does not pass GATE_9A from token-only, welcome-only, or unprocessed-signal-only proof', () => {
     const report = buildReleaseGateReport({
       ...BASE_EVIDENCE,
       realNonOwnerProof: [
@@ -163,7 +167,7 @@ describe('release gate status', () => {
       ],
     });
 
-    expect(report.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
+    expect(report.firstFailingGate.id).toBe('GATE_9A_FIRST_RUN_ACTIVATION');
     expect(report.firstFailingGate.status).toBe('BLOCKED_EXTERNAL');
     expect(report.firstFailingGate.reason).toContain('first-run value proof is incomplete');
     expect(report.firstFailingGate.proofMissing).toContain(
@@ -171,7 +175,7 @@ describe('release gate status', () => {
     );
   });
 
-  it('passes GATE_9 only from a clear first-run state or source-backed move', () => {
+  it('passes GATE_9A from a clear low-data first-run state without calling it full beta success', () => {
     const report = buildReleaseGateReport({
       ...BASE_EVIDENCE,
       realNonOwnerProof: [
@@ -179,7 +183,13 @@ describe('release gate status', () => {
       ],
     });
 
-    expect(report.firstFailingGate.status).toBe('PASS');
+    expect(report.gates.find((gate) => gate.id === 'GATE_9A_FIRST_RUN_ACTIVATION')?.status).toBe(
+      'PASS',
+    );
     expect(report.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
+    expect(report.firstFailingGate.status).toBe('BLOCKED_EXTERNAL');
+    expect(report.firstFailingGate.nextMove).toBe(
+      'Run repeatable real non-owner proof after the first-run state produces source-backed action or explicit tester feedback.',
+    );
   });
 });

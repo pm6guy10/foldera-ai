@@ -22,6 +22,7 @@ export type FirstRunSourceReadinessInput = {
   action_count: number;
   pipeline_run_count: number;
   last_checked_at: string | null;
+  newest_signal_at: string | null;
 };
 
 export type FirstRunSourceReadiness = Omit<FirstRunSourceReadinessInput, 'providers'> & {
@@ -32,6 +33,9 @@ export type FirstRunSourceReadiness = Omit<FirstRunSourceReadinessInput, 'provid
   headline: string;
   reason: string;
   next_action: string;
+  metadata_summary: string;
+  why_no_finished_move: string;
+  value_unlock_next: string;
   nothing_sent_label: string;
   can_check_now: boolean;
   value_proof_ready: boolean;
@@ -50,6 +54,10 @@ function joinProviderLabels(labels: string[]): string {
 
 function itemWord(count: number): string {
   return count === 1 ? 'item' : 'items';
+}
+
+function hasOneOrMore(count: number): string {
+  return count === 1 ? 'has' : 'have';
 }
 
 export function buildFirstRunSourceReadiness(
@@ -81,10 +89,27 @@ export function buildFirstRunSourceReadiness(
   }
 
   const nothingSentLabel = actionCount === 0 ? 'Nothing was sent.' : 'Nothing was sent from this readiness state.';
-  const nextAction = 'Check again after more mail/calendar activity, or connect another source.';
+  const nextAction = connected
+    ? canCheckNow
+      ? 'Check sources now to process waiting metadata, or connect another source.'
+      : 'Wait for the next source refresh, or connect another source.'
+    : 'Connect another source.';
   const nextCheckTiming = canCheckNow
     ? 'Next check: use Check sources now, or wait for the next scheduled source refresh.'
     : 'Next check: wait for the next scheduled source refresh or reconnect the source.';
+  const metadataSummary = connected
+    ? signalCount > 0
+      ? `Metadata says ${providerLabel} is connected and ${signalCount} Gmail/calendar ${itemWord(signalCount)} ${hasOneOrMore(signalCount)} arrived.`
+      : `Metadata says ${providerLabel} is connected, but no Gmail/calendar items have arrived yet.`
+    : 'Metadata says no Google or Microsoft source is connected yet.';
+  const whyNoFinishedMove = actionCount > 0
+    ? `A finished move already exists outside this readiness state: ${actionCount} action ${actionCount === 1 ? 'row' : 'rows'} recorded.`
+    : `No finished move exists because ${processedCount} source ${itemWord(processedCount)} ${processedCount === 1 ? 'has' : 'have'} been processed and no action or pipeline run exists yet.`;
+  const valueUnlockNext = connected
+    ? unprocessedCount > 0
+      ? `Check sources now to process the waiting ${itemWord(unprocessedCount)}, or connect another source if this inbox is too thin.`
+      : 'Connect another source if this inbox is too thin, or wait for the next source refresh.'
+    : 'Connect Google or Microsoft so Foldera has real metadata to inspect.';
 
   let headline: string;
   let reason: string;
@@ -122,6 +147,9 @@ export function buildFirstRunSourceReadiness(
     headline,
     reason,
     next_action: nextAction,
+    metadata_summary: metadataSummary,
+    why_no_finished_move: whyNoFinishedMove,
+    value_unlock_next: valueUnlockNext,
     nothing_sent_label: nothingSentLabel,
     can_check_now: canCheckNow,
     value_proof_ready:

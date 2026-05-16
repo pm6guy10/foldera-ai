@@ -115,6 +115,7 @@ export async function GET() {
       action_count: actionCountResult.count ?? 0,
       pipeline_run_count: pipelineRunCountResult.count ?? 0,
       last_checked_at: latestIso([latestProviderSync, latestSignalAt]),
+      newest_signal_at: latestSignalAt,
     });
 
     return NextResponse.json(readiness, withReadOnlyUserCache());

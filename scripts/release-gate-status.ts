@@ -43,8 +43,10 @@ const DO_NOT_TOUCH =
   'UI polish, Stripe, paid generation, owner-only proof, fake users.';
 
 const GATE_9_NEXT_MOVE = 'Get one real tester to connect Google or Microsoft.';
-const GATE_9_VALUE_NEXT_MOVE =
+const GATE_9A_VALUE_NEXT_MOVE =
   'Prove the real non-owner reaches a clear first-run state with source counts, reason, and next action, or a source-backed move.';
+const GATE_9_FULL_BETA_NEXT_MOVE =
+  'Run repeatable real non-owner proof after the first-run state produces source-backed action or explicit tester feedback.';
 
 function shortSha(sha: string | null): string {
   if (!sha) return 'UNKNOWN';
@@ -114,16 +116,22 @@ function requireReservedUserExclusionProof(
   }
 }
 
-function hasClearRealNonOwnerValueProof(proof: string[]): boolean {
+function hasRealNonOwnerSourceBackedMoveProof(proof: string[]): boolean {
   const text = proof.join('\n').toLowerCase();
   if (!text.includes('real non-owner')) return false;
 
-  const sourceBackedMove =
+  return (
     /source[- ]backed move/.test(text) &&
     /source trail/.test(text) &&
-    /(save|skip|approve|history|next_action|next action)/.test(text);
+    /(save|skip|approve|history|next_action|next action)/.test(text)
+  );
+}
 
-  const clearFirstRunState =
+function hasClearRealNonOwnerFirstRunProof(proof: string[]): boolean {
+  const text = proof.join('\n').toLowerCase();
+  if (!text.includes('real non-owner')) return false;
+
+  return (
     /first-run state|clear first-run state|clear waiting state|clear no-safe state/.test(text) &&
     /connected source/.test(text) &&
     /signal_count=\d+/.test(text) &&
@@ -131,25 +139,32 @@ function hasClearRealNonOwnerValueProof(proof: string[]): boolean {
     /unprocessed_signal_count=\d+/.test(text) &&
     /reason=/.test(text) &&
     /next_action=|next action=/.test(text) &&
-    /nothing_sent=true|nothing was sent/.test(text);
+    /nothing_sent=true|nothing was sent/.test(text)
+  );
+}
 
-  return sourceBackedMove || clearFirstRunState;
+function hasClearRealNonOwnerValueProof(proof: string[]): boolean {
+  return hasRealNonOwnerSourceBackedMoveProof(proof) || hasClearRealNonOwnerFirstRunProof(proof);
 }
 
 function buildGate0(evidence: ReleaseGateEvidence): ReleaseGateResult {
   const proofFound: string[] = [];
   const proofMissing: string[] = [];
-  const handoffNamesGate = evidence.activeHandoffText.includes(
-    'Current release gate: GATE_9_REAL_NON_OWNER_BETA',
-  );
+  const handoffNamesGate =
+    evidence.activeHandoffText.includes('Current release gate: GATE_9_REAL_NON_OWNER_BETA') ||
+    evidence.activeHandoffText.includes('Current release gate: GATE_9A_FIRST_RUN_ACTIVATION');
   const handoffNamesBlockedGate =
     evidence.activeHandoffText.includes('First failing release gate: GATE_9_REAL_NON_OWNER_BETA') &&
     evidence.activeHandoffText.includes('Release gate status: BLOCKED_EXTERNAL');
   const handoffNamesPassedGate =
     evidence.activeHandoffText.includes('First failing release gate: NONE') &&
     /Release gate status:\s+(PASS|PROVEN)/i.test(evidence.activeHandoffText);
+  const handoffNamesFirstRunActivationGate =
+    evidence.activeHandoffText.includes('Current release gate: GATE_9A_FIRST_RUN_ACTIVATION') &&
+    evidence.activeHandoffText.includes('First failing release gate: GATE_9_REAL_NON_OWNER_BETA');
   const handoffMatchesReleaseGate =
-    handoffNamesGate && (handoffNamesBlockedGate || handoffNamesPassedGate);
+    handoffNamesGate &&
+    (handoffNamesBlockedGate || handoffNamesPassedGate || handoffNamesFirstRunActivationGate);
 
   if (evidence.gitMainSha) proofFound.push(`GitHub/main SHA known: ${evidence.gitMainSha}`);
   else proofMissing.push('GitHub/main SHA must be known');
@@ -395,16 +410,19 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
 
   const hasRealNonOwnerProof = evidence.realNonOwnerProof.length > 0;
   const hasRealNonOwnerValueProof = hasClearRealNonOwnerValueProof(evidence.realNonOwnerProof);
+  const hasRealNonOwnerSourceBackedProof = hasRealNonOwnerSourceBackedMoveProof(
+    evidence.realNonOwnerProof,
+  );
   gates.push(
     hasRealNonOwnerValueProof
       ? passGate(
-          'GATE_9_REAL_NON_OWNER_BETA',
-          'Real non-owner reached a clear first-run state or source-backed move.',
+          'GATE_9A_FIRST_RUN_ACTIVATION',
+          'Real non-owner reached a useful no-paid first-run state or source-backed move.',
           evidence.realNonOwnerProof,
-          'Continue to real beta repeatability proof.',
+          'Continue to real beta repeatability proof without calling this full beta success.',
         )
       : failGate(
-          'GATE_9_REAL_NON_OWNER_BETA',
+          'GATE_9A_FIRST_RUN_ACTIVATION',
           hasRealNonOwnerProof
             ? 'Real non-owner connection exists, but first-run value proof is incomplete.'
             : 'No real connected non-owner account exists.',
@@ -417,9 +435,37 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
             : [
                 'Exactly one real non-owner account must connect Google or Microsoft.',
                 'No fake rows, OWNER_USER_ID, TEST_USER_ID, OWNER_CANARY_USER_IDS, or mock harness may count as real beta proof.',
-                'Token-only, welcome-email-only, and unprocessed-signal-only proof cannot pass GATE_9.',
+                'Token-only, welcome-email-only, and unprocessed-signal-only proof cannot pass GATE_9A.',
               ],
-          hasRealNonOwnerProof ? GATE_9_VALUE_NEXT_MOVE : GATE_9_NEXT_MOVE,
+          hasRealNonOwnerProof ? GATE_9A_VALUE_NEXT_MOVE : GATE_9_NEXT_MOVE,
+          'BLOCKED_EXTERNAL',
+        ),
+  );
+
+  gates.push(
+    hasRealNonOwnerSourceBackedProof
+      ? passGate(
+          'GATE_9_REAL_NON_OWNER_BETA',
+          'Real non-owner reached a source-backed move with source trail and controls.',
+          evidence.realNonOwnerProof,
+          'Continue to repeatability and tester-feedback proof.',
+        )
+      : failGate(
+          'GATE_9_REAL_NON_OWNER_BETA',
+          hasRealNonOwnerValueProof
+            ? 'Full beta proof still requires source-backed action or explicit tester feedback after first-run activation.'
+            : 'No real connected non-owner account exists.',
+          hasRealNonOwnerValueProof ? evidence.realNonOwnerProof : [],
+          hasRealNonOwnerValueProof
+            ? [
+                'First-run activation is useful but is not full beta success.',
+                'Full beta proof requires a real non-owner source-backed action or explicit tester feedback from the waiting state.',
+              ]
+            : [
+                'Exactly one real non-owner account must connect Google or Microsoft and reach first-run activation before full beta proof.',
+                'No fake rows, OWNER_USER_ID, TEST_USER_ID, OWNER_CANARY_USER_IDS, or mock harness may count as real beta proof.',
+              ],
+          hasRealNonOwnerValueProof ? GATE_9_FULL_BETA_NEXT_MOVE : GATE_9_NEXT_MOVE,
           'BLOCKED_EXTERNAL',
         ),
   );

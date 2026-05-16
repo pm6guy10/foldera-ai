@@ -188,10 +188,16 @@ describe('dashboard finished-work inbox model', () => {
       action_count: 0,
       pipeline_run_count: 0,
       last_checked_at: '2026-05-15T22:33:55.815Z',
+      newest_signal_at: '2026-05-15T22:33:55.815Z',
       next_check_timing: 'Next check: use Check sources now, or wait for the next scheduled source refresh.',
       headline: 'Foldera connected Google, but only found 1 usable item so far.',
       reason: 'Foldera has 1 source item: 0 processed, 1 waiting. That is not enough evidence for a safe move yet.',
-      next_action: 'Check again after more mail/calendar activity, or connect another source.',
+      next_action: 'Check sources now to process waiting metadata, or connect another source.',
+      metadata_summary: 'Metadata says Google is connected and 1 Gmail/calendar item has arrived.',
+      why_no_finished_move:
+        'No finished move exists because 0 source items have been processed and no action or pipeline run exists yet.',
+      value_unlock_next:
+        'Check sources now to process the waiting item, or connect another source if this inbox is too thin.',
       nothing_sent_label: 'Nothing was sent.',
       can_check_now: true,
       value_proof_ready: true,
@@ -199,9 +205,11 @@ describe('dashboard finished-work inbox model', () => {
 
     expect(slate?.watch_item?.title).toBe('Foldera connected Google, but only found 1 usable item so far.');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('0 processed, 1 waiting');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Newest signal:');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Metadata says Google is connected');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Nothing was sent.');
     expect(slate?.watch_item?.next_action).toBe(
-      'Check again after more mail/calendar activity, or connect another source.',
+      'Check sources now to process the waiting item, or connect another source if this inbox is too thin.',
     );
 
     const state = buildDailyValueState(
@@ -227,10 +235,16 @@ describe('dashboard finished-work inbox model', () => {
       action_count: 0,
       pipeline_run_count: 0,
       last_checked_at: null,
+      newest_signal_at: null,
       next_check_timing: 'Next check: use Check sources now, or wait for the next scheduled source refresh.',
       headline: 'Foldera connected Google and is checking sources now.',
       reason: 'Foldera has not found usable source items yet: 0 processed, 0 waiting.',
-      next_action: 'Check again after more mail/calendar activity, or connect another source.',
+      next_action: 'Check sources now to process waiting metadata, or connect another source.',
+      metadata_summary: 'Metadata says Google is connected, but no Gmail/calendar items have arrived yet.',
+      why_no_finished_move:
+        'No finished move exists because 0 source items have been processed and no action or pipeline run exists yet.',
+      value_unlock_next:
+        'Connect another source if this inbox is too thin, or wait for the next source refresh.',
       nothing_sent_label: 'Nothing was sent.',
       can_check_now: true,
       value_proof_ready: false,

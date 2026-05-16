@@ -113,7 +113,7 @@ Pass requires mock non-owner coverage for:
 
 Mock proof must be clearly labeled as mock only.
 
-### GATE_9_REAL_NON_OWNER_BETA
+### GATE_9A_FIRST_RUN_ACTIVATION
 
 Pass requires:
 
@@ -124,11 +124,33 @@ Pass requires:
 - no `OWNER_CANARY_USER_IDS`
 - token-only proof does not pass
 - welcome-email-only proof does not pass
-- unprocessed-signal-only proof does not pass
-- user reaches one of:
-  - a source-backed move with visible source trail and safe controls
-  - a clear waiting state with source count, processed/unprocessed count, last checked, reason, and next action
-  - a clear no-safe state with source trail, reason, next action, and "nothing was sent" truth
+- unprocessed-signal-only proof does not pass unless the product shows a clear first-run value state
+- the user reaches a useful no-paid first-run state with:
+  - connected provider
+  - signal count
+  - newest signal time
+  - processed/unprocessed count
+  - what Foldera can tell from metadata
+  - why no finished move exists
+  - what unlocks value next
+  - "nothing was sent" truth
+  - `Check sources now` or `Connect another source`
+
+This gate proves first-run activation only. It is not full beta success.
+
+### GATE_9_REAL_NON_OWNER_BETA
+
+Pass requires:
+
+- exactly one real non-owner account connects Google or Microsoft
+- no fake rows
+- no `OWNER_USER_ID`
+- no `TEST_USER_ID`
+- no `OWNER_CANARY_USER_IDS`
+- `GATE_9A_FIRST_RUN_ACTIVATION` is already proven
+- user reaches a source-backed move with visible source trail and safe controls, or explicit tester feedback proves the first-run waiting state was understandable and useful
+- save/skip/approve/history behavior is safe
+- outbound send attempts remain blocked unless an explicit send flag is enabled
 
 Detailed proof checklist: `docs/REAL_NON_OWNER_BETA_PROOF_CHECKLIST.md`.
 Owner-controlled Microsoft Outlook/Hotmail canaries are connector proof only. They must stay in `OWNER_CANARY_USER_IDS` and must not clear real non-owner beta.
@@ -137,13 +159,13 @@ Until that proof exists, this gate must remain:
 
 ```text
 STATUS: BLOCKED_EXTERNAL
-REASON: No real connected non-owner account exists, or a connected non-owner has not reached clear first-run value proof.
-NEXT_MOVE: Prove one real non-owner reaches a clear first-run state or source-backed move.
+REASON: First-run activation is useful but is not full beta success.
+NEXT_MOVE: Run repeatable real non-owner proof after the first-run state produces source-backed action or explicit tester feedback.
 DO_NOT_TOUCH: UI polish, Stripe, paid generation, owner-only proof, fake users.
 ```
 
 ## Current Release Truth
 
-As of this controller slice, local and mock proof carries Foldera through GATE_8. The first failing release gate is GATE_9 because real non-owner beta proof requires a real connected non-owner to reach clear first-run value proof, not merely a token row.
+As of this controller slice, local and mock proof carries Foldera through GATE_8, and real micro1-style proof can carry no-paid first-run activation through GATE_9A. The first failing release gate remains GATE_9 because first-run waiting value is not full beta success.
 
 Mock harness proof is useful release preparation. It is not beta readiness.
