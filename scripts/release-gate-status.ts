@@ -148,6 +148,19 @@ function hasClearRealNonOwnerValueProof(proof: string[]): boolean {
   return hasRealNonOwnerSourceBackedMoveProof(proof) || hasClearRealNonOwnerFirstRunProof(proof);
 }
 
+function hasExplicitRealNonOwnerTesterFeedbackProof(proof: string[]): boolean {
+  const text = proof.join('\n').toLowerCase();
+  if (!text.includes('explicit tester feedback')) return false;
+  if (!text.includes('real non-owner tester')) return false;
+  if (!/waiting state|no-safe state|readiness state/.test(text)) return false;
+  if (!text.includes('understandable')) return false;
+  if (!text.includes('useful enough to keep trusting foldera')) return false;
+  if (/owner_user_id|test_user_id|owner_canary_user_ids|synthetic|fixture|mock|fake/.test(text)) {
+    return false;
+  }
+  return true;
+}
+
 function buildGate0(evidence: ReleaseGateEvidence): ReleaseGateResult {
   const proofFound: string[] = [];
   const proofMissing: string[] = [];
@@ -414,6 +427,9 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
   const hasRealNonOwnerSourceBackedProof = hasRealNonOwnerSourceBackedMoveProof(
     evidence.realNonOwnerProof,
   );
+  const hasRealNonOwnerTesterFeedbackProof = hasExplicitRealNonOwnerTesterFeedbackProof(
+    evidence.realNonOwnerProof,
+  );
   gates.push(
     hasRealNonOwnerValueProof
       ? passGate(
@@ -444,10 +460,12 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
   );
 
   gates.push(
-    hasRealNonOwnerSourceBackedProof
+    hasRealNonOwnerSourceBackedProof || hasRealNonOwnerTesterFeedbackProof
       ? passGate(
           'GATE_9_REAL_NON_OWNER_BETA',
-          'Real non-owner reached a source-backed move with source trail and controls.',
+          hasRealNonOwnerSourceBackedProof
+            ? 'Real non-owner reached a source-backed move with source trail and controls.'
+            : 'Real non-owner tester explicitly confirmed the waiting state was understandable and useful enough to keep trusting Foldera.',
           evidence.realNonOwnerProof,
           'Continue to repeatability and tester-feedback proof.',
         )
@@ -460,7 +478,7 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
           hasRealNonOwnerValueProof
             ? [
                 'First-run activation is useful but is not full beta success.',
-                'Full beta proof requires micro1/current proven non-owner source-backed action or explicit tester feedback from the waiting state.',
+                'Full beta proof requires either: real non-owner source-backed action with source trail and safe controls, or explicit tester feedback: real non-owner tester said the waiting state was understandable and useful enough to keep trusting Foldera.',
               ]
             : [
                 'Current handoff must prove GATE_9A first-run activation before full beta proof can be evaluated.',
@@ -603,7 +621,9 @@ export async function gatherReleaseGateEvidence(
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter((line) =>
-      /real non-owner (?:first-run state|source-backed move|clear waiting state|clear no-safe state)/i.test(line),
+      /^-?\s*real non-owner (?:first-run state|source-backed move|clear waiting state|clear no-safe state)(?:\s+\([^)]*\))?:/i.test(
+        line,
+      ) || /^-?\s*explicit tester feedback: real non-owner tester/i.test(line),
     );
 
   return {

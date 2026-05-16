@@ -201,4 +201,66 @@ describe('release gate status', () => {
     expect(formatted).not.toContain('Get one real tester');
     expect(formatted).not.toContain('No real connected non-owner account exists');
   });
+
+  it('passes full GATE_9 from explicit real non-owner tester feedback about the waiting state', () => {
+    const report = buildReleaseGateReport({
+      ...BASE_EVIDENCE,
+      realNonOwnerProof: [
+        'real non-owner first-run state: connected source Google; signal_count=6; processed_signal_count=6; unprocessed_signal_count=0; reason=no safe move yet; next_action=wait for stronger evidence; nothing_sent=true',
+        'explicit tester feedback: real non-owner tester said the waiting state was understandable and useful enough to keep trusting Foldera.',
+      ],
+    });
+
+    expect(report.gates.find((gate) => gate.id === 'GATE_9A_FIRST_RUN_ACTIVATION')?.status).toBe(
+      'PASS',
+    );
+    expect(report.gates.find((gate) => gate.id === 'GATE_9_REAL_NON_OWNER_BETA')?.status).toBe(
+      'PASS',
+    );
+    expect(report.firstFailingGate.status).toBe('PASS');
+  });
+
+  it('passes full GATE_9 from a real non-owner source-backed action path', () => {
+    const report = buildReleaseGateReport({
+      ...BASE_EVIDENCE,
+      realNonOwnerProof: [
+        'real non-owner source-backed move: source trail visible; save/skip/approve/history controls visible; next_action=Save the verified move.',
+      ],
+    });
+
+    expect(report.gates.find((gate) => gate.id === 'GATE_9A_FIRST_RUN_ACTIVATION')?.status).toBe(
+      'PASS',
+    );
+    expect(report.gates.find((gate) => gate.id === 'GATE_9_REAL_NON_OWNER_BETA')?.status).toBe(
+      'PASS',
+    );
+  });
+
+  it('does not pass full GATE_9 from fake, owner, or reserved-test feedback claims', () => {
+    const fakeFeedbackReport = buildReleaseGateReport({
+      ...BASE_EVIDENCE,
+      realNonOwnerProof: [
+        'real non-owner first-run state: connected source Google; signal_count=6; processed_signal_count=6; unprocessed_signal_count=0; reason=no safe move yet; next_action=wait for stronger evidence; nothing_sent=true',
+        'explicit tester feedback: synthetic fixture said the waiting state was understandable and useful enough to keep trusting Foldera.',
+      ],
+    });
+    const ownerFeedbackReport = buildReleaseGateReport({
+      ...BASE_EVIDENCE,
+      realNonOwnerProof: [
+        'real non-owner first-run state: connected source Google; signal_count=6; processed_signal_count=6; unprocessed_signal_count=0; reason=no safe move yet; next_action=wait for stronger evidence; nothing_sent=true',
+        'explicit tester feedback: OWNER_USER_ID said the waiting state was understandable and useful enough to keep trusting Foldera.',
+      ],
+    });
+    const testUserFeedbackReport = buildReleaseGateReport({
+      ...BASE_EVIDENCE,
+      realNonOwnerProof: [
+        'real non-owner first-run state: connected source Google; signal_count=6; processed_signal_count=6; unprocessed_signal_count=0; reason=no safe move yet; next_action=wait for stronger evidence; nothing_sent=true',
+        'explicit tester feedback: TEST_USER_ID said the waiting state was understandable and useful enough to keep trusting Foldera.',
+      ],
+    });
+
+    expect(fakeFeedbackReport.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
+    expect(ownerFeedbackReport.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
+    expect(testUserFeedbackReport.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
+  });
 });
