@@ -4,6 +4,23 @@ This gate protects dashboard/frontend proof. It is regression prevention, not vi
 
 The dashboard money shot must read as one focused executive surface: one current move or honest held-back state, one visible artifact state, a source trail, and safe controls. The visual reference is the dark Foldera command-center direction: compact hierarchy, cyan/emerald accents, restrained support rail, and no debug/admin language.
 
+## Today's Answer Source-Coverage Law
+
+Today's answer is governed by `source_coverage`, not inbox quiet or hopeful copy.
+
+- `thin` / `not_ready` coverage must show `Fix this first`; it may not show a clear-state or magical-state claim.
+- `obligation_only` may support a narrow source-backed obligation answer, but it may not claim deep context or that Foldera "knows you."
+- `context_ready` may make a stronger source-backed read once docs/files add real project context.
+- `operator_ready` requires proven source diversity; copy alone cannot create it.
+- The dashboard may show exactly one next connector at a time. No long connector list.
+- Gmail-only low-signal states may not overclaim magic. Gmail-only high-signal states may become obligation-only, never deeper than that without cross-source evidence.
+- If the recommended connector is not actually connectable in-product yet, the visible control must read as a `Next unlock`, not a fake-working connector action.
+
+Learning-loop contract for future work:
+
+- Today’s answer must stay compatible with the existing source trail, save, skip, approve, copy, edit, repeat-ignore, freshness, source-diversity, and successful source-backed-answer signals.
+- This gate does not create a new learning system; it protects the approval/history path so those outcomes remain learnable when the later loop is built.
+
 ## Command
 
 ```bash
@@ -73,6 +90,7 @@ Each state must prove:
 - fake notification controls may not appear active
 - source and account panels must show useful real-user state
 - no-safe/readiness states must show checked sources, source freshness, signal totals, processed/unprocessed counts, the plain-language hold reason, the next safe step, and explicit no-send safety without exposing private source contents
+- no-safe/readiness states must obey source coverage: thin graphs show exactly one next connector and cannot masquerade as clear or magical
 - common viewport density must hold at 1366x768, 1440x900, 1920x1080, and 390x844
 
 Production-current screenshots may use mocked auth and intercepted deterministic API responses only to prove deployed frontend rendering without exposing private owner data. They must be labeled as frontend/runtime proof, not beta proof or production-data proof.
@@ -164,6 +182,8 @@ Allowed human copy examples:
 - "Uploads coming later."
 - "Evidence readiness."
 - "Connected sources."
+- "Foldera does not have enough live signal yet to reduce the pile intelligently."
+- "Foldera checked your connected sources. Nothing cleared the action bar, so you do not need to sort through this pile right now."
 
 ## Layout Contract
 

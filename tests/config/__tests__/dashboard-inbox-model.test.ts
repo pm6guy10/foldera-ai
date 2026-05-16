@@ -211,16 +211,16 @@ describe('dashboard finished-work inbox model', () => {
         recent_signal_window_days: 30,
         source_depth: 'thin',
         magic_readiness: 'not_ready',
-        next_best_connector: 'google_drive',
-        reason: 'Google Drive adds document context so Foldera can see the work behind the obligations.',
+        next_best_connector: 'google_calendar',
+        reason: 'Google Calendar unlocks deadlines, meetings, prep pressure, and timing.',
       },
     });
 
     expect(slate?.watch_item?.title).toBe('Fix this first');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Checked sources: Google');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Current coverage: thin');
-    expect(slate?.watch_item?.evidence.join(' ')).toContain('Next connector: Google Drive');
-    expect(slate?.watch_item?.evidence.join(' ')).toContain('Why this connector: Google Drive adds document context');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Next connector: Google Calendar');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Why this connector: Google Calendar unlocks deadlines');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Found 1 signal');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Processed 0 / 1');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('No safe move yet');
@@ -235,7 +235,7 @@ describe('dashboard finished-work inbox model', () => {
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Newest signal:');
     expect(slate?.watch_item?.why_it_matters).toContain('Metadata says Google is connected');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Nothing was sent.');
-    expect(slate?.watch_item?.next_action).toBe('Connect Google Drive');
+    expect(slate?.watch_item?.next_action).toBe('Next unlock: Google Calendar');
 
     const state = buildDailyValueState(
       slate,
@@ -250,7 +250,7 @@ describe('dashboard finished-work inbox model', () => {
       'Foldera does not have enough live signal yet to reduce the pile intelligently.',
     );
     expect(state.actionHref).toBe('/dashboard?panel=sources');
-    expect(state.actionLabel).toBe('Connect Google Drive');
+    expect(state.actionLabel).toBe('Next unlock: Google Calendar');
   });
 
   it('can display a connected-and-syncing source state without making it GATE_9 value proof', () => {
@@ -287,8 +287,8 @@ describe('dashboard finished-work inbox model', () => {
         recent_signal_window_days: 30,
         source_depth: 'thin',
         magic_readiness: 'not_ready',
-        next_best_connector: 'google_drive',
-        reason: 'Google Drive adds document context so Foldera can see the work behind the obligations.',
+        next_best_connector: null,
+        reason: 'Foldera needs more connected source history before recommending another connector.',
       },
     });
 
@@ -366,5 +366,8 @@ describe('dashboard finished-work inbox model', () => {
 
     expect(usableState.heading).toBe("Today's answer");
     expect(usableState.statusLabel).toBe("You're clear right now");
+    expect(usableState.summary).toBe(
+      'Foldera checked your connected sources. Nothing cleared the action bar, so you do not need to sort through this pile right now.',
+    );
   });
 });

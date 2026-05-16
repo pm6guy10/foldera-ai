@@ -78,6 +78,13 @@ export function buildFirstRunSourceReadiness(
   const canCheckNow = activeProviders.some((provider) => provider.can_check_now);
   const connected = activeProviders.length > 0;
   const anyNeverSynced = activeProviders.some((provider) => provider.status === 'never_synced');
+  const sourceIsStale = activeProviders.some(
+    (provider) =>
+      provider.can_check_now === false ||
+      provider.status === 'needs_reconnect' ||
+      provider.status === 'needs_reauth' ||
+      provider.status === 'stale',
+  );
   const sourceCoverage = buildSourceCoverage({
     connected_providers: activeProviders.map((provider) => provider.provider),
     recent_processed_signal_sources: input.recent_processed_signal_sources,
@@ -85,6 +92,7 @@ export function buildFirstRunSourceReadiness(
       input.source_coverage_processed_signal_count ?? processedCount,
     ),
     recent_signal_window_days: input.recent_signal_window_days,
+    source_is_stale: sourceIsStale,
   });
 
   let status: FirstRunSourceReadinessStatus;

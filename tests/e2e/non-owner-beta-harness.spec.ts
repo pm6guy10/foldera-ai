@@ -96,8 +96,30 @@ const FIRST_RUN_READINESS = {
     recent_signal_window_days: 30,
     source_depth: 'thin',
     magic_readiness: 'not_ready',
+    next_best_connector: 'google_calendar',
+    reason: 'Google Calendar unlocks deadlines, meetings, prep pressure, and timing.',
+  },
+};
+
+const USABLE_CLEAR_READINESS = {
+  ...FIRST_RUN_READINESS,
+  signal_count: 6,
+  processed_signal_count: 6,
+  unprocessed_signal_count: 0,
+  headline: 'Foldera connected Google and found 6 processed source items.',
+  reason: 'Foldera has processed source evidence, but no safe action exists yet.',
+  source_coverage: {
+    has_email: true,
+    has_calendar: true,
+    has_docs: false,
+    has_chat: false,
+    has_tasks: false,
+    processed_signal_count: 6,
+    recent_signal_window_days: 30,
+    source_depth: 'usable',
+    magic_readiness: 'obligation_only',
     next_best_connector: 'google_drive',
-    reason: 'Google Drive adds document context so Foldera can see the work behind the obligations.',
+    reason: 'Email and calendar are strong enough to support obligation-only Today reads.',
   },
 };
 
@@ -432,9 +454,9 @@ describeAuthMocked('Non-owner beta simulated first path', () => {
     ).toBeVisible();
     await expect(page.getByText(/Checked sources: Google/i).first()).toBeVisible();
     await expect(page.getByText(/Current coverage: thin/i).first()).toBeVisible();
-    await expect(page.getByText(/Next connector: Google Drive/i).first()).toBeVisible();
-    await expect(page.getByText(/Why this connector: Google Drive adds document context/i).first()).toBeVisible();
-    await expect(page.getByText(/OneDrive|Slack|Teams|Tasks/i)).toHaveCount(0);
+    await expect(page.getByText(/Next connector: Google Calendar/i).first()).toBeVisible();
+    await expect(page.getByText(/Why this connector: Google Calendar unlocks deadlines/i).first()).toBeVisible();
+    await expect(page.getByText(/Google Drive|OneDrive|Slack|Teams|Tasks/i)).toHaveCount(0);
     await expect(page.getByText(/Found 1 signal/i).first()).toBeVisible();
     await expect(page.getByText(/Processed 0 \/ 1/i).first()).toBeVisible();
     await expect(page.getByText(/No safe move yet/i).first()).toBeVisible();
@@ -446,11 +468,11 @@ describeAuthMocked('Non-owner beta simulated first path', () => {
     await expect(page.getByText(/Metadata says Google is connected/i).first()).toBeVisible();
     await expect(page.getByText(/No finished move exists because 0 source items have been processed/i).first()).toBeVisible();
     await expect(page.getByText(/Nothing was sent\./i).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: /connect google drive/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /next unlock: google calendar/i })).toBeVisible();
     await expect(page.getByText(/What Foldera protected/i)).toBeVisible();
     await expect(page.getByText(/No safe artifact/i)).toHaveCount(0);
 
-    await page.getByRole('link', { name: /connect google drive/i }).click();
+    await page.getByRole('link', { name: /next unlock: google calendar/i }).click();
     await expect(page.getByTestId('dashboard-panel-sources')).toBeVisible({ timeout: 15000 });
     await expect.poll(() => sourceCheckCalls).toBe(1);
 
@@ -459,6 +481,22 @@ describeAuthMocked('Non-owner beta simulated first path', () => {
     await expect(page.getByTestId('dashboard-panel-sources')).toBeVisible({ timeout: 15000 });
     await expect(page.getByText(/Microsoft/i).first()).toBeVisible();
     await expect(page.getByText(/Connected/i).first()).toBeVisible();
+
+    sourceReadinessState = USABLE_CLEAR_READINESS;
+    latestState = {};
+    dailyValueState = { daily_utility_slate: null };
+    integrationState = GOOGLE_CONNECTED;
+    await page.goto('/dashboard');
+
+    await expect(page.getByText(/^You're clear right now$/i).first()).toBeVisible();
+    await expect(
+      page.getByText(
+        /Foldera checked your connected sources\. Nothing cleared the action bar, so you do not need to sort through this pile right now\./i,
+      ),
+    ).toBeVisible();
+    await expect(page.getByText(/Nothing was sent\./i).first()).toBeVisible();
+    await expect(page.getByText(/knows you/i)).toHaveCount(0);
+    await expect(page.getByText(/No tasks|No updates|Try again later/i)).toHaveCount(0);
 
     latestState = SOURCE_BACKED_ACTION;
     dailyValueState = { daily_utility_slate: null };

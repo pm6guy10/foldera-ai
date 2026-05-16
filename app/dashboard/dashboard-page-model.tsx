@@ -112,7 +112,15 @@ export type FirstRunSourceReadinessPayload = {
     recent_signal_window_days: number;
     source_depth: 'thin' | 'usable' | 'rich';
     magic_readiness: 'not_ready' | 'obligation_only' | 'context_ready' | 'operator_ready';
-    next_best_connector: 'google_drive' | 'onedrive' | 'slack' | 'teams' | 'tasks' | null;
+    next_best_connector:
+      | 'google_calendar'
+      | 'outlook_calendar'
+      | 'google_drive'
+      | 'onedrive'
+      | 'slack'
+      | 'teams'
+      | 'tasks'
+      | null;
     reason: string;
   };
 };
@@ -527,6 +535,10 @@ function connectorLabel(
   connector: FirstRunSourceReadinessPayload['source_coverage']['next_best_connector'],
 ): string {
   switch (connector) {
+    case 'google_calendar':
+      return 'Google Calendar';
+    case 'outlook_calendar':
+      return 'Outlook Calendar';
     case 'google_drive':
       return 'Google Drive';
     case 'onedrive':
@@ -545,7 +557,7 @@ function connectorLabel(
 function nextConnectorActionLabel(
   connector: FirstRunSourceReadinessPayload['source_coverage']['next_best_connector'],
 ): string {
-  return connector ? `Connect ${connectorLabel(connector)}` : 'Check sources now';
+  return connector ? `Next unlock: ${connectorLabel(connector)}` : 'Check sources now';
 }
 
 function isCoverageSlate(item: DailyUtilitySlateItem | null | undefined): boolean {
@@ -640,7 +652,7 @@ export function buildDailyValueState(
         : coverageItem
           ? 'Foldera does not have enough live signal yet to reduce the pile intelligently.'
         : clearCoverageRead
-          ? 'Foldera checked the live sources it can trust and did not find one safe move worth surfacing now.'
+          ? 'Foldera checked your connected sources. Nothing cleared the action bar, so you do not need to sort through this pile right now.'
         : sourceReadinessItem
           ? sanitizeDailyValueText(firstItem?.title, '')
         : missingInputPrompt?.prompt ?? sanitizeDailyValueText(firstItem?.title, '')) ??

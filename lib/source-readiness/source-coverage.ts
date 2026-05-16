@@ -6,6 +6,8 @@ export type MagicReadiness =
   | 'operator_ready';
 
 export type NextBestConnector =
+  | 'google_calendar'
+  | 'outlook_calendar'
   | 'google_drive'
   | 'onedrive'
   | 'slack'
@@ -32,6 +34,7 @@ export type SourceCoverageInput = {
   recent_processed_signal_sources: string[];
   processed_signal_count: number;
   recent_signal_window_days?: number;
+  source_is_stale?: boolean;
 };
 
 const EMAIL_SOURCES = new Set(['gmail', 'outlook']);
@@ -67,12 +70,25 @@ function preferredDocsConnector(connectedProviders: Set<string>): 'google_drive'
     : 'google_drive';
 }
 
+function preferredCalendarConnector(
+  connectedProviders: Set<string>,
+): 'google_calendar' | 'outlook_calendar' {
+  return connectedProviders.has('microsoft') || connectedProviders.has('azure_ad')
+    ? 'outlook_calendar'
+    : 'google_calendar';
+}
+
 function nextBestConnector(input: {
   connectedProviders: Set<string>;
+  hasEmail: boolean;
+  hasCalendar: boolean;
   hasDocs: boolean;
   hasChat: boolean;
   hasTasks: boolean;
 }): NextBestConnector {
+  if (input.hasEmail && !input.hasCalendar) {
+    return preferredCalendarConnector(input.connectedProviders);
+  }
   if (!input.hasDocs) return preferredDocsConnector(input.connectedProviders);
   if (!input.hasChat) {
     return input.connectedProviders.has('microsoft') || input.connectedProviders.has('azure_ad')
@@ -85,6 +101,10 @@ function nextBestConnector(input: {
 
 function connectorReason(connector: NextBestConnector): string {
   switch (connector) {
+    case 'google_calendar':
+      return 'Google Calendar unlocks deadlines, meetings, prep pressure, and timing.';
+    case 'outlook_calendar':
+      return 'Outlook Calendar unlocks deadlines, meetings, prep pressure, and timing.';
     case 'google_drive':
       return 'Google Drive adds document context so Foldera can see the work behind the obligations.';
     case 'onedrive':
@@ -111,15 +131,15 @@ export function buildSourceCoverage(input: SourceCoverageInput): SourceCoverage 
   const hasDocs = includesAny(recentSources, DOC_SOURCES);
   const hasChat = includesAny(recentSources, CHAT_SOURCES);
   const hasTasks = includesAny(recentSources, TASK_SOURCES);
-  const hasObligationBase =
-    hasEmail &&
-    hasCalendar &&
-    processedSignalCount >= MIN_USABLE_PROCESSED_SIGNALS;
+  const hasEnoughProcessedSignal = processedSignalCount >= MIN_USABLE_PROCESSED_SIGNALS;
+  const hasObligationBase = hasEmail && hasEnoughProcessedSignal;
   const hasOperatorContext = hasChat || hasTasks;
-  const hasRichContext = hasDocs && hasOperatorContext;
+  const hasCrossSourceObligationBase = hasEmail && hasCalendar && hasEnoughProcessedSignal;
+  const hasRichContext = hasCrossSourceObligationBase && hasDocs;
+  const sourceIsStale = input.source_is_stale === true;
 
   let sourceDepth: SourceDepth;
-  if (!hasObligationBase) {
+  if (sourceIsStale || !hasObligationBase) {
     sourceDepth = 'thin';
   } else if (hasRichContext) {
     sourceDepth = 'rich';
@@ -130,7 +150,7 @@ export function buildSourceCoverage(input: SourceCoverageInput): SourceCoverage 
   let magicReadiness: MagicReadiness;
   if (sourceDepth === 'thin') {
     magicReadiness = 'not_ready';
-  } else if (hasOperatorContext) {
+  } else if (hasRichContext && hasOperatorContext) {
     magicReadiness = 'operator_ready';
   } else if (hasDocs) {
     magicReadiness = 'context_ready';
@@ -140,6 +160,8 @@ export function buildSourceCoverage(input: SourceCoverageInput): SourceCoverage 
 
   const connector = nextBestConnector({
     connectedProviders,
+    hasEmail,
+    hasCalendar,
     hasDocs,
     hasChat,
     hasTasks,
@@ -158,7 +180,9 @@ export function buildSourceCoverage(input: SourceCoverageInput): SourceCoverage 
     next_best_connector: connector,
     reason:
       sourceDepth === 'thin'
-        ? connectorReason(connector)
+        ? sourceIsStale
+          ? 'Connected sources need a fresh successful read before Foldera can make a trustworthy Today claim.'
+          : connectorReason(connector)
         : magicReadiness === 'obligation_only'
           ? 'Email and calendar are strong enough to support obligation-only Today reads.'
           : connectorReason(connector),

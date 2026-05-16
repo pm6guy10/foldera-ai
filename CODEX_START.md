@@ -102,6 +102,8 @@ Technical pass is not enough. An artifact existing is not enough. A mock passing
 
 Dashboard/frontend rule: Codex may not say DONE, PROVEN, or next blocker is GATE_9 for dashboard/frontend work unless `npm run gate:frontend` passes. That means committed screenshot baselines pass, interaction audit passes, banned-copy audit passes, layout contract proof passes, production current screenshots are attached or referenced when live proof is claimed, and fixtures cover finished, requirements-needed, and no-safe states. API-only or backend-only proof is not a frontend pass.
 
+Today's answer rule: source coverage governs the claim. Thin graphs must say `Fix this first`, clear-state relief requires earned usable/rich coverage, Gmail-only states may not masquerade as deep context, and unsupported future connectors must appear as one honest `Next unlock`, never as fake-working controls.
+
 ## Valid Stop Reasons
 
 Stop only for:
