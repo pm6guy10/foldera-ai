@@ -1,47 +1,50 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-16 06:17 PT
-Current slice: GATE_9A no-paid first-run activation split external receipt.
-Current mode: FOLDERA NO-PAID FIRST-RUN VALUE MODE; no paid generation, outbound email, Stripe, schema, fake users/rows/signals/actions/artifacts, owner data, or fake beta proof.
-Current origin/main receipt SHA at last readback: 129462e9929f458671a66a20aaa427ddd47aea4d.
+Last updated: 2026-05-16 07:32 PT
+Current slice: Gate-first release truth check after final seam ledger.
+Current mode: FOLDERA GATE-FIRST OPERATOR MODE; no paid generation, outbound email, Stripe, schema, fake users/rows/signals/actions/artifacts, Brandon owner data, or fake beta proof.
+Current origin/main receipt SHA at last readback: eda67959b03f4bb1b306255854c33ef5079085c9.
 Last verified product behavior SHA: 41a577bbf0476a928e7b2d463d0ef5edf4515bf5.
-Latest receipt/docs status: receipt-only commit `129462e9929f458671a66a20aaa427ddd47aea4d` was pushed, GitHub green, Vercel READY, and production `/api/health` read back. This file may be contained in a later receipt-only commit; that does not change product/runtime proof.
-Current release gate: GATE_9A_FIRST_RUN_ACTIVATION
+Latest receipt/docs status: receipt-only commit `eda67959b03f4bb1b306255854c33ef5079085c9` added `docs/FINAL_SEAM_LEDGER.md`, passed GitHub Actions, Vercel READY, Production E2E, and production `/api/health` readback. This file may be contained in a later receipt-only commit; that does not change product/runtime proof.
+Current release gate: GATE_9_REAL_NON_OWNER_BETA
 First failing release gate: GATE_9_REAL_NON_OWNER_BETA
 Release gate status: BLOCKED_EXTERNAL
+Current quality gate: QG_10_ARTIFACT_QUALITY
+Quality gate status: PASS
+Current visual gate: QG_11_VISUAL_FRONTEND_QUALITY
+Visual gate status: PASS
 
 ## Current Truth
 
-- Read-only Supabase proof for micro1: user `398a8c82-d110-4dea-9b53-004d0f406149`, email `zz933@expert.micro1.ai`, reserved owner/test match count `0`, provider `google`, token_count `1`, access/refresh tokens present, disconnected_at `null`, oauth_reauth_required_at `null`.
-- No `integrations` row exists for micro1, and that is expected: connector status is based on `user_tokens`; the old `integrations` table is deprecated for this path.
-- Source truth: signal_count `2`, processed_signal_count `0`, unprocessed_signal_count `2`, latest Gmail signal ingested `2026-05-15 22:44:00.324716+00`, action_count `0`, pipeline_run_count `0`, user token last_synced_at `null`.
+- Git truth before this handoff edit: local `HEAD` and `origin/main` matched `eda67959b03f4bb1b306255854c33ef5079085c9`.
+- Production truth before this handoff edit: `/api/health` returned `status=ok`, `build=eda6795`, `revision.git_sha=eda67959b03f4bb1b306255854c33ef5079085c9`, `deployment_id=dpl_3sCnJ7ZEtg3AtFqE7Fa84LMd7v78`, and `vercel_env=production`.
 - Real non-owner first-run state: connected source Google; signal_count=2; processed_signal_count=0; unprocessed_signal_count=2; reason=not enough evidence for a safe move yet; next_action=Check sources now; nothing_sent=true.
-- First-run readiness now exposes connected source, signal count, newest signal time, processed/unprocessed counts, metadata-only explanation, exact no-finished-move reason, what unlocks value next, and `Nothing was sent.` The dashboard can render that state without Brandon private data and links to Sources for the existing no-paid source check path.
-- `GATE_9A_FIRST_RUN_ACTIVATION` can pass from the clear no-paid first-run waiting/no-safe state. `GATE_9_REAL_NON_OWNER_BETA` must not pass from that alone; it still needs source-backed action or explicit tester feedback.
+- `GATE_9_REAL_NON_OWNER_BETA` remains blocked because first-run waiting value is not full beta success.
+- Full beta proof still requires a real non-owner source-backed action or explicit tester feedback that the waiting state was understandable and useful.
+- Quality gate `QG_10_ARTIFACT_QUALITY` is passing from deterministic fixture proof: bad examples fail and good examples pass.
+- Visual gate `QG_11_VISUAL_FRONTEND_QUALITY` is passing from deterministic screenshot/browser proof. It is not real non-owner beta proof.
 
 ## Verification
 
 - `npm run health`: PASS, `RESULT: 0 FAILING`.
-- `npm run gate:status`: PASS; `GATE_9A_FIRST_RUN_ACTIVATION` passed and `GATE_9_REAL_NON_OWNER_BETA` stayed `BLOCKED_EXTERNAL` with reason `Full beta proof still requires source-backed action or explicit tester feedback after first-run activation.`
-- Focused source-readiness, dashboard model, and release-gate split tests: PASS, `3` files / `21` tests.
-- Focused non-owner Playwright path: PASS, `1/1`; proves the connected low-data user sees newest signal, metadata explanation, no-finished-move reason, `Nothing was sent.`, `Check sources now`, no outbound send attempt, source-backed move, safe approval/save, and history readback.
-- `npm run build`: PASS; `/api/source-readiness` is included in the production bundle.
+- `npm run gate:status`: PASS through GATE_9A; `GATE_9_REAL_NON_OWNER_BETA` stayed `BLOCKED_EXTERNAL` with reason `Full beta proof still requires source-backed action or explicit tester feedback after first-run activation.`
+- `npm run gate:quality`: PASS; `QG_10_ARTIFACT_QUALITY` reported 13 bad artifact fixtures rejected and 7 good artifact fixtures accepted.
+- `npm run gate:visual`: PASS; `QG_11_VISUAL_FRONTEND_QUALITY` reported dashboard current move, source trail, approval controls, responsive layout, and screenshots have executable visual proof.
+- `npm run build`: PASS.
 - `npm run lint`: PASS.
-- `npm run gate:frontend`: PASS; screenshot matrix (`27/27`), interaction matrix, banned-copy audit, layout contract, and production current screenshots receipt markers all passed.
-- GitHub CI for product behavior SHA `41a577bbf0476a928e7b2d463d0ef5edf4515bf5`: PASS (`CI` 25962661679 and 25962661681, `Health Gate` 25962661684, `semgrep` 25962661690, `Production E2E` 25962717044, `Deploy to Vercel` 25962665566 / 25962865382).
-- Vercel production for runtime/product SHA: READY deployment `dpl_6BHQ5KyeFbMEkkVwaYGgwHkfbxQN`, aliases include `www.foldera.ai` and `foldera.ai`.
-- Production `/api/health`: `status=ok`, `build=41a577b`, `revision.git_sha=41a577bbf0476a928e7b2d463d0ef5edf4515bf5`, `deployment_id=dpl_6BHQ5KyeFbMEkkVwaYGgwHkfbxQN`, `vercel_env=production`.
-- Receipt-only close-out proof: commit `129462e9929f458671a66a20aaa427ddd47aea4d` passed GitHub (`CI` 25963038328, `Health Gate` 25963038327, `Deploy to Vercel` 25963042098), Vercel deployment `dpl_6fVgQuqoaoG3XxAcPPzYFQAFwwUu` became READY, and production `/api/health` returned `build=129462e`, matching `revision.git_sha=129462e9929f458671a66a20aaa427ddd47aea4d`.
+- GitHub Actions for receipt/docs SHA `eda67959b03f4bb1b306255854c33ef5079085c9`: PASS (`CI`, `Health Gate`, `Deploy to Vercel`, and `Production E2E`).
+- Vercel production for receipt/docs SHA `eda67959b03f4bb1b306255854c33ef5079085c9`: READY deployment `dpl_3sCnJ7ZEtg3AtFqE7Fa84LMd7v78`.
+- Production `/api/health` for receipt/docs SHA `eda67959b03f4bb1b306255854c33ef5079085c9`: PASS and matched the exact SHA.
 
 ## Decision
 
-`PROVEN - GATE_9A is the no-paid first-run activation gate; GATE_9 remains blocked until source-backed action or explicit tester feedback.`
+`BLOCKED_EXTERNAL - GATE_9_REAL_NON_OWNER_BETA requires real non-owner source-backed action or explicit tester feedback.`
 
-First-run activation no longer passes as token-only/no-value proof, and it no longer counts as full beta success. The intended live proof is a useful real non-owner source-readiness/no-safe state with provider, signal count, newest signal time, processed/unprocessed counts, metadata explanation, no-finished-move reason, next unlock, `Check sources now`, and `Nothing was sent.`
+No product code should be changed for this gate from the current proof state. The release, quality, and visual gates are executable and current; the first remaining release blocker is not fixable with fake data, owner data, paid generation, UI polish, schema work, Stripe, or outbound email.
 
 ## Next exact move
 
-After this receipt-only update is pushed and externally verified, continue to real beta repeatability proof only when a real non-owner source-backed action or explicit tester feedback exists. Do not call GATE_9A full beta success.
+Run repeatable real non-owner proof only after the real non-owner account produces a source-backed action or gives explicit feedback that the no-paid first-run waiting state was understandable and useful. If that proof appears, verify source trail, save/skip/approve/history, outbound-send blocking, GitHub CI, Vercel READY, production `/api/health`, and then update this handoff again.
 
 ## Do Not Touch
 
@@ -51,4 +54,5 @@ After this receipt-only update is pushed and externally verified, continue to re
 - Outbound email beyond existing welcome-email tests
 - Backend artifact-generation logic
 - Fake users, token rows, source rows, artifacts, documents, deadlines, emails, or beta proof
+- Brandon owner data as beta proof
 - Broad dashboard polish
