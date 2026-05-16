@@ -1,18 +1,18 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-16 08:45 PT
+Last updated: 2026-05-16 09:03 PT
 Current slice: Micro1 A++ readiness sleuth and no-safe proof receipt.
 Current mode: FOLDERA OWNER SLEUTH MODE; no paid generation, outbound email, Stripe, schema, fake users/rows/signals/actions/artifacts, Brandon owner data, or fake beta proof.
-Current origin/main and production SHA at live readback: `e33cf8e95d773d5bb02492a77063af0876743c62`.
-Latest Vercel production deployment: `dpl_BWiYf5EuapEsZtQxdzrg3hD3AZKt`, READY, target `production`.
-Production `/api/health`: `status=ok`, `build=e33cf8e`, `revision.git_sha=e33cf8e95d773d5bb02492a77063af0876743c62`, `vercel_env=production`.
+Current origin/main and production SHA at live readback: `91014fcb1517eb8ff9631d9a2922c89042e3aaf1`.
+Latest Vercel production deployment: `dpl_ECwH27epmyVhF6KqVuPVPHcQE8NS`, READY, target `production`.
+Production `/api/health`: `status=ok`, `build=91014fc`, `revision.git_sha=91014fcb1517eb8ff9631d9a2922c89042e3aaf1`, `vercel_env=production`.
 GitHub Actions for this SHA: PASS for `CI`, `Health Gate`, `Deploy to Vercel`, and `Production E2E`.
-Current release gate: `GATE_9_REAL_NON_OWNER_BETA`
-First failing release gate: `GATE_9_REAL_NON_OWNER_BETA`
-Release gate status: `BLOCKED_EXTERNAL`
-Current quality gate: `QG_10_ARTIFACT_QUALITY`
+Current release gate: GATE_9_REAL_NON_OWNER_BETA
+First failing release gate: GATE_9_REAL_NON_OWNER_BETA
+Release gate status: BLOCKED_EXTERNAL
+Current quality gate: QG_10_ARTIFACT_QUALITY
 Quality gate status: PASS
-Current visual gate: `QG_11_VISUAL_FRONTEND_QUALITY`
+Current visual gate: QG_11_VISUAL_FRONTEND_QUALITY
 Visual gate status: PASS
 
 ## Current Truth
@@ -33,9 +33,9 @@ Visual gate status: PASS
 
 - `git fetch origin`: completed.
 - `git status --short --branch`: clean `main...origin/main`.
-- `origin/main`: `e33cf8e95d773d5bb02492a77063af0876743c62`.
-- Vercel production: READY deployment `dpl_BWiYf5EuapEsZtQxdzrg3hD3AZKt` for `e33cf8e95d773d5bb02492a77063af0876743c62`.
-- Production `/api/health`: PASS and matched `e33cf8e95d773d5bb02492a77063af0876743c62`.
+- `origin/main`: `91014fcb1517eb8ff9631d9a2922c89042e3aaf1`.
+- Vercel production: READY deployment `dpl_ECwH27epmyVhF6KqVuPVPHcQE8NS` for `91014fcb1517eb8ff9631d9a2922c89042e3aaf1`.
+- Production `/api/health`: PASS and matched `91014fcb1517eb8ff9631d9a2922c89042e3aaf1`.
 - GitHub Actions: PASS for current SHA.
 - `npm run health`: PASS, `RESULT: 0 FAILING`.
 - `npm run gate:status`: PASS through `GATE_9A_FIRST_RUN_ACTIVATION`; `GATE_9_REAL_NON_OWNER_BETA` remained `BLOCKED_EXTERNAL`.
