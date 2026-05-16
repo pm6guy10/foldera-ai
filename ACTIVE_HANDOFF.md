@@ -3,9 +3,9 @@
 Last updated: 2026-05-16 06:17 PT
 Current slice: GATE_9A no-paid first-run activation split external receipt.
 Current mode: FOLDERA NO-PAID FIRST-RUN VALUE MODE; no paid generation, outbound email, Stripe, schema, fake users/rows/signals/actions/artifacts, owner data, or fake beta proof.
-Current origin/main product/runtime SHA: 41a577bbf0476a928e7b2d463d0ef5edf4515bf5.
-Last verified runtime/product SHA: 41a577bbf0476a928e7b2d463d0ef5edf4515bf5.
-Latest receipt/docs status: this handoff/history close-out is receipt-only and must be pushed/verified separately; product/runtime proof remains `41a577bbf0476a928e7b2d463d0ef5edf4515bf5`.
+Current origin/main receipt SHA at last readback: 129462e9929f458671a66a20aaa427ddd47aea4d.
+Last verified product behavior SHA: 41a577bbf0476a928e7b2d463d0ef5edf4515bf5.
+Latest receipt/docs status: receipt-only commit `129462e9929f458671a66a20aaa427ddd47aea4d` was pushed, GitHub green, Vercel READY, and production `/api/health` read back. This file may be contained in a later receipt-only commit; that does not change product/runtime proof.
 Current release gate: GATE_9A_FIRST_RUN_ACTIVATION
 First failing release gate: GATE_9_REAL_NON_OWNER_BETA
 Release gate status: BLOCKED_EXTERNAL
@@ -28,9 +28,10 @@ Release gate status: BLOCKED_EXTERNAL
 - `npm run build`: PASS; `/api/source-readiness` is included in the production bundle.
 - `npm run lint`: PASS.
 - `npm run gate:frontend`: PASS; screenshot matrix (`27/27`), interaction matrix, banned-copy audit, layout contract, and production current screenshots receipt markers all passed.
-- GitHub CI for runtime/product SHA `41a577bbf0476a928e7b2d463d0ef5edf4515bf5`: PASS (`CI` 25962661679 and 25962661681, `Health Gate` 25962661684, `semgrep` 25962661690, `Production E2E` 25962717044, `Deploy to Vercel` 25962665566 / 25962865382).
+- GitHub CI for product behavior SHA `41a577bbf0476a928e7b2d463d0ef5edf4515bf5`: PASS (`CI` 25962661679 and 25962661681, `Health Gate` 25962661684, `semgrep` 25962661690, `Production E2E` 25962717044, `Deploy to Vercel` 25962665566 / 25962865382).
 - Vercel production for runtime/product SHA: READY deployment `dpl_6BHQ5KyeFbMEkkVwaYGgwHkfbxQN`, aliases include `www.foldera.ai` and `foldera.ai`.
 - Production `/api/health`: `status=ok`, `build=41a577b`, `revision.git_sha=41a577bbf0476a928e7b2d463d0ef5edf4515bf5`, `deployment_id=dpl_6BHQ5KyeFbMEkkVwaYGgwHkfbxQN`, `vercel_env=production`.
+- Receipt-only close-out proof: commit `129462e9929f458671a66a20aaa427ddd47aea4d` passed GitHub (`CI` 25963038328, `Health Gate` 25963038327, `Deploy to Vercel` 25963042098), Vercel deployment `dpl_6fVgQuqoaoG3XxAcPPzYFQAFwwUu` became READY, and production `/api/health` returned `build=129462e`, matching `revision.git_sha=129462e9929f458671a66a20aaa427ddd47aea4d`.
 
 ## Decision
 
