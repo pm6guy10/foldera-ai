@@ -1,11 +1,11 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-15 18:49 PT
+Last updated: 2026-05-15 18:56 PT
 Current slice: First-run activation production truth receipt.
 Current mode: FOLDERA CLEAN FINAL TRUTH VERIFY MODE; no product buildout, UI polish, schema, paid generation, outbound email, Stripe, fake users/rows/sources/artifacts, or fake beta proof.
-Current origin/main SHA: 9588f1e649573fbb9ace9c07509c557dd0e8b1ec.
-Last known production SHA: 9588f1e649573fbb9ace9c07509c557dd0e8b1ec.
-Last known Vercel production deployment: dpl_3Z5dbKqjT1vqFkowniFbrMP9wCav, READY.
+Product proof baseline SHA: 9588f1e649573fbb9ace9c07509c557dd0e8b1ec.
+Most recent receipt-only production health readback before this wording correction: 0601d2d367fd15d20ea5dbf393654e7803c1b7bb.
+Most recent Vercel production deployment before this wording correction: dpl_FXu6mc2jVsADnwdX8Tt39t18UEho, READY for 0601d2d367fd15d20ea5dbf393654e7803c1b7bb.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
 First failing release gate: NONE
 Release gate status: PASS
@@ -31,13 +31,14 @@ Release gate status: PASS
 - Focused non-owner Playwright path: PASS, `6/6`; it proves dashboard source-readiness copy, `Check sources now`, existing no-paid sync path, source-backed move, source trail, Save/Skip, no outbound send attempt, and history readback.
 - CI guard repair proof: `app/dashboard/page.tsx` is `986` lines after extracting source-status loading into `app/dashboard/use-dashboard-source-status.ts`; `tests/config/__tests__/large-file-splits.test.ts` and `tests/config/__tests__/docs-source-of-truth.test.ts` passed.
 - `npm run gate:frontend`: PASS; screenshot matrix, interaction matrix, banned-copy audit, layout contract, and production current screenshots receipt markers all passed the frontend product truth gate.
-- GitHub/main: `9588f1e649573fbb9ace9c07509c557dd0e8b1ec`, commit message `Fix first-run CI guards`.
+- GitHub/main product proof: `9588f1e649573fbb9ace9c07509c557dd0e8b1ec`, commit message `Fix first-run CI guards`.
 - Vercel production: READY deployment `dpl_3Z5dbKqjT1vqFkowniFbrMP9wCav` for `9588f1e649573fbb9ace9c07509c557dd0e8b1ec`.
 - Production `/api/health`: HTTP 200 with `revision.git_sha=9588f1e649573fbb9ace9c07509c557dd0e8b1ec`, `build=9588f1e`, `deployment_id=dpl_3Z5dbKqjT1vqFkowniFbrMP9wCav`, and `vercel_env=production`.
+- Receipt-only deployment readback: after committing the final truth receipt, Vercel production deployment `dpl_FXu6mc2jVsADnwdX8Tt39t18UEho` became READY and production `/api/health` returned `revision.git_sha=0601d2d367fd15d20ea5dbf393654e7803c1b7bb`. This SHA changed receipt docs only; product proof remains the `9588f1e...` first-run activation repair.
 
 ## Decision
 
-`PROVEN - origin/main, Vercel production READY, production /api/health, release gates, and handoff agree on 9588f1e649573fbb9ace9c07509c557dd0e8b1ec.`
+`PROVEN - origin/main, Vercel production READY, production /api/health, release gates, and handoff agree on the first-run activation source-readiness truth.`
 
 First-run activation no longer passes as token-only/no-value proof. The live proof is a useful real non-owner source-readiness/no-safe state with source counts, processed/unprocessed counts, reason, next action, and `Nothing was sent.`
 
