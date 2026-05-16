@@ -117,7 +117,7 @@ Mock proof must be clearly labeled as mock only.
 
 Pass requires:
 
-- exactly one real non-owner account connects Google or Microsoft
+- a real production non-owner account connects Google or Microsoft
 - no fake rows
 - no `OWNER_USER_ID`
 - no `TEST_USER_ID`
@@ -142,7 +142,7 @@ This gate proves first-run activation only. It is not full beta success.
 
 Pass requires:
 
-- exactly one real non-owner account connects Google or Microsoft
+- the proven real non-owner connection from GATE_9A
 - no fake rows
 - no `OWNER_USER_ID`
 - no `TEST_USER_ID`
@@ -160,12 +160,17 @@ Until that proof exists, this gate must remain:
 ```text
 STATUS: BLOCKED_EXTERNAL
 REASON: First-run activation is useful but is not full beta success.
-NEXT_MOVE: Run repeatable real non-owner proof after the first-run state produces source-backed action or explicit tester feedback.
+NEXT_MOVE: Use the proven micro1 non-owner path only after it produces a source-backed action or explicit tester feedback.
 DO_NOT_TOUCH: UI polish, Stripe, paid generation, owner-only proof, fake users.
 ```
 
 ## Current Release Truth
 
-As of this controller slice, local and mock proof carries Foldera through GATE_8, and real micro1-style proof can carry no-paid first-run activation through GATE_9A. The first failing release gate remains GATE_9 because first-run waiting value is not full beta success.
+As of this controller slice, local and mock proof carries Foldera through GATE_8, and micro1 satisfies the real non-owner connection plus no-paid first-run activation proof for GATE_9A: production auth user, not `OWNER_USER_ID`, not `TEST_USER_ID`, connected Google token, and clear source-readiness state.
+
+The first failing release gate remains GATE_9 because first-run waiting value is not full beta success. The remaining blocker is not user acquisition; it is either:
+
+- source-backed action for micro1 or the same proven non-owner path
+- explicit tester feedback that the first-run waiting/readiness state is understandable and useful
 
 Mock harness proof is useful release preparation. It is not beta readiness.

@@ -42,11 +42,12 @@ export interface ReleaseGateReport {
 const DO_NOT_TOUCH =
   'UI polish, Stripe, paid generation, owner-only proof, fake users.';
 
-const GATE_9_NEXT_MOVE = 'Get one real tester to connect Google or Microsoft.';
+const GATE_9A_CONNECTION_PROOF_NEXT_MOVE =
+  'Record current real non-owner connection proof before evaluating first-run activation.';
 const GATE_9A_VALUE_NEXT_MOVE =
   'Prove the real non-owner reaches a clear first-run state with source counts, reason, and next action, or a source-backed move.';
 const GATE_9_FULL_BETA_NEXT_MOVE =
-  'Run repeatable real non-owner proof after the first-run state produces source-backed action or explicit tester feedback.';
+  'Use the proven micro1 non-owner path only after it produces a source-backed action or explicit tester feedback.';
 
 function shortSha(sha: string | null): string {
   if (!sha) return 'UNKNOWN';
@@ -417,7 +418,7 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
     hasRealNonOwnerValueProof
       ? passGate(
           'GATE_9A_FIRST_RUN_ACTIVATION',
-          'Real non-owner reached a useful no-paid first-run state or source-backed move.',
+          'micro1/current real non-owner reached a useful no-paid first-run state or source-backed move.',
           evidence.realNonOwnerProof,
           'Continue to real beta repeatability proof without calling this full beta success.',
         )
@@ -425,7 +426,7 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
           'GATE_9A_FIRST_RUN_ACTIVATION',
           hasRealNonOwnerProof
             ? 'Real non-owner connection exists, but first-run value proof is incomplete.'
-            : 'No real connected non-owner account exists.',
+            : 'Current handoff is missing real non-owner connection proof.',
           hasRealNonOwnerProof ? evidence.realNonOwnerProof : [],
           hasRealNonOwnerProof
             ? [
@@ -433,11 +434,11 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
                 'Token-only, welcome-email-only, and unprocessed-signal-only proof cannot pass GATE_9.',
               ]
             : [
-                'Exactly one real non-owner account must connect Google or Microsoft.',
+                'Current handoff must record the real non-owner production auth user and connected Google or Microsoft token.',
                 'No fake rows, OWNER_USER_ID, TEST_USER_ID, OWNER_CANARY_USER_IDS, or mock harness may count as real beta proof.',
                 'Token-only, welcome-email-only, and unprocessed-signal-only proof cannot pass GATE_9A.',
               ],
-          hasRealNonOwnerProof ? GATE_9A_VALUE_NEXT_MOVE : GATE_9_NEXT_MOVE,
+          hasRealNonOwnerProof ? GATE_9A_VALUE_NEXT_MOVE : GATE_9A_CONNECTION_PROOF_NEXT_MOVE,
           'BLOCKED_EXTERNAL',
         ),
   );
@@ -454,18 +455,18 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
           'GATE_9_REAL_NON_OWNER_BETA',
           hasRealNonOwnerValueProof
             ? 'Full beta proof still requires source-backed action or explicit tester feedback after first-run activation.'
-            : 'No real connected non-owner account exists.',
+            : 'GATE_9A first-run activation is not proven in the current handoff.',
           hasRealNonOwnerValueProof ? evidence.realNonOwnerProof : [],
           hasRealNonOwnerValueProof
             ? [
                 'First-run activation is useful but is not full beta success.',
-                'Full beta proof requires a real non-owner source-backed action or explicit tester feedback from the waiting state.',
+                'Full beta proof requires micro1/current proven non-owner source-backed action or explicit tester feedback from the waiting state.',
               ]
             : [
-                'Exactly one real non-owner account must connect Google or Microsoft and reach first-run activation before full beta proof.',
+                'Current handoff must prove GATE_9A first-run activation before full beta proof can be evaluated.',
                 'No fake rows, OWNER_USER_ID, TEST_USER_ID, OWNER_CANARY_USER_IDS, or mock harness may count as real beta proof.',
               ],
-          hasRealNonOwnerValueProof ? GATE_9_FULL_BETA_NEXT_MOVE : GATE_9_NEXT_MOVE,
+          hasRealNonOwnerValueProof ? GATE_9_FULL_BETA_NEXT_MOVE : GATE_9A_CONNECTION_PROOF_NEXT_MOVE,
           'BLOCKED_EXTERNAL',
         ),
   );

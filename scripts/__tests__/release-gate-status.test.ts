@@ -55,9 +55,11 @@ describe('release gate status', () => {
     expect(report.currentGate.id).toBe('GATE_9A_FIRST_RUN_ACTIVATION');
     expect(report.firstFailingGate.id).toBe('GATE_9A_FIRST_RUN_ACTIVATION');
     expect(report.firstFailingGate.status).toBe('BLOCKED_EXTERNAL');
-    expect(report.firstFailingGate.reason).toBe('No real connected non-owner account exists.');
+    expect(report.firstFailingGate.reason).toBe(
+      'Current handoff is missing real non-owner connection proof.',
+    );
     expect(report.firstFailingGate.nextMove).toBe(
-      'Get one real tester to connect Google or Microsoft.',
+      'Record current real non-owner connection proof before evaluating first-run activation.',
     );
     expect(report.firstFailingGate.doNotTouch).toContain('paid generation');
   });
@@ -68,8 +70,12 @@ describe('release gate status', () => {
     expect(formatted).toContain('CURRENT_GATE: GATE_9A_FIRST_RUN_ACTIVATION');
     expect(formatted).toContain('FIRST_FAILING_GATE: GATE_9A_FIRST_RUN_ACTIVATION');
     expect(formatted).toContain('STATUS: BLOCKED_EXTERNAL');
-    expect(formatted).toContain('REASON: No real connected non-owner account exists.');
-    expect(formatted).toContain('NEXT_MOVE: Get one real tester to connect Google or Microsoft.');
+    expect(formatted).toContain(
+      'REASON: Current handoff is missing real non-owner connection proof.',
+    );
+    expect(formatted).toContain(
+      'NEXT_MOVE: Record current real non-owner connection proof before evaluating first-run activation.',
+    );
     expect(formatted).toContain(
       'DO_NOT_TOUCH: UI polish, Stripe, paid generation, owner-only proof, fake users.',
     );
@@ -189,7 +195,10 @@ describe('release gate status', () => {
     expect(report.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
     expect(report.firstFailingGate.status).toBe('BLOCKED_EXTERNAL');
     expect(report.firstFailingGate.nextMove).toBe(
-      'Run repeatable real non-owner proof after the first-run state produces source-backed action or explicit tester feedback.',
+      'Use the proven micro1 non-owner path only after it produces a source-backed action or explicit tester feedback.',
     );
+    const formatted = formatReleaseGateReport(report);
+    expect(formatted).not.toContain('Get one real tester');
+    expect(formatted).not.toContain('No real connected non-owner account exists');
   });
 });
