@@ -1,62 +1,71 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-16 07:46 PT
-Current slice: Correct GATE_9 language for micro1.
-Current mode: FOLDERA GATE-FIRST OPERATOR MODE; no paid generation, outbound email, Stripe, schema, fake users/rows/signals/actions/artifacts, Brandon owner data, or fake beta proof.
-Current origin/main receipt SHA at last readback: 583471b5274807475a92f091e113a5032249d7fd.
-Last verified product behavior SHA: 41a577bbf0476a928e7b2d463d0ef5edf4515bf5.
-Latest receipt/docs status: receipt-only commit `583471b5274807475a92f091e113a5032249d7fd` updated gate-first release truth, passed GitHub `CI`, `Health Gate`, and `Deploy to Vercel`, reached Vercel READY, and production `/api/health` read back the same SHA. `Production E2E` for that receipt was still in progress at the moment this language correction began. This file may be contained in a later receipt-only commit; that does not change product/runtime proof.
-Current release gate: GATE_9_REAL_NON_OWNER_BETA
-First failing release gate: GATE_9_REAL_NON_OWNER_BETA
-Release gate status: BLOCKED_EXTERNAL
-Current quality gate: QG_10_ARTIFACT_QUALITY
+Last updated: 2026-05-16 08:45 PT
+Current slice: Micro1 A++ readiness sleuth and no-safe proof receipt.
+Current mode: FOLDERA OWNER SLEUTH MODE; no paid generation, outbound email, Stripe, schema, fake users/rows/signals/actions/artifacts, Brandon owner data, or fake beta proof.
+Current origin/main and production SHA at live readback: `e33cf8e95d773d5bb02492a77063af0876743c62`.
+Latest Vercel production deployment: `dpl_BWiYf5EuapEsZtQxdzrg3hD3AZKt`, READY, target `production`.
+Production `/api/health`: `status=ok`, `build=e33cf8e`, `revision.git_sha=e33cf8e95d773d5bb02492a77063af0876743c62`, `vercel_env=production`.
+GitHub Actions for this SHA: PASS for `CI`, `Health Gate`, `Deploy to Vercel`, and `Production E2E`.
+Current release gate: `GATE_9_REAL_NON_OWNER_BETA`
+First failing release gate: `GATE_9_REAL_NON_OWNER_BETA`
+Release gate status: `BLOCKED_EXTERNAL`
+Current quality gate: `QG_10_ARTIFACT_QUALITY`
 Quality gate status: PASS
-Current visual gate: QG_11_VISUAL_FRONTEND_QUALITY
+Current visual gate: `QG_11_VISUAL_FRONTEND_QUALITY`
 Visual gate status: PASS
 
 ## Current Truth
 
-- Git truth before this handoff edit: local `HEAD` and `origin/main` matched `583471b5274807475a92f091e113a5032249d7fd`.
-- Production truth before this handoff edit: `/api/health` returned `status=ok`, `build=583471b`, `revision.git_sha=583471b5274807475a92f091e113a5032249d7fd`, `deployment_id=dpl_9Snfjsfzzgz5wZhD7CV73oHVwCQH`, and `vercel_env=production`.
-- micro1 is the real non-owner production proof account: production auth user, not `OWNER_USER_ID`, not `TEST_USER_ID`, connected Google token, and first-run source-readiness state proven.
-- Real non-owner first-run state (micro1): connected source Google; signal_count=2; processed_signal_count=0; unprocessed_signal_count=2; reason=not enough evidence for a safe move yet; next_action=Check sources now; nothing_sent=true.
-- `GATE_9A_FIRST_RUN_ACTIVATION` is PASS from micro1; do not reopen this as "need one real non-owner."
-- `GATE_9_REAL_NON_OWNER_BETA` remains blocked because first-run waiting value is not full beta success.
-- Full beta proof still requires micro1 to produce a source-backed action, or explicit tester feedback that the waiting/readiness state was understandable and useful.
-- Quality gate `QG_10_ARTIFACT_QUALITY` is passing from deterministic fixture proof: bad examples fail and good examples pass.
-- Visual gate `QG_11_VISUAL_FRONTEND_QUALITY` is passing from deterministic screenshot/browser proof. It is not real non-owner beta proof.
+- micro1 is still the real non-owner production proof account: production auth user exists, not `OWNER_USER_ID`, not `TEST_USER_ID`, and connected Google through `user_tokens`.
+- Current live micro1 token/source state: one active Google token row, access and refresh token present, no disconnect, no OAuth reauth flag, last synced `2026-05-16T11:42:44.367Z`; `integrations` remains `0` because connector truth is `user_tokens`.
+- Current live micro1 source state: `signal_count=111`, `processed_signal_count=111`, `unprocessed_signal_count=0`, newest signal ingestion `2026-05-16T11:42:44.321548Z`, `action_count=0`, `pipeline_run_count=0`.
+- Real non-owner clear no-safe state (micro1): connected source Google; `signal_count=111`; `processed_signal_count=111`; `unprocessed_signal_count=0`; reason=no current Tier 1 or Tier 2 candidate proved a fresh, grounded discrepancy; next_action=ask tester feedback or wait for stronger evidence; nothing_sent=true.
+- Current live micro1 winner truth: read-only `winner:autopsy` with `AUDIT_USER_ID` returned `no_safe_artifact_today`; no Tier 1 or Tier 2 candidate proved a fresh, grounded discrepancy.
+- The first broken rung is not token stale, source read failure, unprocessed backlog, action display, persistence, approval history, Stripe, email, or schema.
+- `GATE_9A_FIRST_RUN_ACTIVATION` remains PASS from the real non-owner path and should not be reopened as "need one real tester."
+- `GATE_9_REAL_NON_OWNER_BETA` remains blocked because micro1 has no source-backed action yet, and no explicit tester feedback has cleared the no-safe/waiting state as understandable and useful.
+- `docs/WINNER_PROOF_PACKET.md` is stale as current micro1 proof: it is owner-private winner evidence from 2026-05-13, superseded for GATE_9 by current micro1/GATE_9A/GATE_9 truth. It still informs the no-safe restraint pattern.
+- Stale branch and stash work is lower leverage than micro1 proof; `docs/FINAL_SEAM_LEDGER.md` remains the controlling branch/stash triage receipt.
+- The prior gate-language `.foldera-contract.json` was retired after that slice shipped; the current command state is this contractless owner-sleuth stop receipt.
 
 ## Verification
 
+- `git fetch origin`: completed.
+- `git status --short --branch`: clean `main...origin/main`.
+- `origin/main`: `e33cf8e95d773d5bb02492a77063af0876743c62`.
+- Vercel production: READY deployment `dpl_BWiYf5EuapEsZtQxdzrg3hD3AZKt` for `e33cf8e95d773d5bb02492a77063af0876743c62`.
+- Production `/api/health`: PASS and matched `e33cf8e95d773d5bb02492a77063af0876743c62`.
+- GitHub Actions: PASS for current SHA.
 - `npm run health`: PASS, `RESULT: 0 FAILING`.
-- `npm run gate:status`: PASS through GATE_9A; `GATE_9_REAL_NON_OWNER_BETA` stayed `BLOCKED_EXTERNAL` with reason `Full beta proof still requires source-backed action or explicit tester feedback after first-run activation.`
-- `npm run gate:quality`: PASS; `QG_10_ARTIFACT_QUALITY` reported 13 bad artifact fixtures rejected and 7 good artifact fixtures accepted.
-- `npm run gate:visual`: PASS; `QG_11_VISUAL_FRONTEND_QUALITY` reported dashboard current move, source trail, approval controls, responsive layout, and screenshots have executable visual proof.
+- `npm run gate:status`: PASS through `GATE_9A_FIRST_RUN_ACTIVATION`; `GATE_9_REAL_NON_OWNER_BETA` remained `BLOCKED_EXTERNAL`.
+- `npm run gate:quality`: PASS, `QG_10_ARTIFACT_QUALITY`.
+- `npm run gate:visual`: PASS, `QG_11_VISUAL_FRONTEND_QUALITY`.
+- `npm run gate:frontend`: PASS after this receipt update; product/browser proof passed screenshot matrix `27/27`, interaction matrix, banned-copy audit, layout contract, frontend gate tests `2/2`, and receipt checks. This receipt update preserves the frontend receipt language and does not claim new production current screenshots.
 - `npm run build`: PASS.
 - `npm run lint`: PASS.
-- Focused release-gate regression: PASS, `scripts/__tests__/release-gate-status.test.ts` `9/9`.
-- Corrected gate output proof: `npm run gate:status` prints `GATE_9A_FIRST_RUN_ACTIVATION: PASS`, `GATE_9_REAL_NON_OWNER_BETA: BLOCKED_EXTERNAL`, proof found for `Real non-owner first-run state (micro1)`, and next move `Use the proven micro1 non-owner path only after it produces a source-backed action or explicit tester feedback.`
-- GitHub Actions for receipt/docs SHA `583471b5274807475a92f091e113a5032249d7fd`: PASS for `CI`, `Health Gate`, and `Deploy to Vercel`; `Production E2E` was in progress at language-correction start.
-- Vercel production for receipt/docs SHA `583471b5274807475a92f091e113a5032249d7fd`: READY deployment `dpl_9Snfjsfzzgz5wZhD7CV73oHVwCQH`.
-- Production `/api/health` for receipt/docs SHA `583471b5274807475a92f091e113a5032249d7fd`: PASS and matched the exact SHA.
+- Read-only Supabase proof: confirmed the current micro1 counts above without exposing private source contents.
+- Read-only micro1 `winner:autopsy`: confirmed `no_safe_artifact_today` without paid generation or outbound email.
 
 ## Decision
 
-`BLOCKED_EXTERNAL - GATE_9_REAL_NON_OWNER_BETA requires micro1 source-backed action or explicit tester feedback.`
+`BLOCKED_EXTERNAL - NO_SAFE_MOVE_CORRECT.`
 
-No product code should be changed for this gate from the current proof state. The release, quality, and visual gates are executable and current; the first remaining release blocker is not fixable with fake data, owner data, paid generation, UI polish, schema work, Stripe, or outbound email.
+Do not force a move. The current product restraint is correct: micro1 has processed source evidence, but the read-only winner path says no current Tier 1 or Tier 2 source-backed action is safe. GATE_9 clears only when micro1 produces a source-backed action later, or the tester explicitly says the no-safe/waiting state is understandable and useful.
 
 ## Next exact move
 
-Run repeatable GATE_9 proof only after micro1 produces a source-backed action or gives explicit feedback that the no-paid first-run waiting/readiness state was understandable and useful. If that proof appears, verify source trail, save/skip/approve/history, outbound-send blocking, GitHub CI, Vercel READY, production `/api/health`, and then update this handoff again.
+Ask micro1 one product-feedback question: "When Foldera connected Google, checked your sources, found no safe action yet, and clearly said nothing was sent, was that understandable and useful enough for you to keep trusting it while it waits for stronger evidence?"
+
+If the answer is yes, rerun `npm run gate:status`, verify source trail/save/skip/approve/history/outbound-send blocking for the micro1 path where applicable, then update this handoff. If the answer is no, fix the exact confusing product rung, not the generator.
 
 ## Do Not Touch
 
 - Stripe/payment behavior
 - Schema or destructive SQL
 - Paid/model generation
-- Outbound email beyond existing welcome-email tests
-- Backend artifact-generation logic
-- Fake users, token rows, source rows, artifacts, documents, deadlines, emails, or beta proof
+- Outbound email
+- Fake users, token rows, source rows, actions, artifacts, documents, deadlines, emails, or beta proof
 - Brandon owner data as beta proof
-- Broad dashboard polish
+- Broad UI polish or outcome-learning cherry-picks
+- Stale branch/stash work unless it becomes the proven first broken rung
