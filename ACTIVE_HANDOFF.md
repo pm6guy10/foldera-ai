@@ -1,12 +1,15 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-16 14:38 PT
+Last updated: 2026-05-16 14:57 PT
 Current slice: Signal Faucet Operator Lock.
 Current mode: Direct-build operating-law pass; no broad integrations, dashboard redesign, paid generation, outbound email, Stripe, fake source data, owner/test-user beta proof, or schema change.
-Current `origin/main` SHA at handoff update time: `cf417149e1f51a1c07ef7cb45624a9f17dc6544c`.
-Latest commit kind: receipt-only docs head before this slice ships.
-Last verified runtime/product SHA: `44d62e0f248279bb9646954cee764cb1859db635`.
-Latest receipt/docs status: current worktree has the Signal Faucet Operator Lock changes; commit/push/live readback still pending.
+Current `origin/main` SHA at handoff update time: `2339985466b83dcc36c80be675060fad858ce193`.
+Latest commit kind: product/runtime commit.
+Last verified runtime/product SHA: `2339985466b83dcc36c80be675060fad858ce193`.
+Latest receipt/docs status: receipt-only self-SHA intentionally not embedded; external readback is required after push.
+GitHub Actions for the verified product/runtime head: PASS (`CI` #328 and #1047, `Health Gate` #651, `semgrep` #1546, `Deploy to Vercel` #1021/#1022, `Production E2E` #1234).
+Latest verified Vercel production deployment: `dpl_DeTyf8doaYWR94HYKnJe8eTM3A3s`, READY for `2339985466b83dcc36c80be675060fad858ce193`.
+Production `/api/health` for the verified product/runtime head: `status=ok`, `build=2339985`, `revision.git_sha=2339985466b83dcc36c80be675060fad858ce193`, `deployment_id=dpl_DeTyf8doaYWR94HYKnJe8eTM3A3s`.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
 First failing release gate: GATE_9_REAL_NON_OWNER_BETA
 Release gate status: BLOCKED_EXTERNAL
@@ -33,15 +36,15 @@ Current visual gate: QG_11_VISUAL_FRONTEND_QUALITY PASS
 - `npm run gate:visual`: PASS.
 - `npm run gate:frontend`: screenshot matrix `27/27`, interaction matrix, banned-copy audit, and layout contract all passed; production current screenshots were not newly claimed in this local product-law pass.
 - `npm run build`: PASS.
-- `npm run lint`: pending rerun after the frontend receipt text is updated.
+- `npm run lint`: PASS.
 
 ## Decision
 
-`IN PROGRESS - SOURCE COVERAGE OPERATING LAW IMPLEMENTED; FINAL GATE/SHIP PASS PENDING.`
+`PROVEN - SOURCE COVERAGE OPERATING LAW SHIPPED.`
 
 ## Next exact move
 
-Rerun the required gate chain from `npm run gate:frontend` onward, then commit, push, and verify the exact production SHA.
+Stop this slice here. The next live blocker is still external beta proof, not another local source-coverage rung.
 
 ## Do Not Touch
 
