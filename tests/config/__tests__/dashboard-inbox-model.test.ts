@@ -204,9 +204,20 @@ describe('dashboard finished-work inbox model', () => {
     });
 
     expect(slate?.watch_item?.title).toBe('Foldera connected Google, but only found 1 usable item so far.');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Checked sources: Google');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Found 1 signal');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Processed 0 / 1');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('No safe move yet');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Blocked reason: waiting on processed evidence');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain(
+      'Why: Foldera has 1 source item: 0 processed, 1 waiting. That is not enough evidence for a safe move yet.',
+    );
+    expect(slate?.watch_item?.evidence.join(' ')).toContain(
+      'Next: Check sources now to process waiting metadata, or connect another source.',
+    );
     expect(slate?.watch_item?.evidence.join(' ')).toContain('0 processed, 1 waiting');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Newest signal:');
-    expect(slate?.watch_item?.evidence.join(' ')).toContain('Metadata says Google is connected');
+    expect(slate?.watch_item?.why_it_matters).toContain('Metadata says Google is connected');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Nothing was sent.');
     expect(slate?.watch_item?.next_action).toBe(
       'Check sources now to process the waiting item, or connect another source if this inbox is too thin.',
@@ -251,8 +262,9 @@ describe('dashboard finished-work inbox model', () => {
     });
 
     expect(slate?.watch_item?.title).toBe('Foldera connected Google and is checking sources now.');
-    expect(slate?.watch_item?.evidence.join(' ')).toContain('0 source items: 0 processed, 0 waiting');
-    expect(slate?.watch_item?.evidence.join(' ')).toContain('Next check: use Check sources now');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Found 0 signals');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Processed 0 / 0');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Blocked reason: source check in progress');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Nothing was sent.');
   });
 });

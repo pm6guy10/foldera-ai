@@ -413,6 +413,13 @@ describeAuthMocked('Non-owner beta simulated first path', () => {
     await expect(
       page.getByRole('heading', { name: /Foldera connected Google, but only found 1 usable item so far\./i }),
     ).toBeVisible();
+    await expect(page.getByText(/Checked sources: Google/i).first()).toBeVisible();
+    await expect(page.getByText(/Found 1 signal/i).first()).toBeVisible();
+    await expect(page.getByText(/Processed 0 \/ 1/i).first()).toBeVisible();
+    await expect(page.getByText(/No safe move yet/i).first()).toBeVisible();
+    await expect(page.getByText(/Blocked reason: waiting on processed evidence/i).first()).toBeVisible();
+    await expect(page.getByText(/Why: Foldera has 1 source item: 0 processed, 1 waiting/i).first()).toBeVisible();
+    await expect(page.getByText(/Next: Check sources now to process waiting metadata/i).first()).toBeVisible();
     await expect(page.getByText(/1 source item: 0 processed, 1 waiting/i).first()).toBeVisible();
     await expect(page.getByText(/Newest signal/i).first()).toBeVisible();
     await expect(page.getByText(/Metadata says Google is connected/i).first()).toBeVisible();

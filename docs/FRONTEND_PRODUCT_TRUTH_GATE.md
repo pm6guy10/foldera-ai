@@ -72,6 +72,7 @@ Each state must prove:
 - fake upload/drop cards may not appear active
 - fake notification controls may not appear active
 - source and account panels must show useful real-user state
+- no-safe/readiness states must show checked sources, source freshness, signal totals, processed/unprocessed counts, the plain-language hold reason, the next safe step, and explicit no-send safety without exposing private source contents
 - common viewport density must hold at 1366x768, 1440x900, 1920x1080, and 390x844
 
 Production-current screenshots may use mocked auth and intercepted deterministic API responses only to prove deployed frontend rendering without exposing private owner data. They must be labeled as frontend/runtime proof, not beta proof or production-data proof.
@@ -146,6 +147,13 @@ Allowed human copy examples:
 
 - "Foldera held back because the evidence was not strong enough."
 - "No finished action today."
+- "Checked sources."
+- "Found X signals."
+- "Processed Y / X."
+- "No safe move yet."
+- "Why: [plain-English reason]."
+- "Next: [specific safe step]."
+- "Nothing was sent."
 - "This needs more input before Foldera can finish it."
 - "Ready to save."
 - "Inputs needed."

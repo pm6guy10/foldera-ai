@@ -609,16 +609,32 @@ export function buildFirstRunReadinessSlate(
 ): DailyUtilitySlate | null {
   if (!readiness?.connected) return null;
 
-  const sourceCountLabel = `${readiness.signal_count} source item${readiness.signal_count === 1 ? '' : 's'}: ${readiness.processed_signal_count} processed, ${readiness.unprocessed_signal_count} waiting`;
-  const providerLabel = readiness.providers.length > 0
-    ? `Connected source${readiness.providers.length === 1 ? '' : 's'}: ${readiness.providers.join(', ')}`
-    : 'Connected source';
+  const signalLabel = readiness.signal_count === 1 ? 'signal' : 'signals';
+  const providerSummary = readiness.providers.length > 0
+    ? readiness.providers.join(', ')
+    : 'connected source';
   const lastChecked = asTrimmedString(readiness.last_checked_at)
-    ? `Last checked: ${formatRelativeTime(readiness.last_checked_at)}`
-    : 'Last checked: waiting for the first completed source check';
+    ? formatRelativeTime(readiness.last_checked_at)
+    : 'waiting for the first completed source check';
   const newestSignal = asTrimmedString(readiness.newest_signal_at)
-    ? `Newest signal: ${formatRelativeTime(readiness.newest_signal_at)}`
-    : 'Newest signal: waiting for first source metadata';
+    ? formatRelativeTime(readiness.newest_signal_at)
+    : 'waiting for first source metadata';
+  const sourceStatusLabel =
+    readiness.status === 'connected_and_syncing'
+      ? 'connected and checking'
+      : readiness.status === 'connected_but_no_usable_signals'
+        ? 'connected, no usable signals yet'
+        : 'connected';
+  const blockedReasonLabel =
+    readiness.status === 'connected_and_syncing'
+      ? 'source check in progress'
+      : readiness.status === 'connected_but_no_usable_signals'
+        ? 'waiting on usable signals'
+        : readiness.status === 'connected_but_not_enough_evidence'
+          ? 'waiting on processed evidence'
+          : readiness.status === 'connected_with_usable_signals'
+            ? 'safe action not proved yet'
+            : 'waiting on a connected source';
 
   return {
     finished_artifact_verdict: 'no_finished_artifact',
@@ -626,12 +642,12 @@ export function buildFirstRunReadinessSlate(
       title: readiness.headline,
       status: 'watch_item',
       evidence: [
-        providerLabel,
-        sourceCountLabel,
-        newestSignal,
-        lastChecked,
-        readiness.metadata_summary,
-        readiness.next_check_timing,
+        `Checked sources: ${providerSummary}. Source status: ${sourceStatusLabel}. Last checked: ${lastChecked}. Newest signal: ${newestSignal}.`,
+        `Found ${readiness.signal_count} ${signalLabel}. Processed ${readiness.processed_signal_count} / ${readiness.signal_count}. Unprocessed: ${readiness.unprocessed_signal_count} waiting.`,
+        'No safe move yet.',
+        `Blocked reason: ${blockedReasonLabel}.`,
+        `Why: ${readiness.reason}`,
+        `Next: ${readiness.next_action}`,
         readiness.nothing_sent_label,
       ],
       why_it_matters: readiness.metadata_summary || readiness.reason,
