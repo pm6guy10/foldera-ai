@@ -22,6 +22,7 @@ describe('first-run source readiness', () => {
       pipeline_run_count: 0,
       last_checked_at: '2026-05-15T22:33:55.815Z',
       newest_signal_at: '2026-05-15T22:33:55.815Z',
+      recent_processed_signal_sources: ['gmail'],
     });
 
     expect(readiness.status).toBe('connected_but_not_enough_evidence');
@@ -64,6 +65,7 @@ describe('first-run source readiness', () => {
       pipeline_run_count: 0,
       last_checked_at: '2026-05-15T22:44:00.324Z',
       newest_signal_at: '2026-05-15T22:44:00.324Z',
+      recent_processed_signal_sources: ['gmail'],
     });
 
     expect(readiness.status).toBe('connected_but_not_enough_evidence');
@@ -107,6 +109,7 @@ describe('first-run source readiness', () => {
       pipeline_run_count: 0,
       last_checked_at: null,
       newest_signal_at: null,
+      recent_processed_signal_sources: [],
     });
 
     expect(readiness.status).toBe('connected_and_syncing');

@@ -102,6 +102,19 @@ export type FirstRunSourceReadinessPayload = {
   nothing_sent_label: string;
   can_check_now: boolean;
   value_proof_ready: boolean;
+  source_coverage: {
+    has_email: boolean;
+    has_calendar: boolean;
+    has_docs: boolean;
+    has_chat: boolean;
+    has_tasks: boolean;
+    processed_signal_count: number;
+    recent_signal_window_days: number;
+    source_depth: 'thin' | 'usable' | 'rich';
+    magic_readiness: 'not_ready' | 'obligation_only' | 'context_ready' | 'operator_ready';
+    next_best_connector: 'google_drive' | 'onedrive' | 'slack' | 'teams' | 'tasks' | null;
+    reason: string;
+  };
 };
 
 export type IntegrationStatusItem = {
@@ -510,6 +523,35 @@ function hasSourceFreshnessAttention(integrationStatus: IntegrationStatusPayload
     : false;
 }
 
+function connectorLabel(
+  connector: FirstRunSourceReadinessPayload['source_coverage']['next_best_connector'],
+): string {
+  switch (connector) {
+    case 'google_drive':
+      return 'Google Drive';
+    case 'onedrive':
+      return 'OneDrive';
+    case 'slack':
+      return 'Slack';
+    case 'teams':
+      return 'Teams';
+    case 'tasks':
+      return 'Tasks';
+    default:
+      return 'another source';
+  }
+}
+
+function nextConnectorActionLabel(
+  connector: FirstRunSourceReadinessPayload['source_coverage']['next_best_connector'],
+): string {
+  return connector ? `Connect ${connectorLabel(connector)}` : 'Check sources now';
+}
+
+function isCoverageSlate(item: DailyUtilitySlateItem | null | undefined): boolean {
+  return item?.source_refs?.some((entry) => entry === 'source_coverage') === true;
+}
+
 export function buildDailyValueState(
   slate: DailyUtilitySlate | null | undefined,
   latestIssue: DashboardLoadIssue | null,
@@ -565,6 +607,11 @@ export function buildDailyValueState(
       );
   const sourceReadinessItem =
     !hasPrimaryMove && firstItem?.source_refs?.some((entry) => entry === 'source_readiness') === true;
+  const coverageItem = !hasPrimaryMove && isCoverageSlate(firstItem);
+  const clearCoverageRead =
+    !hasPrimaryMove &&
+    firstItem?.source_refs?.some((entry) => entry === 'source_coverage_ready') === true &&
+    slate?.finished_artifact_verdict === 'no_finished_artifact';
   const smallestUnlock =
     (sourceReadinessItem
       ? sanitizeDailyValueText(firstItem?.next_action, 'Check sources again when new mail or calendar activity exists.')
@@ -576,12 +623,24 @@ export function buildDailyValueState(
       : 'Connect Gmail or Microsoft so Foldera has current facts to work from.');
   const copyText = dailyUtilitySlateClipboardText(slate);
 
+  const todayStatusLabel = hasPrimaryMove
+    ? 'Do this'
+    : coverageItem
+      ? 'Fix this first'
+      : clearCoverageRead
+        ? "You're clear right now"
+        : statusLabel;
+
   return {
-    heading: hasPrimaryMove ? 'Foldera found the next move' : 'Foldera checked today',
-    statusLabel,
+    heading: "Today's answer",
+    statusLabel: todayStatusLabel,
     summary:
       (hasPrimaryMove
         ? sanitizeDailyValueText(firstItem?.title, 'Foldera found a current move worth preparing.')
+        : coverageItem
+          ? 'Foldera does not have enough live signal yet to reduce the pile intelligently.'
+        : clearCoverageRead
+          ? 'Foldera checked the live sources it can trust and did not find one safe move worth surfacing now.'
         : sourceReadinessItem
           ? sanitizeDailyValueText(firstItem?.title, '')
         : missingInputPrompt?.prompt ?? sanitizeDailyValueText(firstItem?.title, '')) ??
@@ -592,11 +651,13 @@ export function buildDailyValueState(
       { label: 'Smallest unlock', body: smallestUnlock },
     ],
     actionHref:
-      sourceReadinessItem
+      coverageItem || sourceReadinessItem
         ? '/dashboard?panel=sources'
         : missingInputPrompt?.actionHref ?? (activeSources > 0 ? undefined : '/api/google/connect'),
     actionLabel:
-      sourceReadinessItem
+      coverageItem
+        ? sanitizeDailyValueText(firstItem?.next_action, 'Check sources now')
+        : sourceReadinessItem
         ? 'Check sources now'
         : missingInputPrompt?.actionLabel ?? (activeSources > 0 ? undefined : 'Connect Google'),
     copyText: copyText || undefined,
@@ -635,14 +696,26 @@ export function buildFirstRunReadinessSlate(
           : readiness.status === 'connected_with_usable_signals'
             ? 'safe action not proved yet'
             : 'waiting on a connected source';
+  const coverage = readiness.source_coverage;
+  const coverageIsThin = coverage?.source_depth === 'thin';
+  const coverageLabel = coverage?.source_depth ?? 'thin';
+  const nextConnector = connectorLabel(coverage?.next_best_connector ?? null);
+  const nextConnectorAction = nextConnectorActionLabel(coverage?.next_best_connector ?? null);
 
   return {
     finished_artifact_verdict: 'no_finished_artifact',
     watch_item: {
-      title: readiness.headline,
+      title: coverageIsThin ? 'Fix this first' : readiness.headline,
       status: 'watch_item',
       evidence: [
         `Checked sources: ${providerSummary}. Source status: ${sourceStatusLabel}. Last checked: ${lastChecked}. Newest signal: ${newestSignal}.`,
+        ...(coverageIsThin
+          ? [
+              `Current coverage: ${coverageLabel}.`,
+              `Next connector: ${nextConnector}.`,
+              `Why this connector: ${coverage.reason}`,
+            ]
+          : []),
         `Found ${readiness.signal_count} ${signalLabel}. Processed ${readiness.processed_signal_count} / ${readiness.signal_count}. Unprocessed: ${readiness.unprocessed_signal_count} waiting.`,
         'No safe move yet.',
         `Blocked reason: ${blockedReasonLabel}.`,
@@ -652,8 +725,10 @@ export function buildFirstRunReadinessSlate(
       ],
       why_it_matters: readiness.metadata_summary || readiness.reason,
       no_action_reason: readiness.why_no_finished_move || readiness.reason,
-      next_action: readiness.value_unlock_next || readiness.next_action,
-      source_refs: ['source_readiness'],
+      next_action: coverageIsThin ? nextConnectorAction : readiness.value_unlock_next || readiness.next_action,
+      source_refs: coverageIsThin
+        ? ['source_readiness', 'source_coverage']
+        : ['source_readiness', 'source_coverage_ready'],
     },
   };
 }

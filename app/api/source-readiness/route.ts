@@ -11,6 +11,7 @@ import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { withReadOnlyUserCache } from '@/lib/utils/read-only-user-cache';
 
 export const dynamic = 'force-dynamic';
+const RECENT_SIGNAL_WINDOW_DAYS = 30;
 
 function providerLabel(provider: string): string {
   if (provider === 'google') return 'Google';
@@ -53,6 +54,8 @@ export async function GET() {
       actionCountResult,
       pipelineRunCountResult,
       latestSignalResult,
+      recentProcessedSignalCountResult,
+      recentProcessedSignalsResult,
     ] = await Promise.all([
       supabase
         .from('tkg_signals')
@@ -83,6 +86,24 @@ export async function GET() {
         .order('ingested_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
+      supabase
+        .from('tkg_signals')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('processed', true)
+        .gte(
+          'ingested_at',
+          new Date(Date.now() - RECENT_SIGNAL_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+        ),
+      supabase
+        .from('tkg_signals')
+        .select('source')
+        .eq('user_id', userId)
+        .eq('processed', true)
+        .gte(
+          'ingested_at',
+          new Date(Date.now() - RECENT_SIGNAL_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+        ),
     ]);
 
     const latestSignal = latestSignalResult.data as
@@ -116,6 +137,13 @@ export async function GET() {
       pipeline_run_count: pipelineRunCountResult.count ?? 0,
       last_checked_at: latestIso([latestProviderSync, latestSignalAt]),
       newest_signal_at: latestSignalAt,
+      recent_processed_signal_sources: Array.isArray(recentProcessedSignalsResult.data)
+        ? recentProcessedSignalsResult.data
+            .map((row) => (typeof row?.source === 'string' ? row.source : null))
+            .filter((source): source is string => Boolean(source))
+        : [],
+      recent_signal_window_days: RECENT_SIGNAL_WINDOW_DAYS,
+      source_coverage_processed_signal_count: recentProcessedSignalCountResult.count ?? 0,
     });
 
     return NextResponse.json(readiness, withReadOnlyUserCache());

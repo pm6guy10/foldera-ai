@@ -93,7 +93,7 @@ describe('dashboard finished-work inbox model', () => {
       history,
     );
 
-    expect(state.heading).toBe('Foldera checked today');
+    expect(state.heading).toBe("Today's answer");
     expect(state.statusLabel).toBe('Held back safely');
     expect(state.valueBlocks.map((block) => block.label)).toEqual([
       'What changed',
@@ -127,8 +127,8 @@ describe('dashboard finished-work inbox model', () => {
     );
 
     expect(buildMissingInputPrompt(slate)).toBeNull();
-    expect(state.heading).toBe('Foldera found the next move');
-    expect(state.statusLabel).toBe('Current best move');
+    expect(state.heading).toBe("Today's answer");
+    expect(state.statusLabel).toBe('Do this');
     expect(state.summary).toContain('Commitment due in 5d');
     expect(state.copyLabel).toBe('Copy brief');
     expect(state.copyText).toContain('Current best move');
@@ -201,10 +201,26 @@ describe('dashboard finished-work inbox model', () => {
       nothing_sent_label: 'Nothing was sent.',
       can_check_now: true,
       value_proof_ready: true,
+      source_coverage: {
+        has_email: true,
+        has_calendar: false,
+        has_docs: false,
+        has_chat: false,
+        has_tasks: false,
+        processed_signal_count: 1,
+        recent_signal_window_days: 30,
+        source_depth: 'thin',
+        magic_readiness: 'not_ready',
+        next_best_connector: 'google_drive',
+        reason: 'Google Drive adds document context so Foldera can see the work behind the obligations.',
+      },
     });
 
-    expect(slate?.watch_item?.title).toBe('Foldera connected Google, but only found 1 usable item so far.');
+    expect(slate?.watch_item?.title).toBe('Fix this first');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Checked sources: Google');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Current coverage: thin');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Next connector: Google Drive');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('Why this connector: Google Drive adds document context');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Found 1 signal');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Processed 0 / 1');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('No safe move yet');
@@ -219,9 +235,7 @@ describe('dashboard finished-work inbox model', () => {
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Newest signal:');
     expect(slate?.watch_item?.why_it_matters).toContain('Metadata says Google is connected');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Nothing was sent.');
-    expect(slate?.watch_item?.next_action).toBe(
-      'Check sources now to process the waiting item, or connect another source if this inbox is too thin.',
-    );
+    expect(slate?.watch_item?.next_action).toBe('Connect Google Drive');
 
     const state = buildDailyValueState(
       slate,
@@ -230,9 +244,13 @@ describe('dashboard finished-work inbox model', () => {
       [],
     );
 
-    expect(state.summary).toBe('Foldera connected Google, but only found 1 usable item so far.');
+    expect(state.heading).toBe("Today's answer");
+    expect(state.statusLabel).toBe('Fix this first');
+    expect(state.summary).toBe(
+      'Foldera does not have enough live signal yet to reduce the pile intelligently.',
+    );
     expect(state.actionHref).toBe('/dashboard?panel=sources');
-    expect(state.actionLabel).toBe('Check sources now');
+    expect(state.actionLabel).toBe('Connect Google Drive');
   });
 
   it('can display a connected-and-syncing source state without making it GATE_9 value proof', () => {
@@ -259,12 +277,94 @@ describe('dashboard finished-work inbox model', () => {
       nothing_sent_label: 'Nothing was sent.',
       can_check_now: true,
       value_proof_ready: false,
+      source_coverage: {
+        has_email: false,
+        has_calendar: false,
+        has_docs: false,
+        has_chat: false,
+        has_tasks: false,
+        processed_signal_count: 0,
+        recent_signal_window_days: 30,
+        source_depth: 'thin',
+        magic_readiness: 'not_ready',
+        next_best_connector: 'google_drive',
+        reason: 'Google Drive adds document context so Foldera can see the work behind the obligations.',
+      },
     });
 
-    expect(slate?.watch_item?.title).toBe('Foldera connected Google and is checking sources now.');
+    expect(slate?.watch_item?.title).toBe('Fix this first');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Found 0 signals');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Processed 0 / 0');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Blocked reason: source check in progress');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Nothing was sent.');
+  });
+
+  it('allows a clear Today answer only when source coverage is usable enough', () => {
+    const slate: DailyUtilitySlate = {
+      finished_artifact_verdict: 'no_finished_artifact',
+      watch_item: {
+        title: 'No safe finished work today',
+        status: 'watch_item',
+        evidence: ['Foldera checked the latest work receipt before holding back.'],
+        why_it_matters: 'Foldera held back instead of inventing work.',
+        no_action_reason: 'No safe move exists.',
+        source_refs: ['source_readiness'],
+      },
+    };
+
+    const thinState = buildDailyValueState(
+      slate,
+      null,
+      { integrations: [{ provider: 'google', is_active: true }] },
+      [],
+    );
+    expect(thinState.statusLabel).not.toBe("You're clear right now");
+
+    const coverageSlate = buildFirstRunReadinessSlate({
+      status: 'connected_with_usable_signals',
+      connected: true,
+      providers: ['Google'],
+      signal_count: 6,
+      processed_signal_count: 6,
+      unprocessed_signal_count: 0,
+      action_count: 0,
+      pipeline_run_count: 0,
+      last_checked_at: '2026-05-15T22:33:55.815Z',
+      newest_signal_at: '2026-05-15T22:33:55.815Z',
+      next_check_timing: 'Next check: wait for the next scheduled source refresh.',
+      headline: 'Foldera connected Google and found 6 processed source items.',
+      reason: 'Foldera has processed source evidence, but no safe action exists yet.',
+      next_action: 'Wait for the next source refresh, or connect another source.',
+      metadata_summary: 'Metadata says Google is connected and 6 Gmail/calendar items have arrived.',
+      why_no_finished_move:
+        'No finished move exists because 6 source items have been processed and no action or pipeline run exists yet.',
+      value_unlock_next: 'Connect another source if this inbox is too thin, or wait for the next source refresh.',
+      nothing_sent_label: 'Nothing was sent.',
+      can_check_now: false,
+      value_proof_ready: true,
+      source_coverage: {
+        has_email: true,
+        has_calendar: true,
+        has_docs: false,
+        has_chat: false,
+        has_tasks: false,
+        processed_signal_count: 6,
+        recent_signal_window_days: 30,
+        source_depth: 'usable',
+        magic_readiness: 'obligation_only',
+        next_best_connector: 'google_drive',
+        reason: 'Email and calendar are strong enough to support obligation-only Today reads.',
+      },
+    });
+
+    const usableState = buildDailyValueState(
+      coverageSlate,
+      null,
+      { integrations: [{ provider: 'google', is_active: true }] },
+      [],
+    );
+
+    expect(usableState.heading).toBe("Today's answer");
+    expect(usableState.statusLabel).toBe("You're clear right now");
   });
 });

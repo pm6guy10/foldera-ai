@@ -86,6 +86,19 @@ const FIRST_RUN_READINESS = {
   nothing_sent_label: 'Nothing was sent.',
   can_check_now: true,
   value_proof_ready: true,
+  source_coverage: {
+    has_email: true,
+    has_calendar: false,
+    has_docs: false,
+    has_chat: false,
+    has_tasks: false,
+    processed_signal_count: 1,
+    recent_signal_window_days: 30,
+    source_depth: 'thin',
+    magic_readiness: 'not_ready',
+    next_best_connector: 'google_drive',
+    reason: 'Google Drive adds document context so Foldera can see the work behind the obligations.',
+  },
 };
 
 const MICROSOFT_CONNECTED = {
@@ -409,11 +422,19 @@ describeAuthMocked('Non-owner beta simulated first path', () => {
     await seedSession(page, { hasOnboarded: true });
     await page.goto('/dashboard');
 
-    await expect(page.getByText(/Foldera checked today/i)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Today's answer/i)).toBeVisible({ timeout: 15000 });
     await expect(
-      page.getByRole('heading', { name: /Foldera connected Google, but only found 1 usable item so far\./i }),
+      page.getByRole('heading', { name: /Today's answer/i }),
+    ).toBeVisible();
+    await expect(page.getByText(/^Fix this first$/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/Foldera does not have enough live signal yet to reduce the pile intelligently\./i),
     ).toBeVisible();
     await expect(page.getByText(/Checked sources: Google/i).first()).toBeVisible();
+    await expect(page.getByText(/Current coverage: thin/i).first()).toBeVisible();
+    await expect(page.getByText(/Next connector: Google Drive/i).first()).toBeVisible();
+    await expect(page.getByText(/Why this connector: Google Drive adds document context/i).first()).toBeVisible();
+    await expect(page.getByText(/OneDrive|Slack|Teams|Tasks/i)).toHaveCount(0);
     await expect(page.getByText(/Found 1 signal/i).first()).toBeVisible();
     await expect(page.getByText(/Processed 0 \/ 1/i).first()).toBeVisible();
     await expect(page.getByText(/No safe move yet/i).first()).toBeVisible();
@@ -425,11 +446,11 @@ describeAuthMocked('Non-owner beta simulated first path', () => {
     await expect(page.getByText(/Metadata says Google is connected/i).first()).toBeVisible();
     await expect(page.getByText(/No finished move exists because 0 source items have been processed/i).first()).toBeVisible();
     await expect(page.getByText(/Nothing was sent\./i).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: /check sources now/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /connect google drive/i })).toBeVisible();
     await expect(page.getByText(/What Foldera protected/i)).toBeVisible();
     await expect(page.getByText(/No safe artifact/i)).toHaveCount(0);
 
-    await page.getByRole('link', { name: /check sources now/i }).click();
+    await page.getByRole('link', { name: /connect google drive/i }).click();
     await expect(page.getByTestId('dashboard-panel-sources')).toBeVisible({ timeout: 15000 });
     await expect.poll(() => sourceCheckCalls).toBe(1);
 

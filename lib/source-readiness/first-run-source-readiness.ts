@@ -23,6 +23,9 @@ export type FirstRunSourceReadinessInput = {
   pipeline_run_count: number;
   last_checked_at: string | null;
   newest_signal_at: string | null;
+  recent_processed_signal_sources: string[];
+  recent_signal_window_days?: number;
+  source_coverage_processed_signal_count?: number;
 };
 
 export type FirstRunSourceReadiness = Omit<FirstRunSourceReadinessInput, 'providers'> & {
@@ -39,6 +42,7 @@ export type FirstRunSourceReadiness = Omit<FirstRunSourceReadinessInput, 'provid
   nothing_sent_label: string;
   can_check_now: boolean;
   value_proof_ready: boolean;
+  source_coverage: SourceCoverage;
 };
 
 function clampCount(value: number): number {
@@ -74,6 +78,14 @@ export function buildFirstRunSourceReadiness(
   const canCheckNow = activeProviders.some((provider) => provider.can_check_now);
   const connected = activeProviders.length > 0;
   const anyNeverSynced = activeProviders.some((provider) => provider.status === 'never_synced');
+  const sourceCoverage = buildSourceCoverage({
+    connected_providers: activeProviders.map((provider) => provider.provider),
+    recent_processed_signal_sources: input.recent_processed_signal_sources,
+    processed_signal_count: clampCount(
+      input.source_coverage_processed_signal_count ?? processedCount,
+    ),
+    recent_signal_window_days: input.recent_signal_window_days,
+  });
 
   let status: FirstRunSourceReadinessStatus;
   if (!connected) {
@@ -156,5 +168,7 @@ export function buildFirstRunSourceReadiness(
       status === 'connected_but_not_enough_evidence' ||
       status === 'connected_but_no_usable_signals' ||
       status === 'connected_with_usable_signals',
+    source_coverage: sourceCoverage,
   };
 }
+import { buildSourceCoverage, type SourceCoverage } from './source-coverage';
