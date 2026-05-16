@@ -1,16 +1,16 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-16 11:20 PT
+Last updated: 2026-05-16 11:24 PT
 Current slice: Gate-first release truth receipt.
 Current mode: Receipt-only truth alignment; no schema, paid generation, outbound email, Stripe, fake proof, owner data as beta proof, or product-code changes.
-Current `origin/main` SHA: `ec3c0924b42beba821b4c349f7181e0024cda6b3`.
+Current `origin/main` SHA at handoff update time: `85407e2aa4f86554b6239687c94de5c18c4b3b85`.
 Latest commit kind: receipt-only docs commit.
 Last verified runtime/product SHA: `421671b4ac9c814ff9659740d5c544203119e116`.
-Latest receipt/docs SHA: `ec3c0924b42beba821b4c349f7181e0024cda6b3`.
-GitHub Actions for latest `origin/main`: PASS (`CI` #323, `Health Gate` #646, `Deploy to Vercel` #1015, `Production E2E` #1229).
-Latest Vercel production deployment for current `origin/main`: `dpl_3WFmJaXnn6aKp6vCTCVuhsCshSrQ`, READY.
-Production `/api/health` for current `origin/main`: `status=ok`, `build=ec3c092`, `revision.git_sha=ec3c0924b42beba821b4c349f7181e0024cda6b3`, `vercel_env=production`.
-Safe to proceed: yes for release-truth work only; the first remaining product gate is externally blocked.
+Latest receipt/docs status: receipt-only self-SHA intentionally not embedded; external readback is required after push.
+GitHub Actions for the last externally verified receipt head: PASS (`CI` #323, `Health Gate` #646, `Deploy to Vercel` #1015, `Production E2E` #1229) on `ec3c0924b42beba821b4c349f7181e0024cda6b3`.
+Latest externally verified Vercel production deployment: `dpl_3WFmJaXnn6aKp6vCTCVuhsCshSrQ`, READY for `ec3c0924b42beba821b4c349f7181e0024cda6b3`.
+Production `/api/health` for the last externally verified receipt head: `status=ok`, `build=ec3c092`, `revision.git_sha=ec3c0924b42beba821b4c349f7181e0024cda6b3`, `vercel_env=production`.
+Safe to proceed: yes for release-truth work only after the pushed receipt commit is externally read back; the first remaining product gate is externally blocked.
 Current release gate: GATE_9_REAL_NON_OWNER_BETA
 First failing release gate: GATE_9_REAL_NON_OWNER_BETA
 Release gate status: BLOCKED_EXTERNAL
@@ -26,7 +26,7 @@ Current visual gate: QG_11_VISUAL_FRONTEND_QUALITY PASS
 - The no-safe/readiness slate now says `Checked sources`, source status/freshness, `Found X signals`, `Processed Y / X`, `No safe move yet`, blocked reason, `Why`, `Next`, and `Nothing was sent.` from the existing safe payload only.
 - `GATE_9A_FIRST_RUN_ACTIVATION` remains PASS. `GATE_9_REAL_NON_OWNER_BETA` is still blocked until micro1 later produces a source-backed action or the tester explicitly says the no-safe/waiting state is understandable and useful.
 - The first trust gap is fixed. The first remaining product blocker is external proof, not generator restraint, schema, Stripe, email, or stale branch work.
-- Current live release truth is aligned on receipt-only head `ec3c0924b42beba821b4c349f7181e0024cda6b3`; the runtime/product proof baseline remains `421671b4ac9c814ff9659740d5c544203119e116`.
+- Current live release truth is aligned through the last externally verified receipt head `ec3c0924b42beba821b4c349f7181e0024cda6b3`; the runtime/product proof baseline remains `421671b4ac9c814ff9659740d5c544203119e116`.
 
 ## Verification
 
@@ -36,9 +36,9 @@ Current visual gate: QG_11_VISUAL_FRONTEND_QUALITY PASS
 - `npm run gate:status`: PASS through `GATE_9A_FIRST_RUN_ACTIVATION`; `GATE_9_REAL_NON_OWNER_BETA` stayed `BLOCKED_EXTERNAL`.
 - `npm run gate:quality`: PASS.
 - `npm run gate:visual`: PASS.
-- Latest GitHub Actions for current `origin/main` `ec3c0924b42beba821b4c349f7181e0024cda6b3`: PASS (`CI`, `Health Gate`, `Deploy to Vercel`, `Production E2E`).
-- Latest Vercel production deployment for current `origin/main`: `dpl_3WFmJaXnn6aKp6vCTCVuhsCshSrQ`, READY.
-- Production `/api/health` for current `origin/main`: PASS with matching `revision.git_sha=ec3c0924b42beba821b4c349f7181e0024cda6b3`.
+- Latest externally verified GitHub Actions head `ec3c0924b42beba821b4c349f7181e0024cda6b3`: PASS (`CI`, `Health Gate`, `Deploy to Vercel`, `Production E2E`).
+- Latest externally verified Vercel production deployment: `dpl_3WFmJaXnn6aKp6vCTCVuhsCshSrQ`, READY.
+- Production `/api/health` for that externally verified receipt head: PASS with matching `revision.git_sha=ec3c0924b42beba821b4c349f7181e0024cda6b3`.
 - `npm run gate:frontend`: PASS with screenshot matrix `27/27`, interaction matrix, banned-copy audit, layout contract, frontend tests `2/2`, and frontend gate script proof.
 - Production current screenshots were not newly claimed in this slice.
 - `npm run build`: PASS.
