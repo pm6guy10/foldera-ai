@@ -20,6 +20,7 @@ export interface ReleaseGateEvidence {
   approvalHistoryProof: string[];
   nonOwnerHarnessProof: string[];
   realNonOwnerProof: string[];
+  internalOwnerAliasProof: string[];
   ownerAndTestExclusionProof: string[];
 }
 
@@ -43,11 +44,11 @@ const DO_NOT_TOUCH =
   'UI polish, Stripe, paid generation, owner-only proof, fake users.';
 
 const GATE_9A_CONNECTION_PROOF_NEXT_MOVE =
-  'Record current real non-owner connection proof before evaluating first-run activation.';
+  'Get one real non-owner tester account with connected Google or Microsoft before evaluating first-run activation.';
 const GATE_9A_VALUE_NEXT_MOVE =
   'Prove the real non-owner reaches a clear first-run state with source counts, reason, and next action, or a source-backed move.';
 const GATE_9_FULL_BETA_NEXT_MOVE =
-  'Use the proven micro1 non-owner path only after it produces a source-backed action or explicit tester feedback.';
+  'Get one real non-owner tester account with connected Google or Microsoft and either a source-backed action or explicit tester feedback.';
 
 function shortSha(sha: string | null): string {
   if (!sha) return 'UNKNOWN';
@@ -117,8 +118,14 @@ function requireReservedUserExclusionProof(
   }
 }
 
+function isDisallowedRealBetaProofLine(line: string): boolean {
+  return /micro1|brandon|owner-alias|owner alias|owner_user_id|test_user_id|owner_canary_user_ids|synthetic|fixture|mock|fake/i.test(
+    line,
+  );
+}
+
 function hasRealNonOwnerSourceBackedMoveProof(proof: string[]): boolean {
-  const text = proof.join('\n').toLowerCase();
+  const text = proof.filter((line) => !isDisallowedRealBetaProofLine(line)).join('\n').toLowerCase();
   if (!text.includes('real non-owner')) return false;
 
   return (
@@ -129,7 +136,7 @@ function hasRealNonOwnerSourceBackedMoveProof(proof: string[]): boolean {
 }
 
 function hasClearRealNonOwnerFirstRunProof(proof: string[]): boolean {
-  const text = proof.join('\n').toLowerCase();
+  const text = proof.filter((line) => !isDisallowedRealBetaProofLine(line)).join('\n').toLowerCase();
   if (!text.includes('real non-owner')) return false;
 
   return (
@@ -149,15 +156,12 @@ function hasClearRealNonOwnerValueProof(proof: string[]): boolean {
 }
 
 function hasExplicitRealNonOwnerTesterFeedbackProof(proof: string[]): boolean {
-  const text = proof.join('\n').toLowerCase();
+  const text = proof.filter((line) => !isDisallowedRealBetaProofLine(line)).join('\n').toLowerCase();
   if (!text.includes('explicit tester feedback')) return false;
   if (!text.includes('real non-owner tester')) return false;
   if (!/waiting state|no-safe state|readiness state/.test(text)) return false;
   if (!text.includes('understandable')) return false;
   if (!text.includes('useful enough to keep trusting foldera')) return false;
-  if (/owner_user_id|test_user_id|owner_canary_user_ids|synthetic|fixture|mock|fake/.test(text)) {
-    return false;
-  }
   return true;
 }
 
@@ -422,20 +426,23 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
         ),
   );
 
-  const hasRealNonOwnerProof = evidence.realNonOwnerProof.length > 0;
-  const hasRealNonOwnerValueProof = hasClearRealNonOwnerValueProof(evidence.realNonOwnerProof);
+  const eligibleRealNonOwnerProof = evidence.realNonOwnerProof.filter(
+    (line) => !isDisallowedRealBetaProofLine(line),
+  );
+  const hasRealNonOwnerProof = eligibleRealNonOwnerProof.length > 0;
+  const hasRealNonOwnerValueProof = hasClearRealNonOwnerValueProof(eligibleRealNonOwnerProof);
   const hasRealNonOwnerSourceBackedProof = hasRealNonOwnerSourceBackedMoveProof(
-    evidence.realNonOwnerProof,
+    eligibleRealNonOwnerProof,
   );
   const hasRealNonOwnerTesterFeedbackProof = hasExplicitRealNonOwnerTesterFeedbackProof(
-    evidence.realNonOwnerProof,
+    eligibleRealNonOwnerProof,
   );
   gates.push(
     hasRealNonOwnerValueProof
       ? passGate(
           'GATE_9A_FIRST_RUN_ACTIVATION',
           'micro1/current real non-owner reached a useful no-paid first-run state or source-backed move.',
-          evidence.realNonOwnerProof,
+          eligibleRealNonOwnerProof,
           'Continue to real beta repeatability proof without calling this full beta success.',
         )
       : failGate(
@@ -443,14 +450,17 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
           hasRealNonOwnerProof
             ? 'Real non-owner connection exists, but first-run value proof is incomplete.'
             : 'Current handoff is missing real non-owner connection proof.',
-          hasRealNonOwnerProof ? evidence.realNonOwnerProof : [],
+          hasRealNonOwnerProof ? eligibleRealNonOwnerProof : [],
           hasRealNonOwnerProof
             ? [
                 'Real non-owner must reach a clear first-run state with source counts, reason, and next action, or a source-backed move.',
                 'Token-only, welcome-email-only, and unprocessed-signal-only proof cannot pass GATE_9.',
               ]
             : [
-                'Current handoff must record the real non-owner production auth user and connected Google or Microsoft token.',
+                'Current handoff must record one real non-owner tester account with connected Google or Microsoft.',
+                ...(evidence.internalOwnerAliasProof.length > 0
+                  ? ['micro1/owner-alias proof is internal only and cannot satisfy real non-owner beta.']
+                  : []),
                 'No fake rows, OWNER_USER_ID, TEST_USER_ID, OWNER_CANARY_USER_IDS, or mock harness may count as real beta proof.',
                 'Token-only, welcome-email-only, and unprocessed-signal-only proof cannot pass GATE_9A.',
               ],
@@ -466,7 +476,7 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
           hasRealNonOwnerSourceBackedProof
             ? 'Real non-owner reached a source-backed move with source trail and controls.'
             : 'Real non-owner tester explicitly confirmed the waiting state was understandable and useful enough to keep trusting Foldera.',
-          evidence.realNonOwnerProof,
+          eligibleRealNonOwnerProof,
           'Continue to repeatability and tester-feedback proof.',
         )
       : failGate(
@@ -474,16 +484,19 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
           hasRealNonOwnerValueProof
             ? 'Full beta proof still requires source-backed action or explicit tester feedback after first-run activation.'
             : 'GATE_9A first-run activation is not proven in the current handoff.',
-          hasRealNonOwnerValueProof ? evidence.realNonOwnerProof : [],
+          hasRealNonOwnerValueProof ? eligibleRealNonOwnerProof : [],
           hasRealNonOwnerValueProof
             ? [
                 'First-run activation is useful but is not full beta success.',
                 'Full beta proof requires either: real non-owner source-backed action with source trail and safe controls, or explicit tester feedback: real non-owner tester said the waiting state was understandable and useful enough to keep trusting Foldera.',
               ]
             : [
-                'Current handoff must prove GATE_9A first-run activation before full beta proof can be evaluated.',
-                'No fake rows, OWNER_USER_ID, TEST_USER_ID, OWNER_CANARY_USER_IDS, or mock harness may count as real beta proof.',
-              ],
+              'Current handoff must prove GATE_9A first-run activation before full beta proof can be evaluated.',
+              ...(evidence.internalOwnerAliasProof.length > 0
+                ? ['micro1/owner-alias proof is internal only and cannot satisfy GATE_9_REAL_NON_OWNER_BETA.']
+                : []),
+              'No fake rows, OWNER_USER_ID, TEST_USER_ID, OWNER_CANARY_USER_IDS, or mock harness may count as real beta proof.',
+            ],
           hasRealNonOwnerValueProof ? GATE_9_FULL_BETA_NEXT_MOVE : GATE_9A_CONNECTION_PROOF_NEXT_MOVE,
           'BLOCKED_EXTERNAL',
         ),
@@ -625,6 +638,14 @@ export async function gatherReleaseGateEvidence(
         line,
       ) || /^-?\s*explicit tester feedback: real non-owner tester/i.test(line),
     );
+  const internalOwnerAliasProof = activeHandoffText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(
+      (line) =>
+        /owner-alias/i.test(line) ||
+        /micro1 is Brandon-controlled and is internal owner-alias proof only/i.test(line),
+    );
 
   return {
     gitMainSha,
@@ -668,6 +689,7 @@ export async function gatherReleaseGateEvidence(
       'NON_OWNER_BETA_HARNESS_MAP.md labels mock-only proof; harness uses a reserved-safe non-owner mock identity.',
     ),
     realNonOwnerProof: realNonOwnerHandoffProof,
+    internalOwnerAliasProof,
     ownerAndTestExclusionProof: [
       ...proofIf(ownerExcluded, 'lib/cron/acceptance-gate.ts has .neq(user_id, OWNER_USER_ID).'),
       ...proofIf(testExcluded, 'lib/cron/acceptance-gate.ts has .neq(user_id, TEST_USER_ID).'),

@@ -24,7 +24,8 @@ Current visual gate: QG_11_VISUAL_FRONTEND_QUALITY PASS
 - The Today card keeps exactly one next connector visible. Unsupported future connectors are labeled as `Next unlock`, not fake-working connect controls.
 - `You're clear right now` is now guarded by earned coverage and uses the locked relief sentence; thin graphs still say `Fix this first`.
 - Existing source trail, Save, Skip, Approve, history, and no-send behavior remain intact.
-- Real non-owner clear no-safe state (micro1): connected source Google; `signal_count=111`; `processed_signal_count=111`; `unprocessed_signal_count=0`; reason=no current Tier 1 or Tier 2 candidate proved a fresh, grounded discrepancy; next_action=ask tester feedback or wait for stronger evidence; nothing_sent=true.
+- micro1 is Brandon-controlled and is internal owner-alias proof only. It cannot satisfy `GATE_9_REAL_NON_OWNER_BETA`.
+- owner-alias clear no-safe state (micro1): connected source Google; `signal_count=111`; `processed_signal_count=111`; `unprocessed_signal_count=0`; reason=no current Tier 1 or Tier 2 candidate proved a fresh, grounded discrepancy; next_action=ask tester feedback or wait for stronger evidence; nothing_sent=true.
 - Full `GATE_9_REAL_NON_OWNER_BETA` can now close through either explicit proof branch only:
   - `real non-owner source-backed move` with source trail plus safe controls/history
   - `explicit tester feedback: real non-owner tester` saying the waiting state was understandable and useful enough to keep trusting Foldera
@@ -48,7 +49,7 @@ Current visual gate: QG_11_VISUAL_FRONTEND_QUALITY PASS
 
 ## Next exact move
 
-Stop this slice here. The next live blocker is still external beta proof: capture either a real non-owner source-backed move or the exact explicit tester-feedback proof line above.
+Stop this slice here. The next live blocker is still external beta proof: get one real non-owner tester account with connected Google or Microsoft and capture either a real non-owner source-backed move or the exact explicit tester-feedback proof line above.
 
 ## Do Not Touch
 

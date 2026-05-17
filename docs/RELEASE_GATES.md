@@ -142,7 +142,7 @@ This gate proves first-run activation only. It is not full beta success.
 
 Pass requires:
 
-- the proven real non-owner connection from GATE_9A
+- a proven real non-owner tester connection from GATE_9A
 - no fake rows
 - no `OWNER_USER_ID`
 - no `TEST_USER_ID`
@@ -160,17 +160,19 @@ Until that proof exists, this gate must remain:
 ```text
 STATUS: BLOCKED_EXTERNAL
 REASON: First-run activation is useful but is not full beta success.
-NEXT_MOVE: Use the proven micro1 non-owner path only after it produces a source-backed action or explicit tester feedback.
+NEXT_MOVE: Get one real non-owner tester account with connected Google or Microsoft and either a source-backed action or explicit tester feedback.
 DO_NOT_TOUCH: UI polish, Stripe, paid generation, owner-only proof, fake users.
 ```
 
 ## Current Release Truth
 
-As of this controller slice, local and mock proof carries Foldera through GATE_8, and micro1 satisfies the real non-owner connection plus no-paid first-run activation proof for GATE_9A: production auth user, not `OWNER_USER_ID`, not `TEST_USER_ID`, connected Google token, and clear source-readiness state.
+micro1 is Brandon-controlled and is internal owner-alias proof only. It cannot satisfy `GATE_9_REAL_NON_OWNER_BETA`.
+
+As of this controller slice, local and mock proof carries Foldera through GATE_8. Internal owner-alias proof may be recorded separately for readiness, but only a true external tester can satisfy real non-owner beta.
 
 The first failing release gate remains GATE_9 because first-run waiting value is not full beta success. The remaining blocker is not user acquisition; it is either:
 
-- source-backed action for micro1 or the same proven non-owner path
+- source-backed action from a real non-owner tester
 - explicit tester feedback that the first-run waiting/readiness state is understandable and useful
 
 Mock harness proof is useful release preparation. It is not beta readiness.

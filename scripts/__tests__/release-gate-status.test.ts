@@ -41,6 +41,7 @@ const BASE_EVIDENCE: ReleaseGateEvidence = {
     'tests/e2e/non-owner-beta-harness.spec.ts uses non-owner reserved-safe harness identity',
   ],
   realNonOwnerProof: [],
+  internalOwnerAliasProof: [],
   ownerAndTestExclusionProof: [
     'lib/cron/acceptance-gate.ts has .neq("user_id", OWNER_USER_ID)',
     'lib/cron/acceptance-gate.ts has .neq("user_id", TEST_USER_ID)',
@@ -59,7 +60,7 @@ describe('release gate status', () => {
       'Current handoff is missing real non-owner connection proof.',
     );
     expect(report.firstFailingGate.nextMove).toBe(
-      'Record current real non-owner connection proof before evaluating first-run activation.',
+      'Get one real non-owner tester account with connected Google or Microsoft before evaluating first-run activation.',
     );
     expect(report.firstFailingGate.doNotTouch).toContain('paid generation');
   });
@@ -74,7 +75,7 @@ describe('release gate status', () => {
       'REASON: Current handoff is missing real non-owner connection proof.',
     );
     expect(formatted).toContain(
-      'NEXT_MOVE: Record current real non-owner connection proof before evaluating first-run activation.',
+      'NEXT_MOVE: Get one real non-owner tester account with connected Google or Microsoft before evaluating first-run activation.',
     );
     expect(formatted).toContain(
       'DO_NOT_TOUCH: UI polish, Stripe, paid generation, owner-only proof, fake users.',
@@ -195,11 +196,52 @@ describe('release gate status', () => {
     expect(report.firstFailingGate.id).toBe('GATE_9_REAL_NON_OWNER_BETA');
     expect(report.firstFailingGate.status).toBe('BLOCKED_EXTERNAL');
     expect(report.firstFailingGate.nextMove).toBe(
-      'Use the proven micro1 non-owner path only after it produces a source-backed action or explicit tester feedback.',
+      'Get one real non-owner tester account with connected Google or Microsoft and either a source-backed action or explicit tester feedback.',
     );
     const formatted = formatReleaseGateReport(report);
     expect(formatted).not.toContain('Get one real tester');
     expect(formatted).not.toContain('No real connected non-owner account exists');
+  });
+
+  it('does not treat micro1 owner-alias proof as real non-owner beta proof', () => {
+    const report = buildReleaseGateReport({
+      ...BASE_EVIDENCE,
+      realNonOwnerProof: [
+        'real non-owner first-run state (micro1): connected source Google; signal_count=6; processed_signal_count=6; unprocessed_signal_count=0; reason=no safe move yet; next_action=wait for stronger evidence; nothing_sent=true',
+      ],
+      internalOwnerAliasProof: [
+        'owner-alias first-run state (micro1): connected source Google; signal_count=6; processed_signal_count=6; unprocessed_signal_count=0; reason=no safe move yet; next_action=wait for stronger evidence; nothing_sent=true',
+      ],
+    });
+
+    expect(report.firstFailingGate.id).toBe('GATE_9A_FIRST_RUN_ACTIVATION');
+    expect(formatReleaseGateReport(report)).toContain(
+      'micro1/owner-alias proof is internal only',
+    );
+  });
+
+  it('does not pass full GATE_9 from micro1 explicit feedback or Brandon-controlled alias proof', () => {
+    const micro1FeedbackReport = buildReleaseGateReport({
+      ...BASE_EVIDENCE,
+      realNonOwnerProof: [
+        'explicit tester feedback: real non-owner tester micro1 said the waiting state was understandable and useful enough to keep trusting Foldera.',
+      ],
+      internalOwnerAliasProof: [
+        'explicit tester feedback: owner-alias tester micro1 said the waiting state was understandable and useful enough to keep trusting Foldera.',
+      ],
+    });
+    const ownerAliasActionReport = buildReleaseGateReport({
+      ...BASE_EVIDENCE,
+      realNonOwnerProof: [
+        'real non-owner source-backed move: Brandon-controlled alias; source trail visible; save/skip/approve/history controls visible; next_action=Save the verified move.',
+      ],
+      internalOwnerAliasProof: [
+        'owner-alias source-backed move (micro1): source trail visible; save/skip/approve/history controls visible; next_action=Save the verified move.',
+      ],
+    });
+
+    expect(micro1FeedbackReport.firstFailingGate.id).toBe('GATE_9A_FIRST_RUN_ACTIVATION');
+    expect(ownerAliasActionReport.firstFailingGate.id).toBe('GATE_9A_FIRST_RUN_ACTIVATION');
   });
 
   it('passes full GATE_9 from explicit real non-owner tester feedback about the waiting state', () => {
