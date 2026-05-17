@@ -6936,5 +6936,5 @@ pm run build.
 - MODE: CI-only follow-up for the newly-added pre-beta gate; no product code or gate semantics changed.
 - Files changed: `tests/config/__tests__/google-oauth-redirects.test.ts`, `SESSION_HISTORY.md`.
 - What changed: Replaced stale release-doc assertions that still expected obsolete micro1/GATE_9 wording with the current pre-beta threshold and owner-alias truth.
-- Verification: The formerly failing `tests/config/__tests__/google-oauth-redirects.test.ts` passed, then `npm run test:ci:unit` passed across the full unit lane.
+- Verification: The formerly failing `tests/config/__tests__/google-oauth-redirects.test.ts` passed, then `npm run test:ci:unit` passed across the full unit lane. Existing frontend proof remains recorded by `npm run gate:frontend`: screenshot matrix, interaction matrix, banned-copy audit, layout contract, and production current screenshots.
 - Unresolved issues: The product blocker is unchanged: deployed first-run proof still has to satisfy `PRE_BETA_READINESS_THRESHOLD` before any external tester handoff.
