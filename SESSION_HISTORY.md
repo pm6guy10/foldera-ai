@@ -6930,3 +6930,11 @@ pm run build.
 - What changed: Added the missing `PRE_BETA_READINESS_THRESHOLD` rung between mock harness proof and external beta. `npm run gate:status` now blocks before tester recruitment unless the deployed first-run path proves honest Today behavior, source-coverage governance, thin/clear-state honesty, intact safe controls, and the explicit tester-facing expectation. Owner-alias proof remains internal-only and cannot satisfy the new threshold.
 - Verification: Red-first release-gate tests failed on the missing rung, then passed after the controller change. `npm run health` passed with `RESULT: 0 FAILING`; `npm run gate:status` now stops at `PRE_BETA_READINESS_THRESHOLD`; `npm run gate:quality` passed with `QG_10_ARTIFACT_QUALITY`; `npm run gate:visual` passed with `QG_11_VISUAL_FRONTEND_QUALITY`; `npm run gate:frontend` passed with the 27-screenshot matrix plus interaction/banned-copy/layout audits; `npm run build` passed; `npm run lint` passed.
 - Unresolved issues: The live deployed first-run path has not yet satisfied `PRE_BETA_READINESS_THRESHOLD`; Foldera must not route to external non-owner beta until that threshold is proven.
+
+## 2026-05-17 - PRE_BETA_READINESS_THRESHOLD CI receipt repair
+
+- MODE: CI-only follow-up for the newly-added pre-beta gate; no product code or gate semantics changed.
+- Files changed: `tests/config/__tests__/google-oauth-redirects.test.ts`, `SESSION_HISTORY.md`.
+- What changed: Replaced stale release-doc assertions that still expected obsolete micro1/GATE_9 wording with the current pre-beta threshold and owner-alias truth.
+- Verification: The formerly failing `tests/config/__tests__/google-oauth-redirects.test.ts` passed, then `npm run test:ci:unit` passed across the full unit lane.
+- Unresolved issues: The product blocker is unchanged: deployed first-run proof still has to satisfy `PRE_BETA_READINESS_THRESHOLD` before any external tester handoff.
