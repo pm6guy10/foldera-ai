@@ -45,6 +45,8 @@ const DO_NOT_TOUCH =
 
 const GATE_9A_CONNECTION_PROOF_NEXT_MOVE =
   'Get one real non-owner tester account with connected Google or Microsoft before evaluating first-run activation.';
+const PRE_BETA_READINESS_NEXT_MOVE =
+  'Prove the deployed first-run path is stable, honest, and tester-safe before routing to external beta.';
 const GATE_9A_VALUE_NEXT_MOVE =
   'Prove the real non-owner reaches a clear first-run state with source counts, reason, and next action, or a source-backed move.';
 const GATE_9_FULL_BETA_NEXT_MOVE =
@@ -165,12 +167,36 @@ function hasExplicitRealNonOwnerTesterFeedbackProof(proof: string[]): boolean {
   return true;
 }
 
+function hasDeployedPreBetaReadinessProof(activeHandoffText: string): boolean {
+  const text = activeHandoffText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => !isDisallowedRealBetaProofLine(line))
+    .join('\n')
+    .toLowerCase();
+
+  return (
+    text.includes('deployed pre-beta readiness proof') &&
+    /new tester can connect google or microsoft and reach one honest today answer/.test(text) &&
+    /today answer is governed by source coverage/.test(text) &&
+    /thin graphs show fix this first/.test(text) &&
+    /earned clear state requires sufficient coverage/.test(text) &&
+    /source trail, no-send boundary, save\/skip\/approve\/history, and next unlock remain intact/.test(
+      text,
+    ) &&
+    /tester-facing expectation: foldera may show do this, you[’']re clear right now, or fix this first/.test(
+      text,
+    )
+  );
+}
+
 function buildGate0(evidence: ReleaseGateEvidence): ReleaseGateResult {
   const proofFound: string[] = [];
   const proofMissing: string[] = [];
   const handoffNamesGate =
     evidence.activeHandoffText.includes('Current release gate: GATE_9_REAL_NON_OWNER_BETA') ||
-    evidence.activeHandoffText.includes('Current release gate: GATE_9A_FIRST_RUN_ACTIVATION');
+    evidence.activeHandoffText.includes('Current release gate: GATE_9A_FIRST_RUN_ACTIVATION') ||
+    evidence.activeHandoffText.includes('Current release gate: PRE_BETA_READINESS_THRESHOLD');
   const handoffNamesBlockedGate =
     evidence.activeHandoffText.includes('First failing release gate: GATE_9_REAL_NON_OWNER_BETA') &&
     evidence.activeHandoffText.includes('Release gate status: BLOCKED_EXTERNAL');
@@ -180,9 +206,16 @@ function buildGate0(evidence: ReleaseGateEvidence): ReleaseGateResult {
   const handoffNamesFirstRunActivationGate =
     evidence.activeHandoffText.includes('Current release gate: GATE_9A_FIRST_RUN_ACTIVATION') &&
     evidence.activeHandoffText.includes('First failing release gate: GATE_9_REAL_NON_OWNER_BETA');
+  const handoffNamesPreBetaGate =
+    evidence.activeHandoffText.includes('Current release gate: PRE_BETA_READINESS_THRESHOLD') &&
+    evidence.activeHandoffText.includes('First failing release gate: PRE_BETA_READINESS_THRESHOLD') &&
+    evidence.activeHandoffText.includes('Release gate status: BLOCKED_EXTERNAL');
   const handoffMatchesReleaseGate =
     handoffNamesGate &&
-    (handoffNamesBlockedGate || handoffNamesPassedGate || handoffNamesFirstRunActivationGate);
+    (handoffNamesBlockedGate ||
+      handoffNamesPassedGate ||
+      handoffNamesFirstRunActivationGate ||
+      handoffNamesPreBetaGate);
 
   if (evidence.gitMainSha) proofFound.push(`GitHub/main SHA known: ${evidence.gitMainSha}`);
   else proofMissing.push('GitHub/main SHA must be known');
@@ -423,6 +456,31 @@ export function buildReleaseGateReport(evidence: ReleaseGateEvidence): ReleaseGa
           'GATE_8_NON_OWNER_HARNESS',
           'Mock non-owner harness exists and is explicitly labeled mock-only.',
           gate8Found,
+        ),
+  );
+
+  const hasPreBetaReadinessProof = hasDeployedPreBetaReadinessProof(evidence.activeHandoffText);
+  gates.push(
+    hasPreBetaReadinessProof
+      ? passGate(
+          'PRE_BETA_READINESS_THRESHOLD',
+          'Deployed first-run readiness is proven before external beta.',
+          [
+            'ACTIVE_HANDOFF.md records deployed first-run proof for honest Today states, source-coverage governance, intact safe controls, and the tester-facing expectation.',
+          ],
+        )
+      : failGate(
+          'PRE_BETA_READINESS_THRESHOLD',
+          'Deployed first-run readiness is not yet proven for external testers.',
+          evidence.internalOwnerAliasProof.length > 0
+            ? ['micro1/owner-alias proof is internal only and cannot satisfy pre-beta readiness.']
+            : [],
+          [
+            'ACTIVE_HANDOFF.md must record deployed pre-beta readiness proof for the first-run path before external beta.',
+            'Required proof: connect Google or Microsoft, reach one honest Today answer, source coverage governs the claim, thin graphs say Fix this first, earned clear state requires sufficient coverage, and safe controls remain intact.',
+          ],
+          PRE_BETA_READINESS_NEXT_MOVE,
+          'BLOCKED_EXTERNAL',
         ),
   );
 

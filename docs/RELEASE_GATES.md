@@ -113,6 +113,20 @@ Pass requires mock non-owner coverage for:
 
 Mock proof must be clearly labeled as mock only.
 
+### PRE_BETA_READINESS_THRESHOLD
+
+Pass requires deployed first-run proof that:
+
+- a new tester can connect Google or Microsoft and immediately reach one honest Today answer
+- Today is governed by source coverage
+- thin graphs show `Fix this first`
+- earned clear states require sufficient coverage
+- source trail, no-send boundary, Save/Skip/Approve/history, and `Next unlock` remain intact
+- the tester-facing expectation is explicit: Foldera may show `Do this`, `You're clear right now`, or `Fix this first`
+- owner-alias, fake, synthetic, and mocked proof cannot satisfy this gate
+
+Until this threshold passes, `npm run gate:status` must stop here and must not tell the operator to recruit an external tester yet.
+
 ### GATE_9A_FIRST_RUN_ACTIVATION
 
 Pass requires:
@@ -168,11 +182,11 @@ DO_NOT_TOUCH: UI polish, Stripe, paid generation, owner-only proof, fake users.
 
 micro1 is Brandon-controlled and is internal owner-alias proof only. It cannot satisfy `GATE_9_REAL_NON_OWNER_BETA`.
 
-As of this controller slice, local and mock proof carries Foldera through GATE_8. Internal owner-alias proof may be recorded separately for readiness, but only a true external tester can satisfy real non-owner beta.
+As of this controller slice, local and mock proof carries Foldera through GATE_8. Internal owner-alias proof may be recorded separately, but it cannot satisfy `PRE_BETA_READINESS_THRESHOLD` or real non-owner beta.
 
-The first failing release gate remains GATE_9 because first-run waiting value is not full beta success. The remaining blocker is not user acquisition; it is either:
+The first failing release gate is `PRE_BETA_READINESS_THRESHOLD` until the deployed first-run path proves it is stable, honest, and tester-safe. Only after that gate passes should the controller move on to:
 
-- source-backed action from a real non-owner tester
-- explicit tester feedback that the first-run waiting/readiness state is understandable and useful
+- `GATE_9A_FIRST_RUN_ACTIVATION`
+- then, later, either a source-backed action from a real non-owner tester or explicit tester feedback that the first-run waiting/readiness state is understandable and useful
 
 Mock harness proof is useful release preparation. It is not beta readiness.
