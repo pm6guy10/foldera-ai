@@ -1,15 +1,15 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-16 19:41 PT
-Current slice: GATE_9 owner-alias correction receipt hygiene.
+Last updated: 2026-05-17 06:10 PT
+Current slice: Gate-first release truth refresh.
 Current mode: Receipt-only alignment pass; no product code, gate logic, source coverage, schema, paid generation, outbound email, Stripe, or beta-proof substitution.
-Current `origin/main` SHA at handoff update time: `9a1d58e5f60392d8336d29b61888e7d23516bd75`.
-Latest commit kind: product/runtime commit.
+Current `origin/main` SHA at handoff update time: `4b17e91db586f793c982ff0732133e4b69b4cfcf`.
+Latest commit kind: receipt-only commit.
 Last verified runtime/product SHA: `9a1d58e5f60392d8336d29b61888e7d23516bd75`.
 Latest receipt/docs status: receipt-only self-SHA intentionally not embedded; external readback is required after push.
-GitHub Actions for the verified product/runtime head: PASS for `9a1d58e5f60392d8336d29b61888e7d23516bd75`.
-Latest verified Vercel production deployment: `dpl_5jrfevGK7cidby5MvgkmSK5V5SDB`, READY for `9a1d58e5f60392d8336d29b61888e7d23516bd75`.
-Production `/api/health` for the verified product/runtime head: `status=ok`, `build=9a1d58e`, `revision.git_sha=9a1d58e5f60392d8336d29b61888e7d23516bd75`, `deployment_id=dpl_5jrfevGK7cidby5MvgkmSK5V5SDB`.
+GitHub Actions for the latest `origin/main` head: external readback required for `4b17e91db586f793c982ff0732133e4b69b4cfcf`.
+Latest verified Vercel production deployment: `dpl_6XNdjJpmh1eozgnu4Awsib8QWWdQ`, READY for `4b17e91db586f793c982ff0732133e4b69b4cfcf`.
+Production `/api/health` for the latest `origin/main` head: `status=ok`, `build=4b17e91`, `revision.git_sha=4b17e91db586f793c982ff0732133e4b69b4cfcf`, `deployment_id=dpl_6XNdjJpmh1eozgnu4Awsib8QWWdQ`.
 Current release gate: GATE_9A_FIRST_RUN_ACTIVATION
 First failing release gate: GATE_9A_FIRST_RUN_ACTIVATION
 Release gate status: BLOCKED_EXTERNAL
@@ -36,7 +36,7 @@ Current visual gate: QG_11_VISUAL_FRONTEND_QUALITY PASS
 - Red-first focused proof caught the missing operating-law cases, then the source-coverage / source-readiness / dashboard model suite passed (`20/20`).
 - Focused browser proof passed: non-owner harness (`4/4`) now covers thin coverage, earned clear state, and the existing source-backed approval/history path.
 - `npm run health`: PASS, `RESULT: 0 FAILING`.
-- `npm run gate:status`: `GATE_9_REAL_NON_OWNER_BETA` remains `BLOCKED_EXTERNAL`.
+- `npm run gate:status`: `GATE_0_LIVE_TRUTH` failed only because this handoff still named the prior shipped head; live GitHub/Vercel/health truth now reads `4b17e91db586f793c982ff0732133e4b69b4cfcf`.
 - `npm run gate:quality`: PASS.
 - `npm run gate:visual`: PASS.
 - `npm run gate:frontend`: screenshot matrix `27/27`, interaction matrix, banned-copy audit, and layout contract all passed; production current screenshots were not newly claimed in this local product-law pass.

@@ -6914,3 +6914,11 @@ pm run build.
 - Files changed: `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
 - Verification: `npm run gate:status`; production `/api/health`; `npm run health`; `npm run build`; `npm run lint`.
 - Remaining blocker: get one true external non-owner tester with connected Google or Microsoft.
+
+## 2026-05-17 - Gate-first release truth refresh
+
+- MODE: Release truth only; no product code, UI polish, schema, paid generation, outbound email, Stripe, fake users, owner data as beta proof, or fake beta proof.
+- Files changed: `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Refreshed the handoff from the prior verified runtime head to the current receipt-only `origin/main` head `4b17e91db586f793c982ff0732133e4b69b4cfcf` after live release truth showed GitHub/main, Vercel production, and production `/api/health` already agreed there. Preserved the prior verified runtime/product SHA separately and kept the real external beta blocker intact.
+- Verification: `npm run health` passed with `RESULT: 0 FAILING`; `npm run gate:status` failed first at `GATE_0_LIVE_TRUTH` because `ACTIVE_HANDOFF.md` still named the older SHA; `npm run gate:quality` passed with `QG_10_ARTIFACT_QUALITY`; `npm run gate:visual` passed with `QG_11_VISUAL_FRONTEND_QUALITY`; live production `/api/health` returned `revision.git_sha=4b17e91db586f793c982ff0732133e4b69b4cfcf`, `build=4b17e91`, and `deployment_id=dpl_6XNdjJpmh1eozgnu4Awsib8QWWdQ`; Vercel deployment `dpl_6XNdjJpmh1eozgnu4Awsib8QWWdQ` was READY for the same SHA.
+- Unresolved issues: Final GitHub Actions readback for the exact pushed receipt commit is still required after push. Once release truth is aligned, the next failing release gate remains the genuinely external non-owner beta proof rung.
