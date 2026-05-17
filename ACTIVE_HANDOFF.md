@@ -1,17 +1,17 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-16 14:57 PT
-Current slice: Signal Faucet Operator Lock.
-Current mode: Direct-build operating-law pass; no broad integrations, dashboard redesign, paid generation, outbound email, Stripe, fake source data, owner/test-user beta proof, or schema change.
-Current `origin/main` SHA at handoff update time: `2339985466b83dcc36c80be675060fad858ce193`.
+Last updated: 2026-05-16 19:41 PT
+Current slice: GATE_9 owner-alias correction receipt hygiene.
+Current mode: Receipt-only alignment pass; no product code, gate logic, source coverage, schema, paid generation, outbound email, Stripe, or beta-proof substitution.
+Current `origin/main` SHA at handoff update time: `9a1d58e5f60392d8336d29b61888e7d23516bd75`.
 Latest commit kind: product/runtime commit.
-Last verified runtime/product SHA: `2339985466b83dcc36c80be675060fad858ce193`.
+Last verified runtime/product SHA: `9a1d58e5f60392d8336d29b61888e7d23516bd75`.
 Latest receipt/docs status: receipt-only self-SHA intentionally not embedded; external readback is required after push.
-GitHub Actions for the verified product/runtime head: PASS (`CI` #328 and #1047, `Health Gate` #651, `semgrep` #1546, `Deploy to Vercel` #1021/#1022, `Production E2E` #1234).
-Latest verified Vercel production deployment: `dpl_DeTyf8doaYWR94HYKnJe8eTM3A3s`, READY for `2339985466b83dcc36c80be675060fad858ce193`.
-Production `/api/health` for the verified product/runtime head: `status=ok`, `build=2339985`, `revision.git_sha=2339985466b83dcc36c80be675060fad858ce193`, `deployment_id=dpl_DeTyf8doaYWR94HYKnJe8eTM3A3s`.
-Current release gate: GATE_9_REAL_NON_OWNER_BETA
-First failing release gate: GATE_9_REAL_NON_OWNER_BETA
+GitHub Actions for the verified product/runtime head: PASS for `9a1d58e5f60392d8336d29b61888e7d23516bd75`.
+Latest verified Vercel production deployment: `dpl_5jrfevGK7cidby5MvgkmSK5V5SDB`, READY for `9a1d58e5f60392d8336d29b61888e7d23516bd75`.
+Production `/api/health` for the verified product/runtime head: `status=ok`, `build=9a1d58e`, `revision.git_sha=9a1d58e5f60392d8336d29b61888e7d23516bd75`, `deployment_id=dpl_5jrfevGK7cidby5MvgkmSK5V5SDB`.
+Current release gate: GATE_9A_FIRST_RUN_ACTIVATION
+First failing release gate: GATE_9A_FIRST_RUN_ACTIVATION
 Release gate status: BLOCKED_EXTERNAL
 Current quality gate: QG_10_ARTIFACT_QUALITY PASS
 Current visual gate: QG_11_VISUAL_FRONTEND_QUALITY PASS

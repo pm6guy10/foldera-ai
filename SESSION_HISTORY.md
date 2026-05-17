@@ -6908,3 +6908,9 @@ pm run build.
 - Verification: Red-first release-gate tests now reject micro1 first-run proof, micro1 feedback, Brandon-controlled alias action proof, reserved owner/test identities, and fake/synthetic proof while preserving pass paths for a real external tester action or explicit feedback.
 - Unresolved issues: `GATE_9_REAL_NON_OWNER_BETA` still needs one true external tester with connected Google or Microsoft plus either a real source-backed action or explicit tester feedback.
 
+## 2026-05-16 - ACTIVE_HANDOFF topline receipt hygiene
+
+- Aligned the handoff header with the shipped owner-alias correction and live production truth: `micro1` remains Brandon-controlled/internal only, production is live on `9a1d58e5f60392d8336d29b61888e7d23516bd75`, and the first failing gate is `GATE_9A_FIRST_RUN_ACTIVATION`.
+- Files changed: `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- Verification: `npm run gate:status`; production `/api/health`; `npm run health`; `npm run build`; `npm run lint`.
+- Remaining blocker: get one true external non-owner tester with connected Google or Microsoft.
