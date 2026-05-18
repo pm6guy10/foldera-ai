@@ -6947,4 +6947,12 @@ pm run build.
 - Verification: Docs-only update; no product/runtime gate execution required for acceptance.
 - Unresolved issues: None for this docs-only reconciliation slice.
 
+## 2026-05-18 - Docs-only PR-stop rule hardening
+
+- MODE: Docs-only operating-rule update; no product code, backend, frontend, schema, Stripe, Supabase, auth, or dependency changes.
+- Files changed: `CODEX_START.md`, `SYSTEM_RUNBOOK.md`, `SESSION_HISTORY.md`.
+- What changed: Added an explicit default stop rule that Codex may not stop at PR opened when checks/merge/production verification are still available. The rule now requires waiting for GitHub/Vercel checks, fixing only exact red checks, merging (or enabling auto-merge) once green, and verifying production `/api/health` SHA matches latest `main` before reporting `DONE`. Added explicit `BLOCKED` exception language for pending/unstable/permission/external blockers.
+- Verification: `npm run lint`.
+- Unresolved issues: None for this docs-only rule update.
+
 
