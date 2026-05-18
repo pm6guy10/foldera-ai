@@ -37,6 +37,14 @@ Controllers and gates are truth selectors, not replacements for GitHub issue/PR 
 - Frontend/dashboard issue PRs require screenshots directly in PR body/comments.
 - After merge, verify production `/api/health` SHA equals latest `main` before calling it live.
 - Source-truth docs are receipts and contracts; they do not justify broad autonomous multi-seam work.
+- Default stop condition: do not stop at PR opened.
+- After PR opens:
+  1. Wait for GitHub and Vercel checks.
+  2. If red, fix only the exact failing check.
+  3. If green, enable auto-merge or merge.
+  4. After merge, verify production `/api/health` SHA matches latest `main`.
+  5. Only then report `DONE`.
+- Exception: if checks are still pending, GitHub/Vercel is unstable, merge is blocked, permissions block merge, or another external system blocks completion, report `BLOCKED` with the exact pending/blocking check and stop.
 
 ## Source-of-Truth Boundaries
 - `FOLDERA_OPERATING_SYSTEM.md` defines canonical product doctrine and worldview.
