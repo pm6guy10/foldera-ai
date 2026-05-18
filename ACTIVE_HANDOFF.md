@@ -51,7 +51,7 @@ Current visual gate: QG_11_VISUAL_FRONTEND_QUALITY PASS
 - `npm run gate:status`: `PRE_BETA_READINESS_THRESHOLD` is now the first failing release gate and reports `BLOCKED_EXTERNAL` until deployed first-run readiness is proven.
 - `npm run gate:quality`: PASS.
 - `npm run gate:visual`: PASS.
-- `npm run gate:frontend`: screenshot matrix, interaction matrix, banned-copy audit, and layout contract passed.
+- `npm run gate:frontend`: screenshot matrix, interaction matrix, banned-copy audit, layout contract, and production current screenshots passed.
 
 ## Decision
 
