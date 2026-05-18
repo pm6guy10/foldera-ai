@@ -134,7 +134,7 @@ describe('dashboard finished-work inbox model', () => {
     expect(state.copyText).toContain('Current best move');
     expect(state.copyText).toContain('Safe next action:');
     expect(state.valueBlocks.find((block) => block.label === 'What Foldera protected')?.body).toContain(
-      'has not sent, saved, or claimed',
+      'has not sent or claimed',
     );
   });
 
@@ -223,7 +223,7 @@ describe('dashboard finished-work inbox model', () => {
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Why this connector: Google Calendar unlocks deadlines');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Found 1 signal');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Processed 0 / 1');
-    expect(slate?.watch_item?.evidence.join(' ')).toContain('No safe move yet');
+    expect(slate?.watch_item?.evidence.join(' ')).toContain('No trusted answer yet');
     expect(slate?.watch_item?.evidence.join(' ')).toContain('Blocked reason: waiting on processed evidence');
     expect(slate?.watch_item?.evidence.join(' ')).toContain(
       'Why: Foldera has 1 source item: 0 processed, 1 waiting. That is not enough evidence for a safe move yet.',
@@ -247,7 +247,7 @@ describe('dashboard finished-work inbox model', () => {
     expect(state.heading).toBe("Today's answer");
     expect(state.statusLabel).toBe('Fix this first');
     expect(state.summary).toBe(
-      'Foldera does not have enough live signal yet to reduce the pile intelligently.',
+      'Foldera does not have enough live signal yet to give one trusted answer.',
     );
     expect(state.actionHref).toBe('/dashboard?panel=sources');
     expect(state.actionLabel).toBe('Next unlock: Google Calendar');
@@ -367,7 +367,7 @@ describe('dashboard finished-work inbox model', () => {
     expect(usableState.heading).toBe("Today's answer");
     expect(usableState.statusLabel).toBe("You're clear right now");
     expect(usableState.summary).toBe(
-      'Foldera checked your connected sources. Nothing cleared the action bar, so you do not need to sort through this pile right now.',
+      'Foldera checked your connected sources. Nothing urgent cleared the trust bar, so you are clear right now.',
     );
   });
 });
