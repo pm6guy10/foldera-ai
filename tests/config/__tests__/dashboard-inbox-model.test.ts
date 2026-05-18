@@ -105,6 +105,19 @@ describe('dashboard finished-work inbox model', () => {
     );
   });
 
+  it('shows connect-source first for a fresh account with no connected sources', () => {
+    const state = buildDailyValueState(null, null, { integrations: [] }, []);
+
+    expect(state.heading).toBe("Today's answer");
+    expect(state.statusLabel).toBe('Connect a source');
+    expect(state.summary).toBe('');
+    expect(state.actionHref).toBe('/api/google/connect');
+    expect(state.actionLabel).toBe('Connect Google');
+    expect(state.valueBlocks.find((block) => block.label === 'Smallest unlock')?.body).toContain(
+      'Connect Gmail or Microsoft',
+    );
+  });
+
   it('frames a primary move as useful value without pretending it is approved finished work', () => {
     const slate: DailyUtilitySlate = {
       finished_artifact_verdict: 'no_finished_artifact',
@@ -175,6 +188,34 @@ describe('dashboard finished-work inbox model', () => {
     expect(getIntegrationStateClass(integration)).toContain('amber');
     expect(getIntegrationMetaLine(integration)).toContain('Fresh sync needed');
     expect(getIntegrationMetaLine(integration)).not.toMatch(/missing_|weak_|candidate|gate|blocker/i);
+  });
+
+  it('holds back safely when a connected source is degraded and needs reconnect', () => {
+    const state = buildDailyValueState(
+      slateForReason('stale_status_without_current_artifact_facts'),
+      null,
+      {
+        integrations: [
+          {
+            provider: 'google',
+            is_active: true,
+            needs_reauth: true,
+            needs_reconnect: true,
+            sync_stale: true,
+          },
+        ],
+        mail_ingest_looks_stale: true,
+      },
+      [],
+    );
+
+    expect(state.heading).toBe("Today's answer");
+    expect(state.statusLabel).toBe('Held back safely');
+    expect(state.actionHref).toBe('/dashboard?panel=sources');
+    expect(state.actionLabel).toBe('Check sources');
+    expect(state.valueBlocks.find((block) => block.label === 'Smallest unlock')?.body).toContain(
+      'too stale to finish safely',
+    );
   });
 
   it('turns first-run source readiness into human-readable dashboard value', () => {
