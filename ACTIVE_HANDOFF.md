@@ -52,6 +52,7 @@ Current visual gate: QG_11_VISUAL_FRONTEND_QUALITY PASS
 - `npm run gate:quality`: PASS.
 - `npm run gate:visual`: PASS.
 - `npm run gate:frontend`: screenshot matrix, interaction matrix, banned-copy audit, and layout contract passed.
+- production current screenshots: not newly claimed in this local proof receipt.
 
 ## Decision
 
