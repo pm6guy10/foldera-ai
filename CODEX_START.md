@@ -33,6 +33,29 @@ No Codex self-certification counts. A pass requires evidence:
 
 No evidence means UNKNOWN or FAIL, not PASS.
 
+## Issue-PR Execution Wrapper (Mandatory)
+
+Controllers and gates remain mandatory truth selectors. GitHub issue/PR flow is the mandatory execution wrapper.
+
+Required order:
+
+1. Establish live truth before advice: `origin/main` SHA, Vercel production deploy SHA, production `/api/health` SHA, and active PR/issue state.
+2. Run controller/gate commands to identify the first failing truth condition.
+3. Convert that failing condition into one GitHub issue.
+4. Execute one issue only using one clean branch/worktree and one PR.
+5. Reach one merge/reject decision.
+6. After merge, verify production `/api/health` SHA equals latest `main` before calling it live.
+
+Hard constraints:
+
+- Never say `first PR`; use `active PR` or `current PR`.
+- Never work Dependabot PRs unless explicitly assigned.
+- Never run multiple product issues back-to-back in one Codex session.
+- Controlled autopilot may suggest/prioritize seams only; it may not execute multiple product changes.
+- Frontend/dashboard issue PRs must include screenshots directly in the PR body or PR comments.
+- If CI is red, fix only the exact failing gate.
+- Green CI + visual proof + Vercel + production SHA match is the merge/verify condition.
+
 ## GitHub CI Final Gate
 
 GitHub Actions is part of done. Vercel success does not replace GitHub CI.
@@ -158,7 +181,8 @@ A seam is done only when:
 
 ## Daily Loop
 
-Maximum seams per run: 5.
+Maximum product issues per Codex session: 1.
+Gate-first checks remain required as the safety layer for the active issue; they do not authorize broad autonomous multi-issue work.
 
 After each seam:
 
@@ -187,3 +211,4 @@ Report only:
 - next autonomous move
 
 If Brandon has to diagnose what Foldera needs next, the system failed.
+

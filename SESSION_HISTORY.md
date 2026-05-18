@@ -6938,3 +6938,13 @@ pm run build.
 - What changed: Replaced stale release-doc assertions that still expected obsolete micro1/GATE_9 wording with the current pre-beta threshold and owner-alias truth.
 - Verification: The formerly failing `tests/config/__tests__/google-oauth-redirects.test.ts` passed, then `npm run test:ci:unit` passed across the full unit lane. Existing frontend proof remains recorded by `npm run gate:frontend`: screenshot matrix, interaction matrix, banned-copy audit, layout contract, and production current screenshots.
 - Unresolved issues: The product blocker is unchanged: deployed first-run proof still has to satisfy `PRE_BETA_READINESS_THRESHOLD` before any external tester handoff.
+
+## 2026-05-18 - Docs-only gate/controller to issue-PR workflow reconciliation
+
+- MODE: Docs-only operating-doctrine update; no product code, backend, schema, Supabase, Stripe, auth, or dependency changes.
+- Files changed: `CODEX_START.md`, `SYSTEM_RUNBOOK.md`, `GPT.md`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Reconciled doctrine so gates/controllers remain truth selectors while GitHub issue/PR flow is the mandatory execution wrapper: one failing gate condition -> one issue -> one clean branch/worktree -> one PR -> one merge/reject decision -> one production verification. Removed conflicting multi-seam autopilot language, preserved gate-first safety checks, encoded Dependabot as explicit-assignment-only, and locked frontend/dashboard screenshot-in-PR proof requirements.
+- Verification: Docs-only update; no product/runtime gate execution required for acceptance.
+- Unresolved issues: None for this docs-only reconciliation slice.
+
+
