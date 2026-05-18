@@ -17,9 +17,26 @@ Achieve 3 consecutive successful runs for a non-Brandon user.
 - Nothing meaningful is done until the verified change is pushed to `main`
 - Free verification is the default locked protocol
 - Do not run a paid model-backed route, script, or full-run proof unless free proof is exhausted, the exact blocker is named, and the user explicitly approved that paid step
-- Default to the main worktree only; do not create or use git worktrees unless the current worktree is unusable and the exact blocker requires it
+- Use one clean branch/worktree per active issue PR
 - If code is pushed but not proven, mark it incomplete
 - If any source-of-truth file is stale, update it before closing the session
+
+## Gate/Controller vs GitHub Workflow
+
+Controllers and gates are truth selectors, not replacements for GitHub issue/PR execution.
+
+- Gates/controllers identify the first failing truth condition.
+- That failing condition must map to one GitHub issue.
+- Codex executes one issue only.
+- One issue = one clean branch/worktree = one PR = one merge/reject decision = one production verification.
+- Controlled autopilot may suggest/prioritize seams only; it may not execute multiple product changes.
+- Never say `first PR`.
+- Never work Dependabot PRs unless explicitly assigned.
+- Red CI means fix only the exact failing gate.
+- Green CI + visual proof + Vercel + production SHA match means merge/verify.
+- Frontend/dashboard issue PRs require screenshots directly in PR body/comments.
+- After merge, verify production `/api/health` SHA equals latest `main` before calling it live.
+- Source-truth docs are receipts and contracts; they do not justify broad autonomous multi-seam work.
 
 ## Source-of-Truth Boundaries
 - `FOLDERA_OPERATING_SYSTEM.md` defines canonical product doctrine and worldview.
@@ -54,9 +71,10 @@ A valid loop requires:
 - works for non-owner user
 
 ## Controlled Autopilot Loop Contract
-- `max_seams: 5`
-- After 5 completed seams in one daily controlled-autopilot run, stop and return a final report instead of selecting a 6th seam.
-- Update `FOLDERA_PRODUCTION_BACKLOG.md` and `SESSION_HISTORY.md` before the final push whenever the seam changes backlog truth, controller truth, or contract doctrine.
+- `max_product_issues_per_session: 1`
+- Controlled autopilot may only select/prioritize the next issue candidate from gate/controller truth.
+- Controlled autopilot may not execute multiple product issues in one session.
+- Update `FOLDERA_PRODUCTION_BACKLOG.md` and `SESSION_HISTORY.md` when the selected issue changes backlog truth, controller truth, or contract doctrine.
 
 ## Demo Harness Command
 - Golden artifact proof insert: `npm run proof:golden-artifact`

@@ -60,6 +60,22 @@ When Brandon asks "what's next," "now what," "is this fine," or shows Codex/Curs
 
 Do not answer from memory alone when live repo/deploy truth is available.
 
+## GitHub Wrapper Rule
+
+Gates/controllers remain truth selectors. GitHub issue/PR flow is the execution wrapper.
+
+Required operator guidance:
+
+- establish live truth first: `origin/main` SHA, Vercel production deploy SHA, production `/api/health` SHA, and active PR/issue state
+- use gate/controller output to identify the first failing truth condition
+- convert that condition into one GitHub issue
+- execute one issue only via one clean branch/worktree and one PR
+- require one merge/reject decision and one post-merge production SHA verification
+
+Do not endorse multi-issue autonomous runs.
+Never say `first PR`.
+Never recommend Dependabot work unless explicitly assigned.
+
 ## GitHub CI Final Gate
 
 When Codex claims work is done, GPT must verify GitHub Actions for the exact pushed `main` commit before accepting the claim.
@@ -90,6 +106,7 @@ NOT DONE - frontend regression lock incomplete.
 ```
 
 Do not accept API-only proof, owner-private production data, or temporary `%TEMP%` screenshots as the durable frontend gate.
+For dashboard/frontend issue PRs, require screenshots directly in the PR body or PR comments.
 
 ## Live-Truth Receipt Rule
 
@@ -357,3 +374,4 @@ Stop condition:
 ## Stop Condition
 
 If no new live repo/deploy/runtime information has been checked, do not pretend to know the current Foldera state.
+
