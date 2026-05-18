@@ -88,7 +88,7 @@ export function DailyUtilitySlateCard({
       <section className="mx-auto w-full max-w-[760px] rounded-[20px] border border-white/10 bg-white/[0.025] p-6 sm:p-8">
         <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
-          Foldera checked your connected sources
+          Foldera already checked your connected sources
         </div>
         <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
           Today&apos;s answer
@@ -155,18 +155,18 @@ export function DailyUtilitySlateCard({
               </ul>
               {firstSlateItem.next_action ? (
                 <p className="mt-3 text-sm leading-6 text-text-primary">
-                  <span className="font-semibold">Safe next action:</span> {firstSlateItem.next_action}
+                  <span className="font-semibold">Next move:</span> {firstSlateItem.next_action}
                 </p>
               ) : firstSlateItem.no_action_reason ? (
                 <p className="mt-3 text-sm leading-6 text-amber-200">
-                  <span className="font-semibold">Why it stopped:</span>{' '}
+                  <span className="font-semibold">Why Foldera held back:</span>{' '}
                   {friendlyStopReason(firstSlateItem.no_action_reason)}
                 </p>
               ) : null}
             </>
           ) : (
             <p className="mt-2 text-sm text-text-secondary">
-              Foldera is waiting for enough fresh source proof before showing a next move.
+              Foldera is waiting for enough fresh source proof before giving a trusted answer.
             </p>
           )}
         </div>

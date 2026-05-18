@@ -480,7 +480,7 @@ export function dailyUtilitySlateClipboardText(
     'Foldera',
     dailyUtilityClipboardItemLabel(item),
     '',
-    sanitizeDailyValueText(item.title, 'Foldera found a current move worth preparing.'),
+    sanitizeDailyValueText(item.title, 'Foldera found one answer worth acting on.'),
     '',
     'Why it matters:',
     sanitizeDailyValueText(
@@ -612,7 +612,7 @@ export function buildDailyValueState(
         : 'Foldera needs a connected inbox or calendar before it can evaluate finished work.',
   );
   const protectedBody = hasPrimaryMove
-    ? 'Foldera has not sent, saved, or claimed this as finished work yet; it is showing the current move it can safely see.'
+    ? 'Foldera has not sent or claimed this yet. It is showing the one answer it can stand behind right now.'
     : sanitizeDailyValueText(
         protectedItem?.no_action_reason ?? protectedItem?.why_it_matters,
         'Foldera held back rather than inventing a draft from weak or stale evidence.',
@@ -628,7 +628,7 @@ export function buildDailyValueState(
     (sourceReadinessItem
       ? sanitizeDailyValueText(firstItem?.next_action, 'Check sources again when new mail or calendar activity exists.')
       : hasPrimaryMove
-      ? sanitizeDailyValueText(firstItem?.next_action, 'Turn this into finished work on the next safe generation run.')
+      ? sanitizeDailyValueText(firstItem?.next_action, 'Use this answer to finish the move now.')
       : missingInputPrompt?.detail) ??
     (activeSources > 0
       ? 'Keep sources fresh; Foldera will finish the next safe artifact when the evidence supports it.'
@@ -648,15 +648,15 @@ export function buildDailyValueState(
     statusLabel: todayStatusLabel,
     summary:
       (hasPrimaryMove
-        ? sanitizeDailyValueText(firstItem?.title, 'Foldera found a current move worth preparing.')
+        ? sanitizeDailyValueText(firstItem?.title, 'Foldera found one answer worth acting on.')
         : coverageItem
-          ? 'Foldera does not have enough live signal yet to reduce the pile intelligently.'
+          ? 'Foldera does not have enough live signal yet to give one trusted answer.'
         : clearCoverageRead
-          ? 'Foldera checked your connected sources. Nothing cleared the action bar, so you do not need to sort through this pile right now.'
+          ? 'Foldera checked your connected sources. Nothing urgent cleared the trust bar, so you are clear right now.'
         : sourceReadinessItem
           ? sanitizeDailyValueText(firstItem?.title, '')
         : missingInputPrompt?.prompt ?? sanitizeDailyValueText(firstItem?.title, '')) ??
-      'No finished artifact cleared the trust check, but the dashboard still shows the useful read.',
+      'No finished artifact cleared the trust check, but Foldera still gives you the useful read.',
     valueBlocks: [
       { label: 'What changed', body: whatChanged },
       { label: 'What Foldera protected', body: protectedBody },
@@ -729,7 +729,7 @@ export function buildFirstRunReadinessSlate(
             ]
           : []),
         `Found ${readiness.signal_count} ${signalLabel}. Processed ${readiness.processed_signal_count} / ${readiness.signal_count}. Unprocessed: ${readiness.unprocessed_signal_count} waiting.`,
-        'No safe move yet.',
+        'No trusted answer yet.',
         `Blocked reason: ${blockedReasonLabel}.`,
         `Why: ${readiness.reason}`,
         `Next: ${readiness.next_action}`,
