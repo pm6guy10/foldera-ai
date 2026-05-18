@@ -46,6 +46,22 @@ A quality pass requires:
 - clear source evidence
 - safe save, skip, approve behavior
 
+## Mandatory GitHub Visual Evidence Rule
+
+Dashboard, frontend, and user-facing UI work is not reviewable unless GitHub contains visual evidence that an owner/PM can inspect without opening a protected preview.
+
+For every dashboard/frontend PR, Codex must attach or link in GitHub:
+
+- desktop screenshot
+- mobile screenshot
+- state covered, such as finished move, requirements-needed, no-safe/no-move, or source-status state
+- route or fixture used to produce each screenshot
+- confirmation that the screenshot is mock/simulated proof unless it is explicitly production proof
+
+A Vercel preview link by itself is not enough. Committed baseline files by themselves are not enough if the reviewer cannot easily view them from the PR. The PR must expose the screenshot evidence in the GitHub conversation, PR body, CI artifact, or a linked artifact comment.
+
+If visual evidence is missing, the correct review status is blocked, even when CI is green.
+
 ## One-to-One Quality Ladder
 
 Each release gate has a matching quality gate.
@@ -116,6 +132,8 @@ Executable proof must stay gate-only: `npm run gate:visual` may pass from determ
 
 Dashboard/frontend work has a stricter lock in `docs/FRONTEND_PRODUCT_TRUTH_GATE.md`. Codex may not say DONE, PROVEN, or next blocker is GATE_9 for dashboard/frontend work unless `npm run gate:frontend` passes. The frontend gate requires committed screenshot baselines, interaction audit coverage, banned-copy audit coverage, layout contract proof, production current screenshots when live frontend proof is claimed, and deterministic fixtures for finished, requirements-needed, and no-safe states. API-only or backend-only proof is not a frontend pass.
 
+For dashboard/frontend PR review, `npm run gate:frontend` is necessary but not sufficient. The PR must also expose desktop and mobile screenshot evidence directly in GitHub so the owner/PM can inspect the actual visual result without opening Vercel, bypassing protection, or decoding raw snapshot files.
+
 ### QG_12_PRICING_SCALE_QUALITY
 
 Pass: real-user comprehension, artifact quality, and visual trust are proven before asking for money.
@@ -154,8 +172,9 @@ Quality work is done only when:
 4. Good examples pass.
 5. Proof command or browser evidence exists.
 6. Production or user-facing risk is named.
-7. ACTIVE_HANDOFF.md is updated.
-8. SESSION_HISTORY.md is updated.
+7. Dashboard/frontend PRs expose desktop and mobile screenshot evidence in GitHub.
+8. ACTIVE_HANDOFF.md is updated.
+9. SESSION_HISTORY.md is updated.
 
 ## Operating Rule
 
