@@ -197,6 +197,69 @@ describe('GET /api/conviction/history', () => {
     expect(JSON.stringify(body.items)).not.toMatch(/GENERATION_LOOP|missing_current_fact|weak_next_action|do_nothing/i);
   });
 
+  it('keeps approved and skipped user decisions in recent history while still hiding no-send rows', async () => {
+    mockResolveUser.mockResolvedValue({ userId: 'u1' });
+    const mockLimit = vi.fn().mockResolvedValue({
+      data: [
+        {
+          id: 'approved-1',
+          status: 'executed',
+          action_type: 'write_document',
+          confidence: 82,
+          generated_at: '2026-05-17T12:00:00Z',
+          directive_text: 'Save the account transition closeout packet before the deadline.',
+          artifact_preview: 'Account transition closeout packet saved with owner, deadline, and source trail.',
+          is_no_send: false,
+          no_send_reason: null,
+        },
+        {
+          id: 'skipped-1',
+          status: 'skipped',
+          action_type: 'send_message',
+          confidence: 64,
+          generated_at: '2026-05-17T11:00:00Z',
+          directive_text: 'Follow up with the hiring manager about the packet.',
+          artifact_preview: 'Follow-up draft held for now.',
+          is_no_send: false,
+          no_send_reason: null,
+        },
+        {
+          id: 'no-send-2',
+          status: 'skipped',
+          action_type: 'do_nothing',
+          confidence: 0,
+          generated_at: '2026-05-17T10:00:00Z',
+          directive_text: 'GENERATION_LOOP no_send_persisted',
+          artifact_preview: null,
+          is_no_send: true,
+          no_send_reason: 'missing_current_fact',
+        },
+      ],
+      error: null,
+    });
+    const mockOrder = vi.fn().mockReturnValue({ limit: mockLimit });
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: mockEq,
+      }),
+    });
+
+    const { GET } = await import('../route');
+    const res = await GET(new Request('http://localhost/api/conviction/history?limit=3'));
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      items: Array<{
+        id: string;
+        status: string;
+      }>;
+    };
+
+    expect(body.items).toHaveLength(2);
+    expect(body.items.map((item) => item.id)).toEqual(['approved-1', 'skipped-1']);
+    expect(body.items.map((item) => item.status)).toEqual(['executed', 'skipped']);
+  });
+
   it('keeps the history summary query off artifact and execution_result', async () => {
     const source = await import('node:fs/promises').then((fs) =>
       fs.readFile(new URL('../route.ts', import.meta.url), 'utf8'),
