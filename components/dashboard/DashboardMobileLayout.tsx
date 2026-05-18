@@ -104,7 +104,9 @@ export function DashboardMobileLayout({
                 )}
               </h1>
               <p className="mt-2 max-w-[28rem] text-[13px] leading-5 text-text-secondary">
-                Today shows the current safe move, source trail, and next action.
+                {isTodayPanel
+                  ? 'One trusted answer for today, grounded in your connected sources.'
+                  : 'Today shows the current safe move, source trail, and next action.'}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -112,7 +114,9 @@ export function DashboardMobileLayout({
                 role="status"
                 aria-label="Notifications unavailable until live alerts are connected"
                 title="Notifications unavailable until live alerts are connected"
-                className="inline-flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-full border border-cyan-200/14 bg-white/[0.04] text-cyan-100 opacity-70"
+                className={`inline-flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-full border border-cyan-200/14 bg-white/[0.04] text-cyan-100 ${
+                  isTodayPanel ? 'opacity-45' : 'opacity-70'
+                }`}
               >
                 <Bell className="h-4 w-4" aria-hidden />
               </div>
@@ -133,7 +137,7 @@ export function DashboardMobileLayout({
         <div className="foldera-dashboard-mobile-stage min-h-0 flex-1 overflow-hidden px-4 py-3">
           {isTodayPanel ? (
             hasAction ? (
-              <div data-testid="dashboard-panel-today" className="h-full min-h-0">
+              <div data-testid="dashboard-panel-today" className="mx-auto h-full min-h-0 w-full max-w-[760px]">
                 <DailyBriefCard
                   className="foldera-dashboard-brief-card foldera-dashboard-money-shot foldera-dashboard-current-brief flex h-full min-h-0 w-full flex-col overflow-hidden"
                   dashboardCta
@@ -187,7 +191,9 @@ export function DashboardMobileLayout({
         </div>
 
         <nav
-          className="foldera-dashboard-mobile-nav z-30 shrink-0 border-t border-white/[0.08] bg-[#030a12]/96 px-3 pt-3 backdrop-blur"
+          className={`foldera-dashboard-mobile-nav z-30 shrink-0 border-t border-white/[0.08] bg-[#030a12]/96 px-3 pt-3 backdrop-blur ${
+            isTodayPanel ? 'opacity-75' : ''
+          }`}
           aria-label="Dashboard sections"
         >
           <div className="grid grid-cols-4 gap-2">
