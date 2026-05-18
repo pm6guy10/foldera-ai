@@ -6,6 +6,10 @@
 import type { ErrorEvent, EventHint } from '@sentry/core';
 
 const TRANSIENT_CODES = new Set(['EPIPE', 'ECONNRESET', 'ECONNABORTED']);
+const LOCAL_HOST_PATTERNS = ['127.0.0.1', 'localhost', '[::1]'] as const;
+const LOCAL_SERVER_NAME_PATTERN = /(localhost|local|laptop|desktop|runner)/i;
+const LOCAL_BROWSER_PATTERN = /(HeadlessChrome|Playwright)/i;
+const LOCAL_SUPABASE_ENV_MESSAGE = 'Supabase env vars not configured';
 
 function walkCauses(err: unknown, visit: (e: unknown) => boolean): boolean {
   let current: unknown = err;
@@ -55,6 +59,7 @@ export function sentryDropTransientSocketEvents(
   hint: EventHint,
 ): ErrorEvent | null {
   if (isTransientSocketError(hint.originalException)) return null;
+  if (isNonProductionLocalNoiseEvent(event)) return null;
   return event;
 }
 
@@ -66,3 +71,38 @@ export const SENTRY_TRANSIENT_SOCKET_IGNORE_MESSAGES = [
   'read ECONNRESET',
   'socket hang up',
 ] as const;
+
+function isProductionSentryEnvironment(): boolean {
+  const explicit = process.env.SENTRY_ENVIRONMENT?.trim().toLowerCase();
+  if (explicit) return explicit === 'production';
+
+  const vercelEnv = process.env.VERCEL_ENV?.trim().toLowerCase();
+  if (vercelEnv) return vercelEnv === 'production';
+
+  return false;
+}
+
+function hasLocalHost(url: string): boolean {
+  const lower = url.toLowerCase();
+  return LOCAL_HOST_PATTERNS.some((segment) => lower.includes(segment));
+}
+
+function isLocalBrowser(userAgent: string): boolean {
+  return LOCAL_BROWSER_PATTERN.test(userAgent);
+}
+
+export function isNonProductionLocalNoiseEvent(event: ErrorEvent): boolean {
+  if (isProductionSentryEnvironment()) return false;
+
+  const requestUrl = event.request?.url ?? '';
+  const userAgent = event.request?.headers?.['User-Agent'] ?? event.request?.headers?.['user-agent'] ?? '';
+  const serverName = event.server_name ?? '';
+  const message = typeof event.message === 'string' ? event.message : '';
+
+  if (requestUrl && hasLocalHost(requestUrl)) return true;
+  if (userAgent && isLocalBrowser(userAgent)) return true;
+  if (serverName && LOCAL_SERVER_NAME_PATTERN.test(serverName)) return true;
+  if (message.includes(LOCAL_SUPABASE_ENV_MESSAGE)) return true;
+
+  return false;
+}
