@@ -853,14 +853,12 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupDashboardMocks(page, { latestResponse: DAILY_UTILITY_SLATE_RESPONSE });
     await page.goto('/dashboard');
 
-    await expect(page.getByTestId('dashboard-daily-utility-slate')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('One thing Foldera needs')).toBeVisible();
-    await expect(page.getByText('What changed')).toBeVisible();
-    await expect(page.getByText('What Foldera protected')).toBeVisible();
-    await expect(page.getByText('Smallest unlock')).toBeVisible();
-    await expect(page.getByText(/Foldera needs one concrete consequence or desired outcome/i)).toBeVisible();
-    await expect(page.getByText('Latest run stopped before a finished action was safe.')).toBeVisible();
-    await expect(page.getByText('It did not prove one safe next step.', { exact: true })).toBeVisible();
+    const slate = page.getByTestId('dashboard-daily-utility-slate');
+    await expect(slate).toBeVisible({ timeout: 15000 });
+    await expect(slate.getByText(/today's answer/i)).toBeVisible();
+    await expect(slate.getByText('Foldera checked your connected sources')).toBeVisible();
+    await expect(slate.getByText('Source trail')).toBeVisible();
+    await expect(slate.getByText('Nothing was sent. This is the visible proof behind the answer.')).toBeVisible();
     await expect(page.getByText(/positive_winner_contract/i)).toHaveCount(0);
     await expect(page.getByText(/missing_schedule_resolution_context/i)).toHaveCount(0);
     await expect(page.getByText(/Candidate family/i)).toHaveCount(0);
