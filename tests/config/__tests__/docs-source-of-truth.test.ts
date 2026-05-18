@@ -32,7 +32,7 @@ describe('documentation source-of-truth boundaries', () => {
     expect(codexStart).toContain('`npm run gate:visual`');
     expect(codexStart).toContain('Fix only the first failing gate.');
     expect(codexStart).toContain('Foldera is not beta-ready unless release, quality, and visual gates agree.');
-    expect(codexStart).toContain('Maximum seams per run: 5.');
+    expect(codexStart).toContain('Maximum product issues per Codex session: 1.');
     expect(activeHandoff).toContain('# ACTIVE HANDOFF');
     expect(activeHandoff).toContain('Current slice:');
     expect(activeHandoff).toContain('## Next exact move');
@@ -51,7 +51,9 @@ describe('documentation source-of-truth boundaries', () => {
     expect(runbook).toContain('FOLDERA_MASTER_AUDIT.md');
     expect(runbook).toContain('SESSION_HISTORY.md is append-only receipt history');
     expect(runbook).toContain('FULL_AUDIT_RESULTS.md is audit evidence, not a mutable checklist');
-    expect(runbook).toContain('Update `FOLDERA_PRODUCTION_BACKLOG.md` and `SESSION_HISTORY.md` before the final push');
+    expect(runbook).toContain(
+      'Update `FOLDERA_PRODUCTION_BACKLOG.md` and `SESSION_HISTORY.md` when the selected issue changes backlog truth, controller truth, or contract doctrine.',
+    );
   });
 
   it('keeps AGENTS as the active controller for source-of-truth loading order', () => {
