@@ -6938,3 +6938,11 @@ pm run build.
 - What changed: Replaced stale release-doc assertions that still expected obsolete micro1/GATE_9 wording with the current pre-beta threshold and owner-alias truth.
 - Verification: The formerly failing `tests/config/__tests__/google-oauth-redirects.test.ts` passed, then `npm run test:ci:unit` passed across the full unit lane. Existing frontend proof remains recorded by `npm run gate:frontend`: screenshot matrix, interaction matrix, banned-copy audit, layout contract, and production current screenshots.
 - Unresolved issues: The product blocker is unchanged: deployed first-run proof still has to satisfy `PRE_BETA_READINESS_THRESHOLD` before any external tester handoff.
+
+## 2026-05-18 - Docs-only issue-driven PR operating system lock
+
+- MODE: Docs-only operating-system update; no product code, backend, schema, Supabase, Stripe, auth, or dependency changes.
+- Files changed: `CODEX_START.md`, `GPT.md`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`, `docs/QUALITY_GATES.md`.
+- What changed: Locked repo instructions to one-issue/one-PR execution with live-truth-first requirements (`origin/main`, Vercel production deploy SHA, production `/api/health`, active PR/issue state), explicit Dependabot non-default handling, frontend/dashboard screenshot-in-PR requirement, CI-red exact-gate-only repair rule, post-merge production SHA catch-up verification, and replacement of conflicting multi-seam guidance.
+- Verification: Docs-only instruction update; no product/runtime gates required for acceptance.
+- Unresolved issues: None for this docs-only instruction seam.

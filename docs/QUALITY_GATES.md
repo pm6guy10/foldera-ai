@@ -176,6 +176,22 @@ Quality work is done only when:
 8. ACTIVE_HANDOFF.md is updated.
 9. SESSION_HISTORY.md is updated.
 
+## Issue-Driven Execution Safety Layer
+
+Quality and visual gates are safety rails for the active issue PR, not permission for broad multi-issue work.
+
+Required operating discipline:
+
+- establish live truth before implementation advice (`origin/main`, Vercel production deploy SHA, production `/api/health`, active PR/issue state)
+- run one product issue per Codex session
+- use one clean branch/worktree and one PR for that issue
+- do not work Dependabot PRs unless explicitly assigned
+- for frontend/dashboard issue PRs, attach screenshots directly in PR body/comments
+- if CI is red, fix only the exact failing gate for that issue PR
+- after merge, verify production `/api/health` SHA matches latest `main`
+
+Auto-merge may be enabled when available, but it never replaces CI/deploy/visual proof.
+
 ## Operating Rule
 
 Both release gates and quality gates must pass before Foldera is called beta-ready.

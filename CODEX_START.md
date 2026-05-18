@@ -33,6 +33,27 @@ No Codex self-certification counts. A pass requires evidence:
 
 No evidence means UNKNOWN or FAIL, not PASS.
 
+## Issue-Driven PR Operating System
+
+Default execution is issue-driven and single-threaded:
+
+1. Establish live truth first: `origin/main` SHA, Vercel production deploy SHA, production `/api/health` SHA, and active PR/issue state.
+2. Pick exactly one assigned GitHub issue.
+3. Use one clean branch/worktree for that issue.
+4. Open exactly one PR for that issue.
+5. Reach one merge/reject decision.
+6. Verify production after merge by matching `/api/health` SHA to latest `main`.
+
+Hard constraints:
+
+- Never say `first PR`; use `active PR` or `current PR`.
+- Never work Dependabot PRs unless explicitly assigned.
+- Never run multiple product issues back-to-back in one Codex session.
+- Frontend/dashboard PRs must include screenshots directly in the PR body or PR comments.
+- Green CI + Vercel + visual proof is the merge condition for frontend/dashboard issue PRs.
+- If CI is red, fix only the exact failing gate for that issue PR.
+- Auto-merge should be enabled where possible, but it does not replace required proof.
+
 ## GitHub CI Final Gate
 
 GitHub Actions is part of done. Vercel success does not replace GitHub CI.
@@ -158,7 +179,8 @@ A seam is done only when:
 
 ## Daily Loop
 
-Maximum seams per run: 5.
+Maximum product issues per Codex session: 1.
+Gate-first checks remain required as the safety layer for the active issue; they do not authorize broad autonomous multi-issue work.
 
 After each seam:
 

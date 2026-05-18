@@ -60,6 +60,21 @@ When Brandon asks "what's next," "now what," "is this fine," or shows Codex/Curs
 
 Do not answer from memory alone when live repo/deploy truth is available.
 
+## Issue-Driven Delivery Law
+
+Owner guidance defaults to one-issue PR discipline:
+
+- verify live truth first: `origin/main` SHA, Vercel production deploy SHA, production `/api/health` SHA, and active PR/issue state
+- direct Codex to one assigned issue only
+- require one clean branch/worktree and one PR for that issue
+- require one merge/reject decision before any next product issue
+- require post-merge production SHA verification (`/api/health` matches latest `main`)
+
+Do not recommend stacked issue execution in one session.
+Do not call anything `first PR`.
+Do not recommend Dependabot work unless Brandon explicitly assigns it.
+Auto-merge may be enabled when appropriate, but never as a substitute for proof.
+
 ## GitHub CI Final Gate
 
 When Codex claims work is done, GPT must verify GitHub Actions for the exact pushed `main` commit before accepting the claim.
@@ -90,6 +105,7 @@ NOT DONE - frontend regression lock incomplete.
 ```
 
 Do not accept API-only proof, owner-private production data, or temporary `%TEMP%` screenshots as the durable frontend gate.
+For dashboard/frontend issue PRs, require screenshots directly in the PR body or PR comments.
 
 ## Live-Truth Receipt Rule
 
