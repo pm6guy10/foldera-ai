@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isNonProductionLocalNoiseEvent,
   isTransientSocketError,
   sentryDropTransientSocketEvents,
 } from '../transient-socket-errors';
@@ -57,5 +58,43 @@ describe('sentryDropTransientSocketEvents', () => {
     expect(
       sentryDropTransientSocketEvents(ev, { originalException: new Error('real bug') }),
     ).toBe(ev);
+  });
+
+  it('drops localhost api events outside production', () => {
+    const ev = {
+      event_id: '3',
+      request: { url: 'http://127.0.0.1:3000/api/source-readiness' },
+    } as Parameters<typeof sentryDropTransientSocketEvents>[0];
+    expect(
+      sentryDropTransientSocketEvents(ev, { originalException: new Error('real bug') }),
+    ).toBeNull();
+  });
+});
+
+describe('isNonProductionLocalNoiseEvent', () => {
+  it('matches headless browser user agent in non-production', () => {
+    const ev = {
+      request: {
+        headers: { 'user-agent': 'Mozilla/5.0 HeadlessChrome/123.0.0.0' },
+      },
+    } as Parameters<typeof isNonProductionLocalNoiseEvent>[0];
+    expect(isNonProductionLocalNoiseEvent(ev)).toBe(true);
+  });
+
+  it('does not match production events', () => {
+    const previous = process.env.VERCEL_ENV;
+    try {
+      process.env.VERCEL_ENV = 'production';
+      const ev = {
+        request: { url: 'http://127.0.0.1:3000/api/source-readiness' },
+      } as Parameters<typeof isNonProductionLocalNoiseEvent>[0];
+      expect(isNonProductionLocalNoiseEvent(ev)).toBe(false);
+    } finally {
+      if (previous === undefined) {
+        delete process.env.VERCEL_ENV;
+      } else {
+        process.env.VERCEL_ENV = previous;
+      }
+    }
   });
 });
