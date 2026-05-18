@@ -856,7 +856,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     const slate = page.getByTestId('dashboard-daily-utility-slate');
     await expect(slate).toBeVisible({ timeout: 15000 });
     await expect(slate.getByText(/today's answer/i)).toBeVisible();
-    await expect(slate.getByText('Foldera checked your connected sources')).toBeVisible();
+    await expect(slate.getByText('Foldera already checked your connected sources')).toBeVisible();
     await expect(slate.getByText('Source trail')).toBeVisible();
     await expect(slate.getByText('Nothing was sent. This is the visible proof behind the answer.')).toBeVisible();
     await expect(page.getByText(/positive_winner_contract/i)).toHaveCount(0);
