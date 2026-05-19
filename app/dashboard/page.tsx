@@ -15,6 +15,7 @@ import {
 } from '@/components/dashboard/DashboardStateCards';
 import { DashboardDesktopStage } from '@/components/dashboard/DashboardDesktopStage';
 import { DashboardContextRail } from '@/components/dashboard/DashboardContextRail';
+import { MorningAnchorCard } from '@/components/dashboard/MorningAnchorCard';
 import { SourceNeededBriefCard } from '@/components/dashboard/SourceNeededBriefCard';
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
 import { EmptyStateCard } from '@/components/foldera/EmptyStateCard';
@@ -67,6 +68,7 @@ import {
   type LoadLatestResult,
   type StageMetrics,
 } from './dashboard-page-model';
+import type { RightNowCard } from '@/lib/workday-presence/model';
 
 const DAILY_VALUE_FALLBACK_TIMEOUT_MS = 4500;
 
@@ -81,6 +83,7 @@ export default function DashboardPage() {
   const [graphStats, setGraphStats] = useState<GraphStatsPayload | null>(null);
   const [historyItems, setHistoryItems] = useState<DashboardHistoryItem[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [morningAnchorCard, setMorningAnchorCard] = useState<RightNowCard | null>(null);
   const [artifactPaywallLocked, setArtifactPaywallLocked] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [executing, setExecuting] = useState(false);
@@ -207,6 +210,28 @@ export default function DashboardPage() {
       loadAbortRef.current?.abort();
     };
   }, [load, status]);
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      setMorningAnchorCard(null);
+      return;
+    }
+    let cancelled = false;
+    void fetch('/api/workday-presence', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        if (!cancelled && payload?.card) {
+          setMorningAnchorCard(payload.card as RightNowCard);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMorningAnchorCard(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [status]);
   useEffect(() => {
     if (status !== 'authenticated' || typeof window === 'undefined') {
       return;
@@ -823,7 +848,27 @@ export default function DashboardPage() {
       integrationStatus?.mail_ingest_looks_stale === true);
   const sourceNeededBriefCard = <SourceNeededBriefCard stageDesktop={stageMetrics.isDesktop} />;
   const waitingBriefCard = <EmptyStateCard />;
-  const emptyStateCard = displayDailyUtilitySlate ? (
+  const emptyStateCard = morningAnchorCard ? (
+    <MorningAnchorCard
+      card={morningAnchorCard}
+      onSave={async (input) => {
+        const response = await fetch('/api/workday-presence', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(input),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok || !payload?.card) {
+          setStatusNotice({
+            id: 'morning_anchor_save_failed',
+            message: 'Could not save Morning Anchor right now.',
+          });
+          return;
+        }
+        setMorningAnchorCard(payload.card as RightNowCard);
+      }}
+    />
+  ) : displayDailyUtilitySlate ? (
     <DailyUtilitySlateCard
       slate={displayDailyUtilitySlate}
       missingInputPrompt={missingInputPrompt}
