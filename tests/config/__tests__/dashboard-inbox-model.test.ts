@@ -93,7 +93,7 @@ describe('dashboard finished-work inbox model', () => {
       history,
     );
 
-    expect(state.heading).toBe("Today's answer");
+    expect(state.heading).toBe('Right now');
     expect(state.statusLabel).toBe('Held back safely');
     expect(state.valueBlocks.map((block) => block.label)).toEqual([
       'What changed',
@@ -108,7 +108,7 @@ describe('dashboard finished-work inbox model', () => {
   it('shows connect-source first for a fresh account with no connected sources', () => {
     const state = buildDailyValueState(null, null, { integrations: [] }, []);
 
-    expect(state.heading).toBe("Today's answer");
+    expect(state.heading).toBe('Right now');
     expect(state.statusLabel).toBe('Connect a source');
     expect(state.summary).toBe('');
     expect(state.actionHref).toBe('/api/google/connect');
@@ -140,7 +140,7 @@ describe('dashboard finished-work inbox model', () => {
     );
 
     expect(buildMissingInputPrompt(slate)).toBeNull();
-    expect(state.heading).toBe("Today's answer");
+    expect(state.heading).toBe('Right now');
     expect(state.statusLabel).toBe('Do this');
     expect(state.summary).toContain('Commitment due in 5d');
     expect(state.copyLabel).toBe('Copy brief');
@@ -209,7 +209,7 @@ describe('dashboard finished-work inbox model', () => {
       [],
     );
 
-    expect(state.heading).toBe("Today's answer");
+    expect(state.heading).toBe('Right now');
     expect(state.statusLabel).toBe('Held back safely');
     expect(state.actionHref).toBe('/dashboard?panel=sources');
     expect(state.actionLabel).toBe('Check sources');
@@ -285,7 +285,7 @@ describe('dashboard finished-work inbox model', () => {
       [],
     );
 
-    expect(state.heading).toBe("Today's answer");
+    expect(state.heading).toBe('Right now');
     expect(state.statusLabel).toBe('Fix this first');
     expect(state.summary).toBe(
       'Foldera does not have enough live signal yet to give one trusted answer.',
@@ -405,10 +405,23 @@ describe('dashboard finished-work inbox model', () => {
       [],
     );
 
-    expect(usableState.heading).toBe("Today's answer");
+    expect(usableState.heading).toBe('Right now');
     expect(usableState.statusLabel).toBe("You're clear right now");
     expect(usableState.summary).toBe(
       'Foldera checked your connected sources. Nothing urgent cleared the trust bar, so you are clear right now.',
     );
+  });
+
+  it('carries the persisted Morning Anchor presence line into the card state', () => {
+    const state = buildDailyValueState(
+      slateForReason('stale_status_without_current_artifact_facts'),
+      null,
+      { integrations: [{ provider: 'google', is_active: true }] },
+      [],
+      'Morning Anchor active since 8:15 AM PT.',
+    );
+
+    expect(state.heading).toBe('Right now');
+    expect(state.morningAnchorLine).toBe('Morning Anchor active since 8:15 AM PT.');
   });
 });

@@ -707,7 +707,7 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     const slate = page.getByTestId('dashboard-daily-utility-slate');
     await expect(slate).toBeVisible({ timeout: 7000 });
     await expect(page.getByTestId('dashboard-loading-card')).toHaveCount(0);
-    await expect(slate.getByText(/Today's answer/i)).toBeVisible();
+    await expect(slate.getByText(/Right now/i)).toBeVisible();
     await expect(slate.getByText(/Held back safely/i)).toBeVisible();
     await expect(slate.getByText(/stored artifact no longer matches the current work/i).first()).toBeVisible();
     await expect(slate.getByText(/Source trail/i)).toBeVisible();
@@ -858,7 +858,7 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     });
     await page.goto('/dashboard');
 
-    await expect(page.getByText(/Today's answer/i)).toBeVisible();
+    await expect(page.getByText(/Right now/i)).toBeVisible();
     await expect(page.getByText(/What changed/i)).toBeVisible();
     await expect(page.getByText(/What Foldera protected/i)).toBeVisible();
     await expect(page.getByText(/Smallest unlock/i)).toBeVisible();
@@ -919,7 +919,7 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     });
     await page.goto('/dashboard');
 
-    await expect(page.getByText(/Today's answer/i)).toBeVisible();
+    await expect(page.getByText(/Right now/i)).toBeVisible();
     await expect(page.getByText(/^Do this$/i)).toBeVisible();
     await expect(
       page.getByRole('heading', { name: /Commitment due in 5d: Save job seeker account information/i }),

@@ -69,6 +69,30 @@ import {
 } from './dashboard-page-model';
 
 const DAILY_VALUE_FALLBACK_TIMEOUT_MS = 4500;
+const MORNING_ANCHOR_STORAGE_KEY = 'foldera.morning_anchor_presence.v1';
+
+type WorkdayPresenceState = {
+  workdayKey: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+};
+
+function getPacificWorkdayKey(now = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now);
+}
+
+function formatPacificTime(iso: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(new Date(iso));
+}
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -97,6 +121,7 @@ export default function DashboardPage() {
   const [outcomeRecorded, setOutcomeRecorded] = useState(false);
   const [locallyHiddenActionIds, setLocallyHiddenActionIds] = useState<Set<string>>(() => new Set());
   const [loadIssues, setLoadIssues] = useState<Set<DashboardLoadIssue>>(() => new Set());
+  const [morningAnchorLine, setMorningAnchorLine] = useState<string | null>(null);
   const loadAbortRef = useRef<AbortController | null>(null);
   const checkoutResumeAttemptedRef = useRef(false);
   const setLoadIssue = useCallback((issue: DashboardLoadIssue, failed: boolean) => {
@@ -207,6 +232,51 @@ export default function DashboardPage() {
       loadAbortRef.current?.abort();
     };
   }, [load, status]);
+  useEffect(() => {
+    if (status !== 'authenticated' || typeof window === 'undefined') {
+      setMorningAnchorLine(null);
+      return;
+    }
+
+    const now = new Date();
+    const workdayKey = getPacificWorkdayKey(now);
+    const raw = window.localStorage.getItem(MORNING_ANCHOR_STORAGE_KEY);
+    let persisted: WorkdayPresenceState | null = null;
+
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as Partial<WorkdayPresenceState>;
+        if (
+          typeof parsed?.workdayKey === 'string' &&
+          typeof parsed?.firstSeenAt === 'string' &&
+          typeof parsed?.lastSeenAt === 'string'
+        ) {
+          persisted = {
+            workdayKey: parsed.workdayKey,
+            firstSeenAt: parsed.firstSeenAt,
+            lastSeenAt: parsed.lastSeenAt,
+          };
+        }
+      } catch {
+        persisted = null;
+      }
+    }
+
+    const state: WorkdayPresenceState =
+      persisted && persisted.workdayKey === workdayKey
+        ? { ...persisted, lastSeenAt: now.toISOString() }
+        : {
+            workdayKey,
+            firstSeenAt: now.toISOString(),
+            lastSeenAt: now.toISOString(),
+          };
+    window.localStorage.setItem(MORNING_ANCHOR_STORAGE_KEY, JSON.stringify(state));
+    setMorningAnchorLine(
+      persisted && persisted.workdayKey === workdayKey
+        ? `Morning Anchor active since ${formatPacificTime(state.firstSeenAt)} PT.`
+        : `Morning Anchor set for today at ${formatPacificTime(state.firstSeenAt)} PT.`,
+    );
+  }, [status]);
   useEffect(() => {
     if (status !== 'authenticated' || typeof window === 'undefined') {
       return;
@@ -814,6 +884,7 @@ export default function DashboardPage() {
             : null,
     integrationStatus,
     historyItems,
+    morningAnchorLine ?? undefined,
   );
   const showSourceNeededBrief =
     !displayDailyUtilitySlate &&

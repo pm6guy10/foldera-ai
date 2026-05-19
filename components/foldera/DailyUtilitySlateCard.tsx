@@ -91,7 +91,7 @@ export function DailyUtilitySlateCard({
           Foldera already checked your connected sources
         </div>
         <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
-          Today&apos;s answer
+          Right now
         </p>
         <h2 className="mt-2 text-[34px] font-semibold leading-[1.05] tracking-[-0.02em] text-text-primary sm:text-[42px]">
           {headline}
@@ -99,6 +99,9 @@ export function DailyUtilitySlateCard({
         <p className="mt-4 max-w-[620px] text-[16px] leading-7 text-text-secondary sm:text-[17px] sm:leading-7">
           {dailyValueState.summary}
         </p>
+        {dailyValueState.morningAnchorLine ? (
+          <p className="mt-3 text-sm font-medium text-text-primary">{dailyValueState.morningAnchorLine}</p>
+        ) : null}
         {dailyValueState.actionHref && dailyValueState.actionLabel ? (
           <div className="mt-5 flex flex-wrap gap-3">
             <a href={dailyValueState.actionHref} className="foldera-button-secondary">

@@ -166,6 +166,7 @@ export type DashboardDailyValueState = {
   heading: string;
   statusLabel: string;
   summary: string;
+  morningAnchorLine?: string;
   valueBlocks: DashboardDailyValueBlock[];
   actionHref?: string;
   actionLabel?: string;
@@ -569,6 +570,7 @@ export function buildDailyValueState(
   latestIssue: DashboardLoadIssue | null,
   integrationStatus: IntegrationStatusPayload | null | undefined,
   historyItems: DashboardHistoryItem[] = [],
+  morningAnchorLine?: string,
 ): DashboardDailyValueState {
   const missingInputPrompt = buildMissingInputPrompt(slate, {
     hasIntegrationIssue: latestIssue === 'integrations',
@@ -644,7 +646,7 @@ export function buildDailyValueState(
         : statusLabel;
 
   return {
-    heading: "Today's answer",
+    heading: 'Right now',
     statusLabel: todayStatusLabel,
     summary:
       (hasPrimaryMove
@@ -657,6 +659,7 @@ export function buildDailyValueState(
           ? sanitizeDailyValueText(firstItem?.title, '')
         : missingInputPrompt?.prompt ?? sanitizeDailyValueText(firstItem?.title, '')) ??
       'No finished artifact cleared the trust check, but Foldera still gives you the useful read.',
+    morningAnchorLine,
     valueBlocks: [
       { label: 'What changed', body: whatChanged },
       { label: 'What Foldera protected', body: protectedBody },
