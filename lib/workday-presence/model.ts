@@ -26,6 +26,16 @@ export type RightNowCard =
       stop_when_done: string;
     };
 
+export type WorkdayPresenceDraftInput = {
+  prompt: string;
+  next_move?: string;
+  why_it_matters?: string;
+  blocker?: string;
+  do_not_touch?: string;
+  waiting_on?: string;
+  last_completed_step?: string;
+};
+
 function clean(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
@@ -81,5 +91,31 @@ export function buildRightNowCard(state: WorkdayPresenceState | null): RightNowC
     why_this_matters: `Why this matters: ${state.why_it_matters}`,
     do_not_touch: state.do_not_touch ? `Do not touch: ${state.do_not_touch}` : null,
     stop_when_done: stopWhenDone,
+  };
+}
+
+export function buildStateFromPrompt(
+  input: WorkdayPresenceDraftInput,
+  nowIso = new Date().toISOString(),
+): WorkdayPresenceState {
+  const currentFocus = input.prompt.trim();
+  const nextMove =
+    clean(input.next_move) ??
+    `Write the smallest concrete step that moves "${currentFocus}" forward in the next 25 minutes.`;
+  const whyItMatters =
+    clean(input.why_it_matters) ??
+    `Moving "${currentFocus}" forward now prevents drift and keeps your workday outcome on track.`;
+
+  return {
+    current_focus: currentFocus,
+    next_move: nextMove,
+    why_it_matters: whyItMatters,
+    blocker: clean(input.blocker),
+    do_not_touch: clean(input.do_not_touch),
+    waiting_on: clean(input.waiting_on),
+    last_completed_step: clean(input.last_completed_step),
+    state_source: 'manual_anchor',
+    created_at: nowIso,
+    updated_at: nowIso,
   };
 }

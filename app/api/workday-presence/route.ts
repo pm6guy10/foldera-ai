@@ -78,6 +78,7 @@ export async function PUT(request: Request) {
     const updateResult = await supabase.auth.admin.updateUserById(auth.userId, {
       user_metadata: {
         ...metadata,
+        // This is MVP Auth metadata storage. Before production Slack/cron use, migrate to a first-class workday_presence_state table with RLS/history.
         workday_presence_state: nextState,
       },
     });
