@@ -450,7 +450,7 @@ async function assertMoneyShotIntegrity(page: Page, state: MoneyShotState) {
   expect(overflow.bodyOverflow).toBe(false);
 
   if (state === 'no-safe') {
-    await expect(page.getByTestId('dashboard-daily-utility-slate')).toContainText('Held back safely');
+    await expect(page.getByTestId('dashboard-daily-utility-slate')).toContainText('Fix this first');
     await expect(page.getByRole('button', { name: /copy read/i })).toBeVisible();
     return;
   }
@@ -793,7 +793,7 @@ describeAuthMocked('Dashboard money-shot regression lock', () => {
     await expect(page.getByRole('button', { name: /notifications unavailable/i })).toHaveCount(0);
     await expect(page.getByRole('status', { name: /notifications unavailable/i })).toBeVisible();
     await expect(page.getByRole('status', { name: /current dashboard section: today/i })).toBeVisible();
-    await expect(page.getByText(/Held back safely/i)).toBeVisible();
+    await expect(page.getByText(/Fix this first/i)).toBeVisible();
     await page.getByRole('button', { name: /copy read/i }).click();
     await expect(page.getByTestId('dashboard-status-notice')).toHaveAttribute('data-status-id', 'copy_daily_value_succeeded');
 

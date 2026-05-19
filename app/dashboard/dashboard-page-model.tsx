@@ -586,23 +586,6 @@ export function buildDailyValueState(
   const activeSources = countActiveIntegrations(integrationStatus);
   const recentWorkCount = historyItems.length;
 
-  const statusLabel =
-    hasPrimaryMove
-      ? 'Current best move'
-      : slate?.finished_artifact_verdict === 'no_finished_artifact'
-        ? 'Held back safely'
-      : missingInputPrompt?.kind === 'freshness'
-      ? 'Needs fresher source'
-      : missingInputPrompt?.kind === 'recipient'
-        ? 'Needs clearer recipient'
-        : missingInputPrompt?.kind === 'source'
-          ? 'Needs current facts'
-          : missingInputPrompt?.kind === 'outcome'
-            ? 'Needs clearer outcome'
-            : activeSources > 0
-              ? 'Sources checked'
-              : 'Connect a source';
-
   const whatChanged = sanitizeDailyValueText(
     changedItem?.why_it_matters ?? changedItem?.title,
     recentWorkCount > 0
@@ -641,7 +624,7 @@ export function buildDailyValueState(
       ? 'Fix this first'
       : clearCoverageRead
         ? "You're clear right now"
-        : statusLabel;
+        : 'Fix this first';
 
   return {
     heading: "Today's answer",

@@ -94,7 +94,7 @@ describe('dashboard finished-work inbox model', () => {
     );
 
     expect(state.heading).toBe("Today's answer");
-    expect(state.statusLabel).toBe('Held back safely');
+    expect(state.statusLabel).toBe('Fix this first');
     expect(state.valueBlocks.map((block) => block.label)).toEqual([
       'What changed',
       'What Foldera protected',
@@ -109,7 +109,7 @@ describe('dashboard finished-work inbox model', () => {
     const state = buildDailyValueState(null, null, { integrations: [] }, []);
 
     expect(state.heading).toBe("Today's answer");
-    expect(state.statusLabel).toBe('Connect a source');
+    expect(state.statusLabel).toBe('Fix this first');
     expect(state.summary).toBe('');
     expect(state.actionHref).toBe('/api/google/connect');
     expect(state.actionLabel).toBe('Connect Google');
@@ -210,7 +210,7 @@ describe('dashboard finished-work inbox model', () => {
     );
 
     expect(state.heading).toBe("Today's answer");
-    expect(state.statusLabel).toBe('Held back safely');
+    expect(state.statusLabel).toBe('Fix this first');
     expect(state.actionHref).toBe('/dashboard?panel=sources');
     expect(state.actionLabel).toBe('Check sources');
     expect(state.valueBlocks.find((block) => block.label === 'Smallest unlock')?.body).toContain(

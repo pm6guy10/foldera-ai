@@ -708,7 +708,7 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
     await expect(slate).toBeVisible({ timeout: 7000 });
     await expect(page.getByTestId('dashboard-loading-card')).toHaveCount(0);
     await expect(slate.getByText(/Today's answer/i)).toBeVisible();
-    await expect(slate.getByText(/Held back safely/i)).toBeVisible();
+    await expect(slate.getByText(/Fix this first/i)).toBeVisible();
     await expect(slate.getByText(/stored artifact no longer matches the current work/i).first()).toBeVisible();
     await expect(slate.getByText(/Source trail/i)).toBeVisible();
     await expect(slate.getByText(/Foldera held back/i).first()).toBeVisible();
@@ -880,7 +880,7 @@ describeAuthMocked('Dashboard navigation and action wiring', () => {
 
     const slate = page.getByTestId('dashboard-daily-utility-slate');
     await expect(slate).toBeVisible({ timeout: 7000 });
-    await expect(slate).toContainText('Held back safely');
+    await expect(slate).toContainText('Fix this first');
     await expect(slate).toContainText(
       'The current source trail does not show enough real pressure for finished work.',
     );
