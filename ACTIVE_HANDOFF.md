@@ -40,4 +40,5 @@ Select the next assigned issue; do not self-select.
 ## In-progress branch (unmerged)
 
 - Issue #48 Phase 4 (test-mode connector evidence adapters): `codex/issue-48-phase4-connector-evidence-adapters`
+- Issue #48 Phase 5 (test-mode simulated ingestion → adapters → trigger): `codex/issue-48-ingestion-testmode`
 

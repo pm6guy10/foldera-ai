@@ -6968,3 +6968,15 @@ px vitest run lib/connectors/test-mode/__tests__/evidence-adapters.test.ts --rep
 pm run lint; 
 pm run build.
 - Unresolved issues: Not yet wired into any ingestion/sync route; next step requires an explicit assigned issue to connect real/simulated connector events to trigger evaluation without expanding surface area.
+
+## 2026-05-20 - Issue #48 Phase 5 simulated ingestion into connector evidence adapters (test mode)
+
+- MODE: Deterministic test-mode ingestion seam only; no new UI surfaces, OAuth/live send, auth/billing/thread-ledger/dashboard/scorer/conviction changes, or inbox/task-list behavior.
+- Files changed: lib/connectors/test-mode/ingest.ts, pp/api/connectors/test-mode/ingest/route.ts, pp/api/connectors/test-mode/__tests__/ingest-route.test.ts, ACTIVE_HANDOFF.md.
+- What changed: Added a test-mode ingestion endpoint and ingestion runner that feeds simulated connector events through Phase 4 evidence adapters and into the existing workday-presence trigger evaluator, enforcing collapse to at most one intervention.
+- Verification: 
+pm run health; 
+px vitest run app/api/connectors/test-mode/__tests__/ingest-route.test.ts lib/connectors/test-mode/__tests__/evidence-adapters.test.ts --reporter=verbose; 
+pm run lint; 
+pm run build.
+- Unresolved issues: PR not opened/merged yet; production not verified for this new ingestion route.
