@@ -37,3 +37,7 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 
 Select the next assigned issue; do not self-select.
 
+## In-progress branch (unmerged)
+
+- Issue #48 Phase 4 (test-mode connector evidence adapters): `codex/issue-48-phase4-connector-evidence-adapters`
+
