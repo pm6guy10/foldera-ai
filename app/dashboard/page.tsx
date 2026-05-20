@@ -2,10 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { DashboardArtifactBody } from '@/components/dashboard/DashboardArtifactBody';
-import {
-  DashboardStatusNoticeCard,
-  HiddenDashboardArtifact,
-} from '@/components/dashboard/DashboardChromeExtras';
+import { DashboardStatusNoticeCard, HiddenDashboardArtifact } from '@/components/dashboard/DashboardChromeExtras';
 import { DocumentCollectionIntakePanel } from '@/components/dashboard/DocumentCollectionIntakePanel';
 import { DashboardMobileLayout } from '@/components/dashboard/DashboardMobileLayout';
 import {
@@ -15,19 +12,16 @@ import {
 } from '@/components/dashboard/DashboardStateCards';
 import { DashboardDesktopStage } from '@/components/dashboard/DashboardDesktopStage';
 import { DashboardContextRail } from '@/components/dashboard/DashboardContextRail';
-import { MorningAnchorCard } from '@/components/dashboard/MorningAnchorCard';
 import { SourceNeededBriefCard } from '@/components/dashboard/SourceNeededBriefCard';
 import { DailyBriefCard } from '@/components/foldera/DailyBriefCard';
 import { EmptyStateCard } from '@/components/foldera/EmptyStateCard';
 import { DailyUtilitySlateCard } from '@/components/foldera/DailyUtilitySlateCard';
 import { type DashboardPanelKey } from '@/components/foldera/DashboardSidebar';
 import { DashboardWorkspacePanels } from '@/components/dashboard/DashboardWorkspacePanels';
-import {
-  clearPendingCheckoutPlan,
-  resumePendingCheckout,
-} from '@/lib/billing/pending-checkout';
+import { clearPendingCheckoutPlan, resumePendingCheckout } from '@/lib/billing/pending-checkout';
 import { formatRelativeTime, providerDisplayName } from '@/lib/ui/provider-display';
 import { useDashboardSourceStatus } from './use-dashboard-source-status';
+import { MorningAnchorEmptyState, useLoadMorningAnchorCard } from './morning-anchor-surface';
 import {
   DASHBOARD_PANEL_LABELS,
   DEFAULT_STAGE_METRICS,
@@ -210,28 +204,7 @@ export default function DashboardPage() {
       loadAbortRef.current?.abort();
     };
   }, [load, status]);
-  useEffect(() => {
-    if (status !== 'authenticated') {
-      setMorningAnchorCard(null);
-      return;
-    }
-    let cancelled = false;
-    void fetch('/api/workday-presence', { cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload) => {
-        if (!cancelled && payload?.card) {
-          setMorningAnchorCard(payload.card as RightNowCard);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setMorningAnchorCard(null);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [status]);
+  useLoadMorningAnchorCard(status, setMorningAnchorCard);
   useEffect(() => {
     if (status !== 'authenticated' || typeof window === 'undefined') {
       return;
@@ -849,24 +822,15 @@ export default function DashboardPage() {
   const sourceNeededBriefCard = <SourceNeededBriefCard stageDesktop={stageMetrics.isDesktop} />;
   const waitingBriefCard = <EmptyStateCard />;
   const emptyStateCard = morningAnchorCard ? (
-    <MorningAnchorCard
+    <MorningAnchorEmptyState
       card={morningAnchorCard}
-      onSave={async (input) => {
-        const response = await fetch('/api/workday-presence', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(input),
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || !payload?.card) {
-          setStatusNotice({
-            id: 'morning_anchor_save_failed',
-            message: 'Could not save Morning Anchor right now.',
-          });
-          return;
-        }
-        setMorningAnchorCard(payload.card as RightNowCard);
-      }}
+      onSaveFailed={() =>
+        setStatusNotice({
+          id: 'morning_anchor_save_failed',
+          message: 'Could not save Morning Anchor right now.',
+        })
+      }
+      onSaved={(card) => setMorningAnchorCard(card)}
     />
   ) : displayDailyUtilitySlate ? (
     <DailyUtilitySlateCard

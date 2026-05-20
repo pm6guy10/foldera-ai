@@ -51,8 +51,10 @@ const footerLinks = [
   { label: 'How it works', href: '/#how-it-works' },
   { label: 'Integrations', href: '/#integrations' },
   { label: 'Security', href: '/security' },
+  { label: 'About', href: '/about' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Resources', href: '/blog' },
+  { label: 'Status', href: '/status' },
 ];
 
 export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boolean }) {
