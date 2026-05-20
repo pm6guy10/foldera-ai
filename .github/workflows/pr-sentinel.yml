@@ -1,0 +1,19 @@
+name: PR Sentinel
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  merge_group:
+
+jobs:
+  pr-sentinel:
+    name: pr-sentinel
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v5
+      - name: Sentinel
+        run: |
+          echo "PR Sentinel: GitHub Actions is running for this ref."
+
