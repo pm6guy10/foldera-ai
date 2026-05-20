@@ -6956,3 +6956,15 @@ pm run build.
 - Unresolved issues: None for this docs-only rule update.
 
 
+
+## 2026-05-20 - Issue #48 Phase 4 connector evidence adapters (test mode)
+
+- MODE: Deterministic connector intelligence scaffolding only; no new UI surfaces, OAuth/live send, auth/billing/thread-ledger/dashboard/scorer changes, or inbox/task-list behavior.
+- Files changed: lib/connectors/test-mode/evidence-adapters.ts, lib/connectors/test-mode/__tests__/evidence-adapters.test.ts.
+- What changed: Added test-mode connector evidence adapters that normalize simulated Gmail/Calendar/Slack events into existing WorkdayPresenceTriggerContext candidates and collapse multiple signals into a single intervention candidate (with noisy-event suppression).
+- Verification: 
+pm run health (RESULT: 0 FAILING); 
+px vitest run lib/connectors/test-mode/__tests__/evidence-adapters.test.ts --reporter=verbose; 
+pm run lint; 
+pm run build.
+- Unresolved issues: Not yet wired into any ingestion/sync route; next step requires an explicit assigned issue to connect real/simulated connector events to trigger evaluation without expanding surface area.
