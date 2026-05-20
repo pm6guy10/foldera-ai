@@ -101,5 +101,60 @@ describe('workday presence trigger evaluation', () => {
       expect(result.payload.text).not.toMatch(BANNED_OUTPUT_RE);
     }
   });
+
+  it('mention_reply_needed stays quiet for noisy signals (no reply needed)', () => {
+    const result = evaluateWorkdayPresenceTrigger(
+      {
+        trigger_type: 'mention_reply_needed',
+        signal: {
+          source: 'slack',
+          thread_id: 'thread-123',
+          summary: 'Mentioned you in #general',
+          reply_needed: false,
+        },
+      },
+      baseState,
+    );
+    expect(result.outcome).toBe('quiet');
+    expect(JSON.stringify(result)).not.toMatch(BANNED_OUTPUT_RE);
+  });
+
+  it('mention_reply_needed stays quiet when signal does not affect active waiting_on thread', () => {
+    const result = evaluateWorkdayPresenceTrigger(
+      {
+        trigger_type: 'mention_reply_needed',
+        signal: {
+          source: 'email',
+          thread_id: 'thread-999',
+          summary: 'Need your reply on the renewal terms',
+          reply_needed: true,
+        },
+      },
+      baseState,
+    );
+    expect(result.outcome).toBe('quiet');
+    expect(JSON.stringify(result)).not.toMatch(BANNED_OUTPUT_RE);
+  });
+
+  it('mention_reply_needed returns an intervention only when reply-needed affects active thread', () => {
+    const result = evaluateWorkdayPresenceTrigger(
+      {
+        trigger_type: 'mention_reply_needed',
+        signal: {
+          source: 'email',
+          thread_id: 'thread-123',
+          summary: 'Legal asked: can you confirm the redlines by EOD?',
+          reply_needed: true,
+        },
+      },
+      baseState,
+    );
+    expect(result.outcome).toBe('intervention');
+    if (result.outcome === 'intervention') {
+      expect(result.reason).toMatch(/mention_reply_needed/i);
+      expect(result.payload.text).toContain('Reply needed');
+      expect(result.payload.text).not.toMatch(BANNED_OUTPUT_RE);
+    }
+  });
 });
 

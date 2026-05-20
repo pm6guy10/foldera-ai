@@ -131,5 +131,94 @@ describe('POST /api/workday-presence/triggers', () => {
     expect(body.result.payload).toBeUndefined();
     expect(JSON.stringify(body)).not.toMatch(BANNED_OUTPUT_RE);
   });
+
+  it('ignores noisy mention/reply-needed signals and returns quiet', async () => {
+    mockSupabase.auth.admin.getUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            workday_presence_state: {
+              current_focus: 'Close ACME renewal decision',
+              next_move: 'Send owner confirmation note',
+              why_it_matters: 'The renewal window closes at 4 PM PT.',
+              blocker: null,
+              do_not_touch: null,
+              waiting_on: 'thread-123',
+              last_completed_step: null,
+              state_source: 'manual_anchor',
+              created_at: '2026-05-20T12:00:00.000Z',
+              updated_at: '2026-05-20T12:10:00.000Z',
+            },
+          },
+        },
+      },
+      error: null,
+    });
+    const { POST } = await import('../triggers/route');
+    const response = await POST(
+      new Request('http://localhost/api/workday-presence/triggers', {
+        method: 'POST',
+        body: JSON.stringify({
+          trigger_type: 'mention_reply_needed',
+          signal: {
+            source: 'slack',
+            thread_id: 'thread-123',
+            summary: 'Mention in #general',
+            reply_needed: false,
+          },
+        }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.result.outcome).toBe('quiet');
+    expect(body.result.payload).toBeUndefined();
+    expect(JSON.stringify(body)).not.toMatch(BANNED_OUTPUT_RE);
+  });
+
+  it('returns an intervention only when reply-needed signal affects active thread', async () => {
+    mockSupabase.auth.admin.getUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            workday_presence_state: {
+              current_focus: 'Close ACME renewal decision',
+              next_move: 'Send owner confirmation note',
+              why_it_matters: 'The renewal window closes at 4 PM PT.',
+              blocker: null,
+              do_not_touch: null,
+              waiting_on: 'thread-123',
+              last_completed_step: null,
+              state_source: 'manual_anchor',
+              created_at: '2026-05-20T12:00:00.000Z',
+              updated_at: '2026-05-20T12:10:00.000Z',
+            },
+          },
+        },
+      },
+      error: null,
+    });
+    const { POST } = await import('../triggers/route');
+    const response = await POST(
+      new Request('http://localhost/api/workday-presence/triggers', {
+        method: 'POST',
+        body: JSON.stringify({
+          trigger_type: 'mention_reply_needed',
+          signal: {
+            source: 'email',
+            thread_id: 'thread-123',
+            summary: 'Need your reply on the redlines',
+            reply_needed: true,
+          },
+        }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.result.outcome).toBe('intervention');
+    expect(JSON.stringify(body)).not.toMatch(BANNED_OUTPUT_RE);
+  });
 });
 

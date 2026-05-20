@@ -6,7 +6,8 @@ export type WorkdayPresenceTriggerType =
   | 'morning_anchor'
   | 'pre_meeting'
   | 'end_of_day'
-  | 'waiting_on_changed';
+  | 'waiting_on_changed'
+  | 'mention_reply_needed';
 
 export type PreMeetingTriggerContext = {
   event: {
@@ -24,11 +25,21 @@ export type WaitingOnChangedTriggerContext = {
   };
 };
 
+export type MentionReplyNeededTriggerContext = {
+  signal: {
+    source: 'slack' | 'email';
+    thread_id: string;
+    summary: string;
+    reply_needed: boolean;
+  };
+};
+
 export type WorkdayPresenceTriggerContext =
   | { trigger_type: 'morning_anchor' }
   | ({ trigger_type: 'pre_meeting' } & PreMeetingTriggerContext)
   | { trigger_type: 'end_of_day' }
-  | ({ trigger_type: 'waiting_on_changed' } & WaitingOnChangedTriggerContext);
+  | ({ trigger_type: 'waiting_on_changed' } & WaitingOnChangedTriggerContext)
+  | ({ trigger_type: 'mention_reply_needed' } & MentionReplyNeededTriggerContext);
 
 export type WorkdayPresenceTriggerResult =
   | {
@@ -145,6 +156,30 @@ export function evaluateWorkdayPresenceTrigger(
       'waiting_on_changed',
       'waiting_on_changed: changed signal affects active thread',
       buildRightNowMessagePayload(changedState),
+    );
+  }
+
+  if (context.trigger_type === 'mention_reply_needed') {
+    if (!state) return quiet('mention_reply_needed', 'quiet: no saved state');
+    if (!context.signal.reply_needed) {
+      return quiet('mention_reply_needed', 'quiet: signal does not require a reply');
+    }
+    const waitingOnThreadId = state.waiting_on?.trim() ?? '';
+    if (!waitingOnThreadId) {
+      return quiet('mention_reply_needed', 'quiet: no active waiting_on thread');
+    }
+    if (waitingOnThreadId !== context.signal.thread_id) {
+      return quiet(
+        'mention_reply_needed',
+        'quiet: signal did not affect the active waiting_on thread',
+      );
+    }
+    const replyMove = `Reply needed (${context.signal.source}): ${context.signal.summary}. Next move: ${state.next_move}`;
+    const replyState = withOverrideMove(state, replyMove);
+    return intervention(
+      'mention_reply_needed',
+      'mention_reply_needed: reply-needed signal affects active thread',
+      buildRightNowMessagePayload(replyState),
     );
   }
 

@@ -23,6 +23,12 @@ type TriggerRequestBody = {
     thread_id?: string;
     summary?: string;
   };
+  signal?: {
+    source?: 'slack' | 'email';
+    thread_id?: string;
+    summary?: string;
+    reply_needed?: boolean;
+  };
 };
 
 function isNonEmptyString(value: unknown): value is string {
@@ -59,6 +65,23 @@ function buildContext(body: TriggerRequestBody): WorkdayPresenceTriggerContext |
     return {
       trigger_type: 'waiting_on_changed',
       changed: { thread_id: changed.thread_id, summary: changed.summary },
+    };
+  }
+
+  if (triggerType === 'mention_reply_needed') {
+    const signal = body.signal ?? {};
+    if (signal.source !== 'slack' && signal.source !== 'email') return null;
+    if (!isNonEmptyString(signal.thread_id)) return null;
+    if (!isNonEmptyString(signal.summary)) return null;
+    if (typeof signal.reply_needed !== 'boolean') return null;
+    return {
+      trigger_type: 'mention_reply_needed',
+      signal: {
+        source: signal.source,
+        thread_id: signal.thread_id,
+        summary: signal.summary,
+        reply_needed: signal.reply_needed,
+      },
     };
   }
 
