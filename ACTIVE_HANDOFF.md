@@ -1,75 +1,165 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-18 06:20 PT
-Current slice: docs-only operating-system alignment for issue-driven PR execution.
-Current mode: docs-only update; no product code, backend, schema, Supabase, Stripe, auth, or dependency changes.
-Current `origin/main` SHA at handoff update time: `7db9924642c058b29ca2e86e07b9eaea46cd1cfd`.
-Latest commit kind: product/runtime commit (issue #15 merge).
-Last verified runtime/product SHA: `7db9924642c058b29ca2e86e07b9eaea46cd1cfd`.
-Latest receipt/docs status: pending docs-only PR for operating-system instruction alignment.
-GitHub Actions for the latest `origin/main` head: verify in active PR flow for this docs-only update before merge.
-Latest verified Vercel production deployment: `dpl_4ahwdHZmrS1gGFKADt7G24M3GKv9`, READY for `7db9924642c058b29ca2e86e07b9eaea46cd1cfd`.
-Production `/api/health` for the latest `origin/main` head: `status=ok`, `build=7db9924`, `revision.git_sha=7db9924642c058b29ca2e86e07b9eaea46cd1cfd`, `deployment_id=dpl_4ahwdHZmrS1gGFKADt7G24M3GKv9`.
-Current release gate: PRE_BETA_READINESS_THRESHOLD
-First failing release gate: PRE_BETA_READINESS_THRESHOLD
-Release gate status: BLOCKED_EXTERNAL
-Current quality gate: QG_10_ARTIFACT_QUALITY PASS
-Current visual gate: QG_11_VISUAL_FRONTEND_QUALITY PASS
+Last updated: 2026-05-20
+Source of truth purpose: this file is the live command board for Foldera. Read this first in any new chat, Codex session, or repo handoff.
 
-## Issue/PR Workflow Receipt (Today)
+## Product doctrine
 
-- Gates/controllers remain the selector for the next failing truth condition.
-- Execution wrapper is mandatory: one issue -> one clean branch/worktree -> one PR -> one merge/reject decision -> one production SHA verification.
-- Controlled autopilot is selector-only; no multi-issue autonomous execution.
-- Frontend/dashboard issue PRs require screenshots in PR body/comments.
+Foldera is a Workday Presence Layer / context conduit.
 
-## Current Truth
+It is not a dashboard, task manager, inbox summary, daily brief, or generic chatbot.
 
-- Source coverage is no longer just display copy. The Today path now treats it as operating law.
-- Proven states in this slice: `thin`, `usable`, `rich`, `not_ready`, `obligation_only`, `context_ready`, and `operator_ready`.
-- The Today card keeps exactly one next connector visible. Unsupported future connectors are labeled as `Next unlock`, not fake-working connect controls.
-- Existing source trail, Save, Skip, Approve, history, and no-send behavior remain intact.
-- micro1 is Brandon-controlled and is internal owner-alias proof only. It cannot satisfy `GATE_9_REAL_NON_OWNER_BETA`.
-- owner-alias clear no-safe state (micro1): connected source Google; `signal_count=111`; `processed_signal_count=111`; `unprocessed_signal_count=0`; reason=no current Tier 1 or Tier 2 candidate proved a fresh, grounded discrepancy; next_action=ask tester feedback or wait for stronger evidence; nothing_sent=true.
-- `PRE_BETA_READINESS_THRESHOLD` must pass before Foldera tells the operator to seek an external tester.
-- Required deployed proof for that threshold:
-  - a new tester can connect Google or Microsoft and reach one honest Today answer
-  - Today is governed by source coverage
-  - thin graphs show `Fix this first`
-  - earned clear state requires sufficient coverage
-  - source trail, no-send boundary, Save/Skip/Approve/history, and `Next unlock` remain intact
-  - tester-facing expectation is explicit: Foldera may show `Do this`, `You're clear right now`, or `Fix this first`
-- Full `GATE_9_REAL_NON_OWNER_BETA` can still close through either explicit proof branch only after the pre-beta threshold passes:
-  - `real non-owner source-backed move` with source trail plus safe controls/history
-  - `explicit tester feedback: real non-owner tester` saying the waiting state was understandable and useful enough to keep trusting Foldera
-- Fake, synthetic, mock, owner, reserved test, and owner-canary proof remain excluded.
+Core doctrine:
+- state + connectors + triggers + one intervention
+- remember where the user was
+- detect when re-entry is needed
+- surface one next move where the user already works
+- let the user respond with Done / Stuck / Break smaller / Snooze
+- update state
+- stay quiet otherwise
 
-## Verification
+Privacy doctrine:
+- no screen-reading
+- no hidden activity monitoring
+- no surveillance framing
+- use only consented connectors and explicit user/workday state
 
-- Red-first focused proof caught the missing operating-law cases, then the source-coverage / source-readiness / dashboard model suite passed (`20/20`).
-- `npm run health`: PASS, `RESULT: 0 FAILING`.
-- `npm run gate:status`: `PRE_BETA_READINESS_THRESHOLD` is now the first failing release gate and reports `BLOCKED_EXTERNAL` until deployed first-run readiness is proven.
-- `npm run gate:quality`: PASS.
-- `npm run gate:visual`: PASS.
-- `npm run gate:frontend`: screenshot matrix, interaction matrix, banned-copy audit, and layout contract passed.
-- production current screenshots: not newly claimed in this local proof receipt.
+## Current truth
 
-## Decision
+PR #47 is merged.
+- Issue #45 shipped the Morning Anchor / persistent workday state foundation.
+- Workday presence state exists.
+- Dashboard can act as the control room.
 
-`PROVEN - PRE_BETA_READINESS_THRESHOLD GATE IMPLEMENTED.`
+PR #54 is merged.
+- Issue #53 shipped portable Right Now message payloads and simulated actions.
+- The Right Now card can be represented as a message payload.
+- Done / Stuck / Break smaller / Snooze action semantics exist in code.
+- No live Slack/Teams/email send exists yet.
 
-## Next exact move
+Issue #48 is the roadmap control tower.
+- It locks the Workday Presence Layer doctrine.
+- Use it to understand product direction.
 
-Stop this slice here. The next live blocker is deployed first-run proof: prove the pre-beta threshold before routing Foldera toward any true external tester.
+Issue #55 is the active rung.
+- Title: Add proactive re-entry trigger loop.
+- Goal: run morning, pre-meeting, end-of-day, and waiting-on/thread-changed trigger checks in manual/test mode.
+- Output must be either one Right Now intervention or quiet/no-intervention.
+- Quiet state must not create fake work, task lists, inbox summaries, dashboard dumps, or do_nothing directives.
 
-## Do Not Touch
+## Active roadmap order
 
-- Broad integrations or a connector marketplace
-- Stripe/payment behavior
-- Schema or destructive SQL
-- Paid/model generation
-- Outbound email
-- Fake users, rows, signals, actions, artifacts, or beta proof
-- Brandon owner data, `OWNER_USER_ID`, or `TEST_USER_ID` as beta proof
-- Manual AI-chat import as the main path
+1. Issue #55 — proactive re-entry trigger loop. ACTIVE NOW.
+2. Durable thread ledger for multi-day work.
+3. Connector intelligence for Slack/Teams/email/calendar/files.
+4. Real delivery surfaces: Slack, Teams, email, mobile.
+5. Beta proof with non-owner users.
 
+## Parked / forbidden unless explicitly assigned
+
+Do not work:
+- PR #44
+- PR #46
+- Dependabot PRs
+- live Slack/Teams/email send
+- connector intelligence
+- durable thread ledger
+- Stripe / billing / auth rewrite
+- broad dashboard redesign
+- deleting scorer.ts
+- deleting conviction-engine.ts
+- homepage polish unless directly tied to product proof
+
+## Execution rule
+
+One active rung at a time.
+
+One issue = one clean branch/worktree = one PR = proof = merge or reject = next rung.
+
+Codex must read issue #48 and this file before product work.
+
+Codex may not self-select the next issue or continue across roadmap rungs after a PR is opened/updated.
+
+## Required proof standard
+
+For issue #55:
+- unit tests for morning_anchor
+- unit tests for pre_meeting
+- unit tests for end_of_day
+- unit tests for waiting_on_changed
+- unit/API tests for quiet/no-intervention
+- regression proof that no task list, inbox summary, dashboard dump, or do_nothing directive is created
+- npm run lint
+- npm run build
+
+If frontend or visible surface changes, add screenshots to the PR.
+
+If deployed to production, verify production /api/health SHA equals latest main before calling it live.
+
+## Human-only decisions
+
+Ask Brandon only for:
+- product direction changes
+- paid/model-backed generation approval
+- outbound send approval
+- payment/Stripe action
+- destructive database action
+- schema migration approval
+- privacy or safety judgment
+- beta/customer positioning judgment
+
+Everything else should be handled by the operator layer.
+
+## Exact next Codex prompt
+
+Before coding, read GitHub issue #48 and ACTIVE_HANDOFF.md and treat them as the product contract.
+
+Implement GitHub issue #55 only.
+
+Start from clean origin/main.
+
+PR #47 and PR #54 are already merged.
+
+Product truth:
+Foldera is a Workday Presence Layer / context conduit. It should not wait for the user to open the dashboard. It should run proactive re-entry checks and return either one useful Right Now intervention or stay quiet.
+
+Goal:
+Add the proactive re-entry trigger loop in test/manual mode using existing workday presence state and existing Right Now message/action payloads.
+
+Required trigger types:
+- morning_anchor
+- pre_meeting
+- end_of_day
+- waiting_on_changed
+
+Required behavior:
+- Each trigger returns either one Right Now intervention or quiet/no-intervention.
+- Morning anchor uses saved state to produce the first re-entry move.
+- Pre-meeting produces one prep move only if event context requires prep.
+- End-of-day carries forward one restart point.
+- Waiting-on changed surfaces one intervention only if it affects active state/thread.
+- Quiet state must not create do_nothing, fake work, task list, inbox summary, or dashboard artifact.
+- Keep Done / Stuck / Break smaller / Snooze compatible with the existing message-action path.
+
+Also update ACTIVE_HANDOFF.md if the active rung, merged SHA, next rung, forbidden work, or stop condition changes.
+
+Forbidden:
+Do not touch PR #44, PR #46, Dependabot, live Slack/Teams/email send, connector intelligence, durable thread ledger, billing, auth, dashboard redesign, scorer.ts, or conviction-engine.ts.
+
+Proof:
+- Unit tests for all four trigger types.
+- Unit/API tests for quiet/no-intervention.
+- Regression test proving no task list, inbox summary, dashboard dump, or do_nothing directive is created.
+- npm run lint.
+- npm run build.
+
+Open one PR, include proof, and stop.
+
+Stop when #55 has one PR proving proactive trigger checks work in manual/test mode, or report the exact blocker.
+
+## Stop condition
+
+Current stop condition:
+Issue #55 has one PR with proof, or the exact blocker is reported.
+
+Do not begin durable thread ledger, connector intelligence, live Slack/Teams/email send, or beta proof until #55 is merged and verified.
