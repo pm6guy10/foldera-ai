@@ -1,20 +1,15 @@
 import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
-import {
-  normalizeWorkdayPresenceState,
-  type WorkdayPresenceState,
-} from '@/lib/workday-presence/model';
-import {
-  buildRightNowMessagePayload,
-  type RightNowMessageActionId,
-} from '@/lib/workday-presence/message';
+import { normalizeWorkdayPresenceState, type WorkdayPresenceState } from '@/lib/workday-presence/model';
+import { buildRightNowMessagePayload, type RightNowMessageActionId } from '@/lib/workday-presence/message';
 import { applyWorkdayPresenceAction } from '@/lib/workday-presence/actions';
+import { buildSlackTestModeRightNowMessage } from '@/lib/slack-test-mode/right-now';
 import { apiErrorForRoute, badRequest } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
-type ActionPayload = {
+type InteractionBody = {
   action_id?: RightNowMessageActionId;
   blocker?: string;
 };
@@ -28,7 +23,6 @@ async function persistState(
   const updateResult = await supabase.auth.admin.updateUserById(userId, {
     user_metadata: {
       ...metadata,
-      // This stays in Auth metadata for MVP portability. A first-class table with RLS/history comes later.
       workday_presence_state: nextState,
     },
   });
@@ -40,12 +34,9 @@ export async function POST(request: Request) {
   if (auth instanceof NextResponse) return auth;
 
   try {
-    const payload = (await request.json().catch(() => ({}))) as ActionPayload;
+    const payload = (await request.json().catch(() => ({}))) as InteractionBody;
     const actionId = payload.action_id;
     if (!actionId) return badRequest('action_id is required');
-    if (!['done', 'stuck', 'break_smaller', 'snooze'].includes(actionId)) {
-      return badRequest('Invalid action_id');
-    }
 
     const supabase = createServerClient();
     const { data, error } = await supabase.auth.admin.getUserById(auth.userId);
@@ -57,20 +48,23 @@ export async function POST(request: Request) {
     });
     if (!applied.ok) return badRequest(applied.error);
 
-    const nextState = applied.nextState;
     const currentState = normalizeWorkdayPresenceState(metadata.workday_presence_state);
     if (!currentState) return badRequest('No active workday presence state');
 
+    const nextState = applied.nextState;
     if (actionId !== 'snooze') {
       await persistState(auth.userId, metadata, nextState);
     }
 
+    const nextPayload = buildRightNowMessagePayload(nextState);
     return NextResponse.json({
+      action_id: actionId,
       state: nextState,
-      payload: buildRightNowMessagePayload(nextState),
+      payload: nextPayload,
+      slack_test_mode: buildSlackTestModeRightNowMessage(nextPayload),
     });
   } catch (error: unknown) {
-    return apiErrorForRoute(error, 'workday-presence message-action POST');
+    return apiErrorForRoute(error, 'slack test-mode interaction POST');
   }
 }
 
