@@ -17,7 +17,7 @@ const proofRow = [
 const howItWorks = [
   {
     step: '1',
-    title: 'Understand your inputs',
+    title: 'Signals in',
     body: 'Foldera reviews your messages, events, docs, and notes to spot what counts.',
   },
   {
@@ -27,15 +27,15 @@ const howItWorks = [
   },
   {
     step: '3',
-    title: 'One finished next move',
+    title: 'Finished move out',
     body: 'Review, approve, and send when you are ready.',
   },
 ];
 
 const trustPoints = [
   'Approval before anything sends',
-  'Source trail visible',
-  'Private by design',
+  'Source trail attached',
+  'No outbound by default',
   'You stay in control',
 ];
 
@@ -51,8 +51,10 @@ const footerLinks = [
   { label: 'How it works', href: '/#how-it-works' },
   { label: 'Integrations', href: '/#integrations' },
   { label: 'Security', href: '/security' },
+  { label: 'About', href: '/about' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'Resources', href: '/blog' },
+  { label: 'Status', href: '/status' },
 ];
 
 export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boolean }) {
@@ -120,7 +122,7 @@ export function LandingPage({ isAuthenticated = false }: { isAuthenticated?: boo
 
         <section id="how-it-works" className="px-4 py-10 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-[1480px]">
-            <h2 className="text-center text-[38px] font-semibold tracking-[-0.05em] text-white">How it works</h2>
+            <h2 className="text-center text-[38px] font-semibold tracking-[-0.05em] text-white">How Foldera works</h2>
             <div className="mt-8 grid gap-5 md:grid-cols-3">
               {howItWorks.map((item) => (
                 <article key={item.step} className="rounded-[22px] bg-white/[0.03] p-6">
@@ -210,7 +212,7 @@ function HeroArtifact() {
             footerText="Source trail visible."
             statusText="READY"
             actions={[
-              { label: 'Review & send', kind: 'primary' },
+              { label: 'Approve', kind: 'primary' },
               { label: 'Snooze 24h', kind: 'amber' },
               { label: 'Skip', kind: 'secondary' },
             ]}

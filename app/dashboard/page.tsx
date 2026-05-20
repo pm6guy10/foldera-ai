@@ -2,10 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { DashboardArtifactBody } from '@/components/dashboard/DashboardArtifactBody';
-import {
-  DashboardStatusNoticeCard,
-  HiddenDashboardArtifact,
-} from '@/components/dashboard/DashboardChromeExtras';
+import { DashboardStatusNoticeCard, HiddenDashboardArtifact } from '@/components/dashboard/DashboardChromeExtras';
 import { DocumentCollectionIntakePanel } from '@/components/dashboard/DocumentCollectionIntakePanel';
 import { DashboardMobileLayout } from '@/components/dashboard/DashboardMobileLayout';
 import {
@@ -21,12 +18,10 @@ import { EmptyStateCard } from '@/components/foldera/EmptyStateCard';
 import { DailyUtilitySlateCard } from '@/components/foldera/DailyUtilitySlateCard';
 import { type DashboardPanelKey } from '@/components/foldera/DashboardSidebar';
 import { DashboardWorkspacePanels } from '@/components/dashboard/DashboardWorkspacePanels';
-import {
-  clearPendingCheckoutPlan,
-  resumePendingCheckout,
-} from '@/lib/billing/pending-checkout';
+import { clearPendingCheckoutPlan, resumePendingCheckout } from '@/lib/billing/pending-checkout';
 import { formatRelativeTime, providerDisplayName } from '@/lib/ui/provider-display';
 import { useDashboardSourceStatus } from './use-dashboard-source-status';
+import { MorningAnchorEmptyState, useLoadMorningAnchorCard } from './morning-anchor-surface';
 import {
   DASHBOARD_PANEL_LABELS,
   DEFAULT_STAGE_METRICS,
@@ -67,6 +62,7 @@ import {
   type LoadLatestResult,
   type StageMetrics,
 } from './dashboard-page-model';
+import type { RightNowCard } from '@/lib/workday-presence/model';
 
 const DAILY_VALUE_FALLBACK_TIMEOUT_MS = 4500;
 
@@ -81,6 +77,7 @@ export default function DashboardPage() {
   const [graphStats, setGraphStats] = useState<GraphStatsPayload | null>(null);
   const [historyItems, setHistoryItems] = useState<DashboardHistoryItem[]>([]);
   const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [morningAnchorCard, setMorningAnchorCard] = useState<RightNowCard | null>(null);
   const [artifactPaywallLocked, setArtifactPaywallLocked] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [executing, setExecuting] = useState(false);
@@ -207,6 +204,7 @@ export default function DashboardPage() {
       loadAbortRef.current?.abort();
     };
   }, [load, status]);
+  useLoadMorningAnchorCard(status, setMorningAnchorCard);
   useEffect(() => {
     if (status !== 'authenticated' || typeof window === 'undefined') {
       return;
@@ -823,7 +821,18 @@ export default function DashboardPage() {
       integrationStatus?.mail_ingest_looks_stale === true);
   const sourceNeededBriefCard = <SourceNeededBriefCard stageDesktop={stageMetrics.isDesktop} />;
   const waitingBriefCard = <EmptyStateCard />;
-  const emptyStateCard = displayDailyUtilitySlate ? (
+  const emptyStateCard = morningAnchorCard ? (
+    <MorningAnchorEmptyState
+      card={morningAnchorCard}
+      onSaveFailed={() =>
+        setStatusNotice({
+          id: 'morning_anchor_save_failed',
+          message: 'Could not save Morning Anchor right now.',
+        })
+      }
+      onSaved={(card) => setMorningAnchorCard(card)}
+    />
+  ) : displayDailyUtilitySlate ? (
     <DailyUtilitySlateCard
       slate={displayDailyUtilitySlate}
       missingInputPrompt={missingInputPrompt}
