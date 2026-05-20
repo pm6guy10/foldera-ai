@@ -80,6 +80,37 @@ Codex must read issue #48 and this file before product work.
 
 Codex may not self-select the next issue or continue across roadmap rungs after a PR is opened/updated.
 
+## Controllers and gates are mandatory
+
+The handoff is not enough by itself. Every product PR must run the relevant repo controllers/gates and report results.
+
+Baseline gates for every product PR:
+- npm run lint
+- npm run build
+- npm run health when environment allows it
+- npm run gate:status when environment allows it
+- npm run gate:quality when product quality is affected
+- npm run gate:visual or npm run gate:frontend when UI/dashboard/frontend truth is affected
+- focused unit/API tests for the assigned issue
+
+Controller scripts are truth selectors, not optional suggestions:
+- npm run controller:autopilot may identify the next failing condition, but it may not authorize multi-issue work.
+- npm run gate:status, gate:quality, gate:visual, gate:frontend, and gate:decision-trace should be used when their surface is relevant.
+- Red CI or red gate means fix only the exact failing job/gate for the assigned issue.
+- Green local proof is not enough if GitHub/Vercel/prod gates are red or pending.
+
+Product PR receipt must include:
+- exact issue implemented
+- branch/PR
+- files changed
+- focused tests run
+- npm gates run
+- GitHub Actions status
+- Vercel status when deployed
+- production /api/health SHA when deployed
+- remaining blocker
+- next human decision
+
 ## Required proof standard
 
 For issue #55:
@@ -91,8 +122,10 @@ For issue #55:
 - regression proof that no task list, inbox summary, dashboard dump, or do_nothing directive is created
 - npm run lint
 - npm run build
+- npm run gate:status when environment allows it
+- npm run gate:quality when environment allows it
 
-If frontend or visible surface changes, add screenshots to the PR.
+If frontend or visible surface changes, add screenshots to the PR and run npm run gate:frontend.
 
 If deployed to production, verify production /api/health SHA equals latest main before calling it live.
 
@@ -141,7 +174,7 @@ Required behavior:
 - Quiet state must not create do_nothing, fake work, task list, inbox summary, or dashboard artifact.
 - Keep Done / Stuck / Break smaller / Snooze compatible with the existing message-action path.
 
-Also update ACTIVE_HANDOFF.md if the active rung, merged SHA, next rung, forbidden work, or stop condition changes.
+Also update ACTIVE_HANDOFF.md if the active rung, merged SHA, next rung, forbidden work, stop condition, or mandatory gate status changes.
 
 Forbidden:
 Do not touch PR #44, PR #46, Dependabot, live Slack/Teams/email send, connector intelligence, durable thread ledger, billing, auth, dashboard redesign, scorer.ts, or conviction-engine.ts.
@@ -152,6 +185,8 @@ Proof:
 - Regression test proving no task list, inbox summary, dashboard dump, or do_nothing directive is created.
 - npm run lint.
 - npm run build.
+- npm run gate:status when environment allows it.
+- npm run gate:quality when environment allows it.
 
 Open one PR, include proof, and stop.
 
@@ -160,6 +195,6 @@ Stop when #55 has one PR proving proactive trigger checks work in manual/test mo
 ## Stop condition
 
 Current stop condition:
-Issue #55 has one PR with proof, or the exact blocker is reported.
+Issue #55 has one PR with proof, including mandatory relevant gates, or the exact blocker is reported.
 
 Do not begin durable thread ledger, connector intelligence, live Slack/Teams/email send, or beta proof until #55 is merged and verified.
