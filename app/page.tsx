@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   },
   title: 'Foldera',
   description:
-    'Foldera reads connected sources, finds the move that matters, drafts the finished action, shows the source trail, and waits for approval.',
+    'Foldera reconnects the message, meeting, draft, file, and blocker, then hands back the ready next move.',
 };
 
 export default async function HomePage() {
