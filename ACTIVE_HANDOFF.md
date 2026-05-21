@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-05-21 13:55 PT
-Current slice: issue #62 homepage Workday Presence Layer landing page is in progress on branch `codex/issue-62-landing`; PR not opened yet.
+Current slice: issue #62 homepage Workday Presence Layer landing page is in PR #65 on branch `codex/issue-62-landing`.
 Current `origin/main` SHA at update time: `5898426c561261523c29470ae24b8d869b1d6933`.
 Last verified runtime/product SHA: `95533cb90f808df160a2fabdf121ccf54ebc0ee0` from prior production proof.
 Latest verified Vercel production deployment: `dpl_GTvYt7FH3CEF49tK1qYJ5QgiSZzP` READY for prior product baseline.
