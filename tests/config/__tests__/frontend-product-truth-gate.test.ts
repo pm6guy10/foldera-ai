@@ -31,6 +31,33 @@ const BANNED_USER_FACING_PHRASES = [
   'legacy rooms',
 ];
 
+const BANNED_HOMEPAGE_MARKETING_PHRASES = [
+  'daily brief',
+  'Today answer',
+  'Today’s answer',
+  "Today's answer",
+  'inbox triage',
+  'task list',
+  'finished work every morning',
+  'Your day. Already done.',
+  'See the Right Now flow',
+  'Source trail',
+  'SOC 2',
+  '4.8/5',
+  'enterprise ready',
+  'AI agent',
+  'autonomous assistant',
+  'screen reading',
+  'surveillance',
+];
+
+const REQUIRED_HOMEPAGE_COPY = [
+  'Stop rebuilding the work. Foldera hands it back ready.',
+  'Context attached: message + meeting + file + blocker',
+  'See Foldera in action',
+  'Join the pilot',
+];
+
 const UI_SOURCE_ROOTS = [
   'app/dashboard',
   'components/dashboard',
@@ -104,6 +131,22 @@ describe('frontend product truth gate', () => {
         }
       }
     }
+    expect(leaks).toEqual([]);
+  });
+
+  it('locks homepage copy to the Workday Presence Layer landing direction', () => {
+    const landingPage = fs.readFileSync(
+      path.join(ROOT, 'components/foldera/LandingPage.tsx'),
+      'utf8',
+    );
+
+    for (const phrase of REQUIRED_HOMEPAGE_COPY) {
+      expect(landingPage).toContain(phrase);
+    }
+
+    const leaks = BANNED_HOMEPAGE_MARKETING_PHRASES.filter((phrase) =>
+      landingPage.toLowerCase().includes(phrase.toLowerCase()),
+    );
     expect(leaks).toEqual([]);
   });
 });

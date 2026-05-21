@@ -150,13 +150,15 @@ test.describe('Landing page /', () => {
     await expect(page).toHaveTitle(/Foldera/i);
   });
 
-  test('hero headline and daily brief proof card are visible — desktop', async ({ page }) => {
+  test('hero headline and assembled-context proof card are visible — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
-    await expect(page.getByTestId('landing-hero-heading')).toContainText(/One finished move/i);
+    await expect(page.getByTestId('landing-hero-heading')).toContainText(/Stop rebuilding/i);
+    await expect(page.getByTestId('landing-hero-heading')).toContainText(/Foldera hands it/i);
+    await expect(page.getByTestId('landing-hero-heading')).toContainText(/ready/i);
     await expect(page.getByTestId('landing-proof-card')).toBeVisible();
-    await expect(page.getByRole('link', { name: /See live demo/i }).first()).toBeVisible();
-    await expect(page.getByText(/Nothing sends until you approve/i).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: /^See Foldera in action$/i }).first()).toBeVisible();
+    await expect(page.getByText(/Context attached: message \+ meeting \+ file \+ blocker/i).first()).toBeVisible();
   });
 
   test('landing demo uses neutral public copy and default approve language', async ({ page }) => {
@@ -164,26 +166,31 @@ test.describe('Landing page /', () => {
     await page.goto('/');
     await expect(page.getByText(/Brandon/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Approve & send/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Approve$/i }).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: /See live demo/i }).first()).toHaveAttribute('href', '/demo');
+    await expect(page.getByRole('button', { name: /^Done$/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Snooze$/i }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: /^See Foldera in action$/i }).first()).toHaveAttribute('href', '/demo');
   });
 
-  test('start CTAs keep the locked "Get started free" copy', async ({ page }) => {
+  test('homepage CTAs keep the locked issue #62 copy', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
 
     const startLinks = page.locator('main a[href="/start"]');
     await expect(startLinks).toHaveCount(2);
-    await expect(startLinks).toHaveText(['Get started free', 'Get started free']);
+    await expect(startLinks).toHaveText(['Join the pilot', 'Join the pilot']);
+    await expect(page.locator('main a[href="/demo"]')).toHaveText([
+      'See Foldera in action',
+      'See Foldera in action',
+    ]);
   });
 
-  test('logged-out public nav shows Sign in and Start free', async ({ page }) => {
+  test('logged-out public nav shows Sign in and Join the pilot', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
 
     const publicNav = page.getByRole('navigation', { name: 'Public navigation' });
     await expect(publicNav.getByRole('link', { name: /^Sign in$/i })).toBeVisible();
-    await expect(publicNav.getByRole('link', { name: /^Start free$/i })).toHaveAttribute('href', '/start');
+    await expect(publicNav.getByRole('link', { name: /^Join the pilot$/i })).toHaveAttribute('href', '/start');
     await expect(publicNav.getByRole('link', { name: /^Dashboard$/i })).toHaveCount(0);
   });
 
@@ -204,19 +211,19 @@ test.describe('Landing page /', () => {
   test('landing proof card stays visible on mobile preview', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
-    await expect(page.getByTestId('landing-hero-heading')).toContainText(/One finished move/i);
+    await expect(page.getByTestId('landing-hero-heading')).toContainText(/Stop rebuilding/i);
     await expect(page.getByTestId('landing-proof-card')).toBeVisible();
     await expect(page.getByText(/Brandon/i)).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Approve & send/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Approve$/i }).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: /See live demo/i }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Done$/i }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: /^See Foldera in action$/i }).first()).toBeVisible();
   });
 
-  test('root metadata description matches the finished-work positioning', async ({ page }) => {
+  test('root metadata description matches the assembled-context positioning', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('meta[name="description"]')).toHaveAttribute(
       'content',
-      /connected sources|finished action|source trail|approval/i,
+      /message, meeting, draft, file, and blocker|ready next move/i,
     );
   });
 
@@ -224,24 +231,25 @@ test.describe('Landing page /', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
 
-    await expect(page.getByTestId('landing-hero-heading')).toContainText(/One finished move/i);
-    await expect(page.getByText(/How Foldera works/i).first()).toBeVisible();
-    await expect(page.getByText(/Signals in/i).first()).toBeVisible();
-    await expect(page.getByText(/Finished move out/i).first()).toBeVisible();
-    await expect(page.getByText(/Approval before anything sends/i).first()).toBeVisible();
-    await expect(page.getByText(/Source trail attached/i).first()).toBeVisible();
-    await expect(page.getByText(/No outbound by default/i).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: /See live demo/i }).first()).toHaveAttribute('href', '/demo');
+    await expect(page.getByTestId('landing-hero-heading')).toContainText(/Stop rebuilding/i);
+    await expect(page.getByText(/Work breaks your thread/i).first()).toBeVisible();
+    await expect(page.getByText(/Foldera rebuilds the thread/i).first()).toBeVisible();
+    await expect(page.getByText(/Manual way/i).first()).toBeVisible();
+    await expect(page.getByText(/Foldera way/i).first()).toBeVisible();
+    await expect(page.getByText(/Approval-first/i).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: /^See Foldera in action$/i }).first()).toHaveAttribute('href', '/demo');
 
     for (const overclaim of [
       /Trusted by teams/i,
       /SOC 2/i,
       /3\.2M/i,
-      /Slack/i,
-      /Notion/i,
       /Google Drive/i,
       /Dropbox/i,
       /Approve and send/i,
+      /Source trail/i,
+      /daily brief/i,
+      /Today answer/i,
+      /task list/i,
     ]) {
       await expect(page.getByText(overclaim)).toHaveCount(0);
     }
