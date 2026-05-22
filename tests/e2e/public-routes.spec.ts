@@ -157,7 +157,8 @@ test.describe('Landing page /', () => {
 
   test('homepage image swap stays aligned to the uploaded visual target', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('img[alt="Foldera homepage visual target"]').first()).toBeVisible();
+    await expect(page.locator('img[alt="Foldera homepage visual target"]').nth(0)).toBeHidden();
+    await expect(page.locator('img[alt="Foldera homepage visual target"]').nth(1)).toBeVisible();
   });
 
   test('no actionable console errors — desktop', async ({ page }) => {
@@ -219,23 +220,11 @@ test.describe('Landing page /', () => {
     }
   });
 
-  test('nav and footer expose real public destinations', async ({ page }) => {
+  test('homepage exposes no semantic nav/footer shell', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
-
-    await expect(page.getByRole('link', { name: 'Security' }).first()).toHaveAttribute(
-      'href',
-      '/security',
-    );
-    await expect(page.getByRole('link', { name: 'About' }).first()).toHaveAttribute(
-      'href',
-      '/about',
-    );
-    await expect(page.getByRole('link', { name: 'Status' }).first()).toHaveAttribute(
-      'href',
-      '/status',
-    );
-    await expect(page.locator('footer a[href="#"]')).toHaveCount(0);
+    await expect(page.locator('nav')).toHaveCount(0);
+    await expect(page.locator('footer')).toHaveCount(0);
   });
 });
 
