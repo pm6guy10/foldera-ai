@@ -7,6 +7,7 @@
     ".foldera-contract.json",
     "ACTIVE_HANDOFF.md",
     "components/foldera/LandingPage.tsx",
+    "tests/e2e/public-routes.spec.ts",
     "public/foldera-homepage-final*.png"
   ],
   "forbidden_file_patterns": [
