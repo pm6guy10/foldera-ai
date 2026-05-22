@@ -175,16 +175,11 @@ export function buildConnectorHealthEntries(
   return rows.map((row) => {
     const provider = normalizeConnectorProvider(row.provider);
     const uiProvider = toUiConnectorProvider(provider);
-    const hasAccessToken = hasValue(row.access_token);
-    const hasRefreshToken = hasValue(row.refresh_token);
     const needsReauth = hasValue(row.oauth_reauth_required_at);
-    const missingScopes = hasAccessToken
-      ? missingScopeLabels(provider, row.scopes, { hasRefreshToken })
-      : [];
-    const disconnected =
-      hasValue(row.disconnected_at) || (!hasAccessToken && !hasRefreshToken && !needsReauth);
-    const needsReconnect = !needsReauth && hasAccessToken && (!hasRefreshToken || missingScopes.length > 0);
-    const isActive = hasAccessToken && !hasValue(row.disconnected_at);
+    const disconnected = hasValue(row.disconnected_at);
+    const missingScopes = !disconnected ? missingScopeLabels(provider, row.scopes, { hasRefreshToken: !needsReauth }) : [];
+    const needsReconnect = !needsReauth && !disconnected && missingScopes.length > 0;
+    const isActive = !disconnected;
     const age = ageHours(row.last_synced_at, nowMs);
     const lastSyncMs = row.last_synced_at ? new Date(row.last_synced_at).getTime() : Number.NaN;
     const hasValidLastSync = Number.isFinite(lastSyncMs);
@@ -216,8 +211,8 @@ export function buildConnectorHealthEntries(
       }),
       age_hours: age,
       is_active: isActive,
-      has_access_token: hasAccessToken,
-      has_refresh_token: hasRefreshToken,
+      has_access_token: isActive,
+      has_refresh_token: isActive && !needsReauth,
       missing_scopes: missingScopes,
       needs_reauth: needsReauth,
       needs_reconnect: needsReconnect,
@@ -348,7 +343,7 @@ export async function loadConnectorHealthRows(options: {
   const modern = await supabase
     .from('user_tokens')
       .select(
-        'provider, email, last_synced_at, scopes, access_token, expires_at, refresh_token, disconnected_at, oauth_reauth_required_at',
+        'provider, email, last_synced_at, scopes, expires_at, disconnected_at, oauth_reauth_required_at',
       )
     .eq('user_id', options.userId)
     .or('disconnected_at.is.null,oauth_reauth_required_at.not.is.null');
@@ -357,7 +352,7 @@ export async function loadConnectorHealthRows(options: {
     const legacy = await supabase
       .from('user_tokens')
       .select(
-        'provider, email, last_synced_at, scopes, access_token, expires_at, refresh_token, disconnected_at',
+        'provider, email, last_synced_at, scopes, expires_at, disconnected_at',
       )
       .eq('user_id', options.userId)
       .is?.('disconnected_at', null);

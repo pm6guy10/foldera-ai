@@ -1,14 +1,16 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-05-22 PT
+Current `origin/main` SHA at update time: `c166d238c73f68b879c33ba5c785945079cdfc81`.
+Latest verified runtime/product baseline: production `/api/health` on deployment `dpl_BsZm2iEp2zwx3PJyfeAqCDQPtFnL`.
 
 ## Current slice
 
-PR #66 / issue #62 homepage image swap is merged.
+Issue #62 / PR #66 homepage image swap is merged.
 
 Current active execution seam is issue #67 / PR #68: Free-plan Supabase egress and token-value select enforcement on branch `codex/issue-67-free-plan-gate`.
 
-PR #68 is open and not merged. Its branch was opened against an older `main` base from before the homepage merge, so the next move is to update/rebase it against current `main`, resolve only merge/gate fallout, rerun proof, then merge only if green.
+PR #68 is open but stale because its branch was created before the homepage merge. Update/rebase it against current `main`, resolve only merge/gate fallout, rerun proof, and merge only if green.
 
 ## Product doctrine
 

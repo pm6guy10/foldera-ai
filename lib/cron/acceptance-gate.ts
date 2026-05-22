@@ -46,8 +46,8 @@ async function checkAuth(): Promise<CheckResult> {
   const supabase = createServerClient();
   const { data: tokenRow, error: tokenError } = await supabase
     .from('user_tokens')
-    .select('user_id, email')
-    .not('access_token', 'is', null)
+    .select('user_id, email, disconnected_at')
+    .is('disconnected_at', null)
     .neq('user_id', TEST_USER_ID)
     .limit(1)
     .maybeSingle();
@@ -100,9 +100,8 @@ async function checkTokens(): Promise<CheckResult> {
 
   const { data, error } = await supabase
     .from('user_tokens')
-    .select('user_id, provider, expires_at, refresh_token')
+    .select('user_id, provider, expires_at, disconnected_at, oauth_reauth_required_at')
     .lt('expires_at', sixHoursFromNowMs)
-    .is('refresh_token', null)
     .neq('user_id', TEST_USER_ID);
 
   if (error) {
@@ -114,7 +113,7 @@ async function checkTokens(): Promise<CheckResult> {
     if (expiryMs === null || expiryMs < nowMs || expiryMs >= sixHoursFromNowMs) {
       return false;
     }
-    return row.refresh_token === null;
+    return row.disconnected_at == null && !row.oauth_reauth_required_at;
   });
   if (expiring.length > 0) {
     const summary = expiring
@@ -315,9 +314,8 @@ async function checkSession(): Promise<CheckResult> {
 
   const { data, error } = await supabase
     .from('user_tokens')
-    .select('provider, user_id, access_token, disconnected_at')
+    .select('provider, user_id, disconnected_at')
     .is('disconnected_at', null)
-    .not('access_token', 'is', null)
     .neq('user_id', TEST_USER_ID)
     .limit(20);
 
@@ -326,7 +324,7 @@ async function checkSession(): Promise<CheckResult> {
   }
 
   const connectedRows = (data ?? []).filter(
-    (row: any) => typeof row.access_token === 'string' && row.access_token.length > 0,
+    (row: any) => row.disconnected_at == null,
   );
   if (connectedRows.length === 0) {
     return {
@@ -374,7 +372,6 @@ async function checkNonOwnerDepth(): Promise<CheckResult> {
     .from('user_tokens')
     .select('user_id')
     .is('disconnected_at', null)
-    .not('access_token', 'is', null)
     .neq('user_id', OWNER_USER_ID)
     .neq('user_id', TEST_USER_ID);
 

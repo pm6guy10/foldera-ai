@@ -10,6 +10,12 @@ Operating doctrine pointer: see [FOLDERA_OPERATING_DOCTRINE.md](/C:/Users/b-kap/
 - What changed: Narrowed the Production E2E workflow so deployment-status runs only execute for `Production` deploys. Preview deployment statuses no longer wait for the production `/api/health` SHA to become the PR head SHA, which was blocking PR #66 merge readiness even though the homepage image swap itself was fine. Updated the PR branch contract to allow the CI-only workflow guard and refreshed the handoff receipt so the repo truth matches the new stop condition.
 - Verification: `npx prettier --check .github/workflows/production-e2e.yml` passed after formatting; `git diff --check` passed; local homepage/build proof from the existing PR branch remained green before this guard fix.
 - Unresolved issues: The PR still needs the updated workflow check to rerun green on the current head before merge, and production `/api/health` must match the merged SHA after merge.
+## 2026-05-21 - Screenshot becomes LP hero (image swap)
+- MODE: Homepage-only; literal screenshot → `/` via image map (reverted coded hero for pixel match + lowest breakage).
+- Files changed: `components/foldera/LandingPage.tsx`, `public/foldera-homepage-final.png`, `public/foldera-homepage-final-desktop.png`, `tests/e2e/public-routes.spec.ts`, `tests/e2e/landing-dashboard-visual.spec.ts`, `tests/e2e/dashboard-navigation.spec.ts`, `SESSION_HISTORY.md`.
+- What changed: Copied `homepage-mobile-clean.png` (390×844) and `homepage-desktop-clean.png` (1440×1799) into `public/foldera-homepage-final*.png`; restored image-only `LandingPage` with `/demo` + `/start` CTA hotspots. No dashboard/auth/backend edits in this seam.
+- Verification: `npm run health` — `RESULT: 0 FAILING`; `npm run build` — pass; Playwright landing block + dashboard brand + visual capture + mobile home overflow — pass.
+- Note: `components/foldera/landing/` and LP CSS remain in tree but are unused; safe to delete in a cleanup pass.
 
 ## 2026-05-13 - Winner trace root cause
 - MODE: Winner trace root-cause only; no proof packet, new gate, UI polish, paid generation, outbound email, Stripe, schema, fake users, or beta-readiness claim.
@@ -6988,9 +6994,22 @@ pm run lint;
 pm run build.
 - Unresolved issues: PR not opened/merged yet; production not verified for this new ingestion route.
 
+## 2026-05-21 - Free-plan token-value select gate
+- MODE: Issue #67 only; no landing page, dashboard UX, Stripe, auth provider setup, or scoring/conviction changes.
+- Files changed: `lib/integrations/connector-health.ts`, `lib/cron/connector-health.ts`, `lib/ops/beta-readiness.ts`, `app/api/cron/nightly-ops/route.ts`, `lib/cron/acceptance-gate.ts`, `scripts/health.ts`, `scripts/health-connectors.ts`, `scripts/free-plan-gate.ts`, `scripts/__tests__/free-plan-gate.test.ts`, `package.json`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Removed token-value selects from connector-health, beta-readiness, nightly-ops staleness, health, and acceptance-gate paths so those seams rely on non-secret fields only. Added `npm run gate:free-plan`, a repo scanner that fails on access/refresh token selects outside auth/sync paths.
+- Verification: `npm run gate:free-plan` PASS; focused vitest on the touched seams PASS; `npm run lint` PASS; `npm run health` PASS with `RESULT: 0 FAILING`; `npm run build` PASS.
+- Unresolved issues: Production / deployment proof was not needed for this source-only gate slice. The next human decision is whether to add a DB-side RPC/view later for richer non-secret diagnostics.
 ## 2026-05-21 - Issue #62 homepage landing page local proof
 - MODE: Issue #62 only from clean `origin/main`; homepage-only landing page implementation. No dashboard behavior, backend, auth, billing, schema, connectors, live sends, PR #44, PR #46, Dependabot, `scorer.ts`, or `conviction-engine.ts`.
 - Files changed: `components/foldera/LandingPage.tsx`, `app/page.tsx`, `app/layout.js`, `tests/config/__tests__/frontend-product-truth-gate.test.ts`, `tests/e2e/public-routes.spec.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
 - What changed: Rebuilt the public homepage around the issue #62 Workday Presence Layer direction: dark galaxy/lantern hero, `Stop rebuilding the work. Foldera hands it back ready.`, assembled-context Right Now card, problem/rebuild/comparison/trust/CTA sections, mobile stacked rhythm, and CTA copy locked to `See Foldera in action` / `Join the pilot`. Added homepage banned-copy enforcement to the frontend product truth gate, including `See the Right Now flow`, `Source trail`, old daily-brief/task-list language, and unsupported trust/enterprise claims.
 - Verification: Red-first frontend product-copy gate failed before implementation, then passed. `npm run health` passed with RESULT 0 FAILING and warning-only `Last generation do_nothing`; `npm run lint` passed; `npm run build` passed; focused homepage Playwright passed 15/15 with `NEXTAUTH_SECRET=test-secret-for-issue-62`; `npm run gate:frontend` passed the dashboard screenshot matrix 27/27, interaction matrix, banned-copy audit, layout contract, frontend gate script, and production current screenshots receipt markers. Desktop/mobile issue #62 screenshots still need capture and PR attachment.
 - Unresolved issues: PR not opened yet; production not claimed for issue #62 until PR review/merge/deploy. Full real non-owner beta remains outside this homepage-only issue.
+
+## 2026-05-21 - Free-plan token-value select gate
+- MODE: Issue #67 only; no landing page, dashboard UX, Stripe, auth provider setup, or scoring/conviction changes.
+- Files changed: `lib/integrations/connector-health.ts`, `lib/cron/connector-health.ts`, `lib/ops/beta-readiness.ts`, `app/api/cron/nightly-ops/route.ts`, `lib/cron/acceptance-gate.ts`, `scripts/health.ts`, `scripts/health-connectors.ts`, `scripts/free-plan-gate.ts`, `scripts/__tests__/free-plan-gate.test.ts`, `package.json`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Removed token-value selects from connector-health, beta-readiness, nightly-ops staleness, health, and acceptance-gate paths so those seams rely on non-secret fields only. Added `npm run gate:free-plan`, a repo scanner that fails on access/refresh token selects outside auth/sync paths.
+- Verification: `npm run gate:free-plan` PASS; focused vitest on the touched seams PASS; `npm run lint` PASS; `npm run health` PASS with `RESULT: 0 FAILING`; `npm run build` PASS.
+- Unresolved issues: Production / deployment proof was not needed for this source-only gate slice. The next human decision is whether to add a DB-side RPC/view later for richer non-secret diagnostics.

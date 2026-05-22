@@ -71,7 +71,7 @@ async function main() {
   for (let attempt = 1; attempt <= USER_TOKEN_RETRIES; attempt++) {
     const { data, error } = await supabase
       .from('user_tokens')
-      .select('provider, email, last_synced_at, scopes, access_token, refresh_token, disconnected_at, oauth_reauth_required_at')
+      .select('provider, email, last_synced_at, scopes, expires_at, disconnected_at, oauth_reauth_required_at')
       .eq('user_id', userId)
       .in('provider', ['google', 'microsoft']);
     if (!error) {

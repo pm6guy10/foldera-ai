@@ -360,7 +360,7 @@ async function handler(request: NextRequest) {
       const supabaseStaleness = createServerClient();
       const { data: tokenRows } = await supabaseStaleness
         .from('user_tokens')
-        .select('user_id, provider, last_synced_at, email, access_token, disconnected_at')
+        .select('user_id, provider, last_synced_at, email, disconnected_at, oauth_reauth_required_at')
         .is('disconnected_at', null);
 
       const STALENESS_THRESHOLD_MS = 48 * 60 * 60 * 1000;
@@ -368,7 +368,7 @@ async function handler(request: NextRequest) {
       const staleProviders: Array<{ user_id: string; provider: string; stale_hours: number; email: string | null }> = [];
 
       for (const row of tokenRows ?? []) {
-        if (!row.access_token || !row.last_synced_at) continue;
+        if (!row.last_synced_at || row.oauth_reauth_required_at) continue;
         const lastSyncMs = new Date(row.last_synced_at).getTime();
         const staleMs = now - lastSyncMs;
         if (staleMs > STALENESS_THRESHOLD_MS) {

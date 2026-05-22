@@ -46,8 +46,6 @@ type ProviderRow = {
   email: string | null;
   scopes: string | null;
   last_synced_at: string | null;
-  access_token: string | null;
-  refresh_token: string | null;
   disconnected_at?: string | null;
   oauth_reauth_required_at?: string | null;
 };
@@ -186,7 +184,7 @@ export async function buildBetaReadinessReport(
   // 3-5. providers connected + auth/scopes status + last sync timestamps
   const { data: tokenRows, error: tokenErr } = await supabase
     .from('user_tokens')
-    .select('provider, email, last_synced_at, scopes, access_token, refresh_token, disconnected_at, oauth_reauth_required_at')
+    .select('provider, email, last_synced_at, scopes, disconnected_at, oauth_reauth_required_at')
     .eq('user_id', String(authUser.id))
     .or('disconnected_at.is.null,oauth_reauth_required_at.not.is.null');
   if (tokenErr) blockers.push(`provider_lookup_failed (${tokenErr.message})`);
@@ -195,14 +193,12 @@ export async function buildBetaReadinessReport(
   const nowMs = Date.now();
   for (const row of (tokenRows ?? []) as ProviderRow[]) {
     const provider = row.provider ?? 'unknown';
-    const hasToken = typeof row.access_token === 'string' && row.access_token.length > 0;
-    const hasRefresh = typeof row.refresh_token === 'string' && row.refresh_token.length > 0;
     const disconnected = typeof row.disconnected_at === 'string' && row.disconnected_at.length > 0;
     const reauthRequired = typeof row.oauth_reauth_required_at === 'string' && row.oauth_reauth_required_at.length > 0;
 
-    const isConnected = hasToken && !disconnected;
-    const needsReconnect = hasToken && !hasRefresh;
-    const authValid = isConnected && hasRefresh && !reauthRequired;
+    const isConnected = !disconnected;
+    const needsReconnect = disconnected || reauthRequired;
+    const authValid = isConnected && !reauthRequired;
 
     const missingScopes =
       provider === 'microsoft'

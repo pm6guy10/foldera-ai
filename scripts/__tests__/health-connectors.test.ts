@@ -44,11 +44,11 @@ describe('health connector copy', () => {
 
   it('calls missing Microsoft refresh reconnect required', () => {
     const check = buildMailboxReadinessCheck('Outlook', 'microsoft', [
-      row({ refresh_token: null }),
+      row({ oauth_reauth_required_at: new Date(now - 60 * 60 * 1000).toISOString() }),
     ]);
 
     expect(check?.line).toContain('Outlook reconnect required');
-    expect(check?.line).toContain('missing background refresh');
+    expect(check?.line).toContain('needs re-authentication');
     expect(check?.line).not.toContain('Outlook fresh');
   });
 
@@ -66,7 +66,10 @@ describe('health connector copy', () => {
   });
 
   it('does not count access-only connector rows as current mail cursors', () => {
-    const check = buildMailCursorCheck([row({ refresh_token: null })], now);
+    const check = buildMailCursorCheck(
+      [row({ oauth_reauth_required_at: new Date(now - 60 * 60 * 1000).toISOString() })],
+      now,
+    );
 
     expect(check.line).toContain('Mail cursors unavailable');
     expect(check.line).not.toContain('Mail cursors current');

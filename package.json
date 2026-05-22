@@ -21,6 +21,7 @@
     "gate:status": "npx tsx scripts/release-gate-status.ts",
     "gate:quality": "npx tsx scripts/quality-gate-status.ts",
     "gate:visual": "npx tsx scripts/visual-gate-status.ts",
+    "gate:free-plan": "npx tsx scripts/free-plan-gate.ts",
     "gate:frontend": "npx playwright test tests/e2e/dashboard-money-shot-regression.spec.ts --reporter=list && npx vitest run tests/config/__tests__/frontend-product-truth-gate.test.ts --reporter=verbose && npx tsx scripts/frontend-product-truth-gate.ts",
     "gate:decision-trace": "npx tsx scripts/decision-trace-gate-status.ts",
     "preflight": "node scripts/run-local-tsx.cjs scripts/preflight.ts",

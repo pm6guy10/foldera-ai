@@ -57,14 +57,14 @@ export function buildMailboxReadinessCheck(
     );
   }
 
-  if (activeRows.some((row) => !hasValue(row.access_token))) {
+  if (activeRows.some((row) => row.oauth_reauth_required_at != null)) {
     return warningCheck(
       `${label} reconnect required`,
-      reconnectDetail(provider, 'is missing an access token'),
+      reconnectDetail(provider, 'needs re-authentication'),
     );
   }
 
-  if (activeRows.some((row) => !hasValue(row.refresh_token))) {
+  if (activeRows.some((row) => !hasValue(row.last_synced_at))) {
     return warningCheck(
       `${label} reconnect required`,
       reconnectDetail(provider, 'is missing background refresh'),
@@ -90,8 +90,7 @@ export function buildMailCursorCheck(tokenRows: HealthTokenRow[], now: number): 
     (row) =>
       (row.provider === 'google' || row.provider === 'microsoft') &&
       row.disconnected_at == null &&
-      hasValue(row.access_token) &&
-      hasValue(row.refresh_token),
+      row.oauth_reauth_required_at == null,
   );
 
   if (mailTokens.length === 0) {

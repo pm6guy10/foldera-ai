@@ -26,9 +26,8 @@ interface UserTokenRow {
   email: string | null;
   last_health_alert_at: string | null;
   expires_at: number | null;
-  access_token: string | null;
-  refresh_token: string | null;
   disconnected_at: string | null;
+  oauth_reauth_required_at: string | null;
 }
 
 /** Non-secret OAuth row summary for cron logs / system_health (no tokens). */
@@ -129,7 +128,7 @@ export async function checkConnectorHealth(): Promise<ConnectorHealthResult> {
   const { data: tokenRows, error: tokenError } = await supabase
     .from('user_tokens')
     .select(
-      'user_id, provider, email, last_health_alert_at, expires_at, access_token, refresh_token, disconnected_at',
+      'user_id, provider, email, last_health_alert_at, expires_at, disconnected_at, oauth_reauth_required_at',
     )
     .is('disconnected_at', null);
 
@@ -148,8 +147,8 @@ export async function checkConnectorHealth(): Promise<ConnectorHealthResult> {
   const nowSec = Math.floor(Date.now() / 1000);
   const oauthRows: OAuthTokenExpiryDiagnostic[] = rows.map((row) => {
     const expSec = typeof row.expires_at === 'number' && Number.isFinite(row.expires_at) ? row.expires_at : null;
-    const hasAccess = Boolean(row.access_token);
-    const hasRefresh = Boolean(row.refresh_token);
+    const hasAccess = row.disconnected_at == null;
+    const hasRefresh = row.disconnected_at == null && row.oauth_reauth_required_at == null;
     return {
       user_id: row.user_id,
       provider: row.provider,
