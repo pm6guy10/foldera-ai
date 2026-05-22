@@ -1,9 +1,14 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-21 17:40 PT
-Current slice: PR #66 homepage image swap plus Production E2E SHA alignment fix is in progress on branch `codex/issue-62-homepage-clean`.
-Current `origin/main` SHA at update time: `5898426c561261523c29470ae24b8d869b1d6933`.
-Latest verified runtime/product baseline: origin/main before the homepage image swap.
+Last updated: 2026-05-22 PT
+
+## Current slice
+
+PR #66 / issue #62 homepage image swap is merged.
+
+Current active execution seam is issue #67 / PR #68: Free-plan Supabase egress and token-value select enforcement on branch `codex/issue-67-free-plan-gate`.
+
+PR #68 is open and not merged. Its branch was opened against an older `main` base from before the homepage merge, so the next move is to update/rebase it against current `main`, resolve only merge/gate fallout, rerun proof, then merge only if green.
 
 ## Product doctrine
 
@@ -13,35 +18,44 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 
 ## Current truth
 
-- Issue #62 remains the active homepage seam, and PR #66 also needs the CI-only Production E2E alignment fix to keep merge readiness honest.
-- Homepage scope stays `components/foldera/LandingPage.tsx`, `public/foldera-homepage-final*.png`, public-route proof, frontend product-copy gate enforcement, screenshots, and receipt docs.
-- The Production E2E guard is now allowed only as a deploy/check enforcement fix; no homepage visuals change.
-- Forbidden for issue #62: dashboard behavior, backend, auth, billing, schema, connectors, live Slack/Teams/email sends, PR #44, PR #46, Dependabot, `scorer.ts`, and `conviction-engine.ts`.
+- Issue #48 remains the product contract: Workday Presence Layer, not dashboard triage.
+- Issue #62 / PR #66 landed the public homepage as an image-based landing page with CTA hotspots and public-route proof.
+- Issue #67 is the active backend/cost-control seam: remove token-value payload from repeated connector health/status/readiness paths and enforce that with `npm run gate:free-plan`.
+- PR #68 claims changes across connector-health, beta-readiness, nightly-ops staleness, health, acceptance-gate paths, focused tests, lint, health, and build.
+- PR #68 must not be expanded into product, homepage, auth, dashboard, Stripe, schema, scoring, conviction, or connector-intelligence work.
 
-## Proof (issue #62 local)
+## Enforcement mechanism
 
-- `npm run health`: RESULT 0 FAILING; warning only: Last generation `do_nothing`.
-- `npm run lint`: PASS.
-- `npm run build`: PASS.
-- `npm run gate:frontend`: dashboard screenshot matrix PASS 27/27, interaction matrix PASS, banned-copy audit PASS, layout contract PASS, frontend product-copy test PASS; production current screenshots are not newly claimed for this local homepage PR.
-- Production E2E alignment: the workflow now needs the Production-only guard pushed so preview deploys stop waiting for a production SHA that will not exist yet.
+- `npm run gate:free-plan` must fail if `access_token` or `refresh_token` values are selected outside allowed auth/sync/provider execution paths.
+- `npm run lint` must pass.
+- `npm run health` must pass or report only known non-blocking warnings.
+- `npm run build` must pass.
+- Focused tests for touched connector-health/status/beta-readiness/acceptance-gate seams must pass.
 
-## Frontend gate receipt markers
+## Forbidden unless explicitly assigned
 
-- gate:frontend
-- screenshot matrix
-- interaction matrix
-- banned-copy audit
-- layout contract
-- production current screenshots not newly claimed for issue #62 local proof
+- Homepage or landing-page visuals after PR #66.
+- Dashboard UX, Morning Anchor, Right Now card copy, or public marketing polish.
+- Auth provider setup, billing, Stripe, schema unrelated to issue #67.
+- Live Slack/Teams/email sends.
+- Proactive triggers, connector intelligence, durable thread ledger.
+- PR #44, PR #46, Dependabot.
+- `scorer.ts` and `conviction-engine.ts`.
 
-## Parked / forbidden unless explicitly assigned
+## Exact next Codex prompt
 
-- PR #44, PR #46, Dependabot
-- live Slack/Teams/email send, connector intelligence, durable thread ledger
-- billing, auth, dashboard behavior
-- `scorer.ts`, `conviction-engine.ts`
+Read `ACTIVE_HANDOFF.md`, issue #48, issue #67, and PR #68 first. Continue only PR #68 / issue #67 on branch `codex/issue-67-free-plan-gate`: update/rebase against current `main` after PR #66 merge, resolve only merge conflicts or gate fallout caused by the stale base, do not change homepage/dashboard/auth/billing/schema/scoring/conviction/live-send behavior, run `npm run gate:free-plan`, focused tests for touched seams, `npm run lint`, `npm run health`, and `npm run build`, then report SHA, files changed, gates, remaining blocker, and merge readiness. Stop after proof.
 
-## Next exact move
+## Proof required
 
-Commit and push the Production E2E guard fix on `codex/issue-62-homepage-clean`, let the PR rerun, and stop only when the required checks rerun green and the homepage still matches the image mock.
+- PR #68 updated against current `main`.
+- `npm run gate:free-plan` PASS.
+- Focused tests PASS.
+- `npm run lint` PASS.
+- `npm run health` PASS or only documented non-blocking warnings.
+- `npm run build` PASS.
+- PR comment includes current truth, issue implemented, files changed, proof run, remaining blocker, next human decision.
+
+## Stop condition
+
+Stop when PR #68 is either green and merge-ready against current `main`, or blocked by a specific failing gate with the exact file/test/error identified. Do not start issue #55, connector intelligence, homepage polish, or dependency work.
