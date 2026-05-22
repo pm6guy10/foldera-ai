@@ -6987,3 +6987,10 @@ px vitest run app/api/connectors/test-mode/__tests__/ingest-route.test.ts lib/co
 pm run lint; 
 pm run build.
 - Unresolved issues: PR not opened/merged yet; production not verified for this new ingestion route.
+
+## 2026-05-21 - Issue #62 homepage landing page local proof
+- MODE: Issue #62 only from clean `origin/main`; homepage-only landing page implementation. No dashboard behavior, backend, auth, billing, schema, connectors, live sends, PR #44, PR #46, Dependabot, `scorer.ts`, or `conviction-engine.ts`.
+- Files changed: `components/foldera/LandingPage.tsx`, `app/page.tsx`, `app/layout.js`, `tests/config/__tests__/frontend-product-truth-gate.test.ts`, `tests/e2e/public-routes.spec.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Rebuilt the public homepage around the issue #62 Workday Presence Layer direction: dark galaxy/lantern hero, `Stop rebuilding the work. Foldera hands it back ready.`, assembled-context Right Now card, problem/rebuild/comparison/trust/CTA sections, mobile stacked rhythm, and CTA copy locked to `See Foldera in action` / `Join the pilot`. Added homepage banned-copy enforcement to the frontend product truth gate, including `See the Right Now flow`, `Source trail`, old daily-brief/task-list language, and unsupported trust/enterprise claims.
+- Verification: Red-first frontend product-copy gate failed before implementation, then passed. `npm run health` passed with RESULT 0 FAILING and warning-only `Last generation do_nothing`; `npm run lint` passed; `npm run build` passed; focused homepage Playwright passed 15/15 with `NEXTAUTH_SECRET=test-secret-for-issue-62`; `npm run gate:frontend` passed the dashboard screenshot matrix 27/27, interaction matrix, banned-copy audit, layout contract, frontend gate script, and production current screenshots receipt markers. Desktop/mobile issue #62 screenshots still need capture and PR attachment.
+- Unresolved issues: PR not opened yet; production not claimed for issue #62 until PR review/merge/deploy. Full real non-owner beta remains outside this homepage-only issue.

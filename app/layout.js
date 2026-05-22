@@ -9,16 +9,16 @@ const siteOrigin = resolveCanonicalSiteOrigin();
 export const metadata = {
   metadataBase: new URL(siteOrigin),
   title: {
-    default: "Foldera — Finished work when it is safe",
+    default: "Foldera — Stop rebuilding the work",
     template: "%s — Foldera",
   },
   description:
-    "Foldera checks connected inbox and calendar context, then shows the finished work or the one thing blocking it.",
+    "Foldera reconnects the message, meeting, draft, file, and blocker, then hands back the ready next move.",
   manifest: '/manifest.json',
   keywords: [
     "AI email assistant",
     "email productivity",
-    "daily briefing",
+    "work context",
     "Gmail AI",
     "Outlook AI",
     "decision support",
@@ -29,9 +29,9 @@ export const metadata = {
     apple: [{ url: '/foldera-glyph.svg', type: 'image/svg+xml' }],
   },
   openGraph: {
-    title: "Foldera — Finished work when it is safe",
+    title: "Foldera — Stop rebuilding the work",
     description:
-      "Foldera checks connected inbox and calendar context, then shows the finished work or the one thing blocking it.",
+      "Foldera reconnects the message, meeting, draft, file, and blocker, then hands back the ready next move.",
     url: siteOrigin,
     siteName: "Foldera",
     locale: "en_US",
@@ -47,9 +47,9 @@ export const metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: "Foldera — Finished work when it is safe",
+    title: "Foldera — Stop rebuilding the work",
     description:
-      "Foldera checks connected inbox and calendar context, then shows the finished work or the one thing blocking it.",
+      "Foldera reconnects the message, meeting, draft, file, and blocker, then hands back the ready next move.",
     images: [`${siteOrigin}/foldera-logo.png`],
   },
 };
