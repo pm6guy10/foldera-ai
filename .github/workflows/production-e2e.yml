@@ -3,13 +3,13 @@ name: Production E2E
 on:
   deployment_status:
   schedule:
-    - cron: '15 11 * * *' # 15 min after nightly-ops (11:00 UTC)
+    - cron: "15 11 * * *" # 15 min after nightly-ops (11:00 UTC)
   workflow_dispatch:
     inputs:
       include_live_brief_proof:
-        description: 'Run the owner-only live brief proof suite'
+        description: "Run the owner-only live brief proof suite"
         required: false
-        default: 'false'
+        default: "false"
 
 # One active post-deploy run per deployment environment / ref. Superseded
 # previews cancel their own validation runs instead of racing each other.
@@ -25,7 +25,11 @@ jobs:
     if: >
       github.event_name == 'workflow_dispatch' ||
       github.event_name == 'schedule' ||
-      (github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success')
+      (
+        github.event_name == 'deployment_status' &&
+        github.event.deployment_status.state == 'success' &&
+        github.event.deployment_status.environment == 'Production'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:

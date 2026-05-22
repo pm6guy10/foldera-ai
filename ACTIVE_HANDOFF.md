@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-21 16:52 PT
-Current slice: issue #62 homepage-only image swap is in progress on branch `codex/issue-62-homepage-clean`.
+Last updated: 2026-05-21 17:40 PT
+Current slice: PR #66 homepage image swap plus Production E2E SHA alignment fix is in progress on branch `codex/issue-62-homepage-clean`.
 Current `origin/main` SHA at update time: `5898426c561261523c29470ae24b8d869b1d6933`.
 Latest verified runtime/product baseline: origin/main before the homepage image swap.
 
@@ -13,8 +13,9 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 
 ## Current truth
 
-- Issue #62 is the active homepage-only seam.
-- Homepage scope: `components/foldera/LandingPage.tsx`, `public/foldera-homepage-final*.png`, contract allowance, public-route proof, frontend product-copy gate enforcement, screenshots, and receipt docs only.
+- Issue #62 remains the active homepage seam, and PR #66 also needs the CI-only Production E2E alignment fix to keep merge readiness honest.
+- Homepage scope stays `components/foldera/LandingPage.tsx`, `public/foldera-homepage-final*.png`, public-route proof, frontend product-copy gate enforcement, screenshots, and receipt docs.
+- The Production E2E guard is now allowed only as a deploy/check enforcement fix; no homepage visuals change.
 - Forbidden for issue #62: dashboard behavior, backend, auth, billing, schema, connectors, live Slack/Teams/email sends, PR #44, PR #46, Dependabot, `scorer.ts`, and `conviction-engine.ts`.
 
 ## Proof (issue #62 local)
@@ -23,6 +24,7 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 - `npm run lint`: PASS.
 - `npm run build`: PASS.
 - `npm run gate:frontend`: dashboard screenshot matrix PASS 27/27, interaction matrix PASS, banned-copy audit PASS, layout contract PASS, frontend product-copy test PASS; production current screenshots are not newly claimed for this local homepage PR.
+- Production E2E alignment: the workflow now needs the Production-only guard pushed so preview deploys stop waiting for a production SHA that will not exist yet.
 
 ## Frontend gate receipt markers
 
@@ -42,4 +44,4 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 
 ## Next exact move
 
-Finish issue #62 only: commit and push `codex/issue-62-homepage-clean`, open one homepage-only PR, attach screenshots/proof, and stop.
+Commit and push the Production E2E guard fix on `codex/issue-62-homepage-clean`, let the PR rerun, and stop only when the required checks rerun green and the homepage still matches the image mock.

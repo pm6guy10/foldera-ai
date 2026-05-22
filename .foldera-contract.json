@@ -6,6 +6,7 @@
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_HANDOFF.md",
+    ".github/workflows/production-e2e.yml",
     "components/foldera/LandingPage.tsx",
     "tests/e2e/public-routes.spec.ts",
     "public/foldera-homepage-final*.png"
@@ -21,7 +22,7 @@
     "lib/briefing/conviction-engine.ts",
     "supabase/migrations/**"
   ],
-  "allowed_files_raw": "Homepage image layer + contract file only; public PNG assets allowed.",
+  "allowed_files_raw": "Homepage image layer + contract file + production E2E workflow allowed; public PNG assets allowed.",
   "forbidden_files_raw": "No backend, dashboard, auth, connectors, billing, schema, inbox/task-list, or live-send changes.",
   "required_local_proof": "npm run health; npm run lint; npm run build; npm run gate:frontend",
   "required_browser_proof": "Desktop and mobile screenshots proving the homepage image swap and CTA hotspots",

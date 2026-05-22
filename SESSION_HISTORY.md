@@ -4,6 +4,13 @@
 
 Operating doctrine pointer: see [FOLDERA_OPERATING_DOCTRINE.md](/C:/Users/b-kap/foldera-ai/FOLDERA_OPERATING_DOCTRINE.md) for the durable owner/operator seam order and current stop condition.
 
+## 2026-05-21 - Production E2E SHA alignment guard
+- MODE: CI-only deploy/check alignment fix; no homepage visual changes, dashboard/backend/auth/connectors changes, paid generation, outbound email, Stripe, schema, fake users, or live sends.
+- Files changed: `.github/workflows/production-e2e.yml`, `.foldera-contract.json`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Narrowed the Production E2E workflow so deployment-status runs only execute for `Production` deploys. Preview deployment statuses no longer wait for the production `/api/health` SHA to become the PR head SHA, which was blocking PR #66 merge readiness even though the homepage image swap itself was fine. Updated the PR branch contract to allow the CI-only workflow guard and refreshed the handoff receipt so the repo truth matches the new stop condition.
+- Verification: `npx prettier --check .github/workflows/production-e2e.yml` passed after formatting; `git diff --check` passed; local homepage/build proof from the existing PR branch remained green before this guard fix.
+- Unresolved issues: The PR still needs the updated workflow check to rerun green on the current head before merge, and production `/api/health` must match the merged SHA after merge.
+
 ## 2026-05-13 - Winner trace root cause
 - MODE: Winner trace root-cause only; no proof packet, new gate, UI polish, paid generation, outbound email, Stripe, schema, fake users, or beta-readiness claim.
 - Files changed: `docs/WINNER_TRACE_ROOT_CAUSE.md`, `lib/signals/behavioral-graph.ts`, `lib/signals/__tests__/behavioral-graph.test.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
