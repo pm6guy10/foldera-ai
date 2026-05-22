@@ -6,16 +6,8 @@
 
 import { test, expect, type Page } from '@playwright/test';
 import { config as loadEnv } from 'dotenv';
-import { encode } from 'next-auth/jwt';
 
 loadEnv({ path: '.env.local' });
-
-const HAS_NEXTAUTH_SECRET = Boolean(process.env.NEXTAUTH_SECRET?.trim());
-const E2E_PORT = process.env.PLAYWRIGHT_WEB_PORT?.trim() || '3000';
-const E2E_ORIGIN =
-  process.env.PLAYWRIGHT_TEST_BASE_URL?.trim() ||
-  process.env.BASE_URL?.trim() ||
-  `http://127.0.0.1:${E2E_PORT}`;
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -47,33 +39,6 @@ function matchApiPath(apiPath: string) {
       return false;
     }
   };
-}
-
-async function addMockSessionCookie(page: Page) {
-  if (!process.env.NEXTAUTH_SECRET?.trim()) {
-    throw new Error('NEXTAUTH_SECRET is required for mocked logged-in public nav proof.');
-  }
-
-  const token = await encode({
-    secret: process.env.NEXTAUTH_SECRET,
-    token: {
-      email: 'test@foldera.ai',
-      name: 'Test User',
-      provider: 'google',
-      userId: '00000000-0000-0000-0000-000000000001',
-      hasOnboarded: true,
-    },
-  });
-
-  await page.context().addCookies([
-    {
-      name: 'next-auth.session-token',
-      value: token,
-      url: E2E_ORIGIN,
-      httpOnly: true,
-      sameSite: 'Lax',
-    },
-  ]);
 }
 
 // ── Public API (route request id) ────────────────────────────────────────────
@@ -150,109 +115,50 @@ test.describe('Landing page /', () => {
     await expect(page).toHaveTitle(/Foldera/i);
   });
 
-  test('hero headline and assembled-context proof card are visible — desktop', async ({ page }) => {
+  test('homepage image and hotspots are visible — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
-    await expect(page.getByTestId('landing-hero-heading')).toContainText(/Stop rebuilding/i);
-    await expect(page.getByTestId('landing-hero-heading')).toContainText(/Foldera hands it/i);
-    await expect(page.getByTestId('landing-hero-heading')).toContainText(/ready/i);
-    await expect(page.getByTestId('landing-proof-card')).toBeVisible();
-    await expect(page.getByRole('link', { name: /^See Foldera in action$/i }).first()).toBeVisible();
-    await expect(page.getByText(/Context attached: message \+ meeting \+ file \+ blocker/i).first()).toBeVisible();
+    await expect(page.locator('img[alt="Foldera homepage visual target"]').nth(1)).toBeVisible();
+    await expect(page.locator('main a[href="/demo"]')).toHaveCount(1);
+    await expect(page.locator('main a[href="/start"]')).toHaveCount(1);
+    await expect(page.locator('main a[href="/demo"]')).toHaveAttribute('aria-label', 'See Foldera in action');
+    await expect(page.locator('main a[href="/start"]')).toHaveAttribute('aria-label', 'Join the pilot');
   });
 
-  test('landing demo uses neutral public copy and default approve language', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/');
-    await expect(page.getByText(/Brandon/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Approve & send/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Done$/i }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Snooze$/i }).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: /^See Foldera in action$/i }).first()).toHaveAttribute('href', '/demo');
-  });
-
-  test('homepage CTAs keep the locked issue #62 copy', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/');
-
-    const startLinks = page.locator('main a[href="/start"]');
-    await expect(startLinks).toHaveCount(2);
-    await expect(startLinks).toHaveText(['Join the pilot', 'Join the pilot']);
-    await expect(page.locator('main a[href="/demo"]')).toHaveText([
-      'See Foldera in action',
-      'See Foldera in action',
-    ]);
-  });
-
-  test('logged-out public nav shows Sign in and Join the pilot', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/');
-
-    const publicNav = page.getByRole('navigation', { name: 'Public navigation' });
-    await expect(publicNav.getByRole('link', { name: /^Sign in$/i })).toBeVisible();
-    await expect(publicNav.getByRole('link', { name: /^Join the pilot$/i })).toHaveAttribute('href', '/start');
-    await expect(publicNav.getByRole('link', { name: /^Dashboard$/i })).toHaveCount(0);
-  });
-
-  test('logged-in public nav shows Dashboard instead of Sign in', async ({ page }) => {
-    test.skip(!HAS_NEXTAUTH_SECRET, 'NEXTAUTH_SECRET required for logged-in public nav proof');
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await addMockSessionCookie(page);
-    await page.goto('/');
-
-    const publicNav = page.getByRole('navigation', { name: 'Public navigation' });
-    await expect(publicNav.getByRole('link', { name: /^Dashboard$/i })).toHaveAttribute(
-      'href',
-      '/dashboard',
-    );
-    await expect(publicNav.getByRole('link', { name: /^Sign in$/i })).toHaveCount(0);
-  });
-
-  test('landing proof card stays visible on mobile preview', async ({ page }) => {
+  test('homepage image and hotspots are visible — mobile', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
-    await expect(page.getByTestId('landing-hero-heading')).toContainText(/Stop rebuilding/i);
-    await expect(page.getByTestId('landing-proof-card')).toBeVisible();
-    await expect(page.getByText(/Brandon/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Approve & send/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Done$/i }).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: /^See Foldera in action$/i }).first()).toBeVisible();
+    await expect(page.locator('img[alt="Foldera homepage visual target"]').nth(0)).toBeVisible();
+    await expect(page.locator('main a[href="/demo"]')).toHaveCount(1);
+    await expect(page.locator('main a[href="/start"]')).toHaveCount(1);
   });
 
-  test('root metadata description matches the assembled-context positioning', async ({ page }) => {
+  test('homepage hotspots keep the locked CTA destinations', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+    await expect(page.locator('main a[href="/demo"]')).toHaveAttribute('href', '/demo');
+    await expect(page.locator('main a[href="/start"]')).toHaveAttribute('href', '/start');
+  });
+
+  test('homepage exposes only the two CTA hotspots', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+    await expect(page.locator('nav')).toHaveCount(0);
+    await expect(page.locator('footer')).toHaveCount(0);
+  });
+
+  test('root metadata description matches the finished-work positioning', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('meta[name="description"]')).toHaveAttribute(
       'content',
-      /message, meeting, draft, file, and blocker|ready next move/i,
+      /connected sources|finished action|source trail|approval/i,
     );
   });
 
-  test('public promise stays aligned to the current source-backed product', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
+  test('homepage image swap stays aligned to the uploaded visual target', async ({ page }) => {
     await page.goto('/');
-
-    await expect(page.getByTestId('landing-hero-heading')).toContainText(/Stop rebuilding/i);
-    await expect(page.getByText(/Work breaks your thread/i).first()).toBeVisible();
-    await expect(page.getByText(/Foldera rebuilds the thread/i).first()).toBeVisible();
-    await expect(page.getByText(/Manual way/i).first()).toBeVisible();
-    await expect(page.getByText(/Foldera way/i).first()).toBeVisible();
-    await expect(page.getByText(/Approval-first/i).first()).toBeVisible();
-    await expect(page.getByRole('link', { name: /^See Foldera in action$/i }).first()).toHaveAttribute('href', '/demo');
-
-    for (const overclaim of [
-      /Trusted by teams/i,
-      /SOC 2/i,
-      /3\.2M/i,
-      /Google Drive/i,
-      /Dropbox/i,
-      /Approve and send/i,
-      /Source trail/i,
-      /daily brief/i,
-      /Today answer/i,
-      /task list/i,
-    ]) {
-      await expect(page.getByText(overclaim)).toHaveCount(0);
-    }
+    await expect(page.locator('img[alt="Foldera homepage visual target"]').nth(0)).toBeHidden();
+    await expect(page.locator('img[alt="Foldera homepage visual target"]').nth(1)).toBeVisible();
   });
 
   test('no actionable console errors — desktop', async ({ page }) => {
@@ -314,23 +220,11 @@ test.describe('Landing page /', () => {
     }
   });
 
-  test('nav and footer expose real public destinations', async ({ page }) => {
+  test('homepage exposes no semantic nav/footer shell', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
-
-    await expect(page.getByRole('link', { name: 'Security' }).first()).toHaveAttribute(
-      'href',
-      '/security',
-    );
-    await expect(page.getByRole('link', { name: 'About' }).first()).toHaveAttribute(
-      'href',
-      '/about',
-    );
-    await expect(page.getByRole('link', { name: 'Status' }).first()).toHaveAttribute(
-      'href',
-      '/status',
-    );
-    await expect(page.locator('footer a[href="#"]')).toHaveCount(0);
+    await expect(page.locator('nav')).toHaveCount(0);
+    await expect(page.locator('footer')).toHaveCount(0);
   });
 });
 

@@ -1,0 +1,38 @@
+{
+  "backlog_id": "ISSUE_62_HOMEPAGE_IMAGE_SWAP",
+  "base_commit": "5898426c561261523c29470ae24b8d869b1d6933",
+  "money_loop_rung": "homepage_image_swap_public_landing",
+  "user_system_path": "Public homepage image swap: use the supplied homepage PNGs as the actual visual layer, keep only the homepage surface in scope, overlay the two real CTA hotspots, and do not touch backend, dashboard, auth, connectors, or live sends.",
+  "allowed_file_patterns": [
+    ".foldera-contract.json",
+    "ACTIVE_HANDOFF.md",
+    ".github/workflows/production-e2e.yml",
+    "components/foldera/LandingPage.tsx",
+    "tests/e2e/public-routes.spec.ts",
+    "public/foldera-homepage-final*.png"
+  ],
+  "forbidden_file_patterns": [
+    "app/dashboard/**",
+    "app/api/stripe/**",
+    "app/api/connectors/**",
+    "lib/connectors/**",
+    "lib/source-readiness/**",
+    "lib/email/**",
+    "lib/briefing/scorer.ts",
+    "lib/briefing/conviction-engine.ts",
+    "supabase/migrations/**"
+  ],
+  "allowed_files_raw": "Homepage image layer + contract file + production E2E workflow allowed; public PNG assets allowed.",
+  "forbidden_files_raw": "No backend, dashboard, auth, connectors, billing, schema, inbox/task-list, or live-send changes.",
+  "required_local_proof": "npm run health; npm run lint; npm run build; npm run gate:frontend",
+  "required_browser_proof": "Desktop and mobile screenshots proving the homepage image swap and CTA hotspots",
+  "acceptance_condition": "The public homepage renders from the supplied PNGs as the actual visual target, the two CTAs remain clickable, and no backend/dashboard/auth/connectors behavior is changed.",
+  "stop_condition": "Stop once one PR is opened for issue #62 with homepage image-swap proof and screenshots.",
+  "is_user_facing": true,
+  "browser_proof_command": "npm run start -- --port 3000",
+  "anti_regression_checks": [
+    "no backend/dashboard/auth/connectors touched",
+    "CTA hotspots remain clickable"
+  ],
+  "next_command": "Open one PR for issue #62 homepage-only scope and stop."
+}

@@ -1,11 +1,9 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-21 13:55 PT
-Current slice: issue #62 homepage Workday Presence Layer landing page is in PR #65 on branch `codex/issue-62-landing`.
+Last updated: 2026-05-21 17:40 PT
+Current slice: PR #66 homepage image swap plus Production E2E SHA alignment fix is in progress on branch `codex/issue-62-homepage-clean`.
 Current `origin/main` SHA at update time: `5898426c561261523c29470ae24b8d869b1d6933`.
-Last verified runtime/product SHA: `95533cb90f808df160a2fabdf121ccf54ebc0ee0` from prior production proof.
-Latest verified Vercel production deployment: `dpl_GTvYt7FH3CEF49tK1qYJ5QgiSZzP` READY for prior product baseline.
-Production `/api/health` git SHA: `95533cb90f808df160a2fabdf121ccf54ebc0ee0` from prior product baseline; issue #62 production is not claimed.
+Latest verified runtime/product baseline: origin/main before the homepage image swap.
 
 ## Product doctrine
 
@@ -15,9 +13,9 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 
 ## Current truth
 
-- Issue #48 is the roadmap/product contract.
-- Issue #62 is explicitly assigned for homepage-only implementation from clean `origin/main`.
-- Homepage PR scope: `components/foldera/LandingPage.tsx`, homepage metadata, public-route proof, frontend product-copy gate enforcement, screenshots, and receipt docs only.
+- Issue #62 remains the active homepage seam, and PR #66 also needs the CI-only Production E2E alignment fix to keep merge readiness honest.
+- Homepage scope stays `components/foldera/LandingPage.tsx`, `public/foldera-homepage-final*.png`, public-route proof, frontend product-copy gate enforcement, screenshots, and receipt docs.
+- The Production E2E guard is now allowed only as a deploy/check enforcement fix; no homepage visuals change.
 - Forbidden for issue #62: dashboard behavior, backend, auth, billing, schema, connectors, live Slack/Teams/email sends, PR #44, PR #46, Dependabot, `scorer.ts`, and `conviction-engine.ts`.
 
 ## Proof (issue #62 local)
@@ -25,8 +23,8 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 - `npm run health`: RESULT 0 FAILING; warning only: Last generation `do_nothing`.
 - `npm run lint`: PASS.
 - `npm run build`: PASS.
-- Focused homepage Playwright: PASS with `NEXTAUTH_SECRET=test-secret-for-issue-62`, 15/15 landing tests.
 - `npm run gate:frontend`: dashboard screenshot matrix PASS 27/27, interaction matrix PASS, banned-copy audit PASS, layout contract PASS, frontend product-copy test PASS; production current screenshots are not newly claimed for this local homepage PR.
+- Production E2E alignment: the workflow now needs the Production-only guard pushed so preview deploys stop waiting for a production SHA that will not exist yet.
 
 ## Frontend gate receipt markers
 
@@ -46,4 +44,4 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 
 ## Next exact move
 
-Finish issue #62 only: capture desktop/mobile screenshots, commit, push `codex/issue-62-landing`, open one homepage-only PR, attach screenshots/proof, and stop.
+Commit and push the Production E2E guard fix on `codex/issue-62-homepage-clean`, let the PR rerun, and stop only when the required checks rerun green and the homepage still matches the image mock.
