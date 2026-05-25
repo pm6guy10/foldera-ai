@@ -1,14 +1,12 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-22 PT
+Last updated: 2026-05-25 PT
 
 ## Current slice
 
-PR #66 / issue #62 homepage image swap is merged.
+Temporary active execution seam: public landing-page hero rebuild from the poster/reference direction.
 
-Current active execution seam is issue #67 / PR #68: Free-plan Supabase egress and token-value select enforcement on branch `codex/issue-67-free-plan-gate`.
-
-PR #68 is open and not merged. Its branch was opened against an older `main` base from before the homepage merge, so the next move is to update/rebase it against current `main`, resolve only merge/gate fallout, rerun proof, then merge only if green.
+This temporarily pauses issue #67 / PR #68 until the landing-page hero proof is complete. PR #68 remains open and must not be expanded while this temporary frontend seam is active.
 
 ## Product doctrine
 
@@ -20,42 +18,34 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 
 - Issue #48 remains the product contract: Workday Presence Layer, not dashboard triage.
 - Issue #62 / PR #66 landed the public homepage as an image-based landing page with CTA hotspots and public-route proof.
-- Issue #67 is the active backend/cost-control seam: remove token-value payload from repeated connector health/status/readiness paths and enforce that with `npm run gate:free-plan`.
-- PR #68 claims changes across connector-health, beta-readiness, nightly-ops staleness, health, acceptance-gate paths, focused tests, lint, health, and build.
-- PR #68 must not be expanded into product, homepage, auth, dashboard, Stripe, schema, scoring, conviction, or connector-intelligence work.
+- Issue #67 / PR #68 remains the backend/cost-control seam, but it is temporarily paused for this landing-page hero pass.
+- The current temporary seam is frontend-only: rebuild the public landing-page hero as responsive live HTML/CSS from the poster/reference direction.
+- The poster/reference image is art direction only, not the durable source of truth.
 
 ## Enforcement mechanism
 
-- `npm run gate:free-plan` must fail if `access_token` or `refresh_token` values are selected outside allowed auth/sync/provider execution paths.
-- `npm run lint` must pass.
-- `npm run health` must pass or report only known non-blocking warnings.
+- Changed files must stay frontend-only, expected primary file: `components/foldera/LandingPage.tsx` plus visual assets/styles only if required.
+- Important text must be live/editable, not baked into AI-generated image pixels.
+- Hero must be responsive and proved at 390x844, 768x1024, and 1440x1600.
 - `npm run build` must pass.
-- Focused tests for touched connector-health/status/beta-readiness/acceptance-gate seams must pass.
 
 ## Forbidden unless explicitly assigned
 
-- Homepage or landing-page visuals after PR #66.
-- Dashboard UX, Morning Anchor, Right Now card copy, or public marketing polish.
-- Auth provider setup, billing, Stripe, schema unrelated to issue #67.
-- Live Slack/Teams/email sends.
-- Proactive triggers, connector intelligence, durable thread ledger.
-- PR #44, PR #46, Dependabot.
-- `scorer.ts` and `conviction-engine.ts`.
+- Backend, auth, Supabase, schema, Stripe, billing, dashboard, Morning Anchor, Right Now, connector-health, token-gate, scoring, conviction, or PR #68 work.
+- Fake customer proof, fake enterprise logos, fake compliance claims, or fabricated user proof.
+- Expanding the landing-page pass into a full product/navigation/app redesign.
 
 ## Exact next Codex prompt
 
-Read `ACTIVE_HANDOFF.md`, issue #48, issue #67, and PR #68 first. Continue only PR #68 / issue #67 on branch `codex/issue-67-free-plan-gate`: update/rebase against current `main` after PR #66 merge, resolve only merge conflicts or gate fallout caused by the stale base, do not change homepage/dashboard/auth/billing/schema/scoring/conviction/live-send behavior, run `npm run gate:free-plan`, focused tests for touched seams, `npm run lint`, `npm run health`, and `npm run build`, then report SHA, files changed, gates, remaining blocker, and merge readiness. Stop after proof.
+Read `ACTIVE_HANDOFF.md` first. The active temporary seam is the public landing-page hero rebuild. Edit only frontend landing-page files, expected primary file `components/foldera/LandingPage.tsx`, plus visual assets/styles only if required. Use the poster/reference image as art direction only and rebuild the hero as responsive live HTML/CSS: black obsidian background, huge live headline, live subcopy, live CTA, reusable floating app/work-fragment cards, and CSS/SVG/vector vortex/glow background. Do not use baked AI text or logos as the source of truth. Do not touch backend/auth/Supabase/schema/Stripe/billing/dashboard/connector-health/token-gate/scoring/conviction/PR #68. Run `npm run build` and capture screenshots at 390x844, 768x1024, and 1440x1600. Report files changed, proof run, screenshots, remaining blocker, and whether the hero is launch-review ready. Stop after proof.
 
 ## Proof required
 
-- PR #68 updated against current `main`.
-- `npm run gate:free-plan` PASS.
-- Focused tests PASS.
-- `npm run lint` PASS.
-- `npm run health` PASS or only documented non-blocking warnings.
+- Frontend-only changed files.
 - `npm run build` PASS.
-- PR comment includes current truth, issue implemented, files changed, proof run, remaining blocker, next human decision.
+- Screenshot proof at 390x844, 768x1024, and 1440x1600.
+- Hero preserves the poster's premium black/neon/obsidian feeling while using live text/components.
 
 ## Stop condition
 
-Stop when PR #68 is either green and merge-ready against current `main`, or blocked by a specific failing gate with the exact file/test/error identified. Do not start issue #55, connector intelligence, homepage polish, or dependency work.
+Stop when the landing-page hero is responsive live code, visually close enough to the poster direction at mobile/tablet/desktop, and build/screenshot proof exists. Then return active execution to issue #67 / PR #68.
