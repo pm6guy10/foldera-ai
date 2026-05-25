@@ -7,15 +7,17 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
   return (
     <main className="min-h-screen bg-[#02040a] text-white">
       <section className="relative mx-auto w-full max-w-[1600px] overflow-hidden bg-[#02040a]">
-        <div className="relative w-full">
-          <Image
-            src="/foldera-homepage-final.png"
-            alt="Foldera homepage visual target"
-            width={941}
-            height={1672}
-            priority
-            className="block h-auto w-full select-none md:hidden"
-          />
+        <div className="relative w-full md:min-h-0">
+          <div className="relative aspect-[9/16] min-h-[100svh] w-full overflow-hidden md:hidden">
+            <Image
+              src="/foldera-homepage-final.png"
+              alt="Foldera homepage visual target"
+              fill
+              priority
+              sizes="100vw"
+              className="select-none object-cover object-[center_top]"
+            />
+          </div>
           <Image
             src="/foldera-homepage-final-desktop.png"
             alt="Foldera homepage visual target"
