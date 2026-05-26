@@ -1,14 +1,15 @@
-import { test, expect, type Page, type Route } from '@playwright/test';
-import fs from 'node:fs';
-import path from 'node:path';
+import { expect, test, type Page, type Route } from '@playwright/test';
 import { config as loadEnv } from 'dotenv';
 import { encode } from 'next-auth/jwt';
+import fs from 'node:fs';
+import path from 'node:path';
 
 loadEnv({ path: '.env.local' });
 
 const HAS_NEXTAUTH_SECRET = Boolean(process.env.NEXTAUTH_SECRET?.trim());
 const describeWithAuth = HAS_NEXTAUTH_SECRET ? test.describe : test.describe.skip;
-const OUT_DIR = path.join(process.cwd(), '.screenshots', 'dashboard-seam');
+
+const OUT_DIR = path.join(process.cwd(), '.screenshots', 'landing-hero');
 const MOCK_USER_ID = '00000000-0000-0000-0000-000000000001';
 const WEB_PORT = process.env.PLAYWRIGHT_WEB_PORT?.trim() || '3000';
 const WEB_ORIGIN =
@@ -134,22 +135,21 @@ async function ensureOutDir() {
 }
 
 test.describe('Visual system screenshots', () => {
-  test('capture landing desktop and mobile', async ({ page }) => {
+  test('capture landing storyboard at required breakpoints', async ({ page }) => {
     await ensureOutDir();
 
-    await page.setViewportSize({ width: 1440, height: 1400 });
-    await page.goto('/');
-    await expect(page.getByRole('heading', { name: /Your day\.\s+Already done\./i })).toBeVisible();
-    await expect(page.getByText(/FOLDERA DESIGN SYSTEM/i)).toHaveCount(0);
-    await expect(page.getByText(/DASHBOARD — PRODUCT VIEWS/i)).toHaveCount(0);
-    await page.screenshot({ path: path.join(OUT_DIR, 'landing-desktop-clean.png'), fullPage: true });
+    const captures = [
+      { width: 390, height: 844, file: 'landing-hero-390x844.png' },
+      { width: 768, height: 1024, file: 'landing-hero-768x1024.png' },
+      { width: 1440, height: 1600, file: 'landing-hero-1440x1600.png' },
+    ] as const;
 
-    await page.setViewportSize({ width: 390, height: 1200 });
-    await page.goto('/');
-    await expect(page.getByRole('heading', { name: /Your day\.\s+Already done\./i })).toBeVisible();
-    await expect(page.getByText(/FOLDERA DESIGN SYSTEM/i)).toHaveCount(0);
-    await expect(page.getByText(/DASHBOARD — PRODUCT VIEWS/i)).toHaveCount(0);
-    await page.screenshot({ path: path.join(OUT_DIR, 'landing-mobile-clean.png'), fullPage: true });
+    for (const capture of captures) {
+      await page.setViewportSize({ width: capture.width, height: capture.height });
+      await page.goto('/');
+      await expect(page.getByRole('heading', { name: /Workday Presence Layer/i })).toBeVisible();
+      await page.screenshot({ path: path.join(OUT_DIR, capture.file), fullPage: true });
+    }
   });
 });
 
@@ -215,3 +215,4 @@ describeWithAuth('Visual system dashboard screenshots', () => {
     }
   });
 });
+

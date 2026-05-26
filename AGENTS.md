@@ -100,6 +100,24 @@ Do not say `Acceptance condition met`, `Fixed`, `Done`, or `Ready` unless browse
 
 ---
 
+## Targeted Context Rule
+
+When the active seam is already known from Brandon, `ACTIVE_HANDOFF.md`, a GitHub issue, a PR, CI failure, Supabase/Vercel evidence, or a named route/file, do **not** start with broad repo exploration or generic full-repo context.
+
+Before prompting Codex or another coding agent, manually tag the smallest relevant context bundle:
+
+- `ACTIVE_HANDOFF.md`
+- the controlling GitHub issue
+- the active PR, if one exists
+- the exact failing route/file/module/test/gate named by the seam
+- only direct imports or adjacent files needed to fix that seam
+
+Broad repo access is allowed only after the narrow bundle fails to explain the blocker. If broader access is used, the agent must state why the narrow context was insufficient and return to the one active seam immediately.
+
+Do not let Codex wander into landing page, dashboard UX, Stripe, scoring, conviction, Workday Presence copy, schema, or integration work unless those files are part of the tagged seam.
+
+---
+
 ## Session Start
 
 Before doing anything else:
@@ -133,9 +151,11 @@ Do not stop to ask for permission after health.
   - FINAL LIMIT
 
 ### WIN
+
 A real board change exists and proof is shown.
 
 ### EXACT BLOCKER
+
 A narrow blocker is proven with:
 - seam name
 - file
@@ -144,6 +164,7 @@ A narrow blocker is proven with:
 - proof
 
 ### FINAL LIMIT
+
 No narrow code bug remains.
 The next move requires product policy, weak-data acceptance, environment access, or another explicit decision.
 
@@ -160,6 +181,7 @@ For dashboard/UI work, the permanent gate is:
 - `npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list`
 
 ### Deterministic / harness / internal hardening work
+
 Use:
 - focused tests
 - replay fixtures
@@ -218,176 +240,3 @@ Use Vercel for:
 
 * deploy truth
 * production deployment status
-* build logs
-* runtime logs
-* confirming which commit is live in production
-
-Do not claim a deploy or production runtime issue is fixed without checking Vercel when the Vercel tool is available.
-
-### Supabase
-
-Use Supabase for:
-
-* production DB truth
-* migration apply/verification
-* schema checks
-* row/state verification
-* confirming that expected records actually exist
-
-Do not guess about production data or schema state when Supabase can answer directly.
-
-### Sentry
-
-Use Sentry first for:
-
-* production runtime errors
-* server/client exceptions
-* failing routes
-* stack traces after deploy
-
-Do not speculate from code first when Sentry can provide the actual runtime failure.
-
-### Browserstack
-
-Use Browserstack for:
-
-* real-device and real-browser verification
-* mobile UI proof
-* Safari/iPhone issues
-* Android/browser-specific layout issues
-* OAuth flow sanity checks when localhost/dev-browser automation is unreliable
-* screenshot/video proof for frontend work that is sensitive to browser/device behavior
-
-Browserstack complements Playwright. It does not replace Playwright.
-For mobile/browser-sensitive frontend work, use Browserstack when Playwright/localhost is not enough to provide real-device truth.
-
-### Mandatory rule
-
-If a task touches deploys, production data, production errors, mobile layout, browser-specific behavior, or OAuth/browser flow issues, the final receipt must name which relevant tool(s) were used.
-
-Do not call a task complete with local-only reasoning when Playwright, Vercel, Supabase, Sentry, or Browserstack could provide the truth directly.
-
----
-
-## Required Tool Availability Declaration
-
-Before patching any user-facing, production, dashboard, data, deploy, or runtime behavior, declare:
-- relevant truth tools for the seam
-- which tools are available in the current session
-- which relevant tools are unavailable
-- what proof each available tool must provide
-- the first proof rung that would fail if the fix were fake
-
-If a relevant tool is unavailable, say so explicitly and downgrade the final verdict to the strongest proven state: `Local proof only`, `Browser proof only`, `Production not proven`, `Data not proven`, or `Runtime not proven`.
-
-Never claim `DONE` unless every relevant available truth tool was used or explicitly ruled out as not applicable.
-
----
-
-## Git Doctrine
-
-- Push directly to `main`
-- A meaningful change is not complete until the push to `main` succeeds
-- Do not leave meaningful verified work local-only in the worktree
-- Do not create branches unless explicitly required by the task
-- **Always commit and push yourself** as soon as the slice is verified (`npm run build` must pass first per repo policy). Never leave commit, push, or “please push this” follow-ups for the user unless blocked (no credentials, merge conflict, or an explicit documented blocker).
-- Default to the main worktree only. Do not create a git worktree unless the current worktree is unusable, the exact blocker is named, and no simpler path exists.
-- Do not leave partial, ambiguous work presented as complete
-
----
-
-## Communication Doctrine
-
-- Do not ask clarification questions when the repo or task evidence answers them
-- Do not hand work back while an obvious next move exists
-- Do not say “done” without proof
-- Do not say “still broken” without naming the exact blocker
-- Do not ask the user to do work the agent can do directly
-
----
-
-## Scope Doctrine
-
-- Fix the proven seam first
-- After the active seam is proven, build if required, commit and push it, verify deploy/production truth when applicable, update the receipt docs, and only then continue to the next highest-leverage seam unless blocked by a real external requirement or explicit seam limit
-- Broaden only when the same failure class is clearly shared
-- Do not opportunistically refactor adjacent systems
-- If unrelated issues are discovered, mention them only if they block the current seam or must be logged
-
----
-
-## Learning Doctrine
-
-- When a repeated failure teaches a new rule, encode that rule in the repo, not just chat memory.
-- Durable lessons belong in `AGENTS.md` if they change agent behavior.
-- Product success definitions belong in `ACCEPTANCE_GATE.md`.
-- Session receipts belong in `SESSION_HISTORY.md`.
-- Current blockers belong in `CURRENT_STATE.md`.
-- Chat summaries are not source of truth; GitHub commits, tests, CI, Vercel, and repo doctrine are source of truth.
-- The agent must inspect recent commits and `SESSION_HISTORY.md` before selecting a new rung.
-- If a seam is shipped but unproven, the next action is proof, not a new finder run.
-- Paid proof is last-mile validation only. Never use paid runs for discovery when a fixture, unit test, Playwright test, or deterministic script can narrow the failure first.
-
----
-
-## Required Final Receipt
-
-Every completed session must include:
-
-- health summary
-- what changed
-- tests run
-- build result
-- live/prod-like proof if applicable
-- exact remaining unproven items
-
----
-
-## Required Session Log
-
-If code meaningfully changed, append a concise entry to `SESSION_HISTORY.md`:
-- date
-- session description
-- files changed
-- verification
-- unresolved issues
-
-This is a record of the board change, not the main work.
-
----
-
-## Foldera-Specific Product Bar
-
-Optimize for outputs that are:
-- grounded
-- timely
-- materially useful
-- artifact-first
-- clearly better than generic reminders or summaries
-
-For backend work:
-prefer one persisted, believable artifact over vague system improvement.
-
-For frontend work:
-prefer one polished completed journey over broad UI churn.
-
-### Zero-Friction Agentic Doctrine
-
-The canonical zero-friction doctrine lives in `FOLDERA_OPERATING_SYSTEM.md`.
-
-Before each slice, ask: what can Foldera safely do for the user before the user has to do anything? Build that first, unless an external provider, missing permission, paid proof lock, or safety rule truly blocks automatic recovery.
-
----
-
-## What Not To Do
-
-- do not start with a broad repo audit
-- do not read giant docs by default
-- do not use paid model calls to discover basic bugs
-- do not run repeated paid proof calls while still iterating
-- do not stop after one fixed seam if the mission still has an obvious next move
-- do not confuse ritual with progress
-
-Anything else is sludge.
-
-A task is not complete if the relevant truth tool was available and not used.

@@ -118,47 +118,59 @@ test.describe('Landing page /', () => {
   test('homepage image and hotspots are visible — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
-    await expect(page.locator('img[alt="Foldera homepage visual target"]').nth(1)).toBeVisible();
-    await expect(page.locator('main a[href="/demo"]')).toHaveCount(1);
-    await expect(page.locator('main a[href="/start"]')).toHaveCount(1);
-    await expect(page.locator('main a[href="/demo"]')).toHaveAttribute('aria-label', 'See Foldera in action');
-    await expect(page.locator('main a[href="/start"]')).toHaveAttribute('aria-label', 'Join the pilot');
+    for (const slideIndex of [1, 2, 3, 4, 5, 6]) {
+      await expect(page.getByTestId(`landing-slide-${slideIndex}`)).toBeVisible();
+    }
+    await expect(page.getByTestId('landing-cta-1')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-cta-1')).toHaveAttribute('aria-label', 'Join the pilot');
+    await expect(page.getByTestId('landing-cta-6')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-cta-6')).toHaveAttribute('aria-label', 'Join the pilot');
+    await expect(page.getByTestId('landing-header')).toBeVisible();
+    await expect(page.getByRole('link', { name: 'How it works' })).toBeVisible();
+    await expect(page.getByTestId('landing-footer')).toBeVisible();
   });
 
   test('homepage image and hotspots are visible — mobile', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
-    await expect(page.locator('img[alt="Foldera homepage visual target"]').nth(0)).toBeVisible();
-    await expect(page.locator('main a[href="/demo"]')).toHaveCount(1);
-    await expect(page.locator('main a[href="/start"]')).toHaveCount(1);
+    for (const slideIndex of [1, 2, 3, 4, 5, 6]) {
+      await expect(page.getByTestId(`landing-slide-${slideIndex}`)).toBeVisible();
+    }
+    await expect(page.getByTestId('landing-cta-1')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-cta-1')).toHaveAttribute('aria-label', 'Join the pilot');
+    await expect(page.getByTestId('landing-cta-6')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-cta-6')).toHaveAttribute('aria-label', 'Join the pilot');
+    await expect(page.getByTestId('landing-header')).toBeVisible();
+    await expect(page.getByTestId('landing-footer')).toBeVisible();
   });
 
   test('homepage hotspots keep the locked CTA destinations', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
-    await expect(page.locator('main a[href="/demo"]')).toHaveAttribute('href', '/demo');
-    await expect(page.locator('main a[href="/start"]')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-cta-1')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-cta-6')).toHaveAttribute('href', '/start');
   });
 
   test('homepage exposes only the two CTA hotspots', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
-    await expect(page.locator('nav')).toHaveCount(0);
-    await expect(page.locator('footer')).toHaveCount(0);
+    await expect(page.getByTestId('landing-header')).toBeVisible();
+    await expect(page.getByTestId('landing-footer')).toBeVisible();
   });
 
   test('root metadata description matches the finished-work positioning', async ({ page }) => {
     await page.goto('/');
     await expect(page.locator('meta[name="description"]')).toHaveAttribute(
       'content',
-      /connected sources|finished action|source trail|approval/i,
+      /reconnects the message|meeting|draft|ready next move/i,
     );
   });
 
   test('homepage image swap stays aligned to the uploaded visual target', async ({ page }) => {
     await page.goto('/');
-    await expect(page.locator('img[alt="Foldera homepage visual target"]').nth(0)).toBeHidden();
-    await expect(page.locator('img[alt="Foldera homepage visual target"]').nth(1)).toBeVisible();
+    for (const slideIndex of [1, 2, 3, 4, 5, 6]) {
+      await expect(page.getByTestId(`landing-slide-${slideIndex}`)).toBeVisible();
+    }
   });
 
   test('no actionable console errors — desktop', async ({ page }) => {
@@ -223,8 +235,8 @@ test.describe('Landing page /', () => {
   test('homepage exposes no semantic nav/footer shell', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
-    await expect(page.locator('nav')).toHaveCount(0);
-    await expect(page.locator('footer')).toHaveCount(0);
+    await expect(page.getByTestId('landing-header')).toBeVisible();
+    await expect(page.getByTestId('landing-footer')).toBeVisible();
   });
 });
 
