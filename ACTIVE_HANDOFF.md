@@ -1,12 +1,17 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-25 PT
+Last updated: 2026-05-26 PT
 
 ## Current slice:
 
-Temporary active execution seam: public landing-page hero rebuild from the poster/reference direction.
+Launch readiness recovery chain.
 
-This temporarily pauses issue #67 / PR #68 until the landing-page hero proof is complete. PR #68 remains open and must not be expanded while this temporary frontend seam is active.
+The landing storyboard PR #71 is merged. The repo must stop acting like the landing hero seam is still active. The active execution order is now:
+
+1. Finish PR #68 backend token-safety/free-plan egress gate.
+2. Run public launch-truth copy pass so the landing page is pilot-honest.
+3. Prove Slack test-mode Right Now loop locally.
+4. Only then consider real Slack OAuth/API/bot send work.
 
 ## Product doctrine
 
@@ -17,35 +22,67 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 ## Current truth
 
 - Issue #48 remains the product contract: Workday Presence Layer, not dashboard triage.
-- Issue #62 / PR #66 landed the public homepage as an image-based landing page with CTA hotspots and public-route proof.
-- Issue #67 / PR #68 remains the backend/cost-control seam, but it is temporarily paused for this landing-page hero pass.
-- The current temporary seam is frontend-only: rebuild the public landing-page hero as responsive live HTML/CSS from the poster/reference direction.
-- The poster/reference image is art direction only, not the durable source of truth.
+- PR #71 merged the six-slide storyboard landing page into `components/foldera/LandingPage.tsx` with CTA hotspots on slide 1 and slide 6.
+- Issue #72 is now the launch-readiness recovery controller: backend gate first, public truth pass second, Slack test-mode proof third.
+- Issue #67 / PR #68 is the immediate active backend/security seam.
+- PR #68 remains open and must be repaired on branch `codex/issue-67-free-plan-gate`; do not create a new PR for that seam.
+- Slack is not connected. Current Slack work is test-mode only. No real Slack API, bot credentials, or production messaging should be claimed or built until the test-mode loop is proven and a dedicated real-Slack issue exists.
+- The public page is pilot-only until unsupported Slack/Teams/cross-app writeback/enterprise claims are removed or clearly qualified.
 
 ## Enforcement mechanism
 
-- Changed files must stay frontend-only, expected primary file: `components/foldera/LandingPage.tsx` plus visual assets/styles only if required.
-- Important text must be live/editable, not baked into AI-generated image pixels.
-- Hero must be responsive and proved at 390x844, 768x1024, and 1440x1600.
-- `npm run build` must pass.
+- Use the Targeted Context Rule from `AGENTS.md`: manually tag the active handoff, controlling issue, active PR, exact failing files/routes/gates/tests, and direct imports only.
+- Do not give Codex generic full-repo permission when the seam is known.
+- Issue #72 controls execution order.
+- PR #68 must pass `npm run gate:free-plan` and enforce forbidden token-value selects by repo gate, not chat instructions.
+- Frontend launch-truth work must be frontend-only and may not touch backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction/live sends.
 
 ## Forbidden unless explicitly assigned
 
-- Backend, auth, Supabase, schema, Stripe, billing, dashboard, Morning Anchor, Right Now, connector-health, token-gate, scoring, conviction, or PR #68 work.
-- Fake customer proof, fake enterprise logos, fake compliance claims, or fabricated user proof.
-- Expanding the landing-page pass into a full product/navigation/app redesign.
+- Broad repo audits.
+- New landing-page redesigns before launch-truth copy is honest.
+- Real Slack OAuth/API/bot send before PR #68 is merged and issue #52 test-mode proof exists.
+- Backend/auth/Supabase/schema/Stripe/billing/dashboard/scoring/conviction work during the frontend launch-truth pass.
+- Fake customer proof, fake enterprise logos, fake compliance claims, fake Slack/Teams integrations, or fabricated user proof.
+- Expanding the next seam into a full product/navigation/app redesign.
 
 ## Next exact move
 
-Read `ACTIVE_HANDOFF.md` first. The active temporary seam is the public landing-page hero rebuild. Edit only frontend landing-page files, expected primary file `components/foldera/LandingPage.tsx`, plus visual assets/styles only if required. Use the poster/reference image as art direction only and rebuild the hero as responsive live HTML/CSS: black obsidian background, huge live headline, live subcopy, live CTA, reusable floating app/work-fragment cards, and CSS/SVG/vector vortex/glow background. Do not use baked AI text or logos as the source of truth. Do not touch backend/auth/Supabase/schema/Stripe/billing/dashboard/connector-health/token-gate/scoring/conviction/PR #68. Run `npm run build` and capture screenshots at 390x844, 768x1024, and 1440x1600. Report files changed, proof run, screenshots, remaining blocker, and whether the hero is launch-review ready. Stop after proof.
+Repair existing PR #68 on branch `codex/issue-67-free-plan-gate`.
+
+Use targeted context only:
+
+- `ACTIVE_HANDOFF.md`
+- Issue #67
+- PR #68
+- `app/api/integrations/status/route.ts`
+- `app/api/cron/nightly-ops/route.ts`
+- `lib/integrations/connector-health.ts`
+- `lib/cron/connector-health.ts`
+- `lib/cron/acceptance-gate.ts`
+- `lib/ops/beta-readiness.ts`
+- `scripts/free-plan-gate.ts`
+- `scripts/health-connectors.ts`
+- `scripts/health.ts`
+- `scripts/__tests__/free-plan-gate.test.ts`
+- `scripts/__tests__/health-connectors.test.ts`
+
+Required: fix the current CI failure, remove forbidden `user_tokens.access_token` / `user_tokens.refresh_token` selects from health/status/readiness/nightly-ops/acceptance-gate/connector-health paths, allow token-value reads only in auth/OAuth/sync/provider execution paths, and make `npm run gate:free-plan` enforce this permanently.
+
+Do not touch landing page, dashboard UX, Stripe, scoring, conviction, Workday Presence copy, schema unrelated to this seam, or new integrations.
 
 ## Proof required
 
-- Frontend-only changed files.
+For PR #68:
+
+- `npm run gate:free-plan` PASS.
+- focused connector-health/status/readiness tests PASS.
+- `npm run lint` PASS.
 - `npm run build` PASS.
-- Screenshot proof at 390x844, 768x1024, and 1440x1600.
-- Hero preserves the poster's premium black/neon/obsidian feeling while using live text/components.
+- GitHub CI green.
+- PR #68 mergeable.
+- no forbidden token-value selects remain outside allowed auth/OAuth/sync/provider paths.
 
 ## Stop condition
 
-Stop when the landing-page hero is responsive live code, visually close enough to the poster direction at mobile/tablet/desktop, and build/screenshot proof exists. Then return active execution to issue #67 / PR #68.
+Stop when PR #68 is green, mergeable, and merged. Then run the frontend-only public launch-truth pass from issue #72.
