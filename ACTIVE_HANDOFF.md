@@ -3,7 +3,7 @@
 Last updated: 2026-05-26 PT
 Current `origin/main` SHA at update time: `e2c27cc`.
 
-## Current slice
+## Current slice:
 
 Issue #62 / PR #66 homepage image swap is merged.
 
@@ -43,7 +43,7 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 - PR #44, PR #46, Dependabot.
 - `scorer.ts` and `conviction-engine.ts`.
 
-## Exact next Codex prompt
+## Next exact move
 
 Read `ACTIVE_HANDOFF.md`, issue #48, issue #67, and PR #68 first. Continue only PR #68 / issue #67 on branch `codex/issue-67-free-plan-gate`: update/rebase against current `main` after PR #66 merge, resolve only merge conflicts or gate fallout caused by the stale base, do not change homepage/dashboard/auth/billing/schema/scoring/conviction/live-send behavior, run `npm run gate:free-plan`, focused tests for touched seams, `npm run lint`, `npm run health`, and `npm run build`, then report SHA, files changed, gates, remaining blocker, and merge readiness. Stop after proof.
 
