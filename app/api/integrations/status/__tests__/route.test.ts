@@ -158,7 +158,7 @@ describe('GET /api/integrations/status', () => {
     expect(body.integrations.length).toBe(1);
     expect(body.integrations[0].needs_reauth).toBe(false);
     expect(legacySelect).toHaveBeenCalledWith(
-      'provider, email, last_synced_at, scopes, access_token, expires_at, refresh_token, disconnected_at',
+      'provider, email, last_synced_at, scopes, expires_at, disconnected_at',
     );
   });
 

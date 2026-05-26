@@ -32,6 +32,25 @@ describe('free plan gate', () => {
     expect(hits[0]?.file).toBe(join('lib', 'ops', 'beta-readiness.ts'));
   });
 
+  it('flags multiline token-value selects outside auth and sync paths', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'free-plan-gate-multi-'));
+    mkdirSync(join(repoRoot, 'lib', 'ops'), { recursive: true });
+    writeFileSync(
+      join(repoRoot, 'lib', 'ops', 'beta-readiness.ts'),
+      `const q = supabase
+        .from('user_tokens')
+        .select(
+          'provider, email, access_token, refresh_token'
+        );\n`,
+      'utf8',
+    );
+
+    const hits = findForbiddenTokenSelects(repoRoot);
+
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.file).toBe(join('lib', 'ops', 'beta-readiness.ts'));
+  });
+
   it('passes when token selects stay inside auth and sync paths', () => {
     const repoRoot = mkdtempSync(join(tmpdir(), 'free-plan-gate-ok-'));
     mkdirSync(join(repoRoot, 'lib', 'auth'), { recursive: true });

@@ -3,7 +3,7 @@ import { resolve, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const TOKEN_SELECT_PATTERN =
-  /\.select\(\s*(['"])(?:[^'"]*\b(?:access_token|refresh_token)\b[^'"]*)\1/gi;
+  /\.select\(\s*(['"])([\s\S]*?)\1/gi;
 
 const ALLOWED_PATH_PATTERNS = [
   `lib${sep}auth${sep}`,
@@ -53,17 +53,22 @@ export function findForbiddenTokenSelects(repoRoot = process.cwd()): ForbiddenTo
   for (const file of walkFiles(repoRoot, repoRoot)) {
     if (isAllowedPath(file)) continue;
     const text = readFileSync(resolve(repoRoot, file), 'utf8');
-    const lines = text.split(/\r?\n/);
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (!TOKEN_SELECT_PATTERN.test(line)) continue;
+    for (const match of text.matchAll(TOKEN_SELECT_PATTERN)) {
+      const selectedColumns = match[2] ?? '';
+      if (!/\b(access_token|refresh_token)\b/i.test(selectedColumns)) continue;
+      const matchIndex = match.index ?? 0;
+      const line = text.slice(0, matchIndex).split(/\r?\n/).length;
+      const excerpt = text
+        .slice(matchIndex, Math.min(matchIndex + 240, text.length))
+        .split(/\r?\n/)
+        .join(' ')
+        .trim();
       hits.push({
         file,
-        line: i + 1,
-        excerpt: line.trim(),
+        line,
+        excerpt,
       });
     }
-    TOKEN_SELECT_PATTERN.lastIndex = 0;
   }
   return hits;
 }
