@@ -2,7 +2,7 @@
 
 Last updated: 2026-05-25 PT
 
-## Current slice
+## Current slice:
 
 Temporary active execution seam: public landing-page hero rebuild from the poster/reference direction.
 
@@ -35,7 +35,7 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 - Fake customer proof, fake enterprise logos, fake compliance claims, or fabricated user proof.
 - Expanding the landing-page pass into a full product/navigation/app redesign.
 
-## Exact next Codex prompt
+## Next exact move
 
 Read `ACTIVE_HANDOFF.md` first. The active temporary seam is the public landing-page hero rebuild. Edit only frontend landing-page files, expected primary file `components/foldera/LandingPage.tsx`, plus visual assets/styles only if required. Use the poster/reference image as art direction only and rebuild the hero as responsive live HTML/CSS: black obsidian background, huge live headline, live subcopy, live CTA, reusable floating app/work-fragment cards, and CSS/SVG/vector vortex/glow background. Do not use baked AI text or logos as the source of truth. Do not touch backend/auth/Supabase/schema/Stripe/billing/dashboard/connector-health/token-gate/scoring/conviction/PR #68. Run `npm run build` and capture screenshots at 390x844, 768x1024, and 1440x1600. Report files changed, proof run, screenshots, remaining blocker, and whether the hero is launch-review ready. Stop after proof.
 
