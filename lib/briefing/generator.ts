@@ -681,7 +681,6 @@ interface RecentSkippedActionRow extends RecentActionRow {
 interface RecentEntityActionRow {
   id: string;
   directive_text: string | null;
-  execution_result: unknown;
   generated_at: string;
   status: string | null;
 }
@@ -5107,10 +5106,7 @@ function extractEntityNamesFromCandidate(
 }
 
 function buildActionSearchText(action: RecentEntityActionRow): string {
-  const serializedExecution = typeof action.execution_result === 'string'
-    ? action.execution_result
-    : JSON.stringify(action.execution_result ?? {});
-  return normalizeText(`${action.directive_text ?? ''} ${serializedExecution}`);
+  return normalizeText(action.directive_text ?? '');
 }
 
 function actionMentionsEntity(action: RecentEntityActionRow, entityName: string): boolean {
@@ -5136,7 +5132,7 @@ async function findRecentEntityActionConflict(
   try {
     const { data, error } = await supabase
       .from('tkg_actions')
-      .select('id, directive_text, execution_result, generated_at, status')
+      .select('id, directive_text, generated_at, status')
       .eq('user_id', userId)
       .in('status', ['approved', 'executed', 'pending_approval'])
       .gte('generated_at', since)

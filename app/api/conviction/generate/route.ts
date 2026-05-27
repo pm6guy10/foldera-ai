@@ -135,7 +135,8 @@ async function hydrateSelectedMoveSourceEvidence(
     .from('tkg_signals')
     .select('id, source, type, author, occurred_at, content')
     .eq('user_id', userId)
-    .in('id', sourceSignalIds);
+    .in('id', sourceSignalIds)
+    .limit(sourceSignalIds.length);
   if (signalError || !signals) return hydrated;
 
   for (const row of signals) {

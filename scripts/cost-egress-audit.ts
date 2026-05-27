@@ -12,6 +12,20 @@ const TARGET_TABLES = ['tkg_actions', 'tkg_signals', 'tkg_entities'];
 const RAW_SIGNAL_CONTENT_ALLOWED = new Set([
   'lib/signals/signal-processor.ts',
 ]);
+const HEAVY_ACTION_PAYLOAD_ROUTE_ALLOWLIST = new Set([
+  'app/api/conviction/actions/[id]/route.ts',
+  'app/api/conviction/actions/[id]/document-collection-intake/route.ts',
+  'app/api/conviction/generate/route.ts',
+  'app/api/dev/brain-receipt/route.ts',
+  'app/api/dev/email-preview/route.ts',
+  'app/api/dev/send-log/route.ts',
+  'app/api/cron/daily-brief/route.ts',
+  'app/api/drafts/pending/route.ts',
+  'app/api/settings/run-brief/route.ts',
+]);
+const HIGH_VOLUME_SIGNAL_SCAN_ALLOWLIST = new Set([
+  'lib/outcome-autopsy/outcome-autopsy.ts',
+]);
 
 function gitFiles(patterns: string[]): string[] {
   return execFileSync('git', ['ls-files', ...patterns], {
@@ -82,7 +96,8 @@ function auditApiRoutes(findings: Finding[]): void {
           /\.range\s*\(/.test(chain) ||
           /\.single\s*\(/.test(chain) ||
           /\.maybeSingle\s*\(/.test(chain) ||
-          /head\s*:\s*true/.test(chain);
+          /head\s*:\s*true/.test(chain) ||
+          /\.(?:eq|in)\s*\(\s*['"`]id['"`]/.test(chain);
 
         if (!bounded) {
           addFinding(
@@ -104,14 +119,44 @@ function auditLatestRoute(findings: Finding[]): void {
     addFinding(findings, file, 'pending metadata query must be limited to 5 rows or fewer');
   }
 
-  if (!/PENDING_RANKING_SELECT\s*=\s*'id, confidence, generated_at, status'/.test(source)) {
+  if (!/PENDING_RANKING_SELECT\s*=\s*ACTION_RANKING_SELECT/.test(source)) {
     addFinding(findings, file, 'pending metadata query must stay on the small ranking column set');
   }
 
-  const heavyPayloadSelect = source.indexOf('PENDING_PAYLOAD_SELECT');
-  const selectedIdFilter = source.indexOf(".eq('id', selectedCandidate.id)");
-  if (heavyPayloadSelect === -1 || selectedIdFilter === -1 || selectedIdFilter < heavyPayloadSelect) {
-    addFinding(findings, file, 'full evidence/execution_result/artifact payload must be fetched only for selected action id');
+  const latestRouteHeavyReads = [...source.matchAll(/\.from\s*\(\s*['"`]tkg_actions['"`]\s*\)[\s\S]{0,260}\.select\s*\(\s*(['"`])([^'"`]*)\1/g)];
+  for (const match of latestRouteHeavyReads) {
+    const columns = match[2];
+    if (!/\b(?:artifact|evidence|execution_result)\b/.test(columns)) continue;
+    const chain = collectQueryChain(source, match.index);
+    if (!/\.eq\s*\(\s*['"`]id['"`]\s*,\s*id\s*\)/.test(chain)) {
+      addFinding(findings, file, 'full evidence/execution_result/artifact payload must be fetched only for the selected action id or detail route');
+    }
+  }
+}
+
+function auditHeavyActionPayloadReads(findings: Finding[]): void {
+  const files = gitFiles(['app/api/**/*.ts', 'app/api/**/*.tsx'])
+    .filter((file) => !file.includes('/__tests__/') && !file.includes('\\__tests__\\'));
+
+  for (const file of files) {
+    if (HEAVY_ACTION_PAYLOAD_ROUTE_ALLOWLIST.has(file)) continue;
+    const source = read(file);
+    const tablePattern = /\.from\s*\(\s*['"`]tkg_actions['"`]\s*\)/g;
+    let match: RegExpExecArray | null;
+    while ((match = tablePattern.exec(source))) {
+      const chain = collectQueryChain(source, match.index);
+      const selectMatch = chain.match(/\.select\s*\(\s*(['"`])([^'"`]*)\1/);
+      if (!selectMatch) continue;
+      if (!/\b(?:artifact|evidence|execution_result)\b/.test(selectMatch[2])) continue;
+      const idScoped = /\.(?:eq|in)\s*\(\s*['"`]id['"`]/.test(chain);
+      if (!idScoped) {
+        addFinding(
+          findings,
+          file,
+          `line ${lineNumber(source, match.index)} reads heavy tkg_actions payload outside an action detail/render path`,
+        );
+      }
+    }
   }
 }
 
@@ -148,7 +193,13 @@ function auditSignalContextReads(findings: Finding[]): void {
       }
 
       const numericLimit = chain.match(/\.limit\s*\(\s*(\d+)\s*\)/);
-      if (numericLimit && Number(numericLimit[1]) > 150 && !idScoped && !RAW_SIGNAL_CONTENT_ALLOWED.has(file)) {
+      if (
+        numericLimit &&
+        Number(numericLimit[1]) > 150 &&
+        !idScoped &&
+        !RAW_SIGNAL_CONTENT_ALLOWED.has(file) &&
+        !HIGH_VOLUME_SIGNAL_SCAN_ALLOWLIST.has(file)
+      ) {
         addFinding(
           findings,
           file,
@@ -163,6 +214,7 @@ function main(): void {
   const findings: Finding[] = [];
   auditApiRoutes(findings);
   auditLatestRoute(findings);
+  auditHeavyActionPayloadReads(findings);
   auditSignalContextReads(findings);
   auditProductionScripts(findings);
 
