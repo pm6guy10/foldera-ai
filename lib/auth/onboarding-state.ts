@@ -7,16 +7,17 @@ export async function hasCompletedOnboarding(
   supabaseArg?: SupabaseClient,
 ): Promise<boolean> {
   const supabase = supabaseArg ?? createServerClient();
-  const { count, error } = await supabase
+  const { data, error } = await supabase
     .from('tkg_goals')
-    .select('id', { count: 'exact', head: true })
+    .select('id')
     .eq('user_id', userId)
-    .in('source', [...ONBOARDING_SOURCES]);
+    .in('source', [...ONBOARDING_SOURCES])
+    .limit(1);
 
   if (error) {
     throw error;
   }
 
-  return (count ?? 0) > 0;
+  return (data?.length ?? 0) > 0;
 }
 

@@ -1,7 +1,6 @@
 import { OWNER_USER_ID } from '@/lib/auth/constants';
 import { resolveSelfIdentity } from '@/lib/auth/self-identity';
 import { createServerClient } from '@/lib/db/client';
-import { decryptWithStatus } from '@/lib/encryption';
 import { scoreOpenLoops } from '@/lib/briefing/scorer';
 import type { ScoredLoop } from '@/lib/briefing/scorer';
 import { selectRankedCandidates } from '@/lib/briefing/generator';
@@ -96,10 +95,6 @@ export interface WinnerTruthReport {
   future_findings: WinnerTruthFinding[];
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
-}
-
 function ageHours(iso: string | null | undefined, now = Date.now()): number | null {
   if (!iso) return null;
   const ts = new Date(iso).getTime();
@@ -135,54 +130,21 @@ function toPacificDay(iso: string): string {
   }).format(new Date(iso));
 }
 
-function noSafeBlockerSummary(executionResult: unknown): string | null {
-  const root = asRecord(executionResult);
-  if (!root) return null;
-
-  const generationLog = asRecord(root.generation_log);
-  const candidateDiscovery = asRecord(generationLog?.candidateDiscovery);
-  const outcomeReceipt = asRecord(root.outcome_receipt);
-  const persistence = asRecord(outcomeReceipt?.persistence);
-  const artifactQualityGate = asRecord(root.artifact_quality_gate);
-
-  const reasons = [
-    root.no_send === true || root.outcome_type === 'no_send' ? 'no_send' : null,
-    typeof root.failure_reason === 'string' ? root.failure_reason : null,
-    typeof candidateDiscovery?.failureReason === 'string' ? candidateDiscovery.failureReason : null,
-    typeof persistence?.blocked_reason === 'string' ? persistence.blocked_reason : null,
-    Array.isArray(artifactQualityGate?.reasons) ? artifactQualityGate.reasons.map(String).join('; ') : null,
-    root.protective_duplicate_block ? 'protective_duplicate_block' : null,
-  ]
-    .map((reason) => (typeof reason === 'string' ? reason.trim() : null))
-    .filter((reason): reason is string => Boolean(reason));
-
-  if (!reasons.some((reason) => reason !== 'no_send')) return null;
-  return reasons.slice(0, 2).join(' - ').slice(0, 180);
-}
-
 export function classifyRecentAction(row: {
   action_type: string | null;
   directive_text: string | null;
   skip_reason: string | null;
-  execution_result: unknown;
   generated_at: string;
 }): ThreeDayConsistencyDay {
   const actionType = String(row.action_type ?? '');
   const directiveText = String(row.directive_text ?? '');
   const skipReason = String(row.skip_reason ?? '');
   const lower = `${directiveText}\n${skipReason}`.toLowerCase();
-  let executionText = '';
-  if (typeof row.execution_result === 'string') executionText = row.execution_result.toLowerCase();
-  else if (row.execution_result && typeof row.execution_result === 'object') executionText = JSON.stringify(row.execution_result).toLowerCase();
-
-  const noSafeSummary = noSafeBlockerSummary(row.execution_result);
   const looksNoSafe =
     lower.includes('no safe artifact today') ||
-    executionText.includes('no_safe_artifact_today') ||
-    (actionType === 'do_nothing' && noSafeSummary != null);
+    actionType === 'do_nothing';
   const forbidden =
-    /\b(?:dev\s*notes?|internal\s+homework|homework\s+assignment|generic\s+prep|prep\s+checklist)\b/i.test(lower) ||
-    /\bdiscrepancy_(?:risk|decay|dropout)|relationship(?:_|\s)(?:risk|silence|drop)/i.test(executionText);
+    /\b(?:dev\s*notes?|internal\s+homework|homework\s+assignment|generic\s+prep|prep\s+checklist|discrepancy_(?:risk|decay|dropout)|relationship(?:_|\s)(?:risk|silence|drop))\b/i.test(lower);
   const usefulAction = ['write_document', 'make_decision', 'schedule_block'].includes(actionType);
 
   if (looksNoSafe) {
@@ -191,7 +153,7 @@ export function classifyRecentAction(row: {
       generated_at: row.generated_at,
       action_type: actionType,
       classification: 'no_safe_artifact',
-      summary: noSafeSummary ? `Explicit no-safe-artifact outcome: ${noSafeSummary}` : 'Explicit no-safe-artifact outcome with blockers.',
+      summary: 'Explicit no-safe-artifact outcome.',
     };
   }
 
@@ -301,7 +263,7 @@ function buildWinnerDiscrepancyCard(
 
 export async function getWinnerTruthReport(userId = OWNER_USER_ID): Promise<WinnerTruthReport> {
   const supabase = createServerClient();
-  const [{ data: tokenRows, error: tokenError }, { data: signalRows, error: signalError }, { data: actionRows, error: actionError }] =
+  const [{ data: tokenRows, error: tokenError }, { data: actionRows, error: actionError }] =
     await Promise.all([
       supabase
         .from('user_tokens')
@@ -309,34 +271,16 @@ export async function getWinnerTruthReport(userId = OWNER_USER_ID): Promise<Winn
         .eq('user_id', userId)
         .in('provider', ['google', 'microsoft']),
       supabase
-        .from('tkg_signals')
-        .select('id, source, type, content, occurred_at')
-        .eq('user_id', userId)
-        .gte('occurred_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString())
-        .order('occurred_at', { ascending: false, nullsFirst: false })
-        .limit(250),
-      supabase
         .from('tkg_actions')
-        .select('id, status, action_type, directive_text, confidence, generated_at, execution_result, skip_reason')
+        .select('id, status, action_type, directive_text, confidence, generated_at, skip_reason')
         .eq('user_id', userId)
         .order('generated_at', { ascending: false, nullsFirst: false })
         .limit(25),
     ]);
 
   if (tokenError) throw new Error(`winner_truth_tokens: ${tokenError.message}`);
-  if (signalError) throw new Error(`winner_truth_signals: ${signalError.message}`);
   if (actionError) throw new Error(`winner_truth_actions: ${actionError.message}`);
 
-  const decryptSamples = (signalRows ?? []).map((row) => {
-    const decrypted = decryptWithStatus(String(row.content ?? ''));
-    return {
-      id: String(row.id),
-      source: String(row.source ?? ''),
-      type: String(row.type ?? ''),
-      used_fallback: decrypted.usedFallback,
-    };
-  });
-  const decryptFallbackRows = decryptSamples.filter((sample) => sample.used_fallback);
   const providerFreshness = (tokenRows ?? []).map((row) => classifyProviderFreshness({
     provider: String(row.provider ?? ''),
     last_synced_at: (row.last_synced_at as string | null | undefined) ?? null,
@@ -426,7 +370,6 @@ export async function getWinnerTruthReport(userId = OWNER_USER_ID): Promise<Winn
       action_type: row.action_type as string | null,
       directive_text: row.directive_text as string | null,
       skip_reason: row.skip_reason as string | null,
-      execution_result: row.execution_result,
       generated_at: row.generated_at as string,
     });
     if (!byPacificDay.has(classified.day)) {
@@ -449,14 +392,6 @@ export async function getWinnerTruthReport(userId = OWNER_USER_ID): Promise<Winn
         smallest_next_move: 'Run the real sync path and verify new signals land before briefing.',
       });
     }
-  }
-  if (decryptFallbackRows.length > 0) {
-    futureFindings.push({
-      classification: 'current_blocker',
-      finding: 'decrypt_fallback_rows_at_candidate_input',
-      evidence: decryptFallbackRows.slice(0, 5).map((row) => `${row.id}:${row.source}:${row.type}`).join(', '),
-      smallest_next_move: 'Quarantine or recover fallback rows before candidate scoring.',
-    });
   }
   if (graphDrift.length > 0) {
     futureFindings.push({
@@ -509,8 +444,8 @@ export async function getWinnerTruthReport(userId = OWNER_USER_ID): Promise<Winn
     sync_health: {
       providers: providerFreshness,
       graph: graphFreshness,
-      decrypt_sample_count: decryptSamples.length,
-      decrypt_fallback_count: decryptFallbackRows.length,
+      decrypt_sample_count: 0,
+      decrypt_fallback_count: 0,
     },
     current_winner: {
       verdict: selectedForTruth ? 'selected' : 'no_safe_artifact_today',

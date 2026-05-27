@@ -103,7 +103,8 @@ export async function GET() {
         .gte(
           'ingested_at',
           new Date(Date.now() - RECENT_SIGNAL_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString(),
-        ),
+        )
+        .limit(150),
     ]);
 
     const latestSignal = latestSignalResult.data as

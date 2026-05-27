@@ -117,16 +117,17 @@ export async function POST(req: NextRequest) {
     })();
 
     try {
-      const { count: connectedProviderCount, error: tokenError } = await supabase
+      const { data: connectedProviderRows, error: tokenError } = await supabase
         .from('user_tokens')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId);
+        .select('id')
+        .eq('user_id', userId)
+        .limit(1);
 
       if (tokenError) {
         throw tokenError;
       }
 
-      if ((connectedProviderCount ?? 0) > 0) {
+      if ((connectedProviderRows?.length ?? 0) > 0) {
         const { data: authUserData, error: authUserError } = await supabase.auth.admin.getUserById(userId);
         if (authUserError) {
           throw authUserError;

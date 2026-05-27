@@ -47,14 +47,15 @@ export async function runHealthWatchdogAgent(supabase: SupabaseClient): Promise<
   const dayStart = ptDayStartIso();
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-  const { count: failCount } = await supabase
+  const { data: failedRows } = await supabase
     .from('tkg_actions')
-    .select('id', { count: 'exact', head: true })
+    .select('id')
     .eq('status', 'failed')
-    .gte('generated_at', since);
+    .gte('generated_at', since)
+    .limit(1);
 
-  if ((failCount ?? 0) > 0) {
-    issues.push(`tkg_actions: ${failCount} row(s) with status=failed in the last 24h`);
+  if ((failedRows?.length ?? 0) > 0) {
+    issues.push('tkg_actions: at least one row with status=failed in the last 24h');
   }
 
   const { data: tokenRows } = await supabase

@@ -1346,7 +1346,7 @@ async function getFreshness(
     // Check for recent pending_approval/executed actions with similar directive text
     const { data: recentActions } = await supabase
       .from('tkg_actions')
-      .select('directive_text, generated_at, status, execution_result')
+      .select('directive_text, generated_at, status')
       .eq('user_id', userId)
       .gte('generated_at', threeDaysAgo)
       .in('status', ['pending_approval', 'executed', 'skipped', 'draft_rejected'])
@@ -1365,24 +1365,11 @@ async function getFreshness(
     let anySkipped = false;
     for (const a of allActions) {
       const dirText = (a.directive_text as string ?? '').toLowerCase();
-      // Also check original_candidate.candidate_description so quality-gate-blocked
-      // rows contribute to freshness penalty (fix: commit 4a75257 added this metadata).
-      const execResult = a.execution_result as Record<string, unknown> | null;
-      const origCandidate = execResult?.original_candidate as Record<string, unknown> | undefined;
-      const origDesc = typeof origCandidate?.candidate_description === 'string'
-        ? origCandidate.candidate_description.toLowerCase()
-        : '';
-      const searchText = dirText + ' ' + origDesc;
+      const searchText = dirText;
       const overlap = [...titleWords].filter(w => searchText.includes(w)).length;
       if (overlap >= 2 || (overlap >= 1 && titleWords.size <= 2)) {
         similarCount++;
-        // Only count as user-skipped when the generation actually produced a real directive
-        // (outcome === 'selected'). Generation failures (no_send) are internal errors —
-        // the user never saw the content, so they cannot have "rejected" it.
-        const genLogOutcome = (execResult?.generation_log as Record<string, unknown> | undefined)?.outcome;
-        const userActuallySkipped = (a.status === 'skipped' || a.status === 'draft_rejected')
-          && genLogOutcome === 'selected';
-        if (userActuallySkipped) {
+        if (a.status === 'skipped' || a.status === 'draft_rejected') {
           anySkipped = true;
         }
       }
@@ -1475,7 +1462,7 @@ async function getEntitySkipPenalty(
     // via recent action history instead of thread-body hydration.
     const { data: recentActions } = await supabase
       .from('tkg_actions')
-      .select('directive_text, status, execution_result')
+      .select('directive_text, status')
       .eq('user_id', userId)
       .gte('generated_at', thirtyDaysAgo)
       .in('status', ['approved', 'executed', 'skipped', 'draft_rejected', 'rejected'])
@@ -1490,12 +1477,7 @@ async function getEntitySkipPenalty(
 
       const entityActions = recentActions.filter((a) => {
         const directiveText = ((a.directive_text as string) ?? '').toLowerCase();
-        const execResult = a.execution_result as Record<string, unknown> | null;
-        const origCandidate = execResult?.original_candidate as Record<string, unknown> | undefined;
-        const originalText = typeof origCandidate?.candidate_description === 'string'
-          ? origCandidate.candidate_description.toLowerCase()
-          : '';
-        return directiveText.includes(firstName) || originalText.includes(firstName);
+        return directiveText.includes(firstName);
       });
 
       if (entityActions.length < 2) continue;
@@ -1516,8 +1498,6 @@ async function getEntitySkipPenalty(
     // with the current candidate's entity names, the same candidate has been winning
     // repeatedly without producing a send. Penalize to force rotation.
     //
-    // Checks BOTH directive_text AND execution_result.original_candidate.candidate_description
-    // so the penalty fires even when directive_text is a wait_rationale fallback (do_nothing rows).
     if (names.length > 0 && recentActions.length >= 3) {
       const currentDesc = names.join(' ').toLowerCase();
       const words = currentDesc.split(/\s+/).filter((w: string) => w.length >= 4);
@@ -1525,14 +1505,7 @@ async function getEntitySkipPenalty(
         const last3 = recentActions.slice(0, 3);
         const allMatch = last3.every((a) => {
           const directiveText = ((a.directive_text as string) ?? '').toLowerCase();
-          const execResult = a.execution_result as Record<string, unknown> | null;
-          const origCandidate = execResult?.original_candidate as Record<string, unknown> | undefined;
-          const origDesc =
-            typeof origCandidate?.candidate_description === 'string'
-              ? origCandidate.candidate_description.toLowerCase()
-              : '';
-          const combined = `${directiveText} ${origDesc}`;
-          const matched = words.filter((w: string) => combined.includes(w)).length;
+          const matched = words.filter((w: string) => directiveText.includes(w)).length;
           return matched / words.length >= 0.8;
         });
         if (allMatch) return -50;
@@ -1702,7 +1675,7 @@ async function getDaysSinceLastSurface(
   try {
     const { data: recentActions } = await supabase
       .from('tkg_actions')
-      .select('directive_text, generated_at, status, execution_result')
+      .select('directive_text, generated_at, status')
       .eq('user_id', userId)
       .gte('generated_at', threeDaysAgo)
       .in('status', ['pending_approval', 'executed', 'skipped', 'draft_rejected'])
@@ -1717,16 +1690,10 @@ async function getDaysSinceLastSurface(
     );
     if (titleWords2.size === 0) return 0;
 
-    // Find the most recent matching action — include original_candidate so
-    // quality-gate-blocked no_send rows count as "surfaced" for freshness.
+    // Find the most recent matching action from summary fields only.
     for (const a of allActions2) {
       const dirText = (a.directive_text as string ?? '').toLowerCase();
-      const execResult = a.execution_result as Record<string, unknown> | null;
-      const origCandidate = execResult?.original_candidate as Record<string, unknown> | undefined;
-      const origDesc = typeof origCandidate?.candidate_description === 'string'
-        ? origCandidate.candidate_description.toLowerCase()
-        : '';
-      const searchText = dirText + ' ' + origDesc;
+      const searchText = dirText;
       const overlap = [...titleWords2].filter(w => searchText.includes(w)).length;
       if (overlap >= 2 || (overlap >= 1 && titleWords2.size <= 2)) {
         const daysAgo = Math.max(0, Math.floor(

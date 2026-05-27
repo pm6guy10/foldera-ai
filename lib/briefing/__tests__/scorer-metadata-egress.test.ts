@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const signalSelectCalls: string[] = [];
+const actionSelectCalls: string[] = [];
 
 type ActionRow = {
   id: string;
@@ -67,7 +68,10 @@ vi.mock('@/lib/db/client', () => ({
             signalSelectCalls.push(String(columns ?? ''));
             return makeBuilder(signalRows);
           }
-          if (table === 'tkg_actions') return makeBuilder(actionRows);
+          if (table === 'tkg_actions') {
+            actionSelectCalls.push(String(columns ?? ''));
+            return makeBuilder(actionRows);
+          }
           if (table === 'tkg_goals') {
             return makeBuilder([
               {
@@ -116,6 +120,7 @@ describe('scorer metadata-first tkg_signals reads', () => {
   beforeEach(() => {
     vi.resetModules();
     signalSelectCalls.length = 0;
+    actionSelectCalls.length = 0;
     actionRows = Array.from({ length: 5 }, (_unused, index) => ({
       id: `action-${index + 1}`,
       directive_text: `Approved action ${index + 1}`,
@@ -170,5 +175,18 @@ describe('scorer metadata-first tkg_signals reads', () => {
       'id, occurred_at, source, type',
       'id, user_id, source, source_id, type, author, recipients, occurred_at, created_at, extracted_entities, extracted_commitments, extracted_dates, extracted_amounts, outcome_label, processed',
     ]));
+    expect(
+      actionSelectCalls.filter((columns) =>
+        /directive_text/.test(columns) &&
+        /generated_at/.test(columns) &&
+        /status/.test(columns)
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        'directive_text, status, generated_at',
+      ]),
+    );
+    expect(actionSelectCalls).not.toContain('directive_text, generated_at, status, execution_result');
+    expect(actionSelectCalls).not.toContain('directive_text, status, execution_result');
   });
 });
