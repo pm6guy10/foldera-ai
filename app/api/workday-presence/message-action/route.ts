@@ -9,7 +9,11 @@ import {
   buildRightNowMessagePayload,
   type RightNowMessageActionId,
 } from '@/lib/workday-presence/message';
-import { applyWorkdayPresenceAction } from '@/lib/workday-presence/actions';
+import {
+  applyInteractionHistoryToState,
+  appendWorkdayPresenceInteractionHistory,
+  applyWorkdayPresenceAction,
+} from '@/lib/workday-presence/actions';
 import { apiErrorForRoute, badRequest } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -23,16 +27,26 @@ async function persistState(
   userId: string,
   metadata: Record<string, unknown>,
   nextState: WorkdayPresenceState,
-) {
+  actionId: RightNowMessageActionId,
+): Promise<WorkdayPresenceState> {
+  const stateWithHistory = applyInteractionHistoryToState(
+    metadata,
+    actionId,
+    nextState,
+    nextState.updated_at,
+  );
   const supabase = createServerClient();
+  const nextMetadata = appendWorkdayPresenceInteractionHistory(
+    metadata,
+    actionId,
+    stateWithHistory,
+    nextState.updated_at,
+  );
   const updateResult = await supabase.auth.admin.updateUserById(userId, {
-    user_metadata: {
-      ...metadata,
-      // This stays in Auth metadata for MVP portability. A first-class table with RLS/history comes later.
-      workday_presence_state: nextState,
-    },
+    user_metadata: nextMetadata,
   });
   if (updateResult.error) throw updateResult.error;
+  return stateWithHistory;
 }
 
 export async function POST(request: Request) {
@@ -61,13 +75,11 @@ export async function POST(request: Request) {
     const currentState = normalizeWorkdayPresenceState(metadata.workday_presence_state);
     if (!currentState) return badRequest('No active workday presence state');
 
-    if (actionId !== 'snooze') {
-      await persistState(auth.userId, metadata, nextState);
-    }
+    const persistedState = await persistState(auth.userId, metadata, nextState, actionId);
 
     return NextResponse.json({
-      state: nextState,
-      payload: buildRightNowMessagePayload(nextState),
+      state: persistedState,
+      payload: buildRightNowMessagePayload(persistedState),
     });
   } catch (error: unknown) {
     return apiErrorForRoute(error, 'workday-presence message-action POST');

@@ -59,8 +59,20 @@ describe('GET /api/workday-presence', () => {
               blocker: null,
               do_not_touch: null,
               waiting_on: 'Owner confirmation sent',
-              last_completed_step: null,
+              last_completed_step: 'Drafted decision context',
               state_source: 'manual_anchor',
+              interaction_history: [
+                {
+                  interaction_type: 'done',
+                  timestamp: '2026-05-20T12:09:00.000Z',
+                  resulting_state: {
+                    next_move: 'Send owner confirmation note',
+                    blocker: null,
+                    waiting_on: 'Owner confirmation sent',
+                    last_completed_step: 'Drafted decision context',
+                  },
+                },
+              ],
               created_at: '2026-05-19T12:00:00.000Z',
               updated_at: '2026-05-19T12:10:00.000Z',
             },
@@ -76,5 +88,7 @@ describe('GET /api/workday-presence', () => {
     expect(response.status).toBe(200);
     expect(body.card.mode).toBe('active');
     expect(body.card.heading).toBe('Right now.');
+    expect(body.card.next_move).toContain('Resume from: Drafted decision context');
+    expect(body.card.last_interaction).toContain('Last interaction: done');
   });
 });

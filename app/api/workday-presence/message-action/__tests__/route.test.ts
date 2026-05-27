@@ -73,6 +73,7 @@ describe('POST /api/workday-presence/message-action', () => {
     expect(mockSupabase.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
     expect(body.state.last_completed_step).toBe('Send owner confirmation note');
     expect(body.state.blocker).toBeNull();
+    expect(body.state.interaction_history.at(-1).interaction_type).toBe('done');
   });
 
   it('Stuck preserves/adds blocker (adds when missing)', async () => {
@@ -111,6 +112,83 @@ describe('POST /api/workday-presence/message-action', () => {
     expect(mockSupabase.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
     expect(body.state.blocker).toBe('Need legal clause confirmation');
     expect(body.payload.kind).toBe('right_now');
+    expect(body.state.next_move).toContain('Unblocker step');
+    expect(body.state.interaction_history.at(-1).interaction_type).toBe('stuck');
+  });
+
+  it('Break smaller rewrites next_move to lower-friction step', async () => {
+    mockSupabase.auth.admin.getUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            workday_presence_state: {
+              current_focus: 'Close ACME renewal decision',
+              next_move: 'Send owner confirmation note',
+              why_it_matters: 'The renewal window closes at 4 PM PT.',
+              blocker: null,
+              do_not_touch: null,
+              waiting_on: null,
+              last_completed_step: null,
+              state_source: 'manual_anchor',
+              created_at: '2026-05-19T12:00:00.000Z',
+              updated_at: '2026-05-19T12:10:00.000Z',
+            },
+          },
+        },
+      },
+      error: null,
+    });
+
+    const { POST } = await import('../route');
+    const response = await POST(
+      new Request('http://localhost/api/workday-presence/message-action', {
+        method: 'POST',
+        body: JSON.stringify({ action_id: 'break_smaller' }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.state.next_move).toContain('Break it smaller');
+    expect(body.state.interaction_history.at(-1).interaction_type).toBe('break_smaller');
+  });
+
+  it('Snooze persists a temporary hold state', async () => {
+    mockSupabase.auth.admin.getUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            workday_presence_state: {
+              current_focus: 'Close ACME renewal decision',
+              next_move: 'Send owner confirmation note',
+              why_it_matters: 'The renewal window closes at 4 PM PT.',
+              blocker: null,
+              do_not_touch: null,
+              waiting_on: null,
+              last_completed_step: null,
+              state_source: 'manual_anchor',
+              created_at: '2026-05-19T12:00:00.000Z',
+              updated_at: '2026-05-19T12:10:00.000Z',
+            },
+          },
+        },
+      },
+      error: null,
+    });
+
+    const { POST } = await import('../route');
+    const response = await POST(
+      new Request('http://localhost/api/workday-presence/message-action', {
+        method: 'POST',
+        body: JSON.stringify({ action_id: 'snooze' }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockSupabase.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
+    expect(body.state.snoozed_until).toBeTruthy();
+    expect(body.state.interaction_history.at(-1).interaction_type).toBe('snooze');
   });
 });
 

@@ -111,6 +111,9 @@ export function MorningAnchorCard({
         <p className="mt-3 text-sm text-text-secondary">{card.return_here}</p>
         <p className="mt-3 text-base text-text-primary">{card.next_move}</p>
         <p className="mt-3 text-sm text-text-secondary">{card.why_this_matters}</p>
+        {card.last_interaction ? (
+          <p className="mt-3 text-sm text-cyan-200">{card.last_interaction}</p>
+        ) : null}
         {card.do_not_touch ? <p className="mt-3 text-sm text-amber-200">{card.do_not_touch}</p> : null}
         <p className="mt-4 text-sm font-semibold text-text-primary">{card.stop_when_done}</p>
       </section>

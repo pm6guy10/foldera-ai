@@ -23,6 +23,7 @@ describe('workday presence message payload', () => {
     expect(payload.text).toContain('Right now.');
     expect(payload.text).toContain('Return here: Close ACME renewal decision');
     expect(payload.text).toContain('Send owner confirmation note');
+    expect(payload.text).toContain('Source trail: manual_anchor');
   });
 });
 
