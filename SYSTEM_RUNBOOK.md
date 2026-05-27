@@ -1,5 +1,17 @@
 # SYSTEM RUNBOOK
 
+## Canonical Boot Sequence
+
+For any Foldera task, use this order:
+
+1. Read `ACTIVE_HANDOFF.md`.
+2. Read `FOLDERA_LAUNCH_ROADMAP.md`.
+3. Read the active issue named by `ACTIVE_HANDOFF.md`.
+4. Read issue #48 for product doctrine.
+5. Read relevant execution/proof docs only for the active seam.
+6. Check latest open PRs and recent merged PRs when repo/deploy truth matters.
+7. Use Vercel/Supabase only when the seam requires live/runtime truth.
+
 ## Mission
 Make Foldera reliably complete the full product loop:
 connect → ingest → process → generate → persist → send → approve
@@ -47,6 +59,10 @@ Controllers and gates are truth selectors, not replacements for GitHub issue/PR 
 - Exception: if checks are still pending, GitHub/Vercel is unstable, merge is blocked, permissions block merge, or another external system blocks completion, report `BLOCKED` with the exact pending/blocking check and stop.
 
 ## Source-of-Truth Boundaries
+- `ACTIVE_HANDOFF.md` defines current command state and the single active seam.
+- `FOLDERA_LAUNCH_ROADMAP.md` defines launch order and continuity policy.
+- The GitHub issue named by `ACTIVE_HANDOFF.md` defines the active implementation scope.
+- GitHub issue #48 defines the product doctrine contract.
 - `FOLDERA_OPERATING_SYSTEM.md` defines canonical product doctrine and worldview.
 - `CODEX_START.md` defines the session boot contract.
 - `AGENTS.md` and `CLAUDE.md` define active agent execution behavior and compatibility runbook rules.

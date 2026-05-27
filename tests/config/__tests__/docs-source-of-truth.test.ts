@@ -7,10 +7,15 @@ describe('documentation source-of-truth boundaries', () => {
     const operatingSystem = fs.readFileSync(path.join(process.cwd(), 'FOLDERA_OPERATING_SYSTEM.md'), 'utf8');
     const codexStart = fs.readFileSync(path.join(process.cwd(), 'CODEX_START.md'), 'utf8');
     const activeHandoff = fs.readFileSync(path.join(process.cwd(), 'ACTIVE_HANDOFF.md'), 'utf8');
-    const readOrder =
-      codexStart.match(
-        /Read these before acting:\r?\n\r?\n([\s\S]*?)\r?\n\r?\n## Prime Directive/,
-      )?.[1] ?? '';
+    const canonicalBootSequence = [
+      '1. Read `ACTIVE_HANDOFF.md`.',
+      '2. Read `FOLDERA_LAUNCH_ROADMAP.md`.',
+      '3. Read the active issue named by `ACTIVE_HANDOFF.md`.',
+      '4. Read issue #48 for product doctrine.',
+      '5. Read relevant execution/proof docs only for the active seam.',
+      '6. Check latest open PRs and recent merged PRs when repo/deploy truth matters.',
+      '7. Use Vercel/Supabase only when the seam requires live/runtime truth.',
+    ];
 
     expect(operatingSystem).toContain('Foldera is not a dashboard.');
     expect(operatingSystem).toContain('Foldera is an operator.');
@@ -19,12 +24,10 @@ describe('documentation source-of-truth boundaries', () => {
     expect(operatingSystem).toContain('Ask for one irreducible blocker');
     expect(codexStart).toContain("You are Foldera's acting senior operator and app owner.");
     expect(codexStart).toContain('move Foldera through the first failing gate with proof');
-    expect(readOrder.trimStart()).toMatch(/^1\. `GPT\.md`/);
-    expect(readOrder).toContain('`ACTIVE_HANDOFF.md`');
-    expect(readOrder).toContain('`CURRENT_STATE.md`');
-    expect(readOrder).toContain('`SYSTEM_RUNBOOK.md`');
-    expect(readOrder).toContain('`docs/RELEASE_GATES.md`');
-    expect(readOrder).toContain('`docs/QUALITY_GATES.md`');
+    for (const line of canonicalBootSequence) {
+      expect(codexStart).toContain(line);
+      expect(activeHandoff).toContain(line);
+    }
     expect(codexStart).toContain('No Codex self-certification counts.');
     expect(codexStart).toContain('`npm run health`');
     expect(codexStart).toContain('`npm run gate:status`');
@@ -43,6 +46,9 @@ describe('documentation source-of-truth boundaries', () => {
     const runbook = fs.readFileSync(path.join(process.cwd(), 'SYSTEM_RUNBOOK.md'), 'utf8');
 
     expect(runbook).toContain('## Source-of-Truth Boundaries');
+    expect(runbook).toContain('ACTIVE_HANDOFF.md');
+    expect(runbook).toContain('FOLDERA_LAUNCH_ROADMAP.md');
+    expect(runbook).toContain('GitHub issue #48');
     expect(runbook).toContain('FOLDERA_OPERATING_SYSTEM.md');
     expect(runbook).toContain('CODEX_START.md');
     expect(runbook).toContain('AGENTS.md');
@@ -60,9 +66,10 @@ describe('documentation source-of-truth boundaries', () => {
     const agents = fs.readFileSync(path.join(process.cwd(), 'AGENTS.md'), 'utf8');
 
     expect(agents).toContain('## Source-of-Truth Loading Hierarchy');
+    expect(agents).toContain('`ACTIVE_HANDOFF.md` controls current command state and the next exact move');
+    expect(agents).toContain('`FOLDERA_LAUNCH_ROADMAP.md` controls launch order and roadmap continuity');
     expect(agents).toContain('`FOLDERA_OPERATING_SYSTEM.md` controls product doctrine and worldview');
     expect(agents).toContain('`CODEX_START.md` controls session boot order');
-    expect(agents).toContain('`ACTIVE_HANDOFF.md` controls current command state and the next exact move');
     expect(agents).toContain('`AGENTS.md` controls agent behavior and repo-specific execution rules');
     expect(agents).toContain('`ACCEPTANCE_GATE.md` controls product proof');
     expect(agents).toContain('`CURRENT_STATE.md` controls current blockers and runtime truth');

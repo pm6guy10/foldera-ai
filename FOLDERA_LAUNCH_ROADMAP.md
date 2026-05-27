@@ -10,16 +10,17 @@ For Foldera work, do not rely on chat memory. Repo files and GitHub issues are t
 
 ## Boot sequence
 
-For any Foldera question or Codex task:
+## Canonical Boot Sequence
 
-1. Confirm repo: `pm6guy10/foldera-ai`.
-2. Read `ACTIVE_HANDOFF.md` first.
-3. Read this file.
-4. Read the controlling issue named in `ACTIVE_HANDOFF.md`.
-5. Read issue #48 for product doctrine.
-6. Read any active issue or PR named by `ACTIVE_HANDOFF.md`.
-7. Check latest open PRs and the most recent merged PR if repo/deploy state matters.
-8. Only then answer, create issues, or code.
+For any Foldera task, use this order:
+
+1. Read `ACTIVE_HANDOFF.md`.
+2. Read `FOLDERA_LAUNCH_ROADMAP.md`.
+3. Read the active issue named by `ACTIVE_HANDOFF.md`.
+4. Read issue #48 for product doctrine.
+5. Read relevant execution/proof docs only for the active seam.
+6. Check latest open PRs and recent merged PRs when repo/deploy truth matters.
+7. Use Vercel/Supabase only when the seam requires live/runtime truth.
 
 Required response shape:
 
@@ -84,6 +85,7 @@ Supabase:
 - Issue #77 exists to decide the real Slack integration seam.
 - Issue #78 created this roadmap/handoff lock.
 - `ACTIVE_HANDOFF.md` must always name the single active implementation seam.
+- Issue #80 owns source-truth hygiene and continuity enforcement when explicitly assigned.
 
 ## Ordered launch rungs
 

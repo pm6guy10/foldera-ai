@@ -25,17 +25,21 @@ Historical notes belong in:
 
 ---
 
+## Canonical Boot Sequence
+
+For any Foldera task, use this order:
+
+1. Read `ACTIVE_HANDOFF.md`.
+2. Read `FOLDERA_LAUNCH_ROADMAP.md`.
+3. Read the active issue named by `ACTIVE_HANDOFF.md`.
+4. Read issue #48 for product doctrine.
+5. Read relevant execution/proof docs only for the active seam.
+6. Check latest open PRs and recent merged PRs when repo/deploy truth matters.
+7. Use Vercel/Supabase only when the seam requires live/runtime truth.
+
 ## Read First Every Session
 
-Read these in order:
-
-1. `CODEX_START.md`
-2. `FOLDERA_OPERATING_SYSTEM.md`
-3. `CURRENT_STATE.md`
-4. `ACCEPTANCE_GATE.md`
-5. `SYSTEM_RUNBOOK.md`
-6. latest `SESSION_HISTORY.md` entries
-7. `BRANDON.md`
+After the canonical boot sequence, read additional execution or proof docs only when they are directly relevant to the active seam.
 
 Read other files only if they are directly relevant to the active seam.
 

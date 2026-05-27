@@ -1,3 +1,7 @@
+# FOLDERA MASTER AUDIT
+
+> Authority status: REFERENCE_ONLY. Audit evidence only; current command state lives in `ACTIVE_HANDOFF.md` and current issue scope lives in GitHub.
+
 ### NEEDS_REVIEW — 2026-04-21 — Stripe webhook no longer reports false success when subscription persistence fails
 This session fixed the exact S1 money-loop seam in `app/api/stripe/webhook/route.ts`: Stripe checkout and subscription webhook events were returning `200` even when `user_subscriptions` writes failed or matched no row. That behavior could leave a stranger with a successful charge but no active subscription row and no retry from Stripe because the webhook was falsely acknowledged.
 

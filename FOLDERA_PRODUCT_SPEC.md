@@ -1,5 +1,7 @@
 # FOLDERA PRODUCT SPEC — BRANDON COMMAND CENTER
 
+> Authority status: REFERENCE_ONLY. Historical product specification; current doctrine lives in issue #48, `ACTIVE_HANDOFF.md`, `FOLDERA_LAUNCH_ROADMAP.md`, and `docs/SOURCE_OF_TRUTH_MAP.md`.
+
 Last Updated: May 2, 2026 (**Product reset update:** Foldera stays focused on Brandon's job, interview, benefits, payment, admin deadline, and calendar-conflict signals, but command-center category is no longer a hard blocking allowlist. Historical notes below may mention prior daily/morning-brief or five-class fail-closed framing; this section supersedes them. Current artifact enforcement lives in `lib/briefing/artifact-quality-gate.ts` and is verified by `lib/briefing/__tests__/artifact-quality-gate.test.ts` plus `lib/briefing/__tests__/generator-runtime.test.ts`.)
 Next Review: Monday March 31, 2026
 

@@ -1,5 +1,7 @@
 # WHAT'S NEXT — Updated 2026-04-10
 
+> Authority status: HISTORICAL_ARCHIVE. Historical status log; current next move lives in `ACTIVE_HANDOFF.md` and the named GitHub issue.
+
 ## STATUS: SHIPPED — Thread-backed `send_message` no longer loses to forced internal discrepancy rank
 
 **This session:** `applyRankingInvariants` skips `discrepancy_priority_forced_over_task` when the top non-discrepancy is `isThreadBackedSendableLoop`; `selectRankedCandidates` mirrors scorer (penalty exemption + viability bump). **After push:** `GET /api/health` SHA `cab356d` path; owner dry run may still be discrepancy-only until stakes gate / suppression allow externals into the final pool.

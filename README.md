@@ -1,37 +1,36 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Foldera
 
-## Getting Started
+Foldera is a Workday Presence Layer: state + connectors + triggers + one intervention, quiet otherwise.
 
-First, run the development server:
+## Source Truth
+
+Start every repo task from the current control chain:
+
+1. `ACTIVE_HANDOFF.md`
+2. `FOLDERA_LAUNCH_ROADMAP.md`
+3. the active GitHub issue named by `ACTIVE_HANDOFF.md`
+4. issue #48 for product doctrine
+5. relevant execution/proof docs only for the active seam
+
+`docs/SOURCE_OF_TRUTH_MAP.md` classifies the root doctrine, execution, proof, reference, archive, and stale files.
+
+## Local Commands
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run health
+npm run gate:continuity
+npm run lint
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Run only the proof that matches the active issue. Do not use paid/model-backed routes, outbound sends, schema changes, or live provider actions unless the active issue explicitly requires them and Brandon approves the step.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Delivery Contract
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- One assigned GitHub issue.
+- One clean branch or worktree.
+- One pull request.
+- Required proof in the PR.
+- Stop after proof is reported unless the active issue explicitly requires merge/deploy follow-through.
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-# Deployment trigger
+Do not broaden into Slack/OAuth/API/send work, backend/auth/Supabase/schema/Stripe changes, landing/dashboard work, or stale-doc cleanup unless the active issue says so.

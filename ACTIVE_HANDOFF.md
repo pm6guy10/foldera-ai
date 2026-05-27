@@ -1,21 +1,27 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-05-27 PT
-Current `origin/main` SHA at update time: `f08592a9f6b58c81f31d26baf07b730973dd8b1d`.
+Current `origin/main` SHA at update time: `ce67813cbdaf0f3d9bc286f6a185deebdf86426e`.
 
-## Boot sequence
+## Canonical Boot Sequence
 
-For any Foldera task:
-1. Confirm repo `pm6guy10/foldera-ai`.
-2. Read this file first.
-3. Read `FOLDERA_LAUNCH_ROADMAP.md`.
-4. Read issue #78 (roadmap control), issue #48 (product doctrine), and issue #84 (active seam).
+For any Foldera task, use this order:
+
+1. Read `ACTIVE_HANDOFF.md`.
+2. Read `FOLDERA_LAUNCH_ROADMAP.md`.
+3. Read the active issue named by `ACTIVE_HANDOFF.md`.
+4. Read issue #48 for product doctrine.
+5. Read relevant execution/proof docs only for the active seam.
+6. Check latest open PRs and recent merged PRs when repo/deploy truth matters.
+7. Use Vercel/Supabase only when the seam requires live/runtime truth.
 
 Current slice:
-- PR #82 merged at `f08592a9f6b58c81f31d26baf07b730973dd8b1d`; issue #81 is complete.
-- Active implementation seam is issue #84 (landing-page spacing and production polish after PR #82).
-- Repo hygiene / continuity cleanup is queued next under issue #80 and issue #79 after issue #84 is complete.
+- PR #86 was squash-merged into `origin/main` at `ce67813cbdaf0f3d9bc286f6a185deebdf86426e`.
+- Issue #84 remains open but paused while issue #80 is explicitly assigned.
+- Issue #79 is coordinated by the continuity-gate and PR-template enforcement in issue #80.
 - Real Slack integration remains blocked pending issue #77 decision.
+
+Active implementation seam is issue #80 (source-truth hygiene, stale-doc classification, continuity enforcement).
 
 ## Product doctrine
 
@@ -27,26 +33,25 @@ Issue #48 remains the product contract.
 ## Current truth
 
 - `FOLDERA_LAUNCH_ROADMAP.md` is the long-form controlling roadmap.
-- Issue #78 is the roadmap/continuity lock issue.
-- Issue #84 is the active narrow implementation seam.
-- Issue #80 and issue #79 control queued repo-truth cleanup and continuity enforcement.
+- `docs/SOURCE_OF_TRUTH_MAP.md` classifies current, execution, proof, reference, archive, and stale source-truth files.
+- Issue #80 is the active narrow implementation seam by explicit user assignment.
+- Issue #84 is next only after issue #80 is complete unless GitHub source truth changes.
 - Issue #77 gates any real Slack OAuth/API/send implementation.
-- Issue #67/PR #68, issue #72/PR #73, issue #52/PR #74, PR #75, PR #82, and PR #83 are merged.
 
 ## Enforcement mechanism
 
 - Repo files + GitHub issues are source of truth over chat memory.
 - Brandon is not the messenger between ChatGPT and Codex; update GitHub source-of-truth first.
 - If a rule is not enforced by npm gate, CI check, required file, or test, it is incomplete.
-- `tests/config/__tests__/docs-source-of-truth.test.ts` enforces this file contract.
+- `npm run gate:continuity` enforces the boot sequence, stale-doc markers, README replacement, PR template, PR Sentinel wiring, and inactive stale contract.
 
 ## Forbidden unless explicitly assigned
 
 - No real Slack OAuth/API/send implementation.
 - No backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes.
-- No repo hygiene, README, backlog, authority-map, stale-doc, or continuity-gate cleanup inside issue #84.
+- No landing redesign or dashboard work.
 - No broad cleanup outside the active seam.
 
 ## Next exact move
 
-Run issue #84 only, then report proof.
+Run issue #80 only, open one PR with proof, then stop for merge/review unless the user explicitly assigns the next issue.

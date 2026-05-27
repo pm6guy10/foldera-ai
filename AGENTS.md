@@ -16,12 +16,29 @@ Historical notes, long-form ops procedures, and legacy rules belong in `docs/**`
 
 ---
 
+## Canonical Boot Sequence
+
+For any Foldera task, use this order:
+
+1. Read `ACTIVE_HANDOFF.md`.
+2. Read `FOLDERA_LAUNCH_ROADMAP.md`.
+3. Read the active issue named by `ACTIVE_HANDOFF.md`.
+4. Read issue #48 for product doctrine.
+5. Read relevant execution/proof docs only for the active seam.
+6. Check latest open PRs and recent merged PRs when repo/deploy truth matters.
+7. Use Vercel/Supabase only when the seam requires live/runtime truth.
+
+---
+
 ## Source-of-Truth Loading Hierarchy
 
 When docs conflict, active hierarchy wins:
+- `ACTIVE_HANDOFF.md` controls current command state and the next exact move
+- `FOLDERA_LAUNCH_ROADMAP.md` controls launch order and roadmap continuity
+- GitHub issue named by `ACTIVE_HANDOFF.md` controls the active implementation scope
+- GitHub issue #48 controls product doctrine
 - `FOLDERA_OPERATING_SYSTEM.md` controls product doctrine and worldview
 - `CODEX_START.md` controls session boot order
-- `ACTIVE_HANDOFF.md` controls current command state and the next exact move
 - `AGENTS.md` controls agent behavior and repo-specific execution rules
 - `ACCEPTANCE_GATE.md` controls product proof
 - `CURRENT_STATE.md` controls current blockers and runtime truth
@@ -122,8 +139,8 @@ Do not let Codex wander into landing page, dashboard UX, Stripe, scoring, convic
 
 Before doing anything else:
 
-1. Read `CODEX_START.md`
-2. Read `FOLDERA_OPERATING_SYSTEM.md` and the canonical docs named by `CODEX_START.md`
+1. Follow the canonical boot sequence above
+2. Read only relevant execution/proof docs for the active seam
 3. Run `npm run health`
 4. Inspect the output
 5. If there is a relevant `FAIL`, prioritize it unless the user has already pinned another active seam with stronger proof
