@@ -7,6 +7,17 @@ export type WorkdayPresenceState = {
   waiting_on: string | null;
   last_completed_step: string | null;
   state_source: string;
+  snoozed_until: string | null;
+  interaction_history: Array<{
+    interaction_type: 'done' | 'stuck' | 'break_smaller' | 'snooze';
+    timestamp: string;
+    resulting_state: {
+      next_move: string;
+      blocker: string | null;
+      waiting_on: string | null;
+      last_completed_step: string | null;
+    };
+  }>;
   created_at: string;
   updated_at: string;
 };
@@ -24,6 +35,7 @@ export type RightNowCard =
       why_this_matters: string;
       do_not_touch: string | null;
       stop_when_done: string;
+      last_interaction: string | null;
     };
 
 export type WorkdayPresenceDraftInput = {
@@ -60,6 +72,40 @@ export function normalizeWorkdayPresenceState(input: unknown): WorkdayPresenceSt
     waiting_on: clean(row.waiting_on),
     last_completed_step: clean(row.last_completed_step),
     state_source: clean(row.state_source) ?? 'manual_anchor',
+    snoozed_until: clean(row.snoozed_until),
+    interaction_history: Array.isArray(row.interaction_history)
+      ? row.interaction_history
+          .map((entry) => {
+            if (!entry || typeof entry !== 'object') return null;
+            const item = entry as Record<string, unknown>;
+            const interactionType = clean(item.interaction_type);
+            const timestamp = clean(item.timestamp);
+            const resultingState =
+              item.resulting_state && typeof item.resulting_state === 'object'
+                ? (item.resulting_state as Record<string, unknown>)
+                : null;
+            if (
+              !interactionType ||
+              !timestamp ||
+              !resultingState ||
+              !['done', 'stuck', 'break_smaller', 'snooze'].includes(interactionType)
+            ) {
+              return null;
+            }
+            return {
+              interaction_type: interactionType as 'done' | 'stuck' | 'break_smaller' | 'snooze',
+              timestamp,
+              resulting_state: {
+                next_move: clean(resultingState.next_move) ?? '',
+                blocker: clean(resultingState.blocker),
+                waiting_on: clean(resultingState.waiting_on),
+                last_completed_step: clean(resultingState.last_completed_step),
+              },
+            };
+          })
+          .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+          .slice(-20)
+      : [],
     created_at: clean(row.created_at) ?? nowIso,
     updated_at: clean(row.updated_at) ?? nowIso,
   };
@@ -79,6 +125,7 @@ export function buildRightNowCard(state: WorkdayPresenceState | null): RightNowC
   const blockedMove = state.blocker
     ? `Blocked by "${state.blocker}". Break it smaller: ${resumedMove}`
     : resumedMove;
+  const lastInteraction = state.interaction_history[state.interaction_history.length - 1] ?? null;
   const stopWhenDone = state.waiting_on
     ? `Stop when this is done: ${state.waiting_on}`
     : `Stop when this is done: ${state.current_focus} moved forward.`;
@@ -91,6 +138,9 @@ export function buildRightNowCard(state: WorkdayPresenceState | null): RightNowC
     why_this_matters: `Why this matters: ${state.why_it_matters}`,
     do_not_touch: state.do_not_touch ? `Do not touch: ${state.do_not_touch}` : null,
     stop_when_done: stopWhenDone,
+    last_interaction: lastInteraction
+      ? `Last interaction: ${lastInteraction.interaction_type} at ${lastInteraction.timestamp}`
+      : null,
   };
 }
 
@@ -115,6 +165,8 @@ export function buildStateFromPrompt(
     waiting_on: clean(input.waiting_on),
     last_completed_step: clean(input.last_completed_step),
     state_source: 'manual_anchor',
+    snoozed_until: null,
+    interaction_history: [],
     created_at: nowIso,
     updated_at: nowIso,
   };

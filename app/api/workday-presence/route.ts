@@ -70,6 +70,8 @@ export async function PUT(request: Request) {
       waiting_on: payload.waiting_on ?? null,
       last_completed_step: payload.last_completed_step ?? null,
       state_source: payload.state_source ?? currentState?.state_source ?? 'manual_anchor',
+      snoozed_until: currentState?.snoozed_until ?? null,
+      interaction_history: currentState?.interaction_history ?? [],
       created_at: currentState?.created_at ?? nowIso,
       updated_at: nowIso,
     });

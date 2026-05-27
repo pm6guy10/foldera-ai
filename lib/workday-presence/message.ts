@@ -14,7 +14,7 @@ export type RightNowMessagePayload = {
   actions: RightNowMessageAction[];
 };
 
-function formatCardText(card: RightNowCard): string {
+function formatCardText(card: RightNowCard, stateSource: string): string {
   if (card.mode === 'setup') return card.prompt;
 
   const lines: string[] = [
@@ -22,7 +22,9 @@ function formatCardText(card: RightNowCard): string {
     card.return_here,
     card.next_move,
     card.why_this_matters,
+    `Source trail: ${stateSource}`,
   ];
+  if (card.last_interaction) lines.push(card.last_interaction);
   if (card.do_not_touch) lines.push(card.do_not_touch);
   lines.push(card.stop_when_done);
   return lines.join('\n');
@@ -34,7 +36,7 @@ export function buildRightNowMessagePayload(state: WorkdayPresenceState | null):
   return {
     kind: 'right_now',
     mode: card.mode,
-    text: formatCardText(card),
+    text: formatCardText(card, state?.state_source ?? 'manual_anchor'),
     actions: [
       { id: 'done', label: 'Done' },
       { id: 'stuck', label: 'Stuck' },

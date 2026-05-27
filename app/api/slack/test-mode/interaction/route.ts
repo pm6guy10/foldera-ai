@@ -3,7 +3,11 @@ import { resolveUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import { normalizeWorkdayPresenceState, type WorkdayPresenceState } from '@/lib/workday-presence/model';
 import { buildRightNowMessagePayload, type RightNowMessageActionId } from '@/lib/workday-presence/message';
-import { applyWorkdayPresenceAction } from '@/lib/workday-presence/actions';
+import {
+  applyInteractionHistoryToState,
+  appendWorkdayPresenceInteractionHistory,
+  applyWorkdayPresenceAction,
+} from '@/lib/workday-presence/actions';
 import { buildSlackTestModeRightNowMessage } from '@/lib/slack-test-mode/right-now';
 import { apiErrorForRoute, badRequest } from '@/lib/utils/api-error';
 
@@ -18,15 +22,26 @@ async function persistState(
   userId: string,
   metadata: Record<string, unknown>,
   nextState: WorkdayPresenceState,
-) {
+  actionId: RightNowMessageActionId,
+): Promise<WorkdayPresenceState> {
+  const stateWithHistory = applyInteractionHistoryToState(
+    metadata,
+    actionId,
+    nextState,
+    nextState.updated_at,
+  );
   const supabase = createServerClient();
+  const nextMetadata = appendWorkdayPresenceInteractionHistory(
+    metadata,
+    actionId,
+    stateWithHistory,
+    nextState.updated_at,
+  );
   const updateResult = await supabase.auth.admin.updateUserById(userId, {
-    user_metadata: {
-      ...metadata,
-      workday_presence_state: nextState,
-    },
+    user_metadata: nextMetadata,
   });
   if (updateResult.error) throw updateResult.error;
+  return stateWithHistory;
 }
 
 export async function POST(request: Request) {
@@ -52,14 +67,12 @@ export async function POST(request: Request) {
     if (!currentState) return badRequest('No active workday presence state');
 
     const nextState = applied.nextState;
-    if (actionId !== 'snooze') {
-      await persistState(auth.userId, metadata, nextState);
-    }
+    const persistedState = await persistState(auth.userId, metadata, nextState, actionId);
 
-    const nextPayload = buildRightNowMessagePayload(nextState);
+    const nextPayload = buildRightNowMessagePayload(persistedState);
     return NextResponse.json({
       action_id: actionId,
-      state: nextState,
+      state: persistedState,
       payload: nextPayload,
       slack_test_mode: buildSlackTestModeRightNowMessage(nextPayload),
     });
