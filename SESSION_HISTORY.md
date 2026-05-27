@@ -7011,6 +7011,18 @@ pm run build.
   - Vercel deployment: `success` on deployment `dpl_Bu9jd7EP9jB7AzLtRxB4GX3VAcVf`.
   - Production health: `https://www.foldera.ai/api/health` reports `revision.git_sha=0ef966c5b1e67fbc6f7c3f697bc9bdf2e431bc23`, `build=0ef966c`, `vercel_env=production`.
 - Unresolved issues: None for issue #67 merge/production proof. Next active seam is frontend launch-truth pass from issue #72.
+
+## 2026-05-26 - PR #73 merged and production launch-truth verified
+- MODE: Merge-and-verify only for issue #72 public launch-truth copy; no backend/auth/Supabase/Stripe/schema/scoring/conviction/dashboard/Slack-route edits.
+- Files changed: `components/foldera/LandingPage.tsx` (in PR #73), then receipt updates in `ACTIVE_HANDOFF.md` and `SESSION_HISTORY.md`.
+- What changed: Merged PR #73 into `main` at `0b21bd329d55135aafeab3ccf9d5c1ae0d541889`. Landing storyboard copy now explicitly qualifies pilot limits: Slack/Teams execution not live, no automatic cross-app writeback, no auto-send in pilot.
+- Verification:
+  - PR #73 merge result: `merged=true`, `merged_at=2026-05-27T03:52:51Z`, merge SHA `0b21bd329d55135aafeab3ccf9d5c1ae0d541889`.
+  - CI run `26489334665` / run `#1118`: `Status Success` with `changes`, `verify-static`, `build`, `unit`, `e2e-smoke`, `ci-passed`.
+  - Vercel deployment: `success` on `https://vercel.com/brandons-projects-5552f226/foldera-ai/DGqcK119WnTnm7MPcXCrg9FkPNnD`.
+  - Production health: `https://www.foldera.ai/api/health` reports `revision.git_sha=0b21bd329d55135aafeab3ccf9d5c1ae0d541889`, `build=0b21bd3`, deployment `dpl_DGqcK119WnTnm7MPcXCrg9FkPNnD`.
+  - Production copy truth: homepage now contains pilot-honest qualifiers for Slack/Teams and auto-send/writeback limits.
+- Unresolved issues: No issue #72 blockers remain. Next active seam is issue #52 Slack test-mode proof (test-mode only; no real Slack rollout).
 ## 2026-05-21 - Issue #62 homepage landing page local proof
 - MODE: Issue #62 only from clean `origin/main`; homepage-only landing page implementation. No dashboard behavior, backend, auth, billing, schema, connectors, live sends, PR #44, PR #46, Dependabot, `scorer.ts`, or `conviction-engine.ts`.
 - Files changed: `components/foldera/LandingPage.tsx`, `app/page.tsx`, `app/layout.js`, `tests/config/__tests__/frontend-product-truth-gate.test.ts`, `tests/e2e/public-routes.spec.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
