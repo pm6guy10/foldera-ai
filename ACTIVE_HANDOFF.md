@@ -1,13 +1,13 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-05-26 PT
-Current `origin/main` SHA at update time: `5a59765`.
+Current `origin/main` SHA at update time: `0ef966c`.
 
 ## Current slice:
 
 Launch readiness recovery chain.
 
-Immediate active seam: repair issue #67 / PR #68 on branch `codex/issue-67-free-plan-gate`.
+Immediate active seam: frontend launch-truth pass from issue #72.
 
 ## Product doctrine
 
@@ -19,14 +19,15 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 
 - Issue #48 remains the product contract: Workday Presence Layer, not dashboard triage.
 - PR #71 landing storyboard is merged; this does not change issue #67 backend scope.
-- Issue #67 / PR #68 remains the immediate backend/cost-control seam.
-- PR #68 must be repaired in-place; do not create a new PR for this seam.
+- Issue #67 / PR #68 is merged on `main` at `0ef966c5b1e67fbc6f7c3f697bc9bdf2e431bc23`.
+- GitHub main checks and Vercel production deployment are green for merge SHA `0ef966c`.
+- Production `/api/health` now reports `revision.git_sha=0ef966c5b1e67fbc6f7c3f697bc9bdf2e431bc23` and deployment `dpl_Bu9jd7EP9jB7AzLtRxB4GX3VAcVf`.
+- Next active seam is issue #72 frontend launch-truth pass (no backend/auth/Stripe/schema/scoring expansion).
 
 ## Enforcement mechanism
 
-- `npm run gate:free-plan` must fail on `access_token` / `refresh_token` selects outside auth/OAuth/sync/provider execution paths.
-- For PR #68: focused failing Vitest test + `npm run gate:free-plan` + `npm run lint` + `npm run build` must pass.
-- Scope stays limited to issue #67 token-safety/free-plan egress seam.
+- Frontend launch-truth pass remains frontend-only.
+- No landing redesign expansion, Slack implementation, dashboard UX, Stripe/billing, schema, scoring, or conviction edits in this next seam.
 
 ## Forbidden unless explicitly assigned
 
@@ -39,17 +40,15 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 
 ## Next exact move
 
-Repair existing PR #68 on `codex/issue-67-free-plan-gate` by fixing only the failing unit/Vitest path, rerun required proofs, push, and confirm GitHub CI is green with PR mergeable.
+Execute issue #72 launch-truth pass using targeted context only, with frontend-only changes that remove unsupported public claims while preserving the existing storyboard structure.
 
 ## Proof required
 
-- Focused failing Vitest test PASS.
-- `npm run gate:free-plan` PASS.
+- Frontend-only changed files.
 - `npm run lint` PASS.
 - `npm run build` PASS.
-- GitHub CI green.
-- PR #68 mergeable.
+- Public-route/playwright proof for launch-truth copy.
 
 ## Stop condition
 
-Stop when PR #68 is green and mergeable. Do not merge in this run.
+Stop when issue #72 launch-truth pass has proof and receipt updates, without starting Slack or backend seams.

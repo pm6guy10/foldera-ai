@@ -7000,6 +7000,17 @@ pm run build.
 - What changed: Removed token-value selects from connector-health, beta-readiness, nightly-ops staleness, health, and acceptance-gate paths so those seams rely on non-secret fields only. Added `npm run gate:free-plan`, a repo scanner that fails on access/refresh token selects outside auth/sync paths.
 - Verification: `npm run gate:free-plan` PASS; focused vitest on the touched seams PASS; `npm run lint` PASS; `npm run health` PASS with `RESULT: 0 FAILING`; `npm run build` PASS.
 - Unresolved issues: Production / deployment proof was not needed for this source-only gate slice. The next human decision is whether to add a DB-side RPC/view later for richer non-secret diagnostics.
+
+## 2026-05-26 - PR #68 merged and production truth verified
+- MODE: Merge-and-verify only for issue #67 / PR #68; no product code expansion beyond merge conflict resolution in receipt docs.
+- Files changed: `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Merged PR #68 into `main` at expected head `0ef966c5b1e67fbc6f7c3f697bc9bdf2e431bc23` (merge commit SHA: `0ef966c5b1e67fbc6f7c3f697bc9bdf2e431bc23`). Waited for GitHub main checks and Vercel production deployment, then verified production `/api/health` now serves that SHA.
+- Verification:
+  - PR #68 merge result: `merged=true`, `merged_at=2026-05-27T02:57:50Z`.
+  - GitHub CI (main, commit `0ef966c`): `unit` success, `build` success, `verify-static` success, `health` success, `semgrep` success, `pr-sentinel` success, `ci-passed` success.
+  - Vercel deployment: `success` on deployment `dpl_Bu9jd7EP9jB7AzLtRxB4GX3VAcVf`.
+  - Production health: `https://www.foldera.ai/api/health` reports `revision.git_sha=0ef966c5b1e67fbc6f7c3f697bc9bdf2e431bc23`, `build=0ef966c`, `vercel_env=production`.
+- Unresolved issues: None for issue #67 merge/production proof. Next active seam is frontend launch-truth pass from issue #72.
 ## 2026-05-21 - Issue #62 homepage landing page local proof
 - MODE: Issue #62 only from clean `origin/main`; homepage-only landing page implementation. No dashboard behavior, backend, auth, billing, schema, connectors, live sends, PR #44, PR #46, Dependabot, `scorer.ts`, or `conviction-engine.ts`.
 - Files changed: `components/foldera/LandingPage.tsx`, `app/page.tsx`, `app/layout.js`, `tests/config/__tests__/frontend-product-truth-gate.test.ts`, `tests/e2e/public-routes.spec.ts`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
