@@ -74,6 +74,8 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
       <div className="sr-only">
         <p>Stop rebuilding the work. Foldera hands it back ready.</p>
         <p>Context attached: message + meeting + file + blocker</p>
+        <p>Pilot scope: recommendation flow only; Slack and Teams execution is not live yet.</p>
+        <p>No automatic cross-app writeback or auto-send in the current pilot.</p>
         <p>See Foldera in action</p>
         <p>Join the pilot</p>
       </div>
@@ -201,6 +203,9 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
                     <span className="font-semibold text-slate-200">3.</span> You approve, skip, or hold back safely.
                   </li>
                 </ol>
+                <p className="mt-3 text-[12px] leading-[1.55] text-slate-400">
+                  Pilot note: Slack/Teams execution, cross-app writeback, and automatic sending are not live in this pilot.
+                </p>
               </div>
             </section>
 
