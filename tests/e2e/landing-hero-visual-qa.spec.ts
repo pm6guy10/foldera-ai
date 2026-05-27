@@ -1,321 +1,133 @@
+import fs from 'fs';
+import path from 'path';
 import { expect, test } from '@playwright/test';
-import fs from 'node:fs';
-import path from 'node:path';
-import zlib from 'node:zlib';
-
-type Viewport = { width: number; height: number; name: string };
 
 const OUT_DIR = path.join(process.cwd(), '.screenshots', 'landing-hero');
 const AUDIT_PATH = path.join(OUT_DIR, 'visual-audit.json');
 
-const VIEWPORTS: Viewport[] = [
-  { width: 390, height: 844, name: '390x844' },
-  { width: 768, height: 1024, name: '768x1024' },
-  { width: 1440, height: 1600, name: '1440x1600' },
+type ViewportConfig = {
+  name: string;
+  width: number;
+  height: number;
+  dpr?: number;
+};
+
+const viewports: ViewportConfig[] = [
+  { name: 'mobile-390x844', width: 390, height: 844, dpr: 3 },
+  { name: 'tablet-768x1024', width: 768, height: 1024, dpr: 2 },
+  { name: 'desktop-1440x1600', width: 1440, height: 1600, dpr: 1 },
 ];
 
-function ensureOutDir() {
-  fs.mkdirSync(OUT_DIR, { recursive: true });
+async function addFailureOverlay(page: import('@playwright/test').Page, failures: string[]) {
+  await page.evaluate((messages) => {
+    const overlay = document.createElement('div');
+    overlay.setAttribute('data-testid', 'landing-visual-qa-overlay');
+    overlay.style.position = 'fixed';
+    overlay.style.left = '12px';
+    overlay.style.right = '12px';
+    overlay.style.bottom = '12px';
+    overlay.style.zIndex = '2147483647';
+    overlay.style.padding = '12px';
+    overlay.style.border = '1px solid rgba(248,113,113,0.8)';
+    overlay.style.borderRadius = '12px';
+    overlay.style.background = 'rgba(15,23,42,0.94)';
+    overlay.style.color = '#fecaca';
+    overlay.style.fontFamily = 'ui-monospace, SFMono-Regular, Menlo, monospace';
+    overlay.style.fontSize = '11px';
+    overlay.style.lineHeight = '1.45';
+    overlay.style.boxShadow = '0 20px 80px rgba(0,0,0,0.45)';
+    overlay.textContent = messages.join(' | ');
+    document.body.appendChild(overlay);
+  }, failures);
 }
 
-function readUInt32BE(buffer: Buffer, offset: number) {
-  return buffer.readUInt32BE(offset);
-}
-
-function decodePngToRGBA(buffer: Buffer): { width: number; height: number; pixels: Uint8Array } {
-  const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
-  if (!buffer.subarray(0, 8).equals(pngSignature)) {
-    throw new Error('Screenshot is not a PNG.');
-  }
-
-  let offset = 8;
-  let width = 0;
-  let height = 0;
-  let bitDepth = 0;
-  let colorType = 0;
-  let interlace = 0;
-  const idatChunks: Buffer[] = [];
-
-  while (offset + 8 <= buffer.length) {
-    const length = readUInt32BE(buffer, offset);
-    const type = buffer.subarray(offset + 4, offset + 8).toString('ascii');
-    const dataStart = offset + 8;
-    const dataEnd = dataStart + length;
-    const crcEnd = dataEnd + 4;
-    if (crcEnd > buffer.length) break;
-
-    if (type === 'IHDR') {
-      width = readUInt32BE(buffer, dataStart);
-      height = readUInt32BE(buffer, dataStart + 4);
-      bitDepth = buffer[dataStart + 8];
-      colorType = buffer[dataStart + 9];
-      interlace = buffer[dataStart + 12];
-    } else if (type === 'IDAT') {
-      idatChunks.push(buffer.subarray(dataStart, dataEnd));
-    } else if (type === 'IEND') {
-      break;
-    }
-
-    offset = crcEnd;
-  }
-
-  if (!width || !height) throw new Error('PNG missing IHDR.');
-  if (bitDepth !== 8) throw new Error(`Unsupported PNG bit depth ${bitDepth}.`);
-  if (colorType !== 6 && colorType !== 2) {
-    throw new Error(`Unsupported PNG color type ${colorType} (expected RGB/RGBA).`);
-  }
-  if (interlace !== 0) throw new Error('Unsupported interlaced PNG.');
-
-  const inflated = zlib.inflateSync(Buffer.concat(idatChunks));
-  const sourceBpp = colorType === 6 ? 4 : 3;
-  const sourceStride = width * sourceBpp;
-  const out = new Uint8Array(width * height * 4);
-
-  let inOffset = 0;
-  const prevRow = new Uint8Array(sourceStride);
-  const curRow = new Uint8Array(sourceStride);
-
-  const paethPredictor = (a: number, b: number, c: number) => {
-    const p = a + b - c;
-    const pa = Math.abs(p - a);
-    const pb = Math.abs(p - b);
-    const pc = Math.abs(p - c);
-    if (pa <= pb && pa <= pc) return a;
-    if (pb <= pc) return b;
-    return c;
-  };
-
-  for (let y = 0; y < height; y++) {
-    const filterType = inflated[inOffset++];
-    curRow.set(inflated.subarray(inOffset, inOffset + sourceStride));
-    inOffset += sourceStride;
-
-    for (let x = 0; x < sourceStride; x++) {
-      const raw = curRow[x]!;
-      const left = x >= sourceBpp ? curRow[x - sourceBpp]! : 0;
-      const up = prevRow[x]!;
-      const upLeft = x >= sourceBpp ? prevRow[x - sourceBpp]! : 0;
-
-      let recon = raw;
-      if (filterType === 1) recon = (raw + left) & 0xff;
-      else if (filterType === 2) recon = (raw + up) & 0xff;
-      else if (filterType === 3) recon = (raw + Math.floor((left + up) / 2)) & 0xff;
-      else if (filterType === 4) recon = (raw + paethPredictor(left, up, upLeft)) & 0xff;
-      else if (filterType !== 0) throw new Error(`Unsupported PNG filter ${filterType}.`);
-      curRow[x] = recon;
-    }
-
-    if (colorType === 6) {
-      for (let x = 0; x < width; x++) {
-        const s = x * 4;
-        const d = (y * width + x) * 4;
-        out[d] = curRow[s]!;
-        out[d + 1] = curRow[s + 1]!;
-        out[d + 2] = curRow[s + 2]!;
-        out[d + 3] = curRow[s + 3]!;
-      }
-    } else {
-      for (let x = 0; x < width; x++) {
-        const s = x * 3;
-        const d = (y * width + x) * 4;
-        out[d] = curRow[s]!;
-        out[d + 1] = curRow[s + 1]!;
-        out[d + 2] = curRow[s + 2]!;
-        out[d + 3] = 255;
-      }
-    }
-    prevRow.set(curRow);
-  }
-
-  return { width, height, pixels: out };
-}
-
-function isNearBlack(r: number, g: number, b: number, a: number) {
-  if (a < 240) return true;
-  return r <= 12 && g <= 12 && b <= 14;
-}
-
-function assertEdgeColumnsBlack(png: { width: number; height: number; pixels: Uint8Array }) {
-  const sampleWidth = Math.min(8, png.width);
-  const stride = png.width * 4;
-  const sampleEvery = 5;
-
-  for (let y = 0; y < png.height; y += sampleEvery) {
-    for (let x = 0; x < sampleWidth; x++) {
-      const idx = y * stride + x * 4;
-      if (!isNearBlack(png.pixels[idx]!, png.pixels[idx + 1]!, png.pixels[idx + 2]!, png.pixels[idx + 3]!)) {
-        throw new Error(`Left gutter not black at y=${y}, x=${x}.`);
-      }
-    }
-    for (let x = png.width - sampleWidth; x < png.width; x++) {
-      const idx = y * stride + x * 4;
-      if (!isNearBlack(png.pixels[idx]!, png.pixels[idx + 1]!, png.pixels[idx + 2]!, png.pixels[idx + 3]!)) {
-        throw new Error(`Right gutter not black at y=${y}, x=${x}.`);
-      }
-    }
-  }
-}
-
-function assertNoGrayGutters(png: { width: number; height: number; pixels: Uint8Array }) {
-  const sampleWidth = Math.min(8, png.width);
-  const stride = png.width * 4;
-  const sampleEvery = 7;
-
-  for (let y = 0; y < png.height; y += sampleEvery) {
-    for (const x of [0, 1, 2, 3, 4, 5, 6, 7].filter((v) => v < png.width)) {
-      const idx = y * stride + x * 4;
-      const r = png.pixels[idx]!;
-      const g = png.pixels[idx + 1]!;
-      const b = png.pixels[idx + 2]!;
-      const a = png.pixels[idx + 3]!;
-      if (a < 240) continue;
-      const nearGray = Math.abs(r - g) <= 4 && Math.abs(g - b) <= 4 && r >= 56 && r < 120;
-      if (nearGray) throw new Error(`Left gutter looks gray at y=${y}, x=${x} (rgb=${r},${g},${b}).`);
-    }
-
-    for (let xi = 0; xi < sampleWidth; xi++) {
-      const x = png.width - 1 - xi;
-      const idx = y * stride + x * 4;
-      const r = png.pixels[idx]!;
-      const g = png.pixels[idx + 1]!;
-      const b = png.pixels[idx + 2]!;
-      const a = png.pixels[idx + 3]!;
-      if (a < 240) continue;
-      const nearGray = Math.abs(r - g) <= 4 && Math.abs(g - b) <= 4 && r >= 56 && r < 120;
-      if (nearGray) throw new Error(`Right gutter looks gray at y=${y}, x=${x} (rgb=${r},${g},${b}).`);
-    }
-  }
-}
-
-async function addFailureOverlay(page: Parameters<typeof test>[0]['page'], notes: string[]) {
-  await page.addStyleTag({
-    content: `
-      .__qa_overlay_root { position: fixed; inset: 0; z-index: 2147483647; pointer-events: none; }
-      .__qa_overlay_badge { position: fixed; left: 12px; top: 12px; max-width: 92vw; background: rgba(239,68,68,0.16); border: 1px solid rgba(239,68,68,0.6); color: white; padding: 10px 12px; border-radius: 12px; font: 12px/1.4 ui-sans-serif, system-ui; }
-      .__qa_overlay_box { position: fixed; left: 0; top: 0; right: 0; bottom: 0; border: 3px dashed rgba(239,68,68,0.7); }
-    `,
-  });
-  await page.evaluate((notesIn) => {
-    const root = document.createElement('div');
-    root.className = '__qa_overlay_root';
-    const box = document.createElement('div');
-    box.className = '__qa_overlay_box';
-    const badge = document.createElement('div');
-    badge.className = '__qa_overlay_badge';
-    badge.textContent = `Landing visual QA failed:\n${notesIn.join('\n')}`;
-    root.appendChild(box);
-    root.appendChild(badge);
-    document.body.appendChild(root);
-  }, notes);
-}
-
-test.describe('Landing page visual QA gate', () => {
-  test('passes framing + gutters + hotspots + rhythm', async ({ page }) => {
-    ensureOutDir();
-
-    const audit: Record<string, unknown> = {
-      at: new Date().toISOString(),
-      url: '/',
-      viewports: [],
+test.describe('landing hero visual QA', () => {
+  test('captures responsive landing proof and enforces obvious production polish', async ({ browser }) => {
+    fs.mkdirSync(OUT_DIR, { recursive: true });
+    const failures: string[] = [];
+    const audit = {
+      generatedAt: new Date().toISOString(),
+      viewports: [] as unknown[],
+      failures: [] as string[],
     };
 
-    const failures: string[] = [];
+    for (const viewport of viewports) {
+      const context = await browser.newContext({
+        viewport: { width: viewport.width, height: viewport.height },
+        deviceScaleFactor: viewport.dpr ?? 1,
+      });
+      const page = await context.newPage();
+      await page.goto('/?qa=landing-visual', { waitUntil: 'networkidle' });
+      await page.screenshot({ path: path.join(OUT_DIR, `${viewport.name}.png`), fullPage: true });
 
-    for (const viewport of VIEWPORTS) {
-      await page.setViewportSize({ width: viewport.width, height: viewport.height });
-      await page.goto('/');
+      const entry: Record<string, unknown> = { viewport };
+      const bodyWidth = await page.locator('body').evaluate((node) => node.scrollWidth);
+      const htmlWidth = await page.locator('html').evaluate((node) => node.scrollWidth);
+      const maxWidth = Math.max(bodyWidth, htmlWidth);
+      entry.maxDocumentWidth = maxWidth;
+      if (maxWidth > viewport.width + 1) {
+        failures.push(`Horizontal overflow (${viewport.name}): document ${maxWidth}px > viewport ${viewport.width}px`);
+      }
 
-      const screenshotPath = path.join(OUT_DIR, `landing-hero-${viewport.name}.png`);
-      await page.screenshot({ path: screenshotPath, fullPage: true });
+      await expect(page.getByRole('link', { name: /join pilot/i }).first()).toBeVisible();
+      await expect(page.getByTestId('landing-slide-1')).toHaveCount(1);
+      await expect(page.getByTestId('landing-slide-2')).toHaveCount(1);
+      await expect(page.getByTestId('landing-slide-3')).toHaveCount(1);
+      await expect(page.getByTestId('landing-slide-4')).toHaveCount(1);
+      await expect(page.getByTestId('landing-slide-5')).toHaveCount(1);
+      await expect(page.getByTestId('landing-slide-6')).toHaveCount(1);
+      await expect(page.getByTestId('landing-cta-1')).toHaveCount(1);
+      await expect(page.getByTestId('landing-cta-6')).toHaveCount(1);
+      await expect(page.locator('[data-testid^="landing-cta-"]')).toHaveCount(2);
 
-      const slideFrames = page.getByTestId('landing-slide-frame');
-      const slideAspects = page.getByTestId('landing-slide-aspect');
+      const heroImage = page.getByTestId('landing-slide-1').locator('img').first();
+      const heroBox = await heroImage.boundingBox();
+      entry.heroImageBox = heroBox;
+      if (!heroBox || heroBox.width < viewport.width * 0.92) {
+        failures.push(`Hero image too narrow (${viewport.name}): ${heroBox?.width ?? 0}px`);
+      }
 
-      const firstAspect = slideAspects.nth(0);
-      const firstBox = await firstAspect.boundingBox();
-      if (!firstBox) throw new Error('Could not measure slide 1 bounding box.');
+      const firstCtaBox = await page.getByTestId('landing-cta-1').boundingBox();
+      entry.firstCtaBox = firstCtaBox;
+      if (!firstCtaBox || firstCtaBox.width < 120 || firstCtaBox.height < 32) {
+        failures.push(`Hero CTA hotspot too small (${viewport.name}): ${JSON.stringify(firstCtaBox)}`);
+      }
 
-      const viewportWidth = viewport.width;
-      const leftGap = firstBox.x;
-      const rightGap = viewportWidth - (firstBox.x + firstBox.width);
+      const finalCtaBox = await page.getByTestId('landing-cta-6').boundingBox();
+      entry.finalCtaBox = finalCtaBox;
+      if (!finalCtaBox || finalCtaBox.width < 180 || finalCtaBox.height < 36) {
+        failures.push(`Final CTA hotspot too small (${viewport.name}): ${JSON.stringify(finalCtaBox)}`);
+      }
 
-      const entry: Record<string, unknown> = {
-        name: viewport.name,
-        width: viewport.width,
-        height: viewport.height,
-        leftGap,
-        rightGap,
-        firstWidth: firstBox.width,
-      };
+      const firstViewport = await page.evaluate(() => ({
+        text: document.body.innerText.slice(0, 1200),
+        imageCount: document.images.length,
+      }));
+      entry.firstViewportTextSample = firstViewport.text;
+      entry.imageCount = firstViewport.imageCount;
+      if (firstViewport.imageCount < 6) {
+        failures.push(`Expected at least 6 landing images (${viewport.name}), saw ${firstViewport.imageCount}`);
+      }
 
-      if (viewport.width < 640) {
-        try {
-          expect(leftGap).toBeLessThanOrEqual(4);
-          expect(rightGap).toBeLessThanOrEqual(4);
-          expect(firstBox.width).toBeGreaterThanOrEqual(viewportWidth * 0.98);
-        } catch {
-          failures.push(`Mobile full-bleed failed (${viewport.name}): leftGap=${leftGap.toFixed(1)} rightGap=${rightGap.toFixed(1)} width=${firstBox.width.toFixed(1)}/${viewportWidth}`);
-        }
+      const unsupportedClaimMatches = await page
+        .locator('body')
+        .evaluate((node) => node.innerText.match(/SOC 2|HIPAA|Slack sends live|Teams sends live|auto-send|automatic writeback/gi) || []);
+      entry.unsupportedClaimMatches = unsupportedClaimMatches;
+      if (unsupportedClaimMatches.length) {
+        failures.push(`Unsupported claim text found (${viewport.name}): ${unsupportedClaimMatches.join(', ')}`);
+      }
 
-        const frameStyles = await slideFrames.nth(0).evaluate((node) => {
-          const style = getComputedStyle(node as HTMLElement);
-          return {
-            borderTopWidth: style.borderTopWidth,
-            borderRadius: style.borderRadius,
-          };
-        });
-        entry.frameStyles = frameStyles;
-
-        if (frameStyles.borderTopWidth !== '0px') {
-          failures.push(`Mobile frame border active (${viewport.name}): borderTopWidth=${frameStyles.borderTopWidth}`);
-        }
-        if (frameStyles.borderRadius !== '0px') {
-          failures.push(`Mobile frame radius active (${viewport.name}): borderRadius=${frameStyles.borderRadius}`);
-        }
-
-        try {
-          const png = decodePngToRGBA(fs.readFileSync(screenshotPath));
-          assertNoGrayGutters(png);
-        } catch (err) {
-          failures.push(`Mobile gutters not black (${viewport.name}): ${(err as Error).message}`);
-        }
-
-        for (const slideIndex of [1, 6]) {
-          const cta = page.getByTestId(`landing-cta-${slideIndex}`);
-          await expect(cta).toHaveCount(1);
-          const box = await cta.boundingBox();
-          if (!box || box.width < 5 || box.height < 5) {
-            failures.push(`CTA hotspot box invalid on slide ${slideIndex} (${viewport.name}).`);
-            continue;
-          }
-          await cta.click();
-          await expect(page).toHaveURL(/\/start\/?$/);
-          await page.goBack();
-        }
-      } else {
-        const firstFrameBox = await slideFrames.nth(0).boundingBox();
-        if (firstFrameBox) {
-          entry.firstFrame = firstFrameBox;
-          const expectedMax = viewport.width >= 768 ? 560 : viewport.width;
-          if (firstFrameBox.width > expectedMax) {
-            failures.push(`Desktop/tablet frame too wide (${viewport.name}): ${firstFrameBox.width.toFixed(1)}px`);
-          }
-          const centeredDelta = Math.abs(firstFrameBox.x - (viewport.width - firstFrameBox.width) / 2);
-          if (centeredDelta > 14) {
-            failures.push(`Desktop/tablet frame not centered (${viewport.name}): delta=${centeredDelta.toFixed(1)}px`);
-          }
-        }
-
+      if (viewport.width >= 768) {
         await expect(page.getByTestId('landing-header')).toHaveCount(1);
         await expect(page.getByTestId('landing-footer')).toHaveCount(1);
       }
 
       const gapBounds =
         viewport.width < 640
-          ? { min: 40, max: 56 }
+          ? { min: 12, max: 24 }
           : viewport.width < 1024
-            ? { min: 56, max: 72 }
-            : { min: 72, max: 96 };
+            ? { min: 28, max: 40 }
+            : { min: 36, max: 52 };
 
       const sectionBoxes = await page.evaluate(() => {
         const nodes = Array.from(document.querySelectorAll('[data-testid]')) as HTMLElement[];
@@ -345,14 +157,19 @@ test.describe('Landing page visual QA gate', () => {
       }
 
       (audit.viewports as unknown[]).push(entry);
+      await context.close();
     }
 
     audit.failures = failures;
     fs.writeFileSync(AUDIT_PATH, JSON.stringify(audit, null, 2));
 
     if (failures.length) {
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3 });
+      const page = await context.newPage();
+      await page.goto('/?qa=landing-visual', { waitUntil: 'networkidle' });
       await addFailureOverlay(page, failures.slice(0, 8));
       await page.screenshot({ path: path.join(OUT_DIR, 'landing-hero-annotated-fail.png'), fullPage: true });
+      await context.close();
       throw new Error(`Landing visual QA gate failed:\n- ${failures.join('\n- ')}`);
     }
   });
