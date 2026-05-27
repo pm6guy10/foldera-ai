@@ -166,11 +166,13 @@ test.describe('Public: Landing page', () => {
 
   test('locked /start CTA copy stays "Get started free"', async ({ page }) => {
     await page.goto('/');
-    // This copy is intentionally locked and production-only. Scope the assertion to
-    // the real landing /start CTAs instead of any generic page text that might move.
-    const startLinks = page.locator('main a[href="/start"]:visible');
-    await expect(startLinks).toHaveCount(2);
-    await expect(startLinks).toHaveText(['Get started free', 'Get started free']);
+    // Enforce hotspot contract directly instead of counting all visible /start links.
+    await expect(page.getByTestId('landing-cta-1')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-cta-6')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-cta-2')).toHaveCount(0);
+    await expect(page.getByTestId('landing-cta-3')).toHaveCount(0);
+    await expect(page.getByTestId('landing-cta-4')).toHaveCount(0);
+    await expect(page.getByTestId('landing-cta-5')).toHaveCount(0);
   });
 
   test('Get Started button links to /start', async ({ page }) => {
