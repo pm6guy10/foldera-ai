@@ -1,13 +1,13 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-05-26 PT
-Current `origin/main` SHA at update time: `0b21bd3`.
+Current `origin/main` SHA at update time: `9b2e709`.
 
 ## Current slice:
 
-Launch readiness recovery chain.
+Post-issue #52 release verification.
 
-Immediate active seam: issue #52 Slack test-mode proof (test-mode only).
+Immediate active seam: STOP pending dedicated real-Slack integration decision issue.
 
 ## Product doctrine
 
@@ -25,7 +25,11 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 - Issue #72 / PR #73 is merged on `main` at `0b21bd329d55135aafeab3ccf9d5c1ae0d541889`.
 - PR #73 CI run `#1118` is green (`Status Success`), Vercel deployment is `success`, and production now serves merge SHA `0b21bd3`.
 - Production page includes pilot-honest qualifiers for Slack/Teams execution and cross-app auto-send/writeback limits.
-- Next active seam is issue #52 Slack test-mode proof only (no real Slack OAuth/API/send work).
+- Issue #52 / PR #74 is merged on `main` at `9b2e7096cf99a37a9b14d5ccabfd0fb0aacc437b`.
+- Main push CI run `#1121` is green; Vercel production deployment is `success`.
+- Production `/api/health` reports `revision.git_sha=9b2e7096cf99a37a9b14d5ccabfd0fb0aacc437b` and deployment `dpl_EfEBYm4qNNxKmR6AJMxZnv7kRy1G`.
+- Production E2E run `#1356` finished `failure` after deploy and needs a dedicated follow-up seam.
+- Next active seam is STOP unless a dedicated real-Slack integration decision issue is opened.
 
 ## Enforcement mechanism
 
@@ -43,15 +47,13 @@ No task lists, inbox summaries, dashboard dumps, or `do_nothing` directives as t
 
 ## Next exact move
 
-Execute issue #52 Slack test-mode proof using targeted context only, proving the Right Now loop in test mode without enabling real Slack connectivity.
+No active coding seam. Open a dedicated real-Slack integration decision issue before additional Slack work.
 
 ## Proof required
 
-- Test-mode proof artifacts for issue #52.
-- `npm run lint` PASS.
-- `npm run build` PASS.
-- No production Slack send claims.
+- Issue #52 merge + main CI + Vercel + production `/api/health` SHA alignment already verified.
+- Dedicated issue required before real-Slack implementation decisions.
 
 ## Stop condition
 
-Stop when issue #52 Slack test-mode proof has receipt-grade evidence, without real Slack rollout or backend expansion.
+Stop until a dedicated real-Slack integration decision issue exists.

@@ -4,6 +4,13 @@
 
 Operating doctrine pointer: see [FOLDERA_OPERATING_DOCTRINE.md](/C:/Users/b-kap/foldera-ai/FOLDERA_OPERATING_DOCTRINE.md) for the durable owner/operator seam order and current stop condition.
 
+## 2026-05-26 - PR #74 merge and production truth verification
+- MODE: PR #74 merge + production truth verification only; no new product code, no real Slack OAuth/send, no landing/dashboard redesign, no Stripe/schema/scoring/conviction work.
+- Files changed: `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
+- What changed: Merged PR #74 with expected head SHA `25dde13c105e5fe7caad2e27d9f607a836480e63`; merge commit on `main` is `9b2e7096cf99a37a9b14d5ccabfd0fb0aacc437b`. Verified push-lane CI run `#1121` success, Vercel production deployment success (`dpl_EfEBYm4qNNxKmR6AJMxZnv7kRy1G`), and production `/api/health` serving matching SHA `9b2e7096cf99a37a9b14d5ccabfd0fb0aacc437b`.
+- Verification: GitHub Actions for merge SHA show `CI` success (`#1121`), `PR Sentinel` success, `semgrep` success, `Health Gate` success; Vercel status check success; production `/api/health` returned build `9b2e709`, matching deployment id, and `git_ref=main`.
+- Unresolved issues: `Production E2E` run `#1356` on the same merge SHA finished `failure` after deploy and needs a dedicated follow-up seam. Next seam is STOP unless a dedicated real-Slack integration decision issue is created.
+
 ## 2026-05-21 - Production E2E SHA alignment guard
 - MODE: CI-only deploy/check alignment fix; no homepage visual changes, dashboard/backend/auth/connectors changes, paid generation, outbound email, Stripe, schema, fake users, or live sends.
 - Files changed: `.github/workflows/production-e2e.yml`, `.foldera-contract.json`, `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.
