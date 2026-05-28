@@ -127,13 +127,18 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
                         className="select-none object-contain"
                       />
 
+                      <div
+                        className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-[18%] bg-black"
+                        aria-hidden="true"
+                      />
+
                       {slide.cta ? (
                         <>
                           <a
                             href="/start"
                             aria-label="Join the pilot"
                             data-testid={`landing-cta-${index + 1}`}
-                            className="absolute z-10 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                            className="absolute z-20 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                             style={{
                               left: `${slide.cta.left}%`,
                               top: `${slide.cta.top}%`,
@@ -143,7 +148,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
                           />
                           {debugHitboxes ? (
                             <div
-                              className="pointer-events-none absolute z-10 rounded-md border-2 border-fuchsia-500 bg-fuchsia-500/15"
+                              className="pointer-events-none absolute z-20 rounded-md border-2 border-fuchsia-500 bg-fuchsia-500/15"
                               style={{
                                 left: `${slide.cta.left}%`,
                                 top: `${slide.cta.top}%`,
