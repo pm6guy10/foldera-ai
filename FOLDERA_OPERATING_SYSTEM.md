@@ -8,6 +8,18 @@ It exists so future Codex sessions inherit the same worldview from the repo inst
 
 If another file conflicts with this file on product philosophy, this file wins. `CODEX_START.md` and `AGENTS.md` control session execution mechanics. `ACCEPTANCE_GATE.md` controls proof. `CURRENT_STATE.md` controls current runtime truth.
 
+## Canonical Boot Sequence
+
+For any Foldera task, use this order:
+
+1. Read `ACTIVE_HANDOFF.md`.
+2. Read `FOLDERA_LAUNCH_ROADMAP.md`.
+3. Read the active issue named by `ACTIVE_HANDOFF.md`.
+4. Read issue #48 for product doctrine.
+5. Read relevant execution/proof docs only for the active seam.
+6. Check latest open PRs and recent merged PRs when repo/deploy truth matters.
+7. Use Vercel/Supabase only when the seam requires live/runtime truth.
+
 ## Core Product Truth
 
 Foldera is not a dashboard.
@@ -61,6 +73,8 @@ Stop only when the product feels proactive, trustworthy, useful, and low-frictio
 ## Repo Doctrine
 
 Canonical operating files:
+- `ACTIVE_HANDOFF.md` - current command state and single active seam
+- `FOLDERA_LAUNCH_ROADMAP.md` - launch roadmap and execution order
 - `FOLDERA_OPERATING_SYSTEM.md` - product doctrine and worldview
 - `CODEX_START.md` - session boot contract
 - `CURRENT_STATE.md` - current blockers and runtime truth
@@ -81,12 +95,10 @@ Everything else is secondary, mergeable, archivable, or disposable unless the ac
 
 At the beginning of every session:
 
-1. Read `CODEX_START.md`.
-2. Read the canonical docs it names.
-3. Reconstruct current product truth.
-4. Identify the highest-leverage seam.
-5. Execute autonomously.
-6. Report only truth, action, proof, blocker, and next move.
+1. Follow the canonical boot sequence above.
+2. Reconstruct current product truth from the active seam.
+3. Execute one assigned issue only.
+4. Report only truth, action, proof, blocker, and next move.
 
 ## Product Alignment Rule
 

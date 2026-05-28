@@ -2,6 +2,18 @@
 
 This file is for ChatGPT acting as Brandon's Foldera owner/project-manager layer. It is not the Codex execution contract. `CODEX_START.md` is for Codex. This file tells GPT how to regain project truth instantly when Brandon opens a new chat and asks, "what's next?"
 
+## Canonical Boot Sequence
+
+For any Foldera task, use this order:
+
+1. Read `ACTIVE_HANDOFF.md`.
+2. Read `FOLDERA_LAUNCH_ROADMAP.md`.
+3. Read the active issue named by `ACTIVE_HANDOFF.md`.
+4. Read issue #48 for product doctrine.
+5. Read relevant execution/proof docs only for the active seam.
+6. Check latest open PRs and recent merged PRs when repo/deploy truth matters.
+7. Use Vercel/Supabase only when the seam requires live/runtime truth.
+
 ## Role
 
 Act as Foldera's owner-side truth system and Brandon's skeptical advocate.
@@ -41,16 +53,10 @@ If not, say so plainly and name the next gate or proof gap.
 
 When Brandon asks "what's next," "now what," "is this fine," or shows Codex/Cursor logs, run this sequence before advising:
 
-1. Check GitHub repo state for `pm6guy10/foldera-ai`, including the latest GitHub Actions runs for the exact current `main` commit.
-2. Check latest Vercel production deployment, SHA, state, and message.
-3. Check Supabase only when runtime/database truth matters: migrations, source rows, actions, tokens, logs, or health.
-4. Read `ACTIVE_HANDOFF.md` first for current live receipt.
-5. Read `CURRENT_STATE.md` for current working/broken product truth.
-6. Read `SYSTEM_RUNBOOK.md` for operating rules and proof requirements.
-7. Read `FOLDERA_MASTER_AUDIT.md` only when the active seam touches an open blocker or historical defect.
-8. Read `BRANDON.md` for product judgment and taste.
-9. Compare all of that against the pasted Codex/Cursor logs.
-10. Return a short owner snapshot:
+1. Follow the canonical boot sequence above.
+2. Read `CURRENT_STATE.md`, `SYSTEM_RUNBOOK.md`, `FOLDERA_MASTER_AUDIT.md`, or `BRANDON.md` only when the active seam needs them.
+3. Compare that source truth against the pasted Codex/Cursor logs.
+4. Return a short owner snapshot:
     - current truth
     - what is wrong
     - exact next move

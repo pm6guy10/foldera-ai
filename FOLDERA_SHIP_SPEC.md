@@ -1,5 +1,7 @@
 # FOLDERA_SHIP_SPEC.md
 
+> Authority status: HISTORICAL_ARCHIVE. Historical launch audit; do not use this file as current execution order.
+
 **Mode:** deep audit — no code changes
 **Audit date:** 2026-04-21 (PT)
 **Auditor role:** senior architect

@@ -1,4 +1,8 @@
 {
+  "authority_status": "STALE_REMOVE_OR_ARCHIVE",
+  "active": false,
+  "superseded_by_issue": 80,
+  "inactive_reason": "Stale generated contract from issue #62. It is retained only as reference until controller-autopilot regenerates a current contract.",
   "backlog_id": "ISSUE_62_HOMEPAGE_IMAGE_SWAP",
   "base_commit": "5898426c561261523c29470ae24b8d869b1d6933",
   "money_loop_rung": "homepage_image_swap_public_landing",

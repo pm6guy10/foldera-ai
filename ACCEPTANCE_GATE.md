@@ -1,5 +1,7 @@
 # Acceptance Gate
 
+> Authority status: PROOF_GATE. This file defines product proof; product doctrine conflicts defer to issue #48, `FOLDERA_OPERATING_SYSTEM.md`, and `FOLDERA_LAUNCH_ROADMAP.md`.
+
 Product contract checklist. Every artifact candidate must pass before it ships.
 
 ## Product Promise
