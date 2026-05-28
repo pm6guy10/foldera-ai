@@ -2,7 +2,8 @@ import Image from 'next/image';
 
 const debugHitboxes = process.env.NEXT_PUBLIC_FOLDERA_DEBUG_HITBOXES === '1';
 
-const BOTTOM_CROP_PERCENT = 5.8;
+const DEFAULT_TOP_CROP_PERCENT = 6.5;
+const DEFAULT_BOTTOM_CROP_PERCENT = 5.8;
 
 type StorySlide = {
   src: string;
@@ -10,6 +11,8 @@ type StorySlide = {
   width: number;
   height: number;
   eager?: boolean;
+  topCrop?: number;
+  bottomCrop?: number;
   cta?: { left: number; top: number; width: number; height: number };
 };
 
@@ -20,6 +23,7 @@ const slides: StorySlide[] = [
     width: 3072,
     height: 5460,
     eager: true,
+    topCrop: 0,
     cta: { left: 25, top: 62.5, width: 47, height: 7 },
   },
   {
@@ -55,55 +59,67 @@ const slides: StorySlide[] = [
   },
 ];
 
+function getCrop(slide: StorySlide) {
+  return {
+    topCrop: slide.topCrop ?? DEFAULT_TOP_CROP_PERCENT,
+    bottomCrop: slide.bottomCrop ?? DEFAULT_BOTTOM_CROP_PERCENT,
+  };
+}
+
+function getCtaStyle(slide: StorySlide, topCrop: number, bottomCrop: number) {
+  if (!slide.cta) return null;
+
+  const visiblePercent = 100 - topCrop - bottomCrop;
+
+  return {
+    left: `${slide.cta.left}%`,
+    top: `${((slide.cta.top - topCrop) / visiblePercent) * 100}%`,
+    width: `${slide.cta.width}%`,
+    height: `${(slide.cta.height / visiblePercent) * 100}%`,
+  };
+}
+
 function CampaignSection({ slide, index }: { slide: StorySlide; index: number }) {
-  const visibleHeight = slide.height * (1 - BOTTOM_CROP_PERCENT / 100);
+  const { topCrop, bottomCrop } = getCrop(slide);
+  const visibleHeight = slide.height * (1 - (topCrop + bottomCrop) / 100);
+  const imageHeightPercent = (slide.height / visibleHeight) * 100;
+  const imageTopPercent = -(topCrop / 100) * imageHeightPercent;
+  const ctaStyle = getCtaStyle(slide, topCrop, bottomCrop);
 
   return (
-    <section className="relative w-full" data-testid={`landing-slide-${index + 1}`}>
-      <div
-        className="relative w-full overflow-hidden bg-black"
-        style={{ aspectRatio: `${slide.width} / ${visibleHeight}` }}
-        data-testid="landing-slide-aspect"
-      >
-        <Image
-          src={slide.src}
-          alt={slide.alt}
-          fill
-          priority={Boolean(slide.eager)}
-          loading={slide.eager ? 'eager' : 'lazy'}
-          quality={96}
-          sizes="(max-width: 767px) 100vw, 620px"
-          className="select-none object-cover object-top"
-        />
+    <section
+      className={`relative w-full overflow-hidden bg-black ${index > 0 ? '-mt-px' : ''}`}
+      style={{ aspectRatio: `${slide.width} / ${visibleHeight}` }}
+      data-testid={`landing-slide-${index + 1}`}
+    >
+      <Image
+        src={slide.src}
+        alt={slide.alt}
+        fill
+        priority={Boolean(slide.eager)}
+        loading={slide.eager ? 'eager' : 'lazy'}
+        quality={96}
+        sizes="(max-width: 767px) 100vw, 620px"
+        className="select-none object-cover"
+        style={{
+          height: `${imageHeightPercent}%`,
+          top: `${imageTopPercent}%`,
+          bottom: 'auto',
+        }}
+      />
 
-        {slide.cta ? (
-          <>
-            <a
-              href="/start"
-              aria-label="Join the pilot"
-              data-testid={`landing-cta-${index + 1}`}
-              className="absolute z-10 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-              style={{
-                left: `${slide.cta.left}%`,
-                top: `${slide.cta.top}%`,
-                width: `${slide.cta.width}%`,
-                height: `${slide.cta.height}%`,
-              }}
-            />
-            {debugHitboxes ? (
-              <div
-                className="pointer-events-none absolute z-10 rounded-md border-2 border-fuchsia-500 bg-fuchsia-500/15"
-                style={{
-                  left: `${slide.cta.left}%`,
-                  top: `${slide.cta.top}%`,
-                  width: `${slide.cta.width}%`,
-                  height: `${slide.cta.height}%`,
-                }}
-              />
-            ) : null}
-          </>
-        ) : null}
-      </div>
+      {slide.cta && ctaStyle ? (
+        <>
+          <a
+            href="/start"
+            aria-label="Join the pilot"
+            data-testid={`landing-cta-${index + 1}`}
+            className="absolute z-10 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+            style={ctaStyle}
+          />
+          {debugHitboxes ? <div className="pointer-events-none absolute z-10 rounded-md border-2 border-fuchsia-500 bg-fuchsia-500/15" style={ctaStyle} /> : null}
+        </>
+      ) : null}
     </section>
   );
 }
