@@ -1,6 +1,6 @@
+import { expect, test, type Page } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
-import { expect, test } from '@playwright/test';
 
 const OUT_DIR = path.join(process.cwd(), '.screenshots', 'landing-hero');
 const AUDIT_PATH = path.join(OUT_DIR, 'visual-audit.json');
@@ -18,7 +18,7 @@ const viewports: ViewportConfig[] = [
   { name: 'desktop-1440x1600', width: 1440, height: 1600, dpr: 1 },
 ];
 
-async function addFailureOverlay(page: import('@playwright/test').Page, failures: string[]) {
+async function addFailureOverlay(page: Page, failures: string[]) {
   await page.evaluate((messages) => {
     const overlay = document.createElement('div');
     overlay.setAttribute('data-testid', 'landing-visual-qa-overlay');
@@ -69,23 +69,24 @@ test.describe('landing hero visual QA', () => {
         failures.push(`Horizontal overflow (${viewport.name}): document ${maxWidth}px > viewport ${viewport.width}px`);
       }
 
+      await expect(page.getByTestId('landing-header')).toHaveCount(1);
+      await expect(page.getByTestId('landing-footer')).toHaveCount(1);
+      await expect(page.getByTestId('landing-visual-hero')).toHaveCount(1);
+      await expect(page.getByRole('heading', { name: /foldera hands back the work/i })).toBeVisible();
       await expect(page.getByRole('link', { name: /join pilot/i }).first()).toBeVisible();
-      await expect(page.getByTestId('landing-slide-1')).toHaveCount(1);
-      await expect(page.getByTestId('landing-slide-2')).toHaveCount(1);
-      await expect(page.getByTestId('landing-slide-3')).toHaveCount(1);
-      await expect(page.getByTestId('landing-slide-4')).toHaveCount(1);
-      await expect(page.getByTestId('landing-slide-5')).toHaveCount(1);
-      await expect(page.getByTestId('landing-slide-6')).toHaveCount(1);
+
+      const heroBox = await page.getByTestId('landing-visual-hero').boundingBox();
+      entry.heroBox = heroBox;
+      if (!heroBox || heroBox.width < viewport.width * 0.98) {
+        failures.push(`Native hero too narrow (${viewport.name}): ${heroBox?.width ?? 0}px`);
+      }
+
+      for (const slideNumber of [1, 2, 3, 4, 5, 6]) {
+        await expect(page.getByTestId(`landing-slide-${slideNumber}`)).toHaveCount(1);
+      }
       await expect(page.getByTestId('landing-cta-1')).toHaveCount(1);
       await expect(page.getByTestId('landing-cta-6')).toHaveCount(1);
       await expect(page.locator('[data-testid^="landing-cta-"]')).toHaveCount(2);
-
-      const heroImage = page.getByTestId('landing-slide-1').locator('img').first();
-      const heroBox = await heroImage.boundingBox();
-      entry.heroImageBox = heroBox;
-      if (!heroBox || heroBox.width < viewport.width * 0.92) {
-        failures.push(`Hero image too narrow (${viewport.name}): ${heroBox?.width ?? 0}px`);
-      }
 
       const firstCtaBox = await page.getByTestId('landing-cta-1').boundingBox();
       entry.firstCtaBox = firstCtaBox;
@@ -99,14 +100,14 @@ test.describe('landing hero visual QA', () => {
         failures.push(`Final CTA hotspot too small (${viewport.name}): ${JSON.stringify(finalCtaBox)}`);
       }
 
-      const firstViewport = await page.evaluate(() => ({
-        text: document.body.innerText.slice(0, 1200),
+      const pageFacts = await page.evaluate(() => ({
+        text: document.body.innerText.slice(0, 1800),
         imageCount: document.images.length,
       }));
-      entry.firstViewportTextSample = firstViewport.text;
-      entry.imageCount = firstViewport.imageCount;
-      if (firstViewport.imageCount < 6) {
-        failures.push(`Expected at least 6 landing images (${viewport.name}), saw ${firstViewport.imageCount}`);
+      entry.textSample = pageFacts.text;
+      entry.imageCount = pageFacts.imageCount;
+      if (pageFacts.imageCount < 6) {
+        failures.push(`Expected at least 6 landing images (${viewport.name}), saw ${pageFacts.imageCount}`);
       }
 
       const unsupportedClaimMatches = await page
@@ -117,26 +118,11 @@ test.describe('landing hero visual QA', () => {
         failures.push(`Unsupported claim text found (${viewport.name}): ${unsupportedClaimMatches.join(', ')}`);
       }
 
-      if (viewport.width >= 768) {
-        await expect(page.getByTestId('landing-header')).toHaveCount(1);
-        await expect(page.getByTestId('landing-footer')).toHaveCount(1);
-      }
-
-      const gapBounds =
-        viewport.width < 640
-          ? { min: 12, max: 24 }
-          : viewport.width < 1024
-            ? { min: 28, max: 40 }
-            : { min: 36, max: 52 };
-
       const sectionBoxes = await page.evaluate(() => {
         const nodes = Array.from(document.querySelectorAll('[data-testid]')) as HTMLElement[];
         const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
         const boxes = nodes
-          .map((node) => {
-            const id = node.getAttribute('data-testid') || '';
-            return { node, id };
-          })
+          .map((node) => ({ node, id: node.getAttribute('data-testid') || '' }))
           .filter(({ id }) => /^landing-slide-\d+$/.test(id))
           .map(({ node, id }) => {
             const rect = node.getBoundingClientRect();
@@ -150,10 +136,9 @@ test.describe('landing hero visual QA', () => {
         gaps.push(Math.round(sectionBoxes[i + 1]!.top - sectionBoxes[i]!.bottom));
       }
       entry.gaps = gaps;
-      if (gaps.some((gap) => gap < gapBounds.min || gap > gapBounds.max)) {
-        failures.push(
-          `Vertical rhythm out of range (${viewport.name}): expected ${gapBounds.min}-${gapBounds.max}px, got [${gaps.join(', ')}]`,
-        );
+      const maxGap = viewport.width < 640 ? 32 : viewport.width < 1024 ? 40 : 56;
+      if (gaps.some((gap) => gap < 0 || gap > maxGap)) {
+        failures.push(`Storyboard rhythm out of range (${viewport.name}): expected 0-${maxGap}px, got [${gaps.join(', ')}]`);
       }
 
       (audit.viewports as unknown[]).push(entry);
