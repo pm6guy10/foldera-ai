@@ -16,7 +16,7 @@ type StorySlide = {
 const slides: StorySlide[] = [
   {
     src: '/landing/mobile-sections/01.jpg',
-    alt: '',
+    alt: 'Foldera landing section showing scattered work context across apps and one ready next move.',
     width: 3072,
     height: 5460,
     eager: true,
@@ -26,7 +26,7 @@ const slides: StorySlide[] = [
   },
   {
     src: '/landing/mobile-sections/02.jpg',
-    alt: '',
+    alt: 'Foldera landing section explaining the cost of rebuilding context across work apps.',
     width: 3072,
     height: 5504,
     label: 'TAX',
@@ -34,7 +34,7 @@ const slides: StorySlide[] = [
   },
   {
     src: '/landing/mobile-sections/03.jpg',
-    alt: '',
+    alt: 'Foldera landing section describing a presence layer that keeps work context attached.',
     width: 3072,
     height: 5504,
     label: 'ENGINE',
@@ -42,7 +42,7 @@ const slides: StorySlide[] = [
   },
   {
     src: '/landing/mobile-sections/04.jpg',
-    alt: '',
+    alt: 'Foldera landing section contrasting noisy app pings with a single work state.',
     width: 3072,
     height: 5504,
     label: 'DISTINCT',
@@ -50,7 +50,7 @@ const slides: StorySlide[] = [
   },
   {
     src: '/landing/mobile-sections/05.jpg',
-    alt: '',
+    alt: 'Foldera landing section showing a Right Now work card in context.',
     width: 3072,
     height: 5504,
     label: 'HABITAT',
@@ -58,7 +58,7 @@ const slides: StorySlide[] = [
   },
   {
     src: '/landing/mobile-sections/06.jpg',
-    alt: '',
+    alt: 'Foldera landing section showing the pilot call to action.',
     width: 3072,
     height: 5504,
     label: 'KILL',
@@ -70,7 +70,7 @@ const slides: StorySlide[] = [
 export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isAuthenticated?: boolean } = {}) {
   return (
     <main className="min-h-[100dvh] w-screen overflow-x-hidden bg-black text-white touch-manipulation">
-      <h1 className="sr-only">Foldera â€” Workday Presence Layer</h1>
+      <h1 className="sr-only">Foldera — Workday Presence Layer</h1>
       <div className="sr-only">
         <p>Stop rebuilding the work. Foldera hands it back ready.</p>
         <p>Context attached: message + meeting + file + blocker</p>
@@ -117,7 +117,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
         <div className="mx-auto w-full max-w-none px-0 md:max-w-[520px] md:px-0">
           <div className="flex flex-col gap-10 pb-12 pt-8 sm:gap-12 sm:pb-14 md:gap-16 md:pb-16 md:pt-12 lg:gap-20 lg:pb-20">
             {slides.map((slide, index) => (
-              <section key={slide.src} className="relative w-full px-0 md:px-0" data-testid={`landing-slide-${index + 1}`}>
+              <section key={slide.src} className="relative w-full" data-testid={`landing-slide-${index + 1}`}>
                 <div className="relative">
                   <div className="pointer-events-none absolute -inset-6 -z-10 rounded-[28px] bg-[radial-gradient(circle_at_50%_20%,rgba(109,40,217,0.10),transparent_55%),radial-gradient(circle_at_50%_80%,rgba(6,182,212,0.08),transparent_60%)]" aria-hidden="true" />
 
@@ -182,7 +182,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
 
                   {debugHitboxes ? (
                     <div className="mt-2 text-center text-[11px] text-slate-500" aria-hidden="true">
-                      Slide {index + 1} â€” {slide.width}Ã—{slide.height}
+                      Slide {index + 1} — {slide.width}×{slide.height}
                     </div>
                   ) : null}
                 </div>

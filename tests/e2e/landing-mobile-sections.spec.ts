@@ -18,7 +18,8 @@ test.describe('Landing mobile section assets', () => {
       const slide = page.getByTestId(`landing-slide-${i + 1}`);
       await expect(slide).toBeVisible();
       const image = slide.locator('img').first();
-      await expect(image).toHaveAttribute('src', new RegExp(expectedImages[i].replace('.', '\\.')));
+      const src = await image.getAttribute('src');
+      expect(decodeURIComponent(src ?? '')).toContain(expectedImages[i]);
     }
 
     await expect(page.getByTestId('landing-cta-1')).toHaveAttribute('href', '/start');
