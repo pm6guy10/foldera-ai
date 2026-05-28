@@ -17,6 +17,15 @@ const nextConfig = {
       'unified', 'vfile', 'esprima', 'js-yaml',
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/api/try/analyze',
+        destination: '/status',
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       // Public HTML: allow CDN/browser storage but require revalidation so “stale tab” sessions
