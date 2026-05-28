@@ -101,11 +101,11 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
         </div>
 
         <div className="mx-auto w-full max-w-none px-0 md:max-w-[520px] md:px-0">
-          <div className="flex flex-col gap-10 pb-12 pt-8 sm:gap-12 sm:pb-14 md:gap-16 md:pb-16 md:pt-12 lg:gap-20 lg:pb-20">
+          <div className="flex flex-col gap-0 pb-0 pt-0 md:gap-8 md:pb-12 md:pt-8 lg:gap-10 lg:pb-16">
             {slides.map((slide, index) => (
               <section key={slide.src} className="relative w-full" data-testid={`landing-slide-${index + 1}`}>
                 <div className="relative">
-                  <div className="pointer-events-none absolute -inset-6 -z-10 rounded-[28px] bg-[radial-gradient(circle_at_50%_20%,rgba(109,40,217,0.10),transparent_55%),radial-gradient(circle_at_50%_80%,rgba(6,182,212,0.08),transparent_60%)]" aria-hidden="true" />
+                  <div className="pointer-events-none absolute -inset-6 -z-10 hidden rounded-[28px] bg-[radial-gradient(circle_at_50%_20%,rgba(109,40,217,0.10),transparent_55%),radial-gradient(circle_at_50%_80%,rgba(6,182,212,0.08),transparent_60%)] md:block" aria-hidden="true" />
 
                   <div
                     className="relative overflow-hidden bg-black md:rounded-[18px] md:border md:border-white/10 md:shadow-[0_26px_90px_rgba(0,0,0,0.65)]"
@@ -125,11 +125,6 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
                         quality={95}
                         sizes="(max-width: 767px) 100vw, 520px"
                         className="select-none object-contain"
-                      />
-
-                      <div
-                        className="pointer-events-none absolute inset-x-0 bottom-0 z-[5] h-[18%] bg-black"
-                        aria-hidden="true"
                       />
 
                       {slide.cta ? (
@@ -162,10 +157,6 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
                     </div>
                   </div>
 
-                  <div className="mt-3 flex items-center justify-center md:mt-5" aria-hidden="true">
-                    <div className="h-px w-full bg-gradient-to-r from-transparent via-white/5 to-transparent md:via-white/10" />
-                  </div>
-
                   {debugHitboxes ? (
                     <div className="mt-2 text-center text-[11px] text-slate-500" aria-hidden="true">
                       Slide {index + 1} — {slide.width}×{slide.height}
@@ -175,7 +166,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
               </section>
             ))}
 
-            <section id="how-it-works" className="px-4 md:px-0">
+            <section id="how-it-works" className="px-4 pt-8 md:px-0 md:pt-0">
               <div className="rounded-[18px] border border-white/10 bg-white/[0.03] p-5 text-slate-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
                 <h2 className="text-[13px] font-semibold text-white">How it works</h2>
                 <ol className="mt-3 grid gap-3 text-[13px] leading-[1.55] text-slate-300">
