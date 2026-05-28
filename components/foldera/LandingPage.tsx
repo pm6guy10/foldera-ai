@@ -9,8 +9,6 @@ type StorySlide = {
   height: number;
   eager?: boolean;
   cta?: { left: number; top: number; width: number; height: number };
-  label?: string;
-  ordinal?: string;
 };
 
 const slides: StorySlide[] = [
@@ -20,8 +18,6 @@ const slides: StorySlide[] = [
     width: 3072,
     height: 5460,
     eager: true,
-    label: 'INSULT',
-    ordinal: '01',
     cta: { left: 25, top: 62.5, width: 47, height: 7 },
   },
   {
@@ -29,40 +25,30 @@ const slides: StorySlide[] = [
     alt: 'Foldera landing section explaining the cost of rebuilding context across work apps.',
     width: 3072,
     height: 5504,
-    label: 'TAX',
-    ordinal: '02',
   },
   {
     src: '/landing/mobile-sections/03.jpg',
     alt: 'Foldera landing section describing a presence layer that keeps work context attached.',
     width: 3072,
     height: 5504,
-    label: 'ENGINE',
-    ordinal: '03',
   },
   {
     src: '/landing/mobile-sections/04.jpg',
     alt: 'Foldera landing section contrasting noisy app pings with a single work state.',
     width: 3072,
     height: 5504,
-    label: 'DISTINCT',
-    ordinal: '04',
   },
   {
     src: '/landing/mobile-sections/05.jpg',
     alt: 'Foldera landing section showing a Right Now work card in context.',
     width: 3072,
     height: 5504,
-    label: 'HABITAT',
-    ordinal: '05',
   },
   {
     src: '/landing/mobile-sections/06.jpg',
     alt: 'Foldera landing section showing the pilot call to action.',
     width: 3072,
     height: 5504,
-    label: 'KILL',
-    ordinal: '06',
     cta: { left: 12, top: 77.8, width: 75, height: 8.6 },
   },
 ];
@@ -120,11 +106,6 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
               <section key={slide.src} className="relative w-full" data-testid={`landing-slide-${index + 1}`}>
                 <div className="relative">
                   <div className="pointer-events-none absolute -inset-6 -z-10 rounded-[28px] bg-[radial-gradient(circle_at_50%_20%,rgba(109,40,217,0.10),transparent_55%),radial-gradient(circle_at_50%_80%,rgba(6,182,212,0.08),transparent_60%)]" aria-hidden="true" />
-
-                  <div className="mb-3 hidden items-center justify-between px-1 md:flex" aria-hidden="true">
-                    <div className="text-[11px] font-semibold tracking-[0.14em] text-slate-500">{slide.label}</div>
-                    <div className="text-[11px] font-semibold tracking-[0.14em] text-slate-600">{slide.ordinal}</div>
-                  </div>
 
                   <div
                     className="relative overflow-hidden bg-black md:rounded-[18px] md:border md:border-white/10 md:shadow-[0_26px_90px_rgba(0,0,0,0.65)]"
