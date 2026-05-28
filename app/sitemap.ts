@@ -10,7 +10,6 @@ const STATIC_PATHS = [
   '/brandon-kapp',
   '/pricing',
   '/start',
-  '/try',
   '/privacy',
   '/terms',
   '/blog',
