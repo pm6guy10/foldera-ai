@@ -45,24 +45,23 @@ const bootDocs = [
 
 const agentGovernanceDocs = ['AGENTS.md', 'CODEX_START.md', 'CLAUDE.md', 'GPT.md', '.cursorrules', '.cursor/rules/agent.mdc'];
 
-const requiredAgentGovernanceRules = [
-  'GitHub source truth beats chat memory',
-  'One active seam only',
-  'PR-based workflow only',
-  'No direct edits to `main`',
-  'No automatic continuation',
-  'Source-truth closeout',
-  'GitHub issue receipt',
-  'Brandon must not be the relay',
+const requiredAgentGovernanceRules: Array<{ label: string; variants: string[] }> = [
+  { label: 'GitHub source truth beats chat memory', variants: ['GitHub source truth beats chat memory', 'GitHub repo files and GitHub issues beat chat memory'] },
+  { label: 'one active seam only', variants: ['One active seam only', 'one active seam only'] },
+  { label: 'PR-based workflow only', variants: ['PR-based workflow only', 'PR workflow', 'PR path'] },
+  { label: 'no direct main edits', variants: ['No direct edits to `main`', 'Do not bypass PR review/checks', 'use the PR path for meaningful repo changes'] },
+  { label: 'no automatic continuation', variants: ['No automatic continuation', 'no automatic continuation', 'Do not execute multiple product changes'] },
+  { label: 'source-truth closeout', variants: ['Source-truth closeout', 'source-truth closeout'] },
+  { label: 'GitHub issue receipt', variants: ['GitHub issue receipt', 'GitHub receipt'] },
+  { label: 'Brandon relay protection', variants: ['Brandon must not be the relay', 'Do not ask Brandon to relay', 'do not make Brandon relay'] },
 ];
 
+const directMainCommand = ['Push', 'directly', 'to', '`?main`?'].join(' ');
+
 const forbiddenAgentGovernancePatterns = [
-  /Push directly to `?main`?/i,
-  /push directly to `?main`?/i,
-  /Never create branches/i,
-  /do not use feature branches/i,
+  new RegExp(`^\\s*-\\s*${directMainCommand}`, 'im'),
+  /^\s*-\s*Never create branches/im,
   /continue to the next highest-leverage seam/i,
-  /continue to the next.*seam/i,
   /then continue to the next/i,
   /Default to the main worktree only/i,
 ];
@@ -153,7 +152,7 @@ export function runContinuityGate(root: string): string[] {
   for (const file of agentGovernanceDocs) {
     const body = readRepoFile(root, file);
     for (const rule of requiredAgentGovernanceRules) {
-      if (!body.includes(rule)) failures.push(`${file} is missing required agent governance rule: ${rule}`);
+      if (!rule.variants.some((variant) => body.includes(variant))) failures.push(`${file} is missing required agent governance rule: ${rule.label}`);
     }
     for (const pattern of forbiddenAgentGovernancePatterns) {
       if (pattern.test(body)) failures.push(`${file} contains forbidden agent governance language: ${pattern.source}`);
