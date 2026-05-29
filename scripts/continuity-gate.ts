@@ -2,6 +2,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const root = process.cwd();
+const expectedActiveIssue = 96;
+const pausedIssue = 84;
+const pausedPr = 95;
+const activePr = 97;
 
 const canonicalSequence = [
   '1. Read `ACTIVE_HANDOFF.md`.',
@@ -91,6 +95,36 @@ function checkActiveHandoff(): void {
   const activeSeamLines = body.match(/^Active implementation seam is issue #\d+.*$/gm) ?? [];
   if (activeSeamLines.length !== 1) {
     failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam line; found ${activeSeamLines.length}.`);
+  }
+
+  const activeSeamLine = activeSeamLines[0] ?? '';
+  const expectedActiveLine = `Active implementation seam is issue #${expectedActiveIssue}`;
+  if (!activeSeamLine.startsWith(expectedActiveLine)) {
+    failures.push(
+      `ACTIVE_HANDOFF.md must point to issue #${expectedActiveIssue} while the hygiene safety override is active; found: ${activeSeamLine || 'none'}`,
+    );
+  }
+
+  const requiredCurrentTruth = [
+    `Issue #${expectedActiveIssue} is the active implementation seam.`,
+    `PR #${activePr} is the active draft PR for issue #${expectedActiveIssue}.`,
+    `Issue #${pausedIssue} landing polish is paused.`,
+    `PR #${pausedPr} is paused and must not merge while issue #${expectedActiveIssue} is open.`,
+    `Issue #${expectedActiveIssue} temporarily overrides issue #${pausedIssue} until its proof passes.`,
+    `Issue #${pausedIssue} resumes only after issue #${expectedActiveIssue} is resolved.`,
+  ];
+
+  for (const marker of requiredCurrentTruth) {
+    if (!body.includes(marker)) {
+      failures.push(`ACTIVE_HANDOFF.md is missing active safety marker: ${marker}`);
+    }
+  }
+
+  if (body.includes('Active implementation seam is issue #84')) {
+    failures.push('ACTIVE_HANDOFF.md still points at paused issue #84 as the active seam.');
+  }
+  if (body.includes('Run issue #84 only')) {
+    failures.push('ACTIVE_HANDOFF.md still instructs operators to run paused issue #84.');
   }
   if (!body.includes('FOLDERA_LAUNCH_ROADMAP.md')) {
     failures.push('ACTIVE_HANDOFF.md must reference FOLDERA_LAUNCH_ROADMAP.md.');

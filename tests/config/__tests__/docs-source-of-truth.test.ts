@@ -37,8 +37,14 @@ describe('documentation source-of-truth boundaries', () => {
     expect(codexStart).toContain('Foldera is not beta-ready unless release, quality, and visual gates agree.');
     expect(codexStart).toContain('Maximum product issues per Codex session: 1.');
     expect(activeHandoff).toContain('# ACTIVE HANDOFF');
-    expect(activeHandoff).toContain('Current slice:');
+    expect(activeHandoff).toContain('## Current slice');
+    expect(activeHandoff).toContain('Active implementation seam is issue #96');
+    expect(activeHandoff).toContain('PR #97 is the active draft PR for issue #96.');
+    expect(activeHandoff).toContain('Issue #84 landing polish is paused.');
+    expect(activeHandoff).toContain('PR #95 is paused and must not merge while issue #96 is open.');
     expect(activeHandoff).toContain('## Next exact move');
+    expect(activeHandoff).toContain('Run issue #96 only:');
+    expect(activeHandoff).not.toContain('Run issue #84 only');
     expect(activeHandoff.split(/\r?\n/).length).toBeLessThanOrEqual(80);
   });
 

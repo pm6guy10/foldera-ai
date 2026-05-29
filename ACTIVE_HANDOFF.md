@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-05-28 PT
-Current `origin/main` SHA at update time: `af9f6e1d61def92af0175e14c0c5fc4fdedc8991`.
+Current `origin/main` SHA at update time: `905bf067370c5d0c92b09ccb25ba09f965ef16d9`.
 
 ## Canonical Boot Sequence
 
@@ -17,15 +17,15 @@ For any Foldera task, use this order:
 
 ## Current slice
 
-- Issue #80 source-truth hygiene is complete enough to stop controlling new work:
-  - PR #87 enforced source-truth continuity, stale-doc markers, PR template, README replacement, and continuity gate wiring.
-  - PR #91 upgraded `docs/SOURCE_OF_TRUTH_MAP.md` into the operator-grade authority ledger.
-- PR #92 was squash-merged into `origin/main` at `af9f6e1d61def92af0175e14c0c5fc4fdedc8991` to restore a buildable `components/foldera/LandingPage.tsx` after the manual interactive landing edit broke main.
-- Issue #84 is now the active implementation seam.
-- PRs #88 and #89 are older issue #84 landing polish attempts and must be treated as stale/superseded unless explicitly revalidated from current `origin/main`.
-- Real Slack integration remains blocked pending issue #77 decision.
+- Issue #96 is the active implementation seam.
+- PR #97 is the active draft PR for issue #96.
+- Issue #84 landing polish is paused.
+- PR #95 is paused and must not merge while issue #96 is open.
+- Issue #94 remains the legacy issue quarantine control ticket.
+- Issue #48 remains the product contract.
+- Issue #77 gates any real Slack implementation decision.
 
-Active implementation seam is issue #84 (landing production polish / post-build-restore cleanup).
+Active implementation seam is issue #96 (enterprise hygiene quarantine and public ghost cleanup).
 
 ## Product doctrine
 
@@ -39,8 +39,8 @@ Issue #48 remains the product contract.
 - `FOLDERA_LAUNCH_ROADMAP.md` is the long-form controlling roadmap.
 - `docs/SOURCE_OF_TRUTH_MAP.md` classifies current, execution, proof, reference, archive, and stale source-truth files.
 - `npm run gate:continuity` is the source-truth enforcement gate.
-- Issue #84 is the active narrow implementation seam after PR #92 restored the landing build.
-- Issue #77 gates any real Slack OAuth/API/send implementation.
+- Issue #96 temporarily overrides issue #84 until its proof passes.
+- Issue #84 resumes only after issue #96 is resolved.
 
 ## Enforcement mechanism
 
@@ -51,17 +51,21 @@ Issue #48 remains the product contract.
 
 ## Forbidden unless explicitly assigned
 
-- No real Slack OAuth/API/send implementation.
-- No backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes.
-- No repo hygiene broad cleanup outside the active seam.
-- No new landing redesign or interactive landing rewrite without a new controlling issue.
+- No real Slack implementation.
+- No dashboard rewrite.
+- No schema, Supabase, or Stripe work.
+- No landing merge while issue #96 is open.
 - No direct edits to `main`.
+- No broad cleanup outside issue #96.
 
 ## Next exact move
 
-Run issue #84 only:
+Run issue #96 only:
 
-1. Verify current `origin/main` landing build after PR #92.
-2. Treat PRs #88 and #89 as stale/superseded unless they are revalidated from current `origin/main`.
-3. If additional landing polish is still required, open one fresh issue #84 PR from current `origin/main` with proof.
-4. Stop after one PR or a no-change proof comment.
+1. Continue PR #97 from branch `chatgpt/issue-96-public-ghost-cleanup`.
+2. Prove the old public try surface is removed, paused, or safely redirected.
+3. Fix public status copy if needed.
+4. Remove high-confidence ghosts only with proof.
+5. Classify demo and dev proof routes before changing them.
+6. Run `npm run gate:continuity`, `npm run lint`, `npm run build`, and focused public-route proof.
+7. Stop after one issue #96 PR proves the public ghost risk is closed.

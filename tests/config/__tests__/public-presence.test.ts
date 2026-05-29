@@ -12,11 +12,12 @@ const PUBLIC_SITEMAP_PATHS = [
   '/brandon-kapp',
   '/pricing',
   '/start',
-  '/try',
   '/privacy',
   '/terms',
   '/blog',
 ] as const;
+
+const PAUSED_SITEMAP_PATHS = ['/try'] as const;
 
 describe('public presence configuration', () => {
   it('publishes robots.txt with the canonical sitemap URL', () => {
@@ -30,12 +31,16 @@ describe('public presence configuration', () => {
     expect(robots).toContain('Sitemap: https://foldera.ai/sitemap.xml');
   });
 
-  it('includes every public marketing, legal, and blog index route in the sitemap', async () => {
+  it('includes active public routes and excludes paused public routes from the sitemap', async () => {
     const entries = await sitemap();
     const urls = new Set(entries.map((entry) => entry.url));
 
     for (const routePath of PUBLIC_SITEMAP_PATHS) {
       expect(urls.has(`https://foldera.ai${routePath}`)).toBe(true);
+    }
+
+    for (const routePath of PAUSED_SITEMAP_PATHS) {
+      expect(urls.has(`https://foldera.ai${routePath}`)).toBe(false);
     }
   });
 

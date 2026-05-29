@@ -17,6 +17,25 @@ const nextConfig = {
       'unified', 'vfile', 'esprima', 'js-yaml',
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/try',
+        destination: '/start',
+        permanent: false,
+      },
+      {
+        source: '/try/:path*',
+        destination: '/start',
+        permanent: false,
+      },
+      {
+        source: '/api/try/analyze',
+        destination: '/status',
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       // Public HTML: allow CDN/browser storage but require revalidation so “stale tab” sessions
@@ -36,6 +55,15 @@ const nextConfig = {
           {
             key: 'Cache-Control',
             value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
+      {
+        source: '/try/:path*',
+        headers: [
+          {
+            key: 'X-Robots-Tag',
+            value: 'noindex, nofollow',
           },
         ],
       },
