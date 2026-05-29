@@ -25,6 +25,8 @@ const requiredFiles = [
   'ACCEPTANCE_GATE.md',
   'docs/SOURCE_OF_TRUTH_MAP.md',
   'README.md',
+  '.cursorrules',
+  '.cursor/rules/agent.mdc',
   '.github/pull_request_template.md',
   '.github/workflows/pr-sentinel.yml',
 ];
@@ -38,6 +40,31 @@ const bootDocs = [
   'CLAUDE.md',
   'GPT.md',
   'SYSTEM_RUNBOOK.md',
+  '.cursorrules',
+];
+
+const agentGovernanceDocs = ['AGENTS.md', 'CODEX_START.md', 'CLAUDE.md', 'GPT.md', '.cursorrules', '.cursor/rules/agent.mdc'];
+
+const requiredAgentGovernanceRules = [
+  'GitHub source truth beats chat memory',
+  'One active seam only',
+  'PR-based workflow only',
+  'No direct edits to `main`',
+  'No automatic continuation',
+  'Source-truth closeout',
+  'GitHub issue receipt',
+  'Brandon must not be the relay',
+];
+
+const forbiddenAgentGovernancePatterns = [
+  /Push directly to `?main`?/i,
+  /push directly to `?main`?/i,
+  /Never create branches/i,
+  /do not use feature branches/i,
+  /continue to the next highest-leverage seam/i,
+  /continue to the next.*seam/i,
+  /then continue to the next/i,
+  /Default to the main worktree only/i,
 ];
 
 const staleDocHeaders: Record<string, string[]> = {
@@ -120,6 +147,16 @@ export function runContinuityGate(root: string): string[] {
       }
       if (nextIndex < lastIndex) failures.push(`${file} has canonical boot sequence lines out of order.`);
       lastIndex = nextIndex;
+    }
+  }
+
+  for (const file of agentGovernanceDocs) {
+    const body = readRepoFile(root, file);
+    for (const rule of requiredAgentGovernanceRules) {
+      if (!body.includes(rule)) failures.push(`${file} is missing required agent governance rule: ${rule}`);
+    }
+    for (const pattern of forbiddenAgentGovernancePatterns) {
+      if (pattern.test(body)) failures.push(`${file} contains forbidden agent governance language: ${pattern.source}`);
     }
   }
 
