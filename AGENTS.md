@@ -23,6 +23,19 @@ For any Foldera task, use this order:
 6. Check latest open PRs and recent merged PRs when repo/deploy truth matters.
 7. Use Vercel/Supabase only when the seam requires live/runtime truth.
 
+## Operating Law
+
+- GitHub source truth beats chat memory.
+- One active seam only.
+- One clean branch/worktree per issue.
+- PR-based workflow only.
+- No direct edits to `main`.
+- No automatic continuation into another seam.
+- Source-truth closeout is required before stop.
+- GitHub issue receipt is required before stop.
+- Proof is required before calling work done.
+- Brandon must not be the relay, tester, merger, stale-truth repair person, or project manager for agent drift.
+
 ## Source-of-Truth Loading Hierarchy
 
 When docs conflict, active hierarchy wins:
@@ -113,44 +126,52 @@ Before doing anything else:
 
 1. Follow the canonical boot sequence above.
 2. Read only relevant execution/proof docs for the active seam.
-3. Run `npm run health` when the local environment supports npm.
+3. Run `npm run health`.
 4. Inspect the output.
 5. If there is a relevant `FAIL`, prioritize it unless the user has already pinned another active seam with stronger proof.
-6. Include the health summary or the exact environment blocker in the final receipt.
+6. If health is green or warnings-only, continue within the single active seam.
+7. Include the health summary in the final receipt.
+
+Do not stop to ask for permission after health.
 
 ## Execution Doctrine
 
 - One seam at a time.
 - One proof path at a time.
 - Free tests first.
-- Paid/model-backed proof only at the end and only with user approval.
+- Paid/model-backed proof only after the exact blocker is named and Brandon explicitly approves.
 - Do not reopen closed seams without fresh evidence.
 - Do not broad-audit when the blocker is already known.
-- Do not stop at `improved`.
-- Do not continue into the next seam after finishing the current one.
-
-Valid stop states:
-
-- WIN: a real board change exists and proof is shown.
-- EXACT BLOCKER: a narrow blocker is proven with file/function/line or tight range/proof.
-- FINAL LIMIT: no narrow code bug remains and the next move requires an explicit decision, credential, paid action, or policy call.
+- Do not stop at “improved.”
+- Stop only on `PROOF`, `BLOCKED`, `MERGE READY`, or `STOPPED` with a GitHub receipt.
 
 ## Verification Doctrine
 
 Proof must match the affected CI lane. Local proof that skips the CI check which would fail for the seam is not proof.
 
-Build passing is required, but never enough by itself for live-path or user-facing behavior.
+For deterministic / harness / internal hardening work, use focused tests, replay fixtures, and build.
 
-For dashboard/UI work, require the assigned visual/browser proof and screenshots directly in the PR body or PR comments.
+For live-path / user-facing / pipeline behavior changes, require deployed proof, production-like run, persisted row, or actual route/flow success before calling the task complete.
+
+Build passing is required, but never enough by itself.
 
 ## Tool Routing
 
-Use the best available tool instead of local-only reasoning whenever the task crosses these boundaries.
+Use the best available truth tool when the seam crosses that boundary:
 
-### Playwright
+- Playwright for local and CI browser/frontend regression proof.
+- Vercel for deploy/build/runtime truth.
+- Supabase for production DB/schema/state truth.
+- Sentry for production runtime errors.
+- Browserstack for real-device/mobile/browser-specific proof.
 
-Use Playwright for local and CI regression checks, route/flow verification, frontend sanity checks, and deterministic browser automation.
+Do not call work complete with local-only reasoning when the relevant truth tool is available and required by the seam.
 
-### Vercel
+## Forbidden Unless Explicitly Assigned
 
-Use Vercel for deploy truth and production deployment status.
+- No #99 implementation while source-truth governance is active.
+- No landing work.
+- No Slack/OAuth/API/send work.
+- No backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes.
+- No Dependabot work.
+- No broad cleanup.
