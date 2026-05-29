@@ -5,119 +5,98 @@ alwaysApply: true
 
 # CURSOR RULES — FOLDERA
 
+## Canonical Boot Sequence
+
+For any Foldera task, use this order:
+
+1. Read `ACTIVE_HANDOFF.md`.
+2. Read `FOLDERA_LAUNCH_ROADMAP.md`.
+3. Read the active issue named by `ACTIVE_HANDOFF.md`.
+4. Read issue #48 for product doctrine.
+5. Read relevant execution/proof docs only for the active seam.
+6. Check latest open PRs and recent merged PRs when repo/deploy truth matters.
+7. Use Vercel/Supabase only when the seam requires live/runtime truth.
+
+## Operating Law
+
+- GitHub source truth beats chat memory.
+- One active seam only.
+- One clean branch/worktree per issue.
+- PR-based workflow only.
+- No direct edits to `main`.
+- No automatic continuation into another seam.
+- Source-truth closeout is required before stop.
+- GitHub issue receipt is required before stop.
+- Proof is required before calling work done.
+- Brandon must not be the relay, tester, merger, stale-truth repair person, or project manager for agent drift.
+
 ## Session Start
-- Read: AGENTS.md, CLAUDE.md, LESSONS_LEARNED.md, CURRENT_STATE.md
-- Run `npm run health` first.
-- If health shows FAIL, prioritize the first relevant failing row unless the assigned task explicitly targets another proven seam.
-- If health is green or warnings-only, continue autonomously.
+
+1. Follow the canonical boot sequence.
+2. Run `npm run health`.
+3. Inspect the full output.
+4. If health shows `FAIL`, prioritize the first relevant failure unless the assigned task explicitly targets another proven seam.
+5. If health is green or warnings-only, continue within the single active seam.
+
+Health is orientation, not completion.
 
 ## Execution Doctrine
-- One seam at a time.
-- Free tests first. Paid/live proof only at the end.
-- Do not reopen closed seams without fresh evidence.
-- Do not stop at “improved.” Stop only on win, exact blocker, or final limit.
-- Fix the proven seam first. Broaden only if the same failure class is clearly shared.
+
+- Fix the proven seam first.
+- Broaden only when the same failure class is clearly shared and still inside the same seam.
+- Free tests first.
+- Paid/model-backed proof only after the exact blocker is named and Brandon explicitly approves.
+- Never reopen closed seams without fresh evidence.
+- Never stop at “improved.”
+- Stop only on `PROOF`, `BLOCKED`, `MERGE READY`, or `STOPPED` with a GitHub receipt.
 
 ## Git / Verification
-- Push directly to main. Never create branches.
-- `npm run build` must pass before every commit.
-- Always commit and push when the slice is verified; never defer git to the user unless blocked.
-- For live-path or user-facing changes, require one production-like verification before calling the work complete.
-- For deterministic harness/test-only changes, local proof is enough until final live verification.
+
+- Use PR workflow for meaningful repo changes.
+- Do not change product code unless the active issue explicitly authorizes it.
+- Run the proof commands required by the active issue.
+- If CI is red, fix only the exact failing check.
+- For live-path or user-facing changes, require production-like/browser/runtime proof before calling the work complete.
+- For deterministic harness/test/doc governance changes, local or CI proof may be enough when the active issue says so.
+
+## Source-Truth Closeout
+
+Every final receipt must include:
+
+- `ACTIVE_HANDOFF.md`: updated / unchanged - reason / not applicable - reason
+- `FOLDERA_BUILD_ORDER.yaml`: updated / unchanged - reason / not applicable - reason
+- `FOLDERA_LAUNCH_ROADMAP.md`: updated / unchanged - reason / not applicable - reason
+- `docs/SOURCE_OF_TRUTH_MAP.md`: updated / unchanged - reason / not applicable - reason
+- GitHub issue receipt: posted
+- next seam: named / blocked - reason
+
+If command state changed, update `ACTIVE_HANDOFF.md` and `FOLDERA_BUILD_ORDER.yaml` in the PR.
 
 ## Architecture Constraints
-- Never initialize Supabase or read env vars at top level. Always inside functions.
-- `useSession` / `useState` / `useEffect` require `'use client'`.
+
+- Never initialize Supabase or read env vars at top level. Always inside functions or safe config boundaries.
+- `useSession`, `useState`, and `useEffect` require `'use client'`.
 - Server components use `getServerSession(authOptions)`.
 - Frontend uses `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-- Backend uses `SUPABASE_SERVICE_ROLE_KEY`. Never mix.
+- Backend uses `SUPABASE_SERVICE_ROLE_KEY`. Never mix frontend and backend Supabase credentials.
 
-## Required Commit Receipt
-Every completed task must include:
-- what changed
-- tests run
-- build result
-- production/live proof if applicable
-- what remains unproven
+## Tool Routing
 
-## Post-Commit Docs
-- Update SESSION_HISTORY.md
-- Update CURRENT_STATE.md
-- Update AUTOMATION_BACKLOG.md when applicable
+Use the best available truth tool when the seam crosses that boundary:
 
-## Locked Decisions
-- Pricing: Free forever + Pro $29/mo
-- Tagline: "Finished work, every morning"
-- No trial countdown. No credit card for free tier.
-- Nicole Vreeland: never a reference or directive target
-- Brandon is never the training mechanism
+- Playwright for browser/frontend regression proof.
+- Vercel for deploy/build/runtime truth.
+- Supabase for production DB/schema/state truth.
+- Sentry for production runtime errors.
+- Browserstack for real-device/mobile/browser-specific proof.
 
-## Tool Routing (mandatory)
+Do not call work complete with local-only reasoning when the relevant truth tool is available and required by the seam.
 
-Use the best available tool instead of local-only reasoning whenever the task crosses these boundaries.
+## Forbidden Unless Explicitly Assigned
 
-### Playwright
-
-Use Playwright for:
-
-* local and CI regression checks
-* repeatable route/flow verification
-* pre-push frontend sanity checks
-* deterministic browser automation when localhost/CI is sufficient
-
-Playwright is the default frontend verification tool.
-
-### Vercel
-
-Use Vercel for:
-
-* deploy truth
-* production deployment status
-* build logs
-* runtime logs
-* confirming which commit is live in production
-
-Do not claim a deploy or production runtime issue is fixed without checking Vercel when the Vercel tool is available.
-
-### Supabase
-
-Use Supabase for:
-
-* production DB truth
-* migration apply/verification
-* schema checks
-* row/state verification
-* confirming that expected records actually exist
-
-Do not guess about production data or schema state when Supabase can answer directly.
-
-### Sentry
-
-Use Sentry first for:
-
-* production runtime errors
-* server/client exceptions
-* failing routes
-* stack traces after deploy
-
-Do not speculate from code first when Sentry can provide the actual runtime failure.
-
-### Browserstack
-
-Use Browserstack for:
-
-* real-device and real-browser verification
-* mobile UI proof
-* Safari/iPhone issues
-* Android/browser-specific layout issues
-* OAuth flow sanity checks when localhost/dev-browser automation is unreliable
-* screenshot/video proof for frontend work that is sensitive to browser/device behavior
-
-Browserstack complements Playwright. It does not replace Playwright.
-For mobile/browser-sensitive frontend work, use Browserstack when Playwright/localhost is not enough to provide real-device truth.
-
-### Mandatory rule
-
-If a task touches deploys, production data, production errors, mobile layout, browser-specific behavior, or OAuth/browser flow issues, the final receipt must name which relevant tool(s) were used.
-
-Do not call a task complete with local-only reasoning when Playwright, Vercel, Supabase, Sentry, or Browserstack could provide the truth directly.
+- No #99 implementation while source-truth governance is active.
+- No landing work.
+- No Slack/OAuth/API/send work.
+- No backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes.
+- No Dependabot work.
+- No broad cleanup.
