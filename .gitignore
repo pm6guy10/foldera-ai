@@ -25,4 +25,11 @@ conversation_signals.json
 
 # Local scratch (curl cookies, etc.)
 tmp-cookie.txt
+cookie_header.tmp
+cookie_string.txt
+action_check.json
+run_brief_result*.json
+brain_receipt_raw.json
+brain_receipt_v*.json
+tsconfig.tsbuildinfo
 .codex-devserver.pid
