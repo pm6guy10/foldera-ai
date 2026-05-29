@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-28 PT
-Current `origin/main` SHA at update time: `905bf067370c5d0c92b09ccb25ba09f965ef16d9`.
+Last updated: 2026-05-29 PT
+Current `origin/main` SHA at update time: `ebad78cf443e87f6f72f92d26478c3f399c626de`.
 
 ## Canonical Boot Sequence
 
@@ -17,13 +17,16 @@ For any Foldera task, use this order:
 
 ## Current slice:
 
-- Issue #98 is the active implementation seam.
-- Issue #96 proof is complete enough for this follow-on contract seam.
+- Issue #102 is the active implementation seam.
+- Issue #101 branch/worktree hygiene receipt is posted.
+- Issue #94 legacy issue classification receipt is posted.
+- Issue #98 implementation PR is merged.
+- Issue #99 is paused until issue #102 repo artifact hygiene completes.
 - Issue #84 and PR #95 remain paused.
 - Issue #48 remains the product contract.
 - Issue #77 still gates any real Slack implementation decision.
 
-Active implementation seam is issue #98 (repo-enforced GitHub writeback and build-order contract).
+Active implementation seam is issue #102 (repo artifact hygiene).
 
 ## Product doctrine
 
@@ -53,16 +56,16 @@ Issue #48 remains the product contract.
 - No landing work.
 - No Slack work.
 - No backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes.
-- No broad cleanup outside the issue #98 contract seam.
+- No broad cleanup outside the issue #102 artifact-hygiene seam.
 - No direct edits to `main`.
 
 ## Next exact move
 
-Run issue #98 only:
+Run issue #102 only:
 
-1. Add the permanent GitHub writeback rule to `ACTIVE_HANDOFF.md`.
-2. Create `FOLDERA_BUILD_ORDER.yaml` with writeback-required terminal-state contract.
-3. Make `scripts/continuity-gate.ts` fail on missing writeback/order rules.
-4. Prove the gate fails when the writeback rule is removed.
+1. Classify repo artifacts and generated proof remnants as keep/quarantine/delete candidates.
+2. Remove only proven-stale artifacts that do not control active product behavior.
+3. Preserve all paused/control seams (#99 planning spine and #84/#95 landing pause).
+4. Keep issue and branch closure/deletion receipts explicit in GitHub.
 5. Run `npm run gate:continuity`, `npm run lint`, and `npm run build`.
 6. Open one PR and write the terminal GitHub receipt before stop.
