@@ -7,23 +7,9 @@ alwaysApply: true
 
 ## Purpose
 
-This file is the active execution contract for Foldera work.
+This file is an execution contract for Foldera work. It exists to keep agent sessions outcome-focused, cheap, verifiable, and aligned with the repo source of truth.
 
-It exists to keep sessions:
-- outcome-focused
-- cheap
-- verifiable
-- autonomous
-
-This file is not an archive, audit log, or historical dumping ground.
-
-Historical notes belong in:
-- `SESSION_HISTORY.md`
-- `LESSONS_LEARNED.md`
-- `AUTOMATION_BACKLOG.md`
-- `docs/**`
-
----
+It is not an archive, audit log, or historical dumping ground. Historical notes belong in `SESSION_HISTORY.md`, `LESSONS_LEARNED.md`, `AUTOMATION_BACKLOG.md`, or `docs/**`.
 
 ## Canonical Boot Sequence
 
@@ -37,85 +23,81 @@ For any Foldera task, use this order:
 6. Check latest open PRs and recent merged PRs when repo/deploy truth matters.
 7. Use Vercel/Supabase only when the seam requires live/runtime truth.
 
-## Read First Every Session
+## Operating Law
 
-After the canonical boot sequence, read additional execution or proof docs only when they are directly relevant to the active seam.
-
-Read other files only if they are directly relevant to the active seam.
-
-Do not read the whole repo by default.
-Do not broad-audit unless explicitly asked.
-
----
+- GitHub source truth beats chat memory.
+- One active seam only.
+- One clean branch/worktree per issue.
+- PR-based workflow only.
+- No direct edits to `main`.
+- No automatic continuation into another seam.
+- Source-truth closeout is required before stop.
+- GitHub issue receipt is required before stop.
+- Proof is required before calling work done.
+- Brandon must not be the relay, tester, merger, stale-truth repair person, or project manager for agent drift.
 
 ## Session Start
 
-Before doing anything else:
+1. Follow the canonical boot sequence.
+2. Read additional execution/proof docs only when directly relevant to the active seam.
+3. Run `npm run health`.
+4. Inspect the full output.
+5. If health shows `FAIL`, prioritize the first relevant failure unless the assigned issue explicitly targets another proven seam.
+6. If health is green or warnings-only, continue within the single active seam.
 
-1. Read the startup and doctrine files above.
-2. Run `npm run health`.
-3. Inspect the output.
-4. If any row shows `FAIL`, treat the first relevant failing row as the top-priority blocker unless the assigned task explicitly targets a different proven seam.
-5. If health is green or warnings-only, continue autonomously.
-6. Include the health summary in the final receipt.
-
-Health is orientation, not completion.
-A green health check does not mean the mission is done.
-
----
+Health is orientation, not completion. A green health check does not mean the mission is done.
 
 ## Core Execution Doctrine
 
-- One seam at a time
-- One proof path at a time
-- Free tests first
-- Paid/live proof only at the end
-- Do not reopen closed seams without fresh evidence
-- Do not broad-audit when the blocker is already known
-- Do not stop at “improved”
-- Stop only on:
-  - WIN
-  - EXACT BLOCKER
-  - FINAL LIMIT
+- One seam at a time.
+- One proof path at a time.
+- Free tests first.
+- Paid/live proof only after the exact blocker is named and Brandon explicitly approves.
+- Do not reopen closed seams without fresh evidence.
+- Do not broad-audit when the blocker is already known.
+- Do not stop at “improved.”
+- Stop only on `PROOF`, `BLOCKED`, `MERGE READY`, or `STOPPED` with a GitHub receipt.
 
-### Definitions
+### PROOF
 
-**WIN**
-A real board change exists.
+A real board change exists and the proof required by the active issue passes.
 
-Examples:
-- backend: persisted artifact or proven production-like outcome
-- frontend: polished user journey completed end-to-end
-- infra: real blocker removed and verified
+### BLOCKED
 
-**EXACT BLOCKER**
-One narrow blocker is proven with:
-- seam name
-- file
-- function or route/component
-- line or tight range
-- proof
+A narrow blocker is proven with seam name, file/surface, exact check or external system, and evidence.
 
-**FINAL LIMIT**
-No narrow code bug remains.
-The remaining issue is clearly:
-- product policy
-- weak data
-- missing product decision
-- environment / infra
-- paid-model-only proof boundary
+### MERGE READY
 
-Anything else is sludge.
+The PR has the required proof, source-truth closeout, and all required checks are green or explicitly skipped by path rules.
 
----
+### STOPPED
+
+The active seam is closed out and the next seam is named or blocked. No automatic continuation is allowed.
+
+## Foldera Product Doctrine
+
+Issue #48 and `FOLDERA_OPERATING_SYSTEM.md` control product doctrine.
+
+Foldera is a Workday Presence Layer:
+
+- state + connectors + triggers + one intervention
+- remembers where the user was
+- decides when to interrupt
+- gives one next move
+- lets the user respond with one click
+- updates state
+- stays quiet otherwise
+
+Foldera is not a dashboard, task manager, inbox-summary product, chatbot-first assistant, surveillance system, or fake enterprise-readiness theater.
 
 ## Brandon Product-Owner Doctrine
 
 Think like Brandon before touching files: skeptical, user-path-first, allergic to fake done, and focused on one money-moving product path.
 
 Core law:
+
 - A fix is not done because files changed, tests passed, docs updated, CI went green, logs looked clean, or a build passed.
-- A fix is done only when the affected user-facing path works in browser/product proof and adjacent behavior in that same path survived.
+- A fix is done only when the affected path is proven at the right gate.
 - If the requested fix solves the wrong problem, say `WRONG PATH` before touching code.
 - If no actionable seam exists, stop and say `No actionable seam; STOP`.
 - Never count docs, logs, screenshots, green build, local unit tests, or CI by themselves as product success.
@@ -123,130 +105,61 @@ Core law:
 - Never send outbound email by default.
 - Never leave old contradictory UI, copy, or state in the same user path.
 
-### Zero-Friction Agentic Product Bar
-
-The canonical zero-friction product doctrine lives in `FOLDERA_OPERATING_SYSTEM.md`.
-
-Apply it before local runbook habit: Foldera removes work, safely self-recovers where it can, and asks for exactly one irreducible blocker only when it cannot proceed.
-
-### Mandatory Pre-Code Grill Gate
-
-Before editing code or product behavior, answer all eight:
-
-1. Exact user-facing path
-2. Current production failure
-3. What Brandon should see when fixed
-4. Adjacent behavior that must survive
-5. Regression test that fails first
-6. Browser/product proof
-7. What is explicitly not being fixed
-8. Why this is the smallest useful seam
-
-If any answer is vague, stop before editing.
-
-### Mandatory Done Audit
-
-After implementation, answer all nine:
-
-1. Original broken behavior gone
-2. Replacement behavior visible in product
-3. Adjacent behavior verified
-4. Regression test added
-5. Browser/product proof passed
-6. Old contradictory state/copy removed
-7. Paid calls used
-8. Outbound email sent
-9. Final verdict: DONE or NOT DONE
-
-If any item fails, the final verdict is `NOT DONE`.
-Do not say `Acceptance condition met`, `Fixed`, `Done`, or `Ready` unless browser/product proof passed. Use `Code changed; product not proven`, `Local proof passed; production not proven`, `Browser proof failed; NOT DONE`, or `No actionable seam; STOP`.
-
----
-
-## Foldera Product Doctrine
-
-Foldera is not a generic assistant.
-
-Foldera does arithmetic on the user’s life:
-
-1. infer goals, constraints, relationships, and drift
-2. detect discrepancy or opportunity
-3. score candidate moves
-4. output the next highest-leverage finished artifact
-5. learn from approve / skip over time
-
-External promise:
-**Finished work, every morning**
-
-Working standard:
-A smart operator should see the output and think:
-**yes, that is exactly the move**
-
----
-
 ## Cost Doctrine
 
-Default rule:
-**Most work must be free. Paid runs are for final proof only.**
+Most work must be free. Paid runs are for final proof only.
 
-That means:
+Rules:
+
 - use deterministic tests for basic bugs
 - use fixtures and replay harnesses for known failure classes
 - use local mocks and offline paths whenever possible
 - do not burn paid model calls to discover obvious bugs
-- use paid generation only after the seam is already narrowed
-
-Paid test lock:
-- any route, script, or flow that triggers a billable model call counts as a paid test
-- never use a paid test when a free test can prove or narrow the seam
-- never use a paid test for discovery, iteration, or A/B comparison
-- never repeat paid full runs back-to-back while still debugging
 - before any paid test, name the exact blocker that free proof cannot resolve
-- ask the user for permission before running that paid step
-- if permission is not granted, stop at the strongest free proof and report the live seam as unproven
-
-If a session is still using paid calls to discover basic breakage, the session is being run wrong.
-
----
+- ask Brandon for permission before running the paid step
+- if permission is not granted, stop at strongest free proof and report the live seam as unproven
 
 ## Git / Shipping Rules
 
-- Push directly to `main`
-- A meaningful change is not complete until the push to `main` succeeds
-- Do not leave meaningful verified work local-only
-- Do not create branches unless the task explicitly requires it
-- `npm run build` must pass before every commit
-- **Always commit and push in the same session** once verified — never leave git work for the user unless blocked (credentials, conflict, or documented impossibility)
-- Default to the main worktree only. Do not use git worktrees unless the current worktree is unusable, the exact blocker is named, and no simpler path exists.
-- Do not say “done” unless the relevant proof exists
-- Commit receipts must be specific and factual
+- Use PR workflow for meaningful repo changes.
+- Do not push directly to `main`.
+- Do not bypass PR review/checks.
+- Do not ask Brandon to push, merge, test, relay, apply migrations, or repair stale source truth when the agent can do the work through the proper tool path.
+- Do not leave meaningful verified work local-only.
+- Use one clean branch/worktree per active issue.
+- Run the proof required by the active issue before calling the seam complete.
+- If CI is red, fix only the exact failing check.
+- Commit receipts must be specific and factual.
 
-### Required final receipt
+## Source-Truth Closeout
 
-Every completed task must report:
-- health summary
-- what changed
-- tests run
-- build result
-- live/prod-like proof if applicable
-- exact remaining unproven items
+Every final receipt must include:
 
----
+- `ACTIVE_HANDOFF.md`: updated / unchanged - reason / not applicable - reason
+- `FOLDERA_BUILD_ORDER.yaml`: updated / unchanged - reason / not applicable - reason
+- `FOLDERA_LAUNCH_ROADMAP.md`: updated / unchanged - reason / not applicable - reason
+- `docs/SOURCE_OF_TRUTH_MAP.md`: updated / unchanged - reason / not applicable - reason
+- GitHub issue receipt: posted
+- next seam: named / blocked - reason
+
+If command state changed, update `ACTIVE_HANDOFF.md` and `FOLDERA_BUILD_ORDER.yaml` in the PR.
 
 ## Verification Rules
 
-### For deterministic or harness-only changes
+### Deterministic or harness-only changes
 
-Local proof is sufficient:
+Local or CI proof is sufficient when the active issue says so:
+
 - focused tests
 - replay suite
-- build
+- `npm run gate:continuity`
+- `npm run lint`
+- `npm run build`
 
-Do not require production verification for purely deterministic internal hardening.
-
-### For live-path or user-facing behavior changes
+### Live-path or user-facing behavior changes
 
 Require one real proof before calling the work complete:
+
 - production-like execution
 - deployed verification
 - persisted row
@@ -254,277 +167,61 @@ Require one real proof before calling the work complete:
 
 A build pass is necessary, not sufficient.
 
-If that proof would trigger a paid model call, it is not part of the default verification path.
-Run it only after free verification is exhausted and the user has explicitly approved the paid step.
+### Schema-dependent changes
 
-### For shipped code changes
+Schema work is forbidden unless the active issue explicitly authorizes it.
 
-Before calling the task complete, verify deployment state across all relevant layers:
-
-1. local HEAD commit SHA
-2. GitHub `main` latest commit SHA
-3. Vercel current production deployment SHA and status
-4. production `/api/health` revision SHA when that route exists
-
-If these do not match, the task is not complete.
-
-Report the exact mismatch explicitly.
-
-Do not assume:
-- local commit means GitHub is current
-- GitHub current means Vercel is current
-- Vercel Ready means the expected runtime revision is live
-
-### For schema-dependent changes
-
-If a session creates, edits, or depends on a production schema change, applying that migration to production Supabase is the agent’s job.
-
-Do not mark the task done until the migration is:
-1. committed
-2. applied to production
-3. verified
-
-Verification must show the expected production state, for example:
-- migration appears in migration history / `list_migrations`
-- expected columns / indexes / constraints exist
-- dependent code path works against production
-
-Preferred:
-- Supabase MCP `apply_migration` for project `neydszeamsflpghtrhue`
-
-Also valid:
-- `npx supabase db push` when the repo is linked and credentials are available
-
-Fallback only:
-- Supabase SQL editor using the exact committed migration body
-
-If production apply is impossible in-session because of missing credentials, missing tool access, or network failure, state that exact blocker and do not claim the migration task complete.
-
-See `docs/SUPABASE_MIGRATIONS.md`.
-
----
-
-## Tool Routing (mandatory)
-
-Use the best available tool instead of local-only reasoning whenever the task crosses these boundaries.
-
-### Playwright
-
-Use Playwright for:
-
-* local and CI regression checks
-* repeatable route/flow verification
-* pre-push frontend sanity checks
-* deterministic browser automation when localhost/CI is sufficient
-
-Playwright is the default frontend verification tool.
-
-### Vercel
-
-Use Vercel for:
-
-* deploy truth
-* production deployment status
-* build logs
-* runtime logs
-* confirming which commit is live in production
-
-Do not claim a deploy or production runtime issue is fixed without checking Vercel when the Vercel tool is available.
-
-### Supabase
-
-Use Supabase for:
-
-* production DB truth
-* migration apply/verification
-* schema checks
-* row/state verification
-* confirming that expected records actually exist
-
-Do not guess about production data or schema state when Supabase can answer directly.
-
-### Sentry
-
-Use Sentry first for:
-
-* production runtime errors
-* server/client exceptions
-* failing routes
-* stack traces after deploy
-
-Do not speculate from code first when Sentry can provide the actual runtime failure.
-
-### Browserstack
-
-Use Browserstack for:
-
-* real-device and real-browser verification
-* mobile UI proof
-* Safari/iPhone issues
-* Android/browser-specific layout issues
-* OAuth flow sanity checks when localhost/dev-browser automation is unreliable
-* screenshot/video proof for frontend work that is sensitive to browser/device behavior
-
-Browserstack complements Playwright. It does not replace Playwright.
-For mobile/browser-sensitive frontend work, use Browserstack when Playwright/localhost is not enough to provide real-device truth.
-
-### Mandatory rule
-
-If a task touches deploys, production data, production errors, mobile layout, browser-specific behavior, or OAuth/browser flow issues, the final receipt must name which relevant tool(s) were used.
-
-Do not call a task complete with local-only reasoning when Playwright, Vercel, Supabase, Sentry, or Browserstack could provide the truth directly.
-
----
-
-## Scope Control
-
-Fix the proven seam first.
-
-Broaden from instance to class only when:
-- the same failure mode is clearly shared
-- the broader fix stays in the same seam
-- tests prove the class-level repair
-
-Do not use “fix the class” as permission to refactor half the system.
-
----
+When a future active issue authorizes production schema work, the migration must be committed, applied to production Supabase, and verified before done is claimed. If production apply is impossible because of missing credentials, missing tool access, or network failure, state that exact blocker and do not claim the migration task complete.
 
 ## Architecture Constraints
 
-- Never initialize Supabase or read env vars at top level
-- Always resolve env inside functions or safe config boundaries
-- `useSession`, `useState`, and `useEffect` require `'use client'`
-- Server components use `getServerSession(authOptions)`
-- Frontend uses `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- Backend uses `SUPABASE_SERVICE_ROLE_KEY`
-- Never mix frontend and backend Supabase credentials
-- Session-backed routes must use `session.user.id`
-- `INGEST_USER_ID` is background and cron only
+- Never initialize Supabase or read env vars at top level.
+- Always resolve env inside functions or safe config boundaries.
+- `useSession`, `useState`, and `useEffect` require `'use client'`.
+- Server components use `getServerSession(authOptions)`.
+- Frontend uses `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+- Backend uses `SUPABASE_SERVICE_ROLE_KEY`.
+- Never mix frontend and backend Supabase credentials.
+- Session-backed routes must use `session.user.id`.
+- `INGEST_USER_ID` is background and cron only.
 
----
+## Tool Routing
 
-## Locked Decisions
+Use the best available truth tool when the seam crosses that boundary:
 
-Do not change these without explicit instruction:
+- Playwright for browser/frontend regression proof.
+- Vercel for deploy/build/runtime truth.
+- Supabase for production DB/schema/state truth.
+- Sentry for production runtime errors.
+- Browserstack for real-device/mobile/browser-specific proof.
 
-- Pricing: Free forever + Pro $29/mo
-- Tagline: `Finished work, every morning`
-- No trial countdown
-- No credit card for free tier
-- Nicole Vreeland: never a reference or directive target
-- Brandon is never the training mechanism
+Do not call work complete with local-only reasoning when the relevant truth tool is available and required by the seam.
 
----
+## Scope Control
 
-## Foldera-Specific Quality Bar
+Fix the proven seam first. Broaden from instance to class only when the same failure mode is clearly shared, the broader fix stays in the same seam, and tests prove the class-level repair.
 
-### Backend / brain work
+Do not use “fix the class” as permission to refactor half the system.
 
-A valid winner should be:
-- grounded in a real thread, obligation, decay, or deadline
-- tied to a real external person/org when applicable
-- materially useful now
-- sendable or directly actionable
-- clearly better than a generic memo or reminder
+## Forbidden Unless Explicitly Assigned
 
-### Frontend / auth work
+- No #99 implementation while source-truth governance is active.
+- No landing work.
+- No Slack/OAuth/API/send work.
+- No backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes.
+- No Dependabot work.
+- No broad cleanup.
 
-A valid win should be:
-- one real user journey completed end-to-end
-- no dead ends
-- no raw errors
-- no confusing next step
-- polished enough to show someone
+## Final Report
 
----
+Report only:
 
-## File Update Rules
-
-Update these only when relevant to the actual seam.
-
-### Always when code meaningfully changes
-- `SESSION_HISTORY.md`
-
-### When current live understanding changed
-- `CURRENT_STATE.md`
-
-### When a tracked backlog item was closed or newly discovered
-- `AUTOMATION_BACKLOG.md`
-
-Do not turn doc updates into the main work.
-Docs record the board change. They are not the board change.
-
----
-
-## Dangerous Areas
-
-Be extra careful in:
-- `lib/briefing/**`
-- `lib/cron/**`
-- `app/api/**`
-- `supabase/**`
-
-### Additional rules for `lib/briefing/**`
-
-- do not broaden scoring policy without proof from real candidate traces
-- do not reopen closed recipient or gating seams without fresh evidence
-- preserve artifact quality bar over superficial “validity”
-
-### Additional rules for `lib/cron/**`
-
-- preserve idempotency
-- preserve loop safety
-- avoid duplicate-send risk
-- prefer single-sourced logic shared by runtime and tests
-
-### Additional rules for `supabase/**`
-
-- no destructive migration without explicit need
-- schema changes must be paired with verification
-- do not leave migrations unapplied if the session requires them applied
-
----
-
-## Default Session Pattern
-
-1. Read current state docs
-2. Run health
-3. Identify one seam
-4. Trace the path
-5. Add or run focused tests first
-6. Patch the seam
-7. Re-run focused tests
-8. Run build
-9. Run one live/prod-like proof if needed
-10. Update the small set of docs that actually changed
-11. Commit and push
-12. Return a hard receipt
-
----
-
-## What Not To Do
-
-- do not start with a broad repo audit
-- do not read huge reference files unless needed
-- do not stop at green tests if the mission required live proof
-- do not use paid runs to discover basic bugs
-- do not claim completion with vague language
-- do not ask the user to do work the agent can do directly
-- do not leave the session with ambiguous status
-
----
-
-## Canonical End States
-
-Every session must end in one of these:
-
-### WIN
-The board changed and proof exists.
-
-### EXACT BLOCKER
-One narrow blocker remains and is fully specified.
-
-### FINAL LIMIT
-No narrow code bug remains; the next move requires policy, product, data, or environment change.
-
-Anything else is sludge.
+- active seam
+- files changed
+- proof run
+- source-truth closeout status
+- GitHub CI result if available
+- Vercel deployment result if applicable
+- production SHA if applicable
+- exact stop reason
+- next seam/blocker
