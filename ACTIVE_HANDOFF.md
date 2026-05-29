@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-05-29 PT
-Current `origin/main` SHA at update time: `ebad78cf443e87f6f72f92d26478c3f399c626de`.
+Current `origin/main` SHA at update time: `0c2e10a65d086502fe61dec9d3751ad087b30c85`.
 
 ## Canonical Boot Sequence
 
@@ -17,16 +17,14 @@ For any Foldera task, use this order:
 
 ## Current slice:
 
-- Issue #102 is the active implementation seam.
-- Issue #101 branch/worktree hygiene receipt is posted.
-- Issue #94 legacy issue classification receipt is posted.
-- Issue #98 implementation PR is merged.
-- Issue #99 is paused until issue #102 repo artifact hygiene completes.
+- Issue #106 final repo hygiene is complete; PR #107 merged at `0c2e10a65d086502fe61dec9d3751ad087b30c85`.
+- Issue #113 is the active source-truth closeout enforcement seam.
+- Issue #99 remains paused until issue #113 is merged.
 - Issue #84 and PR #95 remain paused.
 - Issue #48 remains the product contract.
 - Issue #77 still gates any real Slack implementation decision.
 
-Active implementation seam is issue #102 (repo artifact hygiene).
+Active implementation seam is issue #113 (Codex source-truth closeout enforcement).
 
 ## Product doctrine
 
@@ -41,6 +39,11 @@ Issue #48 remains the product contract.
 - Chat memory is not source of truth.
 - If work was done and not written to GitHub, the transaction is incomplete.
 - Before stopping, write one terminal GitHub comment: `BLOCKED`, `PROOF`, `PR OPENED`, `MERGE READY`, or `STOPPED`.
+- Every PR must close source truth before stop.
+- `ACTIVE_HANDOFF.md` must be updated when the active seam, proof status, next seam, or blocker changes.
+- `FOLDERA_BUILD_ORDER.yaml` must be updated when the active issue, paused issue list, priority class, or work type changes.
+- If a source-truth file is not updated, the PR receipt must say `unchanged - reason` or `not applicable - reason`.
+- No Codex run may silently leave a stale handoff or build order.
 
 ## Current truth
 
@@ -50,22 +53,24 @@ Issue #48 remains the product contract.
 - `npm run gate:continuity` is the source-truth enforcement gate.
 - Repo files + GitHub issues are source of truth over chat memory.
 - Brandon is not the messenger between ChatGPT and Codex; update GitHub source of truth first.
+- PR #107 proved final hygiene; issue #113 now repairs the factory rule that allowed the handoff/build order to remain stale.
 
 ## Forbidden unless explicitly assigned
 
 - No landing work.
 - No Slack work.
 - No backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes.
-- No broad cleanup outside the issue #102 artifact-hygiene seam.
+- No #99 implementation until issue #113 is merged.
+- No broad cleanup outside the issue #113 source-truth closeout seam.
 - No direct edits to `main`.
 
 ## Next exact move
 
-Run issue #102 only:
+Run issue #113 only:
 
-1. Classify repo artifacts and generated proof remnants as keep/quarantine/delete candidates.
-2. Remove only proven-stale artifacts that do not control active product behavior.
-3. Preserve all paused/control seams (#99 planning spine and #84/#95 landing pause).
-4. Keep issue and branch closure/deletion receipts explicit in GitHub.
+1. Enforce source-truth closeout in `ACTIVE_HANDOFF.md`, `FOLDERA_BUILD_ORDER.yaml`, `.github/pull_request_template.md`, `scripts/continuity-gate.ts`, `AGENTS.md`, and `CODEX_START.md`.
+2. Ensure `ACTIVE_HANDOFF.md` and `FOLDERA_BUILD_ORDER.yaml` agree on the active issue.
+3. Require PR receipts to mark source-truth files as `updated`, `unchanged - reason`, or `not applicable - reason`.
+4. Preserve #99 as next/paused; do not implement it.
 5. Run `npm run gate:continuity`, `npm run lint`, and `npm run build`.
 6. Open one PR and write the terminal GitHub receipt before stop.
