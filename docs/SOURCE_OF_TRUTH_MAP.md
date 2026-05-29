@@ -1,8 +1,8 @@
 # Source Of Truth Map
 
-Last updated: 2026-05-28 PT
+Last updated: 2026-05-29 PT
 
-Issue #80 owns this authority ledger.
+Issue #80 owns this authority ledger. Issue #113 extends enforcement for source-truth closeout and agent governance drift.
 
 ## Purpose
 
@@ -51,20 +51,23 @@ When sources disagree, use this order:
 | File / Source | Status | Why It Exists | Who Or What May Rely On It | What It Must Never Control | Enforcement Mechanism |
 | --- | --- | --- | --- | --- | --- |
 | `ACTIVE_HANDOFF.md` | `CURRENT_CONTROL` | Names the single active seam, current truth, and next exact move. | Every Foldera session, reviewer, and agent boot. | Old roadmap order, unrelated issues, or broad cleanup outside the named seam. | `npm run gate:continuity` requires exactly one active seam line and roadmap/product references. |
+| `FOLDERA_BUILD_ORDER.yaml` | `CURRENT_CONTROL` | Machine-readable active issue, paused issues, source-truth order, terminal states, and closeout requirements. | Agents, reviewers, and gates checking current issue order. | Product doctrine or feature scope by itself. | `npm run gate:continuity` checks active issue parity, closeout values, and next-seam closeout. |
 | `FOLDERA_LAUNCH_ROADMAP.md` | `CURRENT_CONTROL` | Holds the long-form launch order and continuity policy. | Operators and agents deciding issue order or stop conditions. | Product doctrine by itself, or authority to override the active issue. | `npm run gate:continuity` checks for boot-sequence alignment and roadmap presence. |
 | GitHub issue named by `ACTIVE_HANDOFF.md` | `CURRENT_CONTROL` | Defines the one assigned implementation seam. | The current assignee, reviewer, and PR author. | Unassigned side quests, backlog grooming, or unrelated fixes. | Manual boot-sequence read plus PR scope review. |
 | GitHub issue #48 | `CURRENT_CONTROL` | Holds the Workday Presence Layer product contract. | Product reviewers, agents, and humans checking launch doctrine. | Historical Brandon-command-center behavior or dashboard/task-list drift. | Boot sequence plus explicit issue reference across control docs. |
 | `FOLDERA_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` | Defines Foldera's canonical product worldview. | Humans and agents checking what Foldera is and is not. | Repo execution order by itself, or stale issue selection. | `npm run gate:continuity` verifies boot-sequence alignment; issue #48 remains the doctrine anchor. |
 | `docs/SOURCE_OF_TRUTH_MAP.md` | `CURRENT_CONTROL` | Explains repo authority, stale-doc classes, review rules, and proof requirements. | Reviewers, agents, and maintainers validating repo hygiene. | Product doctrine, feature scope expansion, or runtime behavior claims. | This file is required by `npm run gate:continuity`. |
-| `CODEX_START.md` | `EXECUTION_CONTRACT` | Defines Codex startup order, gate-first behavior, and live-truth requirements. | Codex operators and agent sessions. | Product doctrine overrides or competing active seam selection. | `npm run gate:continuity` checks canonical boot sequence text. |
-| `AGENTS.md` | `EXECUTION_CONTRACT` | Defines repo-specific behavioral rules for coding agents. | Codex and agent runners operating in-repo. | Conflicting boot order, product redefinition, or unrelated issue work. | `npm run gate:continuity` checks canonical boot sequence text. |
-| `CLAUDE.md` | `EXECUTION_CONTRACT` | Compatibility operator runbook for alternate agent tooling. | Claude or other non-Codex operators. | Separate source-of-truth hierarchy or seam selection logic. | `npm run gate:continuity` checks canonical boot sequence text. |
-| `GPT.md` | `EXECUTION_CONTRACT` | Owner and PM verification contract for GPT-style execution. | GPT operators and reviewers. | A second product doctrine or a different issue wrapper. | `npm run gate:continuity` checks canonical boot sequence text. |
+| `CODEX_START.md` | `EXECUTION_CONTRACT` | Defines Codex startup order, gate-first behavior, PR workflow, and live-truth requirements. | Codex operators and agent sessions. | Product doctrine overrides or competing active seam selection. | `npm run gate:continuity` checks canonical boot sequence and agent-governance rules. |
+| `AGENTS.md` | `EXECUTION_CONTRACT` | Defines repo-specific behavioral rules for coding agents. | Codex and agent runners operating in-repo. | Conflicting boot order, product redefinition, direct-main work, or unrelated issue work. | `npm run gate:continuity` checks canonical boot sequence and agent-governance rules. |
+| `CLAUDE.md` | `EXECUTION_CONTRACT` | Compatibility operator runbook for alternate agent tooling. | Claude or other non-Codex operators. | Separate source-of-truth hierarchy, direct-main workflow, or seam selection logic. | `npm run gate:continuity` checks canonical boot sequence and agent-governance rules. |
+| `GPT.md` | `EXECUTION_CONTRACT` | Owner and PM verification contract for GPT-style execution. | GPT operators and reviewers. | A second product doctrine, a different issue wrapper, or acceptance of Codex claims without proof. | `npm run gate:continuity` checks canonical boot sequence and agent-governance rules. |
+| `.cursorrules` | `EXECUTION_CONTRACT` | Cursor-specific operator shim aligned to the canonical one-seam PR workflow. | Cursor sessions operating in-repo. | Direct-main work, auto-continuation, or stale session habit. | `npm run gate:continuity` checks canonical boot sequence and agent-governance rules. |
+| `.cursor/rules/agent.mdc` | `EXECUTION_CONTRACT` | Cursor agent protocol shim aligned to the canonical one-seam PR workflow. | Cursor agent sessions operating in-repo. | Direct-main work, auto-continuation, product doctrine replacement, or bypassing GitHub receipts. | `npm run gate:continuity` checks required governance language and forbidden drift patterns. |
 | `SYSTEM_RUNBOOK.md` | `EXECUTION_CONTRACT` | Defines operating plan and tool boundaries. | Humans and agents deciding how to verify or escalate. | Current seam ownership or product direction changes. | `npm run gate:continuity` checks canonical boot sequence text. |
 | `README.md` | `EXECUTION_CONTRACT` | Gives the operator-grade repo entrypoint, gates, and scope rules. | New operators, reviewers, and repository readers. | Feature planning, product doctrine override, or stale default framework instructions. | `npm run gate:continuity` rejects default Next.js boilerplate markers. |
-| `.github/pull_request_template.md` | `EXECUTION_CONTRACT` | Forces PR receipts to declare issue, proof, scope, and stop condition. | PR authors and reviewers. | Active seam selection outside GitHub issue truth. | File existence checked by `npm run gate:continuity`; reviewers enforce filled receipt sections. |
+| `.github/pull_request_template.md` | `EXECUTION_CONTRACT` | Forces PR receipts to declare issue, proof, scope, stop condition, next seam, and source-truth closeout. | PR authors and reviewers. | Active seam selection outside GitHub issue truth. | `npm run gate:continuity` checks closeout section, required files, allowed closeout values, and next-seam section. |
 | `.github/workflows/pr-sentinel.yml` | `EXECUTION_CONTRACT` | Makes continuity enforcement run in CI. | GitHub Actions and reviewers. | Product proof, runtime correctness, or expensive integration validation. | `npm run gate:continuity` confirms PR Sentinel runs the continuity gate. |
-| `scripts/continuity-gate.ts` | `EXECUTION_CONTRACT` | Cheap deterministic meta-gate for source-truth continuity. | Local operators and CI. | Product quality proof, browser proof, or live system health by itself. | Invoked by `npm run gate:continuity`. |
+| `scripts/continuity-gate.ts` | `EXECUTION_CONTRACT` | Cheap deterministic meta-gate for source-truth continuity and agent-governance drift. | Local operators and CI. | Product quality proof, browser proof, or live system health by itself. | Invoked by `npm run gate:continuity`. |
 | `package.json` | `EXECUTION_CONTRACT` | Exposes the continuity, lint, build, and health commands operators must run. | Humans, CI, and agents executing proof. | Product doctrine, issue selection, or stale-doc classification by itself. | Script presence checked indirectly by `npm run gate:continuity`. |
 | `ACCEPTANCE_GATE.md` | `PROOF_GATE` | Defines what proof counts as done at the product level. | Reviewers and agents deciding DONE vs NOT DONE. | Picking the active seam or overriding issue scope. | Top authority marker checked by `npm run gate:continuity`. |
 | `CURRENT_STATE.md` | `PROOF_GATE` | Captures current runtime blockers and environment truth. | Operators only when the active seam needs live/runtime state. | Default startup order for every task. | Read by judgment; authority class recorded here. |
@@ -82,11 +85,13 @@ When sources disagree, use this order:
 Before approving an issue PR, answer all of these:
 
 1. Does `ACTIVE_HANDOFF.md` name exactly one seam?
-2. Does the PR touch only files allowed by the active issue?
-3. Does any changed doc create a competing source of truth?
-4. Does `npm run gate:continuity` enforce the claimed continuity rule, or is the rule only prose?
-5. Does the PR receipt state what did not change and what remains blocked?
-6. If a stale file remains in place, is it clearly classified so it cannot masquerade as current control?
+2. Does `FOLDERA_BUILD_ORDER.yaml active_issue` match the handoff seam?
+3. Does the PR touch only files allowed by the active issue?
+4. Does any changed doc create a competing source of truth?
+5. Does `npm run gate:continuity` enforce the claimed continuity rule, or is the rule only prose?
+6. Does the PR receipt state what did not change and what remains blocked?
+7. Does the PR receipt close out every required source-truth file as `updated`, `unchanged - reason`, or `not applicable - reason`?
+8. If a stale file remains in place, is it clearly classified so it cannot masquerade as current control?
 
 ## Forbidden Broad Work
 
@@ -102,14 +107,13 @@ This authority ledger does not authorize:
 
 ## Proof
 
-For issue #80 authority-ledger work, the required proof commands are:
+For source-truth / authority-ledger work, the required proof commands are:
 
 - `npm run gate:continuity`
 - `npm run lint`
 - `npm run build`
-- `npm run health`
 
-Passing prose is not proof. The PR receipt must report the changed-file list, command results, and an explicit statement that no product behavior changed.
+Passing prose is not proof. The PR receipt must report the changed-file list, command results, source-truth closeout, and an explicit statement that no product behavior changed.
 
 ## Enforcement Summary
 
@@ -118,6 +122,11 @@ Passing prose is not proof. The PR receipt must report the changed-file list, co
 - required source-truth files exist
 - canonical boot sequence text is aligned across boot docs
 - `ACTIVE_HANDOFF.md` names exactly one active seam
+- `ACTIVE_HANDOFF.md` active issue matches `FOLDERA_BUILD_ORDER.yaml active_issue`
+- `FOLDERA_BUILD_ORDER.yaml` includes source-truth closeout requirements
+- `.github/pull_request_template.md` includes required source-truth closeout rows, closeout values, and next-seam section
+- agent governance docs include one-seam / PR-flow / source-truth closeout doctrine
+- agent governance docs do not contain known direct-main or auto-continuation drift phrases
 - `ACTIVE_HANDOFF.md` still references `FOLDERA_LAUNCH_ROADMAP.md` and issue #48
 - stale active-looking docs keep their top authority markers
 - `.foldera-contract.json` cannot keep the old issue #62 contract active
