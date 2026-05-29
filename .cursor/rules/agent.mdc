@@ -1,19 +1,22 @@
 ---
 alwaysApply: true
-description: "Agent Execution Protocol — aligned with AGENTS.md / CLAUDE.md"
+description: "Agent Execution Protocol — aligned with one-seam PR workflow"
 ---
 
 rules:
-  - "Session start: run `npm run health`, read the full output, and include a health summary in the final receipt. If any row shows FAIL, treat the first relevant failure as top priority unless the task explicitly targets another proven seam. Green health does not mean the mission is done."
-  - "Execution: one seam at a time; minimum change; search the repo before editing; no new files unless required; no unrelated edits; full type-safety on touched code."
-  - "Verification: run the appropriate tests/build for the seam before commit; fix errors without waiting for the user."
-  - "Git / shipping: push directly to `main`; do not use feature branches or PR workflow unless the task explicitly requires it; `npm run build` must pass before every commit; **always commit and push in the same turn** once the slice is verified — never leave commit/push for the user. Never ask Brandon to push, merge, or apply migrations (only state a blocker if impossible)."
-  - "Schema: when you add or change `supabase/migrations/` or production schema, apply migrations to production Supabase in the same session (MCP `apply_migration` for project `neydszeamsflpghtrhue` or `npx supabase db push`). Do not tell the user to apply them; do not call the task done until applied and verified (or state the exact blocker if impossible)."
-  - "Receipt: concise final report with files changed, reasoning, and build/test verification."
+  - "Canonical boot: read ACTIVE_HANDOFF.md, FOLDERA_LAUNCH_ROADMAP.md, the active issue named by ACTIVE_HANDOFF.md, issue #48, relevant proof docs only for the active seam, then open PRs/recent merged PRs when repo/deploy truth matters."
+  - "Source truth: GitHub repo files and GitHub issues beat chat memory, local memory, old logs, and stale branches."
+  - "Execution: one active seam only; one clean branch/worktree per issue; minimum change; no unrelated edits; no automatic continuation into another seam."
+  - "Git / shipping: PR-based workflow only. Do not push directly to main. Do not bypass PR review/checks. Do not ask Brandon to relay, test, merge, repair stale truth, or apply migrations when the agent can do the work through the proper tool path."
+  - "Verification: run the proof required by the active issue. If CI is red, fix only the exact failing check. Vercel success does not replace GitHub CI when CI is required."
+  - "Source-truth closeout: before stopping, the PR/issue receipt must declare ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, FOLDERA_LAUNCH_ROADMAP.md, and docs/SOURCE_OF_TRUTH_MAP.md as updated, unchanged - reason, or not applicable - reason; it must also post the GitHub issue receipt and name the next seam as named or blocked - reason."
+  - "Forbidden unless explicitly assigned: no #99 implementation while governance is active; no product code; no landing; no Slack/OAuth/API/send; no backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes; no Dependabot; no broad cleanup."
+  - "Schema: when a future active issue authorizes production schema work, migrations must be committed, applied to production Supabase, and verified before done is claimed; otherwise schema work is forbidden."
+  - "Receipt: final report must include active seam, files changed, proof run, source-truth closeout, GitHub CI result if available, Vercel result if applicable, production SHA if applicable, exact stop reason, and next seam/blocker."
   - |
-    ## Tool Routing (mandatory)
+    ## Tool Routing
 
-    Use the best available tool instead of local-only reasoning whenever the task crosses these boundaries.
+    Use the best available truth tool when the seam crosses that boundary.
 
     ### Playwright
 
@@ -24,60 +27,20 @@ rules:
     * pre-push frontend sanity checks
     * deterministic browser automation when localhost/CI is sufficient
 
-    Playwright is the default frontend verification tool.
-
     ### Vercel
 
-    Use Vercel for:
-
-    * deploy truth
-    * production deployment status
-    * build logs
-    * runtime logs
-    * confirming which commit is live in production
-
-    Do not claim a deploy or production runtime issue is fixed without checking Vercel when the Vercel tool is available.
+    Use Vercel for deploy truth, production deployment status, build logs, runtime logs, and confirming which commit is live in production.
 
     ### Supabase
 
-    Use Supabase for:
-
-    * production DB truth
-    * migration apply/verification
-    * schema checks
-    * row/state verification
-    * confirming that expected records actually exist
-
-    Do not guess about production data or schema state when Supabase can answer directly.
+    Use Supabase for production DB truth, migration apply/verification, schema checks, row/state verification, and confirming expected records exist.
 
     ### Sentry
 
-    Use Sentry first for:
-
-    * production runtime errors
-    * server/client exceptions
-    * failing routes
-    * stack traces after deploy
-
-    Do not speculate from code first when Sentry can provide the actual runtime failure.
+    Use Sentry first for production runtime errors, server/client exceptions, failing routes, and stack traces after deploy.
 
     ### Browserstack
 
-    Use Browserstack for:
+    Use Browserstack for real-device/mobile/browser-specific proof when Playwright or localhost is not enough.
 
-    * real-device and real-browser verification
-    * mobile UI proof
-    * Safari/iPhone issues
-    * Android/browser-specific layout issues
-    * OAuth flow sanity checks when localhost/dev-browser automation is unreliable
-    * screenshot/video proof for frontend work that is sensitive to browser/device behavior
-
-    Browserstack complements Playwright. It does not replace Playwright.
-    For mobile/browser-sensitive frontend work, use Browserstack when Playwright/localhost is not enough to provide real-device truth.
-
-    ### Mandatory rule
-
-    If a task touches deploys, production data, production errors, mobile layout, browser-specific behavior, or OAuth/browser flow issues, the final receipt must name which relevant tool(s) were used.
-
-    Do not call a task complete with local-only reasoning when Playwright, Vercel, Supabase, Sentry, or Browserstack could provide the truth directly.
-  - "A task is not complete if the relevant truth tool was available and not used."
+    Do not call work complete with local-only reasoning when the relevant truth tool is available and required by the seam.
