@@ -71,6 +71,32 @@ Its job:
 
 No automatic continuation into another product seam is allowed unless the user explicitly assigns that new seam after source-truth closeout.
 
+## Single Seam Authorization Packet
+
+One explicit Brandon instruction for an active seam authorizes the agent to complete all safe in-scope repo work for that seam without repeatedly asking for approval.
+
+Covered actions inside the active seam:
+
+- inspect repo files, PRs, issues, checks, and logs
+- edit files allowed by the active issue
+- commit and push to the active PR branch
+- rerun safe local commands and GitHub checks when available
+- fix red CI, lint, build, tests, source-truth gates, PR-template drift, and docs-governance contradictions
+- update PR body and issue receipts
+- merge or enable merge when repo permissions and branch protection allow it
+- close the issue after proof when repo permissions allow it
+
+Not covered by the packet:
+
+- starting another issue or seam
+- changing product scope outside the active issue
+- paid/model-backed proof
+- secrets, credentials, tokens, provider scopes, OAuth app settings, billing, or external account configuration
+- production data mutation unless the active issue explicitly requires it
+- anything blocked by platform authorization, installation scope, branch protection, or security confirmation
+
+When a non-covered action is required, name the exact external blocker, write the GitHub receipt, and stop.
+
 ## Bounded Self-Unblock Loop
 
 Inside the one active issue only, the agent must keep working until one of these terminal states is reached:
