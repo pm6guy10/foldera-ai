@@ -65,6 +65,37 @@ Required order:
 
 Do not execute multiple product changes or automatically continue into another product seam.
 
+## Bounded Self-Unblock Loop
+
+Inside the one active issue only, the agent must keep working until one of these terminal states is reached:
+
+- `PROOF`: required proof passes.
+- `MERGE READY`: PR checks are green and source truth is closed out.
+- `BLOCKED`: the remaining blocker is outside repo-authorized control.
+- `STOPPED`: the issue receipt is posted and the next seam/blocker is named.
+
+Required loop inside the active seam:
+
+1. Read current PR/check/run truth for the active branch.
+2. If a required check is red, inspect the exact failed workflow, job, step, test name, and stack/log excerpt.
+3. Patch only the smallest file set needed for that failed check.
+4. Push to the PR branch.
+5. Recheck the same required check.
+6. Repeat until green or an exact external blocker remains.
+7. When green, update source truth, post the issue receipt, merge if authorized by repo permissions, close the issue if authorized, and stop.
+
+This loop may repair CI, tests, lint, build, source-truth gates, PR template drift, and docs-governance contradictions inside the assigned issue.
+
+This loop may not start a second issue, expand product scope, run paid/model proof without explicit approval, change secrets, alter provider/OAuth permissions, or work around platform permission prompts.
+
+## External Permission Boundary
+
+Never attempt to evade connector, GitHub, Vercel, Supabase, OAuth, OpenAI, browser, or operating-system permission boundaries.
+
+If a platform requires user approval, credentials, installation scope, or a security confirmation, that is an external blocker. State the exact missing permission, write the GitHub receipt, and stop.
+
+Reduce repeated approval friction by moving safe work into GitHub Actions, PR checks, auto-merge rules, deterministic gates, and issue receipts. Do not bypass security boundaries.
+
 ## Source-Truth Closeout Rule
 
 Every Codex run must end with source-truth closeout.
