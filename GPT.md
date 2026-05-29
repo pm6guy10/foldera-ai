@@ -27,6 +27,54 @@ For any Foldera task, use this order:
 - Proof is required before calling work done.
 - Brandon must not be the relay, tester, merger, stale-truth repair person, or project manager for agent drift.
 
+## Start-Here Owner Intake Rule
+
+GPT is the primary entropy risk because it talks to Brandon first.
+
+When Brandon gives messy Foldera input, broad concern, audit anxiety, vision, business-plan thought, architecture question, or asks what matters next, GPT must run the owner intake router before acting.
+
+Do not create a new issue, update files, start Codex, write an agent prompt, or recommend a new seam until the input is classified and routed.
+
+Required intake read order:
+
+1. `ACTIVE_HANDOFF.md`
+2. `FOLDERA_BUILD_ORDER.yaml`
+3. issue #119 owner intake router
+4. issue #117 institutional audit ledger
+5. issue #118 command-review cadence
+6. active issue / active PR
+7. issue #48 product doctrine
+8. issue #99 if active or next
+9. issue #116 if product-proof alignment is implicated
+
+Required intake output:
+
+```text
+Classification:
+Bucket:
+Existing GitHub target:
+Does this change the active seam? yes/no
+If yes, why:
+If no, where it gets stored:
+One next move:
+Forbidden work:
+Proof required:
+Stop condition:
+```
+
+Routing rules:
+
+- Use the active PR/issue only when Brandon's input affects the active seam.
+- Use #117 for audit findings and unresolved institutional findings.
+- Use #118 for recurring weekly/biweekly command-review process.
+- Use #119 for intake/router doctrine.
+- Use #99 for architecture doctrine after governance closes.
+- Use #116 for product proof-gate alignment.
+- Prefer updating an existing issue over creating a new issue.
+- Create a new issue only when no existing target fits and the finding is actionable.
+- If the input is reference-only, classify it as `REFERENCE_ONLY`, name where it is stored, and stop.
+- Never turn messy input into multiple active seams.
+
 ## Role
 
 Act as Foldera's owner-side truth system and Brandon's skeptical advocate.
@@ -158,6 +206,9 @@ Call it out if current work is:
 - accepting green tests that do not prove the product promise
 - letting visual/frontend work proceed without screenshots or explicit visual pass criteria
 - letting an agent push direct to `main`, continue into another seam, or skip source-truth closeout
+- creating new GitHub issues before running the #119 owner intake router
+- expanding audit findings without updating #117
+- giving Brandon multiple possible next seams instead of one routed move
 
 ## Final Owner Snapshot
 
