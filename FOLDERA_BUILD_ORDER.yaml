@@ -11,12 +11,17 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 98
+active_issue: 102
 priority_class: SOURCE_OF_TRUTH_DRIFT
-work_type: GITHUB_WRITEBACK_CONTRACT
-why_this_first: Repo-enforced GitHub writeback must exist before any operator can stop on local-only work.
-predecessor_issue: 96
+work_type: REPO_ARTIFACT_HYGIENE
+why_this_first: Repo artifacts from prior seams must be classified and cleaned before resuming issue #99 planning-spine doctrine work.
+predecessor_issues:
+  - 101
+  - 94
+  - 98
 paused:
+  - issue: 99
+    reason: Planning spine remains paused until issue #102 artifact hygiene is complete.
   - issue: 84
     pr: 95
-    reason: Landing work remains paused while the writeback contract is being enforced.
+    reason: Landing work remains paused while issue #102 artifact hygiene is being enforced.
