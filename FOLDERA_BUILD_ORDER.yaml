@@ -1,0 +1,22 @@
+writeback_required: true
+source_of_truth_order:
+  - ACTIVE_HANDOFF.md
+  - FOLDERA_BUILD_ORDER.yaml
+  - active GitHub issue
+  - issue #48
+  - FOLDERA_LAUNCH_ROADMAP.md
+accepted_terminal_states:
+  - BLOCKED
+  - PROOF
+  - PR OPENED
+  - MERGE READY
+  - STOPPED
+active_issue: 98
+priority_class: SOURCE_OF_TRUTH_DRIFT
+work_type: GITHUB_WRITEBACK_CONTRACT
+why_this_first: Repo-enforced GitHub writeback must exist before any operator can stop on local-only work.
+predecessor_issue: 96
+paused:
+  - issue: 84
+    pr: 95
+    reason: Landing work remains paused while the writeback contract is being enforced.

@@ -7,6 +7,7 @@ describe('documentation source-of-truth boundaries', () => {
     const operatingSystem = fs.readFileSync(path.join(process.cwd(), 'FOLDERA_OPERATING_SYSTEM.md'), 'utf8');
     const codexStart = fs.readFileSync(path.join(process.cwd(), 'CODEX_START.md'), 'utf8');
     const activeHandoff = fs.readFileSync(path.join(process.cwd(), 'ACTIVE_HANDOFF.md'), 'utf8');
+    const buildOrder = fs.readFileSync(path.join(process.cwd(), 'FOLDERA_BUILD_ORDER.yaml'), 'utf8');
     const canonicalBootSequence = [
       '1. Read `ACTIVE_HANDOFF.md`.',
       '2. Read `FOLDERA_LAUNCH_ROADMAP.md`.',
@@ -37,14 +38,15 @@ describe('documentation source-of-truth boundaries', () => {
     expect(codexStart).toContain('Foldera is not beta-ready unless release, quality, and visual gates agree.');
     expect(codexStart).toContain('Maximum product issues per Codex session: 1.');
     expect(activeHandoff).toContain('# ACTIVE HANDOFF');
-    expect(activeHandoff).toContain('## Current slice');
-    expect(activeHandoff).toContain('Active implementation seam is issue #96');
-    expect(activeHandoff).toContain('PR #97 is the active draft PR for issue #96.');
-    expect(activeHandoff).toContain('Issue #84 landing polish is paused.');
-    expect(activeHandoff).toContain('PR #95 is paused and must not merge while issue #96 is open.');
+    expect(activeHandoff).toContain('## Current slice:');
+    expect(activeHandoff).toContain('## GitHub writeback contract');
+    expect(activeHandoff).toContain('GitHub writeback before stop is mandatory.');
+    expect(activeHandoff).toContain('Chat memory is not source of truth.');
+    expect(activeHandoff).toContain('If work was done and not written to GitHub, the transaction is incomplete.');
     expect(activeHandoff).toContain('## Next exact move');
-    expect(activeHandoff).toContain('Run issue #96 only:');
-    expect(activeHandoff).not.toContain('Run issue #84 only');
+    expect(buildOrder).toContain('writeback_required: true');
+    expect(buildOrder).toContain('source_of_truth_order:');
+    expect(buildOrder).toContain('accepted_terminal_states:');
     expect(activeHandoff.split(/\r?\n/).length).toBeLessThanOrEqual(80);
   });
 

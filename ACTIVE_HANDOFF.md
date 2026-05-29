@@ -15,17 +15,15 @@ For any Foldera task, use this order:
 6. Check latest open PRs and recent merged PRs when repo/deploy truth matters.
 7. Use Vercel/Supabase only when the seam requires live/runtime truth.
 
-## Current slice
+## Current slice:
 
-- Issue #96 is the active implementation seam.
-- PR #97 is the active draft PR for issue #96.
-- Issue #84 landing polish is paused.
-- PR #95 is paused and must not merge while issue #96 is open.
-- Issue #94 remains the legacy issue quarantine control ticket.
+- Issue #98 is the active implementation seam.
+- Issue #96 proof is complete enough for this follow-on contract seam.
+- Issue #84 and PR #95 remain paused.
 - Issue #48 remains the product contract.
-- Issue #77 gates any real Slack implementation decision.
+- Issue #77 still gates any real Slack implementation decision.
 
-Active implementation seam is issue #96 (enterprise hygiene quarantine and public ghost cleanup).
+Active implementation seam is issue #98 (repo-enforced GitHub writeback and build-order contract).
 
 ## Product doctrine
 
@@ -34,38 +32,37 @@ state + connectors + triggers + one intervention.
 Stay quiet otherwise; no task-list/dashboard replacement behavior.
 Issue #48 remains the product contract.
 
+## GitHub writeback contract
+
+- GitHub writeback before stop is mandatory.
+- Chat memory is not source of truth.
+- If work was done and not written to GitHub, the transaction is incomplete.
+- Before stopping, write one terminal GitHub comment: `BLOCKED`, `PROOF`, `PR OPENED`, `MERGE READY`, or `STOPPED`.
+
 ## Current truth
 
 - `FOLDERA_LAUNCH_ROADMAP.md` is the long-form controlling roadmap.
+- `FOLDERA_BUILD_ORDER.yaml` is the machine-readable controller contract.
 - `docs/SOURCE_OF_TRUTH_MAP.md` classifies current, execution, proof, reference, archive, and stale source-truth files.
 - `npm run gate:continuity` is the source-truth enforcement gate.
-- Issue #96 temporarily overrides issue #84 until its proof passes.
-- Issue #84 resumes only after issue #96 is resolved.
-
-## Enforcement mechanism
-
 - Repo files + GitHub issues are source of truth over chat memory.
-- Brandon is not the messenger between ChatGPT and Codex; update GitHub source-of-truth first.
-- If a rule is not enforced by npm gate, CI check, required repo file, or test, it is incomplete.
-- `npm run gate:continuity` enforces the boot sequence, stale-doc markers, README replacement, PR template, PR Sentinel wiring, and inactive stale contract.
+- Brandon is not the messenger between ChatGPT and Codex; update GitHub source of truth first.
 
 ## Forbidden unless explicitly assigned
 
-- No real Slack implementation.
-- No dashboard rewrite.
-- No schema, Supabase, or Stripe work.
-- No landing merge while issue #96 is open.
+- No landing work.
+- No Slack work.
+- No backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes.
+- No broad cleanup outside the issue #98 contract seam.
 - No direct edits to `main`.
-- No broad cleanup outside issue #96.
 
 ## Next exact move
 
-Run issue #96 only:
+Run issue #98 only:
 
-1. Continue PR #97 from branch `chatgpt/issue-96-public-ghost-cleanup`.
-2. Prove the old public try surface is removed, paused, or safely redirected.
-3. Fix public status copy if needed.
-4. Remove high-confidence ghosts only with proof.
-5. Classify demo and dev proof routes before changing them.
-6. Run `npm run gate:continuity`, `npm run lint`, `npm run build`, and focused public-route proof.
-7. Stop after one issue #96 PR proves the public ghost risk is closed.
+1. Add the permanent GitHub writeback rule to `ACTIVE_HANDOFF.md`.
+2. Create `FOLDERA_BUILD_ORDER.yaml` with writeback-required terminal-state contract.
+3. Make `scripts/continuity-gate.ts` fail on missing writeback/order rules.
+4. Prove the gate fails when the writeback rule is removed.
+5. Run `npm run gate:continuity`, `npm run lint`, and `npm run build`.
+6. Open one PR and write the terminal GitHub receipt before stop.
