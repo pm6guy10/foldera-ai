@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-29 PT
-Current `origin/main` SHA at update time: `0c2e10a65d086502fe61dec9d3751ad087b30c85`.
+Last updated: 2026-05-30 PT
+Current `origin/main` SHA at update time: `2292181e0e81c505256637272d0e612cd10440a2`.
 
 ## Canonical Boot Sequence
 
@@ -17,14 +17,14 @@ For any Foldera task, use this order:
 
 ## Current slice:
 
-- Issue #106 final repo hygiene is complete; PR #107 merged at `0c2e10a65d086502fe61dec9d3751ad087b30c85`.
-- Issue #113 is the active source-truth closeout enforcement seam.
-- Issue #99 remains paused until issue #113 is merged.
+- Issue #113 source-truth closeout enforcement is complete; PR #114 merged at `2292181e0e81c505256637272d0e612cd10440a2`.
+- Issue #120 is the active public-funnel route contract seam.
+- Issue #99 remains paused until issue #120 is proven and merged.
 - Issue #84 and PR #95 remain paused.
 - Issue #48 remains the product contract.
 - Issue #77 still gates any real Slack implementation decision.
 
-Active implementation seam is issue #113 (Codex source-truth closeout enforcement).
+Active implementation seam is issue #120 (public funnel route contract).
 
 ## Product doctrine
 
@@ -53,24 +53,24 @@ Issue #48 remains the product contract.
 - `npm run gate:continuity` is the source-truth enforcement gate.
 - Repo files + GitHub issues are source of truth over chat memory.
 - Brandon is not the messenger between ChatGPT and Codex; update GitHub source of truth first.
-- PR #107 proved final hygiene; issue #113 now repairs the factory rule that allowed the handoff/build order to remain stale.
+- PR #114 proved source-truth closeout enforcement; issue #120 now repairs the public funnel route contract before visual landing polish.
 
 ## Forbidden unless explicitly assigned
 
-- No landing work.
+- No landing redesign or visual polish.
 - No Slack work.
 - No backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes.
-- No #99 implementation until issue #113 is merged.
-- No broad cleanup outside the issue #113 source-truth closeout seam.
+- No #99 or #121 implementation.
+- No broad cleanup outside the issue #120 route-contract seam.
 - No direct edits to `main`.
 
 ## Next exact move
 
-Run issue #113 only:
+Run issue #120 only:
 
-1. Enforce source-truth closeout in `ACTIVE_HANDOFF.md`, `FOLDERA_BUILD_ORDER.yaml`, `.github/pull_request_template.md`, `scripts/continuity-gate.ts`, `AGENTS.md`, and `CODEX_START.md`.
-2. Ensure `ACTIVE_HANDOFF.md` and `FOLDERA_BUILD_ORDER.yaml` agree on the active issue.
-3. Require PR receipts to mark source-truth files as `updated`, `unchanged - reason`, or `not applicable - reason`.
-4. Preserve #99 as next/paused; do not implement it.
-5. Run `npm run gate:continuity`, `npm run lint`, and `npm run build`.
+1. Produce the public route map before editing.
+2. Fix only proven broken public CTA/route/guard behavior.
+3. Add or update the public funnel regression gate.
+4. Preserve #99 and #121 as not started.
+5. Run `npm run gate:continuity`, `npm run lint`, `npm run build`, and the focused landing/auth route test.
 6. Open one PR and write the terminal GitHub receipt before stop.

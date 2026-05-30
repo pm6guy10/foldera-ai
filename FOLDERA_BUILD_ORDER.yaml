@@ -16,27 +16,32 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 113
-priority_class: SOURCE_TRUTH_CLOSEOUT_ENFORCEMENT
-work_type: REPO_CONTROL_GATE
-why_this_first: PR #107 completed final hygiene, but the handoff and build order remained stale; issue #113 must enforce closeout before issue #99 starts.
+active_issue: 120
+priority_class: PUBLIC_FUNNEL_ROUTE_CONTRACT
+work_type: FRONTEND_ROUTE_GATE
+why_this_first: Issue #120 must prove and fix public CTA/signup/demo routing before any visual landing polish.
 predecessor_issues:
   - 101
   - 94
   - 98
   - 102
   - 106
+  - 113
 completed:
   - issue: 106
     pr: 107
     merge_sha: 0c2e10a65d086502fe61dec9d3751ad087b30c85
     result: Final repo hygiene merged; no #99 implementation started.
+  - issue: 113
+    pr: 114
+    merge_sha: 2292181e0e81c505256637272d0e612cd10440a2
+    result: Source-truth closeout enforcement merged; public funnel route contract is now active.
 paused:
   - issue: 99
-    reason: Planning spine remains paused until issue #113 source-truth closeout enforcement is merged.
+    reason: Planning spine remains paused until issue #120 public funnel route contract is proven and merged.
   - issue: 84
     pr: 95
-    reason: Landing work remains paused while source-truth closeout enforcement is repaired.
+    reason: Landing visual polish remains paused while issue #120 proves the public funnel route contract.
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason

@@ -326,6 +326,42 @@ test.describe('Start page /start', () => {
 
 // ── Login page (/login) ────────────────────────────────────────────────────
 
+test.describe('Public funnel route contract', () => {
+  test('anonymous landing CTAs open /start instead of /dashboard', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+
+    await expect(page.getByRole('link', { name: /^Join pilot$/ })).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-cta-1')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-cta-6')).toHaveAttribute('href', '/start');
+
+    await page.getByRole('link', { name: /^Join pilot$/ }).click();
+    await expect(page).toHaveURL(/\/start\/?$/);
+    await expect(page.getByRole('heading', { name: /get started with foldera/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /continue with google/i })).toBeVisible();
+  });
+
+  test('/try and /signup resolve to the public start boundary', async ({ page }) => {
+    await page.goto('/try');
+    await expect(page).toHaveURL(/\/start\/?$/);
+    await expect(page.getByRole('heading', { name: /get started with foldera/i })).toBeVisible();
+
+    await page.goto('/signup');
+    await expect(page).toHaveURL(/\/start\/?$/);
+    await expect(page.getByRole('button', { name: /continue with microsoft/i })).toBeVisible();
+  });
+
+  test('/demo remains public and anonymous /dashboard is guarded', async ({ page }) => {
+    const demoResponse = await page.goto('/demo');
+    expect(demoResponse?.status()).toBe(200);
+    await expect(page.getByRole('heading', { name: 'Good afternoon, Jordan.' })).toBeVisible();
+
+    await page.goto('/dashboard');
+    await expect(page).toHaveURL(/\/login\?callbackUrl=%2Fdashboard$/);
+    await expect(page.getByRole('heading', { name: /^Sign in$/i })).toBeVisible();
+  });
+});
+
 test.describe('Login page /login', () => {
   test('loads with both OAuth buttons — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
@@ -474,11 +510,12 @@ test.describe('Pricing page /pricing', () => {
 // ── Try / legal (CI gate: public-routes) ────────────────────────────────────
 
 test.describe('Try page /try', () => {
-  test('loads with primary heading', async ({ page }) => {
+  test('redirects to the public start boundary', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const res = await page.goto('/try');
     expect(res?.status()).toBe(200);
-    await expect(page.getByRole('heading', { name: /^Try Foldera$/i })).toBeVisible();
+    await expect(page).toHaveURL(/\/start\/?$/);
+    await expect(page.getByRole('heading', { name: /get started with foldera/i })).toBeVisible();
   });
 });
 
