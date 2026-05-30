@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-05-30 PT
-Current `origin/main` SHA at update time: `2292181e0e81c505256637272d0e612cd10440a2`.
+Current `origin/main` SHA at update time: `7784505f42f3ee16713a36d619f4ea0ceaa640fd`.
 
 ## Canonical Boot Sequence
 
@@ -18,13 +18,14 @@ For any Foldera task, use this order:
 ## Current slice:
 
 - Issue #113 source-truth closeout enforcement is complete; PR #114 merged at `2292181e0e81c505256637272d0e612cd10440a2`.
-- Issue #120 is the active public-funnel route contract seam.
-- Issue #99 remains paused until issue #120 is proven and merged.
+- Issue #120 public-funnel route contract is complete; PR #122 merged at `7784505f42f3ee16713a36d619f4ea0ceaa640fd` and issue #120 is closed/completed.
+- Issue #121 is the active landing-page frontend contract + code-native LP repair seam.
+- Issue #99 remains paused until issue #121 is proven and merged.
 - Issue #84 and PR #95 remain paused.
 - Issue #48 remains the product contract.
 - Issue #77 still gates any real Slack implementation decision.
 
-Active implementation seam is issue #120 (public funnel route contract).
+Active implementation seam is issue #121 (landing page frontend contract + code-native LP repair).
 
 ## Product doctrine
 
@@ -48,29 +49,29 @@ Issue #48 remains the product contract.
 ## Current truth
 
 - `FOLDERA_LAUNCH_ROADMAP.md` is the long-form controlling roadmap.
-- `FOLDERA_BUILD_ORDER.yaml` is the machine-readable controller contract.
+- `FOLDERA_BUILD_ORDER.yaml` is the machine-readable controller contract and may still need a follow-up roll-forward if the next PR enforces #121 through the gate.
 - `docs/SOURCE_OF_TRUTH_MAP.md` classifies current, execution, proof, reference, archive, and stale source-truth files.
 - `npm run gate:continuity` is the source-truth enforcement gate.
 - Repo files + GitHub issues are source of truth over chat memory.
 - Brandon is not the messenger between ChatGPT and Codex; update GitHub source of truth first.
-- PR #114 proved source-truth closeout enforcement; issue #120 now repairs the public funnel route contract before visual landing polish.
+- PR #122 proved the public funnel route contract; issue #121 now owns landing-page contract and code-native LP repair.
 
 ## Forbidden unless explicitly assigned
 
-- No landing redesign or visual polish.
+- No #99 implementation.
 - No Slack work.
 - No backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes.
-- No #99 or #121 implementation.
-- No broad cleanup outside the issue #120 route-contract seam.
-- No direct edits to `main`.
+- No broad cleanup outside the issue #121 landing-page frontend contract seam.
+- No direct edits to `main` outside explicit handoff/source-truth maintenance.
 
 ## Next exact move
 
-Run issue #120 only:
+Run issue #121 only:
 
-1. Produce the public route map before editing.
-2. Fix only proven broken public CTA/route/guard behavior.
-3. Add or update the public funnel regression gate.
-4. Preserve #99 and #121 as not started.
-5. Run `npm run gate:continuity`, `npm run lint`, `npm run build`, and the focused landing/auth route test.
-6. Open one PR and write the terminal GitHub receipt before stop.
+1. Read issue #121 and issue #48.
+2. Create `docs/LANDING_PAGE_CONTRACT.md`.
+3. Convert the current screenshot-based landing page into a code-native React/Tailwind landing page while preserving the dark premium visual direction.
+4. Keep `/start` as the Join Pilot target.
+5. Add or update proof gates for landing load, `/start`, header/hero/final CTA clicks, mobile/desktop screenshots, and no horizontal overflow.
+6. Run `npm run gate:continuity`, `npm run lint`, `npm run build`, and focused landing/public route proof.
+7. Open one PR and write the terminal GitHub receipt before stop.
