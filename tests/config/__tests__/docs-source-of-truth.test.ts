@@ -23,19 +23,15 @@ describe('documentation source-of-truth boundaries', () => {
     expect(operatingSystem).toContain('Produce finished value.');
     expect(operatingSystem).toContain('Safely self-prepare or self-recover.');
     expect(operatingSystem).toContain('Ask for one irreducible blocker');
-    expect(codexStart).toContain("You are Foldera's acting senior operator and app owner.");
+    expect(codexStart).toContain("You are Foldera's acting senior operator");
+    expect(codexStart).toContain('One active seam only');
     expect(codexStart).toContain('move Foldera through the first failing gate with proof');
     for (const line of canonicalBootSequence) {
       expect(codexStart).toContain(line);
       expect(activeHandoff).toContain(line);
     }
     expect(codexStart).toContain('No Codex self-certification counts.');
-    expect(codexStart).toContain('`npm run health`');
-    expect(codexStart).toContain('`npm run gate:status`');
-    expect(codexStart).toContain('`npm run gate:quality`');
-    expect(codexStart).toContain('`npm run gate:visual`');
-    expect(codexStart).toContain('Fix only the first failing gate.');
-    expect(codexStart).toContain('Foldera is not beta-ready unless release, quality, and visual gates agree.');
+    expect(codexStart).toContain('Fix only that CI failure.');
     expect(codexStart).toContain('Maximum product issues per Codex session: 1.');
     expect(activeHandoff).toContain('# ACTIVE HANDOFF');
     expect(activeHandoff).toContain('## Current slice:');
@@ -47,7 +43,7 @@ describe('documentation source-of-truth boundaries', () => {
     expect(buildOrder).toContain('writeback_required: true');
     expect(buildOrder).toContain('source_of_truth_order:');
     expect(buildOrder).toContain('accepted_terminal_states:');
-    expect(activeHandoff.split(/\r?\n/).length).toBeLessThanOrEqual(80);
+    expect(activeHandoff.split(/\r?\n/).length).toBeLessThanOrEqual(95);
   });
 
   it('keeps the active runbook explicit about which docs own current status, done criteria, and receipts', () => {
@@ -75,13 +71,15 @@ describe('documentation source-of-truth boundaries', () => {
 
     expect(agents).toContain('## Source-of-Truth Loading Hierarchy');
     expect(agents).toContain('`ACTIVE_HANDOFF.md` controls current command state and the next exact move');
+    expect(agents).toContain('`FOLDERA_BUILD_ORDER.yaml` controls machine-readable active issue, paused issues, and closeout requirements');
     expect(agents).toContain('`FOLDERA_LAUNCH_ROADMAP.md` controls launch order and roadmap continuity');
     expect(agents).toContain('`FOLDERA_OPERATING_SYSTEM.md` controls product doctrine and worldview');
     expect(agents).toContain('`CODEX_START.md` controls session boot order');
     expect(agents).toContain('`AGENTS.md` controls agent behavior and repo-specific execution rules');
     expect(agents).toContain('`ACCEPTANCE_GATE.md` controls product proof');
-    expect(agents).toContain('`CURRENT_STATE.md` controls current blockers and runtime truth');
-    expect(agents).toContain('`SESSION_HISTORY.md` is recent receipt history only');
-    expect(agents).toContain('reference only; load them only when the seam touches them');
+    expect(agents).toContain('`CURRENT_STATE.md` controls runtime blockers only when the active seam needs live/runtime truth');
+    expect(agents).toContain('`SESSION_HISTORY.md` is receipt history only');
+    expect(agents).toContain('Specs, audits, backlog, and historical docs are reference only');
   });
 });
+

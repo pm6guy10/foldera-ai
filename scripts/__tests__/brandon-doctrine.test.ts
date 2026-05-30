@@ -9,22 +9,19 @@ function readDoc(path: string): string {
 }
 
 describe('Brandon product-owner doctrine', () => {
-  it('locks the pre-code grill gate and done audit into active agent doctrine', () => {
+  it('keeps active agent doctrine focused on wrong-path detection and proof before done', () => {
     const agents = readDoc('AGENTS.md');
     const claude = readDoc('CLAUDE.md');
 
     for (const doc of [agents, claude]) {
       expect(doc).toContain('Brandon Product-Owner Doctrine');
       expect(doc).toContain('WRONG PATH');
-      expect(doc).toContain('Mandatory Pre-Code Grill Gate');
-      expect(doc).toContain('Exact user-facing path');
-      expect(doc).toContain('Regression test that fails first');
-      expect(doc).toContain('Browser/product proof');
-      expect(doc).toContain('Mandatory Done Audit');
-      expect(doc).toContain('Paid calls used');
-      expect(doc).toContain('Outbound email sent');
-      expect(doc).toContain('Final verdict: DONE or NOT DONE');
+      expect(doc).toContain('If no actionable seam exists');
       expect(doc).toContain('No actionable seam; STOP');
+      expect(doc).toContain('A fix is done only when the affected path is proven at the right gate');
+      expect(doc).toContain('Never count docs, logs, screenshots, green build, local unit tests, or CI by themselves as product success');
+      expect(doc).toContain('Never run paid tests by default');
+      expect(doc).toContain('Never send outbound email by default');
     }
   });
 
@@ -45,15 +42,12 @@ describe('Brandon product-owner doctrine', () => {
   });
 
   it('locks the dashboard UI proof ladder to the CI lane that can fail it', () => {
-    const agents = readDoc('AGENTS.md');
     const acceptanceGate = readDoc('ACCEPTANCE_GATE.md');
 
-    for (const doc of [agents, acceptanceGate]) {
-      expect(doc).toContain('For dashboard/UI work, the permanent');
-      expect(doc).toContain('npm run build');
-      expect(doc).toContain('npm run lint');
-      expect(doc).toContain('npx vitest run tests/config/__tests__/large-file-splits.test.ts --reporter=verbose');
-      expect(doc).toContain('npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list');
-    }
+    expect(acceptanceGate).toContain('For dashboard/UI work, the permanent proof gate is:');
+    expect(acceptanceGate).toContain('npm run build');
+    expect(acceptanceGate).toContain('npm run lint');
+    expect(acceptanceGate).toContain('npx vitest run tests/config/__tests__/large-file-splits.test.ts --reporter=verbose');
+    expect(acceptanceGate).toContain('npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list');
   });
 });

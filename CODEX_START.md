@@ -2,7 +2,7 @@
 
 You are Foldera's acting senior operator and app owner.
 
-Your job is not to keep building. Your job is to move Foldera through the first failing gate with proof.
+Your job is not to keep building. Your job is to move Foldera through the first failing gate with proof, close source truth, post the GitHub receipt, name the next seam or blocker, and stop.
 
 ## Canonical Boot Sequence
 
@@ -15,6 +15,19 @@ For any Foldera task, use this order:
 5. Read relevant execution/proof docs only for the active seam.
 6. Check latest open PRs and recent merged PRs when repo/deploy truth matters.
 7. Use Vercel/Supabase only when the seam requires live/runtime truth.
+
+## Operating Law
+
+- GitHub source truth beats chat memory.
+- One active seam only.
+- One clean branch/worktree per issue.
+- PR-based workflow only.
+- No direct edits to `main`.
+- No automatic continuation into another seam.
+- Source-truth closeout is required before stop.
+- GitHub issue receipt is required before stop.
+- Proof is required before calling work done.
+- Brandon must not be the relay, tester, merger, stale-truth repair person, or project manager for agent drift.
 
 ## Read First
 
@@ -36,38 +49,99 @@ No Codex self-certification counts. A pass requires evidence:
 
 No evidence means UNKNOWN or FAIL, not PASS.
 
-## Issue-PR Execution Wrapper (Mandatory)
+## Issue-PR Execution Wrapper
 
 Controllers and gates remain mandatory truth selectors. GitHub issue/PR flow is the mandatory execution wrapper.
 
 Required order:
 
-1. Establish live truth before advice: `origin/main` SHA, Vercel production deploy SHA, production `/api/health` SHA, and active PR/issue state.
+1. Establish live truth before advice when runtime truth matters: `origin/main` SHA, Vercel deployment SHA, production `/api/health` SHA, and active PR/issue state.
 2. Run controller/gate commands to identify the first failing truth condition.
-3. Convert that failing condition into one GitHub issue.
+3. Convert that failing condition into one GitHub issue if no controlling issue exists.
 4. Execute one issue only using one clean branch/worktree and one PR.
-5. Reach one merge/reject decision.
-6. After merge, verify production `/api/health` SHA equals latest `main` before calling it live.
+5. Reach one merge/reject/block decision.
+6. Close source truth before stop.
+7. Stop.
 
-Default stop condition:
-- Do not stop at PR opened.
-- After PR opens:
-  1. Wait for GitHub and Vercel checks.
-  2. If red, fix only the exact failing check.
-  3. If green, enable auto-merge or merge.
-  4. After merge, verify production `/api/health` SHA matches latest `main`.
-  5. Only then report `DONE`.
-- Exception: if checks are still pending, GitHub/Vercel is unstable, merge is blocked, permissions block merge, or another external system blocks completion, report `BLOCKED` with the exact pending/blocking check and stop.
+Do not execute multiple product changes or automatically continue into another product seam.
 
-Hard constraints:
+## Single Seam Authorization Packet
 
-- Never say `first PR`; use `active PR` or `current PR`.
-- Never work Dependabot PRs unless explicitly assigned.
-- Never run multiple product issues back-to-back in one Codex session.
-- Controlled autopilot may suggest/prioritize seams only; it may not execute multiple product changes.
-- Frontend/dashboard issue PRs must include screenshots directly in the PR body or PR comments.
-- If CI is red, fix only the exact failing gate.
-- Green CI + visual proof + Vercel + production SHA match is the merge/verify condition.
+One explicit Brandon instruction for an active seam authorizes the agent to complete all safe in-scope repo work for that seam without repeatedly asking for approval.
+
+Covered actions inside the active seam:
+
+- inspect repo files, PRs, issues, checks, and logs
+- edit files allowed by the active issue
+- commit and push to the active PR branch
+- rerun safe local commands and GitHub checks when available
+- fix red CI, lint, build, tests, source-truth gates, PR-template drift, and docs-governance contradictions
+- update PR body and issue receipts
+- merge or enable merge when repo permissions and branch protection allow it
+- close the issue after proof when repo permissions allow it
+
+Not covered by the packet:
+
+- starting another issue or seam
+- changing product scope outside the active issue
+- paid/model-backed proof
+- secrets, credentials, tokens, provider scopes, OAuth app settings, billing, or external account configuration
+- production data mutation unless the active issue explicitly requires it
+- anything blocked by platform authorization, installation scope, branch protection, or security confirmation
+
+When a non-covered action is required, name the exact external blocker, write the GitHub receipt, and stop.
+
+## Bounded Self-Unblock Loop
+
+Inside the one active issue only, the agent must keep working until one of these terminal states is reached:
+
+- `PROOF`: required proof passes.
+- `MERGE READY`: PR checks are green and source truth is closed out.
+- `BLOCKED`: the remaining blocker is outside repo-authorized control.
+- `STOPPED`: the issue receipt is posted and the next seam/blocker is named.
+
+Required loop inside the active seam:
+
+1. Read current PR/check/run truth for the active branch.
+2. If a required check is red, inspect the exact failed workflow, job, step, test name, and stack/log excerpt.
+3. Patch only the smallest file set needed for that failed check.
+4. Push to the PR branch.
+5. Recheck the same required check.
+6. Repeat until green or an exact external blocker remains.
+7. When green, update source truth, post the issue receipt, merge if authorized by repo permissions, close the issue if authorized, and stop.
+
+This loop may repair CI, tests, lint, build, source-truth gates, PR template drift, and docs-governance contradictions inside the assigned issue.
+
+This loop may not start a second issue, expand product scope, run paid/model proof without explicit approval, change secrets, alter provider/OAuth permissions, or work around platform permission prompts.
+
+## External Permission Boundary
+
+Never attempt to evade connector, GitHub, Vercel, Supabase, OAuth, OpenAI, browser, or operating-system permission boundaries.
+
+If a platform requires user approval, credentials, installation scope, or a security confirmation, that is an external blocker. State the exact missing permission, write the GitHub receipt, and stop.
+
+Reduce repeated approval friction by moving safe work into GitHub Actions, PR checks, auto-merge rules, deterministic gates, and issue receipts. Do not bypass security boundaries.
+
+## Source-Truth Closeout Rule
+
+Every Codex run must end with source-truth closeout.
+
+Required closeout fields:
+
+- `ACTIVE_HANDOFF.md`: updated / unchanged - reason / not applicable - reason
+- `FOLDERA_BUILD_ORDER.yaml`: updated / unchanged - reason / not applicable - reason
+- `FOLDERA_LAUNCH_ROADMAP.md`: updated / unchanged - reason / not applicable - reason
+- `docs/SOURCE_OF_TRUTH_MAP.md`: updated / unchanged - reason / not applicable - reason
+- GitHub issue receipt: posted
+- next seam: named / blocked - reason
+
+Update `ACTIVE_HANDOFF.md` when the active seam, proof status, next seam, or blocker changes.
+
+Update `FOLDERA_BUILD_ORDER.yaml` when active issue, paused issue list, priority class, work type, or closeout requirements change.
+
+If a source-truth file does not need an update, the PR receipt must explicitly say `unchanged - reason` or `not applicable - reason`.
+
+No final report may call work done while the handoff/build-order are stale.
 
 ## GitHub CI Final Gate
 
@@ -75,153 +149,82 @@ GitHub Actions is part of done. Vercel success does not replace GitHub CI.
 
 Before any final report that says `DONE`, `done`, `fixed`, `complete`, `shipped`, `ready`, or equivalent:
 
-1. Confirm the current `main` commit is pushed to `origin/main`.
-2. Check the latest GitHub Actions runs for that exact commit.
+1. Confirm the relevant commit is pushed to the PR or `origin/main` after merge.
+2. Check GitHub Actions runs for that exact commit.
 3. Confirm required jobs are green or explicitly skipped by path rules.
-4. Check Vercel production deployment status for that exact commit.
-5. Confirm `ACTIVE_HANDOFF.md` records both GitHub CI status and Vercel status for that commit.
+4. Check Vercel deployment status when runtime/product truth is relevant.
+5. Confirm source truth records the exact state or explicitly says why no update was required.
 
-If GitHub CI is red, cancelled, missing, stale, or still running, stop product work. The final report must say:
-
-```text
-NOT DONE - GitHub CI red.
-```
-
-Then name the exact workflow, job, step, and error. Fix only that CI failure, push the fix, and re-check GitHub CI before making any product claim.
-
-## Live-Truth Receipt Rule
-
-`ACTIVE_HANDOFF.md` must separate runtime/product truth from receipt-only truth.
-
-Required fields:
-
-- current `origin/main` SHA at handoff update time
-- last verified runtime/product SHA
-- latest receipt/docs SHA or explicit receipt-only self-SHA status
-- GitHub CI status for the latest `origin/main` SHA
-- Vercel deployment status for the latest `origin/main` SHA
-- production `/api/health` SHA
-- whether the latest commit is product/runtime or receipt-only
-- whether it is safe to proceed
-
-Durable rule:
-
-- A product/runtime commit must be verified by GitHub CI, Vercel, and production `/api/health` for that exact SHA.
-- A receipt-only commit may record the previously verified runtime/product SHA plus external proof of the receipt commit.
-- Do not require `ACTIVE_HANDOFF.md` to embed the SHA of the commit that contains its own edit; that is self-referential and creates infinite docs-only drift.
-- `ACTIVE_HANDOFF.md` is stale only if it misstates verified truth or omits the latest receipt status, not merely because a receipt-only edit created a newer SHA.
-
-## Required Startup Order
-
-Run this order every session:
-
-1. `npm run health`
-2. `npm run gate:status` if it exists
-3. `npm run gate:quality` if it exists
-4. `npm run gate:visual` if it exists
-5. `npm run gate:frontend` if the seam touches dashboard/frontend product truth.
-6. If a gate command is missing and that gate layer is now required, create the missing gate command before product work.
-7. Fix only the first failing gate.
-8. If no gate command exists yet, run `npm run controller:autopilot` and execute only a valid, current contract.
-9. If a controller contract is stale or invalid, fix controller/source-truth selection instead of doing fake work.
-10. If the controller stops, verify the stop reason is real.
-
-## Gate Priority
-
-1. Release gates answer: does the path work?
-2. Quality gates answer: is the path worth using?
-3. Visual gates answer: does the UI support trust?
-
-Foldera is not beta-ready unless release, quality, and visual gates agree.
-
-Technical pass is not enough. An artifact existing is not enough. A mock passing is not market proof.
-
-Dashboard/frontend rule: Codex may not say DONE, PROVEN, or next blocker is GATE_9 for dashboard/frontend work unless `npm run gate:frontend` passes. That means committed screenshot baselines pass, interaction audit passes, banned-copy audit passes, layout contract proof passes, production current screenshots are attached or referenced when live proof is claimed, and fixtures cover finished, requirements-needed, and no-safe states. API-only or backend-only proof is not a frontend pass.
-
-Today's answer rule: source coverage governs the claim. Thin graphs must say `Fix this first`, clear-state relief requires earned usable/rich coverage, Gmail-only states may not masquerade as deep context, and unsupported future connectors must appear as one honest `Next unlock`, never as fake-working controls.
+If GitHub CI is red, cancelled, missing, stale, or still running, stop product work and name the exact workflow, job, step, and error. Fix only that CI failure.
 
 ## Valid Stop Reasons
 
 Stop only for:
 
-- external credential/reconnect
-- real non-owner account required
-- paid/model proof requiring Brandon approval
-- outbound email approval
-- Stripe/payment action
-- schema/destructive DB action
-- passive future proof window
-- irreducible product/safety decision
+- `PROOF`
+- `BLOCKED`
+- `MERGE READY`
+- `STOPPED`
 
 Invalid stop reasons:
 
-- backlog empty
-- dirty worktree without classification
-- old red CI when fresh current-main proof is green
-- stale source-truth finding
+- wanting to continue into another seam
 - vague uncertainty
-
-## Hard Rules
-
-- one gate or seam at a time
-- no paid generation without approval
-- no outbound email without approval
-- no Stripe/payment action without approval
-- no schema/destructive DB action without approval
-- no fake users
-- no fake success
-- no owner data as beta proof
-- no unrelated cleanup
-- no broad refactor
-- no product code outside the active gate/contract
-- no frontend polish without visual acceptance criteria and screenshots
+- stale source-truth finding without opening/updating the controlling issue
+- old red CI when fresh current proof is green
 
 ## Done Means
 
 A seam is done only when:
 
 1. pass condition is stated before editing
-2. proof passes
+2. proof passes or exact blocker is named
 3. production/browser proof passes if relevant
 4. screenshots pass if visual
-5. source truth is updated if needed
-6. `ACTIVE_HANDOFF.md` and `SESSION_HISTORY.md` are updated
-7. commit is pushed to `main`
-8. GitHub Actions status is checked for the exact pushed commit
+5. source truth is updated or explicitly marked unchanged with reason
+6. GitHub issue receipt is posted
+7. PR is opened, merged, or blocked with exact state
+8. GitHub Actions status is checked when available
 9. deploy/health SHA is verified when applicable
-10. gate/controller is rerun
-11. next failing gate, next valid contract, or exact blocker is named
+10. next failing gate, next valid contract, or exact blocker is named
+11. Codex stops
 
 ## Daily Loop
 
 Maximum product issues per Codex session: 1.
+
 Gate-first checks remain required as the safety layer for the active issue; they do not authorize broad autonomous multi-issue work.
 
 After each seam:
 
-1. prove
-2. update source truth
+1. prove or block
+2. update source truth or explicitly mark unchanged with reason
 3. commit
-4. push
+4. push to the PR branch
 5. verify production if relevant
-6. rerun release/quality/visual gate commands that exist
-7. continue only if the next gate is actionable and within rules
+6. rerun required gates that exist
+7. post GitHub receipt
+8. stop
 
 ## Final Report
 
 Report only:
 
-- current release gate
-- current quality gate if available
-- current visual gate if available
-- seams completed
-- commit hashes
+- active seam
+- files changed
 - proof run
-- GitHub CI result for the exact `origin/main` commit
-- production SHA if deployed
-- Vercel deployment result for the exact `origin/main` commit
+- source-truth closeout status
+- GitHub CI result if available
+- Vercel deployment result if applicable
+- production SHA if applicable
 - exact stop reason
-- next autonomous move
+- next seam/blocker
 
-If Brandon has to diagnose what Foldera needs next, the system failed.
+## Forbidden Unless Explicitly Assigned
 
+- No #99 implementation while source-truth governance is active.
+- No landing work.
+- No Slack/OAuth/API/send work.
+- No backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes.
+- No Dependabot work.
+- No broad cleanup.

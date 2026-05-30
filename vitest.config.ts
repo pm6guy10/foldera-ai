@@ -1,6 +1,20 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
 
+const VITEST_ENV_DEFAULTS: Record<string, string> = {
+  FOLDERA_DRY_RUN: '',
+  ANTHROPIC_API_KEY: 'vitest-offline-stub-key-not-for-production',
+  ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000',
+  NEXTAUTH_SECRET: 'vitest-offline-nextauth-secret-not-for-production',
+  NEXT_PUBLIC_SUPABASE_URL: 'https://vitest.invalid',
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: 'vitest-anon-key-not-for-production',
+  SUPABASE_SERVICE_ROLE_KEY: 'vitest-service-role-key-not-for-production',
+};
+
+for (const [key, value] of Object.entries(VITEST_ENV_DEFAULTS)) {
+  process.env[key] ||= value;
+}
+
 export default defineConfig({
   test: {
     globals: true,
@@ -12,13 +26,14 @@ export default defineConfig({
      * - `FOLDERA_DRY_RUN` empty so tests do not inherit local fixture mode from `.env.local`.
      * - `ANTHROPIC_API_KEY` set so modules that throw when missing a key still load; **all** SDK
      *   traffic is satisfied by `test/stubs/anthropic-sdk-vitest.ts` unless a test file uses `vi.mock`.
+     * - `ENCRYPTION_KEY` set to a deterministic 32-byte hex test key so CI unit tests do not depend on
+     *   repository secrets existing for offline Vitest runs.
+     * - Supabase/NextAuth env values are deterministic offline placeholders so import-time env checks do
+     *   not depend on repository secrets during unit tests.
      * - Paid LLM: `lib/llm/paid-llm-gate.ts` treats `process.env.VITEST === 'true'` as allowed because the
      *   SDK is stubbed (no api.anthropic.com). Do not set `ALLOW_PAID_LLM` here.
      */
-    env: {
-      FOLDERA_DRY_RUN: '',
-      ANTHROPIC_API_KEY: 'vitest-offline-stub-key-not-for-production',
-    },
+    env: VITEST_ENV_DEFAULTS,
     include: ['**/__tests__/**/*.test.ts', '**/__tests__/**/*.test.tsx'],
     exclude: ['node_modules', '.next', 'dist', '**/.claude/**', '**/.clone/**'],
   },
@@ -30,4 +45,3 @@ export default defineConfig({
     },
   },
 });
-
