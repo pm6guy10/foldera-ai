@@ -124,6 +124,16 @@ function extractActiveHandoffIssue(raw: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
+function extractContractIssue(backlogId?: string): number | null {
+  const match = backlogId?.match(/^ISSUE_(\d+)_/);
+  return match ? Number(match[1]) : null;
+}
+
+function extractCompletedIssues(raw: string): number[] {
+  const matches = raw.matchAll(/^\s+- issue:\s*(\d+)\s*$/gm);
+  return Array.from(matches, (match) => Number(match[1]));
+}
+
 export function runContinuityGate(root: string): string[] {
   const failures: string[] = [];
 
@@ -174,10 +184,17 @@ export function runContinuityGate(root: string): string[] {
 
   const handoffIssue = extractActiveHandoffIssue(activeHandoff);
   const buildOrderIssue = extractYamlNumber(buildOrder, 'active_issue');
+  const completedIssues = extractCompletedIssues(buildOrder);
   if (handoffIssue === null) failures.push('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
   if (buildOrderIssue === null) failures.push('FOLDERA_BUILD_ORDER.yaml active_issue could not be parsed.');
   if (handoffIssue !== null && buildOrderIssue !== null && handoffIssue !== buildOrderIssue) {
     failures.push(`ACTIVE_HANDOFF.md active seam issue #${handoffIssue} must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
+  }
+  if (handoffIssue !== null && completedIssues.includes(handoffIssue)) {
+    failures.push(`ACTIVE_HANDOFF.md active seam issue #${handoffIssue} is listed as completed in FOLDERA_BUILD_ORDER.yaml and must be rolled forward or marked BLOCKED.`);
+  }
+  if (buildOrderIssue !== null && completedIssues.includes(buildOrderIssue)) {
+    failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue} is listed as completed and must be rolled forward or marked BLOCKED.`);
   }
 
   const sourceOfTruthOrder = extractYamlList(buildOrder, 'source_of_truth_order');
@@ -209,6 +226,19 @@ export function runContinuityGate(root: string): string[] {
   }
 
   const contract = JSON.parse(readRepoFile(root, '.foldera-contract.json')) as { active?: boolean; authority_status?: string; backlog_id?: string; superseded_by_issue?: number };
+  const contractIssue = extractContractIssue(contract.backlog_id);
+  if (contract.active !== true) failures.push('.foldera-contract.json must mark the current control contract active=true.');
+  if (contract.authority_status !== 'CURRENT_CONTROL') failures.push('.foldera-contract.json must use authority_status CURRENT_CONTROL for the active seam contract.');
+  if (contractIssue === null) failures.push('.foldera-contract.json backlog_id must start with ISSUE_<number>_.');
+  if (handoffIssue !== null && contractIssue !== null && contractIssue !== handoffIssue) {
+    failures.push(`.foldera-contract.json backlog issue #${contractIssue} must match ACTIVE_HANDOFF.md active seam issue #${handoffIssue}.`);
+  }
+  if (buildOrderIssue !== null && contractIssue !== null && contractIssue !== buildOrderIssue) {
+    failures.push(`.foldera-contract.json backlog issue #${contractIssue} must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
+  }
+  if (contractIssue !== null && completedIssues.includes(contractIssue)) {
+    failures.push(`.foldera-contract.json backlog issue #${contractIssue} is listed as completed in FOLDERA_BUILD_ORDER.yaml and must be rolled forward.`);
+  }
   if (contract.backlog_id?.startsWith('ISSUE_62') && contract.active !== false) failures.push('.foldera-contract.json points at old issue #62 but is not marked active=false.');
   if (contract.backlog_id?.startsWith('ISSUE_62') && contract.authority_status !== 'STALE_REMOVE_OR_ARCHIVE') failures.push('.foldera-contract.json points at old issue #62 but lacks STALE_REMOVE_OR_ARCHIVE status.');
   if (contract.backlog_id?.startsWith('ISSUE_62') && contract.superseded_by_issue !== 80) failures.push('.foldera-contract.json stale status must cite issue #80 as the cleanup authority.');
