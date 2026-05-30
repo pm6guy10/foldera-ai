@@ -24,6 +24,8 @@ const requiredFixtureFiles = [
   'FOLDERA_MASTER_AUDIT.md',
   '.foldera-contract.json',
   'docs/SOURCE_OF_TRUTH_MAP.md',
+  'dot-cursorrules.fixture',
+  'cursor-agent.fixture',
   '.github/pull_request_template.md',
   '.github/workflows/pr-sentinel.yml',
 ];
@@ -35,8 +37,10 @@ function createFixtureRoot(): string {
   tempRoots.push(root);
 
   for (const relativeFile of requiredFixtureFiles) {
-    const source = path.join(process.cwd(), relativeFile);
-    const destination = path.join(root, relativeFile);
+    const sourceFile = relativeFile === 'dot-cursorrules.fixture' ? '.cursorrules' : relativeFile === 'cursor-agent.fixture' ? '.cursor/rules/agent.mdc' : relativeFile;
+    const destinationFile = sourceFile;
+    const source = path.join(process.cwd(), sourceFile);
+    const destination = path.join(root, destinationFile);
     fs.mkdirSync(path.dirname(destination), { recursive: true });
     fs.copyFileSync(source, destination);
   }
