@@ -24,7 +24,7 @@ describe('documentation source-of-truth boundaries', () => {
     expect(operatingSystem).toContain('Safely self-prepare or self-recover.');
     expect(operatingSystem).toContain('Ask for one irreducible blocker');
     expect(codexStart).toContain("You are Foldera's acting senior operator");
-    expect(codexStart).toContain('one assigned seam');
+    expect(codexStart).toContain('One active seam only');
     expect(codexStart).toContain('move Foldera through the first failing gate with proof');
     for (const line of canonicalBootSequence) {
       expect(codexStart).toContain(line);
@@ -77,8 +77,9 @@ describe('documentation source-of-truth boundaries', () => {
     expect(agents).toContain('`CODEX_START.md` controls session boot order');
     expect(agents).toContain('`AGENTS.md` controls agent behavior and repo-specific execution rules');
     expect(agents).toContain('`ACCEPTANCE_GATE.md` controls product proof');
-    expect(agents).toContain('`CURRENT_STATE.md` controls current blockers and runtime truth');
+    expect(agents).toContain('`CURRENT_STATE.md` controls runtime blockers only when the active seam needs live/runtime truth');
     expect(agents).toContain('`SESSION_HISTORY.md` is receipt history only');
     expect(agents).toContain('Specs, audits, backlog, and historical docs are reference only');
   });
 });
+

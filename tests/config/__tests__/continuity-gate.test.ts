@@ -64,7 +64,7 @@ describe('continuity gate writeback enforcement', () => {
     const original = fs.readFileSync(handoffPath, 'utf8');
     fs.writeFileSync(
       handoffPath,
-      original.replace('- GitHub writeback before stop is mandatory.\n', ''),
+      original.replace('GitHub writeback before stop is mandatory.', 'GitHub writeback before stop is optional.'),
       'utf8',
     );
 
@@ -75,3 +75,4 @@ describe('continuity gate writeback enforcement', () => {
     );
   });
 });
+
