@@ -48,6 +48,10 @@ function createFixtureRoot(): string {
   return root;
 }
 
+function overwriteFile(root: string, relativeFile: string, body: string): void {
+  fs.writeFileSync(path.join(root, relativeFile), body, 'utf8');
+}
+
 afterEach(() => {
   while (tempRoots.length > 0) {
     const root = tempRoots.pop();
@@ -74,5 +78,46 @@ describe('continuity gate writeback enforcement', () => {
       'ACTIVE_HANDOFF.md is missing required GitHub writeback rule: GitHub writeback before stop is mandatory.',
     );
   });
-});
 
+  it('fails when a completed issue remains active in handoff, build order, and contract', () => {
+    const fixtureRoot = createFixtureRoot();
+    const handoff = fs.readFileSync(path.join(fixtureRoot, 'ACTIVE_HANDOFF.md'), 'utf8');
+    const buildOrder = fs.readFileSync(path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml'), 'utf8');
+    const contract = JSON.parse(fs.readFileSync(path.join(fixtureRoot, '.foldera-contract.json'), 'utf8')) as { backlog_id: string };
+
+    overwriteFile(
+      fixtureRoot,
+      'ACTIVE_HANDOFF.md',
+      handoff.replace('Active implementation seam is issue #121 (landing page frontend contract + code-native LP repair).', 'Active implementation seam is issue #120 (public funnel route contract).'),
+    );
+    overwriteFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', buildOrder.replace('active_issue: 121', 'active_issue: 120'));
+    overwriteFile(
+      fixtureRoot,
+      '.foldera-contract.json',
+      `${JSON.stringify({ ...contract, backlog_id: 'ISSUE_120_PUBLIC_FUNNEL_ROUTE_CONTRACT' }, null, 2)}\n`,
+    );
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(failures).toContain(
+      'ACTIVE_HANDOFF.md active seam issue #120 is listed as completed in FOLDERA_BUILD_ORDER.yaml and must be rolled forward or marked BLOCKED.',
+    );
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue #120 is listed as completed and must be rolled forward or marked BLOCKED.');
+    expect(failures).toContain('.foldera-contract.json backlog issue #120 is listed as completed in FOLDERA_BUILD_ORDER.yaml and must be rolled forward.');
+  });
+
+  it('fails when the current contract issue drifts away from the active source-truth issue', () => {
+    const fixtureRoot = createFixtureRoot();
+    const contract = JSON.parse(fs.readFileSync(path.join(fixtureRoot, '.foldera-contract.json'), 'utf8')) as { backlog_id: string };
+    overwriteFile(
+      fixtureRoot,
+      '.foldera-contract.json',
+      `${JSON.stringify({ ...contract, backlog_id: 'ISSUE_120_PUBLIC_FUNNEL_ROUTE_CONTRACT' }, null, 2)}\n`,
+    );
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(failures).toContain('.foldera-contract.json backlog issue #120 must match ACTIVE_HANDOFF.md active seam issue #121.');
+    expect(failures).toContain('.foldera-contract.json backlog issue #120 must match FOLDERA_BUILD_ORDER.yaml active_issue #121.');
+  });
+});
