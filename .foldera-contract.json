@@ -1,19 +1,16 @@
 {
-  "authority_status": "STALE_REMOVE_OR_ARCHIVE",
-  "active": false,
-  "superseded_by_issue": 80,
-  "inactive_reason": "Stale generated contract from issue #62. It is retained only as reference until controller-autopilot regenerates a current contract.",
-  "backlog_id": "ISSUE_62_HOMEPAGE_IMAGE_SWAP",
-  "base_commit": "5898426c561261523c29470ae24b8d869b1d6933",
-  "money_loop_rung": "homepage_image_swap_public_landing",
-  "user_system_path": "Public homepage image swap: use the supplied homepage PNGs as the actual visual layer, keep only the homepage surface in scope, overlay the two real CTA hotspots, and do not touch backend, dashboard, auth, connectors, or live sends.",
+  "authority_status": "CURRENT_CONTROL",
+  "active": true,
+  "backlog_id": "ISSUE_120_PUBLIC_FUNNEL_ROUTE_CONTRACT",
+  "base_commit": "2292181e0e81c505256637272d0e612cd10440a2",
+  "money_loop_rung": "public_funnel_route_contract",
+  "user_system_path": "Prove and fix the public funnel route contract before visual landing polish: route map, CTA behavior, signup/try/demo/start/login/dashboard boundaries, and regression gate.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_HANDOFF.md",
-    ".github/workflows/production-e2e.yml",
-    "components/foldera/LandingPage.tsx",
-    "tests/e2e/public-routes.spec.ts",
-    "public/foldera-homepage-final*.png"
+    "FOLDERA_BUILD_ORDER.yaml",
+    "next.config.mjs",
+    "tests/e2e/public-routes.spec.ts"
   ],
   "forbidden_file_patterns": [
     "app/dashboard/**",
@@ -24,19 +21,24 @@
     "lib/email/**",
     "lib/briefing/scorer.ts",
     "lib/briefing/conviction-engine.ts",
-    "supabase/migrations/**"
+    "supabase/migrations/**",
+    "components/foldera/LandingPage.tsx",
+    "public/landing/**"
   ],
-  "allowed_files_raw": "Homepage image layer + contract file + production E2E workflow allowed; public PNG assets allowed.",
-  "forbidden_files_raw": "No backend, dashboard, auth, connectors, billing, schema, inbox/task-list, or live-send changes.",
-  "required_local_proof": "npm run health; npm run lint; npm run build; npm run gate:frontend",
-  "required_browser_proof": "Desktop and mobile screenshots proving the homepage image swap and CTA hotspots",
-  "acceptance_condition": "The public homepage renders from the supplied PNGs as the actual visual target, the two CTAs remain clickable, and no backend/dashboard/auth/connectors behavior is changed.",
-  "stop_condition": "Stop once one PR is opened for issue #62 with homepage image-swap proof and screenshots.",
+  "allowed_files_raw": "Source-truth closeout files, Next route redirects, and public-routes regression gate only.",
+  "forbidden_files_raw": "No landing redesign, dashboard feature work, backend, auth rewrite, Slack/OAuth/API/send, Stripe, Supabase/schema, scoring, conviction, or public asset changes.",
+  "required_local_proof": "npm run gate:continuity; npm run lint; npm run build; npx playwright test tests/e2e/public-routes.spec.ts --reporter=list",
+  "required_browser_proof": "Public route map plus Playwright proof that anonymous CTAs resolve to /start, /demo remains public, and /dashboard redirects to /login.",
+  "acceptance_condition": "Anonymous public funnel CTAs do not dump users into /dashboard, /signup and /try resolve to /start, /demo remains public, and dashboard stays auth-guarded.",
+  "stop_condition": "Stop once one issue #120 PR is opened with route map, regression gate, proof, source-truth closeout, and GitHub receipt.",
   "is_user_facing": true,
-  "browser_proof_command": "npm run start -- --port 3000",
+  "browser_proof_command": "NEXTAUTH_SECRET=issue-120-local-secret npx playwright test tests/e2e/public-routes.spec.ts --reporter=list",
   "anti_regression_checks": [
-    "no backend/dashboard/auth/connectors touched",
-    "CTA hotspots remain clickable"
+    "landing CTA hrefs stay /start for anonymous users",
+    "/signup redirects to /start",
+    "/try redirects to /start",
+    "/demo remains public",
+    "/dashboard redirects anonymous users to /login with callbackUrl"
   ],
-  "next_command": "Open one PR for issue #62 homepage-only scope and stop."
+  "next_command": "Open one PR for issue #120 public funnel route contract and stop."
 }

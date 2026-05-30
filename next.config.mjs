@@ -30,6 +30,16 @@ const nextConfig = {
         permanent: false,
       },
       {
+        source: '/signup',
+        destination: '/start',
+        permanent: false,
+      },
+      {
+        source: '/signup/:path*',
+        destination: '/start',
+        permanent: false,
+      },
+      {
         source: '/api/try/analyze',
         destination: '/status',
         permanent: false,
