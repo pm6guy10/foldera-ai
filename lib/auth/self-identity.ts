@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/db/client';
+import { getAuthAdminUserCached } from '@/lib/auth/admin-user-cache';
 
 export interface SelfIdentity {
   selfEmails: Set<string>;
@@ -11,8 +12,7 @@ export async function resolveSelfIdentity(userId: string): Promise<SelfIdentity>
   const selfNameTokens: string[] = [];
 
   try {
-    const { data: authUserData } = await supabase.auth.admin.getUserById(userId);
-    const authUser = authUserData?.user;
+    const authUser = await getAuthAdminUserCached(userId);
     if (authUser?.email) selfEmails.add(authUser.email.toLowerCase());
 
     for (const identity of authUser?.identities ?? []) {
