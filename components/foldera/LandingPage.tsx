@@ -83,33 +83,37 @@ const semanticSections = [
 function PosterPanel({ slide, index }: { slide: StorySlide; index: number }) {
   return (
     <section className="relative w-full" data-testid={`landing-slide-${index + 1}`}>
-      <div className="relative">
-        <div className="pointer-events-none absolute -inset-x-3 inset-y-8 -z-10 rounded-[34px] bg-[radial-gradient(circle_at_50%_20%,rgba(109,40,217,0.12),transparent_55%),radial-gradient(circle_at_50%_80%,rgba(6,182,212,0.10),transparent_60%)] blur-sm" aria-hidden="true" />
+      <div className="relative w-full bg-black" data-testid="landing-slide-frame">
+        <div className="relative w-full bg-black" data-testid="landing-slide-aspect">
+          <Image
+            src={slide.src}
+            alt={slide.alt}
+            width={slide.width}
+            height={slide.height}
+            priority={Boolean(slide.eager)}
+            loading={slide.eager ? 'eager' : 'lazy'}
+            quality={95}
+            sizes="(max-width: 767px) 100vw, 520px"
+            className="block h-auto w-full select-none"
+          />
 
-        <div
-          className="relative overflow-hidden bg-black md:rounded-[18px] md:border md:border-white/10 md:shadow-[0_26px_90px_rgba(0,0,0,0.65)]"
-          data-testid="landing-slide-frame"
-        >
-          <div className="relative w-full bg-black" data-testid="landing-slide-aspect">
-            <Image
-              src={slide.src}
-              alt={slide.alt}
-              width={slide.width}
-              height={slide.height}
-              priority={Boolean(slide.eager)}
-              loading={slide.eager ? 'eager' : 'lazy'}
-              quality={95}
-              sizes="(max-width: 767px) 100vw, 520px"
-              className="block h-auto w-full select-none"
-            />
-
-            {slide.cta ? (
-              <>
-                <a
-                  href="/start"
-                  aria-label="Join the pilot"
-                  data-testid={`landing-cta-${index + 1}`}
-                  className="absolute z-20 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+          {slide.cta ? (
+            <>
+              <a
+                href="/start"
+                aria-label="Join the pilot"
+                data-testid={`landing-cta-${index + 1}`}
+                className="absolute z-20 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                style={{
+                  left: `${slide.cta.left}%`,
+                  top: `${slide.cta.top}%`,
+                  width: `${slide.cta.width}%`,
+                  height: `${slide.cta.height}%`,
+                }}
+              />
+              {debugHitboxes ? (
+                <div
+                  className="pointer-events-none absolute z-20 rounded-xl border-2 border-fuchsia-500 bg-fuchsia-500/15"
                   style={{
                     left: `${slide.cta.left}%`,
                     top: `${slide.cta.top}%`,
@@ -117,28 +121,13 @@ function PosterPanel({ slide, index }: { slide: StorySlide; index: number }) {
                     height: `${slide.cta.height}%`,
                   }}
                 />
-                {debugHitboxes ? (
-                  <div
-                    className="pointer-events-none absolute z-20 rounded-xl border-2 border-fuchsia-500 bg-fuchsia-500/15"
-                    style={{
-                      left: `${slide.cta.left}%`,
-                      top: `${slide.cta.top}%`,
-                      width: `${slide.cta.width}%`,
-                      height: `${slide.cta.height}%`,
-                    }}
-                  />
-                ) : null}
-              </>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="mt-3 flex items-center justify-center md:mt-5" aria-hidden="true">
-          <div className="h-px w-full bg-gradient-to-r from-transparent via-white/5 to-transparent md:via-white/10" />
+              ) : null}
+            </>
+          ) : null}
         </div>
 
         {debugHitboxes ? (
-          <div className="mt-2 text-center text-[11px] text-slate-500" aria-hidden="true">
+          <div className="absolute bottom-2 left-2 z-30 rounded bg-black/70 px-2 py-1 text-[11px] text-slate-300" aria-hidden="true">
             Slide {index + 1} — {slide.width}×{slide.height}
           </div>
         ) : null}
@@ -177,12 +166,6 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
             <span className="text-[14px] font-semibold tracking-[-0.03em] text-white">Foldera</span>
           </a>
 
-          <nav className="hidden items-center gap-6 text-[12px] font-medium text-slate-300 sm:flex" aria-label="Landing navigation">
-            <a href="#how-it-works" className="transition-colors hover:text-white">
-              How it works
-            </a>
-          </nav>
-
           <a
             href="/start"
             data-testid="landing-header-cta"
@@ -200,8 +183,8 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
           <div className="absolute left-1/2 top-[30%] h-[700px] w-[700px] -translate-x-1/2 rounded-full bg-sky-500/8 blur-[170px]" />
         </div>
 
-        <div className="mx-auto w-full max-w-[430px] px-0 md:max-w-[520px]">
-          <div className="flex flex-col gap-8 pb-8 pt-6 sm:gap-10 sm:pb-10 md:gap-12 md:pb-12 md:pt-8">
+        <div className="mx-auto w-full max-w-[430px] bg-black md:max-w-[520px] md:shadow-[0_0_120px_rgba(8,47,73,0.28)]">
+          <div className="flex flex-col gap-0 pb-0 pt-0">
             {slides.map((slide, index) => (
               <PosterPanel key={slide.src} slide={slide} index={index} />
             ))}
@@ -216,16 +199,9 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
               <p>Pilot note: Slack/Teams execution, cross-app writeback, and automatic sending are not live in this pilot.</p>
             </section>
 
-            <footer className="px-4 pb-6 md:px-0" data-testid="landing-footer">
-              <div className="flex flex-col items-center justify-center gap-3 border-t border-white/10 pt-6 text-center text-[12px] leading-[1.6] text-slate-500">
-                <p>Foldera — Workday Presence Layer.</p>
-                <a
-                  href="/start"
-                  className="inline-flex min-h-[40px] items-center justify-center rounded-[12px] border border-cyan-300/25 px-4 text-[12px] font-semibold text-cyan-200 transition-colors hover:bg-cyan-300/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-                >
-                  Join the pilot
-                </a>
-              </div>
+            <footer className="sr-only" data-testid="landing-footer">
+              <p>Foldera — Workday Presence Layer.</p>
+              <a href="/start">Join the pilot</a>
             </footer>
           </div>
         </div>
