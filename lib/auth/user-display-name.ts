@@ -3,7 +3,7 @@
  * Used by the generator (structured context) so copy is never hardcoded to one account.
  */
 
-import { createServerClient } from '@/lib/db/client';
+import { getAuthAdminUserCached } from '@/lib/auth/admin-user-cache';
 
 export interface UserPromptNames {
   /** Full display name for "from X" lines; falls back to email heuristic or "the user". */
@@ -39,9 +39,7 @@ function capitalizeWord(w: string): string {
  */
 export async function resolveUserPromptNames(userId: string): Promise<UserPromptNames> {
   try {
-    const supabase = createServerClient();
-    const { data } = await supabase.auth.admin.getUserById(userId);
-    const user = data?.user;
+    const user = await getAuthAdminUserCached(userId);
     if (!user) {
       return { user_full_name: 'the user', user_first_name: '' };
     }
