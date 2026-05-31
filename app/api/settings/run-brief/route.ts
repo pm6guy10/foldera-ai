@@ -124,8 +124,12 @@ function createQueryBudgetRecorder(): QueryBudgetRecorder {
   };
 }
 
-function isReusablePendingApproval(row: RunBriefActionFactsRow): row is PendingApprovalReuseRow {
+function isReusablePendingApproval(
+  row: RunBriefActionFactsRow,
+  staleCutoffIso: string,
+): row is PendingApprovalReuseRow {
   if (typeof row.generated_at !== 'string' || row.generated_at.trim().length === 0) return false;
+  if (row.generated_at < staleCutoffIso) return false;
   if (row.status !== 'pending_approval') return false;
   if (row.action_type === 'do_nothing') return false;
   if (typeof row.confidence !== 'number' || row.confidence < CONFIDENCE_PERSIST_THRESHOLD) return false;
@@ -169,7 +173,6 @@ async function fetchRunBriefActionFacts(
       .from('tkg_actions')
       .select(ACTION_RUN_BRIEF_FACTS_SELECT)
       .eq('user_id', userId)
-      .gte('generated_at', staleCutoffIso)
       .order('generated_at', { ascending: false })
       .limit(RUN_BRIEF_ACTION_FACTS_LIMIT);
 
@@ -181,7 +184,7 @@ async function fetchRunBriefActionFacts(
     const rows = (data ?? []) as RunBriefActionFactsRow[];
     return {
       latestAction: latestActionMetadataFromRows(rows),
-      pendingApproval: rows.find(isReusablePendingApproval) ?? null,
+      pendingApproval: rows.find((row) => isReusablePendingApproval(row, staleCutoffIso)) ?? null,
     };
   } catch (error: unknown) {
     console.warn(
