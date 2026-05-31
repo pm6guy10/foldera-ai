@@ -10,6 +10,8 @@ import {
 export const ACTION_DETAIL_SELECT =
   'id, action_type, directive_text, reason, confidence, evidence, status, generated_at, approved_at, executed_at, execution_result, artifact';
 export const ACTION_RANKING_SELECT = 'id, confidence, generated_at, status, brief_origin';
+export const ACTION_RUN_BRIEF_FACTS_SELECT =
+  'id, generated_at, status, action_type, confidence, execution_result';
 export const ACTION_SUMMARY_SELECT =
   'id, status, action_type, confidence, generated_at, approved_at, executed_at, directive_text, reason, skip_reason, outcome_closed, artifact_type, artifact_title, brief_origin, artifact_preview, discrepancy_claim, discrepancy_contradiction, discrepancy_risk, discrepancy_evidence, discrepancy_next_action, discrepancy_why_now, discrepancy_source_refs, discrepancy_confidence, is_no_send, no_send_reason, generation_outcome, outcome_type';
 export const ACTION_HISTORY_SELECT =
