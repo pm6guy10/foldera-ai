@@ -19,13 +19,14 @@ For any Foldera task, use this order:
 
 - Issue #113 source-truth closeout enforcement is complete; PR #114 merged at `2292181e0e81c505256637272d0e612cd10440a2`.
 - Issue #120 public-funnel route contract is complete; PR #122 merged at `7784505f42f3ee16713a36d619f4ea0ceaa640fd` and issue #120 is closed/completed.
-- Issue #121 is the active landing-page frontend contract + code-native LP repair seam.
+- Issue #121 is active in PR #125 on branch `issue-121-code-native-landing`; it is still open and owns the landing-page frontend contract + code-native LP repair seam.
+- Issue #126 is a narrow urgent Supabase egress burn-down branch based from `issue-121-code-native-landing` because PR #125 is still open.
 - Issue #99 remains paused until issue #121 is proven and merged.
 - Issue #84 and PR #95 remain paused.
 - Issue #48 remains the product contract.
 - Issue #77 still gates any real Slack implementation decision.
 
-Active implementation seam is issue #121 (landing page frontend contract + code-native LP repair).
+Active implementation seam remains issue #121 until PR #125 merges. Issue #126 is an emergency egress-only side seam and must not touch landing/product/schema/Slack/Stripe/auth rewrite.
 
 ## Product doctrine
 
@@ -55,23 +56,32 @@ Issue #48 remains the product contract.
 - Repo files + GitHub issues are source of truth over chat memory.
 - Brandon is not the messenger between ChatGPT and Codex; update GitHub source of truth first.
 - PR #122 proved the public funnel route contract; issue #121 now owns landing-page contract and code-native LP repair.
+- Issue #126 egress burn-down branch reduces the `settings/run-brief` cheap dry-run `tkg_actions` path from two duplicate action reads to one combined action-facts read using `ACTION_RUN_BRIEF_FACTS_SELECT`.
+- Issue #126 adds a `query_budget` JSON receipt for `settings/run-brief` showing table, selected columns, row limit, call count, and the no-read guard for `tkg_signals.content`, `tkg_goals`, and auth-admin lookups on that route.
+- Issue #126 regression coverage lives in `app/api/settings/run-brief/__tests__/route.test.ts` and proves the cheap dry-run path performs exactly one `tkg_actions` select for the same user/run.
 
 ## Forbidden unless explicitly assigned
 
 - No #99 implementation.
 - No Slack work.
-- No backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes.
-- No broad cleanup outside the issue #121 landing-page frontend contract seam.
+- No backend/auth rewrite/schema/Stripe/dashboard/scoring/conviction product behavior changes.
+- No landing-page changes inside issue #126.
+- No Supabase downgrade inside issue #126.
+- No broad cleanup outside the assigned seam.
 - No direct edits to `main` outside explicit handoff/source-truth maintenance.
 
 ## Next exact move
 
-Run issue #121 only:
+For issue #126 PR review:
 
-1. Read issue #121 and issue #48.
-2. Create `docs/LANDING_PAGE_CONTRACT.md`.
-3. Convert the current screenshot-based landing page into a code-native React/Tailwind landing page while preserving the dark premium visual direction.
-4. Keep `/start` as the Join Pilot target.
-5. Add or update proof gates for landing load, `/start`, header/hero/final CTA clicks, mobile/desktop screenshots, and no horizontal overflow.
-6. Run `npm run gate:continuity`, `npm run lint`, `npm run build`, and focused landing/public route proof.
-7. Open one PR and write the terminal GitHub receipt before stop.
+1. Confirm PR #125 is still open; #126 must target `issue-121-code-native-landing` while that remains true.
+2. Review only the egress burn-down diff.
+3. Run `npm run lint`.
+4. Run `npm run build`.
+5. Run `npx vitest run app/api/settings/run-brief/__tests__/route.test.ts --reporter=verbose`.
+6. Confirm no landing page, Slack, Stripe, auth rewrite, dashboard product behavior, or schema changes are present.
+7. Do not downgrade Supabase until Supabase dashboard confirms projected monthly API/database egress is below 5 GB.
+
+## Stop condition
+
+Issue #126 stops when one PR is open with duplicate-read reduction proof, query-budget receipt proof, no product drift, and no Supabase downgrade attempted.
