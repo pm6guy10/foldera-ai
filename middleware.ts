@@ -52,6 +52,19 @@ function forwardHeadersWithRequestId(request: NextRequest, requestId: string): H
   return h;
 }
 
+function isLocalHostname(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0';
+}
+
+function shouldBlockLocalRunBriefGeneration(request: NextRequest): boolean {
+  if (request.nextUrl.pathname !== '/api/settings/run-brief') return false;
+  if (!isLocalHostname(request.nextUrl.hostname)) return false;
+  if (process.env.FOLDERA_ALLOW_LOCAL_PROD_GENERATION === 'true') return false;
+  if (request.nextUrl.searchParams.get('dry_run') === 'true') return false;
+  if (request.nextUrl.searchParams.get('transport_diagnostic') === 'true') return false;
+  return true;
+}
+
 export async function middleware(request: NextRequest) {
   const requestId = resolveRequestIdForRequest(request.headers.get(REQUEST_ID_HEADER));
   const forwarded = forwardHeadersWithRequestId(request, requestId);
@@ -59,6 +72,26 @@ export async function middleware(request: NextRequest) {
     res.headers.set(REQUEST_ID_HEADER, requestId);
     return res;
   };
+
+  if (shouldBlockLocalRunBriefGeneration(request)) {
+    return stamp(
+      NextResponse.json(
+        {
+          ok: false,
+          short_circuit: {
+            reason: 'local_run_brief_generation_blocked',
+            mode: 'egress_guard',
+          },
+          health: {
+            mode: 'egress_guard',
+            live_generation_executed: false,
+            live_sync_executed: false,
+          },
+        },
+        { status: 409 },
+      ),
+    );
+  }
 
   const { pathname, origin } = request.nextUrl;
   const secret = process.env.NEXTAUTH_SECRET;
@@ -116,6 +149,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/',
+    '/api/settings/run-brief',
     '/login',
     '/login/:path*',
     '/try',
