@@ -1,5 +1,6 @@
 import { createServerClient, type SupabaseClient } from '@/lib/db/client';
 import { listConnectedUserIds } from '@/lib/auth/user-tokens';
+import { getAuthAdminUserCached } from '@/lib/auth/admin-user-cache';
 
 interface UserSubscriptionRow {
   user_id: string;
@@ -74,16 +75,22 @@ export async function getVerifiedDailyBriefRecipientEmail(
   userId: string,
   supabaseArg?: SupabaseClient,
 ): Promise<string | null> {
-  const supabase = supabaseArg ?? createServerClient();
-  const { data, error } = await supabase.auth.admin.getUserById(userId);
+  if (supabaseArg) {
+    const { data, error } = await supabaseArg.auth.admin.getUserById(userId);
 
-  if (error) {
-    console.error('[daily-brief-users] auth lookup failed:', error.message);
-    return null;
+    if (error) {
+      console.error('[daily-brief-users] auth lookup failed:', error.message);
+      return null;
+    }
+
+    const email = data.user?.email?.trim().toLowerCase() ?? '';
+    const emailVerified = Boolean(data.user?.email_confirmed_at ?? data.user?.confirmed_at);
+    return email && emailVerified ? email : null;
   }
 
-  const email = data.user?.email?.trim().toLowerCase() ?? '';
-  const emailVerified = Boolean(data.user?.email_confirmed_at ?? data.user?.confirmed_at);
+  const user = await getAuthAdminUserCached(userId);
+  const email = user?.email?.trim().toLowerCase() ?? '';
+  const emailVerified = Boolean(user?.email_confirmed_at ?? user?.confirmed_at);
 
   if (!email || !emailVerified) {
     return null;
