@@ -6,6 +6,7 @@ import { resolveSettingsRunBriefPipelineDryRun } from '@/lib/config/prelaunch-sp
 import { CONFIDENCE_PERSIST_THRESHOLD } from '@/lib/config/constants';
 import { runBriefLifecycle } from '@/lib/cron/brief-service';
 import { extractArtifact, extractSentAt } from '@/lib/cron/daily-brief-generate';
+import { ACTION_RUN_BRIEF_FACTS_SELECT } from '@/lib/conviction/action-read-shapes';
 import { createServerClient } from '@/lib/db/client';
 import { getConnectorHealthSummary } from '@/lib/integrations/connector-health';
 import { rateLimit } from '@/lib/utils/rate-limit';
@@ -22,6 +23,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 const DRY_RUN_SERVER_COOLDOWN_MS = 5 * 60 * 1000;
 const DRY_RUN_PENDING_REUSE_WINDOW_HOURS = 18;
+const RUN_BRIEF_ACTION_FACTS_LIMIT = 20;
 
 interface RecentDryRunRow {
   created_at: string | null;
@@ -53,15 +55,78 @@ interface TransportDiagnosticPipelineRow {
   started_at: string | null;
 }
 
-interface PendingApprovalReuseRow {
-  action_type: string | null;
-  confidence: number | null;
+interface RunBriefActionFactsRow extends LatestActionMetadataRow {
   execution_result: unknown;
-  generated_at: string;
-  id: string;
 }
 
-function isReusablePendingApproval(row: PendingApprovalReuseRow): boolean {
+interface PendingApprovalReuseRow extends RunBriefActionFactsRow {
+  generated_at: string;
+}
+
+type QueryBudgetEntry = {
+  call_count: number;
+  row_limit: number | null;
+  selected_columns: string;
+  table: string;
+};
+
+type QueryBudgetRecorder = {
+  record: (input: Omit<QueryBudgetEntry, 'call_count'>) => void;
+  receipt: () => {
+    duplicate_read_guard: {
+      tkg_actions: 'one action-facts read covers reusable pending approval + latest action metadata for the same user/run';
+      tkg_goals: 'no run-brief route read';
+      tkg_signals: 'no run-brief route content read';
+      auth_admin_user_lookup: 'no run-brief route admin lookup';
+    };
+    egress_target: {
+      green_monthly_gb: 5;
+      safe_green_daily_mb: 125;
+      warning_daily_mb: '125-160';
+      fail_daily_mb: '>160';
+    };
+    route: 'settings/run-brief';
+    tables: QueryBudgetEntry[];
+  };
+};
+
+function createQueryBudgetRecorder(): QueryBudgetRecorder {
+  const entries = new Map<string, QueryBudgetEntry>();
+  return {
+    record(input) {
+      const key = `${input.table}:${input.selected_columns}:${input.row_limit ?? 'none'}`;
+      const existing = entries.get(key);
+      if (existing) {
+        existing.call_count += 1;
+        return;
+      }
+      entries.set(key, { ...input, call_count: 1 });
+    },
+    receipt() {
+      return {
+        route: 'settings/run-brief',
+        tables: [...entries.values()].sort((a, b) => a.table.localeCompare(b.table)),
+        duplicate_read_guard: {
+          tkg_actions:
+            'one action-facts read covers reusable pending approval + latest action metadata for the same user/run',
+          tkg_goals: 'no run-brief route read',
+          tkg_signals: 'no run-brief route content read',
+          auth_admin_user_lookup: 'no run-brief route admin lookup',
+        },
+        egress_target: {
+          green_monthly_gb: 5,
+          safe_green_daily_mb: 125,
+          warning_daily_mb: '125-160',
+          fail_daily_mb: '>160',
+        },
+      };
+    },
+  };
+}
+
+function isReusablePendingApproval(row: RunBriefActionFactsRow): row is PendingApprovalReuseRow {
+  if (typeof row.generated_at !== 'string' || row.generated_at.trim().length === 0) return false;
+  if (row.status !== 'pending_approval') return false;
   if (row.action_type === 'do_nothing') return false;
   if (typeof row.confidence !== 'number' || row.confidence < CONFIDENCE_PERSIST_THRESHOLD) return false;
   if (extractArtifact(row.execution_result) === null) return false;
@@ -69,43 +134,76 @@ function isReusablePendingApproval(row: PendingApprovalReuseRow): boolean {
   return true;
 }
 
-async function findReusablePendingApproval(userId: string): Promise<PendingApprovalReuseRow | null> {
+function latestActionMetadataFromRows(rows: RunBriefActionFactsRow[]): LatestActionMetadataRow | null {
+  const latest = rows[0];
+  if (!latest) return null;
+  return {
+    id: latest.id,
+    generated_at: latest.generated_at,
+    status: latest.status,
+    action_type: latest.action_type,
+    confidence: latest.confidence,
+  };
+}
+
+async function fetchRunBriefActionFacts(
+  userId: string,
+  queryBudget: QueryBudgetRecorder,
+): Promise<{
+  latestAction: LatestActionMetadataRow | null;
+  pendingApproval: PendingApprovalReuseRow | null;
+}> {
   try {
     const supabase = createServerClient();
     const staleCutoffIso = new Date(
       Date.now() - DRY_RUN_PENDING_REUSE_WINDOW_HOURS * 3_600_000,
     ).toISOString();
+
+    queryBudget.record({
+      table: 'tkg_actions',
+      selected_columns: ACTION_RUN_BRIEF_FACTS_SELECT,
+      row_limit: RUN_BRIEF_ACTION_FACTS_LIMIT,
+    });
+
     const { data, error } = await supabase
       .from('tkg_actions')
-      .select('id, generated_at, confidence, action_type, execution_result')
+      .select(ACTION_RUN_BRIEF_FACTS_SELECT)
       .eq('user_id', userId)
-      .eq('status', 'pending_approval')
-      .neq('action_type', 'do_nothing')
       .gte('generated_at', staleCutoffIso)
-      .order('confidence', { ascending: false })
       .order('generated_at', { ascending: false })
-      .limit(5);
+      .limit(RUN_BRIEF_ACTION_FACTS_LIMIT);
 
     if (error) {
-      console.warn('[settings/run-brief] pending approval reuse lookup failed:', error.message);
-      return null;
+      console.warn('[settings/run-brief] action facts lookup failed:', error.message);
+      return { latestAction: null, pendingApproval: null };
     }
 
-    const rows = (data ?? []) as PendingApprovalReuseRow[];
-    return rows.find(isReusablePendingApproval) ?? null;
+    const rows = (data ?? []) as RunBriefActionFactsRow[];
+    return {
+      latestAction: latestActionMetadataFromRows(rows),
+      pendingApproval: rows.find(isReusablePendingApproval) ?? null,
+    };
   } catch (error: unknown) {
     console.warn(
-      '[settings/run-brief] pending approval reuse lookup threw:',
+      '[settings/run-brief] action facts lookup threw:',
       error instanceof Error ? error.message : String(error),
     );
-    return null;
+    return { latestAction: null, pendingApproval: null };
   }
 }
 
-async function findRecentPipelineDryRun(userId: string): Promise<RecentDryRunRow | null> {
+async function findRecentPipelineDryRun(
+  userId: string,
+  queryBudget: QueryBudgetRecorder,
+): Promise<RecentDryRunRow | null> {
   try {
     const supabase = createServerClient();
     const cooldownFloorIso = new Date(Date.now() - DRY_RUN_SERVER_COOLDOWN_MS).toISOString();
+    queryBudget.record({
+      table: 'pipeline_runs',
+      selected_columns: 'id, created_at',
+      row_limit: 1,
+    });
     const { data, error } = await supabase
       .from('pipeline_runs')
       .select('id, created_at')
@@ -133,9 +231,17 @@ async function findRecentPipelineDryRun(userId: string): Promise<RecentDryRunRow
   }
 }
 
-async function findLatestPipelineRun(userId: string): Promise<LatestPipelineRunRow | null> {
+async function findLatestPipelineRun(
+  userId: string,
+  queryBudget: QueryBudgetRecorder,
+): Promise<LatestPipelineRunRow | null> {
   try {
     const supabase = createServerClient();
+    queryBudget.record({
+      table: 'pipeline_runs',
+      selected_columns: 'id, created_at, outcome, phase',
+      row_limit: 1,
+    });
     const { data, error } = await supabase
       .from('pipeline_runs')
       .select('id, created_at, outcome, phase')
@@ -153,32 +259,6 @@ async function findLatestPipelineRun(userId: string): Promise<LatestPipelineRunR
   } catch (error: unknown) {
     console.warn(
       '[settings/run-brief] latest pipeline run lookup threw:',
-      error instanceof Error ? error.message : String(error),
-    );
-    return null;
-  }
-}
-
-async function findLatestActionMetadata(userId: string): Promise<LatestActionMetadataRow | null> {
-  try {
-    const supabase = createServerClient();
-    const { data, error } = await supabase
-      .from('tkg_actions')
-      .select('id, generated_at, status, action_type, confidence')
-      .eq('user_id', userId)
-      .order('generated_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      console.warn('[settings/run-brief] latest action lookup failed:', error.message);
-      return null;
-    }
-
-    return (data as LatestActionMetadataRow | null) ?? null;
-  } catch (error: unknown) {
-    console.warn(
-      '[settings/run-brief] latest action lookup threw:',
       error instanceof Error ? error.message : String(error),
     );
     return null;
@@ -221,6 +301,7 @@ async function persistTransportDiagnosticReceipt(input: {
   paidLlmEffective: boolean;
   paidLlmRequested: boolean;
   pipelineDryRun: boolean;
+  queryBudget: QueryBudgetRecorder;
   requestUrl: URL;
   revision: ReturnType<typeof getDeployRevision>;
   userId: string;
@@ -253,6 +334,11 @@ async function persistTransportDiagnosticReceipt(input: {
     live_sync_executed: false,
   };
 
+  input.queryBudget.record({
+    table: 'pipeline_runs',
+    selected_columns: 'insert transport diagnostic receipt',
+    row_limit: 1,
+  });
   const { error: insertError } = await supabase.from('pipeline_runs').insert({
     id: receiptId,
     phase: 'user_run',
@@ -286,6 +372,11 @@ async function persistTransportDiagnosticReceipt(input: {
     };
   }
 
+  input.queryBudget.record({
+    table: 'pipeline_runs',
+    selected_columns: 'id, created_at, started_at, completed_at, outcome, invocation_source, raw_extras',
+    row_limit: 1,
+  });
   const { data, error: readError } = await supabase
     .from('pipeline_runs')
     .select('id, created_at, started_at, completed_at, outcome, invocation_source, raw_extras')
@@ -335,6 +426,7 @@ function buildCheapDryRunResponse(input: {
   paidLlmEffective: boolean;
   paidLlmRequested: boolean;
   pipelineDryRun: boolean;
+  queryBudget: QueryBudgetRecorder;
   transportDiagnostic?: TransportDiagnosticReceipt | null;
 }) {
   const diagnosticOk = input.transportDiagnostic
@@ -342,37 +434,41 @@ function buildCheapDryRunResponse(input: {
     : true;
   const mode = input.transportDiagnostic ? 'transport_diagnostic' : 'status_only';
 
-  return NextResponse.json({
-    ok: diagnosticOk,
-    spend_policy: {
-      pipeline_dry_run: input.pipelineDryRun,
-      paid_llm_requested: input.paidLlmRequested,
-      paid_llm_effective: input.paidLlmEffective,
+  return NextResponse.json(
+    {
+      ok: diagnosticOk,
+      spend_policy: {
+        pipeline_dry_run: input.pipelineDryRun,
+        paid_llm_requested: input.paidLlmRequested,
+        paid_llm_effective: input.paidLlmEffective,
+      },
+      short_circuit: {
+        reason: 'cheap_dry_run',
+        mode,
+      },
+      revision: getDeployRevision(),
+      health: {
+        mode: input.transportDiagnostic ? 'transport_diagnostic' : 'cheap_dry_run',
+        live_generation_executed: false,
+        live_sync_executed: false,
+      },
+      ...(input.transportDiagnostic ? { transport_diagnostic: input.transportDiagnostic } : {}),
+      connector_health: input.connectorHealth,
+      facts: input.facts,
+      query_budget: input.queryBudget.receipt(),
+      stages: {
+        daily_brief: { ...RUN_BRIEF_CHEAP_DRY_RUN_STAGE },
+      },
     },
-    short_circuit: {
-      reason: 'cheap_dry_run',
-      mode,
-    },
-    revision: getDeployRevision(),
-    health: {
-      mode: input.transportDiagnostic ? 'transport_diagnostic' : 'cheap_dry_run',
-      live_generation_executed: false,
-      live_sync_executed: false,
-    },
-    ...(input.transportDiagnostic
-      ? { transport_diagnostic: input.transportDiagnostic }
-      : {}),
-    connector_health: input.connectorHealth,
-    facts: input.facts,
-    stages: {
-      daily_brief: { ...RUN_BRIEF_CHEAP_DRY_RUN_STAGE },
-    },
-  }, { status: getRunBriefRouteStatus(diagnosticOk) });
+    { status: getRunBriefRouteStatus(diagnosticOk) },
+  );
 }
 
 export async function POST(request: Request) {
   const auth = await resolveUser(request);
   if (auth instanceof NextResponse) return auth;
+
+  const queryBudget = createQueryBudgetRecorder();
 
   try {
     const userId = auth.userId;
@@ -410,17 +506,16 @@ export async function POST(request: Request) {
             paidLlmRequested,
             paidLlmEffective,
             revision,
+            queryBudget,
           })
         : null;
-    const [reusablePendingApproval, recentPipelineDryRun, latestActionMetadata, latestPipelineRun] =
-      pipelineDryRun
-        ? await Promise.all([
-            findReusablePendingApproval(userId),
-            findRecentPipelineDryRun(userId),
-            findLatestActionMetadata(userId),
-            findLatestPipelineRun(userId),
-          ])
-        : [null, null, null, null];
+    const [actionFacts, recentPipelineDryRun, latestPipelineRun] = pipelineDryRun
+      ? await Promise.all([
+          fetchRunBriefActionFacts(userId, queryBudget),
+          findRecentPipelineDryRun(userId, queryBudget),
+          findLatestPipelineRun(userId, queryBudget),
+        ])
+      : [{ latestAction: null, pendingApproval: null }, null, null];
 
     if (pipelineDryRun) {
       return buildCheapDryRunResponse({
@@ -429,13 +524,14 @@ export async function POST(request: Request) {
         paidLlmRequested,
         paidLlmEffective,
         transportDiagnostic: transportDiagnosticReceipt,
+        queryBudget,
         facts: {
-          latest_action: latestActionMetadata,
+          latest_action: actionFacts.latestAction,
           latest_pipeline_run: latestPipelineRun,
-          pending_approval: reusablePendingApproval
+          pending_approval: actionFacts.pendingApproval
             ? {
-                id: reusablePendingApproval.id,
-                generated_at: reusablePendingApproval.generated_at,
+                id: actionFacts.pendingApproval.id,
+                generated_at: actionFacts.pendingApproval.generated_at,
               }
             : null,
           recent_dry_run: recentPipelineDryRun
@@ -449,25 +545,29 @@ export async function POST(request: Request) {
     }
 
     if (connectorHealth.generation_gate.level === 'block') {
-      return NextResponse.json({
-        ok: false,
-        spend_policy: {
-          pipeline_dry_run: pipelineDryRun,
-          paid_llm_requested: paidLlmRequested,
-          paid_llm_effective: paidLlmEffective,
+      return NextResponse.json(
+        {
+          ok: false,
+          spend_policy: {
+            pipeline_dry_run: pipelineDryRun,
+            paid_llm_requested: paidLlmRequested,
+            paid_llm_effective: paidLlmEffective,
+          },
+          short_circuit: {
+            reason: 'connector_health_blocked',
+            mode: 'live_generation_guard',
+          },
+          revision,
+          health: {
+            mode: 'connector_health_blocked',
+            live_generation_executed: false,
+            live_sync_executed: false,
+          },
+          connector_health: connectorHealth,
+          query_budget: queryBudget.receipt(),
         },
-        short_circuit: {
-          reason: 'connector_health_blocked',
-          mode: 'live_generation_guard',
-        },
-        revision,
-        health: {
-          mode: 'connector_health_blocked',
-          live_generation_executed: false,
-          live_sync_executed: false,
-        },
-        connector_health: connectorHealth,
-      }, { status: getRunBriefRouteStatus(false) });
+        { status: getRunBriefRouteStatus(false) },
+      );
     }
 
     // Ceiling defense is a nightly batch (all users). Running it here per-click
@@ -485,21 +585,25 @@ export async function POST(request: Request) {
 
     const ok = dailyBrief.ok;
 
-    return NextResponse.json({
-      ok,
-      spend_policy: {
-        pipeline_dry_run: pipelineDryRun,
-        paid_llm_requested: paidLlmRequested,
-        paid_llm_effective: paidLlmEffective,
-      },
-      connector_health: connectorHealth,
-      stages: {
-        daily_brief: {
-          ...dailyBrief,
-          manual_send_fallback_attempted: sendFallbackAttempted,
+    return NextResponse.json(
+      {
+        ok,
+        spend_policy: {
+          pipeline_dry_run: pipelineDryRun,
+          paid_llm_requested: paidLlmRequested,
+          paid_llm_effective: paidLlmEffective,
+        },
+        connector_health: connectorHealth,
+        query_budget: queryBudget.receipt(),
+        stages: {
+          daily_brief: {
+            ...dailyBrief,
+            manual_send_fallback_attempted: sendFallbackAttempted,
+          },
         },
       },
-    }, { status: getRunBriefRouteStatus(ok) });
+      { status: getRunBriefRouteStatus(ok) },
+    );
   } catch (error: unknown) {
     return apiErrorForRoute(error, 'settings/run-brief');
   }
