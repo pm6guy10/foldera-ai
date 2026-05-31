@@ -199,7 +199,12 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
             <span className="text-[14px] font-semibold tracking-[-0.03em] text-white">Foldera</span>
           </a>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 sm:gap-5">
+            <nav className="hidden items-center gap-6 text-[12px] font-medium text-slate-300 sm:flex" aria-label="Landing navigation">
+              <a href="#how-it-works" className="rounded-lg px-1 py-2 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+                How it works
+              </a>
+            </nav>
             <MobileMenu />
             <a
               href="/start"
