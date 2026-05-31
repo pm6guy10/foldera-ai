@@ -16,10 +16,10 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 120
-priority_class: PUBLIC_FUNNEL_ROUTE_CONTRACT
-work_type: FRONTEND_ROUTE_GATE
-why_this_first: Issue #120 must prove and fix public CTA/signup/demo routing before any visual landing polish.
+active_issue: 121
+priority_class: LANDING_PAGE_FRONTEND_CONTRACT
+work_type: FRONTEND_LANDING_HOTFIX
+why_this_first: Issue #120 public funnel route contract is complete; issue #121 now owns landing-page frontend contract and current landing hotfix proof before any #99 or broader product work.
 predecessor_issues:
   - 101
   - 94
@@ -27,6 +27,7 @@ predecessor_issues:
   - 102
   - 106
   - 113
+  - 120
 completed:
   - issue: 106
     pr: 107
@@ -35,13 +36,17 @@ completed:
   - issue: 113
     pr: 114
     merge_sha: 2292181e0e81c505256637272d0e612cd10440a2
-    result: Source-truth closeout enforcement merged; public funnel route contract is now active.
+    result: Source-truth closeout enforcement merged; public funnel route contract became active.
+  - issue: 120
+    pr: 122
+    merge_sha: 7784505f42f3ee16713a36d619f4ea0ceaa640fd
+    result: Public funnel route contract completed; /start is the public Join Pilot target for landing CTAs.
 paused:
   - issue: 99
-    reason: Planning spine remains paused until issue #120 public funnel route contract is proven and merged.
+    reason: Planning spine remains paused until issue #121 landing-page frontend contract and current LP hotfix are proven and merged.
   - issue: 84
     pr: 95
-    reason: Landing visual polish remains paused while issue #120 proves the public funnel route contract.
+    reason: Older landing polish reference remains paused/superseded by issue #121 current landing-page frontend contract seam.
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
