@@ -20,13 +20,13 @@ For any Foldera task, use this order:
 - Issue #113 source-truth closeout enforcement is complete; PR #114 merged at `2292181e0e81c505256637272d0e612cd10440a2`.
 - Issue #120 public-funnel route contract is complete; PR #122 merged at `7784505f42f3ee16713a36d619f4ea0ceaa640fd` and issue #120 is closed/completed.
 - Issue #121 is active in PR #125 on branch `issue-121-code-native-landing`; it is still open and owns the landing-page frontend contract + code-native LP repair seam.
-- Issue #126 is a narrow urgent Supabase egress burn-down branch based from `issue-121-code-native-landing` because PR #125 is still open.
+- Issue #126 Supabase egress burn-down was merged into the active issue #121 branch via PR #127.
 - Issue #99 remains paused until issue #121 is proven and merged.
 - Issue #84 and PR #95 remain paused.
 - Issue #48 remains the product contract.
 - Issue #77 still gates any real Slack implementation decision.
 
-Active implementation seam remains issue #121 until PR #125 merges. Issue #126 is an emergency egress-only side seam and must not touch landing/product/schema/Slack/Stripe/auth rewrite.
+Active implementation seam is issue #121 (landing page frontend contract + code-native LP repair). Issue #126 is complete inside the active PR chain and must not become the active seam.
 
 ## Product doctrine
 
@@ -55,33 +55,29 @@ Issue #48 remains the product contract.
 - `npm run gate:continuity` is the source-truth enforcement gate.
 - Repo files + GitHub issues are source of truth over chat memory.
 - Brandon is not the messenger between ChatGPT and Codex; update GitHub source of truth first.
-- PR #122 proved the public funnel route contract; issue #121 now owns landing-page contract and code-native LP repair.
-- Issue #126 egress burn-down branch reduces the `settings/run-brief` cheap dry-run `tkg_actions` path from two duplicate action reads to one combined action-facts read using `ACTION_RUN_BRIEF_FACTS_SELECT`.
-- Issue #126 adds a `query_budget` JSON receipt for `settings/run-brief` showing table, selected columns, row limit, call count, and the no-read guard for `tkg_signals.content`, `tkg_goals`, and auth-admin lookups on that route.
-- Issue #126 regression coverage lives in `app/api/settings/run-brief/__tests__/route.test.ts` and proves the cheap dry-run path performs exactly one `tkg_actions` select for the same user/run.
+- PR #122 proved the public funnel route contract; issue #121 owns landing-page contract and code-native LP repair.
+- PR #127 merged issue #126 egress burn-down into the issue #121 branch: duplicate `settings/run-brief` action reads are collapsed, query-budget receipts exist, auth admin lookups are cached, and localhost full run-brief generation is fail-closed unless explicitly allowed.
 
 ## Forbidden unless explicitly assigned
 
 - No #99 implementation.
 - No Slack work.
 - No backend/auth rewrite/schema/Stripe/dashboard/scoring/conviction product behavior changes.
-- No landing-page changes inside issue #126.
-- No Supabase downgrade inside issue #126.
+- No Supabase downgrade inside issue #121.
 - No broad cleanup outside the assigned seam.
 - No direct edits to `main` outside explicit handoff/source-truth maintenance.
 
 ## Next exact move
 
-For issue #126 PR review:
+For issue #121 / PR #125:
 
-1. Confirm PR #125 is still open; #126 must target `issue-121-code-native-landing` while that remains true.
-2. Review only the egress burn-down diff.
-3. Run `npm run lint`.
-4. Run `npm run build`.
-5. Run `npx vitest run app/api/settings/run-brief/__tests__/route.test.ts --reporter=verbose`.
-6. Confirm no landing page, Slack, Stripe, auth rewrite, dashboard product behavior, or schema changes are present.
-7. Do not downgrade Supabase until Supabase dashboard confirms projected monthly API/database egress is below 5 GB.
+1. Keep PR #125 draft until Vercel/checks are green and visual proof is acceptable.
+2. Fix continuity/build failures before visual polish.
+3. Confirm `/start` CTA routing still works.
+4. Confirm mobile and desktop landing screenshots look intentional.
+5. Do not merge PR #125 until the PR is no longer draft, Vercel is green, and the landing visual proof is accepted.
+6. Do not downgrade Supabase until live Supabase usage confirms projected API/database egress is below 5 GB/month.
 
 ## Stop condition
 
-Issue #126 stops when one PR is open with duplicate-read reduction proof, query-budget receipt proof, no product drift, and no Supabase downgrade attempted.
+Issue #121 stops when PR #125 has green proof, acceptable mobile/desktop landing visuals, safe `/start` routing, source-truth closeout, and a merge-ready GitHub receipt.
