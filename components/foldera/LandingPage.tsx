@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 type LandingPageProps = {
   isAuthenticated?: boolean;
 };
@@ -96,7 +98,7 @@ function SectionShell({
   eyebrow: string;
   title: string;
   body: string;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <section className="relative mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 lg:px-8 lg:py-20" data-testid={`landing-slide-${index}`}>
