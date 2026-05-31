@@ -80,9 +80,42 @@ const semanticSections = [
   },
 ];
 
+function sectionIdFor(index: number) {
+  if (index === 0) return 'top';
+  if (index === 2) return 'how-it-works';
+  if (index === 5) return 'join-pilot';
+  return undefined;
+}
+
+function MobileMenu() {
+  return (
+    <details className="relative sm:hidden">
+      <summary className="flex min-h-[38px] min-w-[38px] cursor-pointer list-none items-center justify-center rounded-[10px] border border-white/10 bg-white/[0.04] text-slate-100 transition-colors hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 [&::-webkit-details-marker]:hidden">
+        <span className="sr-only">Open landing navigation</span>
+        <span className="grid gap-1.5" aria-hidden="true">
+          <span className="block h-px w-4 bg-slate-100" />
+          <span className="block h-px w-4 bg-slate-100" />
+          <span className="block h-px w-4 bg-slate-100" />
+        </span>
+      </summary>
+      <div className="absolute right-0 top-12 z-50 grid min-w-[180px] overflow-hidden rounded-2xl border border-white/10 bg-black/95 p-2 text-sm font-semibold text-slate-200 shadow-[0_24px_80px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+        <a className="rounded-xl px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white" href="#top">
+          Top
+        </a>
+        <a className="rounded-xl px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white" href="#how-it-works">
+          How it works
+        </a>
+        <a className="rounded-xl px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white" href="/start">
+          Join pilot
+        </a>
+      </div>
+    </details>
+  );
+}
+
 function PosterPanel({ slide, index }: { slide: StorySlide; index: number }) {
   return (
-    <section className="relative w-full" data-testid={`landing-slide-${index + 1}`}>
+    <section id={sectionIdFor(index)} className="relative w-full scroll-mt-16" data-testid={`landing-slide-${index + 1}`}>
       <div className="relative w-full bg-black" data-testid="landing-slide-frame">
         <div className="relative w-full bg-black" data-testid="landing-slide-aspect">
           <Image
@@ -158,7 +191,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
         className="sticky top-0 z-50 border-b border-white/10 bg-black/75 backdrop-blur-xl"
         data-testid="landing-header"
       >
-        <div className="mx-auto flex h-14 w-full max-w-[1200px] items-center justify-between gap-4 px-4 sm:px-6">
+        <div className="mx-auto flex h-14 w-full max-w-[1200px] items-center justify-between gap-3 px-4 sm:px-6">
           <a href="/" className="flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-lg px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
             <span className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] border border-white/10 bg-white/[0.04] text-[13px] font-semibold">
               F
@@ -166,13 +199,16 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
             <span className="text-[14px] font-semibold tracking-[-0.03em] text-white">Foldera</span>
           </a>
 
-          <a
-            href="/start"
-            data-testid="landing-header-cta"
-            className="inline-flex min-h-[38px] items-center rounded-[10px] border border-cyan-300/25 bg-cyan-300 px-3 text-[12px] font-semibold text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.16)] transition-colors hover:bg-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-          >
-            Join pilot
-          </a>
+          <div className="flex items-center gap-2">
+            <MobileMenu />
+            <a
+              href="/start"
+              data-testid="landing-header-cta"
+              className="inline-flex min-h-[38px] items-center rounded-[10px] border border-cyan-300/25 bg-cyan-300 px-3 text-[12px] font-semibold text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.16)] transition-colors hover:bg-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+            >
+              Join pilot
+            </a>
+          </div>
         </div>
       </header>
 
@@ -188,16 +224,6 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isA
             {slides.map((slide, index) => (
               <PosterPanel key={slide.src} slide={slide} index={index} />
             ))}
-
-            <section id="how-it-works" className="sr-only">
-              <h2>How it works</h2>
-              <ol>
-                <li>Foldera checks connected sources.</li>
-                <li>When the signal is strong, it prepares the next move.</li>
-                <li>You approve, skip, or hold back safely.</li>
-              </ol>
-              <p>Pilot note: Slack/Teams execution, cross-app writeback, and automatic sending are not live in this pilot.</p>
-            </section>
 
             <footer className="sr-only" data-testid="landing-footer">
               <p>Foldera — Workday Presence Layer.</p>
