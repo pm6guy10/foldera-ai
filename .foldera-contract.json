@@ -11,6 +11,7 @@
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
     "scripts/source-truth-check.ts",
+    "tests/config/__tests__/source-truth-check.test.ts",
     "app/api/slack/test-mode/**",
     "app/slack/test-mode/**",
     "lib/slack-test-mode/**",
