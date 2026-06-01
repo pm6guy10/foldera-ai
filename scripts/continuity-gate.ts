@@ -2,9 +2,9 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const canonicalSequence = [
+const canonicalSequence: Array<string | string[]> = [
   '1. Read `ACTIVE_HANDOFF.md`.',
-  '2. Read `FOLDERA_LAUNCH_ROADMAP.md`.',
+  ['2. Read `FOLDERA_BUILD_ORDER.yaml`.', '2. Read `FOLDERA_LAUNCH_ROADMAP.md`.'],
   '3. Read the active issue named by `ACTIVE_HANDOFF.md`.',
   '4. Read issue #48 for product doctrine.',
   '5. Read relevant execution/proof docs only for the active seam.',
@@ -59,7 +59,7 @@ const requiredAgentGovernanceRules: Array<{ label: string; variants: string[] }>
 const directMainCommand = ['Push', 'directly', 'to', '`?main`?'].join(' ');
 
 const forbiddenAgentGovernancePatterns = [
-  new RegExp(`^\\s*-\\s*${directMainCommand}`, 'im'),
+  new RegExp(`^\s*-\s*${directMainCommand}`, 'im'),
   /^\s*-\s*Never create branches/im,
   /continue to the next highest-leverage seam/i,
   /then continue to the next/i,
@@ -139,6 +139,18 @@ export function runContinuityGate(root: string): string[] {
     }
     let lastIndex = -1;
     for (const line of canonicalSequence) {
+      if (Array.isArray(line)) {
+        const variantIndexes = line.map((variant) => body.indexOf(variant)).filter((index) => index !== -1);
+        if (variantIndexes.length === 0) {
+          failures.push(`${file} is missing boot sequence line: one of ${line.join(' OR ')}`);
+          continue;
+        }
+        const nextIndex = Math.min(...variantIndexes);
+        if (nextIndex < lastIndex) failures.push(`${file} has canonical boot sequence lines out of order.`);
+        lastIndex = nextIndex;
+        continue;
+      }
+
       const nextIndex = body.indexOf(line);
       if (nextIndex === -1) {
         failures.push(`${file} is missing boot sequence line: ${line}`);
@@ -162,7 +174,7 @@ export function runContinuityGate(root: string): string[] {
   const activeHandoff = readRepoFile(root, 'ACTIVE_HANDOFF.md');
   const activeSeamLines = activeHandoff.match(/^Active implementation seam is issue #\d+.*$/gm) ?? [];
   if (activeSeamLines.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam line; found ${activeSeamLines.length}.`);
-  if (!activeHandoff.includes('FOLDERA_LAUNCH_ROADMAP.md')) failures.push('ACTIVE_HANDOFF.md must reference FOLDERA_LAUNCH_ROADMAP.md.');
+  if (!activeHandoff.includes('FOLDERA_BUILD_ORDER.yaml')) failures.push('ACTIVE_HANDOFF.md must reference FOLDERA_BUILD_ORDER.yaml.');
   if (!activeHandoff.includes('Issue #48 remains the product contract.')) failures.push('ACTIVE_HANDOFF.md must reference issue #48 as the product contract.');
   for (const rule of requiredWritebackRules) {
     if (!activeHandoff.includes(rule)) failures.push(`ACTIVE_HANDOFF.md is missing required GitHub writeback rule: ${rule}`);
