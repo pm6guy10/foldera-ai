@@ -143,6 +143,10 @@ If a source-truth file does not need an update, the PR receipt must explicitly s
 
 No final report may call work done while the handoff/build-order are stale.
 
+## Codex Run Ledger
+
+`AGENTS.md` contains the authoritative `MANDATORY CODEX RUN LEDGER CLOSEOUT` rule. Before any final report, post the primary GitHub receipt, post the standing `[OPS] Codex Run Ledger` entry, and return only the required receipt URLs.
+
 ## GitHub CI Final Gate
 
 GitHub Actions is part of done. Vercel success does not replace GitHub CI.

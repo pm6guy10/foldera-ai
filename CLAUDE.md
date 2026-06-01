@@ -144,6 +144,10 @@ Every final receipt must include:
 
 If command state changed, update `ACTIVE_HANDOFF.md` and `FOLDERA_BUILD_ORDER.yaml` in the PR.
 
+## Codex Run Ledger
+
+`AGENTS.md` contains the authoritative `MANDATORY CODEX RUN LEDGER CLOSEOUT` rule. Follow that rule before any final report: post the primary GitHub receipt, post the standing `[OPS] Codex Run Ledger` entry, and return only the required receipt URLs.
+
 ## Verification Rules
 
 ### Deterministic or harness-only changes

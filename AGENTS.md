@@ -145,6 +145,153 @@ If they did not change, the PR receipt must explicitly say `unchanged - reason`.
 
 No agent may silently leave stale source truth.
 
+## MANDATORY CODEX RUN LEDGER CLOSEOUT
+
+Every Codex run must end with a durable GitHub closeout record.
+
+The run is not complete until GitHub contains the closeout.
+
+Codex must not rely on Codex chat, local terminal output, screenshots, or Brandon's pasted logs as the final record.
+
+Required surfaces:
+
+1. Primary work surface:
+   - If the run has a PR, post the closeout as a top-level PR comment.
+   - If the run has no PR but has an issue, post the closeout as an issue comment.
+   - If the run has both, post to the PR.
+   - If the run has neither, create or use the standing ledger issue only.
+2. Permanent ledger surface:
+   - Find one open issue titled exactly: `[OPS] Codex Run Ledger`.
+   - If it does not exist, create it once.
+   - If duplicates exist, use the oldest open ledger issue and report duplicate ledger issues as a blocker.
+   - Post one ledger comment for the run.
+
+Idempotency rule:
+
+- Generate one `RUN_ID` using this format:
+  - `codex-YYYYMMDD-HHMMSSZ-issue-###-pr-###-shortsha`
+- Include the same `RUN_ID` in the primary comment and ledger comment.
+- Before posting, search existing comments on the target PR/issue and ledger issue for the same `RUN_ID`.
+- If the same `RUN_ID` already exists, update the existing comment instead of creating duplicates.
+
+Posting sequence:
+
+1. Build the exact raw Codex closeout message first.
+2. Post the primary work-surface receipt.
+3. Capture the primary receipt URL.
+4. Post the ledger receipt.
+5. Capture the ledger receipt URL.
+6. If possible, update the primary receipt to include the ledger receipt URL.
+7. Return only both GitHub receipt URLs to Brandon.
+
+Primary work-surface comment format:
+
+```text
+CODEX SOURCE TRUTH RECEIPT
+
+Run:
+
+* `RUN_ID`:
+* Date/time UTC:
+* Repo:
+* Active issue:
+* Active PR:
+* Branch:
+* Base branch:
+* Base SHA:
+* Head SHA:
+* Merge SHA if merged:
+* Receipt type: PRE-MERGE / MERGED / BLOCKED / CLOSED / NO-CODE-AUDIT
+
+State:
+
+* Merge status:
+* Blocker status:
+* Changed files count:
+* Forbidden work touched: YES/NO
+
+Files changed:
+
+* `file/path`
+
+Proof:
+
+* `npm run health` - PASS/FAIL/SKIPPED WITH REASON
+* focused test lane - PASS/FAIL/SKIPPED WITH REASON
+* `npm run gate:command` - PASS/FAIL/SKIPPED WITH REASON
+* `npm run gate:continuity` - PASS/FAIL/SKIPPED WITH REASON
+* `npm run lint` - PASS/FAIL/SKIPPED WITH REASON
+* `npm run build` - PASS/FAIL/SKIPPED WITH REASON
+* `git diff --check` - PASS/FAIL/SKIPPED WITH REASON
+* GitHub CI/Vercel - PASS/FAIL/SKIPPED WITH REASON
+
+Push / merge note:
+
+* Normal push:
+* If `--no-verify` was used, exact reason:
+* Confirm bypass was outside assigned seam:
+
+Source-truth status:
+
+* `.foldera-contract.json`:
+* `ACTIVE_HANDOFF.md`:
+* `FOLDERA_BUILD_ORDER.yaml`:
+* Active issue:
+* Next authorized move:
+
+Receipts:
+
+* Primary receipt:
+* Ledger receipt:
+
+RAW CODEX CLOSEOUT MESSAGE
+
+Paste the exact final Codex closeout message here verbatim.
+```
+
+Ledger comment format:
+
+```text
+CODEX RUN LEDGER ENTRY
+
+Run:
+
+* `RUN_ID`:
+* Date/time UTC:
+* Repo:
+* Active issue:
+* Active PR:
+* Branch:
+* Base SHA:
+* Head SHA:
+* Receipt type:
+* Primary receipt URL:
+* Ledger receipt URL:
+
+Outcome:
+
+* Merge status:
+* Blocker status:
+* Forbidden work touched: YES/NO
+* Next authorized move:
+* Stop condition:
+
+RAW CODEX CLOSEOUT MESSAGE
+
+Paste the exact final Codex closeout message here verbatim.
+```
+
+Failure mode:
+
+If Codex cannot post to GitHub, stop and report:
+
+- exact GitHub operation attempted
+- exact error text
+- whether repo files were changed
+- whether anything was committed
+- whether anything was pushed
+- what Brandon must do next
+
 ## Brandon Product-Owner Doctrine
 
 Think like Brandon before touching files: skeptical, user-path-first, allergic to fake done, and focused on one money-moving product path.

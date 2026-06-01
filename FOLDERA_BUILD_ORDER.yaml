@@ -16,10 +16,10 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 131
-priority_class: MVP_PRESENCE_LOOP
-work_type: SLACK_TEST_MODE_RIGHT_NOW_CARD_STATE_UPDATE
-why_this_first: Issue #126 Supabase egress controls and source-truth closeout landed via PR #132 and PR #133; current-cycle Supabase usage showed projected API/database egress under the Free-plan target, so the downgrade blocker is resolved and issue #131 is the next active product seam.
+active_issue: 136
+priority_class: OPS_CODEX_RUN_LEDGER
+work_type: REPO_GOVERNANCE_LEDGER_ENFORCEMENT
+why_this_first: Issue #131 landed via PR #135; issue #136 is the explicitly assigned standalone repo-governance seam to make Codex closeout receipts durable in GitHub.
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -31,6 +31,7 @@ predecessor_issues:
   - 120
   - 123
   - 126
+  - 131
 completed:
   - issue: 106
     pr: 107
@@ -52,6 +53,10 @@ completed:
     pr: 132
     merge_sha: 9d1dc71ba747306b03fc527ea7058ccdfc8dd723
     result: Supabase egress burn-down recovery landed on main; PR #133 completed source-truth closeout; current-cycle usage projected under the Free-plan target, so the downgrade blocker is resolved.
+  - issue: 131
+    pr: 135
+    merge_sha: 1f8f373016ce9b9e8a77b9ea99a2acb683cf406f
+    result: Slack test-mode MVP Presence Loop landed on main.
 closed_pull_requests_do_not_reopen:
   - pr: 124
     status: closed_do_not_reopen
@@ -83,18 +88,18 @@ forbidden_current_work:
   - broad cleanup
   - reopening PR #124 or PR #125
 required_local_proof:
+  - npm run health
   - npm run gate:command
   - npm run gate:continuity
   - npm run lint
   - npm run build
-required_issue_131_proof:
-  - focused test proving Right Now card payload generation from stored workday state
-  - focused test proving Done button updates state
-  - focused test proving Stuck button updates blocker/unblock path
-  - focused test proving Break smaller updates next_move deterministically
-  - focused test proving Snooze preserves state and records defer metadata
-  - receipt showing before state -> card payload -> button action -> after state
-  - proof that no paid LLM call is required for the loop
+  - git diff --check
+required_issue_136_proof:
+  - AGENTS.md contains the authoritative MANDATORY CODEX RUN LEDGER CLOSEOUT rule
+  - continuity gate fails if the mandatory ledger rule is removed
+  - source-truth command gate recognizes issue #136 as the active governance seam
+  - primary PR receipt is posted
+  - standing ledger issue receipt is posted
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -104,6 +109,6 @@ closeout_required_each_pr:
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - roadmap order does not change for this source-truth promotion PR
-  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this source-truth promotion PR
-  next_seam: named - issue #131 MVP Presence Loop, Slack test-mode Right Now card plus button state update
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - roadmap product order does not change for this repo-governance PR
+  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this repo-governance PR
+  next_seam: blocked - stop after issue #136 ledger PR and receipts; no further Codex work is authorized in this run
