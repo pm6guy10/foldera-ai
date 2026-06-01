@@ -15,6 +15,7 @@
     "scripts/free-plan-gate.ts",
     "scripts/cost-egress-audit.ts",
     "scripts/__tests__/free-plan-gate.test.ts",
+    "tests/config/__tests__/source-truth-check.test.ts",
     "app/api/onboard/set-goals/route.ts",
     "app/api/settings/run-brief/route.ts",
     "app/api/settings/run-brief/__tests__/route.test.ts",
@@ -41,7 +42,7 @@
     "issue #131 work",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Recovery re-land only: source-truth closeout files, package.json gate script preservation, free-plan/egress audit scripts and tests, bounded onboard tkg_goals read, run-brief route and tests, auth admin request cache and direct callers, action read-shape constant, and middleware local run-brief fail-closed guard.",
+  "allowed_files_raw": "Recovery re-land only: source-truth closeout files, source-truth gate test expectation for issue #126, package.json gate script preservation, free-plan/egress audit scripts and tests, bounded onboard tkg_goals read, run-brief route and tests, auth admin request cache and direct callers, action read-shape constant, and middleware local run-brief fail-closed guard.",
   "forbidden_files_raw": "No landing implementation, no Slack/OAuth/API/send work, no Stripe, no dashboard product behavior, no schema changes, no issue #131 work, no PR #125 reopen, no broad cleanup.",
   "required_local_proof": [
     "npm run gate:command",

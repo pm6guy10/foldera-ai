@@ -35,6 +35,7 @@ const REQUIRED_ALLOWED_FILES = [
   'scripts/free-plan-gate.ts',
   'scripts/cost-egress-audit.ts',
   'scripts/__tests__/free-plan-gate.test.ts',
+  'tests/config/__tests__/source-truth-check.test.ts',
   'app/api/onboard/set-goals/route.ts',
   'app/api/settings/run-brief/route.ts',
   'app/api/settings/run-brief/__tests__/route.test.ts',
