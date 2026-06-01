@@ -14,14 +14,16 @@ type FolderaContract = {
   required_local_proof?: string[] | string;
 };
 
-const ACTIVE_ISSUE = 123;
+const ACTIVE_ISSUE = 126;
 const PAUSED_LANDING_ISSUE = 121;
 const CLOSED_DO_NOT_REOPEN_PRS = [124, 125];
 const REQUIRED_PROOF_COMMANDS = [
-  'npx tsx scripts/source-truth-check.ts',
+  'npm run gate:command',
   'npm run gate:continuity',
+  'npm run gate:free-plan',
   'npm run lint',
   'npm run build',
+  'npx vitest run app/api/settings/run-brief/__tests__/route.test.ts scripts/__tests__/free-plan-gate.test.ts lib/auth/__tests__/admin-user-cache.test.ts --reporter=verbose',
 ];
 
 const REQUIRED_ALLOWED_FILES = [
@@ -29,24 +31,30 @@ const REQUIRED_ALLOWED_FILES = [
   'ACTIVE_HANDOFF.md',
   'FOLDERA_BUILD_ORDER.yaml',
   'scripts/source-truth-check.ts',
-  'scripts/continuity-gate.ts',
-  'tests/config/**',
-  '.github/workflows/pr-sentinel.yml',
   'package.json',
+  'scripts/free-plan-gate.ts',
+  'scripts/cost-egress-audit.ts',
+  'scripts/__tests__/free-plan-gate.test.ts',
+  'tests/config/__tests__/source-truth-check.test.ts',
+  'app/api/onboard/set-goals/route.ts',
+  'app/api/settings/run-brief/route.ts',
+  'app/api/settings/run-brief/__tests__/route.test.ts',
+  'lib/auth/admin-user-cache.ts',
+  'lib/auth/__tests__/admin-user-cache.test.ts',
+  'lib/auth/daily-brief-users.ts',
+  'lib/auth/self-identity.ts',
+  'lib/auth/user-display-name.ts',
+  'lib/conviction/action-read-shapes.ts',
+  'middleware.ts',
 ];
 
 const REQUIRED_FORBIDDEN_MARKERS = [
   'landing',
   'dashboard',
-  'auth',
-  'supabase',
   'stripe',
   'slack',
-  'teams',
-  'email',
-  'scoring',
-  'conviction',
-  'package-lock',
+  'schema',
+  '#131',
 ];
 
 function readRepoFile(root: string, file: string): string {
@@ -161,8 +169,8 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   if (contract?.active !== true) failures.push('.foldera-contract.json active must be true.');
   if (contractIssue !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_ISSUE}; found ${contractIssue ?? 'none'}.`);
   if (contractIssueFromBacklog !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json backlog_id must resolve to issue #${ACTIVE_ISSUE}; found ${contract?.backlog_id ?? 'none'}.`);
-  if (contract?.money_loop_rung !== 'source_truth_command_gate') failures.push('.foldera-contract.json money_loop_rung must be source_truth_command_gate.');
-  if (contract?.user_system_path !== 'enforce one active seam before landing work resumes') failures.push('.foldera-contract.json user_system_path must be enforce one active seam before landing work resumes.');
+  if (contract?.money_loop_rung !== 'supabase_egress_burndown') failures.push('.foldera-contract.json money_loop_rung must be supabase_egress_burndown.');
+  if (contract?.user_system_path !== 're-land Supabase egress burn-down work on main') failures.push('.foldera-contract.json user_system_path must be re-land Supabase egress burn-down work on main.');
 
   if (handoffIssue !== null && buildIssue !== null && handoffIssue !== buildIssue) failures.push(`ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml disagree: #${handoffIssue} vs #${buildIssue}.`);
   if (handoffIssue !== null && contractIssue !== null && handoffIssue !== contractIssue) failures.push(`ACTIVE_HANDOFF.md and .foldera-contract.json disagree: #${handoffIssue} vs #${contractIssue}.`);
@@ -173,8 +181,8 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   if (handoffActiveIssueMentions.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam; found ${handoffActiveIssueMentions.length}.`);
   if (handoffActiveIssueMentions.some((issue) => issue !== ACTIVE_ISSUE)) failures.push(`ACTIVE_HANDOFF.md has an active seam other than issue #${ACTIVE_ISSUE}.`);
 
-  if (buildPriorityClass !== 'SOURCE_TRUTH_COMMAND_GATE') failures.push('FOLDERA_BUILD_ORDER.yaml priority_class must be SOURCE_TRUTH_COMMAND_GATE.');
-  if (buildWorkType !== 'REPO_GOVERNANCE_GATE') failures.push('FOLDERA_BUILD_ORDER.yaml work_type must be REPO_GOVERNANCE_GATE.');
+  if (buildPriorityClass !== 'SUPABASE_EGRESS_BURNDOWN') failures.push('FOLDERA_BUILD_ORDER.yaml priority_class must be SUPABASE_EGRESS_BURNDOWN.');
+  if (buildWorkType !== 'RECOVERY_RELAND') failures.push('FOLDERA_BUILD_ORDER.yaml work_type must be RECOVERY_RELAND.');
   if (!buildOrder.includes('required_gate_command: npm run gate:command')) failures.push('FOLDERA_BUILD_ORDER.yaml must name required_gate_command: npm run gate:command.');
 
   if (!/issue #121[^\n]*(landing|landing-page)[^\n]*(paused|pause)/i.test(handoff)) failures.push('ACTIVE_HANDOFF.md must say issue #121 landing work is paused.');
@@ -207,24 +215,18 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   const controllingText = [handoff, buildOrder, readRepoFile(root, '.foldera-contract.json')].join('\n---\n');
   if (proofUsesProtectedVercelPreview(controllingText)) failures.push('Protected Vercel preview links must not be treated as proof text in controlling files.');
 
-  const sentinel = readRepoFile(root, '.github/workflows/pr-sentinel.yml');
-  const commandGateIndex = sentinel.indexOf('npm run gate:command');
-  const continuityGateIndex = sentinel.indexOf('npm run gate:continuity');
-  if (commandGateIndex === -1 && !sentinel.includes('npx tsx scripts/source-truth-check.ts')) failures.push('PR Sentinel must run the source-truth command gate.');
-  if (continuityGateIndex === -1) failures.push('PR Sentinel must run npm run gate:continuity.');
-  const directCommandIndex = sentinel.indexOf('npx tsx scripts/source-truth-check.ts');
-  const sourceTruthGateIndex = commandGateIndex === -1 ? directCommandIndex : commandGateIndex;
-  if (sourceTruthGateIndex === -1 || continuityGateIndex === -1 || sourceTruthGateIndex > continuityGateIndex) failures.push('PR Sentinel must run the source-truth command gate before npm run gate:continuity.');
-
   const packageJson = readJson<{ scripts?: Record<string, string> }>(root, 'package.json');
   if (packageJson.scripts?.['gate:command'] !== 'npx tsx scripts/source-truth-check.ts') failures.push('package.json must define gate:command as npx tsx scripts/source-truth-check.ts.');
+  if (!packageJson.scripts?.['gate:free-plan']?.includes('scripts/free-plan-gate.ts')) failures.push('package.json must define gate:free-plan with scripts/free-plan-gate.ts.');
 
   const missingForbiddenWork = includesAll(buildOrder, [
     'issue #121 landing implementation',
-    'issue #99',
-    'backend/auth/Supabase/Stripe/Slack/dashboard',
+    'Slack',
+    'Stripe',
+    'dashboard',
+    'schema',
+    'issue #131',
     'broad cleanup',
-    'new landing issue',
     'reopening PR #124 or PR #125',
   ]);
   for (const missing of missingForbiddenWork) failures.push(`FOLDERA_BUILD_ORDER.yaml forbidden_current_work is missing: ${missing}`);
@@ -240,5 +242,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Active issue #123 is the only command lane.');
+  console.log('Source truth check passed. Active issue #126 is the only recovery lane.');
 }

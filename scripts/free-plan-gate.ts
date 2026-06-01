@@ -12,10 +12,71 @@ const ALLOWED_PATH_PATTERNS = [
   `app${sep}api${sep}microsoft${sep}`,
 ];
 
+export const FREE_PLAN_MONTHLY_EGRESS_GB = 5;
+export const SAFE_DAILY_EGRESS_MB = 125;
+
 export interface ForbiddenTokenSelect {
   file: string;
   line: number;
   excerpt: string;
+}
+
+export interface FreePlanEgressMeasurement {
+  dailyMb?: string | number | null;
+  projectedMonthlyGb?: string | number | null;
+}
+
+export interface FreePlanEgressBudgetResult {
+  ok: boolean;
+  dailyMb: number | null;
+  projectedMonthlyGb: number | null;
+  failures: string[];
+}
+
+function parseFiniteMeasurement(value: string | number | null | undefined): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string' || value.trim().length === 0) return null;
+  const parsed = Number(value.trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function evaluateFreePlanEgressBudget(
+  measurement: FreePlanEgressMeasurement,
+): FreePlanEgressBudgetResult {
+  const dailyMb = parseFiniteMeasurement(measurement.dailyMb);
+  const projectedMonthlyGb = parseFiniteMeasurement(measurement.projectedMonthlyGb);
+  const failures: string[] = [];
+
+  if (dailyMb === null) {
+    failures.push('Missing daily API/database egress measurement from Supabase.');
+  } else if (dailyMb > SAFE_DAILY_EGRESS_MB) {
+    failures.push(`Daily API/database egress ${dailyMb} MB exceeds safe target ${SAFE_DAILY_EGRESS_MB} MB/day.`);
+  }
+
+  if (projectedMonthlyGb === null) {
+    failures.push('Missing projected monthly API/database egress measurement from Supabase.');
+  } else if (projectedMonthlyGb > FREE_PLAN_MONTHLY_EGRESS_GB) {
+    failures.push(
+      `Projected monthly API/database egress ${projectedMonthlyGb} GB exceeds Free plan limit ${FREE_PLAN_MONTHLY_EGRESS_GB} GB/month.`,
+    );
+  }
+
+  return { ok: failures.length === 0, dailyMb, projectedMonthlyGb, failures };
+}
+
+export function formatFreePlanEgressBudgetReport(result: FreePlanEgressBudgetResult): string {
+  const lines = [
+    result.ok ? 'FREE_PLAN_EGRESS_BUDGET: PASS' : 'FREE_PLAN_EGRESS_BUDGET: FAIL',
+    `daily_api_database_egress_mb=${result.dailyMb ?? 'missing'}`,
+    `projected_monthly_api_database_egress_gb=${result.projectedMonthlyGb ?? 'missing'}`,
+    `safe_daily_threshold_mb=${SAFE_DAILY_EGRESS_MB}`,
+    `free_plan_monthly_limit_gb=${FREE_PLAN_MONTHLY_EGRESS_GB}`,
+  ];
+  if (result.failures.length > 0) {
+    lines.push('failures:');
+    for (const failure of result.failures) lines.push(`- ${failure}`);
+  }
+  return lines.join('\n');
 }
 
 function isAllowedPath(filePath: string): boolean {
@@ -63,11 +124,7 @@ export function findForbiddenTokenSelects(repoRoot = process.cwd()): ForbiddenTo
         .split(/\r?\n/)
         .join(' ')
         .trim();
-      hits.push({
-        file,
-        line,
-        excerpt,
-      });
+      hits.push({ file, line, excerpt });
     }
   }
   return hits;
