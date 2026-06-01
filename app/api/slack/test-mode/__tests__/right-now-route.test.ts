@@ -101,9 +101,16 @@ describe('Slack test-mode Right Now loop', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
+    expect(body.acknowledged).toBe(true);
     expect(body.action_id).toBe('done');
     expect(body.state.last_completed_step).toContain('Send owner confirmation note');
     expect(body.slack_test_mode.channel).toBe('test_dm');
+    expect(body.receipt.before_state.next_move).toBe('Send owner confirmation note');
+    expect(body.receipt.card_payload.kind).toBe('right_now');
+    expect(body.receipt.button_action.action_id).toBe('done');
+    expect(body.receipt.after_state.last_completed_step).toBe('Send owner confirmation note');
+    expect(body.receipt.paid_model_call_required).toBe(false);
+    expect(body.receipt.inline_full_state_recompute).toBe(false);
     expect(mockSupabase.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
   });
 

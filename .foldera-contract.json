@@ -3,7 +3,7 @@
   "active": true,
   "active_issue": 131,
   "backlog_id": "ISSUE_131_MVP_PRESENCE_LOOP_SLACK_TEST_MODE_RIGHT_NOW_CARD",
-  "base_commit": "6b4c60e7b4f39f008abfb696b898c27077866a5c",
+  "base_commit": "abe9d256e648626b9f49b89f54ba00730472a91c",
   "money_loop_rung": "mvp_presence_loop",
   "user_system_path": "prove Slack test-mode Right Now card and button state update from stored workday state",
   "allowed_file_patterns": [
@@ -40,7 +40,7 @@
     "outreach/**",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Issue #131 only: source-truth files and command gate alignment for this promotion PR; next implementation may touch only Slack test-mode Right Now card, Workday Presence state/action, and directly scoped proof files.",
+  "allowed_files_raw": "Issue #131 only: Slack test-mode Right Now card, Workday Presence state/action, deterministic presence-loop receipt, and directly scoped proof files.",
   "forbidden_files_raw": "No landing work, Stripe, dashboard redesign, Supabase schema, live Slack install/OAuth/send, Teams/email/calendar expansion, outreach, billing/downgrade work, or broad cleanup.",
   "required_local_proof": [
     "npm run gate:command",
@@ -48,18 +48,21 @@
     "npm run lint",
     "npm run build"
   ],
-  "required_browser_proof": "Not applicable for this source-truth promotion PR; issue #131 implementation proof must use the focused Slack test-mode route or tests named by the implementation PR.",
-  "acceptance_condition": "Source truth marks #126 complete, resolves the Supabase measurement/downgrade blocker, and promotes issue #131 as the active MVP Presence Loop seam without product implementation.",
-  "stop_condition": "Stop when one tiny source-truth promotion PR is open to main, issue #126 has a terminal completion receipt, and issue #126 is closed as completed.",
+  "required_browser_proof": "Not applicable for this backend/test-mode seam; issue #131 implementation proof uses focused Slack test-mode route and presence-loop receipt tests.",
+  "acceptance_condition": "One complete Slack test-mode MVP Presence Loop is proven: stored workday state -> generated Right Now card -> simulated button action -> updated workday state -> deterministic receipt, with no live Slack send and no paid model call.",
+  "stop_condition": "Stop when one issue #131 implementation PR is open, required proof passes, and a GitHub receipt is posted.",
   "is_user_facing": false,
-  "browser_proof_command": "not applicable - source-truth promotion only",
+  "browser_proof_command": "not applicable - Slack test-mode route and deterministic receipt tests cover this seam",
   "anti_regression_checks": [
     "ACTIVE_HANDOFF.md names issue #131 as the only active implementation seam",
     "FOLDERA_BUILD_ORDER.yaml active_issue is 131",
     ".foldera-contract.json active_issue and backlog_id resolve to 131",
-    "Issue #126 appears in completed source-truth state",
+    "Focused tests prove Right Now card payload generation from stored workday state",
+    "Focused tests prove Done, Stuck, Break smaller, and Snooze state transitions",
+    "Presence-loop receipt shows before state, card payload, button action, and after state",
+    "Receipt marks paid_model_call_required false and inline_full_state_recompute false",
     "Forbidden scope keeps out landing, Stripe, dashboard redesign, Supabase schema, live Slack install/OAuth/send, Teams/email/calendar expansion, outreach, billing/downgrade work, and broad cleanup",
-    "No product implementation files are changed in this promotion PR"
+    "No live Slack OAuth/install/send code is added"
   ],
-  "next_command": "Run issue #131 only: implement Slack test-mode Right Now card plus button state update with focused proof. Do not start landing, live Slack, Stripe, dashboard redesign, Supabase schema, billing/downgrade, outreach, or broad cleanup."
+  "next_command": "Open the issue #131 implementation PR after focused presence-loop tests, gate:command, gate:continuity, lint, and build pass. Do not start landing, live Slack, Stripe, dashboard redesign, Supabase schema, billing/downgrade, outreach, or broad cleanup."
 }
