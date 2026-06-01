@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-05-31 PT
-Current `origin/main` SHA at closeout start: `9d1dc71ba747306b03fc527ea7058ccdfc8dd723`.
+Last updated: 2026-06-01 PT
+Current `origin/main` SHA at promotion start: `6b4c60e7b4f39f008abfb696b898c27077866a5c`.
 
 ## Canonical Boot Sequence
 For any Foldera task, use this order:
@@ -15,17 +15,15 @@ For any Foldera task, use this order:
 7. Use Vercel/Supabase only when the seam requires live/runtime truth.
 
 ## Active command gate
-Active implementation seam is issue #126: BLOCKED on live Supabase API/database egress measurement before any downgrade.
+Active implementation seam is issue #131: MVP Presence Loop, Slack test-mode Right Now card plus button state update.
 
-PR #132 merged the #126 Supabase egress burn-down recovery into `main` at `9d1dc71ba747306b03fc527ea7058ccdfc8dd723`.
-Current blocker: live Supabase dashboard/API egress measurement is required before deciding whether the project can downgrade.
+Issue #126 is complete: PR #132 landed Supabase egress controls on `main`, PR #133 completed source-truth closeout, and current-cycle Supabase usage showed projected API/database egress under the Free-plan target. The Supabase measurement/downgrade blocker is resolved.
 
 ## Current slice:
 
-- Issue #126 recovery is complete/landed via PR #132.
-- No product implementation seam is active while Supabase measurement/downgrade decision is unresolved.
-- Issue #131 is the next product-build candidate only after the Supabase measurement/downgrade decision is resolved.
-- Issue #121 landing work remains paused unless explicitly reassigned after the blocker is resolved.
+- Issue #126 recovery and downgrade decision are complete/resolved.
+- Issue #131 is now the active product-build seam.
+- Issue #121 landing work remains paused unless explicitly reassigned after issue #131.
 - Issue #99 remains paused.
 - Issue #48 remains the product doctrine.
 - PR #124 and PR #125 are closed/superseded and must not be reopened or reused.
@@ -37,11 +35,12 @@ state + connectors + triggers + one intervention.
 Stay quiet otherwise; no task-list/dashboard replacement behavior.
 Issue #48 remains the product contract.
 
-## Required blocker outcome
+## Required issue #131 outcome
 
-Measure live Supabase API/database egress after PR #132 before any downgrade. Green target remains projected API/database egress below 5 GB/month, ideally below 125 MB/day sustained.
+Prove the MVP Presence Loop in Slack test mode only:
+stored workday state -> Right Now card -> simulated button action -> updated workday state -> deterministic receipt.
 
-Required proof for this closeout PR: npm run gate:command; npm run gate:continuity; npm run lint; npm run build.
+Required proof for the next #131 implementation PR: focused presence-loop tests, `npm run gate:command`, `npm run gate:continuity`, `npm run lint`, and `npm run build`.
 
 ## GitHub writeback contract
 
@@ -56,8 +55,8 @@ Required proof for this closeout PR: npm run gate:command; npm run gate:continui
 
 ## Forbidden unless explicitly assigned
 
-- No product code, landing, Slack, Stripe, issue #131 implementation, Supabase schema, downgrade, dashboard product behavior, or broad cleanup.
+- No landing, Stripe, dashboard redesign, Supabase schema, live Slack install/OAuth/send, Teams/email/calendar expansion, outreach, billing/downgrade work, or broad cleanup.
 
 ## Next exact move
 
-Open one tiny source-truth closeout PR from current `main`; stop after proof and receipt. Do not start issue #131 until live Supabase egress measurement resolves the downgrade decision.
+Run issue #131 only. Do not implement landing, live Slack, Stripe, dashboard redesign, Supabase schema, billing/downgrade, outreach, or broad cleanup.
