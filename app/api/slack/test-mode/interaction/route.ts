@@ -6,9 +6,12 @@ import { buildRightNowMessagePayload, type RightNowMessageActionId } from '@/lib
 import {
   applyInteractionHistoryToState,
   appendWorkdayPresenceInteractionHistory,
-  applyWorkdayPresenceAction,
 } from '@/lib/workday-presence/actions';
 import { buildSlackTestModeRightNowMessage } from '@/lib/slack-test-mode/right-now';
+import {
+  buildPresenceLoopReceipt,
+  type PresenceLoopReceipt,
+} from '@/lib/workday-presence/presence-loop-receipt';
 import { apiErrorForRoute, badRequest } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -52,29 +55,44 @@ export async function POST(request: Request) {
     const payload = (await request.json().catch(() => ({}))) as InteractionBody;
     const actionId = payload.action_id;
     if (!actionId) return badRequest('action_id is required');
+    if (!['done', 'stuck', 'break_smaller', 'snooze'].includes(actionId)) {
+      return badRequest('Invalid action_id');
+    }
 
     const supabase = createServerClient();
     const { data, error } = await supabase.auth.admin.getUserById(auth.userId);
     if (error) throw error;
 
     const metadata = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
-    const applied = applyWorkdayPresenceAction(metadata.workday_presence_state, actionId, {
-      blocker: payload.blocker,
-    });
-    if (!applied.ok) return badRequest(applied.error);
-
     const currentState = normalizeWorkdayPresenceState(metadata.workday_presence_state);
     if (!currentState) return badRequest('No active workday presence state');
 
-    const nextState = applied.nextState;
+    const nowIso = new Date().toISOString();
+    let receipt: PresenceLoopReceipt;
+    try {
+      receipt = buildPresenceLoopReceipt(currentState, {
+        action_id: actionId,
+        blocker: payload.blocker,
+        nowIso,
+      });
+    } catch (error) {
+      return badRequest(error instanceof Error ? error.message : 'Invalid interaction payload');
+    }
+
+    const nextState = receipt.after_state;
     const persistedState = await persistState(auth.userId, metadata, nextState, actionId);
 
     const nextPayload = buildRightNowMessagePayload(persistedState);
     return NextResponse.json({
+      acknowledged: true,
       action_id: actionId,
       state: persistedState,
       payload: nextPayload,
       slack_test_mode: buildSlackTestModeRightNowMessage(nextPayload),
+      receipt: {
+        ...receipt,
+        after_state: persistedState,
+      },
     });
   } catch (error: unknown) {
     return apiErrorForRoute(error, 'slack test-mode interaction POST');
