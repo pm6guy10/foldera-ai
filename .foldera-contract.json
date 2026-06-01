@@ -1,21 +1,16 @@
 {
   "authority_status": "CURRENT_CONTROL",
   "active": true,
-  "active_issue": 136,
-  "backlog_id": "ISSUE_136_OPS_CODEX_RUN_LEDGER",
-  "base_commit": "1f8f373016ce9b9e8a77b9ea99a2acb683cf406f",
-  "money_loop_rung": "codex_run_ledger_governance",
-  "user_system_path": "make every future Codex run leave a durable GitHub closeout record",
+  "active_issue": 138,
+  "backlog_id": "ISSUE_138_REAL_SLACK_SELF_LOOP_SOURCE_TRUTH",
+  "base_commit": "46ff9ee99d8f920fc423b6de4d114022d6a8a521",
+  "money_loop_rung": "real_slack_self_loop_source_truth",
+  "user_system_path": "promote the Real Slack Self-Loop into source truth without implementing Slack code",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "AGENTS.md",
-    "CLAUDE.md",
-    "CODEX_START.md",
-    "scripts/continuity-gate.ts",
     "scripts/source-truth-check.ts",
-    "tests/config/__tests__/continuity-gate.test.ts",
     "tests/config/__tests__/source-truth-check.test.ts"
   ],
   "forbidden_file_patterns": [
@@ -28,9 +23,8 @@
     "app/dashboard/**",
     "components/dashboard/**",
     "supabase/**",
-    "app/api/slack/oauth/**",
-    "app/api/slack/install/**",
-    "app/api/slack/send/**",
+    "app/api/slack/**",
+    "lib/slack/**",
     "app/api/teams/**",
     "app/api/email/**",
     "app/api/calendar/**",
@@ -38,30 +32,27 @@
     "outreach/**",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Issue #136 only: authoritative Codex run ledger instruction, narrow source-truth/continuity gate enforcement, and directly scoped proof files.",
-  "forbidden_files_raw": "No landing work, Stripe, dashboard redesign, Supabase schema, live Slack install/OAuth/send, Teams/email/calendar expansion, outreach, billing/downgrade work, Dependabot work, or broad cleanup.",
+  "allowed_files_raw": "Issue #138 only: source-truth promotion files naming the Real Slack Self-Loop target plus the narrow source-truth command gate update. No Slack implementation files.",
+  "forbidden_files_raw": "No Slack code implementation, landing work, Stripe, dashboard redesign, Supabase schema, live Slack install/OAuth/send, Teams/email/calendar expansion, outreach, billing/downgrade work, Dependabot work, or broad cleanup.",
   "required_local_proof": [
     "npm run health",
-    "npx vitest run tests/config/__tests__/continuity-gate.test.ts tests/config/__tests__/source-truth-check.test.ts --reporter=verbose",
+    "npx vitest run tests/config/__tests__/source-truth-check.test.ts --reporter=verbose",
     "npm run gate:command",
     "npm run gate:continuity",
-    "npm run lint",
-    "npm run build",
     "git diff --check"
   ],
-  "required_browser_proof": "Not applicable for this repo-governance seam; issue #136 uses instruction and gate proof.",
-  "acceptance_condition": "Every future Codex run has a repo-durable mandatory ledger closeout rule and continuity-gate enforcement for the authoritative AGENTS.md rule.",
-  "stop_condition": "Stop when the issue #136 PR is open, required proof passes, and primary plus ledger GitHub receipts are posted.",
+  "required_browser_proof": "Not applicable for this source-truth promotion seam; no product UI or Slack implementation changes are allowed.",
+  "acceptance_condition": "Repo source truth names issue #138 as the bounded Real Slack Self-Loop source-truth promotion and forbids Slack implementation in this PR.",
+  "stop_condition": "Stop when the issue #138 source-truth promotion PR is open, required proof passes, the primary PR receipt is posted, and the issue #136 ledger receipt is posted.",
   "is_user_facing": false,
-  "browser_proof_command": "not applicable - repo-governance instruction and gate proof cover this seam",
+  "browser_proof_command": "not applicable - source-truth promotion only",
   "anti_regression_checks": [
-    "ACTIVE_HANDOFF.md names issue #136 as the only active implementation seam",
-    "FOLDERA_BUILD_ORDER.yaml active_issue is 136",
-    ".foldera-contract.json active_issue and backlog_id resolve to 136",
-    "AGENTS.md contains MANDATORY CODEX RUN LEDGER CLOSEOUT",
-    "continuity gate fails when the mandatory ledger rule is removed",
+    "ACTIVE_HANDOFF.md names issue #138 as the only active source-truth promotion seam",
+    "FOLDERA_BUILD_ORDER.yaml active_issue is 138",
+    ".foldera-contract.json active_issue and backlog_id resolve to 138",
+    "No Slack implementation files are changed",
     "No product code is changed",
-    "Forbidden scope keeps out landing, Stripe, dashboard redesign, Supabase schema, live Slack install/OAuth/send, Teams/email/calendar expansion, outreach, billing/downgrade work, Dependabot, and broad cleanup"
+    "Forbidden scope keeps out live Slack install/OAuth/send, landing, Stripe, dashboard redesign, Supabase schema, Teams/email/calendar expansion, outreach, billing/downgrade work, Dependabot, and broad cleanup"
   ],
-  "next_command": "Open the issue #136 PR after focused gate tests, gate:command, gate:continuity, lint, build, and git diff --check pass. Do not start another seam."
+  "next_command": "Open the issue #138 source-truth promotion PR after health, gate:command, gate:continuity, and git diff --check pass. Do not implement Slack code or start another seam."
 }

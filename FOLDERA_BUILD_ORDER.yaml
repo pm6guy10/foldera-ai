@@ -16,10 +16,10 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 136
-priority_class: OPS_CODEX_RUN_LEDGER
-work_type: REPO_GOVERNANCE_LEDGER_ENFORCEMENT
-why_this_first: Issue #131 landed via PR #135; issue #136 is the explicitly assigned standalone repo-governance seam to make Codex closeout receipts durable in GitHub.
+active_issue: 138
+priority_class: REAL_SLACK_SELF_LOOP_SOURCE_TRUTH
+work_type: SOURCE_TRUTH_PROMOTION
+why_this_first: Issue #131 proved the deterministic Slack test-mode MVP Presence Loop and issue #136 installed Codex Run Ledger discipline; issue #138 is the explicitly assigned source-truth promotion for the next bounded Real Slack Self-Loop seam.
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -32,6 +32,7 @@ predecessor_issues:
   - 123
   - 126
   - 131
+  - 136
 completed:
   - issue: 106
     pr: 107
@@ -57,6 +58,10 @@ completed:
     pr: 135
     merge_sha: 1f8f373016ce9b9e8a77b9ea99a2acb683cf406f
     result: Slack test-mode MVP Presence Loop landed on main.
+  - issue: 136
+    pr: 137
+    merge_sha: 46ff9ee99d8f920fc423b6de4d114022d6a8a521
+    result: Codex Run Ledger closeout discipline landed on main.
 closed_pull_requests_do_not_reopen:
   - pr: 124
     status: closed_do_not_reopen
@@ -80,6 +85,7 @@ forbidden_current_work:
   - live Slack install
   - Slack OAuth
   - live Slack send
+  - Slack code implementation during issue 138 source-truth promotion
   - Teams expansion
   - email expansion
   - calendar expansion
@@ -91,15 +97,14 @@ required_local_proof:
   - npm run health
   - npm run gate:command
   - npm run gate:continuity
-  - npm run lint
-  - npm run build
   - git diff --check
-required_issue_136_proof:
-  - AGENTS.md contains the authoritative MANDATORY CODEX RUN LEDGER CLOSEOUT rule
-  - continuity gate fails if the mandatory ledger rule is removed
-  - source-truth command gate recognizes issue #136 as the active governance seam
+required_issue_138_proof:
+  - ACTIVE_HANDOFF.md names issue #138 as the active source-truth promotion seam
+  - FOLDERA_BUILD_ORDER.yaml active_issue is 138
+  - .foldera-contract.json resolves to issue #138 and allows only source-truth promotion files
+  - no Slack implementation files changed
   - primary PR receipt is posted
-  - standing ledger issue receipt is posted
+  - standing ledger issue #136 receipt is posted
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -109,6 +114,6 @@ closeout_required_each_pr:
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - roadmap product order does not change for this repo-governance PR
-  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this repo-governance PR
-  next_seam: blocked - stop after issue #136 ledger PR and receipts; no further Codex work is authorized in this run
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - this PR promotes current handoff/build-order truth without changing the historical roadmap narrative
+  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this source-truth promotion PR
+  next_seam: named - issue #138 Real Slack Self-Loop source-truth promotion; stop after PR and receipts, with no Slack code implementation
