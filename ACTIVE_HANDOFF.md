@@ -39,7 +39,8 @@ That must be blocked by repo code before landing work resumes.
 - Issue #113 source-truth closeout enforcement is complete; PR #114 merged at `2292181e0e81c505256637272d0e612cd10440a2`.
 - Issue #120 public-funnel route contract is complete; PR #122 merged at `7784505f42f3ee16713a36d619f4ea0ceaa640fd`.
 - PR #129 landing hotfix merged at `aeb4e73c2a89cedfc8fdccdd7f8fa0dba4b0f03d`.
-- PR #125 is closed and must not be reopened unless source truth explicitly reactivates it.
+- PR #124 is closed and superseded; it must not be reopened or reused for current work.
+- PR #125 is closed and superseded; it must not be reopened or reused for current work.
 - Issue #123 is now the active blocker.
 - Issue #121 is next after #123, not active implementation.
 - Issue #99 remains paused.
@@ -86,6 +87,7 @@ The repo must contain a deterministic command gate that fails locally and in CI 
 - No backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes.
 - No broad cleanup.
 - No new landing issue.
+- No reopening PR #124.
 - No reopening PR #125.
 
 ## Next exact move
@@ -96,5 +98,5 @@ Run issue #123 only:
 2. Wire it into npm scripts and CI.
 3. Add failing and passing fixtures/tests.
 4. Update FOLDERA_BUILD_ORDER.yaml and .foldera-contract.json to agree with issue #123.
-5. Open one PR.
+5. Keep the work inside PR #130 only.
 6. Stop after proof is posted.
