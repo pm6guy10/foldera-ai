@@ -17,9 +17,9 @@ accepted_terminal_states:
   - MERGE READY
   - STOPPED
 active_issue: 126
-priority_class: SUPABASE_EGRESS_BURNDOWN
-work_type: RECOVERY_RELAND
-why_this_first: PR #127 carried the #126 Supabase egress burn-down work into issue-121-code-native-landing instead of main; main must either prove the work is present or receive one clean recovery PR.
+priority_class: SUPABASE_EGRESS_MEASUREMENT
+work_type: BLOCKED_MEASUREMENT_CLOSEOUT
+why_this_first: PR #132 landed the #126 egress burn-down recovery on main; live Supabase API/database egress must be measured before any downgrade or next product-build seam starts.
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -46,39 +46,45 @@ completed:
   - issue: 123
     pr: 130
     merge_sha: 6654948ed951e217aa75bf2601a8e820c819fcbe
-    result: Source-truth command gate merged before this recovery seam.
+    result: Source-truth command gate merged before #126 recovery.
+  - issue: 126
+    pr: 132
+    merge_sha: 9d1dc71ba747306b03fc527ea7058ccdfc8dd723
+    result: Supabase egress burn-down recovery landed on main; downgrade remains blocked pending live egress measurement.
 closed_pull_requests_do_not_reopen:
   - pr: 124
     status: closed_do_not_reopen
     reason: Superseded lane; do not reopen or reuse for current work.
   - pr: 125
     status: closed_do_not_reopen
-    reason: Closed/unmerged; do not reopen or reuse for issue #126 recovery.
+    reason: Closed/unmerged; do not reopen or reuse after issue #126 recovery.
 paused:
+  - issue: 131
+    reason: Next product-build candidate only after Supabase measurement/downgrade decision is resolved.
   - issue: 121
-    reason: Landing implementation remains paused during issue #126 recovery.
+    reason: Landing implementation remains paused until explicitly reassigned after the blocker is resolved.
   - issue: 99
-    reason: Planning spine remains paused during issue #126 recovery.
+    reason: Planning spine remains paused during Supabase measurement/downgrade blocker.
   - issue: 84
     pr: 95
     reason: Older landing polish reference remains paused/superseded by issue #121 current landing-page frontend contract seam.
 forbidden_current_work:
+  - product code
   - issue #121 landing implementation
+  - issue #131 implementation
   - issue #99
   - Slack
   - Stripe
   - dashboard
   - schema
-  - issue #131
+  - Supabase downgrade
   - broad cleanup
   - reopening PR #124 or PR #125
 required_local_proof:
   - npm run gate:command
   - npm run gate:continuity
-  - npm run gate:free-plan
   - npm run lint
   - npm run build
-  - npx vitest run app/api/settings/run-brief/__tests__/route.test.ts scripts/__tests__/free-plan-gate.test.ts lib/auth/__tests__/admin-user-cache.test.ts --reporter=verbose
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -88,6 +94,6 @@ closeout_required_each_pr:
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - roadmap order does not change for this recovery PR
-  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this recovery PR
-  next_seam: blocked - Supabase downgrade remains blocked until live dashboard/API egress numbers confirm the Free-plan budget
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - roadmap order does not change for this source-truth closeout PR
+  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this source-truth closeout PR
+  next_seam: blocked - live Supabase API/database egress measurement required before downgrade decision; issue #131 waits
