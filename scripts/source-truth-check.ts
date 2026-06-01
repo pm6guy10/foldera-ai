@@ -20,10 +20,8 @@ const CLOSED_DO_NOT_REOPEN_PRS = [124, 125];
 const REQUIRED_PROOF_COMMANDS = [
   'npm run gate:command',
   'npm run gate:continuity',
-  'npm run gate:free-plan',
   'npm run lint',
   'npm run build',
-  'npx vitest run app/api/settings/run-brief/__tests__/route.test.ts scripts/__tests__/free-plan-gate.test.ts lib/auth/__tests__/admin-user-cache.test.ts --reporter=verbose',
 ];
 
 const REQUIRED_ALLOWED_FILES = [
@@ -31,21 +29,6 @@ const REQUIRED_ALLOWED_FILES = [
   'ACTIVE_HANDOFF.md',
   'FOLDERA_BUILD_ORDER.yaml',
   'scripts/source-truth-check.ts',
-  'package.json',
-  'scripts/free-plan-gate.ts',
-  'scripts/cost-egress-audit.ts',
-  'scripts/__tests__/free-plan-gate.test.ts',
-  'tests/config/__tests__/source-truth-check.test.ts',
-  'app/api/onboard/set-goals/route.ts',
-  'app/api/settings/run-brief/route.ts',
-  'app/api/settings/run-brief/__tests__/route.test.ts',
-  'lib/auth/admin-user-cache.ts',
-  'lib/auth/__tests__/admin-user-cache.test.ts',
-  'lib/auth/daily-brief-users.ts',
-  'lib/auth/self-identity.ts',
-  'lib/auth/user-display-name.ts',
-  'lib/conviction/action-read-shapes.ts',
-  'middleware.ts',
 ];
 
 const REQUIRED_FORBIDDEN_MARKERS = [
@@ -55,6 +38,7 @@ const REQUIRED_FORBIDDEN_MARKERS = [
   'slack',
   'schema',
   '#131',
+  'downgrade',
 ];
 
 function readRepoFile(root: string, file: string): string {
@@ -169,8 +153,8 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   if (contract?.active !== true) failures.push('.foldera-contract.json active must be true.');
   if (contractIssue !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_ISSUE}; found ${contractIssue ?? 'none'}.`);
   if (contractIssueFromBacklog !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json backlog_id must resolve to issue #${ACTIVE_ISSUE}; found ${contract?.backlog_id ?? 'none'}.`);
-  if (contract?.money_loop_rung !== 'supabase_egress_burndown') failures.push('.foldera-contract.json money_loop_rung must be supabase_egress_burndown.');
-  if (contract?.user_system_path !== 're-land Supabase egress burn-down work on main') failures.push('.foldera-contract.json user_system_path must be re-land Supabase egress burn-down work on main.');
+  if (contract?.money_loop_rung !== 'supabase_egress_measurement') failures.push('.foldera-contract.json money_loop_rung must be supabase_egress_measurement.');
+  if (contract?.user_system_path !== 'measure live Supabase API/database egress before downgrade decision') failures.push('.foldera-contract.json user_system_path must be measure live Supabase API/database egress before downgrade decision.');
 
   if (handoffIssue !== null && buildIssue !== null && handoffIssue !== buildIssue) failures.push(`ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml disagree: #${handoffIssue} vs #${buildIssue}.`);
   if (handoffIssue !== null && contractIssue !== null && handoffIssue !== contractIssue) failures.push(`ACTIVE_HANDOFF.md and .foldera-contract.json disagree: #${handoffIssue} vs #${contractIssue}.`);
@@ -181,8 +165,8 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   if (handoffActiveIssueMentions.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam; found ${handoffActiveIssueMentions.length}.`);
   if (handoffActiveIssueMentions.some((issue) => issue !== ACTIVE_ISSUE)) failures.push(`ACTIVE_HANDOFF.md has an active seam other than issue #${ACTIVE_ISSUE}.`);
 
-  if (buildPriorityClass !== 'SUPABASE_EGRESS_BURNDOWN') failures.push('FOLDERA_BUILD_ORDER.yaml priority_class must be SUPABASE_EGRESS_BURNDOWN.');
-  if (buildWorkType !== 'RECOVERY_RELAND') failures.push('FOLDERA_BUILD_ORDER.yaml work_type must be RECOVERY_RELAND.');
+  if (buildPriorityClass !== 'SUPABASE_EGRESS_MEASUREMENT') failures.push('FOLDERA_BUILD_ORDER.yaml priority_class must be SUPABASE_EGRESS_MEASUREMENT.');
+  if (buildWorkType !== 'BLOCKED_MEASUREMENT_CLOSEOUT') failures.push('FOLDERA_BUILD_ORDER.yaml work_type must be BLOCKED_MEASUREMENT_CLOSEOUT.');
   if (!buildOrder.includes('required_gate_command: npm run gate:command')) failures.push('FOLDERA_BUILD_ORDER.yaml must name required_gate_command: npm run gate:command.');
 
   if (!/issue #121[^\n]*(landing|landing-page)[^\n]*(paused|pause)/i.test(handoff)) failures.push('ACTIVE_HANDOFF.md must say issue #121 landing work is paused.');
@@ -217,15 +201,16 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
 
   const packageJson = readJson<{ scripts?: Record<string, string> }>(root, 'package.json');
   if (packageJson.scripts?.['gate:command'] !== 'npx tsx scripts/source-truth-check.ts') failures.push('package.json must define gate:command as npx tsx scripts/source-truth-check.ts.');
-  if (!packageJson.scripts?.['gate:free-plan']?.includes('scripts/free-plan-gate.ts')) failures.push('package.json must define gate:free-plan with scripts/free-plan-gate.ts.');
 
   const missingForbiddenWork = includesAll(buildOrder, [
+    'product code',
     'issue #121 landing implementation',
+    'issue #131 implementation',
     'Slack',
     'Stripe',
     'dashboard',
     'schema',
-    'issue #131',
+    'Supabase downgrade',
     'broad cleanup',
     'reopening PR #124 or PR #125',
   ]);
@@ -242,5 +227,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Active issue #126 is the only recovery lane.');
+  console.log('Source truth check passed. Active issue #126 is blocked on Supabase egress measurement.');
 }

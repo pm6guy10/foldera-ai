@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-05-31 PT
-Current `origin/main` SHA at recovery start: `6654948ed951e217aa75bf2601a8e820c819fcbe`.
+Current `origin/main` SHA at closeout start: `9d1dc71ba747306b03fc527ea7058ccdfc8dd723`.
 
 ## Canonical Boot Sequence
 For any Foldera task, use this order:
@@ -15,19 +15,20 @@ For any Foldera task, use this order:
 7. Use Vercel/Supabase only when the seam requires live/runtime truth.
 
 ## Active command gate
-Active implementation seam is issue #126: Supabase egress burn-down recovery onto `main`.
+Active implementation seam is issue #126: BLOCKED on live Supabase API/database egress measurement before any downgrade.
 
-PR #130 is merged. PR #127 says it closes issue #126, but it merged into `issue-121-code-native-landing`, not `main`. PR #125 is closed and must not be reopened or reused.
-Stop condition: prove #126 already exists on `origin/main`, or open one clean recovery PR from `origin/main` re-landing only #126.
+PR #132 merged the #126 Supabase egress burn-down recovery into `main` at `9d1dc71ba747306b03fc527ea7058ccdfc8dd723`.
+Current blocker: live Supabase dashboard/API egress measurement is required before deciding whether the project can downgrade.
 
 ## Current slice:
 
-- Issue #126 is the only active implementation seam.
-- Issue #121 landing work remains paused unless explicitly reassigned after this recovery seam.
+- Issue #126 recovery is complete/landed via PR #132.
+- No product implementation seam is active while Supabase measurement/downgrade decision is unresolved.
+- Issue #131 is the next product-build candidate only after the Supabase measurement/downgrade decision is resolved.
+- Issue #121 landing work remains paused unless explicitly reassigned after the blocker is resolved.
 - Issue #99 remains paused.
 - Issue #48 remains the product doctrine.
-- PR #124 is closed and superseded; it must not be reopened or reused for current work.
-- PR #125 is closed and superseded; it must not be reopened or reused for current work.
+- PR #124 and PR #125 are closed/superseded and must not be reopened or reused.
 
 ## Product doctrine
 
@@ -36,11 +37,11 @@ state + connectors + triggers + one intervention.
 Stay quiet otherwise; no task-list/dashboard replacement behavior.
 Issue #48 remains the product contract.
 
-## Required enforcement outcome for #126
+## Required blocker outcome
 
-Re-land only the #126 egress files missing from `origin/main`: free-plan/egress gates, run-brief query_budget receipt, `ACTION_RUN_BRIEF_FACTS_SELECT`, auth admin lookup cache and collapse tests, and middleware localhost full-generation fail-closed guard.
+Measure live Supabase API/database egress after PR #132 before any downgrade. Green target remains projected API/database egress below 5 GB/month, ideally below 125 MB/day sustained.
 
-Required proof: npm run gate:command; npm run gate:continuity; npm run gate:free-plan; npm run lint; npm run build; npx vitest run app/api/settings/run-brief/__tests__/route.test.ts scripts/__tests__/free-plan-gate.test.ts lib/auth/__tests__/admin-user-cache.test.ts --reporter=verbose.
+Required proof for this closeout PR: npm run gate:command; npm run gate:continuity; npm run lint; npm run build.
 
 ## GitHub writeback contract
 
@@ -55,8 +56,8 @@ Required proof: npm run gate:command; npm run gate:continuity; npm run gate:free
 
 ## Forbidden unless explicitly assigned
 
-- No issue #121 landing implementation, issue #99, Slack, Stripe, dashboard product behavior, schema, issue #131, broad cleanup, or reopening PR #124/PR #125.
+- No product code, landing, Slack, Stripe, issue #131 implementation, Supabase schema, downgrade, dashboard product behavior, or broad cleanup.
 
 ## Next exact move
 
-Run issue #126 only in branch `issue-126-egress-reland-main`; keep the diff inside source-truth gate alignment and #126 implementation/test files, open one PR to `main` if patched, then stop after proof and receipt are posted.
+Open one tiny source-truth closeout PR from current `main`; stop after proof and receipt. Do not start issue #131 until live Supabase egress measurement resolves the downgrade decision.
