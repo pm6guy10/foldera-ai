@@ -16,10 +16,11 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 121
-priority_class: LANDING_PAGE_FRONTEND_CONTRACT
-work_type: FRONTEND_LANDING_HOTFIX
-why_this_first: Issue #120 public funnel route contract is complete; issue #121 now owns landing-page frontend contract and current landing hotfix proof before any #99 or broader product work.
+active_issue: 123
+priority_class: SOURCE_TRUTH_COMMAND_GATE
+work_type: REPO_GOVERNANCE_GATE
+why_this_first: Issue #123 must become a real command-enforced source-truth gate before issue #121 landing-page work resumes, otherwise Brandon remains the active-seam babysitter.
+required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
   - 94
@@ -41,12 +42,33 @@ completed:
     pr: 122
     merge_sha: 7784505f42f3ee16713a36d619f4ea0ceaa640fd
     result: Public funnel route contract completed; /start is the public Join Pilot target for landing CTAs.
+closed_pull_requests_do_not_reopen:
+  - pr: 124
+    status: closed_do_not_reopen
+    reason: Superseded lane; do not reopen or reuse for current work.
+  - pr: 125
+    status: closed_do_not_reopen
+    reason: Superseded lane; do not reopen or reuse for current work.
 paused:
+  - issue: 121
+    reason: Issue #121 landing implementation is paused until issue #123 source-truth command gate is enforced and green.
   - issue: 99
-    reason: Planning spine remains paused until issue #121 landing-page frontend contract and current LP hotfix are proven and merged.
+    reason: Planning spine remains paused until issue #123 source-truth command gate is enforced and issue #121 landing contract is later resumed by source truth.
   - issue: 84
     pr: 95
     reason: Older landing polish reference remains paused/superseded by issue #121 current landing-page frontend contract seam.
+forbidden_current_work:
+  - issue #121 landing implementation
+  - issue #99
+  - backend/auth/Supabase/Stripe/Slack/dashboard
+  - broad cleanup
+  - new landing issue
+  - reopening PR #124 or PR #125
+required_local_proof:
+  - npx tsx scripts/source-truth-check.ts
+  - npm run gate:continuity
+  - npm run lint
+  - npm run build
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
