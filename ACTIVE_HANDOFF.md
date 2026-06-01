@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-06-01 PT
-Current `origin/main` SHA at Real Slack Self-Loop source-truth promotion start: `46ff9ee99d8f920fc423b6de4d114022d6a8a521`.
+Current `origin/main` SHA at Real Slack Self-Loop implementation promotion start: `5f1d3e73f90f1c30ad904c8e45db18a68ebc042e`.
 
 ## Canonical Boot Sequence
 For any Foldera task, use this order:
@@ -15,7 +15,7 @@ For any Foldera task, use this order:
 7. Use Vercel/Supabase only when the seam requires live/runtime truth.
 
 ## Active command gate
-Active implementation seam is issue #138: Real Slack Self-Loop source-truth promotion.
+Active implementation seam is issue #140: Real Slack Self-Loop implementation.
 
 Issue #126 is complete: PR #132 landed Supabase egress controls on `main`, PR #133 completed source-truth closeout, and current-cycle Supabase usage showed projected API/database egress under the Free-plan target. The Supabase measurement/downgrade blocker is resolved.
 
@@ -23,12 +23,15 @@ Issue #131 is complete: PR #135 landed the Slack test-mode MVP Presence Loop on 
 
 Issue #136 is complete: PR #137 installed mandatory Codex Run Ledger closeout discipline on `main`.
 
+Issue #138 is complete: PR #139 promoted the Real Slack Self-Loop source-truth target on `main` without Slack implementation code.
+
 ## Current slice:
 
 - Issue #126 recovery and downgrade decision are complete/resolved.
 - Issue #131 MVP Presence Loop is complete on `main`.
 - Issue #136 Codex Run Ledger governance is complete on `main`.
-- Issue #138 is now the active source-truth promotion seam for the Real Slack Self-Loop.
+- Issue #138 Real Slack Self-Loop source-truth promotion is complete on `main`.
+- Issue #140 is now the active implementation seam for the bounded Real Slack Self-Loop.
 - Issue #121 landing work remains paused unless explicitly reassigned after issue #136.
 - Issue #99 remains paused.
 - Issue #48 remains the product doctrine.
@@ -41,12 +44,14 @@ state + connectors + triggers + one intervention.
 Stay quiet otherwise; no task-list/dashboard replacement behavior.
 Issue #48 remains the product contract.
 
-## Required issue #138 outcome
+## Required issue #140 outcome
 
-Promote the next product seam into repo source truth without implementing Slack code:
-issue #131 deterministic Slack test-mode loop -> issue #138 Real Slack Self-Loop source-truth target -> bounded future implementation issue.
+Implement one safe Real Slack Self-Loop only:
+issue #131 deterministic Slack test-mode loop -> issue #138 Real Slack Self-Loop source-truth target -> issue #140 bounded real Slack implementation.
 
-Required proof for the #138 source-truth promotion PR: `npm run health`, `npm run gate:command`, `npm run gate:continuity`, and `git diff --check`.
+Required deterministic proof for issue #140: `npm run health`, focused Slack self-loop tests, token exposure / secret redaction test or gate, `npm run gate:command`, `npm run gate:continuity`, `npm run lint`, `npm run build`, and `git diff --check`.
+
+Live Slack send/install/OAuth proof is only required after the implementation reaches that boundary and must not be faked. If external credentials, OAuth app settings, Slack workspace authorization, or paid/model proof are required, stop with `BLOCKED` and name the exact missing permission.
 
 ## GitHub writeback contract
 
@@ -62,8 +67,8 @@ Required proof for the #138 source-truth promotion PR: `npm run health`, `npm ru
 ## Forbidden unless explicitly assigned
 
 - No landing, Stripe, dashboard redesign, Supabase schema, live Slack install/OAuth/send, Teams/email/calendar expansion, outreach, billing/downgrade work, or broad cleanup.
-- For issue #138 specifically, no Slack code implementation. Source-truth promotion only.
+- For issue #140 specifically, one real Slack self-loop only; no connector platform expansion.
 
 ## Next exact move
 
-Run issue #138 source-truth promotion only. Open one PR, post the primary PR receipt, post the issue #136 ledger receipt, and stop. Do not implement Slack code, live Slack install/OAuth/send, landing, Stripe, dashboard redesign, Supabase schema, billing/downgrade, outreach, Dependabot, or broad cleanup.
+Run issue #140 Real Slack Self-Loop implementation only after this closeout/promotion PR lands. Do not start landing, Stripe, dashboard redesign, Supabase schema except a proven token/state boundary, Teams/email/calendar expansion, billing/downgrade, outreach, Dependabot, or broad cleanup.

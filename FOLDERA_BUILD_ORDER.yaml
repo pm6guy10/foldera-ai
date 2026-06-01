@@ -16,10 +16,10 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 138
-priority_class: REAL_SLACK_SELF_LOOP_SOURCE_TRUTH
-work_type: SOURCE_TRUTH_PROMOTION
-why_this_first: Issue #131 proved the deterministic Slack test-mode MVP Presence Loop and issue #136 installed Codex Run Ledger discipline; issue #138 is the explicitly assigned source-truth promotion for the next bounded Real Slack Self-Loop seam.
+active_issue: 140
+priority_class: REAL_SLACK_SELF_LOOP_IMPLEMENTATION
+work_type: IMPLEMENTATION
+why_this_first: Issue #131 proved the deterministic Slack test-mode MVP Presence Loop, issue #136 installed Codex Run Ledger discipline, and issue #138 / PR #139 promoted the bounded Real Slack Self-Loop target; issue #140 is the explicitly assigned implementation seam.
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -33,6 +33,7 @@ predecessor_issues:
   - 126
   - 131
   - 136
+  - 138
 completed:
   - issue: 106
     pr: 107
@@ -62,6 +63,10 @@ completed:
     pr: 137
     merge_sha: 46ff9ee99d8f920fc423b6de4d114022d6a8a521
     result: Codex Run Ledger closeout discipline landed on main.
+  - issue: 138
+    pr: 139
+    merge_sha: 5f1d3e73f90f1c30ad904c8e45db18a68ebc042e
+    result: PR #139 Real Slack Self-Loop source-truth promotion landed on main without Slack implementation code.
 closed_pull_requests_do_not_reopen:
   - pr: 124
     status: closed_do_not_reopen
@@ -71,9 +76,9 @@ closed_pull_requests_do_not_reopen:
     reason: Closed/unmerged; do not reopen or reuse after issue #126 recovery.
 paused:
   - issue: 121
-    reason: Landing implementation remains paused while issue #131 is active.
+    reason: Landing implementation remains paused while issue #140 Real Slack Self-Loop implementation is active.
   - issue: 99
-    reason: Planning spine remains paused while issue #131 proves the MVP Presence Loop.
+    reason: Planning spine remains paused while issue #140 Real Slack Self-Loop implementation is active.
   - issue: 84
     pr: 95
     reason: Older landing polish reference remains paused/superseded by issue #121 current landing-page frontend contract seam.
@@ -82,10 +87,10 @@ forbidden_current_work:
   - Stripe
   - dashboard redesign
   - Supabase schema
-  - live Slack install
-  - Slack OAuth
-  - live Slack send
-  - Slack code implementation during issue 138 source-truth promotion
+  - connector platform expansion
+  - live Slack install beyond the one self-loop boundary
+  - Slack OAuth beyond the one self-loop boundary
+  - live Slack send beyond the one self-loop boundary
   - Teams expansion
   - email expansion
   - calendar expansion
@@ -95,14 +100,20 @@ forbidden_current_work:
   - reopening PR #124 or PR #125
 required_local_proof:
   - npm run health
+  - focused Slack self-loop tests
+  - token exposure / secret redaction test or gate
   - npm run gate:command
   - npm run gate:continuity
+  - npm run lint
+  - npm run build
   - git diff --check
-required_issue_138_proof:
-  - ACTIVE_HANDOFF.md names issue #138 as the active source-truth promotion seam
-  - FOLDERA_BUILD_ORDER.yaml active_issue is 138
-  - .foldera-contract.json resolves to issue #138 and allows only source-truth promotion files
-  - no Slack implementation files changed
+required_issue_140_proof:
+  - ACTIVE_HANDOFF.md names issue #140 as the active implementation seam
+  - FOLDERA_BUILD_ORDER.yaml active_issue is 140
+  - .foldera-contract.json resolves to issue #140 and allows only the bounded self-loop surface
+  - issue #138 is closed after PR #139 merge
+  - Slack implementation stays limited to one self-loop
+  - no token exposure or accidental broad connector behavior
   - primary PR receipt is posted
   - standing ledger issue #136 receipt is posted
 closeout_required_each_pr:
@@ -114,6 +125,6 @@ closeout_required_each_pr:
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - this PR promotes current handoff/build-order truth without changing the historical roadmap narrative
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - this PR closes issue #138 after PR #139 and promotes issue #140 without changing the historical roadmap narrative
   docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this source-truth promotion PR
-  next_seam: named - issue #138 Real Slack Self-Loop source-truth promotion; stop after PR and receipts, with no Slack code implementation
+  next_seam: named - issue #140 Real Slack Self-Loop implementation; stop after PR and receipts, with no Slack code implementation in this closeout run
