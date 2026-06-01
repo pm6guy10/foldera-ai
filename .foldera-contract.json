@@ -1,17 +1,20 @@
 {
   "authority_status": "CURRENT_CONTROL",
   "active": true,
-  "active_issue": 138,
-  "backlog_id": "ISSUE_138_REAL_SLACK_SELF_LOOP_SOURCE_TRUTH",
-  "base_commit": "46ff9ee99d8f920fc423b6de4d114022d6a8a521",
-  "money_loop_rung": "real_slack_self_loop_source_truth",
-  "user_system_path": "promote the Real Slack Self-Loop into source truth without implementing Slack code",
+  "active_issue": 140,
+  "backlog_id": "ISSUE_140_REAL_SLACK_SELF_LOOP_IMPLEMENTATION",
+  "base_commit": "5f1d3e785a75fbc19a6970942f23cffb21c2c33a",
+  "money_loop_rung": "real_slack_self_loop_implementation",
+  "user_system_path": "implement one bounded Real Slack Self-Loop after issue #138 source-truth promotion",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
     "scripts/source-truth-check.ts",
-    "tests/config/__tests__/source-truth-check.test.ts"
+    "tests/config/__tests__/source-truth-check.test.ts",
+    "app/api/slack/**",
+    "lib/slack/**",
+    "lib/workday-presence/**"
   ],
   "forbidden_file_patterns": [
     "components/foldera/LandingPage.tsx",
@@ -23,8 +26,6 @@
     "app/dashboard/**",
     "components/dashboard/**",
     "supabase/**",
-    "app/api/slack/**",
-    "lib/slack/**",
     "app/api/teams/**",
     "app/api/email/**",
     "app/api/calendar/**",
@@ -32,27 +33,31 @@
     "outreach/**",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Issue #138 only: source-truth promotion files naming the Real Slack Self-Loop target plus the narrow source-truth command gate update. No Slack implementation files.",
-  "forbidden_files_raw": "No Slack code implementation, landing work, Stripe, dashboard redesign, Supabase schema, live Slack install/OAuth/send, Teams/email/calendar expansion, outreach, billing/downgrade work, Dependabot work, or broad cleanup.",
+  "allowed_files_raw": "Issue #140 only: source-truth files plus the narrow Slack self-loop implementation surface. One real Slack self-loop only.",
+  "forbidden_files_raw": "No landing work, Stripe, dashboard redesign, Supabase schema unless proven required for token/state boundary, Teams/email/calendar expansion, outreach, billing/downgrade work, Dependabot work, connector platform expansion, or broad cleanup.",
   "required_local_proof": [
     "npm run health",
+    "focused Slack self-loop tests",
+    "token exposure / secret redaction test or gate",
     "npx vitest run tests/config/__tests__/source-truth-check.test.ts --reporter=verbose",
     "npm run gate:command",
     "npm run gate:continuity",
+    "npm run lint",
+    "npm run build",
     "git diff --check"
   ],
-  "required_browser_proof": "Not applicable for this source-truth promotion seam; no product UI or Slack implementation changes are allowed.",
-  "acceptance_condition": "Repo source truth names issue #138 as the bounded Real Slack Self-Loop source-truth promotion and forbids Slack implementation in this PR.",
-  "stop_condition": "Stop when the issue #138 source-truth promotion PR is open, required proof passes, the primary PR receipt is posted, and the issue #136 ledger receipt is posted.",
+  "required_browser_proof": "Not applicable by default; Slack proof must be deterministic unless the issue reaches an explicit external Slack authorization boundary.",
+  "acceptance_condition": "Repo source truth names issue #140 as the bounded Real Slack Self-Loop implementation seam after issue #138 / PR #139 promotion merged.",
+  "stop_condition": "Stop when one PR implements the bounded Real Slack Self-Loop, required deterministic proof is posted, external proof is either passed or blocked with exact permission text, the primary PR receipt is posted, and the issue #136 ledger receipt is posted.",
   "is_user_facing": false,
   "browser_proof_command": "not applicable - source-truth promotion only",
   "anti_regression_checks": [
-    "ACTIVE_HANDOFF.md names issue #138 as the only active source-truth promotion seam",
-    "FOLDERA_BUILD_ORDER.yaml active_issue is 138",
-    ".foldera-contract.json active_issue and backlog_id resolve to 138",
-    "No Slack implementation files are changed",
-    "No product code is changed",
+    "ACTIVE_HANDOFF.md names issue #140 as the only active implementation seam",
+    "FOLDERA_BUILD_ORDER.yaml active_issue is 140",
+    ".foldera-contract.json active_issue and backlog_id resolve to 140",
+    "Issue #138 is listed as completed after PR #139 merged",
+    "Slack implementation remains bounded to one self-loop",
     "Forbidden scope keeps out live Slack install/OAuth/send, landing, Stripe, dashboard redesign, Supabase schema, Teams/email/calendar expansion, outreach, billing/downgrade work, Dependabot, and broad cleanup"
   ],
-  "next_command": "Open the issue #138 source-truth promotion PR after health, gate:command, gate:continuity, and git diff --check pass. Do not implement Slack code or start another seam."
+  "next_command": "Run issue #140 only after this closeout PR lands. Do not start landing, Stripe, dashboard redesign, Supabase schema, Teams/email/calendar expansion, billing/downgrade, Dependabot, or broad cleanup."
 }

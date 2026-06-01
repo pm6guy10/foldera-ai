@@ -14,8 +14,8 @@ type FolderaContract = {
   required_local_proof?: string[] | string;
 };
 
-const ACTIVE_ISSUE = 138;
-const COMPLETED_ISSUE = 126;
+const ACTIVE_ISSUE = 140;
+const COMPLETED_ISSUES = [126, 138];
 const PAUSED_LANDING_ISSUE = 121;
 const CLOSED_DO_NOT_REOPEN_PRS = [124, 125];
 const REQUIRED_PROOF_COMMANDS = [
@@ -156,8 +156,8 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   if (contract?.active !== true) failures.push('.foldera-contract.json active must be true.');
   if (contractIssue !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_ISSUE}; found ${contractIssue ?? 'none'}.`);
   if (contractIssueFromBacklog !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json backlog_id must resolve to issue #${ACTIVE_ISSUE}; found ${contract?.backlog_id ?? 'none'}.`);
-  if (contract?.money_loop_rung !== 'real_slack_self_loop_source_truth') failures.push('.foldera-contract.json money_loop_rung must be real_slack_self_loop_source_truth.');
-  if (contract?.user_system_path !== 'promote the Real Slack Self-Loop into source truth without implementing Slack code') failures.push('.foldera-contract.json user_system_path must be promote the Real Slack Self-Loop into source truth without implementing Slack code.');
+  if (contract?.money_loop_rung !== 'real_slack_self_loop_implementation') failures.push('.foldera-contract.json money_loop_rung must be real_slack_self_loop_implementation.');
+  if (contract?.user_system_path !== 'implement one bounded Real Slack Self-Loop after issue #138 source-truth promotion') failures.push('.foldera-contract.json user_system_path must be implement one bounded Real Slack Self-Loop after issue #138 source-truth promotion.');
 
   if (handoffIssue !== null && buildIssue !== null && handoffIssue !== buildIssue) failures.push(`ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml disagree: #${handoffIssue} vs #${buildIssue}.`);
   if (handoffIssue !== null && contractIssue !== null && handoffIssue !== contractIssue) failures.push(`ACTIVE_HANDOFF.md and .foldera-contract.json disagree: #${handoffIssue} vs #${contractIssue}.`);
@@ -168,14 +168,23 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   if (handoffActiveIssueMentions.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam; found ${handoffActiveIssueMentions.length}.`);
   if (handoffActiveIssueMentions.some((issue) => issue !== ACTIVE_ISSUE)) failures.push(`ACTIVE_HANDOFF.md has an active seam other than issue #${ACTIVE_ISSUE}.`);
 
-  if (buildPriorityClass !== 'REAL_SLACK_SELF_LOOP_SOURCE_TRUTH') failures.push('FOLDERA_BUILD_ORDER.yaml priority_class must be REAL_SLACK_SELF_LOOP_SOURCE_TRUTH.');
-  if (buildWorkType !== 'SOURCE_TRUTH_PROMOTION') failures.push('FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_PROMOTION.');
+  if (buildPriorityClass !== 'REAL_SLACK_SELF_LOOP_IMPLEMENTATION') failures.push('FOLDERA_BUILD_ORDER.yaml priority_class must be REAL_SLACK_SELF_LOOP_IMPLEMENTATION.');
+  if (buildWorkType !== 'IMPLEMENTATION') failures.push('FOLDERA_BUILD_ORDER.yaml work_type must be IMPLEMENTATION.');
   if (!buildOrder.includes('required_gate_command: npm run gate:command')) failures.push('FOLDERA_BUILD_ORDER.yaml must name required_gate_command: npm run gate:command.');
-  if (!buildOrder.includes(`issue: ${COMPLETED_ISSUE}`) || !/issue:\s*126[\s\S]*?downgrade blocker is resolved/i.test(buildOrder)) {
+  for (const completedIssue of COMPLETED_ISSUES) {
+    if (!buildOrder.includes(`issue: ${completedIssue}`)) failures.push(`FOLDERA_BUILD_ORDER.yaml must list issue #${completedIssue} as completed.`);
+  }
+  if (!/issue:\s*126[\s\S]*?downgrade blocker is resolved/i.test(buildOrder)) {
     failures.push('FOLDERA_BUILD_ORDER.yaml must list issue #126 as completed with the downgrade blocker resolved.');
+  }
+  if (!/issue:\s*138[\s\S]*?PR #139[\s\S]*?without Slack implementation code/i.test(buildOrder)) {
+    failures.push('FOLDERA_BUILD_ORDER.yaml must list issue #138 / PR #139 as completed without Slack implementation code.');
   }
   if (!/Issue #126[\s\S]*?complete[\s\S]*?blocker is resolved/i.test(handoff)) {
     failures.push('ACTIVE_HANDOFF.md must say issue #126 is complete and the Supabase measurement/downgrade blocker is resolved.');
+  }
+  if (!/Issue #138[\s\S]*?complete[\s\S]*?PR #139[\s\S]*?without Slack implementation code/i.test(handoff)) {
+    failures.push('ACTIVE_HANDOFF.md must say issue #138 is complete after PR #139 without Slack implementation code.');
   }
 
   if (!/issue #121[^\n]*(landing|landing-page)[^\n]*(paused|pause)/i.test(handoff)) failures.push('ACTIVE_HANDOFF.md must say issue #121 landing work is paused.');
@@ -216,9 +225,10 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
     'Stripe',
     'dashboard redesign',
     'Supabase schema',
-    'live Slack install',
-    'Slack OAuth',
-    'live Slack send',
+    'connector platform expansion',
+    'live Slack install beyond the one self-loop boundary',
+    'Slack OAuth beyond the one self-loop boundary',
+    'live Slack send beyond the one self-loop boundary',
     'Teams expansion',
     'email expansion',
     'calendar expansion',
@@ -244,5 +254,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Active issue #138 is the Real Slack Self-Loop source-truth promotion seam.');
+  console.log('Source truth check passed. Active issue #140 is the bounded Real Slack Self-Loop implementation seam.');
 }
