@@ -85,6 +85,18 @@ const requiredWritebackRules = [
   'If a source-truth file is not updated, the PR receipt must say `unchanged - reason` or `not applicable - reason`.',
 ];
 
+const requiredCodexRunLedgerRules = [
+  '## MANDATORY CODEX RUN LEDGER CLOSEOUT',
+  'Every Codex run must end with a durable GitHub closeout record.',
+  'The run is not complete until GitHub contains the closeout.',
+  'Find one open issue titled exactly: `[OPS] Codex Run Ledger`.',
+  'Generate one `RUN_ID` using this format:',
+  'codex-YYYYMMDD-HHMMSSZ-issue-###-pr-###-shortsha',
+  'Post the primary work-surface receipt.',
+  'Post the ledger receipt.',
+  'Return only both GitHub receipt URLs to Brandon.',
+];
+
 const requiredSourceOfTruthOrder = [
   'ACTIVE_HANDOFF.md',
   'FOLDERA_BUILD_ORDER.yaml',
@@ -178,6 +190,11 @@ export function runContinuityGate(root: string): string[] {
   if (!activeHandoff.includes('Issue #48 remains the product contract.')) failures.push('ACTIVE_HANDOFF.md must reference issue #48 as the product contract.');
   for (const rule of requiredWritebackRules) {
     if (!activeHandoff.includes(rule)) failures.push(`ACTIVE_HANDOFF.md is missing required GitHub writeback rule: ${rule}`);
+  }
+
+  const agents = readRepoFile(root, 'AGENTS.md');
+  for (const rule of requiredCodexRunLedgerRules) {
+    if (!agents.includes(rule)) failures.push(`AGENTS.md is missing required Codex run ledger rule: ${rule}`);
   }
 
   const buildOrder = readRepoFile(root, 'FOLDERA_BUILD_ORDER.yaml');

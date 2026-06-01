@@ -1,24 +1,22 @@
 {
   "authority_status": "CURRENT_CONTROL",
   "active": true,
-  "active_issue": 131,
-  "backlog_id": "ISSUE_131_MVP_PRESENCE_LOOP_SLACK_TEST_MODE_RIGHT_NOW_CARD",
-  "base_commit": "abe9d256e648626b9f49b89f54ba00730472a91c",
-  "money_loop_rung": "mvp_presence_loop",
-  "user_system_path": "prove Slack test-mode Right Now card and button state update from stored workday state",
+  "active_issue": 136,
+  "backlog_id": "ISSUE_136_OPS_CODEX_RUN_LEDGER",
+  "base_commit": "1f8f373016ce9b9e8a77b9ea99a2acb683cf406f",
+  "money_loop_rung": "codex_run_ledger_governance",
+  "user_system_path": "make every future Codex run leave a durable GitHub closeout record",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "CODEX_START.md",
+    "scripts/continuity-gate.ts",
     "scripts/source-truth-check.ts",
-    "tests/config/__tests__/source-truth-check.test.ts",
-    "app/api/slack/test-mode/**",
-    "app/slack/test-mode/**",
-    "lib/slack-test-mode/**",
-    "lib/workday-presence/**",
-    "app/api/workday-presence/**",
-    "tests/e2e/slack-test-mode-right-now.screenshots.spec.ts",
-    "tests/config/__tests__/right-now-no-banned-outputs.test.ts"
+    "tests/config/__tests__/continuity-gate.test.ts",
+    "tests/config/__tests__/source-truth-check.test.ts"
   ],
   "forbidden_file_patterns": [
     "components/foldera/LandingPage.tsx",
@@ -40,29 +38,30 @@
     "outreach/**",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Issue #131 only: Slack test-mode Right Now card, Workday Presence state/action, deterministic presence-loop receipt, and directly scoped proof files.",
-  "forbidden_files_raw": "No landing work, Stripe, dashboard redesign, Supabase schema, live Slack install/OAuth/send, Teams/email/calendar expansion, outreach, billing/downgrade work, or broad cleanup.",
+  "allowed_files_raw": "Issue #136 only: authoritative Codex run ledger instruction, narrow source-truth/continuity gate enforcement, and directly scoped proof files.",
+  "forbidden_files_raw": "No landing work, Stripe, dashboard redesign, Supabase schema, live Slack install/OAuth/send, Teams/email/calendar expansion, outreach, billing/downgrade work, Dependabot work, or broad cleanup.",
   "required_local_proof": [
+    "npm run health",
+    "npx vitest run tests/config/__tests__/continuity-gate.test.ts tests/config/__tests__/source-truth-check.test.ts --reporter=verbose",
     "npm run gate:command",
     "npm run gate:continuity",
     "npm run lint",
-    "npm run build"
+    "npm run build",
+    "git diff --check"
   ],
-  "required_browser_proof": "Not applicable for this backend/test-mode seam; issue #131 implementation proof uses focused Slack test-mode route and presence-loop receipt tests.",
-  "acceptance_condition": "One complete Slack test-mode MVP Presence Loop is proven: stored workday state -> generated Right Now card -> simulated button action -> updated workday state -> deterministic receipt, with no live Slack send and no paid model call.",
-  "stop_condition": "Stop when one issue #131 implementation PR is open, required proof passes, and a GitHub receipt is posted.",
+  "required_browser_proof": "Not applicable for this repo-governance seam; issue #136 uses instruction and gate proof.",
+  "acceptance_condition": "Every future Codex run has a repo-durable mandatory ledger closeout rule and continuity-gate enforcement for the authoritative AGENTS.md rule.",
+  "stop_condition": "Stop when the issue #136 PR is open, required proof passes, and primary plus ledger GitHub receipts are posted.",
   "is_user_facing": false,
-  "browser_proof_command": "not applicable - Slack test-mode route and deterministic receipt tests cover this seam",
+  "browser_proof_command": "not applicable - repo-governance instruction and gate proof cover this seam",
   "anti_regression_checks": [
-    "ACTIVE_HANDOFF.md names issue #131 as the only active implementation seam",
-    "FOLDERA_BUILD_ORDER.yaml active_issue is 131",
-    ".foldera-contract.json active_issue and backlog_id resolve to 131",
-    "Focused tests prove Right Now card payload generation from stored workday state",
-    "Focused tests prove Done, Stuck, Break smaller, and Snooze state transitions",
-    "Presence-loop receipt shows before state, card payload, button action, and after state",
-    "Receipt marks paid_model_call_required false and inline_full_state_recompute false",
-    "Forbidden scope keeps out landing, Stripe, dashboard redesign, Supabase schema, live Slack install/OAuth/send, Teams/email/calendar expansion, outreach, billing/downgrade work, and broad cleanup",
-    "No live Slack OAuth/install/send code is added"
+    "ACTIVE_HANDOFF.md names issue #136 as the only active implementation seam",
+    "FOLDERA_BUILD_ORDER.yaml active_issue is 136",
+    ".foldera-contract.json active_issue and backlog_id resolve to 136",
+    "AGENTS.md contains MANDATORY CODEX RUN LEDGER CLOSEOUT",
+    "continuity gate fails when the mandatory ledger rule is removed",
+    "No product code is changed",
+    "Forbidden scope keeps out landing, Stripe, dashboard redesign, Supabase schema, live Slack install/OAuth/send, Teams/email/calendar expansion, outreach, billing/downgrade work, Dependabot, and broad cleanup"
   ],
-  "next_command": "Open the issue #131 implementation PR after focused presence-loop tests, gate:command, gate:continuity, lint, and build pass. Do not start landing, live Slack, Stripe, dashboard redesign, Supabase schema, billing/downgrade, outreach, or broad cleanup."
+  "next_command": "Open the issue #136 PR after focused gate tests, gate:command, gate:continuity, lint, build, and git diff --check pass. Do not start another seam."
 }

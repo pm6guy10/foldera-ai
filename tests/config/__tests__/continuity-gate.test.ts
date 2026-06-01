@@ -74,5 +74,20 @@ describe('continuity gate writeback enforcement', () => {
       'ACTIVE_HANDOFF.md is missing required GitHub writeback rule: GitHub writeback before stop is mandatory.',
     );
   });
+
+  it('fails when the mandatory Codex run ledger closeout rule is removed from AGENTS.md', () => {
+    const fixtureRoot = createFixtureRoot();
+    const agentsPath = path.join(fixtureRoot, 'AGENTS.md');
+    const original = fs.readFileSync(agentsPath, 'utf8');
+    fs.writeFileSync(
+      agentsPath,
+      original.replace('## MANDATORY CODEX RUN LEDGER CLOSEOUT', '## Optional Codex Run Ledger Closeout'),
+      'utf8',
+    );
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(failures).toContain('AGENTS.md is missing required Codex run ledger rule: ## MANDATORY CODEX RUN LEDGER CLOSEOUT');
+  });
 });
 

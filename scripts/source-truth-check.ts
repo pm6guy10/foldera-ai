@@ -14,7 +14,7 @@ type FolderaContract = {
   required_local_proof?: string[] | string;
 };
 
-const ACTIVE_ISSUE = 131;
+const ACTIVE_ISSUE = 136;
 const COMPLETED_ISSUE = 126;
 const PAUSED_LANDING_ISSUE = 121;
 const CLOSED_DO_NOT_REOPEN_PRS = [124, 125];
@@ -29,6 +29,11 @@ const REQUIRED_ALLOWED_FILES = [
   '.foldera-contract.json',
   'ACTIVE_HANDOFF.md',
   'FOLDERA_BUILD_ORDER.yaml',
+  'AGENTS.md',
+  'CLAUDE.md',
+  'CODEX_START.md',
+  'scripts/continuity-gate.ts',
+  'tests/config/__tests__/continuity-gate.test.ts',
   'scripts/source-truth-check.ts',
 ];
 
@@ -159,8 +164,8 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   if (contract?.active !== true) failures.push('.foldera-contract.json active must be true.');
   if (contractIssue !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_ISSUE}; found ${contractIssue ?? 'none'}.`);
   if (contractIssueFromBacklog !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json backlog_id must resolve to issue #${ACTIVE_ISSUE}; found ${contract?.backlog_id ?? 'none'}.`);
-  if (contract?.money_loop_rung !== 'mvp_presence_loop') failures.push('.foldera-contract.json money_loop_rung must be mvp_presence_loop.');
-  if (contract?.user_system_path !== 'prove Slack test-mode Right Now card and button state update from stored workday state') failures.push('.foldera-contract.json user_system_path must be prove Slack test-mode Right Now card and button state update from stored workday state.');
+  if (contract?.money_loop_rung !== 'codex_run_ledger_governance') failures.push('.foldera-contract.json money_loop_rung must be codex_run_ledger_governance.');
+  if (contract?.user_system_path !== 'make every future Codex run leave a durable GitHub closeout record') failures.push('.foldera-contract.json user_system_path must be make every future Codex run leave a durable GitHub closeout record.');
 
   if (handoffIssue !== null && buildIssue !== null && handoffIssue !== buildIssue) failures.push(`ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml disagree: #${handoffIssue} vs #${buildIssue}.`);
   if (handoffIssue !== null && contractIssue !== null && handoffIssue !== contractIssue) failures.push(`ACTIVE_HANDOFF.md and .foldera-contract.json disagree: #${handoffIssue} vs #${contractIssue}.`);
@@ -171,8 +176,8 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   if (handoffActiveIssueMentions.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam; found ${handoffActiveIssueMentions.length}.`);
   if (handoffActiveIssueMentions.some((issue) => issue !== ACTIVE_ISSUE)) failures.push(`ACTIVE_HANDOFF.md has an active seam other than issue #${ACTIVE_ISSUE}.`);
 
-  if (buildPriorityClass !== 'MVP_PRESENCE_LOOP') failures.push('FOLDERA_BUILD_ORDER.yaml priority_class must be MVP_PRESENCE_LOOP.');
-  if (buildWorkType !== 'SLACK_TEST_MODE_RIGHT_NOW_CARD_STATE_UPDATE') failures.push('FOLDERA_BUILD_ORDER.yaml work_type must be SLACK_TEST_MODE_RIGHT_NOW_CARD_STATE_UPDATE.');
+  if (buildPriorityClass !== 'OPS_CODEX_RUN_LEDGER') failures.push('FOLDERA_BUILD_ORDER.yaml priority_class must be OPS_CODEX_RUN_LEDGER.');
+  if (buildWorkType !== 'REPO_GOVERNANCE_LEDGER_ENFORCEMENT') failures.push('FOLDERA_BUILD_ORDER.yaml work_type must be REPO_GOVERNANCE_LEDGER_ENFORCEMENT.');
   if (!buildOrder.includes('required_gate_command: npm run gate:command')) failures.push('FOLDERA_BUILD_ORDER.yaml must name required_gate_command: npm run gate:command.');
   if (!buildOrder.includes(`issue: ${COMPLETED_ISSUE}`) || !/issue:\s*126[\s\S]*?downgrade blocker is resolved/i.test(buildOrder)) {
     failures.push('FOLDERA_BUILD_ORDER.yaml must list issue #126 as completed with the downgrade blocker resolved.');
@@ -232,6 +237,10 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   ]);
   for (const missing of missingForbiddenWork) failures.push(`FOLDERA_BUILD_ORDER.yaml forbidden_current_work is missing: ${missing}`);
 
+  if (!readRepoFile(root, 'AGENTS.md').includes('## MANDATORY CODEX RUN LEDGER CLOSEOUT')) {
+    failures.push('AGENTS.md must contain MANDATORY CODEX RUN LEDGER CLOSEOUT.');
+  }
+
   return failures;
 }
 
@@ -243,5 +252,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Active issue #131 is the MVP Presence Loop seam.');
+  console.log('Source truth check passed. Active issue #136 is the Codex Run Ledger governance seam.');
 }
