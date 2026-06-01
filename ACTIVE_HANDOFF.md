@@ -4,7 +4,6 @@ Last updated: 2026-05-31 PT
 Current `origin/main` SHA at update time: `aeb4e73c2a89cedfc8fdccdd7f8fa0dba4b0f03d`.
 
 ## Canonical Boot Sequence
-
 For any Foldera task, use this order:
 
 1. Read `ACTIVE_HANDOFF.md`.
@@ -16,31 +15,16 @@ For any Foldera task, use this order:
 7. Use Vercel/Supabase only when the seam requires live/runtime truth.
 
 ## Active command gate
-
 Active implementation seam is issue #123: repo command gate / anti-sprawl enforcement.
 
-Issue #121 landing polish is paused until #123 is enforced by code, not just written in chat or Markdown.
+PR #130 is the only active execution lane for issue #123.
+Issue #121 landing polish is paused until issue #123 is merged and enforced by code.
+Stop condition: PR #130 green/merged before landing resumes.
 
-## Why #123 is active before #121
+## Current slice:
 
-The current failure is not visual polish skill. The failure is process drift:
-
-- extra PRs get created
-- old PRs get reused
-- source-truth files contradict each other
-- chat memory becomes the operating system
-- Brandon becomes the project manager
-- proof links replace real screenshot/build evidence
-
-That must be blocked by repo code before landing work resumes.
-
-## Current slice
-
-- Issue #113 source-truth closeout enforcement is complete; PR #114 merged at `2292181e0e81c505256637272d0e612cd10440a2`.
-- Issue #120 public-funnel route contract is complete; PR #122 merged at `7784505f42f3ee16713a36d619f4ea0ceaa640fd`.
-- PR #129 landing hotfix merged at `aeb4e73c2a89cedfc8fdccdd7f8fa0dba4b0f03d`.
-- PR #125 is closed and must not be reopened unless source truth explicitly reactivates it.
-- Issue #123 is now the active blocker.
+- PR #124 is closed and superseded; it must not be reopened or reused for current work.
+- PR #125 is closed and superseded; it must not be reopened or reused for current work.
 - Issue #121 is next after #123, not active implementation.
 - Issue #99 remains paused.
 - Issue #48 remains the product doctrine.
@@ -54,18 +38,14 @@ Issue #48 remains the product contract.
 
 ## Required enforcement outcome for #123
 
-The repo must contain a deterministic command gate that fails locally and in CI when:
+The repo must contain a deterministic command gate that fails locally and in CI when source truth drifts, closed PRs are reused, landing work starts while issue #121 is paused, protected Vercel preview links are treated as proof, proof commands are missing, or PR files exceed the active contract allowlist.
 
-1. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml disagree on the active issue.
-2. .foldera-contract.json disagrees with the active issue.
-3. More than one active implementation seam is declared.
-4. A closed PR is named as the active execution lane.
-5. A landing PR exists while issue #121 is not the active issue.
-6. A PR touches files outside the active contract allowed paths.
-7. A PR omits required proof commands.
-8. A user-facing frontend PR omits mobile and desktop screenshot proof.
-9. A PR receipt uses a protected Vercel preview link as the proof instead of screenshots/build/route evidence.
-10. A next step creates a parallel issue instead of using the active issue.
+Required proof:
+
+- npm run gate:command
+- npm run gate:continuity
+- npm run lint
+- npm run build
 
 ## GitHub writeback contract
 
@@ -86,15 +66,14 @@ The repo must contain a deterministic command gate that fails locally and in CI 
 - No backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes.
 - No broad cleanup.
 - No new landing issue.
+- No reopening PR #124.
 - No reopening PR #125.
 
 ## Next exact move
 
-Run issue #123 only:
+Run issue #123 only in PR #130:
 
-1. Implement a repo command gate that enforces the active seam and anti-sprawl rules.
-2. Wire it into npm scripts and CI.
-3. Add failing and passing fixtures/tests.
-4. Update FOLDERA_BUILD_ORDER.yaml and .foldera-contract.json to agree with issue #123.
-5. Open one PR.
-6. Stop after proof is posted.
+1. Keep source-truth command gate enforcement green.
+2. Keep FOLDERA_BUILD_ORDER.yaml and .foldera-contract.json aligned to issue #123.
+3. Keep the work inside PR #130 only.
+4. Stop after proof is posted.

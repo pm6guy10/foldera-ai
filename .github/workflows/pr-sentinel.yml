@@ -19,5 +19,7 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Source truth check
+        run: npx tsx scripts/source-truth-check.ts
       - name: Continuity gate
         run: npm run gate:continuity
