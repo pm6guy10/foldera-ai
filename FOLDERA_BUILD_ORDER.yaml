@@ -16,10 +16,10 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 126
-priority_class: SUPABASE_EGRESS_MEASUREMENT
-work_type: BLOCKED_MEASUREMENT_CLOSEOUT
-why_this_first: PR #132 landed the #126 egress burn-down recovery on main; live Supabase API/database egress must be measured before any downgrade or next product-build seam starts.
+active_issue: 131
+priority_class: MVP_PRESENCE_LOOP
+work_type: SLACK_TEST_MODE_RIGHT_NOW_CARD_STATE_UPDATE
+why_this_first: Issue #126 Supabase egress controls and source-truth closeout landed via PR #132 and PR #133; current-cycle Supabase usage showed projected API/database egress under the Free-plan target, so the downgrade blocker is resolved and issue #131 is the next active product seam.
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -30,6 +30,7 @@ predecessor_issues:
   - 113
   - 120
   - 123
+  - 126
 completed:
   - issue: 106
     pr: 107
@@ -50,7 +51,7 @@ completed:
   - issue: 126
     pr: 132
     merge_sha: 9d1dc71ba747306b03fc527ea7058ccdfc8dd723
-    result: Supabase egress burn-down recovery landed on main; downgrade remains blocked pending live egress measurement.
+    result: Supabase egress burn-down recovery landed on main; PR #133 completed source-truth closeout; current-cycle usage projected under the Free-plan target, so the downgrade blocker is resolved.
 closed_pull_requests_do_not_reopen:
   - pr: 124
     status: closed_do_not_reopen
@@ -59,25 +60,26 @@ closed_pull_requests_do_not_reopen:
     status: closed_do_not_reopen
     reason: Closed/unmerged; do not reopen or reuse after issue #126 recovery.
 paused:
-  - issue: 131
-    reason: Next product-build candidate only after Supabase measurement/downgrade decision is resolved.
   - issue: 121
-    reason: Landing implementation remains paused until explicitly reassigned after the blocker is resolved.
+    reason: Landing implementation remains paused while issue #131 is active.
   - issue: 99
-    reason: Planning spine remains paused during Supabase measurement/downgrade blocker.
+    reason: Planning spine remains paused while issue #131 proves the MVP Presence Loop.
   - issue: 84
     pr: 95
     reason: Older landing polish reference remains paused/superseded by issue #121 current landing-page frontend contract seam.
 forbidden_current_work:
-  - product code
-  - issue #121 landing implementation
-  - issue #131 implementation
-  - issue #99
-  - Slack
+  - landing work
   - Stripe
-  - dashboard
-  - schema
-  - Supabase downgrade
+  - dashboard redesign
+  - Supabase schema
+  - live Slack install
+  - Slack OAuth
+  - live Slack send
+  - Teams expansion
+  - email expansion
+  - calendar expansion
+  - outreach
+  - billing or downgrade work
   - broad cleanup
   - reopening PR #124 or PR #125
 required_local_proof:
@@ -85,6 +87,14 @@ required_local_proof:
   - npm run gate:continuity
   - npm run lint
   - npm run build
+required_issue_131_proof:
+  - focused test proving Right Now card payload generation from stored workday state
+  - focused test proving Done button updates state
+  - focused test proving Stuck button updates blocker/unblock path
+  - focused test proving Break smaller updates next_move deterministically
+  - focused test proving Snooze preserves state and records defer metadata
+  - receipt showing before state -> card payload -> button action -> after state
+  - proof that no paid LLM call is required for the loop
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -94,6 +104,6 @@ closeout_required_each_pr:
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - roadmap order does not change for this source-truth closeout PR
-  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this source-truth closeout PR
-  next_seam: blocked - live Supabase API/database egress measurement required before downgrade decision; issue #131 waits
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - roadmap order does not change for this source-truth promotion PR
+  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this source-truth promotion PR
+  next_seam: named - issue #131 MVP Presence Loop, Slack test-mode Right Now card plus button state update

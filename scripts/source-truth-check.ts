@@ -14,7 +14,8 @@ type FolderaContract = {
   required_local_proof?: string[] | string;
 };
 
-const ACTIVE_ISSUE = 126;
+const ACTIVE_ISSUE = 131;
+const COMPLETED_ISSUE = 126;
 const PAUSED_LANDING_ISSUE = 121;
 const CLOSED_DO_NOT_REOPEN_PRS = [124, 125];
 const REQUIRED_PROOF_COMMANDS = [
@@ -37,8 +38,13 @@ const REQUIRED_FORBIDDEN_MARKERS = [
   'stripe',
   'slack',
   'schema',
-  '#131',
+  'live slack',
+  'teams',
+  'email',
+  'calendar',
+  'outreach',
   'downgrade',
+  'broad cleanup',
 ];
 
 function readRepoFile(root: string, file: string): string {
@@ -153,8 +159,8 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   if (contract?.active !== true) failures.push('.foldera-contract.json active must be true.');
   if (contractIssue !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_ISSUE}; found ${contractIssue ?? 'none'}.`);
   if (contractIssueFromBacklog !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json backlog_id must resolve to issue #${ACTIVE_ISSUE}; found ${contract?.backlog_id ?? 'none'}.`);
-  if (contract?.money_loop_rung !== 'supabase_egress_measurement') failures.push('.foldera-contract.json money_loop_rung must be supabase_egress_measurement.');
-  if (contract?.user_system_path !== 'measure live Supabase API/database egress before downgrade decision') failures.push('.foldera-contract.json user_system_path must be measure live Supabase API/database egress before downgrade decision.');
+  if (contract?.money_loop_rung !== 'mvp_presence_loop') failures.push('.foldera-contract.json money_loop_rung must be mvp_presence_loop.');
+  if (contract?.user_system_path !== 'prove Slack test-mode Right Now card and button state update from stored workday state') failures.push('.foldera-contract.json user_system_path must be prove Slack test-mode Right Now card and button state update from stored workday state.');
 
   if (handoffIssue !== null && buildIssue !== null && handoffIssue !== buildIssue) failures.push(`ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml disagree: #${handoffIssue} vs #${buildIssue}.`);
   if (handoffIssue !== null && contractIssue !== null && handoffIssue !== contractIssue) failures.push(`ACTIVE_HANDOFF.md and .foldera-contract.json disagree: #${handoffIssue} vs #${contractIssue}.`);
@@ -165,9 +171,15 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   if (handoffActiveIssueMentions.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam; found ${handoffActiveIssueMentions.length}.`);
   if (handoffActiveIssueMentions.some((issue) => issue !== ACTIVE_ISSUE)) failures.push(`ACTIVE_HANDOFF.md has an active seam other than issue #${ACTIVE_ISSUE}.`);
 
-  if (buildPriorityClass !== 'SUPABASE_EGRESS_MEASUREMENT') failures.push('FOLDERA_BUILD_ORDER.yaml priority_class must be SUPABASE_EGRESS_MEASUREMENT.');
-  if (buildWorkType !== 'BLOCKED_MEASUREMENT_CLOSEOUT') failures.push('FOLDERA_BUILD_ORDER.yaml work_type must be BLOCKED_MEASUREMENT_CLOSEOUT.');
+  if (buildPriorityClass !== 'MVP_PRESENCE_LOOP') failures.push('FOLDERA_BUILD_ORDER.yaml priority_class must be MVP_PRESENCE_LOOP.');
+  if (buildWorkType !== 'SLACK_TEST_MODE_RIGHT_NOW_CARD_STATE_UPDATE') failures.push('FOLDERA_BUILD_ORDER.yaml work_type must be SLACK_TEST_MODE_RIGHT_NOW_CARD_STATE_UPDATE.');
   if (!buildOrder.includes('required_gate_command: npm run gate:command')) failures.push('FOLDERA_BUILD_ORDER.yaml must name required_gate_command: npm run gate:command.');
+  if (!buildOrder.includes(`issue: ${COMPLETED_ISSUE}`) || !/issue:\s*126[\s\S]*?downgrade blocker is resolved/i.test(buildOrder)) {
+    failures.push('FOLDERA_BUILD_ORDER.yaml must list issue #126 as completed with the downgrade blocker resolved.');
+  }
+  if (!/Issue #126[\s\S]*?complete[\s\S]*?blocker is resolved/i.test(handoff)) {
+    failures.push('ACTIVE_HANDOFF.md must say issue #126 is complete and the Supabase measurement/downgrade blocker is resolved.');
+  }
 
   if (!/issue #121[^\n]*(landing|landing-page)[^\n]*(paused|pause)/i.test(handoff)) failures.push('ACTIVE_HANDOFF.md must say issue #121 landing work is paused.');
   if (!hasPausedIssue(buildOrder, PAUSED_LANDING_ISSUE)) failures.push('FOLDERA_BUILD_ORDER.yaml must say issue #121 is paused.');
@@ -203,14 +215,18 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   if (packageJson.scripts?.['gate:command'] !== 'npx tsx scripts/source-truth-check.ts') failures.push('package.json must define gate:command as npx tsx scripts/source-truth-check.ts.');
 
   const missingForbiddenWork = includesAll(buildOrder, [
-    'product code',
-    'issue #121 landing implementation',
-    'issue #131 implementation',
-    'Slack',
+    'landing work',
     'Stripe',
-    'dashboard',
-    'schema',
-    'Supabase downgrade',
+    'dashboard redesign',
+    'Supabase schema',
+    'live Slack install',
+    'Slack OAuth',
+    'live Slack send',
+    'Teams expansion',
+    'email expansion',
+    'calendar expansion',
+    'outreach',
+    'billing or downgrade work',
     'broad cleanup',
     'reopening PR #124 or PR #125',
   ]);
@@ -227,5 +243,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Active issue #126 is blocked on Supabase egress measurement.');
+  console.log('Source truth check passed. Active issue #131 is the MVP Presence Loop seam.');
 }

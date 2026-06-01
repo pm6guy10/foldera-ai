@@ -44,12 +44,12 @@ describe('source truth command gate', () => {
     const fixtureRoot = createFixtureRoot();
     const buildOrderPath = path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
     const original = fs.readFileSync(buildOrderPath, 'utf8');
-    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 126', 'active_issue: 121'));
+    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 131', 'active_issue: 121'));
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 126; found 121.');
-    expect(failures).toContain('ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml disagree: #126 vs #121.');
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 131; found 121.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml disagree: #131 vs #121.');
   });
 
   it('fails when .foldera-contract.json resolves to the wrong active issue', () => {
@@ -62,8 +62,8 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('.foldera-contract.json active_issue must be 126; found 121.');
-    expect(failures).toContain('.foldera-contract.json backlog_id must resolve to issue #126; found ISSUE_121_LANDING_PAGE_FRONTEND_CONTRACT.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be 131; found 121.');
+    expect(failures).toContain('.foldera-contract.json backlog_id must resolve to issue #131; found ISSUE_121_LANDING_PAGE_FRONTEND_CONTRACT.');
   });
 
   it('fails when protected Vercel preview links are used as proof in controlling files', () => {
