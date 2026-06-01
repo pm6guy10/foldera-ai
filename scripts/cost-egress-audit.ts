@@ -2,16 +2,11 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
-type Finding = {
-  file: string;
-  message: string;
-};
+type Finding = { file: string; message: string };
 
 const ROOT = process.cwd();
-const TARGET_TABLES = ['tkg_actions', 'tkg_signals', 'tkg_entities'];
-const RAW_SIGNAL_CONTENT_ALLOWED = new Set([
-  'lib/signals/signal-processor.ts',
-]);
+const TARGET_TABLES = ['tkg_actions', 'tkg_signals', 'tkg_goals', 'tkg_entities'];
+const RAW_SIGNAL_CONTENT_ALLOWED = new Set(['lib/signals/signal-processor.ts']);
 const HEAVY_ACTION_PAYLOAD_ROUTE_ALLOWLIST = new Set([
   'app/api/conviction/actions/[id]/route.ts',
   'app/api/conviction/actions/[id]/document-collection-intake/route.ts',
@@ -21,17 +16,11 @@ const HEAVY_ACTION_PAYLOAD_ROUTE_ALLOWLIST = new Set([
   'app/api/dev/send-log/route.ts',
   'app/api/cron/daily-brief/route.ts',
   'app/api/drafts/pending/route.ts',
-  'app/api/settings/run-brief/route.ts',
 ]);
-const HIGH_VOLUME_SIGNAL_SCAN_ALLOWLIST = new Set([
-  'lib/outcome-autopsy/outcome-autopsy.ts',
-]);
+const HIGH_VOLUME_SIGNAL_SCAN_ALLOWLIST = new Set(['lib/outcome-autopsy/outcome-autopsy.ts']);
 
 function gitFiles(patterns: string[]): string[] {
-  return execFileSync('git', ['ls-files', ...patterns], {
-    cwd: ROOT,
-    encoding: 'utf8',
-  })
+  return execFileSync('git', ['ls-files', ...patterns], { cwd: ROOT, encoding: 'utf8' })
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
@@ -51,29 +40,22 @@ function addFinding(findings: Finding[], file: string, message: string): void {
 }
 
 function collectQueryChain(source: string, fromIndex: number): string {
-  const before = source.slice(0, fromIndex);
-  const fromLine = before.split(/\r?\n/).length - 1;
+  const fromLine = source.slice(0, fromIndex).split(/\r?\n/).length - 1;
   const lines = source.split(/\r?\n/);
   const chain: string[] = [];
-
   for (let offset = 0; offset < 24 && fromLine + offset < lines.length; offset += 1) {
     const line = lines[fromLine + offset];
-    if (offset > 0 && line.trim() === '') {
-      break;
-    }
+    if (offset > 0 && line.trim() === '') break;
     chain.push(line);
-    if (offset > 0 && /\.(?:limit|range|single|maybeSingle)\s*\(/.test(line)) {
-      break;
-    }
+    if (offset > 0 && /\.(?:limit|range|single|maybeSingle)\s*\(/.test(line)) break;
   }
-
   return chain.join('\n');
 }
 
 function auditApiRoutes(findings: Finding[]): void {
-  const files = gitFiles(['app/api/**/*.ts', 'app/api/**/*.tsx'])
-    .filter((file) => !file.includes('/__tests__/') && !file.includes('\\__tests__\\'));
-
+  const files = gitFiles(['app/api/**/*.ts', 'app/api/**/*.tsx']).filter(
+    (file) => !file.includes('/__tests__/') && !file.includes('\\__tests__\\'),
+  );
   for (const file of files) {
     const source = read(file);
     const selectStar = /\.select\s*\(\s*(['"`])\s*\*\s*\1\s*\)/g;
@@ -81,16 +63,12 @@ function auditApiRoutes(findings: Finding[]): void {
     while ((star = selectStar.exec(source))) {
       addFinding(findings, file, `line ${lineNumber(source, star.index)} uses select('*')`);
     }
-
     for (const table of TARGET_TABLES) {
       const tablePattern = new RegExp(String.raw`\.from\s*\(\s*['"\`]${table}['"\`]\s*\)`, 'g');
       let match: RegExpExecArray | null;
       while ((match = tablePattern.exec(source))) {
         const chain = collectQueryChain(source, match.index);
-        if (!/\.select\s*\(/.test(chain)) {
-          continue;
-        }
-
+        if (!/\.select\s*\(/.test(chain)) continue;
         const bounded =
           /\.limit\s*\(/.test(chain) ||
           /\.range\s*\(/.test(chain) ||
@@ -98,14 +76,7 @@ function auditApiRoutes(findings: Finding[]): void {
           /\.maybeSingle\s*\(/.test(chain) ||
           /head\s*:\s*true/.test(chain) ||
           /\.(?:eq|in)\s*\(\s*['"`]id['"`]/.test(chain);
-
-        if (!bounded) {
-          addFinding(
-            findings,
-            file,
-            `line ${lineNumber(source, match.index)} reads ${table} without limit/range/single/head bound`,
-          );
-        }
+        if (!bounded) addFinding(findings, file, `line ${lineNumber(source, match.index)} reads ${table} without limit/range/single/head bound`);
       }
     }
   }
@@ -115,29 +86,21 @@ function auditLatestRoute(findings: Finding[]): void {
   const file = 'app/api/conviction/latest/route.ts';
   const source = read(file);
   const rankingLimit = source.match(/PENDING_RANKING_LIMIT\s*=\s*(\d+)/);
-  if (!rankingLimit || Number(rankingLimit[1]) > 5) {
-    addFinding(findings, file, 'pending metadata query must be limited to 5 rows or fewer');
-  }
-
-  if (!/PENDING_RANKING_SELECT\s*=\s*ACTION_RANKING_SELECT/.test(source)) {
-    addFinding(findings, file, 'pending metadata query must stay on the small ranking column set');
-  }
-
-  const latestRouteHeavyReads = [...source.matchAll(/\.from\s*\(\s*['"`]tkg_actions['"`]\s*\)[\s\S]{0,260}\.select\s*\(\s*(['"`])([^'"`]*)\1/g)];
-  for (const match of latestRouteHeavyReads) {
+  if (!rankingLimit || Number(rankingLimit[1]) > 5) addFinding(findings, file, 'pending metadata query must be limited to 5 rows or fewer');
+  if (!/PENDING_RANKING_SELECT\s*=\s*ACTION_RANKING_SELECT/.test(source)) addFinding(findings, file, 'pending metadata query must stay on the small ranking column set');
+  const heavyReads = [...source.matchAll(/\.from\s*\(\s*['"`]tkg_actions['"`]\s*\)[\s\S]{0,260}\.select\s*\(\s*(['"`])([^'"`]*)\1/g)];
+  for (const match of heavyReads) {
     const columns = match[2];
     if (!/\b(?:artifact|evidence|execution_result)\b/.test(columns)) continue;
     const chain = collectQueryChain(source, match.index);
-    if (!/\.eq\s*\(\s*['"`]id['"`]\s*,\s*id\s*\)/.test(chain)) {
-      addFinding(findings, file, 'full evidence/execution_result/artifact payload must be fetched only for the selected action id or detail route');
-    }
+    if (!/\.eq\s*\(\s*['"`]id['"`]\s*,\s*id\s*\)/.test(chain)) addFinding(findings, file, 'full evidence/execution_result/artifact payload must be fetched only for the selected action id or detail route');
   }
 }
 
 function auditHeavyActionPayloadReads(findings: Finding[]): void {
-  const files = gitFiles(['app/api/**/*.ts', 'app/api/**/*.tsx'])
-    .filter((file) => !file.includes('/__tests__/') && !file.includes('\\__tests__\\'));
-
+  const files = gitFiles(['app/api/**/*.ts', 'app/api/**/*.tsx']).filter(
+    (file) => !file.includes('/__tests__/') && !file.includes('\\__tests__\\'),
+  );
   for (const file of files) {
     if (HEAVY_ACTION_PAYLOAD_ROUTE_ALLOWLIST.has(file)) continue;
     const source = read(file);
@@ -146,34 +109,16 @@ function auditHeavyActionPayloadReads(findings: Finding[]): void {
     while ((match = tablePattern.exec(source))) {
       const chain = collectQueryChain(source, match.index);
       const selectMatch = chain.match(/\.select\s*\(\s*(['"`])([^'"`]*)\1/);
-      if (!selectMatch) continue;
-      if (!/\b(?:artifact|evidence|execution_result)\b/.test(selectMatch[2])) continue;
-      const idScoped = /\.(?:eq|in)\s*\(\s*['"`]id['"`]/.test(chain);
-      if (!idScoped) {
-        addFinding(
-          findings,
-          file,
-          `line ${lineNumber(source, match.index)} reads heavy tkg_actions payload outside an action detail/render path`,
-        );
-      }
-    }
-  }
-}
-
-function auditProductionScripts(findings: Finding[]): void {
-  const files = gitFiles(['scripts/**/*.ts', 'scripts/**/*.js', 'scripts/**/*.mjs', 'scripts/**/*.sh']);
-  for (const file of files) {
-    const source = read(file);
-    if (/https:\/\/(?:www\.)?foldera\.ai\b/i.test(source) && !/ALLOW_PROD_PROOF/.test(source)) {
-      addFinding(findings, file, 'hits foldera.ai without an ALLOW_PROD_PROOF gate');
+      if (!selectMatch || !/\b(?:artifact|evidence|execution_result)\b/.test(selectMatch[2])) continue;
+      if (!/\.(?:eq|in)\s*\(\s*['"`]id['"`]/.test(chain)) addFinding(findings, file, `line ${lineNumber(source, match.index)} reads heavy tkg_actions payload outside an action detail/render path`);
     }
   }
 }
 
 function auditSignalContextReads(findings: Finding[]): void {
-  const files = gitFiles(['app/api/**/*.ts', 'lib/**/*.ts'])
-    .filter((file) => !file.includes('/__tests__/') && !file.includes('\\__tests__\\'));
-
+  const files = gitFiles(['app/api/**/*.ts', 'lib/**/*.ts']).filter(
+    (file) => !file.includes('/__tests__/') && !file.includes('\\__tests__\\'),
+  );
   for (const file of files) {
     const source = read(file);
     const tablePattern = /\.from\s*\(\s*['"`]tkg_signals['"`]\s*\)/g;
@@ -181,32 +126,33 @@ function auditSignalContextReads(findings: Finding[]): void {
     while ((match = tablePattern.exec(source))) {
       const chain = collectQueryChain(source, match.index);
       if (!/\.select\s*\(/.test(chain)) continue;
-
       const fetchesRawContent = /\.select\s*\([^)]*\bcontent\b/.test(chain);
       const idScoped = /\.(?:eq|in)\s*\(\s*['"`]id['"`]/.test(chain);
-      if (fetchesRawContent && !idScoped && !RAW_SIGNAL_CONTENT_ALLOWED.has(file)) {
-        addFinding(
-          findings,
-          file,
-          `line ${lineNumber(source, match.index)} fetches tkg_signals.content outside a selected signal id path`,
-        );
-      }
-
+      if (fetchesRawContent && !idScoped && !RAW_SIGNAL_CONTENT_ALLOWED.has(file)) addFinding(findings, file, `line ${lineNumber(source, match.index)} fetches tkg_signals.content outside a selected signal id path`);
       const numericLimit = chain.match(/\.limit\s*\(\s*(\d+)\s*\)/);
-      if (
-        numericLimit &&
-        Number(numericLimit[1]) > 150 &&
-        !idScoped &&
-        !RAW_SIGNAL_CONTENT_ALLOWED.has(file) &&
-        !HIGH_VOLUME_SIGNAL_SCAN_ALLOWLIST.has(file)
-      ) {
-        addFinding(
-          findings,
-          file,
-          `line ${lineNumber(source, match.index)} reads more than 150 tkg_signals rows`,
-        );
-      }
+      if (numericLimit && Number(numericLimit[1]) > 150 && !idScoped && !RAW_SIGNAL_CONTENT_ALLOWED.has(file) && !HIGH_VOLUME_SIGNAL_SCAN_ALLOWLIST.has(file)) addFinding(findings, file, `line ${lineNumber(source, match.index)} reads more than 150 tkg_signals rows`);
     }
+  }
+}
+
+function auditRunBriefEgressGuard(findings: Finding[]): void {
+  const file = 'app/api/settings/run-brief/route.ts';
+  const source = read(file);
+  for (const token of ['ACTION_RUN_BRIEF_FACTS_SELECT', 'fetchRunBriefActionFacts', 'query_budget', 'no run-brief route content read', 'no run-brief route read', 'no run-brief route admin lookup']) {
+    if (!source.includes(token)) addFinding(findings, file, `missing run-brief egress guard token: ${token}`);
+  }
+  for (const token of ['findReusablePendingApproval', 'findLatestActionMetadata', "from('tkg_signals')", 'from("tkg_signals")', "from('tkg_goals')", 'from("tkg_goals")', 'getUserById']) {
+    if (source.includes(token)) addFinding(findings, file, `run-brief route reintroduced forbidden egress path: ${token}`);
+  }
+  const actionReads = [...source.matchAll(/\.from\s*\(\s*['"`]tkg_actions['"`]\s*\)/g)].length;
+  if (actionReads > 1) addFinding(findings, file, `run-brief route must keep at most one tkg_actions read path; found ${actionReads}`);
+}
+
+function auditProductionScripts(findings: Finding[]): void {
+  const files = gitFiles(['scripts/**/*.ts', 'scripts/**/*.js', 'scripts/**/*.mjs', 'scripts/**/*.sh']);
+  for (const file of files) {
+    const source = read(file);
+    if (/https:\/\/(?:www\.)?foldera\.ai\b/i.test(source) && !/ALLOW_PROD_PROOF/.test(source)) addFinding(findings, file, 'hits foldera.ai without an ALLOW_PROD_PROOF gate');
   }
 }
 
@@ -216,16 +162,13 @@ function main(): void {
   auditLatestRoute(findings);
   auditHeavyActionPayloadReads(findings);
   auditSignalContextReads(findings);
+  auditRunBriefEgressGuard(findings);
   auditProductionScripts(findings);
-
   if (findings.length > 0) {
     console.error('[cost:egress-audit] failed');
-    for (const finding of findings) {
-      console.error(`- ${finding.file}: ${finding.message}`);
-    }
+    for (const finding of findings) console.error(`- ${finding.file}: ${finding.message}`);
     process.exit(1);
   }
-
   console.log('[cost:egress-audit] passed');
 }
 

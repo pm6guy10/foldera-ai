@@ -16,10 +16,10 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 123
-priority_class: SOURCE_TRUTH_COMMAND_GATE
-work_type: REPO_GOVERNANCE_GATE
-why_this_first: Issue #123 must become a real command-enforced source-truth gate before issue #121 landing-page work resumes, otherwise Brandon remains the active-seam babysitter.
+active_issue: 126
+priority_class: SUPABASE_EGRESS_BURNDOWN
+work_type: RECOVERY_RELAND
+why_this_first: PR #127 carried the #126 Supabase egress burn-down work into issue-121-code-native-landing instead of main; main must either prove the work is present or receive one clean recovery PR.
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -29,6 +29,7 @@ predecessor_issues:
   - 106
   - 113
   - 120
+  - 123
 completed:
   - issue: 106
     pr: 107
@@ -42,36 +43,51 @@ completed:
     pr: 122
     merge_sha: 7784505f42f3ee16713a36d619f4ea0ceaa640fd
     result: Public funnel route contract completed; /start is the public Join Pilot target for landing CTAs.
+  - issue: 123
+    pr: 130
+    merge_sha: 6654948ed951e217aa75bf2601a8e820c819fcbe
+    result: Source-truth command gate merged before this recovery seam.
 closed_pull_requests_do_not_reopen:
   - pr: 124
     status: closed_do_not_reopen
     reason: Superseded lane; do not reopen or reuse for current work.
   - pr: 125
     status: closed_do_not_reopen
-    reason: Superseded lane; do not reopen or reuse for current work.
+    reason: Closed/unmerged; do not reopen or reuse for issue #126 recovery.
 paused:
   - issue: 121
-    reason: Issue #121 landing implementation is paused until issue #123 source-truth command gate is enforced and green.
+    reason: Landing implementation remains paused during issue #126 recovery.
   - issue: 99
-    reason: Planning spine remains paused until issue #123 source-truth command gate is enforced and issue #121 landing contract is later resumed by source truth.
+    reason: Planning spine remains paused during issue #126 recovery.
   - issue: 84
     pr: 95
     reason: Older landing polish reference remains paused/superseded by issue #121 current landing-page frontend contract seam.
 forbidden_current_work:
   - issue #121 landing implementation
   - issue #99
-  - backend/auth/Supabase/Stripe/Slack/dashboard
+  - Slack
+  - Stripe
+  - dashboard
+  - schema
+  - issue #131
   - broad cleanup
-  - new landing issue
   - reopening PR #124 or PR #125
 required_local_proof:
-  - npx tsx scripts/source-truth-check.ts
+  - npm run gate:command
   - npm run gate:continuity
+  - npm run gate:free-plan
   - npm run lint
   - npm run build
+  - npx vitest run app/api/settings/run-brief/__tests__/route.test.ts scripts/__tests__/free-plan-gate.test.ts lib/auth/__tests__/admin-user-cache.test.ts --reporter=verbose
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
   FOLDERA_LAUNCH_ROADMAP.md: updated / unchanged - reason / not applicable - reason
   docs/SOURCE_OF_TRUTH_MAP.md: updated / unchanged - reason / not applicable - reason
   next_seam: named / blocked - reason
+current_pr_closeout:
+  ACTIVE_HANDOFF.md: updated
+  FOLDERA_BUILD_ORDER.yaml: updated
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - roadmap order does not change for this recovery PR
+  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this recovery PR
+  next_seam: blocked - Supabase downgrade remains blocked until live dashboard/API egress numbers confirm the Free-plan budget

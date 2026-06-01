@@ -206,7 +206,8 @@ export async function GET() {
       .from('tkg_goals')
       .select('goal_text, source')
       .eq('user_id', userId)
-      .in('source', ['onboarding_bucket', 'onboarding_stated']);
+      .in('source', ['onboarding_bucket', 'onboarding_stated'])
+      .limit(Object.keys(GOAL_BUCKETS).length + 1);
 
     const buckets: string[] = [];
     let freeText: string | null = null;
