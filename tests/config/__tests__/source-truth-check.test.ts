@@ -41,7 +41,7 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
-  it('passes only when issue #143 is closed out and no next seam is assigned', () => {
+  it('passes only when issue #147 is assigned as the next public landing seam', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = fs.readFileSync(path.join(fixtureRoot, 'ACTIVE_HANDOFF.md'), 'utf8');
     const buildOrder = fs.readFileSync(path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml'), 'utf8');
@@ -51,11 +51,11 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(handoff).toContain('Issue #143 is complete');
-    expect(handoff).toContain('Next seam: blocked - reason: no next seam assigned after PR #145 merge');
-    expect(buildOrder).toContain('active_issue: null');
-    expect(buildOrder).toContain('work_type: SOURCE_TRUTH_CLOSEOUT');
-    expect(contract.active_issue).toBeNull();
+    expect(handoff).toContain('Active implementation seam is issue #147');
+    expect(handoff).toContain('Next seam: issue #147 - public landing shell adaptation');
+    expect(buildOrder).toContain('active_issue: 147');
+    expect(buildOrder).toContain('work_type: IMPLEMENTATION_PROOF');
+    expect(contract.active_issue).toBe(147);
     expect(failures).toEqual([]);
   });
 
@@ -63,11 +63,11 @@ describe('source truth command gate', () => {
     const fixtureRoot = createFixtureRoot();
     const buildOrderPath = path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
     const original = fs.readFileSync(buildOrderPath, 'utf8');
-    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: null', 'active_issue: 121'));
+    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 147', 'active_issue: 121'));
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be null after PR #145; found 121.');
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 147; found 121.');
   });
 
   it('fails when .foldera-contract.json resolves to any active issue', () => {
@@ -80,8 +80,8 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('.foldera-contract.json active_issue must be null after PR #145; found 121.');
-    expect(failures).toContain('.foldera-contract.json backlog_id must not resolve to an active issue after PR #145; found ISSUE_121_LANDING_PAGE_FRONTEND_CONTRACT.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be 147; found 121.');
+    expect(failures).toContain('.foldera-contract.json backlog_id must resolve to issue #147; found ISSUE_121_LANDING_PAGE_FRONTEND_CONTRACT.');
   });
 
   it('fails when source truth still commands issue #143 after PR #145 merge', () => {
@@ -95,32 +95,39 @@ describe('source truth command gate', () => {
     writeFixtureFile(
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
-      handoff.replace('No active implementation seam is assigned after PR #145 merged issue #143.', 'Active implementation seam is issue #143: MVP Work Packet Brain source trails -> consolidated review packet -> Slack review card.'),
+      handoff.replace('Active implementation seam is issue #147: Public landing shell adaptation from Figma export without changing auth/access/backend behavior.', 'Active implementation seam is issue #143: MVP Work Packet Brain source trails -> consolidated review packet -> Slack review card.'),
     );
-    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', buildOrder.replace('active_issue: null', 'active_issue: 143'));
+    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', buildOrder.replace('active_issue: 147', 'active_issue: 143'));
     contract.active_issue = 143;
     contract.backlog_id = 'ISSUE_143_MVP_WORK_PACKET_BRAIN';
     writeFixtureFile(fixtureRoot, '.foldera-contract.json', `${JSON.stringify(contract, null, 2)}\n`);
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md must not name an active implementation seam after PR #145; found #143.');
-    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be null after PR #145; found 143.');
-    expect(failures).toContain('.foldera-contract.json active_issue must be null after PR #145; found 143.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md must name active issue #147; found 143.');
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 147; found 143.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be 147; found 143.');
   });
 
-  it('fails when protected Vercel preview links are used as proof in controlling files', () => {
+  it('fails when the issue #147 route/access contract is removed', () => {
     const fixtureRoot = createFixtureRoot();
-    const handoffPath = path.join(fixtureRoot, 'ACTIVE_HANDOFF.md');
-    const original = fs.readFileSync(handoffPath, 'utf8');
+    const contractPath = path.join(fixtureRoot, '.foldera-contract.json');
+    const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8')) as {
+      route_access_contract_for_next_pr?: string[];
+    };
+    contract.route_access_contract_for_next_pr = contract.route_access_contract_for_next_pr?.filter(
+      (entry) => entry !== '/signup continues redirecting to /start',
+    );
     writeFixtureFile(
       fixtureRoot,
-      'ACTIVE_HANDOFF.md',
-      `${original}\n\nProof: https://foldera-ai-git-issue-123-source-truth.vercel.app\n`,
+      '.foldera-contract.json',
+      `${JSON.stringify(contract, null, 2)}\n`,
     );
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('Protected Vercel preview links must not be treated as proof text in controlling files.');
+    expect(failures).toContain(
+      '.foldera-contract.json route_access_contract_for_next_pr must include: /signup continues redirecting to /start',
+    );
   });
 });

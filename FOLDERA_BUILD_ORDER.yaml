@@ -16,10 +16,10 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: null
-priority_class: BLOCKED_NO_NEXT_SEAM_ASSIGNED
-work_type: SOURCE_TRUTH_CLOSEOUT
-why_this_first: PR #145 merged issue #143 deterministic Work Packet Brain proof on main; repo source truth must no longer command issue #143 implementation work, while PR #142 remains separate rail-only externally blocked work.
+active_issue: 147
+priority_class: PUBLIC_LANDING_SHELL_ROUTE_ACCESS_CONTRACT
+work_type: IMPLEMENTATION_PROOF
+why_this_first: PR #145 merged issue #143 deterministic Work Packet Brain proof, PR #146 closed out source truth after PR #145, no active implementation seam remained assigned, and issue #147 is the next bounded public landing adaptation seam while PR #142 remains separate rail-only blocked work.
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -76,6 +76,10 @@ completed:
     pr: 145
     merge_sha: e93f8fa5fdcd2a4fb907370a71791484678cbadc
     result: Deterministic Work Packet Brain proof landed on main; source truth must not continue to command issue #143 implementation.
+  - issue: 146
+    pr: 146
+    merge_sha: 26c19af9070e40a2699a8af7857c3b205d94aee6
+    result: Source truth closed out after PR #145; no active implementation seam remained assigned.
 closed_pull_requests_do_not_reopen:
   - pr: 124
     status: closed_do_not_reopen
@@ -85,44 +89,50 @@ closed_pull_requests_do_not_reopen:
     reason: Closed/unmerged; do not reopen or reuse after issue #126 recovery.
 paused:
   - issue: 121
-    reason: Landing implementation remains paused; no next implementation seam is assigned after PR #145 merge.
+    reason: Landing implementation reference is paused/superseded by issue #147 current public landing shell adaptation seam.
   - issue: 99
     reason: Planning spine remains paused; no next implementation seam is assigned after PR #145 merge.
   - issue: 84
     pr: 95
     reason: Older landing polish reference remains paused/superseded by issue #121 current landing-page frontend contract seam.
 forbidden_current_work:
-  - landing work
-  - Stripe
-  - dashboard redesign
+  - Slack files
   - Supabase schema
-  - connector platform expansion
-  - Slack OAuth expansion
-  - live Slack send expansion beyond packet review card proof
-  - Teams expansion
-  - email expansion
-  - calendar expansion
-  - outreach
-  - billing or downgrade work
+  - dashboard files
+  - auth rewrite
+  - backend changes
+  - Stripe changes
+  - package.json dependency additions
+  - Vite scaffold
+  - React Router
+  - bulk shadcn/Radix import
+  - fake customer logos
+  - fake SOC2/HIPAA/ISO claims
+  - 10x/autonomous-agents/coding-agent language
+  - PR #142 mutation
   - broad cleanup
   - reopening PR #124 or PR #125
 required_local_proof:
   - npm run health
-  - npx vitest run lib/work-packets/__tests__/work-packet-brain.test.ts lib/slack-test-mode/__tests__/work-packet-review.test.ts lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose
-  - npx vitest run tests/config/__tests__/source-truth-check.test.ts --reporter=verbose
+  - npx playwright test tests/e2e/public-routes.spec.ts --reporter=list
+  - updated/run landing visual/access spec as needed
+  - npx vitest run tests/config/__tests__/public-presence.test.ts tests/config/__tests__/active-api-surface.test.ts --reporter=verbose
   - npm run gate:command
   - npm run gate:continuity
   - npm run lint
   - npm run build
   - git diff --check
-required_issue_143_closeout:
-  - ACTIVE_HANDOFF.md marks issue #143 and PR #145 complete
-  - FOLDERA_BUILD_ORDER.yaml marks issue #143 and PR #145 complete
-  - .foldera-contract.json no longer commands Run issue #143 only
-  - PR #142 is preserved as rail-only proof/blocker, not product-brain implementation
-  - primary PR receipt is posted
-  - issue #143 terminal receipt is posted
-  - standing ledger issue #136 receipt is posted
+required_issue_147_contract:
+  - / is the public marketing landing shell
+  - access/get started/join pilot CTAs point to /start
+  - login CTAs point to /login
+  - /signup continues redirecting to /start
+  - /try remains redirected to /start
+  - /request-access is absent or redirects to /start
+  - /demo remains unchanged
+  - no fake signup, waitlist, request-access API, or email/password auth
+  - no Figma/Vite wholesale import, Vite scaffold, React Router, dependency additions, or bulk shadcn/Radix import
+  - no Slack, Supabase schema, dashboard, auth/backend, Stripe, PR #142, or broad cleanup changes
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -133,6 +143,6 @@ current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
   .foldera-contract.json: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order control post-PR #145 closeout
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order control issue #147
   docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this closeout PR
-  next_seam: blocked - reason no next seam assigned after PR #145 merge
+  next_seam: issue #147 - public landing shell adaptation from Figma export without changing auth/access/backend behavior
