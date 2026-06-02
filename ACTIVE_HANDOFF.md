@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-06-02 PT
-Current `origin/main` SHA at Work Packet Brain promotion start: `cb5fbef6b528f1d199e2fef3c909053f00e3767e`.
+Current `origin/main` SHA at Work Packet Brain implementation start: `28228f4ce6dd517a294e2717c631daf6f0577fe7`.
 
 ## Canonical Boot Sequence
 For any Foldera task, use this order:
@@ -49,10 +49,10 @@ Issue #48 remains the product contract.
 
 ## Required issue #143 outcome
 
-Promote and then implement the MVP Work Packet Brain only when explicitly assigned:
+Implement the MVP Work Packet Brain:
 multiple consented source signals -> source trail -> consolidated `work_packet` -> prepared reviewable work -> Slack review card -> human review/dismiss -> packet/workday state update -> quiet.
 
-Required future proof for issue #143: fixture-driven fake source signals, deterministic packet generation in TEST_MODE, no paid model call, one packet from multiple signals, source trail plus prepared work, Slack review card with Review/View sources/Dismiss and no Send, human review state update, dismiss audit trail, no dashboard/task-list/inbox-summary behavior, and `gate:continuity` or a narrow packet-brain gate enforcing doctrine.
+Required proof for issue #143: fixture-driven fake source signals, deterministic packet generation in TEST_MODE, no paid model call, one packet from multiple signals, source trail plus prepared work, Slack review card with Review/View sources/Dismiss and no Send, human review state update, dismiss audit trail, no dashboard/task-list/inbox-summary behavior, and `gate:continuity` or a narrow packet-brain gate enforcing doctrine.
 
 PR #142 stays rail-only. Do not block, widen, or mutate PR #142 to implement `work_packet`.
 
@@ -74,4 +74,4 @@ PR #142 stays rail-only. Do not block, widen, or mutate PR #142 to implement `wo
 
 ## Next exact move
 
-Run issue #143 only after this source-truth promotion PR lands. Do not implement `work_packet` in this promotion PR, and do not start landing, dashboard, Slack OAuth expansion, Teams/email/calendar connectors, Stripe, auth, Supabase schema, Dependabot, or broad cleanup.
+Run issue #143 only. Stop after deterministic packet-brain proof, one PR, and GitHub receipts. Do not start landing, dashboard, Slack OAuth expansion, Teams/email/calendar connectors, Stripe, auth, Supabase schema, Dependabot, live connector work, paid model proof, or broad cleanup.

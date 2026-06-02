@@ -18,8 +18,8 @@ accepted_terminal_states:
   - STOPPED
 active_issue: 143
 priority_class: WORK_PACKET_BRAIN_SOURCE_TRAIL_REVIEW_PACKET
-work_type: SOURCE_TRUTH_PROMOTION
-why_this_first: Issue #131 proved the deterministic Slack test-mode MVP Presence Loop, issue #136 installed Codex Run Ledger discipline, issue #138 / PR #139 promoted the bounded Real Slack Self-Loop target, and issue #140 / PR #142 is accepted as rail-only proof/blocker; issue #143 is the next product-brain seam for source trails -> consolidated work_packet -> Slack review card.
+work_type: IMPLEMENTATION_PROOF
+why_this_first: Issue #131 proved the deterministic Slack test-mode MVP Presence Loop, issue #136 installed Codex Run Ledger discipline, issue #138 / PR #139 promoted the bounded Real Slack Self-Loop target, issue #140 / PR #142 is accepted as rail-only proof/blocker, and PR #144 promoted issue #143 onto main; issue #143 now implements the deterministic product-brain seam for source trails -> consolidated work_packet -> Slack review card.
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -103,19 +103,23 @@ forbidden_current_work:
   - broad cleanup
   - reopening PR #124 or PR #125
 required_local_proof:
+  - npm run health
+  - npx vitest run lib/work-packets/__tests__/work-packet-brain.test.ts lib/slack-test-mode/__tests__/work-packet-review.test.ts lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose
   - npx vitest run tests/config/__tests__/source-truth-check.test.ts --reporter=verbose
   - npm run gate:command
   - npm run gate:continuity
   - npm run lint
+  - npm run build
   - git diff --check
 required_issue_143_proof:
   - ACTIVE_HANDOFF.md names issue #143 as the active implementation seam
   - FOLDERA_BUILD_ORDER.yaml active_issue is 143
-  - .foldera-contract.json resolves to issue #143 and allows only source-truth plus narrow packet-brain future scope
+  - .foldera-contract.json resolves to issue #143 and allows only narrow packet-brain implementation scope
   - PR #142 is preserved as rail-only proof/blocker, not product-brain implementation
-  - no product behavior changed in this promotion PR
-  - future implementation requires deterministic TEST_MODE packet generation from multiple fake source signals
-  - future Slack card uses Review packet, View sources, and Dismiss; never Send or Auto-send by default
+  - deterministic TEST_MODE packet generation from multiple fake source signals
+  - Slack card uses Review packet, View sources, and Dismiss; never Send or Auto-send by default
+  - human review and dismiss transitions update packet/workday state
+  - dismiss preserves packet source trail and audit trail
   - primary PR receipt is posted
   - standing ledger issue #136 receipt is posted
 closeout_required_each_pr:
@@ -127,6 +131,6 @@ closeout_required_each_pr:
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order now promote issue #143
-  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this promotion PR
-  next_seam: named - issue #143 MVP Work Packet Brain; stop after PR and receipts, with no product code implementation in this promotion run
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order control issue #143
+  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this implementation PR
+  next_seam: blocked - stop after deterministic packet-brain proof and receipts; no next seam is authorized in this run
