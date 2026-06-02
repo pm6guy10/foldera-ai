@@ -1,11 +1,11 @@
 {
-  "authority_status": "ACTIVE_SOURCE_TRUTH_SELECTION_ASSIGNED",
+  "authority_status": "ACTIVE_NORTH_STAR_LOCK_ASSIGNED",
   "active": true,
-  "active_issue": 154,
-  "backlog_id": "ISSUE_154_SELECT_NEXT_SOURCE_TRUTH_SEAM_AFTER_151",
-  "base_commit": "be5d596c8033f9b273ceb025aa3c2c18333520f4",
-  "money_loop_rung": "source_truth_seam_selection_after_151",
-  "user_system_path": "issue #154 source-truth seam selection only; preserve issue #140 / PR #142 as rail-only parked and issue #136 as ledger-only; do not implement product code",
+  "active_issue": 156,
+  "backlog_id": "ISSUE_156_FOLDERA_NORTH_STAR_LOCK",
+  "base_commit": "816118c35f9a1d860c637bfd1532d7ba6f7e9c5e",
+  "money_loop_rung": "foldera_north_star_lock",
+  "user_system_path": "issue #156 Foldera North Star Lock; create one controlling artifact and enforcement path; preserve issue #140 / PR #142 as rail-only parked and issue #136 as ledger-only",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_HANDOFF.md",
@@ -45,26 +45,27 @@
     "paid model proof",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Issue #154 source-truth selection only: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and focused source-truth/continuity gate files only if needed for enforcement alignment.",
-  "forbidden_files_raw": "No product implementation, selector/source-backed-state changes, PR #142 changes or widening, Slack code patch, landing, Supabase schema/data, dashboard/auth/backend, Stripe, package files, Dependabot, connector expansion, Teams/email/calendar, Slack app settings, Vercel settings, paid model proof, or broad cleanup.",
+  "allowed_files_raw": "Issue #156 Foldera North Star Lock assignment: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and focused source-truth/continuity gate files only if needed for enforcement alignment.",
+  "forbidden_files_raw": "No Slack / PR #142 work, landing/frontend/dashboard work, Supabase schema/data, Stripe/package changes, connector expansion, Teams/email/calendar expansion, package files, Dependabot, paid model proof, or broad cleanup.",
   "required_local_proof": [
     "npm run gate:command",
     "npm run gate:continuity",
     "npm run lint",
     "git diff --check"
   ],
-  "required_browser_proof": "Not applicable; source-truth selection closeout only.",
-  "acceptance_condition": "Source truth closes issue #151 after PR #153 and promotes issue #154 as the only active source-truth seam selection issue, while preserving issue #140 / PR #142 as parked rail-only and issue #136 as ledger-only.",
-  "stop_condition": "Stop when one issue #154 source-truth closeout PR is open with PR and issue #136 ledger receipts posted and no product code touched.",
+  "required_browser_proof": "Not applicable; source-truth assignment only.",
+  "acceptance_condition": "Source truth records issue #154 as the completed/blocked selection seam and promotes issue #156 as the only active Foldera North Star Lock seam, while preserving issue #140 / PR #142 as parked rail-only and issue #136 as ledger-only.",
+  "stop_condition": "Stop when one issue #156 source-truth assignment PR is open with PR and issue #136 ledger receipts posted and no forbidden product implementation touched.",
   "is_user_facing": false,
-  "browser_proof_command": "not applicable - source-truth closeout only",
+  "browser_proof_command": "not applicable - source-truth assignment only",
   "anti_regression_checks": [
     "ACTIVE_HANDOFF.md marks issue #151 complete via PR #153 merge SHA be5d596c8033f9b273ceb025aa3c2c18333520f4",
-    "ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml active issue is #154",
+    "ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml active issue is #156",
+    "Issue #154 is recorded as completed/blocked selection seam after selecting Foldera North Star Lock",
     "Issue #140 / PR #142 remains live rail proof/blocker only and is not widened into source-truth selection or product work",
     "Issue #136 remains ledger-only",
     "Issues #121, #131, #99, #48, #147, and #151 are closed/superseded/completed and must not be reopened",
     "Only source-truth control files and focused gate/test files are allowed"
   ],
-  "next_command": "Run issue #154 source-truth seam selection only. Stop after one closeout PR with receipts and no product code."
+  "next_command": "Run issue #156 Foldera North Star Lock only. Stop after one PR with receipts and no forbidden product implementation."
 }

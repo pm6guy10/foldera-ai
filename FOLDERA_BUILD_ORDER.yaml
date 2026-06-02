@@ -16,10 +16,10 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 154
-priority_class: SOURCE_TRUTH_SEAM_SELECTION_AFTER_151
-work_type: SOURCE_TRUTH_SELECTION_ONLY
-why_this_first: Issue #151 is closed after PR #153 merged; issue #140 / PR #142 is parked rail-only and externally blocked; issue #136 is ledger-only; no other open GitHub issue authorizes the next implementation seam.
+active_issue: 156
+priority_class: FOLDERA_NORTH_STAR_LOCK
+work_type: SOURCE_TRUTH_NORTH_STAR_LOCK
+why_this_first: Issue #154 selected Foldera North Star Lock and stopped BLOCKED until a controlling issue existed; issue #156 now authorizes the North Star Lock seam; issue #140 / PR #142 is parked rail-only and externally blocked; issue #136 is ledger-only.
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -39,6 +39,7 @@ predecessor_issues:
   - 147
   - 151
   - 154
+  - 156
 completed:
   - issue: 106
     pr: 107
@@ -88,6 +89,10 @@ completed:
     pr: 153
     merge_sha: be5d596c8033f9b273ceb025aa3c2c18333520f4
     result: Source-backed Right Now selector landed on main; issue #151 is closed/completed.
+  - issue: 154
+    pr: 155
+    merge_sha: 816118c35f9a1d860c637bfd1532d7ba6f7e9c5e
+    result: Source-truth selection completed by selecting Foldera North Star Lock, then stopped BLOCKED because no controlling issue existed at the time; issue #156 now supplies that controlling issue.
 closed_issues_do_not_reopen:
   - issue: 121
     status: closed_superseded
@@ -162,6 +167,12 @@ required_issue_154_source_truth_selection:
   - preserve issue #136 as the standing ledger only
   - do not implement product code or the selected seam
   - keep changes to ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and focused source-truth/continuity gate files only if gates require alignment
+required_issue_156_north_star_lock:
+  - create one controlling artifact, likely FOLDERA_NORTH_STAR_LOCK.md
+  - reconcile product promise, buyer/user, pricing/revenue model, public-site direction, app day-one/wireframe direction, runtime brain path, source-backed Right Now path, Slack/live rail boundary, signal intake/command rail, source-truth authority, issue order, gate requirements, PR traceability, pilot-ready definition, and the rule that Brandon must not remain the router
+  - preserve issue #140 / PR #142 as rail-only and externally blocked unless GitHub source truth explicitly reassigns it
+  - preserve issue #136 as the standing ledger only
+  - do not implement Slack / PR #142 work, landing/frontend/dashboard work, Supabase schema/data, Stripe/package changes, connector expansion, Teams/email/calendar expansion, or broad cleanup
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -172,6 +183,6 @@ current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
   .foldera-contract.json: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order control issue #154 source-truth seam selection
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order control issue #156 Foldera North Star Lock
   docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this closeout PR
-  next_seam: issue #154 - select next source-truth seam after issue #151
+  next_seam: issue #156 - Foldera North Star Lock
