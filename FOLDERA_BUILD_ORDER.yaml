@@ -16,10 +16,10 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 147
-priority_class: PUBLIC_LANDING_SHELL_ROUTE_ACCESS_CONTRACT
-work_type: IMPLEMENTATION_PROOF
-why_this_first: PR #145 merged issue #143 deterministic Work Packet Brain proof, PR #146 closed out source truth after PR #145, no active implementation seam remained assigned, and issue #147 is the next bounded public landing adaptation seam while PR #142 remains separate rail-only blocked work.
+active_issue: 140
+priority_class: SLACK_LIVE_RAIL_PROOF_BLOCKER_CLASSIFICATION
+work_type: LIVE_RAIL_PROOF_BLOCKER_CLASSIFICATION
+why_this_first: PR #149 merged issue #147 and issue #147 is closed; the only remaining product rail is issue #140 / PR #142 live Slack callback proof, while issue #136 remains ledger-only.
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -35,6 +35,8 @@ predecessor_issues:
   - 136
   - 138
   - 140
+  - 143
+  - 147
 completed:
   - issue: 106
     pr: 107
@@ -48,91 +50,94 @@ completed:
     pr: 122
     merge_sha: 7784505f42f3ee16713a36d619f4ea0ceaa640fd
     result: Public funnel route contract completed; /start is the public Join Pilot target for landing CTAs.
-  - issue: 123
-    pr: 130
-    merge_sha: 6654948ed951e217aa75bf2601a8e820c819fcbe
-    result: Source-truth command gate merged before #126 recovery.
   - issue: 126
     pr: 132
     merge_sha: 9d1dc71ba747306b03fc527ea7058ccdfc8dd723
-    result: Supabase egress burn-down recovery landed on main; PR #133 completed source-truth closeout; current-cycle usage projected under the Free-plan target, so the downgrade blocker is resolved.
+    result: Supabase egress recovery completed and downgrade blocker resolved.
   - issue: 131
     pr: 135
     merge_sha: 1f8f373016ce9b9e8a77b9ea99a2acb683cf406f
-    result: Slack test-mode MVP Presence Loop landed on main.
+    result: Slack test-mode MVP Presence Loop landed on main; issue #131 is closed/completed and must not be reopened.
   - issue: 136
     pr: 137
     merge_sha: 46ff9ee99d8f920fc423b6de4d114022d6a8a521
-    result: Codex Run Ledger closeout discipline landed on main.
+    result: Codex Run Ledger closeout discipline landed on main; issue #136 remains open only as the standing ledger.
   - issue: 138
     pr: 139
     merge_sha: 5f1d3e73f90f1c30ad904c8e45db18a68ebc042e
-    result: PR #139 Real Slack Self-Loop source-truth promotion landed on main without Slack implementation code.
+    result: Real Slack Self-Loop source-truth promotion landed without Slack implementation code.
   - issue: 140
     pr: 142
     merge_sha: not_merged_external_blocker_accepted
-    result: PR #142 remains rail-only; deterministic proof passed, live Slack send reached the rail, and remaining real Slack button callback proof is externally blocked. Do not implement packet-brain behavior in PR #142.
+    result: PR #142 remains rail-only; deterministic proof passed, live Slack send reached the rail, and remaining real Slack button callback proof is externally blocked.
   - issue: 143
     pr: 145
     merge_sha: e93f8fa5fdcd2a4fb907370a71791484678cbadc
-    result: Deterministic Work Packet Brain proof landed on main; source truth must not continue to command issue #143 implementation.
+    result: Deterministic Work Packet Brain proof landed on main.
   - issue: 146
     pr: 146
     merge_sha: 26c19af9070e40a2699a8af7857c3b205d94aee6
-    result: Source truth closed out after PR #145; no active implementation seam remained assigned.
+    result: Source truth closed out after PR #145.
+  - issue: 147
+    pr: 149
+    merge_sha: d9ede1dd39c3de3b3fe5bd5e3592b0ced001fdf3
+    result: Public landing shell adaptation landed on main; issue #147 is closed/completed.
+closed_issues_do_not_reopen:
+  - issue: 121
+    status: closed_superseded
+    reason: Landing lessons were carried into issue #147, which is now complete via PR #149.
+  - issue: 131
+    status: closed_completed
+    reason: Slack test-mode presence loop completed via PR #135; remaining Slack live rail proof belongs to #140 / PR #142.
+  - issue: 99
+    status: closed_after_carry_forward
+    reason: Architecture constraints were carried forward to #140 and repo source truth.
+  - issue: 48
+    status: closed_superseded
+    reason: Product doctrine is carried in repo source truth and the active #140 rail.
+  - issue: 147
+    status: closed_completed
+    reason: Public landing shell adaptation completed by PR #149.
 closed_pull_requests_do_not_reopen:
   - pr: 124
     status: closed_do_not_reopen
     reason: Superseded lane; do not reopen or reuse for current work.
   - pr: 125
     status: closed_do_not_reopen
-    reason: Closed/unmerged; do not reopen or reuse after issue #126 recovery.
-paused:
-  - issue: 121
-    reason: Landing implementation reference is paused/superseded by issue #147 current public landing shell adaptation seam.
-  - issue: 99
-    reason: Planning spine remains paused; no next implementation seam is assigned after PR #145 merge.
-  - issue: 84
-    pr: 95
-    reason: Older landing polish reference remains paused/superseded by issue #121 current landing-page frontend contract seam.
+    reason: Closed/unmerged; do not reopen or reuse.
 forbidden_current_work:
-  - Slack files
+  - landing implementation
+  - Slack code patch before a code-owned failure is proven
   - Supabase schema
   - dashboard files
   - auth rewrite
   - backend changes
   - Stripe changes
-  - package.json dependency additions
-  - Vite scaffold
-  - React Router
-  - bulk shadcn/Radix import
-  - fake customer logos
-  - fake SOC2/HIPAA/ISO claims
-  - 10x/autonomous-agents/coding-agent language
-  - PR #142 mutation
+  - package files
+  - Dependabot
+  - connector platform expansion
+  - Teams expansion
+  - email expansion
+  - calendar expansion
+  - paid model proof
   - broad cleanup
-  - reopening PR #124 or PR #125
+  - reopening issue #121
+  - reopening issue #131
+  - reopening issue #99
+  - reopening issue #48
+  - reopening issue #147
 required_local_proof:
-  - npm run health
-  - npx playwright test tests/e2e/public-routes.spec.ts --reporter=list
-  - updated/run landing visual/access spec as needed
-  - npx vitest run tests/config/__tests__/public-presence.test.ts tests/config/__tests__/active-api-surface.test.ts --reporter=verbose
   - npm run gate:command
   - npm run gate:continuity
   - npm run lint
-  - npm run build
   - git diff --check
-required_issue_147_contract:
-  - / is the public marketing landing shell
-  - access/get started/join pilot CTAs point to /start
-  - login CTAs point to /login
-  - /signup continues redirecting to /start
-  - /try remains redirected to /start
-  - /request-access is absent or redirects to /start
-  - /demo remains unchanged
-  - no fake signup, waitlist, request-access API, or email/password auth
-  - no Figma/Vite wholesale import, Vite scaffold, React Router, dependency additions, or bulk shadcn/Radix import
-  - no Slack, Supabase schema, dashboard, auth/backend, Stripe, PR #142, or broad cleanup changes
+required_issue_140_live_rail_proof:
+  - PR #142 remains the rail PR and blocker evidence surface
+  - prove whether a real signed Slack button callback POST reaches /api/slack/interaction
+  - if no POST reaches Vercel, classify BLOCKED as Slack app/workspace/token/config or Socket Mode callback delivery
+  - do not patch Slack code until logs prove a code-owned failure
+  - preserve Done/Stuck/Break smaller/Snooze loop from completed issue #131
+  - do not expand into connector platform, Teams/email/calendar, dashboard, auth/backend, Supabase schema, Stripe, or landing work
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -143,6 +148,6 @@ current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
   .foldera-contract.json: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order control issue #147
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order control issue #140 live rail proof
   docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this closeout PR
-  next_seam: issue #147 - public landing shell adaptation from Figma export without changing auth/access/backend behavior
+  next_seam: issue #140 / PR #142 - real Slack self-loop live callback proof or blocker classification
