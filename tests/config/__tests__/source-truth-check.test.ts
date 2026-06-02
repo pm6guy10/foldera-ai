@@ -41,7 +41,7 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
-  it('passes only when issue #147 is complete and issue #140 live rail proof is active', () => {
+  it('passes only when issue #151 source-backed selector is active and PR #142 remains parked', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = fs.readFileSync(path.join(fixtureRoot, 'ACTIVE_HANDOFF.md'), 'utf8');
     const buildOrder = fs.readFileSync(path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml'), 'utf8');
@@ -49,54 +49,55 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(handoff).toContain('Active implementation seam is issue #140 / PR #142');
-    expect(handoff).toContain('Issue #147 is complete: PR #149');
-    expect(buildOrder).toContain('active_issue: 140');
-    expect(buildOrder).toContain('work_type: LIVE_RAIL_PROOF_BLOCKER_CLASSIFICATION');
-    expect(contract.active_issue).toBe(140);
+    expect(handoff).toContain('Active implementation seam is issue #151');
+    expect(handoff).toContain('Issue #140 / PR #142 remains rail-only and parked externally blocked');
+    expect(buildOrder).toContain('active_issue: 151');
+    expect(buildOrder).toContain('work_type: SOURCE_BACKED_STATE_SELECTOR');
+    expect(contract.active_issue).toBe(151);
     expect(failures).toEqual([]);
   });
 
-  it('fails when FOLDERA_BUILD_ORDER.yaml still commands issue #147', () => {
+  it('fails when FOLDERA_BUILD_ORDER.yaml still commands issue #140', () => {
     const fixtureRoot = createFixtureRoot();
     const buildOrderPath = path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
     const original = fs.readFileSync(buildOrderPath, 'utf8');
-    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 140', 'active_issue: 147'));
+    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 151', 'active_issue: 140'));
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 140; found 147.');
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 151; found 140.');
   });
 
-  it('fails when .foldera-contract.json still resolves to issue #147', () => {
+  it('fails when .foldera-contract.json still resolves to issue #140', () => {
     const fixtureRoot = createFixtureRoot();
     const contractPath = path.join(fixtureRoot, '.foldera-contract.json');
     const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8')) as Record<string, unknown>;
-    contract.active_issue = 147;
-    contract.backlog_id = 'ISSUE_147_PUBLIC_LANDING_SHELL_ROUTE_ACCESS_CONTRACT';
+    contract.active_issue = 140;
+    contract.backlog_id = 'ISSUE_140_REAL_SLACK_SELF_LOOP_LIVE_RAIL_PROOF';
     writeFixtureFile(fixtureRoot, '.foldera-contract.json', `${JSON.stringify(contract, null, 2)}\n`);
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('.foldera-contract.json active_issue must be 140; found 147.');
-    expect(failures).toContain('.foldera-contract.json backlog_id must resolve to issue #140 live rail proof.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be 151; found 140.');
+    expect(failures).toContain('.foldera-contract.json backlog_id must resolve to issue #151 source-backed selector.');
   });
 
-  it('fails when issue #147 / PR #149 completion is removed', () => {
+  it('fails when the issue #151 source-shaped input contract is removed', () => {
     const fixtureRoot = createFixtureRoot();
     const buildOrderPath = path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
     const original = fs.readFileSync(buildOrderPath, 'utf8');
     writeFixtureFile(
       fixtureRoot,
       'FOLDERA_BUILD_ORDER.yaml',
-      original.replace('merge_sha: d9ede1dd39c3de3b3fe5bd5e3592b0ced001fdf3', 'merge_sha: missing'),
+      original.replace(
+        'read existing Supabase-shaped rows only from public.tkg_signals, public.tkg_commitments, and optionally public.tkg_actions.evidence',
+        'read whatever rows are available',
+      ),
     );
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain(
-      'FOLDERA_BUILD_ORDER.yaml must record issue #147 / PR #149 as complete with merge d9ede1dd39c3de3b3fe5bd5e3592b0ced001fdf3.',
-    );
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml must require existing source-shaped table inputs.');
   });
 
   it('fails when closed issue carry-forward status is removed', () => {

@@ -16,10 +16,10 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 140
-priority_class: SLACK_LIVE_RAIL_PROOF_BLOCKER_CLASSIFICATION
-work_type: LIVE_RAIL_PROOF_BLOCKER_CLASSIFICATION
-why_this_first: PR #149 merged issue #147 and issue #147 is closed; the only remaining product rail is issue #140 / PR #142 live Slack callback proof, while issue #136 remains ledger-only.
+active_issue: 151
+priority_class: SOURCE_BACKED_RIGHT_NOW_SELECTOR
+work_type: SOURCE_BACKED_STATE_SELECTOR
+why_this_first: Issue #140 / PR #142 is parked rail-only and externally blocked; issue #151 is the next narrow implementation seam to produce a source-backed WorkdayPresenceState from existing source-shaped rows without widening PR #142.
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -37,6 +37,7 @@ predecessor_issues:
   - 140
   - 143
   - 147
+  - 151
 completed:
   - issue: 106
     pr: 107
@@ -69,7 +70,7 @@ completed:
   - issue: 140
     pr: 142
     merge_sha: not_merged_external_blocker_accepted
-    result: PR #142 remains rail-only; deterministic proof passed, live Slack send reached the rail, and remaining real Slack button callback proof is externally blocked.
+    result: PR #142 remains rail-only and parked externally blocked; deterministic proof passed, live Slack send reached the rail, and remaining real Slack button callback proof is externally blocked. Do not widen PR #142 into source-backed selector work.
   - issue: 143
     pr: 145
     merge_sha: e93f8fa5fdcd2a4fb907370a71791484678cbadc
@@ -107,7 +108,10 @@ closed_pull_requests_do_not_reopen:
     reason: Closed/unmerged; do not reopen or reuse.
 forbidden_current_work:
   - landing implementation
+  - PR #142 widening
   - Slack code patch before a code-owned failure is proven
+  - Slack app settings
+  - Vercel settings
   - Supabase schema
   - dashboard files
   - auth rewrite
@@ -138,6 +142,19 @@ required_issue_140_live_rail_proof:
   - do not patch Slack code until logs prove a code-owned failure
   - preserve Done/Stuck/Break smaller/Snooze loop from completed issue #131
   - do not expand into connector platform, Teams/email/calendar, dashboard, auth/backend, Supabase schema, Stripe, or landing work
+required_issue_151_source_backed_selector:
+  - read existing Supabase-shaped rows only from public.tkg_signals, public.tkg_commitments, and optionally public.tkg_actions.evidence
+  - produce quiet/no safe source-backed move or WorkdayPresenceState with state_source source_backed
+  - include safe source_trail entries with table/source/type/source_id or row_id, occurred_at/ingested_at when available, redacted_summary, and selection_reason
+  - choose at most one intervention
+  - preserve source_trail through Right Now payload and Done/Stuck/Break smaller/Snooze mutations
+  - no raw private content in source_trail, payloads, receipts, or tests
+  - no paid model proof
+  - no inline full state recompute
+  - no mutation of tkg_* tables
+  - no schema change unless proven strictly necessary
+  - no connector expansion
+  - no Slack app config, Vercel settings, dashboard, landing, auth/backend, Stripe, package files, Teams/email/calendar expansion, or PR #142 changes
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -148,6 +165,6 @@ current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
   .foldera-contract.json: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order control issue #140 live rail proof
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order control issue #151 source-backed selector
   docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this closeout PR
-  next_seam: issue #140 / PR #142 - real Slack self-loop live callback proof or blocker classification
+  next_seam: issue #151 - source-backed Right Now state selector
