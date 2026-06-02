@@ -25,9 +25,13 @@ test.describe('Landing page visual/access QA gate', () => {
       await expect(page.getByTestId('landing-hero')).toBeVisible();
       await expect(page.getByRole('heading', { name: /stop rebuilding the work/i })).toBeVisible();
       await expect(page.getByTestId('landing-right-now-card')).toBeVisible();
-      await expect(page.getByTestId('landing-doctrine')).toContainText('State + connectors + triggers + one intervention');
+      await expect(page.getByTestId('landing-pain')).toContainText('You are a high-paid filing clerk.');
+      await expect(page.getByTestId('landing-pain')).toContainText('The reconstruction tax.');
+      await expect(page.getByTestId('landing-doctrine')).toContainText('broken continuity');
       await expect(page.getByTestId('landing-trust')).toContainText('No surveillance');
-      await expect(page.getByTestId('landing-pilot')).toContainText('Pilot access');
+      await expect(page.getByTestId('landing-trust')).toContainText('It lives where you work');
+      await expect(page.getByTestId('landing-pilot')).toContainText('Stop checking nine apps');
+      await expect(page.getByTestId('landing-final-cta')).toContainText('Restore your continuity.');
       await expect(page.getByTestId('landing-footer')).toBeVisible();
 
       for (const testId of [

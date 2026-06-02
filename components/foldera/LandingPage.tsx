@@ -24,16 +24,16 @@ const loginHref = '/login';
 
 const painPoints = [
   {
-    title: 'The thread breaks',
-    body: 'A meeting moved, a doc changed, a message came in, and the next move is suddenly buried.',
+    title: 'The reconstruction tax.',
+    body: 'Every tool switch leaks context. You are not working; you are scavenging.',
   },
   {
-    title: 'The next move gets rebuilt',
-    body: 'You know work happened somewhere. You still have to stitch together why it matters now.',
+    title: 'Every app remembers its own slice',
+    body: 'Microsoft remembers Microsoft. Google remembers Google. Your workday still has to move across both.',
   },
   {
-    title: 'Another dashboard is still another place',
-    body: 'Lists and inbox summaries add more checking. Foldera is built to interrupt only when action is useful.',
+    title: 'The human integration layer',
+    body: 'The person doing the work becomes the system that reconnects messages, meetings, approvals, and decisions.',
   },
 ];
 
@@ -225,7 +225,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
               Stop rebuilding the work.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-              Foldera keeps your workday state attached across consented systems and returns exactly one next move when it matters.
+              Foldera restores continuity across fractured apps, messages, meetings, approvals, and decisions so you can stop rebuilding context just to do the work.
             </p>
 
             <div className="mt-7 flex flex-wrap gap-3 text-sm text-slate-400">
@@ -247,9 +247,9 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20" data-testid="landing-pain">
         <div className="max-w-3xl">
           <p className="text-sm font-semibold uppercase text-cyan-200">Context collapse</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Work keeps getting scattered.</h2>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">You are a high-paid filing clerk.</h2>
           <p className="mt-4 text-base leading-7 text-slate-300">
-            The day moves across messages, meetings, documents, tasks, and decisions. Every interruption makes you rebuild the thread manually.
+            You spend too much of your day rebuilding context across fractured apps just to do a few minutes of actual work.
           </p>
         </div>
         <div className="mt-9 grid gap-4 md:grid-cols-3">
@@ -267,10 +267,10 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
           <div className="max-w-3xl">
             <p className="text-sm font-semibold uppercase text-cyan-200">How it works</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">
-              State + connectors + triggers + one intervention.
+              The problem isn&apos;t lack of AI. The problem is broken continuity.
             </h2>
             <p className="mt-4 text-base leading-7 text-slate-300">
-              Foldera is not another place to check. It is the quiet layer that keeps workday state attached and interrupts only when there is a useful next move.
+              Every app remembers its own slice. Microsoft remembers Microsoft. Google remembers Google. Foldera is the cross-system presence layer that remembers the state of your workday.
             </p>
           </div>
 
@@ -298,8 +298,11 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
 
       <section id="trust" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20" data-testid="landing-trust">
         <div className="max-w-3xl">
-          <p className="text-sm font-semibold uppercase text-cyan-200">Trust boundary</p>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">The product is useful only if it stays bounded.</h2>
+          <p className="text-sm font-semibold uppercase text-cyan-200">Habitat</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">It lives where you work. And stays quiet otherwise.</h2>
+          <p className="mt-4 text-base leading-7 text-slate-300">
+            Foldera interrupts only when there is a clean moment to act, hands you the next move where you already are, and then disappears.
+          </p>
         </div>
         <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {trustItems.map(({ icon: Icon, title, body }) => (
@@ -317,10 +320,10 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
           <div>
             <p className="text-sm font-semibold uppercase text-cyan-200">Pilot access</p>
             <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">
-              Built for teams rebuilding too much context.
+              Stop checking nine apps. Foldera keeps track.
             </h2>
             <p className="mt-4 text-base leading-7 text-slate-300">
-              The pilot is for validating whether Foldera helps overloaded operators resume faster without adding another system to manage.
+              Foldera is not a dashboard. It watches consented signals, remembers your focus, and calculates the next state of your work.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <AccessLink testId="landing-pilot-access-cta">Join pilot</AccessLink>
@@ -341,9 +344,12 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
 
       <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20" data-testid="landing-final-cta">
         <div className="rounded-lg border border-cyan-300/20 bg-[#0b1118] p-7 text-center sm:p-10">
-          <h2 className="text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Your place is held.</h2>
+          <h2 className="text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Restore your continuity.</h2>
           <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-300">
-            One trusted next move. Quiet otherwise.
+            Stop acting as the human integration layer. Let Foldera hold the context, so you can do the work.
+          </p>
+          <p className="mx-auto mt-3 max-w-2xl text-sm font-semibold text-cyan-100">
+            One trusted answer. All the context. Next move ready.
           </p>
           <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <AccessLink testId="landing-final-access-cta">Get started</AccessLink>

@@ -121,9 +121,12 @@ test.describe('Landing page /', () => {
     await expect(page.getByTestId('landing-hero')).toBeVisible();
     await expect(page.getByRole('heading', { name: /stop rebuilding the work/i })).toBeVisible();
     await expect(page.getByTestId('landing-right-now-card')).toBeVisible();
-    await expect(page.getByTestId('landing-doctrine')).toContainText('State + connectors + triggers + one intervention');
+    await expect(page.getByTestId('landing-pain')).toContainText('You are a high-paid filing clerk.');
+    await expect(page.getByTestId('landing-pain')).toContainText('The reconstruction tax.');
+    await expect(page.getByTestId('landing-doctrine')).toContainText('broken continuity');
     await expect(page.getByTestId('landing-trust')).toContainText('No surveillance');
-    await expect(page.getByTestId('landing-pilot')).toContainText('Pilot access');
+    await expect(page.getByTestId('landing-trust')).toContainText('It lives where you work');
+    await expect(page.getByTestId('landing-pilot')).toContainText('Stop checking nine apps');
     await expect(page.getByTestId('landing-header-cta')).toHaveAttribute('href', '/start');
     await expect(page.getByTestId('landing-primary-access-cta')).toHaveAttribute('href', '/start');
     await expect(page.getByTestId('landing-login-cta')).toHaveAttribute('href', '/login');
@@ -180,10 +183,14 @@ test.describe('Landing page /', () => {
   test('homepage exposes the Workday Presence Layer doctrine', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByText('The Workday Presence Layer').first()).toBeVisible();
+    await expect(page.getByText('Stop rebuilding the work.').first()).toBeVisible();
+    await expect(page.getByText('Foldera restores continuity across fractured apps, messages, meetings, approvals, and decisions so you can stop rebuilding context just to do the work.')).toBeVisible();
     await expect(page.getByTestId('landing-doctrine')).toContainText('State');
     await expect(page.getByTestId('landing-doctrine')).toContainText('Connectors');
     await expect(page.getByTestId('landing-doctrine')).toContainText('Triggers');
     await expect(page.getByTestId('landing-doctrine')).toContainText('One intervention');
+    await expect(page.getByTestId('landing-final-cta')).toContainText('Restore your continuity.');
+    await expect(page.getByTestId('landing-final-cta')).toContainText('One trusted answer. All the context. Next move ready.');
   });
   test('no actionable console errors — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
