@@ -16,10 +16,10 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 151
-priority_class: SOURCE_BACKED_RIGHT_NOW_SELECTOR
-work_type: SOURCE_BACKED_STATE_SELECTOR
-why_this_first: Issue #140 / PR #142 is parked rail-only and externally blocked; issue #151 is the next narrow implementation seam to produce a source-backed WorkdayPresenceState from existing source-shaped rows without widening PR #142.
+active_issue: 154
+priority_class: SOURCE_TRUTH_SEAM_SELECTION_AFTER_151
+work_type: SOURCE_TRUTH_SELECTION_ONLY
+why_this_first: Issue #151 is closed after PR #153 merged; issue #140 / PR #142 is parked rail-only and externally blocked; issue #136 is ledger-only; no other open GitHub issue authorizes the next implementation seam.
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -38,6 +38,7 @@ predecessor_issues:
   - 143
   - 147
   - 151
+  - 154
 completed:
   - issue: 106
     pr: 107
@@ -70,7 +71,7 @@ completed:
   - issue: 140
     pr: 142
     merge_sha: not_merged_external_blocker_accepted
-    result: PR #142 remains rail-only and parked externally blocked; deterministic proof passed, live Slack send reached the rail, and remaining real Slack button callback proof is externally blocked. Do not widen PR #142 into source-backed selector work.
+    result: PR #142 remains rail-only and parked externally blocked; deterministic proof passed, live Slack send reached the rail, and remaining real Slack button callback proof is externally blocked. Do not widen PR #142 into source-truth selection or product work.
   - issue: 143
     pr: 145
     merge_sha: e93f8fa5fdcd2a4fb907370a71791484678cbadc
@@ -83,6 +84,10 @@ completed:
     pr: 149
     merge_sha: d9ede1dd39c3de3b3fe5bd5e3592b0ced001fdf3
     result: Public landing shell adaptation landed on main; issue #147 is closed/completed.
+  - issue: 151
+    pr: 153
+    merge_sha: be5d596c8033f9b273ceb025aa3c2c18333520f4
+    result: Source-backed Right Now selector landed on main; issue #151 is closed/completed.
 closed_issues_do_not_reopen:
   - issue: 121
     status: closed_superseded
@@ -95,10 +100,13 @@ closed_issues_do_not_reopen:
     reason: Architecture constraints were carried forward to #140 and repo source truth.
   - issue: 48
     status: closed_superseded
-    reason: Product doctrine is carried in repo source truth and the active #140 rail.
+    reason: Product doctrine is carried in repo source truth and the parked #140 rail.
   - issue: 147
     status: closed_completed
     reason: Public landing shell adaptation completed by PR #149.
+  - issue: 151
+    status: closed_completed
+    reason: Source-backed Right Now selector completed by PR #153.
 closed_pull_requests_do_not_reopen:
   - pr: 124
     status: closed_do_not_reopen
@@ -107,12 +115,16 @@ closed_pull_requests_do_not_reopen:
     status: closed_do_not_reopen
     reason: Closed/unmerged; do not reopen or reuse.
 forbidden_current_work:
-  - landing implementation
+  - product implementation
+  - selector changes
+  - source-backed-state changes
+  - PR #142 changes
   - PR #142 widening
-  - Slack code patch before a code-owned failure is proven
+  - Slack code patch
   - Slack app settings
   - Vercel settings
   - Supabase schema
+  - Supabase data changes
   - dashboard files
   - auth rewrite
   - backend changes
@@ -124,12 +136,14 @@ forbidden_current_work:
   - email expansion
   - calendar expansion
   - paid model proof
+  - landing implementation
   - broad cleanup
   - reopening issue #121
   - reopening issue #131
   - reopening issue #99
   - reopening issue #48
   - reopening issue #147
+  - reopening issue #151
 required_local_proof:
   - npm run gate:command
   - npm run gate:continuity
@@ -142,19 +156,12 @@ required_issue_140_live_rail_proof:
   - do not patch Slack code until logs prove a code-owned failure
   - preserve Done/Stuck/Break smaller/Snooze loop from completed issue #131
   - do not expand into connector platform, Teams/email/calendar, dashboard, auth/backend, Supabase schema, Stripe, or landing work
-required_issue_151_source_backed_selector:
-  - read existing Supabase-shaped rows only from public.tkg_signals, public.tkg_commitments, and optionally public.tkg_actions.evidence
-  - produce quiet/no safe source-backed move or WorkdayPresenceState with state_source source_backed
-  - include safe source_trail entries with table/source/type/source_id or row_id, occurred_at/ingested_at when available, redacted_summary, and selection_reason
-  - choose at most one intervention
-  - preserve source_trail through Right Now payload and Done/Stuck/Break smaller/Snooze mutations
-  - no raw private content in source_trail, payloads, receipts, or tests
-  - no paid model proof
-  - no inline full state recompute
-  - no mutation of tkg_* tables
-  - no schema change unless proven strictly necessary
-  - no connector expansion
-  - no Slack app config, Vercel settings, dashboard, landing, auth/backend, Stripe, package files, Teams/email/calendar expansion, or PR #142 changes
+required_issue_154_source_truth_selection:
+  - inspect repo and GitHub source truth only enough to select exactly one next seam
+  - preserve issue #140 / PR #142 as rail-only and externally blocked unless GitHub source truth explicitly reassigns it
+  - preserve issue #136 as the standing ledger only
+  - do not implement product code or the selected seam
+  - keep changes to ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and focused source-truth/continuity gate files only if gates require alignment
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -165,6 +172,6 @@ current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
   .foldera-contract.json: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order control issue #151 source-backed selector
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order control issue #154 source-truth seam selection
   docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this closeout PR
-  next_seam: issue #151 - source-backed Right Now state selector
+  next_seam: issue #154 - select next source-truth seam after issue #151

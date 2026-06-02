@@ -41,7 +41,7 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
-  it('passes only when issue #151 source-backed selector is active and PR #142 remains parked', () => {
+  it('passes only when issue #154 source-truth selection is active and PR #142 remains parked', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = fs.readFileSync(path.join(fixtureRoot, 'ACTIVE_HANDOFF.md'), 'utf8');
     const buildOrder = fs.readFileSync(path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml'), 'utf8');
@@ -49,11 +49,12 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(handoff).toContain('Active implementation seam is issue #151');
+    expect(handoff).toContain('Active implementation seam is issue #154');
+    expect(handoff).toContain('Issue #151 is complete: PR #153 landed the source-backed Right Now selector');
     expect(handoff).toContain('Issue #140 / PR #142 remains rail-only and parked externally blocked');
-    expect(buildOrder).toContain('active_issue: 151');
-    expect(buildOrder).toContain('work_type: SOURCE_BACKED_STATE_SELECTOR');
-    expect(contract.active_issue).toBe(151);
+    expect(buildOrder).toContain('active_issue: 154');
+    expect(buildOrder).toContain('work_type: SOURCE_TRUTH_SELECTION_ONLY');
+    expect(contract.active_issue).toBe(154);
     expect(failures).toEqual([]);
   });
 
@@ -61,11 +62,11 @@ describe('source truth command gate', () => {
     const fixtureRoot = createFixtureRoot();
     const buildOrderPath = path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
     const original = fs.readFileSync(buildOrderPath, 'utf8');
-    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 151', 'active_issue: 140'));
+    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 154', 'active_issue: 140'));
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 151; found 140.');
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 154; found 140.');
   });
 
   it('fails when .foldera-contract.json still resolves to issue #140', () => {
@@ -78,26 +79,23 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('.foldera-contract.json active_issue must be 151; found 140.');
-    expect(failures).toContain('.foldera-contract.json backlog_id must resolve to issue #151 source-backed selector.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be 154; found 140.');
+    expect(failures).toContain('.foldera-contract.json backlog_id must resolve to issue #154 source-truth seam selection.');
   });
 
-  it('fails when the issue #151 source-shaped input contract is removed', () => {
+  it('fails when the issue #151 completion merge SHA is removed', () => {
     const fixtureRoot = createFixtureRoot();
     const buildOrderPath = path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
     const original = fs.readFileSync(buildOrderPath, 'utf8');
     writeFixtureFile(
       fixtureRoot,
       'FOLDERA_BUILD_ORDER.yaml',
-      original.replace(
-        'read existing Supabase-shaped rows only from public.tkg_signals, public.tkg_commitments, and optionally public.tkg_actions.evidence',
-        'read whatever rows are available',
-      ),
+      original.replace('merge_sha: be5d596c8033f9b273ceb025aa3c2c18333520f4', 'merge_sha: missing'),
     );
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml must require existing source-shaped table inputs.');
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml must record issue #151 / PR #153 completed with merge SHA.');
   });
 
   it('fails when closed issue carry-forward status is removed', () => {
