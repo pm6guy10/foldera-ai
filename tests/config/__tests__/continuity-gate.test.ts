@@ -58,7 +58,7 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
-  it('passes when issue #147 is explicitly assigned as the next seam', () => {
+  it('passes when issue #140 is explicitly assigned as the live rail proof seam', () => {
     const fixtureRoot = createFixtureRoot();
 
     const failures = runContinuityGate(fixtureRoot);
@@ -66,14 +66,14 @@ describe('continuity gate writeback enforcement', () => {
     expect(failures).toEqual([]);
   });
 
-  it('fails when the active issue #147 seam is removed', () => {
+  it('fails when the active issue #140 seam is removed', () => {
     const fixtureRoot = createFixtureRoot();
     const handoffPath = path.join(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const original = fs.readFileSync(handoffPath, 'utf8');
     fs.writeFileSync(
       handoffPath,
       original.replace(
-        'Active implementation seam is issue #147: Public landing shell adaptation from Figma export without changing auth/access/backend behavior.',
+        'Active implementation seam is issue #140 / PR #142: Real Slack Self-Loop live rail proof and blocker classification only.',
         'No active implementation seam is assigned.',
       ),
       'utf8',
