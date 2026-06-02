@@ -5,11 +5,18 @@
   "backlog_id": "ISSUE_151_SOURCE_BACKED_RIGHT_NOW_SELECTOR",
   "base_commit": "313df387c993c77660217008f973b1d48d3aa09f",
   "money_loop_rung": "source_backed_right_now_selector",
-  "user_system_path": "source-truth promotion only; park issue #140 / PR #142 rail-only and promote issue #151 source-backed Right Now selector",
+  "user_system_path": "issue #151 implementation only; preserve issue #140 / PR #142 as rail-only parked and implement the source-backed Right Now selector",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
+    "lib/workday-presence/model.ts",
+    "lib/workday-presence/message.ts",
+    "lib/workday-presence/source-backed-state.ts",
+    "lib/workday-presence/__tests__/source-backed-state.test.ts",
+    "lib/workday-presence/__tests__/message.test.ts",
+    "lib/workday-presence/__tests__/actions.test.ts",
+    "lib/workday-presence/__tests__/presence-loop-receipt.test.ts",
     "scripts/source-truth-check.ts",
     "tests/config/__tests__/source-truth-check.test.ts",
     "tests/config/__tests__/continuity-gate.test.ts"
@@ -43,17 +50,18 @@
     "paid model proof",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Source-truth promotion only: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and focused source-truth/continuity tests or gate logic required to enforce issue #151 as the next source-backed selector seam. Do not patch product code.",
-  "forbidden_files_raw": "No product code: do not implement source-backed-state.ts in this promotion PR; no PR #142 changes, Slack code patch, landing implementation, Supabase schema, dashboard/auth/backend, Stripe, package files, Dependabot, connector expansion, Teams/email/calendar, Slack app settings, Vercel settings, paid model proof, or broad cleanup.",
+  "allowed_files_raw": "Issue #151 implementation only: focused Workday Presence model/message/source-backed selector files and focused Workday Presence tests, plus source-truth contract files only if needed to keep the issue #151 seam enforceable.",
+  "forbidden_files_raw": "No PR #142 changes or widening; no Slack code patch, landing implementation, Supabase schema, dashboard/auth/backend, Stripe, package files, Dependabot, connector expansion, Teams/email/calendar, Slack app settings, Vercel settings, paid model proof, full inline recompute, tkg_* mutations, raw private source trail content, or broad cleanup.",
   "required_local_proof": [
     "npm run gate:command",
     "npm run gate:continuity",
     "npm run lint",
+    "npm run build",
     "git diff --check"
   ],
-  "required_browser_proof": "Not applicable; source-truth closeout only.",
-  "acceptance_condition": "Source truth parks issue #140 / PR #142 as externally blocked rail-only, keeps issue #136 as ledger-only, and promotes issue #151 as the only active source-backed Right Now state selector seam.",
-  "stop_condition": "Stop when one source-truth closeout PR is open, proof is posted, and no product code has been patched.",
+  "required_browser_proof": "Not applicable; pure source-backed selector and message payload proof is deterministic Vitest/build only.",
+  "acceptance_condition": "Source truth promotes issue #151 as the only active source-backed Right Now selector seam, and one selector converts existing tkg_signals/tkg_commitments and optional tkg_actions.evidence-shaped rows into a quiet fallback or WorkdayPresenceState with state_source source_backed and safe source_trail, with Right Now payload/action preservation proven.",
+  "stop_condition": "Stop when one issue #151 implementation PR is open, deterministic proof is posted, and no unrelated files or PR #142 rail code are touched.",
   "is_user_facing": false,
   "browser_proof_command": "not applicable - source-truth closeout only",
   "anti_regression_checks": [
@@ -62,7 +70,7 @@
     "Issue #136 remains ledger-only",
     "Issues #121, #131, #99, #48, and #147 are closed/superseded/completed and must not be reopened",
     "PR #142 remains live rail proof/blocker only and is not widened into source-backed selector work",
-    "No product-code paths are allowed"
+    "Only focused Workday Presence source-backed selector/model/message/test paths are allowed for implementation"
   ],
   "next_command": "Run issue #151 source-backed Right Now state selector only. Stop after one selector PR with deterministic proof and no PR #142 changes."
 }
