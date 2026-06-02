@@ -16,10 +16,10 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 140
-priority_class: REAL_SLACK_SELF_LOOP_IMPLEMENTATION
-work_type: IMPLEMENTATION
-why_this_first: Issue #131 proved the deterministic Slack test-mode MVP Presence Loop, issue #136 installed Codex Run Ledger discipline, and issue #138 / PR #139 promoted the bounded Real Slack Self-Loop target; issue #140 is the explicitly assigned implementation seam.
+active_issue: 143
+priority_class: WORK_PACKET_BRAIN_SOURCE_TRAIL_REVIEW_PACKET
+work_type: SOURCE_TRUTH_PROMOTION
+why_this_first: Issue #131 proved the deterministic Slack test-mode MVP Presence Loop, issue #136 installed Codex Run Ledger discipline, issue #138 / PR #139 promoted the bounded Real Slack Self-Loop target, and issue #140 / PR #142 is accepted as rail-only proof/blocker; issue #143 is the next product-brain seam for source trails -> consolidated work_packet -> Slack review card.
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -34,6 +34,7 @@ predecessor_issues:
   - 131
   - 136
   - 138
+  - 140
 completed:
   - issue: 106
     pr: 107
@@ -67,6 +68,10 @@ completed:
     pr: 139
     merge_sha: 5f1d3e73f90f1c30ad904c8e45db18a68ebc042e
     result: PR #139 Real Slack Self-Loop source-truth promotion landed on main without Slack implementation code.
+  - issue: 140
+    pr: 142
+    merge_sha: not_merged_external_blocker_accepted
+    result: PR #142 remains rail-only; deterministic proof passed, live Slack send reached the rail, and remaining real Slack button callback proof is externally blocked. Do not implement packet-brain behavior in PR #142.
 closed_pull_requests_do_not_reopen:
   - pr: 124
     status: closed_do_not_reopen
@@ -76,9 +81,9 @@ closed_pull_requests_do_not_reopen:
     reason: Closed/unmerged; do not reopen or reuse after issue #126 recovery.
 paused:
   - issue: 121
-    reason: Landing implementation remains paused while issue #140 Real Slack Self-Loop implementation is active.
+    reason: Landing implementation remains paused while issue #143 Work Packet Brain promotion is active.
   - issue: 99
-    reason: Planning spine remains paused while issue #140 Real Slack Self-Loop implementation is active.
+    reason: Planning spine remains paused while issue #143 Work Packet Brain promotion is active.
   - issue: 84
     pr: 95
     reason: Older landing polish reference remains paused/superseded by issue #121 current landing-page frontend contract seam.
@@ -88,9 +93,8 @@ forbidden_current_work:
   - dashboard redesign
   - Supabase schema
   - connector platform expansion
-  - live Slack install beyond the one self-loop boundary
-  - Slack OAuth beyond the one self-loop boundary
-  - live Slack send beyond the one self-loop boundary
+  - Slack OAuth expansion
+  - live Slack send expansion beyond packet review card proof
   - Teams expansion
   - email expansion
   - calendar expansion
@@ -99,21 +103,19 @@ forbidden_current_work:
   - broad cleanup
   - reopening PR #124 or PR #125
 required_local_proof:
-  - npm run health
-  - focused Slack self-loop tests
-  - token exposure / secret redaction test or gate
+  - npx vitest run tests/config/__tests__/source-truth-check.test.ts --reporter=verbose
   - npm run gate:command
   - npm run gate:continuity
   - npm run lint
-  - npm run build
   - git diff --check
-required_issue_140_proof:
-  - ACTIVE_HANDOFF.md names issue #140 as the active implementation seam
-  - FOLDERA_BUILD_ORDER.yaml active_issue is 140
-  - .foldera-contract.json resolves to issue #140 and allows only the bounded self-loop surface
-  - issue #138 is closed after PR #139 merge
-  - Slack implementation stays limited to one self-loop
-  - no token exposure or accidental broad connector behavior
+required_issue_143_proof:
+  - ACTIVE_HANDOFF.md names issue #143 as the active implementation seam
+  - FOLDERA_BUILD_ORDER.yaml active_issue is 143
+  - .foldera-contract.json resolves to issue #143 and allows only source-truth plus narrow packet-brain future scope
+  - PR #142 is preserved as rail-only proof/blocker, not product-brain implementation
+  - no product behavior changed in this promotion PR
+  - future implementation requires deterministic TEST_MODE packet generation from multiple fake source signals
+  - future Slack card uses Review packet, View sources, and Dismiss; never Send or Auto-send by default
   - primary PR receipt is posted
   - standing ledger issue #136 receipt is posted
 closeout_required_each_pr:
@@ -125,6 +127,6 @@ closeout_required_each_pr:
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - this PR closes issue #138 after PR #139 and promotes issue #140 without changing the historical roadmap narrative
-  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this source-truth promotion PR
-  next_seam: named - issue #140 Real Slack Self-Loop implementation; stop after PR and receipts, with no Slack code implementation in this closeout run
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order now promote issue #143
+  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this promotion PR
+  next_seam: named - issue #143 MVP Work Packet Brain; stop after PR and receipts, with no product code implementation in this promotion run

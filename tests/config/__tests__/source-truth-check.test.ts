@@ -41,16 +41,32 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
+  it('passes only when the promoted packet-brain issue is active', () => {
+    const fixtureRoot = createFixtureRoot();
+    const handoff = fs.readFileSync(path.join(fixtureRoot, 'ACTIVE_HANDOFF.md'), 'utf8');
+    const buildOrder = fs.readFileSync(path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml'), 'utf8');
+    const contract = JSON.parse(
+      fs.readFileSync(path.join(fixtureRoot, '.foldera-contract.json'), 'utf8'),
+    ) as Record<string, unknown>;
+
+    const failures = runSourceTruthCheck(fixtureRoot);
+
+    expect(handoff).toContain('Active implementation seam is issue #143');
+    expect(buildOrder).toContain('active_issue: 143');
+    expect(contract.active_issue).toBe(143);
+    expect(failures).toEqual([]);
+  });
+
   it('fails when FOLDERA_BUILD_ORDER.yaml disagrees with ACTIVE_HANDOFF.md', () => {
     const fixtureRoot = createFixtureRoot();
     const buildOrderPath = path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
     const original = fs.readFileSync(buildOrderPath, 'utf8');
-    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 140', 'active_issue: 121'));
+    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 143', 'active_issue: 121'));
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 140; found 121.');
-    expect(failures).toContain('ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml disagree: #140 vs #121.');
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 143; found 121.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml disagree: #143 vs #121.');
   });
 
   it('fails when .foldera-contract.json resolves to the wrong active issue', () => {
@@ -63,8 +79,36 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('.foldera-contract.json active_issue must be 140; found 121.');
-    expect(failures).toContain('.foldera-contract.json backlog_id must resolve to issue #140; found ISSUE_121_LANDING_PAGE_FRONTEND_CONTRACT.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be 143; found 121.');
+    expect(failures).toContain('.foldera-contract.json backlog_id must resolve to issue #143; found ISSUE_121_LANDING_PAGE_FRONTEND_CONTRACT.');
+  });
+
+  it('fails when source truth still points at issue #140 after packet-brain promotion', () => {
+    const fixtureRoot = createFixtureRoot();
+    const handoff = fs.readFileSync(path.join(fixtureRoot, 'ACTIVE_HANDOFF.md'), 'utf8');
+    const buildOrder = fs.readFileSync(path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml'), 'utf8');
+    const contract = JSON.parse(
+      fs.readFileSync(path.join(fixtureRoot, '.foldera-contract.json'), 'utf8'),
+    ) as Record<string, unknown>;
+
+    writeFixtureFile(
+      fixtureRoot,
+      'ACTIVE_HANDOFF.md',
+      handoff.replace(
+        'Active implementation seam is issue #143: MVP Work Packet Brain source trails -> consolidated review packet -> Slack review card.',
+        'Active implementation seam is issue #140: Real Slack Self-Loop implementation.',
+      ),
+    );
+    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', buildOrder.replace('active_issue: 143', 'active_issue: 140'));
+    contract.active_issue = 140;
+    contract.backlog_id = 'ISSUE_140_REAL_SLACK_SELF_LOOP_IMPLEMENTATION';
+    writeFixtureFile(fixtureRoot, '.foldera-contract.json', `${JSON.stringify(contract, null, 2)}\n`);
+
+    const failures = runSourceTruthCheck(fixtureRoot);
+
+    expect(failures).toContain('ACTIVE_HANDOFF.md must name issue #143 as active; found 140.');
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 143; found 140.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be 143; found 140.');
   });
 
   it('fails when protected Vercel preview links are used as proof in controlling files', () => {
