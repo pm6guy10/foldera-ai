@@ -131,6 +131,11 @@ function extractYamlNumber(raw: string, key: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
+function extractYamlScalar(raw: string, key: string): string | null {
+  const match = raw.match(new RegExp(`^${key}:\\s*(.+?)\\s*$`, 'm'));
+  return match ? match[1].trim().replace(/^['"]|['"]$/g, '') : null;
+}
+
 function extractActiveHandoffIssue(raw: string): number | null {
   const match = raw.match(/^Active implementation seam is issue #(\d+).*$/m);
   return match ? Number(match[1]) : null;
@@ -185,7 +190,6 @@ export function runContinuityGate(root: string): string[] {
 
   const activeHandoff = readRepoFile(root, 'ACTIVE_HANDOFF.md');
   const activeSeamLines = activeHandoff.match(/^Active implementation seam is issue #\d+.*$/gm) ?? [];
-  if (activeSeamLines.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam line; found ${activeSeamLines.length}.`);
   if (!activeHandoff.includes('FOLDERA_BUILD_ORDER.yaml')) failures.push('ACTIVE_HANDOFF.md must reference FOLDERA_BUILD_ORDER.yaml.');
   if (!activeHandoff.includes('Issue #48 remains the product contract.')) failures.push('ACTIVE_HANDOFF.md must reference issue #48 as the product contract.');
   for (const rule of requiredWritebackRules) {
@@ -203,8 +207,17 @@ export function runContinuityGate(root: string): string[] {
 
   const handoffIssue = extractActiveHandoffIssue(activeHandoff);
   const buildOrderIssue = extractYamlNumber(buildOrder, 'active_issue');
-  if (handoffIssue === null) failures.push('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
-  if (buildOrderIssue === null) failures.push('FOLDERA_BUILD_ORDER.yaml active_issue could not be parsed.');
+  const buildOrderIssueScalar = extractYamlScalar(buildOrder, 'active_issue');
+  const nextSeamBlocked = /Next seam:\s*blocked - reason:\s*no next seam assigned after PR #145 merge/i.test(activeHandoff)
+    && /next_seam:\s*blocked - reason no next seam assigned after PR #145 merge/i.test(buildOrder)
+    && buildOrderIssueScalar === 'null';
+  if (nextSeamBlocked) {
+    if (activeSeamLines.length !== 0) failures.push(`ACTIVE_HANDOFF.md must name zero active seam lines when next seam is blocked; found ${activeSeamLines.length}.`);
+  } else {
+    if (activeSeamLines.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam line; found ${activeSeamLines.length}.`);
+    if (handoffIssue === null) failures.push('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
+    if (buildOrderIssue === null) failures.push('FOLDERA_BUILD_ORDER.yaml active_issue could not be parsed.');
+  }
   if (handoffIssue !== null && buildOrderIssue !== null && handoffIssue !== buildOrderIssue) {
     failures.push(`ACTIVE_HANDOFF.md active seam issue #${handoffIssue} must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
   }

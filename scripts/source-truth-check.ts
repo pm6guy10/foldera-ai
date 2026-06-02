@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 type FolderaContract = {
   active?: boolean;
-  active_issue?: number;
+  active_issue?: number | null;
   backlog_id?: string;
   authority_status?: string;
   money_loop_rung?: string;
@@ -14,8 +14,10 @@ type FolderaContract = {
   required_local_proof?: string[] | string;
 };
 
-const ACTIVE_ISSUE = 143;
-const COMPLETED_ISSUES = [126, 138, 140];
+const COMPLETED_ISSUE = 143;
+const COMPLETED_PR = 145;
+const COMPLETED_MERGE_SHA = 'e93f8fa5fdcd2a4fb907370a71791484678cbadc';
+const COMPLETED_ISSUES = [126, 138, 140, 143];
 const PAUSED_LANDING_ISSUE = 121;
 const CLOSED_DO_NOT_REOPEN_PRS = [124, 125];
 const REQUIRED_PROOF_COMMANDS = [
@@ -150,14 +152,15 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
     ? Number(contract.backlog_id.match(/^ISSUE_(\d+)_/)?.[1])
     : null;
 
-  if (handoffIssue !== ACTIVE_ISSUE) failures.push(`ACTIVE_HANDOFF.md must name issue #${ACTIVE_ISSUE} as active; found ${handoffIssue ?? 'none'}.`);
-  if (buildIssue !== ACTIVE_ISSUE) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${ACTIVE_ISSUE}; found ${buildIssue ?? 'none'}.`);
-  if (contract?.authority_status !== 'CURRENT_CONTROL') failures.push('.foldera-contract.json authority_status must be CURRENT_CONTROL.');
+  if (handoffIssue !== null) failures.push(`ACTIVE_HANDOFF.md must not name an active implementation seam after PR #${COMPLETED_PR}; found #${handoffIssue}.`);
+  if (buildIssue !== null) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be null after PR #${COMPLETED_PR}; found ${buildIssue}.`);
+  if (contract?.authority_status !== 'CLOSEOUT_CONTROL') failures.push('.foldera-contract.json authority_status must be CLOSEOUT_CONTROL.');
   if (contract?.active !== true) failures.push('.foldera-contract.json active must be true.');
-  if (contractIssue !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_ISSUE}; found ${contractIssue ?? 'none'}.`);
-  if (contractIssueFromBacklog !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json backlog_id must resolve to issue #${ACTIVE_ISSUE}; found ${contract?.backlog_id ?? 'none'}.`);
-  if (contract?.money_loop_rung !== 'work_packet_brain_source_trail_review_packet') failures.push('.foldera-contract.json money_loop_rung must be work_packet_brain_source_trail_review_packet.');
-  if (contract?.user_system_path !== 'promote MVP Work Packet Brain after PR #142 rail-only proof is merged or accepted as externally blocked') failures.push('.foldera-contract.json user_system_path must be promote MVP Work Packet Brain after PR #142 rail-only proof is merged or accepted as externally blocked.');
+  if (contractIssue !== null) failures.push(`.foldera-contract.json active_issue must be null after PR #${COMPLETED_PR}; found ${contractIssue}.`);
+  if (contractIssueFromBacklog !== null) failures.push(`.foldera-contract.json backlog_id must not resolve to an active issue after PR #${COMPLETED_PR}; found ${contract?.backlog_id ?? 'none'}.`);
+  if (contract?.backlog_id !== 'NO_NEXT_SEAM_ASSIGNED_AFTER_PR_145') failures.push('.foldera-contract.json backlog_id must be NO_NEXT_SEAM_ASSIGNED_AFTER_PR_145.');
+  if (contract?.money_loop_rung !== 'blocked_no_next_seam_assigned') failures.push('.foldera-contract.json money_loop_rung must be blocked_no_next_seam_assigned.');
+  if (contract?.user_system_path !== 'close out issue #143 after PR #145 merge without starting a new implementation seam') failures.push('.foldera-contract.json user_system_path must be close out issue #143 after PR #145 merge without starting a new implementation seam.');
 
   if (handoffIssue !== null && buildIssue !== null && handoffIssue !== buildIssue) failures.push(`ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml disagree: #${handoffIssue} vs #${buildIssue}.`);
   if (handoffIssue !== null && contractIssue !== null && handoffIssue !== contractIssue) failures.push(`ACTIVE_HANDOFF.md and .foldera-contract.json disagree: #${handoffIssue} vs #${contractIssue}.`);
@@ -165,11 +168,10 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   if (contractIssue !== null && contractIssueFromBacklog !== null && contractIssue !== contractIssueFromBacklog) failures.push(`.foldera-contract.json active_issue and backlog_id disagree: #${contractIssue} vs #${contractIssueFromBacklog}.`);
 
   const handoffActiveIssueMentions = extractIssueNumbers(handoff, /^Active implementation seam is issue #(\d+).*$/gm);
-  if (handoffActiveIssueMentions.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam; found ${handoffActiveIssueMentions.length}.`);
-  if (handoffActiveIssueMentions.some((issue) => issue !== ACTIVE_ISSUE)) failures.push(`ACTIVE_HANDOFF.md has an active seam other than issue #${ACTIVE_ISSUE}.`);
+  if (handoffActiveIssueMentions.length !== 0) failures.push(`ACTIVE_HANDOFF.md must name zero active seams after PR #${COMPLETED_PR}; found ${handoffActiveIssueMentions.length}.`);
 
-  if (buildPriorityClass !== 'WORK_PACKET_BRAIN_SOURCE_TRAIL_REVIEW_PACKET') failures.push('FOLDERA_BUILD_ORDER.yaml priority_class must be WORK_PACKET_BRAIN_SOURCE_TRAIL_REVIEW_PACKET.');
-  if (buildWorkType !== 'IMPLEMENTATION_PROOF') failures.push('FOLDERA_BUILD_ORDER.yaml work_type must be IMPLEMENTATION_PROOF.');
+  if (buildPriorityClass !== 'BLOCKED_NO_NEXT_SEAM_ASSIGNED') failures.push('FOLDERA_BUILD_ORDER.yaml priority_class must be BLOCKED_NO_NEXT_SEAM_ASSIGNED.');
+  if (buildWorkType !== 'SOURCE_TRUTH_CLOSEOUT') failures.push('FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_CLOSEOUT.');
   if (!buildOrder.includes('required_gate_command: npm run gate:command')) failures.push('FOLDERA_BUILD_ORDER.yaml must name required_gate_command: npm run gate:command.');
   for (const completedIssue of COMPLETED_ISSUES) {
     if (!buildOrder.includes(`issue: ${completedIssue}`)) failures.push(`FOLDERA_BUILD_ORDER.yaml must list issue #${completedIssue} as completed.`);
@@ -183,6 +185,9 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   if (!/issue:\s*140[\s\S]*?PR #142[\s\S]*?rail-only[\s\S]*?externally blocked/i.test(buildOrder)) {
     failures.push('FOLDERA_BUILD_ORDER.yaml must preserve issue #140 / PR #142 as rail-only and externally blocked.');
   }
+  if (!new RegExp(`issue:\\s*${COMPLETED_ISSUE}[\\s\\S]*?pr:\\s*${COMPLETED_PR}[\\s\\S]*?merge_sha:\\s*${COMPLETED_MERGE_SHA}[\\s\\S]*?Deterministic Work Packet Brain proof landed on main`, 'i').test(buildOrder)) {
+    failures.push(`FOLDERA_BUILD_ORDER.yaml must list issue #${COMPLETED_ISSUE} / PR #${COMPLETED_PR} complete at merge SHA ${COMPLETED_MERGE_SHA}.`);
+  }
   if (!/Issue #126[\s\S]*?complete[\s\S]*?blocker is resolved/i.test(handoff)) {
     failures.push('ACTIVE_HANDOFF.md must say issue #126 is complete and the Supabase measurement/downgrade blocker is resolved.');
   }
@@ -191,6 +196,15 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   }
   if (!/Issue #140[\s\S]*?PR #142[\s\S]*?rail-only[\s\S]*?externally blocked/i.test(handoff)) {
     failures.push('ACTIVE_HANDOFF.md must preserve issue #140 / PR #142 as rail-only and externally blocked.');
+  }
+  if (!new RegExp(`Issue #${COMPLETED_ISSUE}[\\s\\S]*?complete[\\s\\S]*?PR #${COMPLETED_PR}[\\s\\S]*?${COMPLETED_MERGE_SHA}`, 'i').test(handoff)) {
+    failures.push(`ACTIVE_HANDOFF.md must mark issue #${COMPLETED_ISSUE} / PR #${COMPLETED_PR} complete at merge SHA ${COMPLETED_MERGE_SHA}.`);
+  }
+  if (!/Next seam:\s*blocked - reason:\s*no next seam assigned after PR #145 merge/i.test(handoff)) {
+    failures.push('ACTIVE_HANDOFF.md must block the next seam because no next seam is assigned after PR #145 merge.');
+  }
+  if (!/next_seam:\s*blocked - reason no next seam assigned after PR #145 merge/i.test(buildOrder)) {
+    failures.push('FOLDERA_BUILD_ORDER.yaml must block the next seam because no next seam is assigned after PR #145 merge.');
   }
 
   if (!/issue #121[^\n]*(landing|landing-page)[^\n]*(paused|pause)/i.test(handoff)) failures.push('ACTIVE_HANDOFF.md must say issue #121 landing work is paused.');
@@ -209,8 +223,8 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   for (const requiredFile of REQUIRED_ALLOWED_FILES) {
     if (!allowedFiles.includes(requiredFile)) failures.push(`.foldera-contract.json allowed_file_patterns must include ${requiredFile}.`);
   }
-  for (const requiredPacketPattern of ['lib/work-packets/**', 'tests/fixtures/work-packets/**']) {
-    if (!allowedFiles.includes(requiredPacketPattern)) failures.push(`.foldera-contract.json allowed_file_patterns must include ${requiredPacketPattern}.`);
+  for (const forbiddenCloseoutPattern of ['lib/work-packets/**', 'tests/fixtures/work-packets/**']) {
+    if (allowedFiles.includes(forbiddenCloseoutPattern)) failures.push(`.foldera-contract.json allowed_file_patterns must not include implementation path ${forbiddenCloseoutPattern} during no-code closeout.`);
   }
 
   const forbiddenFilesRaw = `${(contract?.forbidden_file_patterns ?? []).join('\n')}\n${readRepoFile(root, '.foldera-contract.json')}`.toLowerCase();
@@ -262,5 +276,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Active issue #143 is the MVP Work Packet Brain implementation seam.');
+  console.log('Source truth check passed. Issue #143 / PR #145 are closed out and no next implementation seam is assigned.');
 }
