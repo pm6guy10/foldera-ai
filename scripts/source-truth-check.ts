@@ -15,8 +15,8 @@ type FolderaContract = {
   next_command?: string;
 };
 
-const ACTIVE_ISSUE = 154;
-const BASE_SHA = 'be5d596c8033f9b273ceb025aa3c2c18333520f4';
+const ACTIVE_ISSUE = 156;
+const BASE_SHA = '816118c35f9a1d860c637bfd1532d7ba6f7e9c5e';
 
 const REQUIRED_PROOF_COMMANDS = ['npm run gate:command', 'npm run gate:continuity', 'npm run lint', 'git diff --check'];
 const REQUIRED_ALLOWED_FILES = [
@@ -111,36 +111,38 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   if (handoffIssue !== ACTIVE_ISSUE) failures.push(`ACTIVE_HANDOFF.md must name active issue #${ACTIVE_ISSUE}; found ${handoffIssue ?? 'none'}.`);
   if (buildIssue !== ACTIVE_ISSUE) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${ACTIVE_ISSUE}; found ${buildIssue ?? 'none'}.`);
   if (contractIssue !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_ISSUE}; found ${contractIssue ?? 'none'}.`);
-  if (contract.backlog_id !== 'ISSUE_154_SELECT_NEXT_SOURCE_TRUTH_SEAM_AFTER_151') failures.push('.foldera-contract.json backlog_id must resolve to issue #154 source-truth seam selection.');
-  if (contract.authority_status !== 'ACTIVE_SOURCE_TRUTH_SELECTION_ASSIGNED') failures.push('.foldera-contract.json authority_status must be ACTIVE_SOURCE_TRUTH_SELECTION_ASSIGNED.');
+  if (contract.backlog_id !== 'ISSUE_156_FOLDERA_NORTH_STAR_LOCK') failures.push('.foldera-contract.json backlog_id must resolve to issue #156 Foldera North Star Lock.');
+  if (contract.authority_status !== 'ACTIVE_NORTH_STAR_LOCK_ASSIGNED') failures.push('.foldera-contract.json authority_status must be ACTIVE_NORTH_STAR_LOCK_ASSIGNED.');
   if (contract.base_commit !== BASE_SHA) failures.push(`.foldera-contract.json base_commit must be ${BASE_SHA}.`);
 
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
-  if (priority !== 'SOURCE_TRUTH_SEAM_SELECTION_AFTER_151') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be SOURCE_TRUTH_SEAM_SELECTION_AFTER_151; found ${priority ?? 'none'}.`);
-  if (workType !== 'SOURCE_TRUTH_SELECTION_ONLY') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_SELECTION_ONLY; found ${workType ?? 'none'}.`);
+  if (priority !== 'FOLDERA_NORTH_STAR_LOCK') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be FOLDERA_NORTH_STAR_LOCK; found ${priority ?? 'none'}.`);
+  if (workType !== 'SOURCE_TRUTH_NORTH_STAR_LOCK') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_NORTH_STAR_LOCK; found ${workType ?? 'none'}.`);
 
   if (!handoff.includes('Issue #136 remains open as the standing Codex Run Ledger only.')) failures.push('ACTIVE_HANDOFF.md must preserve #136 as ledger-only.');
   if (!handoff.includes('Issue #140 / PR #142 remains rail-only and parked externally blocked')) failures.push('ACTIVE_HANDOFF.md must park issue #140 / PR #142 as rail-only and externally blocked.');
   if (!handoff.includes('Issue #151 is complete: PR #153 landed the source-backed Right Now selector on `main` at merge commit `be5d596c8033f9b273ceb025aa3c2c18333520f4`')) failures.push('ACTIVE_HANDOFF.md must record issue #151 complete via PR #153 merge SHA.');
-  if (!handoff.includes('Next seam: issue #154 - select the next source-truth seam after issue #151')) failures.push('ACTIVE_HANDOFF.md must promote issue #154 as the next seam.');
+  if (!handoff.includes('Issue #154 is complete/blocked as a selection seam')) failures.push('ACTIVE_HANDOFF.md must record issue #154 as completed/blocked selection seam.');
+  if (!handoff.includes('Next seam: issue #156 - Foldera North Star Lock')) failures.push('ACTIVE_HANDOFF.md must promote issue #156 as the next seam.');
   if (!handoff.includes('do not patch Slack code until logs prove a code-owned failure')) failures.push('ACTIVE_HANDOFF.md must forbid Slack code patches until a code-owned failure is proven.');
-  if (!handoff.includes('do not implement product code')) failures.push('ACTIVE_HANDOFF.md must forbid product implementation for issue #154.');
+  if (!handoff.includes('Foldera North Star Lock')) failures.push('ACTIVE_HANDOFF.md must name Foldera North Star Lock.');
 
   if (!buildOrder.includes('issue #136 remains open only as the standing ledger')) failures.push('FOLDERA_BUILD_ORDER.yaml must preserve #136 as ledger-only.');
   if (!buildOrder.includes('PR #142 remains rail-only and parked externally blocked')) failures.push('FOLDERA_BUILD_ORDER.yaml must preserve PR #142 as parked rail-only.');
   if (!buildOrder.includes('Do not widen PR #142 into source-truth selection or product work')) failures.push('FOLDERA_BUILD_ORDER.yaml must forbid PR #142 widening into source-truth selection or product work.');
   if (!buildOrder.includes('do not patch Slack code until logs prove a code-owned failure')) failures.push('FOLDERA_BUILD_ORDER.yaml must forbid Slack code patches until a code-owned failure is proven.');
   if (!buildOrder.includes('issue: 151') || !buildOrder.includes('merge_sha: be5d596c8033f9b273ceb025aa3c2c18333520f4')) failures.push('FOLDERA_BUILD_ORDER.yaml must record issue #151 / PR #153 completed with merge SHA.');
-  if (!buildOrder.includes('do not implement product code or the selected seam')) failures.push('FOLDERA_BUILD_ORDER.yaml must forbid implementing the selected seam.');
+  if (!buildOrder.includes('issue: 154') || !buildOrder.includes('stopped BLOCKED because no controlling issue existed')) failures.push('FOLDERA_BUILD_ORDER.yaml must record issue #154 as completed/blocked selector.');
+  if (!buildOrder.includes('required_issue_156_north_star_lock')) failures.push('FOLDERA_BUILD_ORDER.yaml must define the issue #156 North Star Lock contract.');
 
   requireClosedIssueDoNotReopen(failures, handoff, buildOrder);
   requireArrayIncludes(failures, '.foldera-contract.json allowed_file_patterns', contract.allowed_file_patterns, REQUIRED_ALLOWED_FILES);
   requireArrayIncludes(failures, '.foldera-contract.json forbidden_file_patterns', contract.forbidden_file_patterns, FORBIDDEN_PRODUCT_PATHS);
   requireArrayIncludes(failures, '.foldera-contract.json required_local_proof', contractProofCommands(contract), REQUIRED_PROOF_COMMANDS);
 
-  if (!contract.acceptance_condition?.includes('promotes issue #154')) failures.push('.foldera-contract.json acceptance_condition must promote issue #154.');
-  if (!contract.next_command?.includes('Run issue #154 source-truth seam selection only.')) failures.push('.foldera-contract.json next_command must command issue #154 source-truth seam selection only.');
+  if (!contract.acceptance_condition?.includes('promotes issue #156')) failures.push('.foldera-contract.json acceptance_condition must promote issue #156.');
+  if (!contract.next_command?.includes('Run issue #156 Foldera North Star Lock only.')) failures.push('.foldera-contract.json next_command must command issue #156 Foldera North Star Lock only.');
   if (!readRepoFile(root, 'AGENTS.md').includes('## MANDATORY CODEX RUN LEDGER CLOSEOUT')) failures.push('AGENTS.md must contain MANDATORY CODEX RUN LEDGER CLOSEOUT.');
 
   return failures;
@@ -182,5 +184,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Issue #154 source-truth seam selection is active, issue #151 is closed, and PR #142 remains rail-only parked.');
+  console.log('Source truth check passed. Issue #156 Foldera North Star Lock is active, issue #154 is completed/blocked selection truth, and PR #142 remains rail-only parked.');
 }

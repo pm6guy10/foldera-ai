@@ -58,7 +58,7 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
-  it('passes when issue #154 is explicitly assigned as the source-truth selection seam', () => {
+  it('passes when issue #156 is explicitly assigned as the North Star Lock seam', () => {
     const fixtureRoot = createFixtureRoot();
 
     const failures = runContinuityGate(fixtureRoot);
@@ -66,14 +66,14 @@ describe('continuity gate writeback enforcement', () => {
     expect(failures).toEqual([]);
   });
 
-  it('fails when the active issue #154 seam is removed', () => {
+  it('fails when the active issue #156 seam is removed', () => {
     const fixtureRoot = createFixtureRoot();
     const handoffPath = path.join(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const original = fs.readFileSync(handoffPath, 'utf8');
     fs.writeFileSync(
       handoffPath,
       original.replace(
-        'Active implementation seam is issue #154: Select next source-truth seam after issue #151.',
+        'Active implementation seam is issue #156: Foldera North Star Lock.',
         'No active implementation seam is assigned.',
       ),
       'utf8',

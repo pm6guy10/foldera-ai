@@ -41,7 +41,7 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
-  it('passes only when issue #154 source-truth selection is active and PR #142 remains parked', () => {
+  it('passes only when issue #156 North Star Lock is active and PR #142 remains parked', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = fs.readFileSync(path.join(fixtureRoot, 'ACTIVE_HANDOFF.md'), 'utf8');
     const buildOrder = fs.readFileSync(path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml'), 'utf8');
@@ -49,12 +49,13 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(handoff).toContain('Active implementation seam is issue #154');
+    expect(handoff).toContain('Active implementation seam is issue #156');
+    expect(handoff).toContain('Issue #154 is complete/blocked as a selection seam');
     expect(handoff).toContain('Issue #151 is complete: PR #153 landed the source-backed Right Now selector');
     expect(handoff).toContain('Issue #140 / PR #142 remains rail-only and parked externally blocked');
-    expect(buildOrder).toContain('active_issue: 154');
-    expect(buildOrder).toContain('work_type: SOURCE_TRUTH_SELECTION_ONLY');
-    expect(contract.active_issue).toBe(154);
+    expect(buildOrder).toContain('active_issue: 156');
+    expect(buildOrder).toContain('work_type: SOURCE_TRUTH_NORTH_STAR_LOCK');
+    expect(contract.active_issue).toBe(156);
     expect(failures).toEqual([]);
   });
 
@@ -62,11 +63,11 @@ describe('source truth command gate', () => {
     const fixtureRoot = createFixtureRoot();
     const buildOrderPath = path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
     const original = fs.readFileSync(buildOrderPath, 'utf8');
-    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 154', 'active_issue: 140'));
+    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 156', 'active_issue: 140'));
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 154; found 140.');
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 156; found 140.');
   });
 
   it('fails when .foldera-contract.json still resolves to issue #140', () => {
@@ -79,8 +80,8 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('.foldera-contract.json active_issue must be 154; found 140.');
-    expect(failures).toContain('.foldera-contract.json backlog_id must resolve to issue #154 source-truth seam selection.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be 156; found 140.');
+    expect(failures).toContain('.foldera-contract.json backlog_id must resolve to issue #156 Foldera North Star Lock.');
   });
 
   it('fails when the issue #151 completion merge SHA is removed', () => {
