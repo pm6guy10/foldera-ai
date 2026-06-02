@@ -17,6 +17,7 @@
     "lib/workday-presence/__tests__/message.test.ts",
     "lib/workday-presence/__tests__/actions.test.ts",
     "lib/workday-presence/__tests__/presence-loop-receipt.test.ts",
+    "docs/pr-153-screens/**",
     "scripts/source-truth-check.ts",
     "tests/config/__tests__/source-truth-check.test.ts",
     "tests/config/__tests__/continuity-gate.test.ts"
