@@ -19,7 +19,7 @@ const COMPLETED_PR = 145;
 const COMPLETED_MERGE_SHA = 'e93f8fa5fdcd2a4fb907370a71791484678cbadc';
 const COMPLETED_ISSUES = [126, 138, 140, 143];
 const ACTIVE_ISSUE = 147;
-const ASSIGNMENT_BASE_SHA = '26c19af9070e40a2699a8af7857c3b205d94aee6';
+const IMPLEMENTATION_BASE_SHA = 'ece0f19951bc04fa731eac02725fc22cd3d1a8e2';
 const CLOSED_DO_NOT_REOPEN_PRS = [124, 125];
 const REQUIRED_PROOF_COMMANDS = [
   'npm run gate:command',
@@ -77,30 +77,29 @@ const REQUIRED_FORBIDDEN_WORK = [
   'reopening PR #124 or PR #125',
 ];
 
-const REQUIRED_ALLOWED_ASSIGNMENT_FILES = [
+const REQUIRED_ALLOWED_IMPLEMENTATION_FILES = [
   '.foldera-contract.json',
-  'ACTIVE_HANDOFF.md',
-  'FOLDERA_BUILD_ORDER.yaml',
-  'scripts/source-truth-check.ts',
-  'tests/config/__tests__/source-truth-check.test.ts',
-  'scripts/continuity-gate.ts',
-  'tests/config/__tests__/continuity-gate.test.ts',
-];
-
-const FORBIDDEN_ASSIGNMENT_ALLOWED_FILES = [
   'components/foldera/LandingPage.tsx',
   'app/page.tsx',
   'components/nav/NavPublic.tsx',
   'tests/e2e/public-routes.spec.ts',
+  'tests/e2e/landing-hero-visual-qa.spec.ts',
   'next.config.mjs',
+];
+
+const FORBIDDEN_IMPLEMENTATION_ALLOWED_FILES = [
   'package.json',
   'package-lock.json',
   'app/api/slack/**',
+  'lib/slack/**',
+  'lib/slack-test-mode/**',
   'supabase/**',
   'app/dashboard/**',
+  'components/dashboard/**',
   'lib/auth/**',
   'app/api/auth/**',
   'app/api/stripe/**',
+  'lib/stripe/**',
 ];
 
 const REQUIRED_NEXT_PR_PROOF = [
@@ -114,9 +113,11 @@ const REQUIRED_NEXT_PR_PROOF = [
   'git diff --check',
 ];
 
-const REQUIRED_ASSIGNMENT_PROOF = [
+const REQUIRED_IMPLEMENTATION_PROOF = [
   'npm run health',
-  'npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose',
+  'npx playwright test tests/e2e/public-routes.spec.ts --reporter=list',
+  'npx playwright test tests/e2e/landing-hero-visual-qa.spec.ts --reporter=list',
+  'npx vitest run tests/config/__tests__/public-presence.test.ts tests/config/__tests__/active-api-surface.test.ts --reporter=verbose',
   'npm run gate:command',
   'npm run gate:continuity',
   'npm run lint',
@@ -139,7 +140,7 @@ const REQUIRED_CONTRACT_FIELDS: Partial<FolderaContract> = {
   user_system_path: 'public landing shell adaptation from Figma export without changing auth/access/backend behavior',
 };
 
-const REQUIRED_CONTRACT_BASE = ASSIGNMENT_BASE_SHA;
+const REQUIRED_CONTRACT_BASE = IMPLEMENTATION_BASE_SHA;
 
 const REQUIRED_BUILD_ORDER_SCALARS = {
   active_issue: `${ACTIVE_ISSUE}`,
@@ -195,7 +196,7 @@ function requireArrayIncludes(failures: string[], label: string, actual: string[
 function requireArrayExcludes(failures: string[], label: string, actual: string[] | undefined, forbidden: string[]): void {
   const values = actual ?? [];
   for (const entry of forbidden) {
-    if (values.includes(entry)) failures.push(`${label} must not include implementation path during source-truth assignment: ${entry}`);
+    if (values.includes(entry)) failures.push(`${label} must not include implementation path during issue #147 implementation: ${entry}`);
   }
 }
 
@@ -244,9 +245,9 @@ function checkSourceTruthAssignment(
     failures.push('FOLDERA_BUILD_ORDER.yaml must record PR #146 source-truth closeout as complete.');
   }
 
-  requireArrayIncludes(failures, '.foldera-contract.json allowed_file_patterns', contract.allowed_file_patterns, REQUIRED_ALLOWED_ASSIGNMENT_FILES);
-  requireArrayExcludes(failures, '.foldera-contract.json allowed_file_patterns', contract.allowed_file_patterns, FORBIDDEN_ASSIGNMENT_ALLOWED_FILES);
-  requireArrayIncludes(failures, '.foldera-contract.json required_local_proof', contractProofCommands(contract), REQUIRED_ASSIGNMENT_PROOF);
+  requireArrayIncludes(failures, '.foldera-contract.json allowed_file_patterns', contract.allowed_file_patterns, REQUIRED_ALLOWED_IMPLEMENTATION_FILES);
+  requireArrayExcludes(failures, '.foldera-contract.json allowed_file_patterns', contract.allowed_file_patterns, FORBIDDEN_IMPLEMENTATION_ALLOWED_FILES);
+  requireArrayIncludes(failures, '.foldera-contract.json required_local_proof', contractProofCommands(contract), REQUIRED_IMPLEMENTATION_PROOF);
   requireArrayIncludes(failures, '.foldera-contract.json route_access_contract_for_next_pr', contract.route_access_contract_for_next_pr, REQUIRED_ROUTE_ACCESS_CONTRACT);
 
   const forbiddenText = `${(contract.forbidden_file_patterns ?? []).join('\n')}\n${contract.forbidden_files_raw ?? ''}`.toLowerCase();
@@ -260,8 +261,8 @@ function checkSourceTruthAssignment(
   if (!contract.acceptance_condition?.includes(`issue #${ACTIVE_ISSUE} public landing shell adaptation`)) {
     failures.push('.foldera-contract.json acceptance_condition must name issue #147 public landing shell adaptation.');
   }
-  if (!contract.stop_condition?.includes('Do not implement the landing in this PR.')) {
-    failures.push('.foldera-contract.json stop_condition must forbid landing implementation in this PR.');
+  if (!contract.stop_condition?.includes('Stop when one PR implements issue #147')) {
+    failures.push('.foldera-contract.json stop_condition must require one issue #147 implementation PR.');
   }
   if (!contract.next_command?.includes(`Run issue #${ACTIVE_ISSUE} only.`)) {
     failures.push('.foldera-contract.json next_command must command issue #147 only.');
@@ -402,5 +403,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Issue #147 is the only active implementation seam and this PR remains source-truth assignment only.');
+  console.log('Source truth check passed. Issue #147 public landing implementation scope is active and bounded.');
 }
