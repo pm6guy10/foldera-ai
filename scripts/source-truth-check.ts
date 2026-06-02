@@ -169,7 +169,7 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   if (handoffActiveIssueMentions.some((issue) => issue !== ACTIVE_ISSUE)) failures.push(`ACTIVE_HANDOFF.md has an active seam other than issue #${ACTIVE_ISSUE}.`);
 
   if (buildPriorityClass !== 'WORK_PACKET_BRAIN_SOURCE_TRAIL_REVIEW_PACKET') failures.push('FOLDERA_BUILD_ORDER.yaml priority_class must be WORK_PACKET_BRAIN_SOURCE_TRAIL_REVIEW_PACKET.');
-  if (buildWorkType !== 'SOURCE_TRUTH_PROMOTION') failures.push('FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_PROMOTION.');
+  if (buildWorkType !== 'IMPLEMENTATION_PROOF') failures.push('FOLDERA_BUILD_ORDER.yaml work_type must be IMPLEMENTATION_PROOF.');
   if (!buildOrder.includes('required_gate_command: npm run gate:command')) failures.push('FOLDERA_BUILD_ORDER.yaml must name required_gate_command: npm run gate:command.');
   for (const completedIssue of COMPLETED_ISSUES) {
     if (!buildOrder.includes(`issue: ${completedIssue}`)) failures.push(`FOLDERA_BUILD_ORDER.yaml must list issue #${completedIssue} as completed.`);
@@ -262,5 +262,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Active issue #143 is the MVP Work Packet Brain source-truth seam.');
+  console.log('Source truth check passed. Active issue #143 is the MVP Work Packet Brain implementation seam.');
 }

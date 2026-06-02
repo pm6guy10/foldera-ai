@@ -41,7 +41,7 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
-  it('passes only when the promoted packet-brain issue is active', () => {
+  it('passes only when the packet-brain implementation issue is active', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = fs.readFileSync(path.join(fixtureRoot, 'ACTIVE_HANDOFF.md'), 'utf8');
     const buildOrder = fs.readFileSync(path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml'), 'utf8');
@@ -53,6 +53,7 @@ describe('source truth command gate', () => {
 
     expect(handoff).toContain('Active implementation seam is issue #143');
     expect(buildOrder).toContain('active_issue: 143');
+    expect(buildOrder).toContain('work_type: IMPLEMENTATION_PROOF');
     expect(contract.active_issue).toBe(143);
     expect(failures).toEqual([]);
   });

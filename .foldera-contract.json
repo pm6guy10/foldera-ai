@@ -46,27 +46,30 @@
     "dashboard task-list inbox-summary behavior",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Issue #143 source-truth promotion only now; future implementation scope is narrow packet-brain files only: lib/work-packets, packet-linked workday-presence helpers, Slack test-mode/review-card adapters, app/api/slack packet review routes only if explicitly assigned, packet fixtures, and narrow gate/test files.",
+  "allowed_files_raw": "Issue #143 implementation scope is narrow packet-brain files only: lib/work-packets, packet-linked workday-presence helpers, Slack test-mode/review-card adapters, app/api/slack packet review routes only if explicitly assigned, packet fixtures, and narrow gate/test files.",
   "forbidden_files_raw": "No landing work, Stripe, dashboard redesign, Supabase schema, Slack OAuth expansion, live Slack send expansion beyond packet review card proof, Teams/email/calendar expansion, outreach, billing/downgrade work, Dependabot work, connector platform expansion, dashboard task-list inbox-summary behavior, or broad cleanup.",
   "required_local_proof": [
+    "npm run health",
+    "npx vitest run lib/work-packets/__tests__/work-packet-brain.test.ts lib/slack-test-mode/__tests__/work-packet-review.test.ts lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose",
     "npx vitest run tests/config/__tests__/source-truth-check.test.ts --reporter=verbose",
     "npm run gate:command",
     "npm run gate:continuity",
     "npm run lint",
+    "npm run build",
     "git diff --check"
   ],
-  "required_browser_proof": "Not applicable; source-truth promotion only and no product behavior changed.",
-  "acceptance_condition": "Repo source truth names issue #143 as the next active product-brain seam, preserves PR #142 as rail-only proof/blocker, and does not implement work_packet.",
-  "stop_condition": "Stop when repo source truth points to issue #143 as the next active product seam, primary receipt and issue #136 ledger receipt are posted, and no product code was changed.",
+  "required_browser_proof": "Not applicable; deterministic TEST_MODE packet-brain proof only.",
+  "acceptance_condition": "Deterministic TEST_MODE proof creates one work_packet from multiple fixture signals, renders Slack review card actions Review packet/View sources/Dismiss, updates packet/workday state after review or dismiss, preserves dismiss audit trail, and preserves PR #142 as rail-only.",
+  "stop_condition": "Stop when deterministic packet-brain proof exists, primary receipt and issue #136 ledger receipt are posted, and no live connector, paid model, landing, dashboard, or Slack OAuth expansion occurred.",
   "is_user_facing": false,
-  "browser_proof_command": "not applicable - source-truth promotion only",
+  "browser_proof_command": "not applicable - deterministic TEST_MODE packet-brain proof only",
   "anti_regression_checks": [
     "ACTIVE_HANDOFF.md names issue #143 as the only active implementation seam",
     "FOLDERA_BUILD_ORDER.yaml active_issue is 143",
     ".foldera-contract.json active_issue and backlog_id resolve to 143",
     "PR #142 remains rail-only and externally blocked on real Slack button callback proof",
-    "Future allowed scope is narrow packet-brain files only",
+    "Allowed scope is narrow packet-brain files only",
     "Forbidden scope keeps out landing, dashboard, Slack OAuth expansion, Teams/email/calendar, Stripe, auth, Supabase schema, connector platform expansion, and broad cleanup"
   ],
-  "next_command": "Run issue #143 only after this source-truth promotion PR lands. Do not implement work_packet in this promotion PR."
+  "next_command": "Run issue #143 only. Stop after deterministic packet-brain proof and GitHub receipts; do not continue into live connectors or the next seam."
 }
