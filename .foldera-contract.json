@@ -1,11 +1,11 @@
 {
-  "authority_status": "ACTIVE_LIVE_RAIL_PROOF_ASSIGNED",
+  "authority_status": "ACTIVE_SOURCE_BACKED_SELECTOR_ASSIGNED",
   "active": true,
-  "active_issue": 140,
-  "backlog_id": "ISSUE_140_REAL_SLACK_SELF_LOOP_LIVE_RAIL_PROOF",
-  "base_commit": "d9ede1dd39c3de3b3fe5bd5e3592b0ced001fdf3",
-  "money_loop_rung": "real_slack_self_loop_live_rail_proof",
-  "user_system_path": "source-truth closeout after PR #149; promote issue #140 / PR #142 live Slack callback proof only",
+  "active_issue": 151,
+  "backlog_id": "ISSUE_151_SOURCE_BACKED_RIGHT_NOW_SELECTOR",
+  "base_commit": "313df387c993c77660217008f973b1d48d3aa09f",
+  "money_loop_rung": "source_backed_right_now_selector",
+  "user_system_path": "source-truth promotion only; park issue #140 / PR #142 rail-only and promote issue #151 source-backed Right Now selector",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_HANDOFF.md",
@@ -43,8 +43,8 @@
     "paid model proof",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Source-truth closeout only: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and focused source-truth/continuity tests or gate logic required to enforce issue #140 as the next live rail proof seam. Do not patch product code.",
-  "forbidden_files_raw": "No product code: no Slack code patch, landing implementation, Supabase schema, dashboard/auth/backend, Stripe, package files, Dependabot, connector expansion, Teams/email/calendar, paid model proof, or broad cleanup.",
+  "allowed_files_raw": "Source-truth promotion only: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and focused source-truth/continuity tests or gate logic required to enforce issue #151 as the next source-backed selector seam. Do not patch product code.",
+  "forbidden_files_raw": "No product code: do not implement source-backed-state.ts in this promotion PR; no PR #142 changes, Slack code patch, landing implementation, Supabase schema, dashboard/auth/backend, Stripe, package files, Dependabot, connector expansion, Teams/email/calendar, Slack app settings, Vercel settings, paid model proof, or broad cleanup.",
   "required_local_proof": [
     "npm run gate:command",
     "npm run gate:continuity",
@@ -52,18 +52,17 @@
     "git diff --check"
   ],
   "required_browser_proof": "Not applicable; source-truth closeout only.",
-  "acceptance_condition": "Source truth marks issue #147 / PR #149 complete, keeps issue #136 as ledger-only, and promotes issue #140 / PR #142 as the only active live Slack callback proof/blocker classification seam.",
+  "acceptance_condition": "Source truth parks issue #140 / PR #142 as externally blocked rail-only, keeps issue #136 as ledger-only, and promotes issue #151 as the only active source-backed Right Now state selector seam.",
   "stop_condition": "Stop when one source-truth closeout PR is open, proof is posted, and no product code has been patched.",
   "is_user_facing": false,
   "browser_proof_command": "not applicable - source-truth closeout only",
   "anti_regression_checks": [
-    "ACTIVE_HANDOFF.md marks issue #147 / PR #149 complete",
-    "FOLDERA_BUILD_ORDER.yaml completed list includes issue #147 / PR #149 merge d9ede1dd39c3de3b3fe5bd5e3592b0ced001fdf3",
-    "ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml active issue is #140",
+    "ACTIVE_HANDOFF.md marks issue #140 / PR #142 parked externally blocked and rail-only",
+    "ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml active issue is #151",
     "Issue #136 remains ledger-only",
     "Issues #121, #131, #99, #48, and #147 are closed/superseded/completed and must not be reopened",
-    "PR #142 remains live rail proof/blocker only",
+    "PR #142 remains live rail proof/blocker only and is not widened into source-backed selector work",
     "No product-code paths are allowed"
   ],
-  "next_command": "Run issue #140 / PR #142 live rail proof only. Stop after one proof/blocker receipt."
+  "next_command": "Run issue #151 source-backed Right Now state selector only. Stop after one selector PR with deterministic proof and no PR #142 changes."
 }

@@ -58,7 +58,7 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
-  it('passes when issue #140 is explicitly assigned as the live rail proof seam', () => {
+  it('passes when issue #151 is explicitly assigned as the source-backed selector seam', () => {
     const fixtureRoot = createFixtureRoot();
 
     const failures = runContinuityGate(fixtureRoot);
@@ -66,14 +66,14 @@ describe('continuity gate writeback enforcement', () => {
     expect(failures).toEqual([]);
   });
 
-  it('fails when the active issue #140 seam is removed', () => {
+  it('fails when the active issue #151 seam is removed', () => {
     const fixtureRoot = createFixtureRoot();
     const handoffPath = path.join(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const original = fs.readFileSync(handoffPath, 'utf8');
     fs.writeFileSync(
       handoffPath,
       original.replace(
-        'Active implementation seam is issue #140 / PR #142: Real Slack Self-Loop live rail proof and blocker classification only.',
+        'Active implementation seam is issue #151: Source-backed Right Now state selector.',
         'No active implementation seam is assigned.',
       ),
       'utf8',
