@@ -40,6 +40,16 @@ const nextConfig = {
         permanent: false,
       },
       {
+        source: '/request-access',
+        destination: '/start',
+        permanent: false,
+      },
+      {
+        source: '/request-access/:path*',
+        destination: '/start',
+        permanent: false,
+      },
+      {
         source: '/api/try/analyze',
         destination: '/status',
         permanent: false,

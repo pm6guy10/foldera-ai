@@ -1,242 +1,372 @@
-import Image from 'next/image';
+import {
+  ArrowRight,
+  BellOff,
+  Check,
+  Clock3,
+  FileText,
+  LockKeyhole,
+  MessageSquare,
+  Pause,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from 'lucide-react';
+import type { ReactNode } from 'react';
+import { FolderaMark } from '@/components/nav/FolderaMark';
 
-const debugHitboxes = process.env.NEXT_PUBLIC_FOLDERA_DEBUG_HITBOXES === '1';
-
-type StorySlide = {
-  src: string;
-  alt: string;
-  width: number;
-  height: number;
-  eager?: boolean;
-  cta?: { left: number; top: number; width: number; height: number };
+type LandingPageProps = {
+  isAuthenticated?: boolean;
 };
 
-const slides: StorySlide[] = [
+const accessHref = '/start';
+const loginHref = '/login';
+
+const painPoints = [
   {
-    src: '/landing/mobile-sections/01.jpg',
-    alt: 'Foldera landing section showing scattered work context across apps and one ready next move.',
-    width: 3072,
-    height: 5460,
-    eager: true,
-    cta: { left: 19, top: 83.6, width: 62, height: 5.8 },
+    title: 'The reconstruction tax.',
+    body: 'Every tool switch leaks context. You are not working; you are scavenging.',
   },
   {
-    src: '/landing/mobile-sections/02.jpg',
-    alt: 'Foldera landing section explaining the cost of rebuilding context across work apps.',
-    width: 3072,
-    height: 5504,
+    title: 'Every app remembers its own slice',
+    body: 'Microsoft remembers Microsoft. Google remembers Google. Your workday still has to move across both.',
   },
   {
-    src: '/landing/mobile-sections/03.jpg',
-    alt: 'Foldera landing section describing a presence layer that keeps work context attached.',
-    width: 3072,
-    height: 5504,
-  },
-  {
-    src: '/landing/mobile-sections/04.jpg',
-    alt: 'Foldera landing section contrasting noisy app pings with a single work state.',
-    width: 3072,
-    height: 5504,
-  },
-  {
-    src: '/landing/mobile-sections/05.jpg',
-    alt: 'Foldera landing section showing a Right Now work card in context.',
-    width: 3072,
-    height: 5504,
-  },
-  {
-    src: '/landing/mobile-sections/06.jpg',
-    alt: 'Foldera landing section showing the pilot call to action.',
-    width: 3072,
-    height: 5504,
-    cta: { left: 14, top: 31.4, width: 72, height: 5.8 },
+    title: 'The human integration layer',
+    body: 'The person doing the work becomes the system that reconnects messages, meetings, approvals, and decisions.',
   },
 ];
 
-const semanticSections = [
+const doctrine = [
   {
-    heading: 'You are a high-paid filing clerk.',
-    body: 'You spend your day rebuilding context across fractured apps instead of doing the actual work.',
+    label: 'State',
+    body: 'Current focus, next move, blocker, do-not-touch, waiting-on, and last completed step.',
   },
   {
-    heading: 'The problem is broken continuity.',
-    body: 'Foldera is the ecosystem-neutral layer that remembers the workday across messages, meetings, files, and approvals.',
+    label: 'Connectors',
+    body: 'Consented systems provide evidence. Foldera does not screen-read or secretly monitor work.',
   },
   {
-    heading: 'Stop checking nine apps. Foldera keeps track.',
-    body: 'Foldera watches consented signals, remembers your focus, and calculates the state of your work.',
+    label: 'Triggers',
+    body: 'Meetings, mentions, replies, waiting-on changes, user actions, and end-of-day carry-forward.',
   },
   {
-    heading: 'It lives where you work and stays quiet otherwise.',
-    body: 'No new dashboard. Foldera interrupts only when there is a clean moment to act.',
-  },
-  {
-    heading: 'Restore your continuity.',
-    body: 'Foldera holds the context so the next move is ready where the work is already happening.',
-  },
-  {
-    heading: 'One trusted answer. All the context. Next move ready.',
-    body: 'Pilot scope: Slack and Teams execution, cross-app writeback, and automatic sending are not live in this pilot.',
+    label: 'One intervention',
+    body: 'A single Right Now card with one useful next move and one clear response path.',
   },
 ];
 
-function sectionIdFor(index: number) {
-  if (index === 0) return 'top';
-  if (index === 2) return 'how-it-works';
-  if (index === 5) return 'join-pilot';
-  return undefined;
-}
+const howItWorks = [
+  'Work happens across messages, meetings, documents, files, and approvals.',
+  'Foldera keeps the workday state attached to the evidence you consented to connect.',
+  'When something meaningful changes, Foldera decides whether it is worth interrupting.',
+  'One Right Now card appears where the work is already happening.',
+  'You click once. Foldera updates state and goes quiet again.',
+];
 
-function MobileMenu() {
+const trustItems = [
+  {
+    icon: ShieldCheck,
+    title: 'Consent first',
+    body: 'You choose what connects and what Foldera can use.',
+  },
+  {
+    icon: LockKeyhole,
+    title: 'No surveillance',
+    body: 'No hidden activity monitoring, no screen-reading, and no surveillance framing.',
+  },
+  {
+    icon: BellOff,
+    title: 'Quiet by design',
+    body: 'Foldera is not another inbox, task list, or dashboard to babysit.',
+  },
+  {
+    icon: Clock3,
+    title: 'Pilot honest',
+    body: 'Pilot access is staged. Live claims stay inside what the repo already supports.',
+  },
+];
+
+const pilotScope = [
+  'Public access starts at the existing /start route.',
+  'Login stays on the existing /login route.',
+  'Pricing is shaped through pilot usage; no fake public price promise here.',
+  'Demo remains the existing product demo route, not a new fake flow.',
+];
+
+function AccessLink({
+  children,
+  className = '',
+  testId,
+}: {
+  children: ReactNode;
+  className?: string;
+  testId?: string;
+}) {
   return (
-    <details className="relative sm:hidden">
-      <summary className="flex min-h-[38px] min-w-[38px] cursor-pointer list-none items-center justify-center rounded-[10px] border border-white/10 bg-white/[0.04] text-slate-100 transition-colors hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 [&::-webkit-details-marker]:hidden">
-        <span className="sr-only">Open landing navigation</span>
-        <span className="grid gap-1.5" aria-hidden="true">
-          <span className="block h-px w-4 bg-slate-100" />
-          <span className="block h-px w-4 bg-slate-100" />
-          <span className="block h-px w-4 bg-slate-100" />
-        </span>
-      </summary>
-      <div className="absolute right-0 top-12 z-50 grid min-w-[180px] overflow-hidden rounded-2xl border border-white/10 bg-black/95 p-2 text-sm font-semibold text-slate-200 shadow-[0_24px_80px_rgba(0,0,0,0.65)] backdrop-blur-xl">
-        <a className="rounded-xl px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white" href="#top">
-          Top
-        </a>
-        <a className="rounded-xl px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white" href="#how-it-works">
-          How it works
-        </a>
-        <a className="rounded-xl px-3 py-2 transition-colors hover:bg-white/[0.06] hover:text-white" href="/start">
-          Join pilot
-        </a>
-      </div>
-    </details>
+    <a
+      href={accessHref}
+      data-testid={testId}
+      className={`inline-flex min-h-[46px] items-center justify-center gap-2 rounded-lg border border-cyan-300/35 bg-cyan-300 px-5 text-sm font-semibold text-slate-950 shadow-[0_0_24px_rgba(34,211,238,0.18)] transition-colors hover:bg-cyan-200 ${className}`}
+    >
+      {children}
+      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+    </a>
   );
 }
 
-function PosterPanel({ slide, index }: { slide: StorySlide; index: number }) {
+function SecondaryLink({
+  href,
+  children,
+  testId,
+}: {
+  href: string;
+  children: ReactNode;
+  testId?: string;
+}) {
   return (
-    <section id={sectionIdFor(index)} className="relative w-full scroll-mt-16" data-testid={`landing-slide-${index + 1}`}>
-      <div className="relative w-full bg-black" data-testid="landing-slide-frame">
-        <div className="relative w-full bg-black" data-testid="landing-slide-aspect">
-          <Image
-            src={slide.src}
-            alt={slide.alt}
-            width={slide.width}
-            height={slide.height}
-            priority={Boolean(slide.eager)}
-            loading={slide.eager ? 'eager' : 'lazy'}
-            quality={95}
-            sizes="(max-width: 767px) 100vw, 520px"
-            className="block h-auto w-full select-none"
-          />
+    <a
+      href={href}
+      data-testid={testId}
+      className="inline-flex min-h-[46px] items-center justify-center rounded-lg border border-white/12 bg-white/[0.035] px-5 text-sm font-semibold text-slate-100 transition-colors hover:border-white/22 hover:bg-white/[0.06]"
+    >
+      {children}
+    </a>
+  );
+}
 
-          {slide.cta ? (
-            <>
-              <a
-                href="/start"
-                aria-label="Join the pilot"
-                data-testid={`landing-cta-${index + 1}`}
-                className="absolute z-20 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-                style={{
-                  left: `${slide.cta.left}%`,
-                  top: `${slide.cta.top}%`,
-                  width: `${slide.cta.width}%`,
-                  height: `${slide.cta.height}%`,
-                }}
-              />
-              {debugHitboxes ? (
-                <div
-                  className="pointer-events-none absolute z-20 rounded-xl border-2 border-fuchsia-500 bg-fuchsia-500/15"
-                  style={{
-                    left: `${slide.cta.left}%`,
-                    top: `${slide.cta.top}%`,
-                    width: `${slide.cta.width}%`,
-                    height: `${slide.cta.height}%`,
-                  }}
-                />
-              ) : null}
-            </>
-          ) : null}
+function RightNowCard() {
+  return (
+    <div
+      data-testid="landing-right-now-card"
+      className="relative overflow-hidden rounded-lg border border-cyan-300/20 bg-[#0b1118] p-5 shadow-[0_28px_90px_rgba(0,0,0,0.45)] sm:p-6"
+    >
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <div className="inline-flex items-center gap-2 text-[11px] font-bold uppercase text-cyan-200">
+          <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_16px_rgba(34,211,238,0.75)]" />
+          Right Now
         </div>
+        <span className="rounded-md border border-white/10 px-2 py-1 text-xs text-slate-400">2 min ago</span>
+      </div>
 
-        {debugHitboxes ? (
-          <div className="absolute bottom-2 left-2 z-30 rounded bg-black/70 px-2 py-1 text-[11px] text-slate-300" aria-hidden="true">
-            Slide {index + 1} — {slide.width}×{slide.height}
+      <h2 className="text-2xl font-semibold tracking-[-0.02em] text-white sm:text-3xl">
+        Review the Q2 headcount plan.
+      </h2>
+      <p className="mt-4 text-sm leading-6 text-slate-300 sm:text-base">
+        Sarah updated the doc. Finance commented. You were mentioned in Slack. Approval now unlocks the budget timeline.
+      </p>
+
+      <div className="mt-5 grid gap-3 rounded-lg border border-white/10 bg-white/[0.035] p-4">
+        <div className="flex items-start gap-3">
+          <MessageSquare className="mt-0.5 h-4 w-4 text-cyan-200" aria-hidden="true" />
+          <p className="text-sm text-slate-300">Mention and finance comment are attached.</p>
+        </div>
+        <div className="flex items-start gap-3">
+          <FileText className="mt-0.5 h-4 w-4 text-amber-200" aria-hidden="true" />
+          <p className="text-sm text-slate-300">The current plan is ready to review.</p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3" aria-label="Example Right Now actions">
+        {[
+          { label: 'Done', Icon: Check, tone: 'bg-cyan-300 text-slate-950 border-cyan-300/40' },
+          { label: 'Stuck', Icon: X, tone: 'bg-white/[0.035] text-slate-100 border-white/10' },
+          { label: 'Break smaller', Icon: RefreshCw, tone: 'bg-white/[0.035] text-slate-100 border-white/10' },
+          { label: 'Snooze', Icon: Pause, tone: 'bg-white/[0.035] text-slate-100 border-white/10' },
+        ].map(({ label, Icon, tone }) => (
+          <div key={label} className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold ${tone}`}>
+            <Icon className="h-4 w-4" aria-hidden="true" />
+            {label}
           </div>
-        ) : null}
-
-        <div className="sr-only">
-          <h2>{semanticSections[index]?.heading}</h2>
-          <p>{semanticSections[index]?.body}</p>
-        </div>
+        ))}
       </div>
-    </section>
+
+      <p className="mt-5 border-t border-white/10 pt-4 text-center text-xs font-medium text-slate-500">
+        State is attached. Context stays private.
+      </p>
+    </div>
   );
 }
 
-export function LandingPage({ isAuthenticated: _isAuthenticated = false }: { isAuthenticated?: boolean } = {}) {
+export function LandingPage({ isAuthenticated: _isAuthenticated = false }: LandingPageProps = {}) {
   return (
-    <main className="min-h-[100dvh] w-full overflow-x-hidden bg-black text-white touch-manipulation">
-      <h1 className="sr-only">Foldera — Workday Presence Layer</h1>
-      <div className="sr-only">
-        <p>Stop rebuilding the work. Foldera hands it back ready.</p>
-        <p>Context attached: message + meeting + file + blocker</p>
-        <p>Pilot scope: recommendation flow only; Slack and Teams execution is not live yet.</p>
-        <p>No automatic cross-app writeback or auto-send in the current pilot.</p>
-        <p>See Foldera in action</p>
-        <p>Join the pilot</p>
-      </div>
-
-      <header
-        className="sticky top-0 z-50 border-b border-white/10 bg-black/75 backdrop-blur-xl"
-        data-testid="landing-header"
-      >
-        <div className="mx-auto flex h-14 w-full max-w-[1200px] items-center justify-between gap-3 px-4 sm:px-6">
-          <a href="/" className="flex min-h-[44px] min-w-[44px] items-center gap-2 rounded-lg px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] border border-white/10 bg-white/[0.04] text-[13px] font-semibold">
-              F
-            </span>
-            <span className="text-[14px] font-semibold tracking-[-0.03em] text-white">Foldera</span>
+    <main className="min-h-[100dvh] overflow-x-hidden bg-[#05070a] text-white">
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#05070a]/90 backdrop-blur-xl" data-testid="landing-header">
+        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+          <a href="/" aria-label="Foldera" className="inline-flex min-h-[44px] items-center gap-3 rounded-lg px-1 focus-visible:ring-2 focus-visible:ring-cyan-300">
+            <FolderaMark size="sm" decorative />
+            <span className="text-base font-semibold tracking-[-0.025em]">Foldera</span>
           </a>
 
-          <div className="flex items-center gap-2 sm:gap-5">
-            <nav className="hidden items-center gap-6 text-[12px] font-medium text-slate-300 sm:flex" aria-label="Landing navigation">
-              <a href="#how-it-works" className="rounded-lg px-1 py-2 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
-                How it works
-              </a>
-            </nav>
-            <MobileMenu />
-            <a
-              href="/start"
-              data-testid="landing-header-cta"
-              className="inline-flex min-h-[38px] items-center rounded-[10px] border border-cyan-300/25 bg-cyan-300 px-3 text-[12px] font-semibold text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.16)] transition-colors hover:bg-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
-            >
-              Join pilot
+          <nav aria-label="Landing navigation" className="hidden items-center gap-6 text-sm text-slate-300 md:flex">
+            <a href="#how-foldera-works" className="transition-colors hover:text-white">How it works</a>
+            <a href="#trust" className="transition-colors hover:text-white">Trust</a>
+            <a href="#pilot" className="transition-colors hover:text-white">Pilot</a>
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <a href={loginHref} data-testid="landing-login-cta" className="hidden text-sm font-medium text-slate-300 transition-colors hover:text-white sm:inline-flex">
+              Login
             </a>
+            <AccessLink testId="landing-header-cta" className="min-h-[40px] px-3 text-xs sm:px-4">
+              Request access
+            </AccessLink>
           </div>
         </div>
       </header>
 
-      <div className="relative">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <div className="absolute -left-[40%] top-[-20%] h-[520px] w-[520px] rounded-full bg-violet-500/14 blur-[140px]" />
-          <div className="absolute -right-[40%] top-[10%] h-[560px] w-[560px] rounded-full bg-cyan-500/10 blur-[160px]" />
-          <div className="absolute left-1/2 top-[30%] h-[700px] w-[700px] -translate-x-1/2 rounded-full bg-sky-500/8 blur-[170px]" />
+      <section className="border-b border-white/10" data-testid="landing-hero">
+        <div className="mx-auto grid min-h-[calc(100dvh-64px)] w-full max-w-7xl items-center gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(360px,480px)] lg:px-8 lg:py-14">
+          <div>
+            <p className="mb-5 inline-flex rounded-lg border border-white/10 bg-white/[0.035] px-3 py-1 text-xs font-semibold uppercase text-cyan-200">
+              The Workday Presence Layer
+            </p>
+            <h1 className="max-w-3xl text-4xl font-semibold leading-[1.05] tracking-[-0.035em] text-white sm:text-5xl lg:text-6xl">
+              Stop rebuilding the work.
+            </h1>
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+              Foldera restores continuity across fractured apps, messages, meetings, approvals, and decisions so you can stop rebuilding context just to do the work.
+            </p>
+
+            <div className="mt-7 flex flex-wrap gap-3 text-sm text-slate-400">
+              <span className="rounded-lg border border-cyan-300/20 bg-cyan-300/8 px-3 py-2 text-cyan-100">Consent-first</span>
+              <span className="rounded-lg border border-emerald-300/20 bg-emerald-300/8 px-3 py-2 text-emerald-100">No surveillance</span>
+              <span className="rounded-lg border border-amber-300/20 bg-amber-300/8 px-3 py-2 text-amber-100">Quiet by design</span>
+            </div>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <AccessLink testId="landing-primary-access-cta">Request access</AccessLink>
+              <SecondaryLink href="#how-foldera-works">See how it works</SecondaryLink>
+            </div>
+          </div>
+
+          <RightNowCard />
         </div>
+      </section>
 
-        <div className="mx-auto w-full max-w-[430px] bg-black md:max-w-[520px] md:shadow-[0_0_120px_rgba(8,47,73,0.28)]">
-          <div className="flex flex-col gap-0 pb-0 pt-0">
-            {slides.map((slide, index) => (
-              <PosterPanel key={slide.src} slide={slide} index={index} />
+      <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20" data-testid="landing-pain">
+        <div className="max-w-3xl">
+          <p className="text-sm font-semibold uppercase text-cyan-200">Context collapse</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">You are a high-paid filing clerk.</h2>
+          <p className="mt-4 text-base leading-7 text-slate-300">
+            You spend too much of your day rebuilding context across fractured apps just to do a few minutes of actual work.
+          </p>
+        </div>
+        <div className="mt-9 grid gap-4 md:grid-cols-3">
+          {painPoints.map((item) => (
+            <article key={item.title} className="rounded-lg border border-white/10 bg-white/[0.035] p-5">
+              <h3 className="text-xl font-semibold tracking-[-0.02em]">{item.title}</h3>
+              <p className="mt-3 text-sm leading-6 text-slate-300">{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section id="how-foldera-works" className="border-y border-white/10 bg-white/[0.02]" data-testid="landing-doctrine">
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+          <div className="max-w-3xl">
+            <p className="text-sm font-semibold uppercase text-cyan-200">How it works</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">
+              The problem isn&apos;t lack of AI. The problem is broken continuity.
+            </h2>
+            <p className="mt-4 text-base leading-7 text-slate-300">
+              Every app remembers its own slice. Microsoft remembers Microsoft. Google remembers Google. Foldera is the cross-system presence layer that remembers the state of your workday.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {doctrine.map((item) => (
+              <article key={item.label} className="rounded-lg border border-white/10 bg-[#0b1118] p-5">
+                <p className="text-xs font-bold uppercase text-cyan-200">{item.label}</p>
+                <p className="mt-4 text-sm leading-6 text-slate-300">{item.body}</p>
+              </article>
             ))}
+          </div>
 
-            <footer className="sr-only" data-testid="landing-footer">
-              <p>Foldera — Workday Presence Layer.</p>
-              <a href="/start">Join the pilot</a>
-            </footer>
+          <ol className="mt-10 grid gap-3" data-testid="landing-workflow">
+            {howItWorks.map((step, index) => (
+              <li key={step} className="flex gap-4 rounded-lg border border-white/10 bg-white/[0.03] p-4">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-300 text-sm font-bold text-slate-950">
+                  {index + 1}
+                </span>
+                <span className="pt-1 text-sm leading-6 text-slate-300">{step}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section id="trust" className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20" data-testid="landing-trust">
+        <div className="max-w-3xl">
+          <p className="text-sm font-semibold uppercase text-cyan-200">Habitat</p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">It lives where you work. And stays quiet otherwise.</h2>
+          <p className="mt-4 text-base leading-7 text-slate-300">
+            Foldera interrupts only when there is a clean moment to act, hands you the next move where you already are, and then disappears.
+          </p>
+        </div>
+        <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {trustItems.map(({ icon: Icon, title, body }) => (
+            <article key={title} className="rounded-lg border border-white/10 bg-white/[0.035] p-5">
+              <Icon className="h-5 w-5 text-cyan-200" aria-hidden="true" />
+              <h3 className="mt-4 text-lg font-semibold">{title}</h3>
+              <p className="mt-3 text-sm leading-6 text-slate-300">{body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section id="pilot" className="border-y border-white/10 bg-[#080c12]" data-testid="landing-pilot">
+        <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-20">
+          <div>
+            <p className="text-sm font-semibold uppercase text-cyan-200">Pilot access</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">
+              Stop checking nine apps. Foldera keeps track.
+            </h2>
+            <p className="mt-4 text-base leading-7 text-slate-300">
+              Foldera is not a dashboard. It watches consented signals, remembers your focus, and calculates the next state of your work.
+            </p>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <AccessLink testId="landing-pilot-access-cta">Join pilot</AccessLink>
+              <SecondaryLink href="/demo" testId="landing-demo-link">View existing demo</SecondaryLink>
+            </div>
+          </div>
+
+          <div className="grid gap-3">
+            {pilotScope.map((item) => (
+              <div key={item} className="flex gap-3 rounded-lg border border-white/10 bg-white/[0.035] p-4">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-amber-200" aria-hidden="true" />
+                <p className="text-sm leading-6 text-slate-300">{item}</p>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
+
+      <section className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20" data-testid="landing-final-cta">
+        <div className="rounded-lg border border-cyan-300/20 bg-[#0b1118] p-7 text-center sm:p-10">
+          <h2 className="text-3xl font-semibold tracking-[-0.03em] sm:text-4xl">Restore your continuity.</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-300">
+            Stop acting as the human integration layer. Let Foldera hold the context, so you can do the work.
+          </p>
+          <p className="mx-auto mt-3 max-w-2xl text-sm font-semibold text-cyan-100">
+            One trusted answer. All the context. Next move ready.
+          </p>
+          <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <AccessLink testId="landing-final-access-cta">Get started</AccessLink>
+            <SecondaryLink href={loginHref} testId="landing-final-login-cta">Login</SecondaryLink>
+          </div>
+        </div>
+      </section>
+
+      <footer className="border-t border-white/10 px-4 py-8 text-sm text-slate-500" data-testid="landing-footer">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p>Foldera - Workday Presence Layer.</p>
+          <div className="flex gap-4">
+            <a href="/privacy" className="hover:text-slate-300">Privacy</a>
+            <a href="/terms" className="hover:text-slate-300">Terms</a>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }

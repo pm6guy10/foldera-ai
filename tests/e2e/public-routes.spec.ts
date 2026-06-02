@@ -115,47 +115,61 @@ test.describe('Landing page /', () => {
     await expect(page).toHaveTitle(/Foldera/i);
   });
 
-  test('homepage image and hotspots are visible — desktop', async ({ page }) => {
+  test('public marketing shell and CTAs are visible - desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
-    for (const slideIndex of [1, 2, 3, 4, 5, 6]) {
-      await expect(page.getByTestId(`landing-slide-${slideIndex}`)).toBeVisible();
-    }
-    await expect(page.getByTestId('landing-cta-1')).toHaveAttribute('href', '/start');
-    await expect(page.getByTestId('landing-cta-1')).toHaveAttribute('aria-label', 'Join the pilot');
-    await expect(page.getByTestId('landing-cta-6')).toHaveAttribute('href', '/start');
-    await expect(page.getByTestId('landing-cta-6')).toHaveAttribute('aria-label', 'Join the pilot');
+    await expect(page.getByTestId('landing-hero')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /stop rebuilding the work/i })).toBeVisible();
+    await expect(page.getByTestId('landing-right-now-card')).toBeVisible();
+    await expect(page.getByTestId('landing-pain')).toContainText('You are a high-paid filing clerk.');
+    await expect(page.getByTestId('landing-pain')).toContainText('The reconstruction tax.');
+    await expect(page.getByTestId('landing-doctrine')).toContainText('broken continuity');
+    await expect(page.getByTestId('landing-trust')).toContainText('No surveillance');
+    await expect(page.getByTestId('landing-trust')).toContainText('It lives where you work');
+    await expect(page.getByTestId('landing-pilot')).toContainText('Stop checking nine apps');
+    await expect(page.getByTestId('landing-header-cta')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-primary-access-cta')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-login-cta')).toHaveAttribute('href', '/login');
     await expect(page.getByTestId('landing-header')).toBeVisible();
-    await expect(page.getByRole('link', { name: 'How it works' })).toBeVisible();
+    await expect(page.getByTestId('landing-header').getByRole('link', { name: 'How it works' })).toBeVisible();
     await expect(page.getByTestId('landing-footer')).toBeVisible();
   });
 
-  test('homepage image and hotspots are visible — mobile', async ({ page }) => {
+  test('public marketing shell and CTAs are visible - mobile', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
-    for (const slideIndex of [1, 2, 3, 4, 5, 6]) {
-      await expect(page.getByTestId(`landing-slide-${slideIndex}`)).toBeVisible();
+    await expect(page.getByTestId('landing-hero')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /stop rebuilding the work/i })).toBeVisible();
+    await expect(page.getByTestId('landing-right-now-card')).toBeVisible();
+    await expect(page.getByTestId('landing-header-cta')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-primary-access-cta')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-header')).toBeVisible();
+    await expect(page.getByTestId('landing-footer')).toBeVisible();
+  });
+
+  test('homepage access and login CTAs keep the route/access contract', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/');
+    for (const testId of [
+      'landing-header-cta',
+      'landing-primary-access-cta',
+      'landing-pilot-access-cta',
+      'landing-final-access-cta',
+    ]) {
+      await expect(page.getByTestId(testId)).toHaveAttribute('href', '/start');
     }
-    await expect(page.getByTestId('landing-cta-1')).toHaveAttribute('href', '/start');
-    await expect(page.getByTestId('landing-cta-1')).toHaveAttribute('aria-label', 'Join the pilot');
-    await expect(page.getByTestId('landing-cta-6')).toHaveAttribute('href', '/start');
-    await expect(page.getByTestId('landing-cta-6')).toHaveAttribute('aria-label', 'Join the pilot');
-    await expect(page.getByTestId('landing-header')).toBeVisible();
-    await expect(page.getByTestId('landing-footer')).toBeVisible();
+    await expect(page.getByTestId('landing-login-cta')).toHaveAttribute('href', '/login');
+    await expect(page.getByTestId('landing-final-login-cta')).toHaveAttribute('href', '/login');
   });
 
-  test('homepage hotspots keep the locked CTA destinations', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await page.goto('/');
-    await expect(page.getByTestId('landing-cta-1')).toHaveAttribute('href', '/start');
-    await expect(page.getByTestId('landing-cta-6')).toHaveAttribute('href', '/start');
-  });
-
-  test('homepage exposes only the two CTA hotspots', async ({ page }) => {
+  test('homepage exposes no fake signup or waitlist flow', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
     await expect(page.getByTestId('landing-header')).toBeVisible();
     await expect(page.getByTestId('landing-footer')).toBeVisible();
+    await expect(page.getByRole('link', { name: /request access/i }).first()).toHaveAttribute('href', '/start');
+    await expect(page.getByText(/waitlist/i)).toHaveCount(0);
+    await expect(page.getByText(/email\/password|password/i)).toHaveCount(0);
   });
 
   test('root metadata description matches the finished-work positioning', async ({ page }) => {
@@ -166,13 +180,18 @@ test.describe('Landing page /', () => {
     );
   });
 
-  test('homepage image swap stays aligned to the uploaded visual target', async ({ page }) => {
+  test('homepage exposes the Workday Presence Layer doctrine', async ({ page }) => {
     await page.goto('/');
-    for (const slideIndex of [1, 2, 3, 4, 5, 6]) {
-      await expect(page.getByTestId(`landing-slide-${slideIndex}`)).toBeVisible();
-    }
+    await expect(page.getByText('The Workday Presence Layer').first()).toBeVisible();
+    await expect(page.getByText('Stop rebuilding the work.').first()).toBeVisible();
+    await expect(page.getByText('Foldera restores continuity across fractured apps, messages, meetings, approvals, and decisions so you can stop rebuilding context just to do the work.')).toBeVisible();
+    await expect(page.getByTestId('landing-doctrine')).toContainText('State');
+    await expect(page.getByTestId('landing-doctrine')).toContainText('Connectors');
+    await expect(page.getByTestId('landing-doctrine')).toContainText('Triggers');
+    await expect(page.getByTestId('landing-doctrine')).toContainText('One intervention');
+    await expect(page.getByTestId('landing-final-cta')).toContainText('Restore your continuity.');
+    await expect(page.getByTestId('landing-final-cta')).toContainText('One trusted answer. All the context. Next move ready.');
   });
-
   test('no actionable console errors — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const errors = collectConsoleErrors(page);
@@ -232,7 +251,7 @@ test.describe('Landing page /', () => {
     }
   });
 
-  test('homepage exposes no semantic nav/footer shell', async ({ page }) => {
+  test('homepage exposes semantic nav/footer shell', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
     await expect(page.getByTestId('landing-header')).toBeVisible();
@@ -331,17 +350,17 @@ test.describe('Public funnel route contract', () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
 
-    await expect(page.getByRole('link', { name: /^Join pilot$/ })).toHaveAttribute('href', '/start');
-    await expect(page.getByTestId('landing-cta-1')).toHaveAttribute('href', '/start');
-    await expect(page.getByTestId('landing-cta-6')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-pilot-access-cta')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-primary-access-cta')).toHaveAttribute('href', '/start');
+    await expect(page.getByTestId('landing-header-cta')).toHaveAttribute('href', '/start');
 
-    await page.getByRole('link', { name: /^Join pilot$/ }).click();
+    await page.getByTestId('landing-pilot-access-cta').click();
     await expect(page).toHaveURL(/\/start\/?$/);
     await expect(page.getByRole('heading', { name: /get started with foldera/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /continue with google/i })).toBeVisible();
   });
 
-  test('/try and /signup resolve to the public start boundary', async ({ page }) => {
+  test('/try, /signup, and /request-access resolve to the public start boundary', async ({ page }) => {
     await page.goto('/try');
     await expect(page).toHaveURL(/\/start\/?$/);
     await expect(page.getByRole('heading', { name: /get started with foldera/i })).toBeVisible();
@@ -349,6 +368,10 @@ test.describe('Public funnel route contract', () => {
     await page.goto('/signup');
     await expect(page).toHaveURL(/\/start\/?$/);
     await expect(page.getByRole('button', { name: /continue with microsoft/i })).toBeVisible();
+
+    await page.goto('/request-access');
+    await expect(page).toHaveURL(/\/start\/?$/);
+    await expect(page.getByRole('button', { name: /continue with google/i })).toBeVisible();
   });
 
   test('/demo remains public and anonymous /dashboard is guarded', async ({ page }) => {
