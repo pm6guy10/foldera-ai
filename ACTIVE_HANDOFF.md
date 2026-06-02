@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-01 PT
-Current `origin/main` SHA at Real Slack Self-Loop implementation promotion start: `5f1d3e73f90f1c30ad904c8e45db18a68ebc042e`.
+Last updated: 2026-06-02 PT
+Current `origin/main` SHA at Work Packet Brain promotion start: `cb5fbef6b528f1d199e2fef3c909053f00e3767e`.
 
 ## Canonical Boot Sequence
 For any Foldera task, use this order:
@@ -15,7 +15,7 @@ For any Foldera task, use this order:
 7. Use Vercel/Supabase only when the seam requires live/runtime truth.
 
 ## Active command gate
-Active implementation seam is issue #140: Real Slack Self-Loop implementation.
+Active implementation seam is issue #143: MVP Work Packet Brain source trails -> consolidated review packet -> Slack review card.
 
 Issue #126 is complete: PR #132 landed Supabase egress controls on `main`, PR #133 completed source-truth closeout, and current-cycle Supabase usage showed projected API/database egress under the Free-plan target. The Supabase measurement/downgrade blocker is resolved.
 
@@ -25,13 +25,16 @@ Issue #136 is complete: PR #137 installed mandatory Codex Run Ledger closeout di
 
 Issue #138 is complete: PR #139 promoted the Real Slack Self-Loop source-truth target on `main` without Slack implementation code.
 
+Issue #140 / PR #142 is accepted as rail-only proof/blocker: deterministic Slack self-loop proof passed, live Slack send reached the rail, and the remaining real Slack button callback proof is externally blocked. Do not implement packet-brain behavior inside PR #142.
+
 ## Current slice:
 
 - Issue #126 recovery and downgrade decision are complete/resolved.
 - Issue #131 MVP Presence Loop is complete on `main`.
 - Issue #136 Codex Run Ledger governance is complete on `main`.
 - Issue #138 Real Slack Self-Loop source-truth promotion is complete on `main`.
-- Issue #140 is now the active implementation seam for the bounded Real Slack Self-Loop.
+- Issue #140 / PR #142 remains rail-only and must not become product-brain implementation.
+- Issue #143 is now the active next product-brain seam.
 - Issue #121 landing work remains paused unless explicitly reassigned after issue #136.
 - Issue #99 remains paused.
 - Issue #48 remains the product doctrine.
@@ -44,14 +47,14 @@ state + connectors + triggers + one intervention.
 Stay quiet otherwise; no task-list/dashboard replacement behavior.
 Issue #48 remains the product contract.
 
-## Required issue #140 outcome
+## Required issue #143 outcome
 
-Implement one safe Real Slack Self-Loop only:
-issue #131 deterministic Slack test-mode loop -> issue #138 Real Slack Self-Loop source-truth target -> issue #140 bounded real Slack implementation.
+Promote and then implement the MVP Work Packet Brain only when explicitly assigned:
+multiple consented source signals -> source trail -> consolidated `work_packet` -> prepared reviewable work -> Slack review card -> human review/dismiss -> packet/workday state update -> quiet.
 
-Required deterministic proof for issue #140: `npm run health`, focused Slack self-loop tests, token exposure / secret redaction test or gate, `npm run gate:command`, `npm run gate:continuity`, `npm run lint`, `npm run build`, and `git diff --check`.
+Required future proof for issue #143: fixture-driven fake source signals, deterministic packet generation in TEST_MODE, no paid model call, one packet from multiple signals, source trail plus prepared work, Slack review card with Review/View sources/Dismiss and no Send, human review state update, dismiss audit trail, no dashboard/task-list/inbox-summary behavior, and `gate:continuity` or a narrow packet-brain gate enforcing doctrine.
 
-Live Slack send/install/OAuth proof is only required after the implementation reaches that boundary and must not be faked. If external credentials, OAuth app settings, Slack workspace authorization, or paid/model proof are required, stop with `BLOCKED` and name the exact missing permission.
+PR #142 stays rail-only. Do not block, widen, or mutate PR #142 to implement `work_packet`.
 
 ## GitHub writeback contract
 
@@ -66,9 +69,9 @@ Live Slack send/install/OAuth proof is only required after the implementation re
 
 ## Forbidden unless explicitly assigned
 
-- No landing, Stripe, dashboard redesign, Supabase schema, live Slack install/OAuth/send, Teams/email/calendar expansion, outreach, billing/downgrade work, or broad cleanup.
-- For issue #140 specifically, one real Slack self-loop only; no connector platform expansion.
+- No landing, Stripe, dashboard redesign, Supabase schema, Slack OAuth expansion, Teams/email/calendar expansion, outreach, billing/downgrade work, or broad cleanup.
+- For issue #143 specifically, narrow packet-brain source trails and review-card proof only; no live connector expansion and no paid model proof.
 
 ## Next exact move
 
-Run issue #140 Real Slack Self-Loop implementation only after this closeout/promotion PR lands. Do not start landing, Stripe, dashboard redesign, Supabase schema except a proven token/state boundary, Teams/email/calendar expansion, billing/downgrade, outreach, Dependabot, or broad cleanup.
+Run issue #143 only after this source-truth promotion PR lands. Do not implement `work_packet` in this promotion PR, and do not start landing, dashboard, Slack OAuth expansion, Teams/email/calendar connectors, Stripe, auth, Supabase schema, Dependabot, or broad cleanup.
