@@ -58,7 +58,7 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
-  it('passes when the next seam is explicitly blocked after PR #145 merge', () => {
+  it('passes when issue #147 is explicitly assigned as the next seam', () => {
     const fixtureRoot = createFixtureRoot();
 
     const failures = runContinuityGate(fixtureRoot);
@@ -66,20 +66,22 @@ describe('continuity gate writeback enforcement', () => {
     expect(failures).toEqual([]);
   });
 
-  it('fails when the blocked next seam reason is removed after PR #145 merge', () => {
+  it('fails when the active issue #147 seam is removed', () => {
     const fixtureRoot = createFixtureRoot();
     const handoffPath = path.join(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const original = fs.readFileSync(handoffPath, 'utf8');
     fs.writeFileSync(
       handoffPath,
-      original.replace('Next seam: blocked - reason: no next seam assigned after PR #145 merge', 'Next seam: blocked'),
+      original.replace(
+        'Active implementation seam is issue #147: Public landing shell adaptation from Figma export without changing auth/access/backend behavior.',
+        'No active implementation seam is assigned.',
+      ),
       'utf8',
     );
 
     const failures = runContinuityGate(fixtureRoot);
 
     expect(failures).toContain('ACTIVE_HANDOFF.md must name exactly one active seam line; found 0.');
-    expect(failures).toContain('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
   });
 
   it('fails when the mandatory writeback rule is removed from ACTIVE_HANDOFF.md', () => {
