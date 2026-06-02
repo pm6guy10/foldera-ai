@@ -1,27 +1,19 @@
 {
-  "authority_status": "CURRENT_CONTROL",
+  "authority_status": "CLOSEOUT_CONTROL",
   "active": true,
-  "active_issue": 143,
-  "backlog_id": "ISSUE_143_MVP_WORK_PACKET_BRAIN",
-  "base_commit": "cb5fbef6b528f1d199e2fef3c909053f00e3767e",
-  "money_loop_rung": "work_packet_brain_source_trail_review_packet",
-  "user_system_path": "promote MVP Work Packet Brain after PR #142 rail-only proof is merged or accepted as externally blocked",
+  "active_issue": null,
+  "backlog_id": "NO_NEXT_SEAM_ASSIGNED_AFTER_PR_145",
+  "base_commit": "e93f8fa5fdcd2a4fb907370a71791484678cbadc",
+  "money_loop_rung": "blocked_no_next_seam_assigned",
+  "user_system_path": "close out issue #143 after PR #145 merge without starting a new implementation seam",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
     "scripts/source-truth-check.ts",
     "tests/config/__tests__/source-truth-check.test.ts",
-    "lib/work-packets/**",
-    "lib/workday-presence/**",
-    "lib/slack-test-mode/**",
-    "lib/slack/**",
-    "app/api/slack/test-mode/**",
-    "app/api/slack/**",
-    "tests/fixtures/work-packets/**",
-    "tests/fixtures/signals/**",
     "scripts/continuity-gate.ts",
-    "package.json"
+    "tests/config/__tests__/continuity-gate.test.ts"
   ],
   "forbidden_file_patterns": [
     "components/foldera/LandingPage.tsx",
@@ -46,7 +38,7 @@
     "dashboard task-list inbox-summary behavior",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Issue #143 implementation scope is narrow packet-brain files only: lib/work-packets, packet-linked workday-presence helpers, Slack test-mode/review-card adapters, app/api/slack packet review routes only if explicitly assigned, packet fixtures, and narrow gate/test files.",
+  "allowed_files_raw": "No-code source-truth closeout only: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and the source-truth/continuity gates and tests that enforce this closeout.",
   "forbidden_files_raw": "No landing work, Stripe, dashboard redesign, Supabase schema, Slack OAuth expansion, live Slack send expansion beyond packet review card proof, Teams/email/calendar expansion, outreach, billing/downgrade work, Dependabot work, connector platform expansion, dashboard task-list inbox-summary behavior, or broad cleanup.",
   "required_local_proof": [
     "npm run health",
@@ -58,18 +50,18 @@
     "npm run build",
     "git diff --check"
   ],
-  "required_browser_proof": "Not applicable; deterministic TEST_MODE packet-brain proof only.",
-  "acceptance_condition": "Deterministic TEST_MODE proof creates one work_packet from multiple fixture signals, renders Slack review card actions Review packet/View sources/Dismiss, updates packet/workday state after review or dismiss, preserves dismiss audit trail, and preserves PR #142 as rail-only.",
-  "stop_condition": "Stop when deterministic packet-brain proof exists, primary receipt and issue #136 ledger receipt are posted, and no live connector, paid model, landing, dashboard, or Slack OAuth expansion occurred.",
+  "required_browser_proof": "Not applicable; no-code source-truth closeout only.",
+  "acceptance_condition": "Source truth no longer commands issue #143 implementation after PR #145 merge, issue #143 / PR #145 are marked complete, PR #142 is preserved as rail-only externally blocked work, and no next implementation seam is started.",
+  "stop_condition": "Stop when source truth no longer falsely says issue #143 is the active implementation task, PR #142 is preserved as separate rail-only blocked work, PR/issue/ledger receipts are posted, and no new implementation seam has been started.",
   "is_user_facing": false,
   "browser_proof_command": "not applicable - deterministic TEST_MODE packet-brain proof only",
   "anti_regression_checks": [
-    "ACTIVE_HANDOFF.md names issue #143 as the only active implementation seam",
-    "FOLDERA_BUILD_ORDER.yaml active_issue is 143",
-    ".foldera-contract.json active_issue and backlog_id resolve to 143",
+    "ACTIVE_HANDOFF.md marks issue #143 / PR #145 complete",
+    "FOLDERA_BUILD_ORDER.yaml active_issue is null because no next seam is assigned",
+    ".foldera-contract.json no longer commands Run issue #143 only",
     "PR #142 remains rail-only and externally blocked on real Slack button callback proof",
-    "Allowed scope is narrow packet-brain files only",
+    "Allowed scope is no-code source-truth closeout files only",
     "Forbidden scope keeps out landing, dashboard, Slack OAuth expansion, Teams/email/calendar, Stripe, auth, Supabase schema, connector platform expansion, and broad cleanup"
   ],
-  "next_command": "Run issue #143 only. Stop after deterministic packet-brain proof and GitHub receipts; do not continue into live connectors or the next seam."
+  "next_command": "Stop. Next seam is blocked - reason: no next seam assigned after PR #145 merge."
 }

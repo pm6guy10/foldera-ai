@@ -16,10 +16,10 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 143
-priority_class: WORK_PACKET_BRAIN_SOURCE_TRAIL_REVIEW_PACKET
-work_type: IMPLEMENTATION_PROOF
-why_this_first: Issue #131 proved the deterministic Slack test-mode MVP Presence Loop, issue #136 installed Codex Run Ledger discipline, issue #138 / PR #139 promoted the bounded Real Slack Self-Loop target, issue #140 / PR #142 is accepted as rail-only proof/blocker, and PR #144 promoted issue #143 onto main; issue #143 now implements the deterministic product-brain seam for source trails -> consolidated work_packet -> Slack review card.
+active_issue: null
+priority_class: BLOCKED_NO_NEXT_SEAM_ASSIGNED
+work_type: SOURCE_TRUTH_CLOSEOUT
+why_this_first: PR #145 merged issue #143 deterministic Work Packet Brain proof on main; repo source truth must no longer command issue #143 implementation work, while PR #142 remains separate rail-only externally blocked work.
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -72,6 +72,10 @@ completed:
     pr: 142
     merge_sha: not_merged_external_blocker_accepted
     result: PR #142 remains rail-only; deterministic proof passed, live Slack send reached the rail, and remaining real Slack button callback proof is externally blocked. Do not implement packet-brain behavior in PR #142.
+  - issue: 143
+    pr: 145
+    merge_sha: e93f8fa5fdcd2a4fb907370a71791484678cbadc
+    result: Deterministic Work Packet Brain proof landed on main; source truth must not continue to command issue #143 implementation.
 closed_pull_requests_do_not_reopen:
   - pr: 124
     status: closed_do_not_reopen
@@ -81,9 +85,9 @@ closed_pull_requests_do_not_reopen:
     reason: Closed/unmerged; do not reopen or reuse after issue #126 recovery.
 paused:
   - issue: 121
-    reason: Landing implementation remains paused while issue #143 Work Packet Brain promotion is active.
+    reason: Landing implementation remains paused; no next implementation seam is assigned after PR #145 merge.
   - issue: 99
-    reason: Planning spine remains paused while issue #143 Work Packet Brain promotion is active.
+    reason: Planning spine remains paused; no next implementation seam is assigned after PR #145 merge.
   - issue: 84
     pr: 95
     reason: Older landing polish reference remains paused/superseded by issue #121 current landing-page frontend contract seam.
@@ -111,16 +115,13 @@ required_local_proof:
   - npm run lint
   - npm run build
   - git diff --check
-required_issue_143_proof:
-  - ACTIVE_HANDOFF.md names issue #143 as the active implementation seam
-  - FOLDERA_BUILD_ORDER.yaml active_issue is 143
-  - .foldera-contract.json resolves to issue #143 and allows only narrow packet-brain implementation scope
+required_issue_143_closeout:
+  - ACTIVE_HANDOFF.md marks issue #143 and PR #145 complete
+  - FOLDERA_BUILD_ORDER.yaml marks issue #143 and PR #145 complete
+  - .foldera-contract.json no longer commands Run issue #143 only
   - PR #142 is preserved as rail-only proof/blocker, not product-brain implementation
-  - deterministic TEST_MODE packet generation from multiple fake source signals
-  - Slack card uses Review packet, View sources, and Dismiss; never Send or Auto-send by default
-  - human review and dismiss transitions update packet/workday state
-  - dismiss preserves packet source trail and audit trail
   - primary PR receipt is posted
+  - issue #143 terminal receipt is posted
   - standing ledger issue #136 receipt is posted
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
@@ -131,6 +132,7 @@ closeout_required_each_pr:
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order control issue #143
-  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this implementation PR
-  next_seam: blocked - stop after deterministic packet-brain proof and receipts; no next seam is authorized in this run
+  .foldera-contract.json: updated
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order control post-PR #145 closeout
+  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this closeout PR
+  next_seam: blocked - reason no next seam assigned after PR #145 merge

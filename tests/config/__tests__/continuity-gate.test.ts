@@ -58,6 +58,30 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
+  it('passes when the next seam is explicitly blocked after PR #145 merge', () => {
+    const fixtureRoot = createFixtureRoot();
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(failures).toEqual([]);
+  });
+
+  it('fails when the blocked next seam reason is removed after PR #145 merge', () => {
+    const fixtureRoot = createFixtureRoot();
+    const handoffPath = path.join(fixtureRoot, 'ACTIVE_HANDOFF.md');
+    const original = fs.readFileSync(handoffPath, 'utf8');
+    fs.writeFileSync(
+      handoffPath,
+      original.replace('Next seam: blocked - reason: no next seam assigned after PR #145 merge', 'Next seam: blocked'),
+      'utf8',
+    );
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(failures).toContain('ACTIVE_HANDOFF.md must name exactly one active seam line; found 0.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
+  });
+
   it('fails when the mandatory writeback rule is removed from ACTIVE_HANDOFF.md', () => {
     const fixtureRoot = createFixtureRoot();
     const handoffPath = path.join(fixtureRoot, 'ACTIVE_HANDOFF.md');

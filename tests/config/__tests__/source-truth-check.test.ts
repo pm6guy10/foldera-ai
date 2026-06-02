@@ -41,7 +41,7 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
-  it('passes only when the packet-brain implementation issue is active', () => {
+  it('passes only when issue #143 is closed out and no next seam is assigned', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = fs.readFileSync(path.join(fixtureRoot, 'ACTIVE_HANDOFF.md'), 'utf8');
     const buildOrder = fs.readFileSync(path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml'), 'utf8');
@@ -51,10 +51,11 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(handoff).toContain('Active implementation seam is issue #143');
-    expect(buildOrder).toContain('active_issue: 143');
-    expect(buildOrder).toContain('work_type: IMPLEMENTATION_PROOF');
-    expect(contract.active_issue).toBe(143);
+    expect(handoff).toContain('Issue #143 is complete');
+    expect(handoff).toContain('Next seam: blocked - reason: no next seam assigned after PR #145 merge');
+    expect(buildOrder).toContain('active_issue: null');
+    expect(buildOrder).toContain('work_type: SOURCE_TRUTH_CLOSEOUT');
+    expect(contract.active_issue).toBeNull();
     expect(failures).toEqual([]);
   });
 
@@ -62,15 +63,14 @@ describe('source truth command gate', () => {
     const fixtureRoot = createFixtureRoot();
     const buildOrderPath = path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
     const original = fs.readFileSync(buildOrderPath, 'utf8');
-    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 143', 'active_issue: 121'));
+    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: null', 'active_issue: 121'));
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 143; found 121.');
-    expect(failures).toContain('ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml disagree: #143 vs #121.');
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be null after PR #145; found 121.');
   });
 
-  it('fails when .foldera-contract.json resolves to the wrong active issue', () => {
+  it('fails when .foldera-contract.json resolves to any active issue', () => {
     const fixtureRoot = createFixtureRoot();
     const contractPath = path.join(fixtureRoot, '.foldera-contract.json');
     const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8')) as Record<string, unknown>;
@@ -80,11 +80,11 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('.foldera-contract.json active_issue must be 143; found 121.');
-    expect(failures).toContain('.foldera-contract.json backlog_id must resolve to issue #143; found ISSUE_121_LANDING_PAGE_FRONTEND_CONTRACT.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be null after PR #145; found 121.');
+    expect(failures).toContain('.foldera-contract.json backlog_id must not resolve to an active issue after PR #145; found ISSUE_121_LANDING_PAGE_FRONTEND_CONTRACT.');
   });
 
-  it('fails when source truth still points at issue #140 after packet-brain promotion', () => {
+  it('fails when source truth still commands issue #143 after PR #145 merge', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = fs.readFileSync(path.join(fixtureRoot, 'ACTIVE_HANDOFF.md'), 'utf8');
     const buildOrder = fs.readFileSync(path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml'), 'utf8');
@@ -95,21 +95,18 @@ describe('source truth command gate', () => {
     writeFixtureFile(
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
-      handoff.replace(
-        'Active implementation seam is issue #143: MVP Work Packet Brain source trails -> consolidated review packet -> Slack review card.',
-        'Active implementation seam is issue #140: Real Slack Self-Loop implementation.',
-      ),
+      handoff.replace('No active implementation seam is assigned after PR #145 merged issue #143.', 'Active implementation seam is issue #143: MVP Work Packet Brain source trails -> consolidated review packet -> Slack review card.'),
     );
-    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', buildOrder.replace('active_issue: 143', 'active_issue: 140'));
-    contract.active_issue = 140;
-    contract.backlog_id = 'ISSUE_140_REAL_SLACK_SELF_LOOP_IMPLEMENTATION';
+    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', buildOrder.replace('active_issue: null', 'active_issue: 143'));
+    contract.active_issue = 143;
+    contract.backlog_id = 'ISSUE_143_MVP_WORK_PACKET_BRAIN';
     writeFixtureFile(fixtureRoot, '.foldera-contract.json', `${JSON.stringify(contract, null, 2)}\n`);
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md must name issue #143 as active; found 140.');
-    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 143; found 140.');
-    expect(failures).toContain('.foldera-contract.json active_issue must be 143; found 140.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md must not name an active implementation seam after PR #145; found #143.');
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be null after PR #145; found 143.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be null after PR #145; found 143.');
   });
 
   it('fails when protected Vercel preview links are used as proof in controlling files', () => {
