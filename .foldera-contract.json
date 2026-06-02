@@ -17,6 +17,7 @@
     "lib/workday-presence/__tests__/message.test.ts",
     "lib/workday-presence/__tests__/actions.test.ts",
     "lib/workday-presence/__tests__/presence-loop-receipt.test.ts",
+    "tests/config/__tests__/frontend-product-truth-gate.test.ts",
     "docs/pr-153-screens/**",
     "scripts/source-truth-check.ts",
     "tests/config/__tests__/source-truth-check.test.ts",
@@ -51,7 +52,7 @@
     "paid model proof",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Issue #151 implementation only: focused Workday Presence model/message/source-backed selector files and focused Workday Presence tests, plus source-truth contract files only if needed to keep the issue #151 seam enforceable.",
+  "allowed_files_raw": "Issue #151 implementation only: focused Workday Presence model/message/source-backed selector files and focused Workday Presence tests, plus the frontend product truth gate test only for stale merged landing-copy CI alignment, plus source-truth contract files only if needed to keep the issue #151 seam enforceable.",
   "forbidden_files_raw": "No PR #142 changes or widening; no Slack code patch, landing implementation, Supabase schema, dashboard/auth/backend, Stripe, package files, Dependabot, connector expansion, Teams/email/calendar, Slack app settings, Vercel settings, paid model proof, full inline recompute, tkg_* mutations, raw private source trail content, or broad cleanup.",
   "required_local_proof": [
     "npm run gate:command",

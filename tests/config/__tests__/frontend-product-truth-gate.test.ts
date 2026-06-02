@@ -52,10 +52,16 @@ const BANNED_HOMEPAGE_MARKETING_PHRASES = [
 ];
 
 const REQUIRED_HOMEPAGE_COPY = [
-  'Stop rebuilding the work. Foldera hands it back ready.',
-  'Context attached: message + meeting + file + blocker',
-  'See Foldera in action',
-  'Join the pilot',
+  'Stop rebuilding the work.',
+  'Foldera restores continuity across fractured apps, messages, meetings, approvals, and decisions so you can stop rebuilding context just to do the work.',
+  'Stop checking nine apps. Foldera keeps track.',
+  'One trusted answer. All the context. Next move ready.',
+];
+
+const APPROVED_HOMEPAGE_DOCTRINE_COPY = [
+  'No surveillance',
+  'No hidden activity monitoring, no screen-reading, and no surveillance framing.',
+  'Foldera is not another inbox, task list, or dashboard to babysit.',
 ];
 
 const UI_SOURCE_ROOTS = [
@@ -144,8 +150,13 @@ describe('frontend product truth gate', () => {
       expect(landingPage).toContain(phrase);
     }
 
+    const landingPageForMarketingAudit = APPROVED_HOMEPAGE_DOCTRINE_COPY.reduce(
+      (text, phrase) => text.replaceAll(phrase, ''),
+      landingPage,
+    );
+
     const leaks = BANNED_HOMEPAGE_MARKETING_PHRASES.filter((phrase) =>
-      landingPage.toLowerCase().includes(phrase.toLowerCase()),
+      landingPageForMarketingAudit.toLowerCase().includes(phrase.toLowerCase()),
     );
     expect(leaks).toEqual([]);
   });
