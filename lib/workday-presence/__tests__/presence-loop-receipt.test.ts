@@ -10,6 +10,7 @@ const beforeState = {
   waiting_on: 'Owner confirmation sent',
   last_completed_step: null,
   state_source: 'manual_anchor',
+  source_trail: [],
   snoozed_until: null,
   interaction_history: [],
   created_at: '2026-05-20T12:00:00.000Z',

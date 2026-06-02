@@ -1,3 +1,15 @@
+export type WorkdayPresenceSourceTrailEntry = {
+  table: 'tkg_signals' | 'tkg_commitments' | 'tkg_actions';
+  source: string;
+  type: string;
+  source_id?: string;
+  row_id?: string;
+  occurred_at?: string;
+  ingested_at?: string;
+  redacted_summary: string;
+  selection_reason: string;
+};
+
 export type WorkdayPresenceState = {
   current_focus: string;
   next_move: string;
@@ -7,6 +19,7 @@ export type WorkdayPresenceState = {
   waiting_on: string | null;
   last_completed_step: string | null;
   state_source: string;
+  source_trail: WorkdayPresenceSourceTrailEntry[];
   snoozed_until: string | null;
   interaction_history: Array<{
     interaction_type: 'done' | 'stuck' | 'break_smaller' | 'snooze';
@@ -54,6 +67,43 @@ function clean(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function normalizeSourceTrail(input: unknown): WorkdayPresenceSourceTrailEntry[] {
+  if (!Array.isArray(input)) return [];
+  const normalized: WorkdayPresenceSourceTrailEntry[] = [];
+  for (const entry of input) {
+    if (!entry || typeof entry !== 'object') continue;
+    const item = entry as Record<string, unknown>;
+    const table = clean(item.table);
+    const source = clean(item.source);
+    const type = clean(item.type);
+    const redactedSummary = clean(item.redacted_summary);
+    const selectionReason = clean(item.selection_reason);
+    if (
+      !table ||
+      !['tkg_signals', 'tkg_commitments', 'tkg_actions'].includes(table) ||
+      !source ||
+      !type ||
+      !redactedSummary ||
+      !selectionReason
+    ) {
+      continue;
+    }
+    normalized.push({
+      table: table as WorkdayPresenceSourceTrailEntry['table'],
+      source,
+      type,
+      source_id: clean(item.source_id) ?? undefined,
+      row_id: clean(item.row_id) ?? undefined,
+      occurred_at: clean(item.occurred_at) ?? undefined,
+      ingested_at: clean(item.ingested_at) ?? undefined,
+      redacted_summary: redactedSummary,
+      selection_reason: selectionReason,
+    });
+    if (normalized.length === 5) break;
+  }
+  return normalized;
+}
+
 export function normalizeWorkdayPresenceState(input: unknown): WorkdayPresenceState | null {
   if (!input || typeof input !== 'object') return null;
   const row = input as Record<string, unknown>;
@@ -72,6 +122,7 @@ export function normalizeWorkdayPresenceState(input: unknown): WorkdayPresenceSt
     waiting_on: clean(row.waiting_on),
     last_completed_step: clean(row.last_completed_step),
     state_source: clean(row.state_source) ?? 'manual_anchor',
+    source_trail: normalizeSourceTrail(row.source_trail),
     snoozed_until: clean(row.snoozed_until),
     interaction_history: Array.isArray(row.interaction_history)
       ? row.interaction_history
@@ -165,6 +216,7 @@ export function buildStateFromPrompt(
     waiting_on: clean(input.waiting_on),
     last_completed_step: clean(input.last_completed_step),
     state_source: 'manual_anchor',
+    source_trail: [],
     snoozed_until: null,
     interaction_history: [],
     created_at: nowIso,
