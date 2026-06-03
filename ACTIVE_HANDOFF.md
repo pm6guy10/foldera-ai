@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-06-03 PT
-Current `origin/main` SHA after PR #164 merge: `ab0eb73f08c459af81e5bc5aa4680235410ad552`.
+Current `origin/main` SHA after PR #167 merge: `a624b49f1f6e28f1c422624d001e072745f2e4bd`.
 
 ## Canonical Boot Sequence
 1. Read `ACTIVE_HANDOFF.md`.
@@ -13,19 +13,20 @@ Current `origin/main` SHA after PR #164 merge: `ab0eb73f08c459af81e5bc5aa4680235
 7. Use Vercel/Supabase only when the seam requires live/runtime truth.
 
 ## Active command gate
-Active implementation seam is issue #166: Repo Intake Governor v0 - classify owner input into repo truth.
-This is a repo-local deterministic Command OS seam.
+Active implementation seam is issue #168: Command OS v1 - automatic Open Threads capture from ChatGPT.
+This is a source-truth / assistant-switchboard seam, not product runtime work.
+Issue #166 / PR #167 completed Repo Intake Governor Command OS v0.
 Issue #163 / PR #164 completed the Product Operating System.
 Open Threads issue #165 is the raw-input inbox, not implementation authority.
-Issue #154 source-truth selection is closed/completed and must not compete with issue #166.
 Issue #140 / PR #142 remains rail-only and parked externally blocked; do not widen or patch it.
 Issue #136 remains open as the standing Codex Run Ledger only.
 GitHub writeback is mandatory.
 One active seam only.
 
 ## Current slice:
-- Issue #166 is the only active seam: implement Foldera Command OS v0 as deterministic repo-local intake classification/routing.
-- Issue #165 is capture-only Open Threads; it feeds #166 but cannot authorize implementation.
+- Issue #168 is the only active seam: prove one-and-done ChatGPT-to-GitHub capture/retrieval behavior so Brandon does not have to create files, choose targets, run local commands, or keep reminding agents.
+- Issue #166 is complete via PR #167; the deterministic repo-local intake governor and `governor:intake` / `gate:repo-intake-governor` remain the Command OS v0 proof rail.
+- Issue #165 is capture-only Open Threads; it feeds #168 but cannot authorize implementation.
 - Issue #163 is complete via PR #164; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` remains roadmap/phase/backlog/enterprise control.
 - Issue #156 North Star Lock is complete on `main`; `FOLDERA_NORTH_STAR_LOCK.md` remains product doctrine control.
 - Issue #159 Growth Scout First 10 ICP Evidence Tracker is complete on `main`; placeholders are not evidence.
@@ -40,9 +41,9 @@ No dashboard/task-manager/inbox-summary/chatbot/surveillance drift.
 Issue #48 remains the product contract.
 `FOLDERA_NORTH_STAR_LOCK.md` controls product doctrine; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap, phase order, backlog lanes, and enterprise path.
 
-## Command OS boundary
-Allowed in issue #166: source-truth transition files, deterministic intake governor library/CLI, fixtures, focused tests, and package scripts only for `governor:intake` and `gate:repo-intake-governor`.
-Forbidden in issue #166: app/runtime/product code, Slack / PR #142, landing/frontend/dashboard/auth/backend, Supabase, Stripe, package-lock/dependency changes, connectors, Teams/email/calendar, outreach, scraping, customer data, fake enterprise/compliance claims, broad cleanup, or treating labels/projects as authority.
+## Command OS v1 boundary
+Allowed in issue #168: source-truth transition files, assistant/GitHub switchboard doctrine, Open Threads auto-capture acceptance criteria, focused source-truth gates/tests, and preservation of existing Repo Intake Governor v0 proof rails.
+Forbidden in issue #168: app/runtime/product code, Slack / PR #142, landing/frontend/dashboard/auth/backend, Supabase, Stripe, package-lock/dependency changes, connectors, Teams/email/calendar, outreach, scraping, customer data, fake enterprise/compliance claims, broad cleanup, or treating labels/projects/Open Threads/comments as authority.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
@@ -56,9 +57,9 @@ Forbidden in issue #166: app/runtime/product code, Slack / PR #142, landing/fron
 
 ## Forbidden unless explicitly assigned
 - Do not patch PR #142, Slack code, Slack app settings, Vercel settings, connector ingestion, Supabase schema/data, selector/source-backed-state code, landing/frontend/dashboard/auth/backend, Stripe, connector expansion, Teams/email/calendar expansion, outreach, scraping, customer data, or broad cleanup.
-- No reopening #121/#131/#99/#48/#147/#151/#159/#163.
+- No reopening #121/#131/#99/#48/#147/#151/#159/#163/#166.
 
 ## Next exact move
-Run issue #166 only on branch `codex/repo-intake-governor-command-os-v0`.
-Create one draft PR that transitions source truth, proves Open Threads #165 is capture-only, implements deterministic repo-local intake routing, runs required proof, posts PR receipt, posts issue #136 ledger receipt, and stops.
-Next authorized move after this PR: Run Repo Intake Governor against Brandon's next messy Foldera input and route it to exactly one GitHub target/no-action/blocked receipt.
+Run issue #168 only.
+Create one PR that closes out issue #166 / PR #167 in source truth, assigns #168 as the active seam, proves comments alone are not law, and requires one-and-done ChatGPT-to-GitHub capture/retrieval behavior before #168 can close.
+Next authorized move after this PR: implement or operationalize #168 so Brandon can speak once in ChatGPT and GitHub receives/retrieves the routed receipt without Brandon manually creating files or choosing targets.
