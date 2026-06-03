@@ -17,6 +17,7 @@ const requiredFiles = [
   'FOLDERA_BUILD_ORDER.yaml',
   'FOLDERA_LAUNCH_ROADMAP.md',
   'FOLDERA_OPERATING_SYSTEM.md',
+  'FOLDERA_NORTH_STAR_LOCK.md',
   'CODEX_START.md',
   'AGENTS.md',
   'CLAUDE.md',
@@ -271,6 +272,17 @@ export function runContinuityGate(root: string): string[] {
   if (!prTemplate.includes('## Next seam')) failures.push('.github/pull_request_template.md must require a Next seam section.');
   if (!prTemplate.includes('No PR is complete until this section explains why the scoreboard changed or why it did not need to change.')) {
     failures.push('.github/pull_request_template.md must state the scoreboard closeout rule.');
+  }
+  if (!prTemplate.includes('North Star traceability for product/business/UX/runtime direction')) {
+    failures.push('.github/pull_request_template.md must require North Star traceability when direction is implicated.');
+  }
+  if (!prTemplate.includes('- `FOLDERA_NORTH_STAR_LOCK.md`: cited / updated / unchanged - reason / not applicable - reason')) {
+    failures.push('.github/pull_request_template.md must include the North Star traceability row.');
+  }
+
+  const sourceTruthMap = readRepoFile(root, 'docs/SOURCE_OF_TRUTH_MAP.md');
+  if (!sourceTruthMap.includes('| `FOLDERA_NORTH_STAR_LOCK.md` | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_NORTH_STAR_LOCK.md as CURRENT_CONTROL.');
   }
 
   const sentinel = readRepoFile(root, '.github/workflows/pr-sentinel.yml');

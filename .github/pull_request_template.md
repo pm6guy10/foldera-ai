@@ -16,6 +16,10 @@
 
 One issue only. One branch. No unrelated cleanup.
 
+North Star traceability for product/business/UX/runtime direction:
+
+- `FOLDERA_NORTH_STAR_LOCK.md`: cited / updated / unchanged - reason / not applicable - reason
+
 ## Proof run
 
 
