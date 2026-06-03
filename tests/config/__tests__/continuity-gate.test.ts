@@ -68,11 +68,17 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
-  it('passes when issue #163 is active and Product Operating System authority is wired', () => {
+  it('passes when issue #166 is active and Command OS authority is wired', () => {
     const fixtureRoot = createFixtureRoot();
+    const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
+    const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
 
     const failures = runContinuityGate(fixtureRoot);
 
+    expect(handoff).toContain('Active implementation seam is issue #166');
+    expect(handoff).toContain('Open Threads issue #165 is the raw-input inbox, not implementation authority.');
+    expect(buildOrder).toContain('active_issue: 166');
+    expect(buildOrder).toContain('priority_class: REPO_INTAKE_GOVERNOR_COMMAND_OS');
     expect(failures).toEqual([]);
   });
 
