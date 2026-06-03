@@ -9,6 +9,9 @@ source_of_truth_order:
   - FOLDERA_BUILD_ORDER.yaml
   - active GitHub issue
   - issue #48
+  - FOLDERA_NORTH_STAR_LOCK.md
+  - FOLDERA_PRODUCT_OPERATING_SYSTEM.md
+  - docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md
   - FOLDERA_LAUNCH_ROADMAP.md
 accepted_terminal_states:
   - BLOCKED
@@ -16,11 +19,11 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: null
-priority_class: BLOCKED_NO_ACTION_SAFE
-work_type: SOURCE_TRUTH_CLOSEOUT_POST_159
-why_this_first: PR #161 merged issue #159 at 84c476316a31901378d9627462d4fab155e40105 and created docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md; issue #159 is closed/completed; no next growth/product seam is authorized until the tracker contains real first-10 ICP evidence; issue #140 / PR #142 is parked rail-only and externally blocked; issue #136 is ledger-only.
-next_seam: blocked - reason no next growth/product seam is authorized until real first-10 ICP evidence exists in docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md
+active_issue: 163
+priority_class: PRODUCT_OPERATING_SYSTEM_ROADMAP_LOCK
+work_type: SOURCE_TRUTH_ROADMAP_RECONCILIATION
+why_this_first: PR #162 left source truth safely blocked on manual first-10 evidence after issue #159, but Brandon rejected manual first-10 collection as the primary operating path because it keeps him as the router. Issue #163 reconciles that contradiction by preserving the first-10 tracker as proof doctrine/reference while creating FOLDERA_PRODUCT_OPERATING_SYSTEM.md as the roadmap, phase, backlog, business, enterprise, owner-burden, and next-seam control artifact. Issue #140 / PR #142 remains parked rail-only and externally blocked; issue #136 remains ledger-only.
+next_seam: Repo Intake Governor v0
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -163,6 +166,16 @@ forbidden_current_work:
   - paid model proof
   - landing implementation
   - broad cleanup
+allowed_current_work:
+  - create FOLDERA_PRODUCT_OPERATING_SYSTEM.md
+  - update ACTIVE_HANDOFF.md
+  - update FOLDERA_BUILD_ORDER.yaml
+  - update .foldera-contract.json
+  - update docs/SOURCE_OF_TRUTH_MAP.md
+  - update .github/pull_request_template.md only if needed for phase traceability
+  - update scripts/source-truth-check.ts only if needed
+  - update scripts/continuity-gate.ts only if needed
+  - update focused source-truth or continuity tests only if gates changed
 required_local_proof:
   - npm run gate:command
   - npm run gate:continuity
@@ -186,16 +199,41 @@ required_issue_159_growth_scout:
   - lock the growth ladder from no-growth mode through first 10 ICP users, first 3 real proof loops, first paid customer, repeatable channel, and scale narrative
   - require owner-approved manual replies only and separate observed evidence from interpretation
   - forbid paid ads, broad launch, automated outreach, scraping, auto-DM, marketing automation, fake beta proof, unsupported public claims, product implementation, Slack / PR #142 work, landing/frontend/dashboard work, Supabase schema/data, Stripe/package changes, connector expansion, Teams/email/calendar work, package files, and broad cleanup
-post_159_blocked_until_evidence:
-  state: BLOCKED_NO_ACTION_SAFE
-  active_seam_assigned: false
-  allowed_next_move: collect/manual-record real first-10 ICP evidence only in docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md
-  stop_if_no_evidence: true
-  allowed_next_issue_classes:
-    - first_3_non_owner_proof_loops
-    - pricing_or_paid_pilot_evidence
-    - one_manual_repeatable_channel
-  blocked_unless_tracker_contains_real_evidence: true
+required_issue_163_product_operating_system:
+  - controlling_issue: 163
+  - artifact: FOLDERA_PRODUCT_OPERATING_SYSTEM.md
+  - preserve FOLDERA_NORTH_STAR_LOCK.md as product doctrine control
+  - preserve docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md as proof doctrine/reference
+  - reconcile post-#159 blocker so manual first-10 evidence is not the only executable next move
+  - define phase ladder from today to enterprise-ready
+  - define product backlog lanes
+  - define business roadmap
+  - define enterprise-ready definition without claiming enterprise readiness
+  - define owner-burden rule
+  - name exactly one next seam after this PR
+  - expected next seam Repo Intake Governor v0 unless stricter prerequisite is proven
+  - forbid product/runtime work, Slack / PR #142, landing/frontend/dashboard, Supabase, Stripe, package files, connectors, Teams/email/calendar, outreach, scraping, paid ads, customer data, broad cleanup, fake enterprise, fake compliance, deleting first-10 tracker, or starting Repo Intake Governor
+post_159_reconciliation:
+  state: RECONCILED_BY_PRODUCT_OPERATING_SYSTEM
+  active_seam_assigned: true
+  active_issue: 163
+  first_10_tracker_status: proof doctrine/reference only; placeholders are not evidence
+  manual_first_10_status: owner-rejected as primary operating path
+  current_next_move: issue #163 Product Operating System docs/source-truth PR
+  next_seam_after_issue_163: Repo Intake Governor v0
+  blocked_work_until_future_issue:
+    - product implementation
+    - Slack / PR #142
+    - landing/frontend/dashboard
+    - Supabase schema/data
+    - Stripe
+    - connectors
+    - Teams/email/calendar
+    - outreach
+    - scraping
+    - paid ads
+    - customer data
+    - enterprise/compliance claims
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -205,6 +243,6 @@ closeout_required_each_pr:
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock and tracker control post-#159 blocked state
-  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - reason existing authority map already classifies FOLDERA_NORTH_STAR_LOCK.md; tracker exists under docs/growth and does not change authority order
-  next_seam: blocked - reason no next growth/product seam is authorized until real first-10 ICP evidence exists in docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock and Product Operating System control current direction
+  docs/SOURCE_OF_TRUTH_MAP.md: updated
+  next_seam: named - Repo Intake Governor v0
