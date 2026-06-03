@@ -16,10 +16,11 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 159
-priority_class: FOLDERA_GROWTH_SCOUT
-work_type: SOURCE_TRUTH_GROWTH_EVIDENCE_TRACKER
-why_this_first: PR #158 merged the Foldera North Star Lock; issue #159 now authorizes the next controlled docs-only seam to create a manual first-10 ICP evidence tracker before any paid ads, automated outreach, scraping, broad launch, product implementation, or scale narrative; issue #140 / PR #142 is parked rail-only and externally blocked; issue #136 is ledger-only.
+active_issue: null
+priority_class: BLOCKED_NO_ACTION_SAFE
+work_type: SOURCE_TRUTH_CLOSEOUT_POST_159
+why_this_first: PR #161 merged issue #159 at 84c476316a31901378d9627462d4fab155e40105 and created docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md; issue #159 is closed/completed; no next growth/product seam is authorized until the tracker contains real first-10 ICP evidence; issue #140 / PR #142 is parked rail-only and externally blocked; issue #136 is ledger-only.
+next_seam: blocked - reason no next growth/product seam is authorized until real first-10 ICP evidence exists in docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -73,7 +74,7 @@ completed:
   - issue: 140
     pr: 142
     merge_sha: not_merged_external_blocker_accepted
-    result: PR #142 remains rail-only and parked externally blocked; deterministic proof passed, live Slack send reached the rail, and remaining real Slack button callback proof is externally blocked. Do not widen PR #142 into source-truth selection or product work.
+    result: PR #142 remains rail-only and parked externally blocked; deterministic proof passed, live Slack send reached the rail, and remaining real Slack button callback proof is externally blocked. Do not widen PR #142 into source-truth selection, growth work, or product work.
   - issue: 143
     pr: 145
     merge_sha: e93f8fa5fdcd2a4fb907370a71791484678cbadc
@@ -93,11 +94,15 @@ completed:
   - issue: 154
     pr: 155
     merge_sha: 816118c35f9a1d860c637bfd1532d7ba6f7e9c5e
-    result: Source-truth selection completed by selecting Foldera North Star Lock, then stopped BLOCKED because no controlling issue existed at the time; issue #156 now supplies that controlling issue.
+    result: Source-truth selection completed by selecting Foldera North Star Lock, then stopped BLOCKED because no controlling issue existed at the time; issue #156 supplied that controlling issue.
   - issue: 156
     pr: 158
     merge_sha: daf86948646dc26e1ef700d5370ac4916f52a1e3
-    result: Foldera North Star Lock landed on main; `FOLDERA_NORTH_STAR_LOCK.md` is CURRENT_CONTROL and the next controlled growth evidence seam is issue #159.
+    result: Foldera North Star Lock landed on main; `FOLDERA_NORTH_STAR_LOCK.md` is CURRENT_CONTROL.
+  - issue: 159
+    pr: 161
+    merge_sha: 84c476316a31901378d9627462d4fab155e40105
+    result: First 10 ICP Evidence Tracker landed on main; `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` exists; issue #159 is closed/completed; no next growth/product seam is authorized until real first-10 ICP evidence exists.
 closed_issues_do_not_reopen:
   - issue: 121
     status: closed_superseded
@@ -117,6 +122,9 @@ closed_issues_do_not_reopen:
   - issue: 151
     status: closed_completed
     reason: Source-backed Right Now selector completed by PR #153.
+  - issue: 159
+    status: closed_completed
+    reason: First 10 ICP Evidence Tracker completed by PR #161; do not reopen for product implementation.
 closed_pull_requests_do_not_reopen:
   - pr: 124
     status: closed_do_not_reopen
@@ -126,15 +134,22 @@ closed_pull_requests_do_not_reopen:
     reason: Closed/unmerged; do not reopen or reuse.
 forbidden_current_work:
   - product implementation
+  - scraping
+  - auto-DM
+  - outreach automation
+  - paid ads
+  - public claim expansion
   - selector changes
   - source-backed-state changes
   - PR #142 changes
   - PR #142 widening
+  - Slack rail work
   - Slack code patch
   - Slack app settings
   - Vercel settings
   - Supabase schema
   - Supabase data changes
+  - customer data mutation
   - dashboard files
   - auth rewrite
   - backend changes
@@ -148,12 +163,6 @@ forbidden_current_work:
   - paid model proof
   - landing implementation
   - broad cleanup
-  - reopening issue #121
-  - reopening issue #131
-  - reopening issue #99
-  - reopening issue #48
-  - reopening issue #147
-  - reopening issue #151
 required_local_proof:
   - npm run gate:command
   - npm run gate:continuity
@@ -165,25 +174,28 @@ required_issue_140_live_rail_proof:
   - if no POST reaches Vercel, classify BLOCKED as Slack app/workspace/token/config or Socket Mode callback delivery
   - do not patch Slack code until logs prove a code-owned failure
   - preserve Done/Stuck/Break smaller/Snooze loop from completed issue #131
-  - do not expand into connector platform, Teams/email/calendar, dashboard, auth/backend, Supabase schema, Stripe, or landing work
-required_issue_154_source_truth_selection:
-  - inspect repo and GitHub source truth only enough to select exactly one next seam
-  - preserve issue #140 / PR #142 as rail-only and externally blocked unless GitHub source truth explicitly reassigns it
-  - preserve issue #136 as the standing ledger only
-  - do not implement product code or the selected seam
-  - keep changes to ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and focused source-truth/continuity gate files only if gates require alignment
+  - do not expand into connector platform, Teams/email/calendar, dashboard, auth/backend, Supabase schema, Stripe, landing, growth automation, or product work
 required_issue_156_north_star_lock:
-  - create one controlling artifact, likely FOLDERA_NORTH_STAR_LOCK.md
-  - reconcile product promise, buyer/user, pricing/revenue model, public-site direction, app day-one/wireframe direction, runtime brain path, source-backed Right Now path, Slack/live rail boundary, signal intake/command rail, source-truth authority, issue order, gate requirements, PR traceability, pilot-ready definition, and the rule that Brandon must not remain the router
+  - `FOLDERA_NORTH_STAR_LOCK.md` remains CURRENT_CONTROL
   - preserve issue #140 / PR #142 as rail-only and externally blocked unless GitHub source truth explicitly reassigns it
   - preserve issue #136 as the standing ledger only
   - do not implement Slack / PR #142 work, landing/frontend/dashboard work, Supabase schema/data, Stripe/package changes, connector expansion, Teams/email/calendar expansion, or broad cleanup
 required_issue_159_growth_scout:
-  - create one docs-only manual First 10 ICP Evidence Tracker
+  - `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` exists
   - cite and obey FOLDERA_NORTH_STAR_LOCK.md
   - lock the growth ladder from no-growth mode through first 10 ICP users, first 3 real proof loops, first paid customer, repeatable channel, and scale narrative
   - require owner-approved manual replies only and separate observed evidence from interpretation
   - forbid paid ads, broad launch, automated outreach, scraping, auto-DM, marketing automation, fake beta proof, unsupported public claims, product implementation, Slack / PR #142 work, landing/frontend/dashboard work, Supabase schema/data, Stripe/package changes, connector expansion, Teams/email/calendar work, package files, and broad cleanup
+post_159_blocked_until_evidence:
+  state: BLOCKED_NO_ACTION_SAFE
+  active_seam_assigned: false
+  allowed_next_move: collect/manual-record real first-10 ICP evidence only in docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md
+  stop_if_no_evidence: true
+  allowed_next_issue_classes:
+    - first_3_non_owner_proof_loops
+    - pricing_or_paid_pilot_evidence
+    - one_manual_repeatable_channel
+  blocked_unless_tracker_contains_real_evidence: true
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -193,6 +205,6 @@ closeout_required_each_pr:
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock control issue #159
-  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - reason existing authority map already classifies FOLDERA_NORTH_STAR_LOCK.md and docs/SOURCE_OF_TRUTH_MAP.md; issue #159 tracker classification belongs to the implementation PR if needed
-  next_seam: named - issue #159 Foldera Growth Scout First 10 ICP Evidence Tracker
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock and tracker control post-#159 blocked state
+  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - reason existing authority map already classifies FOLDERA_NORTH_STAR_LOCK.md; tracker exists under docs/growth and does not change authority order
+  next_seam: blocked - reason no next growth/product seam is authorized until real first-10 ICP evidence exists in docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md

@@ -59,7 +59,7 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
-  it('passes when issue #159 is explicitly assigned as the Growth Scout seam', () => {
+  it('passes when no active seam is assigned after issue #159 and next seam is blocked until real evidence exists', () => {
     const fixtureRoot = createFixtureRoot();
 
     const failures = runContinuityGate(fixtureRoot);
@@ -67,22 +67,22 @@ describe('continuity gate writeback enforcement', () => {
     expect(failures).toEqual([]);
   });
 
-  it('fails when the active issue #159 seam is removed', () => {
+  it('fails when the post-#159 blocked next-seam reason is removed', () => {
     const fixtureRoot = createFixtureRoot();
     const handoffPath = path.join(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const original = fs.readFileSync(handoffPath, 'utf8');
     fs.writeFileSync(
       handoffPath,
       original.replace(
-        'Active implementation seam is issue #159: Foldera Growth Scout - First 10 ICP Evidence Tracker.',
-        'No active implementation seam is assigned.',
+        'Next seam: blocked - reason: no next growth/product seam is authorized until real first-10 ICP evidence exists in `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`.',
+        'Next seam: blocked - reason: missing.',
       ),
       'utf8',
     );
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md must name exactly one active seam line; found 0.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must agree on the post-#159 blocked-until-evidence state.');
   });
 
   it('fails when the mandatory writeback rule is removed from ACTIVE_HANDOFF.md', () => {
