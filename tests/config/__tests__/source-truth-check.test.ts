@@ -50,23 +50,28 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
-  it('passes when issue #163 is active and the Product Operating System names Repo Intake Governor v0 next', () => {
+  it('passes when issue #166 is active and Open Threads remains capture-only', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
     const contract = JSON.parse(readFixtureFile(fixtureRoot, '.foldera-contract.json')) as Record<string, unknown>;
+    const packageJson = JSON.parse(readFixtureFile(fixtureRoot, 'package.json')) as { scripts?: Record<string, string> };
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(handoff).toContain('Active implementation seam is issue #163');
-    expect(handoff).toContain('Manual first-10 evidence remains proof doctrine/reference');
-    expect(handoff).toContain('Next seam after this PR: Repo Intake Governor v0.');
-    expect(buildOrder).toContain('active_issue: 163');
-    expect(buildOrder).toContain('priority_class: PRODUCT_OPERATING_SYSTEM_ROADMAP_LOCK');
-    expect(buildOrder).toContain('next_seam: Repo Intake Governor v0');
+    expect(handoff).toContain('Active implementation seam is issue #166');
+    expect(handoff).toContain('Issue #163 / PR #164 completed the Product Operating System.');
+    expect(handoff).toContain('Open Threads issue #165 is the raw-input inbox, not implementation authority.');
+    expect(buildOrder).toContain('active_issue: 166');
+    expect(buildOrder).toContain('priority_class: REPO_INTAKE_GOVERNOR_COMMAND_OS');
+    expect(buildOrder).toContain("next_seam: Run Repo Intake Governor against Brandon's next messy Foldera input");
     expect(contract.active).toBe(true);
-    expect(contract.active_issue).toBe(163);
-    expect(contract.authority_status).toBe('ACTIVE_PRODUCT_OPERATING_SYSTEM_ROADMAP_LOCK');
+    expect(contract.active_issue).toBe(166);
+    expect(contract.authority_status).toBe('ACTIVE_REPO_INTAKE_GOVERNOR_COMMAND_OS');
+    expect(contract.allowed_file_patterns).toContain('lib/repo-intake-governor/**');
+    expect(contract.allowed_file_patterns).toContain('tests/fixtures/repo-intake-governor/**');
+    expect(packageJson.scripts?.['governor:intake']).toBe('npx tsx scripts/repo-intake-governor.ts');
+    expect(packageJson.scripts?.['gate:repo-intake-governor']).toContain('tests/repo-intake-governor');
     expect(failures).toEqual([]);
   });
 
@@ -89,17 +94,27 @@ describe('source truth command gate', () => {
     expect(failures).toContain('FOLDERA_PRODUCT_OPERATING_SYSTEM.md is missing required marker: Repo Intake Governor v0');
   });
 
-  it('fails when FOLDERA_BUILD_ORDER.yaml is still in the post-159 null active issue state', () => {
+  it('fails when ACTIVE_HANDOFF.md still points at completed issue #163', () => {
     const fixtureRoot = createFixtureRoot();
-    const original = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
-    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 163', 'active_issue: null'));
+    const original = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
+    writeFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md', original.replace('Active implementation seam is issue #166', 'Active implementation seam is issue #163'));
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 163; found none.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md must assign active issue #166; found 163.');
   });
 
-  it('fails when .foldera-contract.json is not active for issue #163', () => {
+  it('fails when FOLDERA_BUILD_ORDER.yaml is still in the issue #163 Product Operating System state', () => {
+    const fixtureRoot = createFixtureRoot();
+    const original = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
+    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 166', 'active_issue: 163'));
+
+    const failures = runSourceTruthCheck(fixtureRoot);
+
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 166; found 163.');
+  });
+
+  it('fails when .foldera-contract.json is not active for issue #166', () => {
     const fixtureRoot = createFixtureRoot();
     const contract = JSON.parse(readFixtureFile(fixtureRoot, '.foldera-contract.json')) as Record<string, unknown>;
     contract.active = false;
@@ -108,8 +123,44 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('.foldera-contract.json active_issue must be 163; found none.');
-    expect(failures).toContain('.foldera-contract.json active must be true for issue #163.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be 166; found none.');
+    expect(failures).toContain('.foldera-contract.json active must be true for issue #166.');
+  });
+
+  it('fails when Open Threads is treated as implementation authority', () => {
+    const fixtureRoot = createFixtureRoot();
+    const original = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
+    writeFixtureFile(
+      fixtureRoot,
+      'ACTIVE_HANDOFF.md',
+      original.replace('Open Threads issue #165 is the raw-input inbox, not implementation authority.', 'Open Threads issue #165 authorizes implementation.'),
+    );
+
+    const failures = runSourceTruthCheck(fixtureRoot);
+
+    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Open Threads issue #165 is the raw-input inbox, not implementation authority.');
+  });
+
+  it('fails when the Command OS implementation files are not authorized', () => {
+    const fixtureRoot = createFixtureRoot();
+    const contract = JSON.parse(readFixtureFile(fixtureRoot, '.foldera-contract.json')) as { allowed_file_patterns?: string[] };
+    contract.allowed_file_patterns = contract.allowed_file_patterns?.filter((entry) => entry !== 'lib/repo-intake-governor/**');
+    writeFixtureFile(fixtureRoot, '.foldera-contract.json', `${JSON.stringify(contract, null, 2)}\n`);
+
+    const failures = runSourceTruthCheck(fixtureRoot);
+
+    expect(failures).toContain('.foldera-contract.json allowed_file_patterns must include: lib/repo-intake-governor/**');
+  });
+
+  it('fails when the Repo Intake Governor gate script is missing', () => {
+    const fixtureRoot = createFixtureRoot();
+    const packageJson = JSON.parse(readFixtureFile(fixtureRoot, 'package.json')) as { scripts?: Record<string, string> };
+    if (packageJson.scripts) delete packageJson.scripts['gate:repo-intake-governor'];
+    writeFixtureFile(fixtureRoot, 'package.json', `${JSON.stringify(packageJson, null, 2)}\n`);
+
+    const failures = runSourceTruthCheck(fixtureRoot);
+
+    expect(failures).toContain('package.json must define scripts.gate:repo-intake-governor for Command OS proof.');
   });
 
   it('fails when the source-truth map stops classifying the Product Operating System as current control', () => {
