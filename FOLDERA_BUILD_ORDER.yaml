@@ -183,6 +183,8 @@ current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
   .foldera-contract.json: updated
+  FOLDERA_NORTH_STAR_LOCK.md: updated
+  .github/pull_request_template.md: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order control issue #156 Foldera North Star Lock
-  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - source-truth hierarchy does not change for this closeout PR
-  next_seam: issue #156 - Foldera North Star Lock
+  docs/SOURCE_OF_TRUTH_MAP.md: updated
+  next_seam: blocked - reason next issue after North Star Lock must be assigned by GitHub source truth before implementation

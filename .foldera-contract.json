@@ -3,13 +3,17 @@
   "active": true,
   "active_issue": 156,
   "backlog_id": "ISSUE_156_FOLDERA_NORTH_STAR_LOCK",
-  "base_commit": "816118c35f9a1d860c637bfd1532d7ba6f7e9c5e",
+  "base_commit": "3e73ee1b711b79abf3c3805934353fa6286320e8",
   "money_loop_rung": "foldera_north_star_lock",
   "user_system_path": "issue #156 Foldera North Star Lock; create one controlling artifact and enforcement path; preserve issue #140 / PR #142 as rail-only parked and issue #136 as ledger-only",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
+    "FOLDERA_NORTH_STAR_LOCK.md",
+    "docs/SOURCE_OF_TRUTH_MAP.md",
+    ".github/pull_request_template.md",
+    "scripts/continuity-gate.ts",
     "scripts/source-truth-check.ts",
     "tests/config/__tests__/source-truth-check.test.ts",
     "tests/config/__tests__/continuity-gate.test.ts"
@@ -45,7 +49,7 @@
     "paid model proof",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Issue #156 Foldera North Star Lock assignment: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and focused source-truth/continuity gate files only if needed for enforcement alignment.",
+  "allowed_files_raw": "Issue #156 Foldera North Star Lock: FOLDERA_NORTH_STAR_LOCK.md, docs/SOURCE_OF_TRUTH_MAP.md, .github/pull_request_template.md, .foldera-contract.json, and focused source-truth/continuity gate files only if needed for enforcement alignment.",
   "forbidden_files_raw": "No Slack / PR #142 work, landing/frontend/dashboard work, Supabase schema/data, Stripe/package changes, connector expansion, Teams/email/calendar expansion, package files, Dependabot, paid model proof, or broad cleanup.",
   "required_local_proof": [
     "npm run gate:command",
@@ -54,8 +58,8 @@
     "git diff --check"
   ],
   "required_browser_proof": "Not applicable; source-truth assignment only.",
-  "acceptance_condition": "Source truth records issue #154 as the completed/blocked selection seam and promotes issue #156 as the only active Foldera North Star Lock seam, while preserving issue #140 / PR #142 as parked rail-only and issue #136 as ledger-only.",
-  "stop_condition": "Stop when one issue #156 source-truth assignment PR is open with PR and issue #136 ledger receipts posted and no forbidden product implementation touched.",
+  "acceptance_condition": "FOLDERA_NORTH_STAR_LOCK.md exists as a CURRENT_CONTROL artifact, docs/SOURCE_OF_TRUTH_MAP.md classifies it, future PR traceability is explicit, source truth still promotes issue #156 as the active North Star Lock seam, issue order after this lock is named or blocked with reason, and issue #140 / PR #142 remains parked rail-only while issue #136 remains ledger-only.",
+  "stop_condition": "Stop when one issue #156 North Star Lock PR is open with PR and issue #136 ledger receipts posted and no forbidden product implementation touched.",
   "is_user_facing": false,
   "browser_proof_command": "not applicable - source-truth assignment only",
   "anti_regression_checks": [
@@ -65,7 +69,10 @@
     "Issue #140 / PR #142 remains live rail proof/blocker only and is not widened into source-truth selection or product work",
     "Issue #136 remains ledger-only",
     "Issues #121, #131, #99, #48, #147, and #151 are closed/superseded/completed and must not be reopened",
-    "Only source-truth control files and focused gate/test files are allowed"
+    "FOLDERA_NORTH_STAR_LOCK.md exists as CURRENT_CONTROL",
+    "docs/SOURCE_OF_TRUTH_MAP.md classifies FOLDERA_NORTH_STAR_LOCK.md",
+    ".github/pull_request_template.md requires North Star traceability when product/business/UX/runtime direction is implicated",
+    "Only source-truth control, PR template, and focused gate/test files are allowed"
   ],
   "next_command": "Run issue #156 Foldera North Star Lock only. Stop after one PR with receipts and no forbidden product implementation."
 }

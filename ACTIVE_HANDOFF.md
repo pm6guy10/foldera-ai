@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-06-02 PT
-Current `origin/main` SHA after PR #155 merge: `816118c35f9a1d860c637bfd1532d7ba6f7e9c5e`.
+Current `origin/main` SHA after PR #157 merge: `3e73ee1b711b79abf3c3805934353fa6286320e8`.
 
 ## Canonical Boot Sequence
 1. Read `ACTIVE_HANDOFF.md`.
@@ -69,4 +69,4 @@ Create one controlling artifact, likely `FOLDERA_NORTH_STAR_LOCK.md`, and enforc
 ## Next exact move
 Run issue #156 Foldera North Star Lock only.
 Next seam: issue #156 - Foldera North Star Lock.
-Stop after one PR assigns issue #156 as the active Foldera North Star Lock seam, posts PR and issue #136 ledger receipts, and touches no forbidden product implementation.
+Stop after one PR creates `FOLDERA_NORTH_STAR_LOCK.md` as the controlling artifact, makes future PR traceability explicit, classifies stale-doc authority, posts PR and issue #136 ledger receipts, names or blocks the next issue order, and touches no forbidden product implementation.

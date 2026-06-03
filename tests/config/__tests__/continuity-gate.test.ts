@@ -9,6 +9,7 @@ const requiredFixtureFiles = [
   'FOLDERA_BUILD_ORDER.yaml',
   'FOLDERA_LAUNCH_ROADMAP.md',
   'FOLDERA_OPERATING_SYSTEM.md',
+  'FOLDERA_NORTH_STAR_LOCK.md',
   'CODEX_START.md',
   'AGENTS.md',
   'CLAUDE.md',
@@ -114,6 +115,21 @@ describe('continuity gate writeback enforcement', () => {
     const failures = runContinuityGate(fixtureRoot);
 
     expect(failures).toContain('AGENTS.md is missing required Codex run ledger rule: ## MANDATORY CODEX RUN LEDGER CLOSEOUT');
+  });
+
+  it('fails when the PR template stops requiring North Star traceability', () => {
+    const fixtureRoot = createFixtureRoot();
+    const templatePath = path.join(fixtureRoot, '.github/pull_request_template.md');
+    const original = fs.readFileSync(templatePath, 'utf8');
+    fs.writeFileSync(
+      templatePath,
+      original.replace('North Star traceability for product/business/UX/runtime direction', 'Direction traceability'),
+      'utf8',
+    );
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(failures).toContain('.github/pull_request_template.md must require North Star traceability when direction is implicated.');
   });
 });
 

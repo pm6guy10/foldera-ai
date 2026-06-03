@@ -7,6 +7,9 @@ import { runSourceTruthCheck } from '@/scripts/source-truth-check';
 const requiredFixtureFiles = [
   'ACTIVE_HANDOFF.md',
   'FOLDERA_BUILD_ORDER.yaml',
+  'FOLDERA_NORTH_STAR_LOCK.md',
+  'docs/SOURCE_OF_TRUTH_MAP.md',
+  '.github/pull_request_template.md',
   '.foldera-contract.json',
   'AGENTS.md',
   '.github/workflows/pr-sentinel.yml',
@@ -57,6 +60,30 @@ describe('source truth command gate', () => {
     expect(buildOrder).toContain('work_type: SOURCE_TRUTH_NORTH_STAR_LOCK');
     expect(contract.active_issue).toBe(156);
     expect(failures).toEqual([]);
+  });
+
+  it('fails when the North Star Lock artifact is missing', () => {
+    const fixtureRoot = createFixtureRoot();
+    fs.rmSync(path.join(fixtureRoot, 'FOLDERA_NORTH_STAR_LOCK.md'));
+
+    const failures = runSourceTruthCheck(fixtureRoot);
+
+    expect(failures).toContain('Missing required file: FOLDERA_NORTH_STAR_LOCK.md');
+  });
+
+  it('fails when future PR traceability stops citing the North Star Lock', () => {
+    const fixtureRoot = createFixtureRoot();
+    const templatePath = path.join(fixtureRoot, '.github/pull_request_template.md');
+    const original = fs.readFileSync(templatePath, 'utf8');
+    writeFixtureFile(
+      fixtureRoot,
+      '.github/pull_request_template.md',
+      original.replace('- `FOLDERA_NORTH_STAR_LOCK.md`: cited / updated / unchanged - reason / not applicable - reason', ''),
+    );
+
+    const failures = runSourceTruthCheck(fixtureRoot);
+
+    expect(failures).toContain('.github/pull_request_template.md must include the North Star traceability row.');
   });
 
   it('fails when FOLDERA_BUILD_ORDER.yaml still commands issue #140', () => {

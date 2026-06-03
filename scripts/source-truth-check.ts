@@ -16,13 +16,16 @@ type FolderaContract = {
 };
 
 const ACTIVE_ISSUE = 156;
-const BASE_SHA = '816118c35f9a1d860c637bfd1532d7ba6f7e9c5e';
+const BASE_SHA = '3e73ee1b711b79abf3c3805934353fa6286320e8';
 
 const REQUIRED_PROOF_COMMANDS = ['npm run gate:command', 'npm run gate:continuity', 'npm run lint', 'git diff --check'];
 const REQUIRED_ALLOWED_FILES = [
   '.foldera-contract.json',
   'ACTIVE_HANDOFF.md',
   'FOLDERA_BUILD_ORDER.yaml',
+  'FOLDERA_NORTH_STAR_LOCK.md',
+  'docs/SOURCE_OF_TRUTH_MAP.md',
+  '.github/pull_request_template.md',
   'scripts/source-truth-check.ts',
   'tests/config/__tests__/source-truth-check.test.ts',
   'tests/config/__tests__/continuity-gate.test.ts',
@@ -145,6 +148,64 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   if (!contract.next_command?.includes('Run issue #156 Foldera North Star Lock only.')) failures.push('.foldera-contract.json next_command must command issue #156 Foldera North Star Lock only.');
   if (!readRepoFile(root, 'AGENTS.md').includes('## MANDATORY CODEX RUN LEDGER CLOSEOUT')) failures.push('AGENTS.md must contain MANDATORY CODEX RUN LEDGER CLOSEOUT.');
 
+  let northStar = '';
+  try {
+    northStar = readRepoFile(root, 'FOLDERA_NORTH_STAR_LOCK.md');
+  } catch (error) {
+    failures.push(error instanceof Error ? error.message : String(error));
+  }
+  for (const section of [
+    '## Authority status',
+    '## Executive verdict',
+    '## Product identity',
+    '## Explicit rejections',
+    '## First buyer/user',
+    '## Revenue/pricing lock',
+    '## Public-site lock',
+    '## Day-one app experience lock',
+    '## Holy-crap moment',
+    '## Runtime brain path',
+    '## Source-backed Right Now path',
+    '## Slack/live rail boundary',
+    '## Intake / command rail',
+    '## Source-truth authority order',
+    '## Stale-doc containment',
+    '## Issue order after this lock',
+    '## Required gates',
+    '## PR traceability requirement',
+    '## Pilot-ready definition',
+    '## Brandon cognitive-load / household-peace constraint',
+    '## Stop condition',
+  ]) {
+    if (!northStar.includes(section)) failures.push(`FOLDERA_NORTH_STAR_LOCK.md is missing required section: ${section}`);
+  }
+  for (const marker of [
+    '`CURRENT_CONTROL`',
+    'Issue #140 / PR #142 remains parked rail-only and externally blocked.',
+    'After issue #156, the next issue order is blocked until GitHub source truth names exactly one next seam.',
+    'Brandon must not be the router',
+    'Every future PR that changes or claims product, business, UX, public-site, runtime brain, Right Now, Slack/live rail, intake/command rail, source-truth authority, issue order, pricing, or pilot-readiness direction must cite `FOLDERA_NORTH_STAR_LOCK.md`.',
+  ]) {
+    if (!northStar.includes(marker)) failures.push(`FOLDERA_NORTH_STAR_LOCK.md is missing required marker: ${marker}`);
+  }
+
+  let sourceMap = '';
+  try {
+    sourceMap = readRepoFile(root, 'docs/SOURCE_OF_TRUTH_MAP.md');
+  } catch (error) {
+    failures.push(error instanceof Error ? error.message : String(error));
+  }
+  if (!sourceMap.includes('| `FOLDERA_NORTH_STAR_LOCK.md` | `CURRENT_CONTROL` |')) failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_NORTH_STAR_LOCK.md as CURRENT_CONTROL.');
+
+  let prTemplate = '';
+  try {
+    prTemplate = readRepoFile(root, '.github/pull_request_template.md');
+  } catch (error) {
+    failures.push(error instanceof Error ? error.message : String(error));
+  }
+  if (!prTemplate.includes('North Star traceability for product/business/UX/runtime direction')) failures.push('.github/pull_request_template.md must require North Star traceability for direction changes.');
+  if (!prTemplate.includes('- `FOLDERA_NORTH_STAR_LOCK.md`: cited / updated / unchanged - reason / not applicable - reason')) failures.push('.github/pull_request_template.md must include the North Star traceability row.');
+
   return failures;
 }
 
@@ -184,5 +245,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Issue #156 Foldera North Star Lock is active, issue #154 is completed/blocked selection truth, and PR #142 remains rail-only parked.');
+  console.log('Source truth check passed. Issue #156 Foldera North Star Lock is active, the North Star artifact is enforced, issue #154 is completed/blocked selection truth, and PR #142 remains rail-only parked.');
 }
