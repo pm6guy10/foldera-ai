@@ -19,11 +19,11 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 166
-priority_class: REPO_INTAKE_GOVERNOR_COMMAND_OS
-work_type: COMMAND_OS_IMPLEMENTATION
-why_this_first: PR #164 completed issue #163 Product Operating System and named Repo Intake Governor v0 as the next seam. Issue #166 now reduces Brandon as manual router by classifying owner inputs into exactly one GitHub target, no-action receipt, blocked receipt, reference-only receipt, or open-thread capture. Issue #165 is the Open Threads capture inbox only; issue #140 / PR #142 remains parked rail-only and externally blocked; issue #136 remains ledger-only.
-next_seam: Run Repo Intake Governor against Brandon's next messy Foldera input
+active_issue: 168
+priority_class: COMMAND_OS_AUTO_CAPTURE
+work_type: SOURCE_TRUTH_CLOSEOUT_AND_SWITCHBOARD_ASSIGNMENT
+why_this_first: PR #167 completed issue #166 Command OS v0, but source truth still left #166 active after merge. Issue #168 is now the narrow owner-burden seam: prove one-and-done ChatGPT-to-GitHub capture/retrieval behavior so Brandon does not create files, choose targets, run local commands, or remind agents.
+next_seam: Implement or operationalize issue #168 automatic ChatGPT-to-GitHub capture/retrieval behavior
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -45,6 +45,8 @@ predecessor_issues:
   - 154
   - 156
   - 159
+  - 163
+  - 166
 completed:
   - issue: 106
     pr: 107
@@ -109,7 +111,11 @@ completed:
   - issue: 163
     pr: 164
     merge_sha: ab0eb73f08c459af81e5bc5aa4680235410ad552
-    result: Product Operating System landed on main; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap/phase/backlog/business/enterprise path and names Repo Intake Governor v0 as the next seam.
+    result: Product Operating System landed on main; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap/phase/backlog/business/enterprise path and named Repo Intake Governor v0 as the next seam.
+  - issue: 166
+    pr: 167
+    merge_sha: a624b49f1f6e28f1c422624d001e072745f2e4bd
+    result: Repo Intake Governor / Command OS v0 landed on main; Open Threads #165 exists; deterministic repo-local intake routing, fixtures, and gates are installed. Issue #166 must not remain active after this closeout.
 closed_issues_do_not_reopen:
   - issue: 121
     status: closed_superseded
@@ -135,6 +141,9 @@ closed_issues_do_not_reopen:
   - issue: 163
     status: closed_completed
     reason: Product Operating System completed by PR #164; do not reopen for Command OS implementation.
+  - issue: 166
+    status: closed_completed
+    reason: Repo Intake Governor Command OS v0 completed by PR #167; do not reopen for Command OS v1 auto-capture implementation.
 closed_pull_requests_do_not_reopen:
   - pr: 124
     status: closed_do_not_reopen
@@ -178,114 +187,27 @@ allowed_current_work:
   - update FOLDERA_BUILD_ORDER.yaml
   - update .foldera-contract.json
   - update docs/SOURCE_OF_TRUTH_MAP.md
-  - update .github/pull_request_template.md only if needed for phase traceability
   - update scripts/source-truth-check.ts
-  - update scripts/continuity-gate.ts if needed
-  - create scripts/repo-intake-governor.ts
-  - create lib/repo-intake-governor/**
-  - create tests/repo-intake-governor/**
-  - create tests/fixtures/repo-intake-governor/**
-  - update tests/config/__tests__/**
-  - update package.json only for governor:intake and gate:repo-intake-governor scripts
+  - update tests/config/__tests__/source-truth-check.test.ts
+  - update tests/config/__tests__/continuity-gate.test.ts if needed
+  - preserve existing scripts/repo-intake-governor.ts
+  - preserve existing lib/repo-intake-governor/**
+  - preserve existing tests/repo-intake-governor/**
+  - preserve existing tests/fixtures/repo-intake-governor/**
 required_local_proof:
-  - npm run health
   - npm run gate:command
   - npm run gate:continuity
-  - npm run lint
-  - npm run build
   - git diff --check
-  - npm run gate:repo-intake-governor
   - npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose
-required_issue_140_live_rail_proof:
-  - PR #142 remains the rail PR and blocker evidence surface
-  - prove whether a real signed Slack button callback POST reaches /api/slack/interaction
-  - if no POST reaches Vercel, classify BLOCKED as Slack app/workspace/token/config or Socket Mode callback delivery
-  - do not patch Slack code until logs prove a code-owned failure
-  - preserve Done/Stuck/Break smaller/Snooze loop from completed issue #131
-  - do not expand into connector platform, Teams/email/calendar, dashboard, auth/backend, Supabase schema, Stripe, landing, growth automation, or product work
-required_issue_156_north_star_lock:
-  - `FOLDERA_NORTH_STAR_LOCK.md` remains CURRENT_CONTROL
-  - preserve issue #140 / PR #142 as rail-only and externally blocked unless GitHub source truth explicitly reassigns it
-  - preserve issue #136 as the standing ledger only
-  - do not implement Slack / PR #142 work, landing/frontend/dashboard work, Supabase schema/data, Stripe/package changes, connector expansion, Teams/email/calendar expansion, or broad cleanup
-required_issue_159_growth_scout:
-  - `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` exists
-  - cite and obey FOLDERA_NORTH_STAR_LOCK.md
-  - lock the growth ladder from no-growth mode through first 10 ICP users, first 3 real proof loops, first paid customer, repeatable channel, and scale narrative
-  - require owner-approved manual replies only and separate observed evidence from interpretation
-  - forbid paid ads, broad launch, automated outreach, scraping, auto-DM, marketing automation, fake beta proof, unsupported public claims, product implementation, Slack / PR #142 work, landing/frontend/dashboard work, Supabase schema/data, Stripe/package changes, connector expansion, Teams/email/calendar work, package files, and broad cleanup
-required_issue_163_product_operating_system:
-  - controlling_issue: 163
-  - artifact: FOLDERA_PRODUCT_OPERATING_SYSTEM.md
-  - preserve FOLDERA_NORTH_STAR_LOCK.md as product doctrine control
-  - preserve docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md as proof doctrine/reference
-  - reconcile post-#159 blocker so manual first-10 evidence is not the only executable next move
-  - define phase ladder from today to enterprise-ready
-  - define product backlog lanes
-  - define business roadmap
-  - define enterprise-ready definition without claiming enterprise readiness
-  - define owner-burden rule
-  - name exactly one next seam after this PR
-  - expected next seam Repo Intake Governor v0 unless stricter prerequisite is proven
-  - forbid product/runtime work, Slack / PR #142, landing/frontend/dashboard, Supabase, Stripe, package files, connectors, Teams/email/calendar, outreach, scraping, paid ads, customer data, broad cleanup, fake enterprise, fake compliance, deleting first-10 tracker, or starting Repo Intake Governor
-required_issue_166_repo_intake_governor:
-  - controlling_issue: 166
+required_issue_168_command_os_v1:
+  - controlling_issue: 168
   - open_threads_issue: 165
-  - product_operating_system_completed_issue: 163
-  - product_operating_system_completed_pr: 164
-  - command_os_v0_authorized: true
+  - completed_command_os_v0_issue: 166
+  - completed_command_os_v0_pr: 167
+  - comments_are_not_law: true
+  - issue_body_is_not_enough: true
+  - required_law: source-truth files plus gates/tests plus PR closeout
+  - one_and_done_requirement: Brandon says the thing once; GitHub receives a routed receipt; future ChatGPT/Codex retrieves it without Brandon repeating it
   - open_threads_authority: capture only; not implementation authority
-  - implementation_surface: deterministic repo-local intake governor only
-  - required_input_classes: VISION, AUDIT_FINDING, ACTIVE_SEAM_COMMAND, BLOCKER_REPORT, BUSINESS_PLAN_UPDATE, ARCHITECTURE_DOCTRINE, PRODUCT_PROOF, REPO_HYGIENE, LESSON_LEARNED, REFERENCE_ONLY
-  - routing_outcomes: open-thread capture, comment/update existing issue, create one new issue, update active seam, no-action receipt, blocked receipt, reference-only receipt
-  - output_contract: Classification, Bucket, Existing GitHub target, New issue needed YES/NO, Active seam impact YES/NO, Why, One next move, Forbidden work, Proof required, Stop condition
   - product_runtime_touched: forbidden
   - slack_pr_142_status: parked rail-only externally blocked
-  - issue_136_status: ledger-only
-  - package_json_allowed: governor:intake and gate:repo-intake-governor scripts only
-  - package_lock_allowed: no
-  - labels_projects_authority: never authority
-  - next_authorized_move_after_pr: Run Repo Intake Governor against Brandon's next messy Foldera input
-post_159_reconciliation:
-  state: RECONCILED_BY_PRODUCT_OPERATING_SYSTEM
-  active_seam_assigned: true
-  active_issue: 166
-  first_10_tracker_status: proof doctrine/reference only; placeholders are not evidence
-  manual_first_10_status: owner-rejected as primary operating path
-  current_next_move: issue #166 Repo Intake Governor Command OS v0 PR
-  next_seam_after_issue_163: Repo Intake Governor v0
-post_164_command_os_transition:
-  state: ACTIVE_REPO_INTAKE_GOVERNOR_COMMAND_OS
-  pr_164_merged: true
-  issue_163_closed_completed: true
-  open_threads_issue: 165
-  repo_intake_governor_issue: 166
-  active_issue: 166
-  command_os_v0_authorized: true
-  open_threads_capture_only: true
-  next_authorized_move: Run Repo Intake Governor against Brandon's next messy Foldera input
-  blocked_work_until_future_issue:
-    - product runtime work
-    - Slack / PR #142
-    - landing/frontend/dashboard
-    - Supabase schema/data
-    - Stripe
-    - connectors
-    - Teams/email/calendar
-    - outreach
-    - scraping
-    - paid ads
-    - customer data
-    - enterprise/compliance claims
-closeout_required_each_pr:
-  ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
-  FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
-  FOLDERA_LAUNCH_ROADMAP.md: updated / unchanged - reason / not applicable - reason
-  docs/SOURCE_OF_TRUTH_MAP.md: updated / unchanged - reason / not applicable - reason
-  next_seam: named / blocked - reason
-current_pr_closeout:
-  ACTIVE_HANDOFF.md: updated
-  FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock and Product Operating System control current direction
-  docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - Run Repo Intake Governor against Brandon's next messy Foldera input
