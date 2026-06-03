@@ -1,16 +1,16 @@
 {
-  "authority_status": "ACTIVE_NORTH_STAR_LOCK_ASSIGNED",
+  "authority_status": "ACTIVE_GROWTH_SCOUT_ASSIGNED",
   "active": true,
-  "active_issue": 156,
-  "backlog_id": "ISSUE_156_FOLDERA_NORTH_STAR_LOCK",
-  "base_commit": "3e73ee1b711b79abf3c3805934353fa6286320e8",
-  "money_loop_rung": "foldera_north_star_lock",
-  "user_system_path": "issue #156 Foldera North Star Lock; create one controlling artifact and enforcement path; preserve issue #140 / PR #142 as rail-only parked and issue #136 as ledger-only",
+  "active_issue": 159,
+  "backlog_id": "ISSUE_159_FOLDERA_GROWTH_SCOUT_FIRST_10_ICP",
+  "base_commit": "daf86948646dc26e1ef700d5370ac4916f52a1e3",
+  "money_loop_rung": "first_10_icp_evidence_tracker",
+  "user_system_path": "issue #159 Foldera Growth Scout; create one docs-only manual First 10 ICP Evidence Tracker; preserve issue #140 / PR #142 as rail-only parked and issue #136 as ledger-only",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "FOLDERA_NORTH_STAR_LOCK.md",
+    "docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md",
     "docs/SOURCE_OF_TRUTH_MAP.md",
     ".github/pull_request_template.md",
     "scripts/continuity-gate.ts",
@@ -49,8 +49,8 @@
     "paid model proof",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Issue #156 Foldera North Star Lock: FOLDERA_NORTH_STAR_LOCK.md, docs/SOURCE_OF_TRUTH_MAP.md, .github/pull_request_template.md, .foldera-contract.json, and focused source-truth/continuity gate files only if needed for enforcement alignment.",
-  "forbidden_files_raw": "No Slack / PR #142 work, landing/frontend/dashboard work, Supabase schema/data, Stripe/package changes, connector expansion, Teams/email/calendar expansion, package files, Dependabot, paid model proof, or broad cleanup.",
+  "allowed_files_raw": "Issue #159 Foldera Growth Scout: docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md or equivalent docs-only tracker, ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md only if classification is needed, .github/pull_request_template.md only if a proof row is missing, .foldera-contract.json, and focused source-truth/continuity gate files only if needed for enforcement alignment.",
+  "forbidden_files_raw": "No product code, scraping, auto-DM, outreach sending, marketing automation, Slack / PR #142 work, landing/frontend/dashboard work, Supabase schema/data, Stripe/package changes, connector expansion, Teams/email/calendar expansion, package files, Dependabot, paid model proof, or broad cleanup.",
   "required_local_proof": [
     "npm run gate:command",
     "npm run gate:continuity",
@@ -58,21 +58,22 @@
     "git diff --check"
   ],
   "required_browser_proof": "Not applicable; source-truth assignment only.",
-  "acceptance_condition": "FOLDERA_NORTH_STAR_LOCK.md exists as a CURRENT_CONTROL artifact, docs/SOURCE_OF_TRUTH_MAP.md classifies it, future PR traceability is explicit, source truth still promotes issue #156 as the active North Star Lock seam, issue order after this lock is named or blocked with reason, and issue #140 / PR #142 remains parked rail-only while issue #136 remains ledger-only.",
-  "stop_condition": "Stop when one issue #156 North Star Lock PR is open with PR and issue #136 ledger receipts posted and no forbidden product implementation touched.",
+  "acceptance_condition": "Source truth promotes issue #159 as the active docs-only Growth Scout seam, the future implementation creates one manual First 10 ICP Evidence Tracker before any paid ads, automated outreach, scraping, broad launch, product implementation, or scale narrative, and issue #140 / PR #142 remains parked rail-only while issue #136 remains ledger-only.",
+  "stop_condition": "Stop when one issue #159 Growth Scout PR is open with PR and issue #136 ledger receipts posted and no forbidden product implementation touched.",
   "is_user_facing": false,
   "browser_proof_command": "not applicable - source-truth assignment only",
   "anti_regression_checks": [
     "ACTIVE_HANDOFF.md marks issue #151 complete via PR #153 merge SHA be5d596c8033f9b273ceb025aa3c2c18333520f4",
-    "ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml active issue is #156",
+    "ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml active issue is #159",
     "Issue #154 is recorded as completed/blocked selection seam after selecting Foldera North Star Lock",
     "Issue #140 / PR #142 remains live rail proof/blocker only and is not widened into source-truth selection or product work",
     "Issue #136 remains ledger-only",
     "Issues #121, #131, #99, #48, #147, and #151 are closed/superseded/completed and must not be reopened",
     "FOLDERA_NORTH_STAR_LOCK.md exists as CURRENT_CONTROL",
     "docs/SOURCE_OF_TRUTH_MAP.md classifies FOLDERA_NORTH_STAR_LOCK.md",
+    "Issue #159 requires a docs-only manual First 10 ICP Evidence Tracker and forbids paid ads, scraping, automated outreach, product implementation, unsupported claims, and scale narrative",
     ".github/pull_request_template.md requires North Star traceability when product/business/UX/runtime direction is implicated",
     "Only source-truth control, PR template, and focused gate/test files are allowed"
   ],
-  "next_command": "Run issue #156 Foldera North Star Lock only. Stop after one PR with receipts and no forbidden product implementation."
+  "next_command": "Run issue #159 Foldera Growth Scout - First 10 ICP Evidence Tracker only. Stop after one PR with receipts and no forbidden product implementation."
 }

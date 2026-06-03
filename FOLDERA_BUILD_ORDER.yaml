@@ -16,10 +16,10 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 156
-priority_class: FOLDERA_NORTH_STAR_LOCK
-work_type: SOURCE_TRUTH_NORTH_STAR_LOCK
-why_this_first: Issue #154 selected Foldera North Star Lock and stopped BLOCKED until a controlling issue existed; issue #156 now authorizes the North Star Lock seam; issue #140 / PR #142 is parked rail-only and externally blocked; issue #136 is ledger-only.
+active_issue: 159
+priority_class: FOLDERA_GROWTH_SCOUT
+work_type: SOURCE_TRUTH_GROWTH_EVIDENCE_TRACKER
+why_this_first: PR #158 merged the Foldera North Star Lock; issue #159 now authorizes the next controlled docs-only seam to create a manual first-10 ICP evidence tracker before any paid ads, automated outreach, scraping, broad launch, product implementation, or scale narrative; issue #140 / PR #142 is parked rail-only and externally blocked; issue #136 is ledger-only.
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -40,6 +40,7 @@ predecessor_issues:
   - 151
   - 154
   - 156
+  - 159
 completed:
   - issue: 106
     pr: 107
@@ -93,6 +94,10 @@ completed:
     pr: 155
     merge_sha: 816118c35f9a1d860c637bfd1532d7ba6f7e9c5e
     result: Source-truth selection completed by selecting Foldera North Star Lock, then stopped BLOCKED because no controlling issue existed at the time; issue #156 now supplies that controlling issue.
+  - issue: 156
+    pr: 158
+    merge_sha: daf86948646dc26e1ef700d5370ac4916f52a1e3
+    result: Foldera North Star Lock landed on main; `FOLDERA_NORTH_STAR_LOCK.md` is CURRENT_CONTROL and the next controlled growth evidence seam is issue #159.
 closed_issues_do_not_reopen:
   - issue: 121
     status: closed_superseded
@@ -173,6 +178,12 @@ required_issue_156_north_star_lock:
   - preserve issue #140 / PR #142 as rail-only and externally blocked unless GitHub source truth explicitly reassigns it
   - preserve issue #136 as the standing ledger only
   - do not implement Slack / PR #142 work, landing/frontend/dashboard work, Supabase schema/data, Stripe/package changes, connector expansion, Teams/email/calendar expansion, or broad cleanup
+required_issue_159_growth_scout:
+  - create one docs-only manual First 10 ICP Evidence Tracker
+  - cite and obey FOLDERA_NORTH_STAR_LOCK.md
+  - lock the growth ladder from no-growth mode through first 10 ICP users, first 3 real proof loops, first paid customer, repeatable channel, and scale narrative
+  - require owner-approved manual replies only and separate observed evidence from interpretation
+  - forbid paid ads, broad launch, automated outreach, scraping, auto-DM, marketing automation, fake beta proof, unsupported public claims, product implementation, Slack / PR #142 work, landing/frontend/dashboard work, Supabase schema/data, Stripe/package changes, connector expansion, Teams/email/calendar work, package files, and broad cleanup
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -182,9 +193,6 @@ closeout_required_each_pr:
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
-  .foldera-contract.json: updated
-  FOLDERA_NORTH_STAR_LOCK.md: updated
-  .github/pull_request_template.md: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order control issue #156 Foldera North Star Lock
-  docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: blocked - reason next issue after North Star Lock must be assigned by GitHub source truth before implementation
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock control issue #159
+  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - reason existing authority map already classifies FOLDERA_NORTH_STAR_LOCK.md and docs/SOURCE_OF_TRUTH_MAP.md; issue #159 tracker classification belongs to the implementation PR if needed
+  next_seam: named - issue #159 Foldera Growth Scout First 10 ICP Evidence Tracker
