@@ -15,17 +15,12 @@ type FolderaContract = {
   next_command?: string;
 };
 
-const ACTIVE_ISSUE = 159;
-const BASE_SHA = 'daf86948646dc26e1ef700d5370ac4916f52a1e3';
-
 const REQUIRED_PROOF_COMMANDS = ['npm run gate:command', 'npm run gate:continuity', 'npm run lint', 'git diff --check'];
 const REQUIRED_ALLOWED_FILES = [
   '.foldera-contract.json',
   'ACTIVE_HANDOFF.md',
   'FOLDERA_BUILD_ORDER.yaml',
-  'docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md',
-  'docs/SOURCE_OF_TRUTH_MAP.md',
-  '.github/pull_request_template.md',
+  'scripts/continuity-gate.ts',
   'scripts/source-truth-check.ts',
   'tests/config/__tests__/source-truth-check.test.ts',
   'tests/config/__tests__/continuity-gate.test.ts',
@@ -48,7 +43,7 @@ const FORBIDDEN_PRODUCT_PATHS = [
   'package.json',
   'package-lock.json',
 ];
-const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147];
+const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 159];
 
 function readRepoFile(root: string, file: string): string {
   const path = join(root, file);
@@ -73,6 +68,10 @@ function extractYamlScalar(raw: string, key: string): string | null {
 function extractActiveHandoffIssue(raw: string): number | null {
   const match = raw.match(/^Active implementation seam is issue #(\d+).*$/m);
   return match ? Number(match[1]) : null;
+}
+
+function extractYamlNull(raw: string, key: string): boolean {
+  return new RegExp(`^${key}:\\s*null\\s*$`, 'm').test(raw);
 }
 
 function contractProofCommands(contract: FolderaContract): string[] {
@@ -109,37 +108,39 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   const failures: string[] = [];
   const handoffIssue = extractActiveHandoffIssue(handoff);
   const buildIssue = extractYamlNumber(buildOrder, 'active_issue');
+  const buildIssueIsNull = extractYamlNull(buildOrder, 'active_issue');
   const contractIssue = contract.active_issue ?? null;
 
-  if (handoffIssue !== ACTIVE_ISSUE) failures.push(`ACTIVE_HANDOFF.md must name active issue #${ACTIVE_ISSUE}; found ${handoffIssue ?? 'none'}.`);
-  if (buildIssue !== ACTIVE_ISSUE) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${ACTIVE_ISSUE}; found ${buildIssue ?? 'none'}.`);
-  if (contractIssue !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_ISSUE}; found ${contractIssue ?? 'none'}.`);
-  if (contract.backlog_id !== 'ISSUE_159_FOLDERA_GROWTH_SCOUT_FIRST_10_ICP') failures.push('.foldera-contract.json backlog_id must resolve to issue #159 Foldera Growth Scout.');
-  if (contract.authority_status !== 'ACTIVE_GROWTH_SCOUT_ASSIGNED') failures.push('.foldera-contract.json authority_status must be ACTIVE_GROWTH_SCOUT_ASSIGNED.');
-  if (contract.base_commit !== BASE_SHA) failures.push(`.foldera-contract.json base_commit must be ${BASE_SHA}.`);
+  if (handoffIssue !== null) failures.push(`ACTIVE_HANDOFF.md must assign no active issue after issue #159 completion; found ${handoffIssue}.`);
+  if (!buildIssueIsNull) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be null after issue #159 completion; found ${buildIssue ?? 'none'}.`);
+  if (contractIssue !== null) failures.push(`.foldera-contract.json active_issue must be null after issue #159 completion; found ${contractIssue}.`);
+  if (contract.active !== false) failures.push('.foldera-contract.json active must be false while next seam is blocked.');
+  if (contract.backlog_id !== 'POST_159_BLOCKED_UNTIL_FIRST_10_ICP_EVIDENCE') failures.push('.foldera-contract.json backlog_id must resolve to the post-#159 blocked-until-evidence state.');
+  if (contract.authority_status !== 'BLOCKED_NO_ACTION_SAFE_FIRST_10_EVIDENCE') failures.push('.foldera-contract.json authority_status must be BLOCKED_NO_ACTION_SAFE_FIRST_10_EVIDENCE.');
+  if (contract.base_commit !== '84c476316a31901378d9627462d4fab155e40105') failures.push('.foldera-contract.json base_commit must be PR #161 merge SHA 84c476316a31901378d9627462d4fab155e40105.');
 
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
-  if (priority !== 'FOLDERA_GROWTH_SCOUT') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be FOLDERA_GROWTH_SCOUT; found ${priority ?? 'none'}.`);
-  if (workType !== 'SOURCE_TRUTH_GROWTH_EVIDENCE_TRACKER') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_GROWTH_EVIDENCE_TRACKER; found ${workType ?? 'none'}.`);
+  if (priority !== 'BLOCKED_NO_ACTION_SAFE') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be BLOCKED_NO_ACTION_SAFE; found ${priority ?? 'none'}.`);
+  if (workType !== 'SOURCE_TRUTH_CLOSEOUT_POST_159') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_CLOSEOUT_POST_159; found ${workType ?? 'none'}.`);
 
   if (!handoff.includes('Issue #136 remains open as the standing Codex Run Ledger only.')) failures.push('ACTIVE_HANDOFF.md must preserve #136 as ledger-only.');
   if (!handoff.includes('Issue #140 / PR #142 remains rail-only and parked externally blocked')) failures.push('ACTIVE_HANDOFF.md must park issue #140 / PR #142 as rail-only and externally blocked.');
-  if (!handoff.includes('Issue #151 is complete: PR #153 landed the source-backed Right Now selector on `main` at merge commit `be5d596c8033f9b273ceb025aa3c2c18333520f4`')) failures.push('ACTIVE_HANDOFF.md must record issue #151 complete via PR #153 merge SHA.');
-  if (!handoff.includes('Issue #154 is complete/blocked as a selection seam')) failures.push('ACTIVE_HANDOFF.md must record issue #154 as completed/blocked selection seam.');
-  if (!handoff.includes('Issue #156 is complete: PR #158 created `FOLDERA_NORTH_STAR_LOCK.md` as CURRENT_CONTROL')) failures.push('ACTIVE_HANDOFF.md must record issue #156 complete via PR #158.');
-  if (!handoff.includes('Next seam: issue #159 - docs-only manual ICP evidence tracker')) failures.push('ACTIVE_HANDOFF.md must promote issue #159 as the next seam.');
-  if (!handoff.includes('do not patch Slack code until logs prove a code-owned failure')) failures.push('ACTIVE_HANDOFF.md must forbid Slack code patches until a code-owned failure is proven.');
+  if (!handoff.includes('Issue #159 is complete: PR #161 created `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`')) failures.push('ACTIVE_HANDOFF.md must record issue #159 complete via PR #161.');
+  if (!handoff.includes('No active implementation seam is assigned.')) failures.push('ACTIVE_HANDOFF.md must explicitly assign no active implementation seam.');
+  if (!handoff.includes('Next seam: blocked - reason: no next growth/product seam is authorized until real first-10 ICP evidence exists in `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`.')) failures.push('ACTIVE_HANDOFF.md must block the next seam until real first-10 ICP evidence exists.');
   if (!handoff.includes('Foldera North Star Lock')) failures.push('ACTIVE_HANDOFF.md must name Foldera North Star Lock.');
-  if (!handoff.includes('without scraping, outreach automation, paid ads, broad launch, product implementation, or scale narrative')) failures.push('ACTIVE_HANDOFF.md must lock the issue #159 no-growth boundary.');
+  if (!handoff.includes('Forbidden until a future GitHub issue is justified by real tracker evidence: product implementation, scraping, auto-DM, outreach automation, paid ads, public claim expansion, connector expansion, Slack / PR #142 work, landing/frontend/dashboard work, Supabase, Stripe, Teams/email/calendar, package files, customer data mutation, and broad cleanup.')) failures.push('ACTIVE_HANDOFF.md must preserve the post-#159 forbidden-work boundary.');
 
   if (!buildOrder.includes('issue #136 remains open only as the standing ledger')) failures.push('FOLDERA_BUILD_ORDER.yaml must preserve #136 as ledger-only.');
   if (!buildOrder.includes('PR #142 remains rail-only and parked externally blocked')) failures.push('FOLDERA_BUILD_ORDER.yaml must preserve PR #142 as parked rail-only.');
-  if (!buildOrder.includes('Do not widen PR #142 into source-truth selection or product work')) failures.push('FOLDERA_BUILD_ORDER.yaml must forbid PR #142 widening into source-truth selection or product work.');
-  if (!buildOrder.includes('do not patch Slack code until logs prove a code-owned failure')) failures.push('FOLDERA_BUILD_ORDER.yaml must forbid Slack code patches until a code-owned failure is proven.');
+  if (!buildOrder.includes('Do not widen PR #142 into source-truth selection, growth work, or product work')) failures.push('FOLDERA_BUILD_ORDER.yaml must forbid PR #142 widening into source-truth selection, growth, or product work.');
   if (!buildOrder.includes('issue: 151') || !buildOrder.includes('merge_sha: be5d596c8033f9b273ceb025aa3c2c18333520f4')) failures.push('FOLDERA_BUILD_ORDER.yaml must record issue #151 / PR #153 completed with merge SHA.');
   if (!buildOrder.includes('issue: 154') || !buildOrder.includes('stopped BLOCKED because no controlling issue existed')) failures.push('FOLDERA_BUILD_ORDER.yaml must record issue #154 as completed/blocked selector.');
   if (!buildOrder.includes('issue: 156') || !buildOrder.includes('merge_sha: daf86948646dc26e1ef700d5370ac4916f52a1e3')) failures.push('FOLDERA_BUILD_ORDER.yaml must record issue #156 / PR #158 completed with merge SHA.');
+  if (!buildOrder.includes('issue: 159') || !buildOrder.includes('merge_sha: 84c476316a31901378d9627462d4fab155e40105')) failures.push('FOLDERA_BUILD_ORDER.yaml must record issue #159 / PR #161 completed with merge SHA.');
+  if (!buildOrder.includes('next_seam: blocked - reason no next growth/product seam is authorized until real first-10 ICP evidence exists in docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md')) failures.push('FOLDERA_BUILD_ORDER.yaml must block the next seam until real first-10 ICP evidence exists.');
+  if (!buildOrder.includes('post_159_blocked_until_evidence')) failures.push('FOLDERA_BUILD_ORDER.yaml must define the post-#159 blocked-until-evidence contract.');
   if (!buildOrder.includes('required_issue_156_north_star_lock')) failures.push('FOLDERA_BUILD_ORDER.yaml must retain the issue #156 North Star Lock contract.');
   if (!buildOrder.includes('required_issue_159_growth_scout')) failures.push('FOLDERA_BUILD_ORDER.yaml must define the issue #159 Growth Scout contract.');
   if (!buildOrder.includes('forbid paid ads, broad launch, automated outreach, scraping, auto-DM, marketing automation')) failures.push('FOLDERA_BUILD_ORDER.yaml must lock the issue #159 no-growth boundary.');
@@ -149,8 +150,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   requireArrayIncludes(failures, '.foldera-contract.json forbidden_file_patterns', contract.forbidden_file_patterns, FORBIDDEN_PRODUCT_PATHS);
   requireArrayIncludes(failures, '.foldera-contract.json required_local_proof', contractProofCommands(contract), REQUIRED_PROOF_COMMANDS);
 
-  if (!contract.acceptance_condition?.includes('promotes issue #159')) failures.push('.foldera-contract.json acceptance_condition must promote issue #159.');
-  if (!contract.next_command?.includes('Run issue #159 Foldera Growth Scout')) failures.push('.foldera-contract.json next_command must command issue #159 Growth Scout only.');
+  if (!contract.acceptance_condition?.includes('issue #159 complete via PR #161')) failures.push('.foldera-contract.json acceptance_condition must record issue #159 complete via PR #161.');
+  if (!contract.next_command?.includes('Collect/manual-record real first-10 ICP evidence only')) failures.push('.foldera-contract.json next_command must command manual evidence collection only.');
   if (!readRepoFile(root, 'AGENTS.md').includes('## MANDATORY CODEX RUN LEDGER CLOSEOUT')) failures.push('AGENTS.md must contain MANDATORY CODEX RUN LEDGER CLOSEOUT.');
 
   let northStar = '';
@@ -202,6 +203,15 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   }
   if (!sourceMap.includes('| `FOLDERA_NORTH_STAR_LOCK.md` | `CURRENT_CONTROL` |')) failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_NORTH_STAR_LOCK.md as CURRENT_CONTROL.');
 
+  let tracker = '';
+  try {
+    tracker = readRepoFile(root, 'docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md');
+  } catch (error) {
+    failures.push(error instanceof Error ? error.message : String(error));
+  }
+  if (!tracker.includes('# First 10 ICP Evidence Tracker')) failures.push('docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md must exist as the completed issue #159 tracker.');
+  if (!tracker.includes('This tracker cites and obeys `FOLDERA_NORTH_STAR_LOCK.md`.')) failures.push('docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md must cite the North Star Lock.');
+
   let prTemplate = '';
   try {
     prTemplate = readRepoFile(root, '.github/pull_request_template.md');
@@ -250,5 +260,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Issue #159 Foldera Growth Scout is active, the North Star artifact remains enforced, issue #156 is complete, and PR #142 remains rail-only parked.');
+  console.log('Source truth check passed. Issue #159 is complete via PR #161, no active seam is assigned, next seam is blocked until real first-10 ICP evidence exists, the North Star artifact remains enforced, and PR #142 remains rail-only parked.');
 }

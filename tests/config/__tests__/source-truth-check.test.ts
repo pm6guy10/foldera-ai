@@ -9,6 +9,7 @@ const requiredFixtureFiles = [
   'FOLDERA_BUILD_ORDER.yaml',
   'FOLDERA_NORTH_STAR_LOCK.md',
   'docs/SOURCE_OF_TRUTH_MAP.md',
+  'docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md',
   '.github/pull_request_template.md',
   '.foldera-contract.json',
   'AGENTS.md',
@@ -44,7 +45,7 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
-  it('passes only when issue #159 Growth Scout is active and PR #142 remains parked', () => {
+  it('passes when issue #159 is complete and next seam is blocked until real first-10 evidence exists', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = fs.readFileSync(path.join(fixtureRoot, 'ACTIVE_HANDOFF.md'), 'utf8');
     const buildOrder = fs.readFileSync(path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml'), 'utf8');
@@ -52,15 +53,18 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(handoff).toContain('Active implementation seam is issue #159');
-    expect(handoff).toContain('Issue #156 is complete: PR #158 created `FOLDERA_NORTH_STAR_LOCK.md` as CURRENT_CONTROL');
-    expect(handoff).toContain('Issue #154 is complete/blocked as a selection seam');
-    expect(handoff).toContain('Issue #151 is complete: PR #153 landed the source-backed Right Now selector');
+    expect(handoff).toContain('No active implementation seam is assigned.');
+    expect(handoff).toContain('Issue #159 is complete: PR #161 created `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`');
+    expect(handoff).toContain('Next seam: blocked - reason: no next growth/product seam is authorized until real first-10 ICP evidence exists in `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`.');
+    expect(handoff).toContain('Issue #156 Foldera North Star Lock is complete on `main` via PR #158');
+    expect(handoff).toContain('`FOLDERA_NORTH_STAR_LOCK.md` remains CURRENT_CONTROL');
     expect(handoff).toContain('Issue #140 / PR #142 remains rail-only and parked externally blocked');
-    expect(buildOrder).toContain('active_issue: 159');
-    expect(buildOrder).toContain('work_type: SOURCE_TRUTH_GROWTH_EVIDENCE_TRACKER');
+    expect(buildOrder).toContain('active_issue: null');
+    expect(buildOrder).toContain('priority_class: BLOCKED_NO_ACTION_SAFE');
+    expect(buildOrder).toContain('work_type: SOURCE_TRUTH_CLOSEOUT_POST_159');
     expect(buildOrder).toContain('required_issue_159_growth_scout');
-    expect(contract.active_issue).toBe(159);
+    expect(contract.active_issue).toBeNull();
+    expect(contract.authority_status).toBe('BLOCKED_NO_ACTION_SAFE_FIRST_10_EVIDENCE');
     expect(failures).toEqual([]);
   });
 
@@ -88,29 +92,30 @@ describe('source truth command gate', () => {
     expect(failures).toContain('.github/pull_request_template.md must include the North Star traceability row.');
   });
 
-  it('fails when FOLDERA_BUILD_ORDER.yaml still commands issue #140', () => {
+  it('fails when FOLDERA_BUILD_ORDER.yaml still commands an active issue', () => {
     const fixtureRoot = createFixtureRoot();
     const buildOrderPath = path.join(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
     const original = fs.readFileSync(buildOrderPath, 'utf8');
-    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 159', 'active_issue: 140'));
+    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: null', 'active_issue: 159'));
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 159; found 140.');
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be null after issue #159 completion; found 159.');
   });
 
-  it('fails when .foldera-contract.json still resolves to issue #140', () => {
+  it('fails when .foldera-contract.json still resolves to active issue #159', () => {
     const fixtureRoot = createFixtureRoot();
     const contractPath = path.join(fixtureRoot, '.foldera-contract.json');
     const contract = JSON.parse(fs.readFileSync(contractPath, 'utf8')) as Record<string, unknown>;
-    contract.active_issue = 140;
-    contract.backlog_id = 'ISSUE_140_REAL_SLACK_SELF_LOOP_LIVE_RAIL_PROOF';
+    contract.active = true;
+    contract.active_issue = 159;
+    contract.backlog_id = 'ISSUE_159_FOLDERA_GROWTH_SCOUT_FIRST_10_ICP';
     writeFixtureFile(fixtureRoot, '.foldera-contract.json', `${JSON.stringify(contract, null, 2)}\n`);
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('.foldera-contract.json active_issue must be 159; found 140.');
-    expect(failures).toContain('.foldera-contract.json backlog_id must resolve to issue #159 Foldera Growth Scout.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be null after issue #159 completion; found 159.');
+    expect(failures).toContain('.foldera-contract.json active must be false while next seam is blocked.');
   });
 
   it('fails when the issue #151 completion merge SHA is removed', () => {

@@ -209,9 +209,20 @@ export function runContinuityGate(root: string): string[] {
   const handoffIssue = extractActiveHandoffIssue(activeHandoff);
   const buildOrderIssue = extractYamlNumber(buildOrder, 'active_issue');
   const buildOrderIssueScalar = extractYamlScalar(buildOrder, 'active_issue');
-  const nextSeamBlocked = /Next seam:\s*blocked - reason:\s*no next seam assigned after PR #145 merge/i.test(activeHandoff)
+  const oldPost145Blocked = /Next seam:\s*blocked - reason:\s*no next seam assigned after PR #145 merge/i.test(activeHandoff)
     && /next_seam:\s*blocked - reason no next seam assigned after PR #145 merge/i.test(buildOrder)
     && buildOrderIssueScalar === 'null';
+  const post159BlockedUntilEvidence = activeHandoff.includes('No active implementation seam is assigned.')
+    && activeHandoff.includes('Issue #159 is complete: PR #161 created `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`')
+    && activeHandoff.includes('Next seam: blocked - reason: no next growth/product seam is authorized until real first-10 ICP evidence exists in `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`.')
+    && buildOrder.includes('priority_class: BLOCKED_NO_ACTION_SAFE')
+    && buildOrder.includes('work_type: SOURCE_TRUTH_CLOSEOUT_POST_159')
+    && buildOrder.includes('next_seam: blocked - reason no next growth/product seam is authorized until real first-10 ICP evidence exists in docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md')
+    && buildOrderIssueScalar === 'null';
+  const nextSeamBlocked = oldPost145Blocked || post159BlockedUntilEvidence;
+  if (buildOrderIssueScalar === 'null' && !nextSeamBlocked) {
+    failures.push('ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must agree on the post-#159 blocked-until-evidence state.');
+  }
   if (nextSeamBlocked) {
     if (activeSeamLines.length !== 0) failures.push(`ACTIVE_HANDOFF.md must name zero active seam lines when next seam is blocked; found ${activeSeamLines.length}.`);
   } else {
