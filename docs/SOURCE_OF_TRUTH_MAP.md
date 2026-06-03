@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-02 PT
+Last updated: 2026-06-03 PT
 
 Issue #80 owns this authority ledger. Issue #113 extends enforcement for source-truth closeout and agent governance drift.
 
@@ -16,7 +16,8 @@ Current product-direction split:
 
 - `FOLDERA_NORTH_STAR_LOCK.md` controls product doctrine.
 - `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap, phase order, backlog lanes, business roadmap, enterprise path, owner-burden rule, and next-seam recommendation.
-- GitHub issue #166 `Repo Intake Governor v0 - classify owner input into repo truth` controls the active Command OS v0 implementation seam.
+- GitHub issue #168 `Command OS v1 - automatic Open Threads capture from ChatGPT` controls the active Command OS v1 source-truth / assistant-switchboard seam.
+- GitHub issue #166 `Repo Intake Governor v0 - classify owner input into repo truth` is complete via PR #167 and now supplies the deterministic repo-local intake proof rail.
 - GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` is the raw-input inbox. Open Threads captures raw thoughts; it does not authorize implementation.
 - `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` remains proof doctrine/reference; placeholder rows are not evidence.
 - `FOLDERA_LAUNCH_ROADMAP.md` is historical/reference unless a future GitHub issue explicitly reconciles it.
@@ -26,7 +27,7 @@ Current product-direction split:
 For any Foldera task, use this order:
 
 1. Read `ACTIVE_HANDOFF.md`.
-2. Read `FOLDERA_LAUNCH_ROADMAP.md`.
+2. Read `FOLDERA_BUILD_ORDER.yaml`.
 3. Read the active issue named by `ACTIVE_HANDOFF.md`.
 4. Read issue #48 for product doctrine.
 5. Read relevant execution/proof docs only for the active seam.
@@ -54,6 +55,7 @@ When sources disagree, use this order:
 4. Gate, CI, and browser or runtime proof beat prose claims.
 5. Stale, archived, or reference-only files cannot control implementation even if they contain detailed instructions.
 6. If a rule is not enforced by a gate, CI check, required file, or test, treat it as guidance until enforcement exists.
+7. Comments, labels, GitHub Projects, and Open Threads capture are not law unless source-truth files and gates make them enforceable.
 
 ## Authority Ledger
 
@@ -67,8 +69,9 @@ When sources disagree, use this order:
 | `FOLDERA_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` | Defines Foldera's canonical product worldview. | Humans and agents checking what Foldera is and is not. | Repo execution order by itself, or stale issue selection. | `npm run gate:continuity` verifies boot-sequence alignment; issue #48 remains the doctrine anchor. |
 | `FOLDERA_NORTH_STAR_LOCK.md` | `CURRENT_CONTROL` | Reconciles product promise, buyer, pricing, public site, day-one app, runtime brain, Right Now, live rail boundary, issue order, gates, PR traceability, pilot readiness, and Brandon cognitive-load constraints. | Product/business/UX/runtime reviewers, PR authors, and agents when direction is implicated. | A second active issue, product implementation by itself, or permission to widen Slack/live rail, landing, Supabase, Stripe, package, connector, Teams/email/calendar, or dashboard work. | `npm run gate:command` verifies the file exists and required traceability/control language is present; `npm run gate:continuity` verifies the PR template requires North Star citation when direction is implicated. |
 | `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` | Converts the North Star into roadmap phases, backlog lanes, proof gates, business roadmap, enterprise-readiness path, owner-burden rule, and next-seam recommendation. | Agents, reviewers, and maintainers deciding phase order, allowed next seams, business/enterprise claims, and whether a PR advances the correct rung. | Product doctrine replacement, active seam selection outside GitHub issue truth, product/runtime implementation by itself, or permission to claim enterprise, pilot, or customer proof without the named gate. | `npm run gate:command` verifies the file exists and required phase/backlog/business/enterprise/owner-burden markers are present; PR receipts must cite/update/close it out when direction is implicated. |
-| GitHub issue #166 `Repo Intake Governor v0 - classify owner input into repo truth` | `CURRENT_CONTROL` | Defines the active Command OS v0 implementation seam for deterministic owner-input classification and routing. | The current assignee, reviewer, PR author, and source-truth gates for issue #166. | Product/runtime work, Slack / PR #142 work, connector expansion, or any second active seam. | `npm run gate:command`, focused Repo Intake Governor tests, PR changed-file review, and GitHub receipts. |
-| GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` | `CURRENT_CONTROL` | Provides a durable raw-input inbox for Brandon's raw Foldera thoughts before they become source truth. | Owners and agents capturing unclassified thoughts that must later be routed by Repo Intake Governor. | Implementation authority, active seam selection, duplicate issue creation by itself, labels/projects as authority, or product scope expansion. | Repo Intake Governor fixtures must prove Open Threads is capture-only and never implementation authority. |
+| GitHub issue #168 `Command OS v1 - automatic Open Threads capture from ChatGPT` | `CURRENT_CONTROL` | Defines the active source-truth / assistant-switchboard seam for one-and-done ChatGPT-to-GitHub capture and retrieval. | The current assignee, reviewer, PR author, and source-truth gates for issue #168. | Product/runtime work, Slack / PR #142 work, connector expansion, comments-only proof, Open Threads as authority, or any second active seam. | `npm run gate:command`, source-truth closeout tests, PR changed-file review, and GitHub receipts. |
+| GitHub issue #166 `Repo Intake Governor v0 - classify owner input into repo truth` | `PROOF_GATE` | Completed Command OS v0 proof rail for deterministic owner-input classification and routing. | Operators verifying the installed governor behavior or future Command OS v1 capture/retrieval work. | Active seam selection, product/runtime work, or implementation authority after PR #167 closeout. | `npm run gate:repo-intake-governor`, focused fixtures, and completed PR #167 receipts. |
+| GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` | `CURRENT_CONTROL` | Provides a durable raw-input inbox for Brandon's raw Foldera thoughts before they become source truth. | Owners and agents capturing unclassified thoughts that must later be routed by Repo Intake Governor. | Implementation authority, active seam selection, duplicate issue creation by itself, labels/projects/comments as authority, or product scope expansion. | Repo Intake Governor fixtures and issue #168 gates must prove Open Threads is capture-only and never implementation authority. |
 | `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` | `PROOF_GATE` | Preserves first-10 ICP proof doctrine and customer-evidence taxonomy. | Future customer-proof, pricing, channel, public-claim, and non-owner proof issues when evidence exists. | Active work selection by itself, fake customer evidence, placeholder rows as proof, outreach automation, scraping, paid ads, or product implementation. | Required file and issue #159 scope; source-truth gates check it remains present and subordinate; PR changed-file review blocks treating placeholders as proof. |
 | `docs/SOURCE_OF_TRUTH_MAP.md` | `CURRENT_CONTROL` | Explains repo authority, stale-doc classes, review rules, and proof requirements. | Reviewers, agents, and maintainers validating repo hygiene. | Product doctrine, feature scope expansion, or runtime behavior claims. | This file is required by `npm run gate:continuity`. |
 | `CODEX_START.md` | `EXECUTION_CONTRACT` | Defines Codex startup order, gate-first behavior, PR workflow, and live-truth requirements. | Codex operators and agent sessions. | Product doctrine overrides or competing active seam selection. | `npm run gate:continuity` checks canonical boot sequence and agent-governance rules. |
@@ -92,7 +95,7 @@ When sources disagree, use this order:
 | `FOLDERA_MASTER_AUDIT.md` | `REFERENCE_ONLY` | Retains audit evidence and earlier findings. | Humans tracing prior evidence. | Current execution or scope selection. | Top authority marker checked by `npm run gate:continuity`. |
 | `FOLDERA_SHIP_SPEC.md` | `HISTORICAL_ARCHIVE` | Stores historical launch/spec framing. | Archaeology only. | Present-day launch direction, product doctrine, or implementation scope. | Top authority marker checked by `npm run gate:continuity`. |
 | `WHATS_NEXT.md` | `HISTORICAL_ARCHIVE` | Preserves an older status log. | Archaeology only. | Current next move, active seam, or handoff logic. | Top authority marker checked by `npm run gate:continuity`. |
-| `.foldera-contract.json` | `STALE_REMOVE_OR_ARCHIVE` | Preserves a stale generated contract until a current controller regenerates it safely. | Reference-only debugging for old issue history. | Any current issue scope, file allowlist, proof requirement, or stop condition. | `npm run gate:continuity` fails if the old issue #62 contract is still treated as active. |
+| `.foldera-contract.json` | `CURRENT_CONTROL` | Defines the current active issue, allowed file surface, forbidden work, required proof, and stop condition. | Agents, reviewers, and gates validating the current work envelope. | Product doctrine or feature scope outside the named issue. | `npm run gate:command` checks its active issue, authority status, allowlist, forbidden list, and proof commands. |
 
 ## Reviewer Checklist
 
@@ -106,6 +109,7 @@ Before approving an issue PR, answer all of these:
 6. Does the PR receipt state what did not change and what remains blocked?
 7. Does the PR receipt close out every required source-truth file as `updated`, `unchanged - reason`, or `not applicable - reason`?
 8. If a stale file remains in place, is it clearly classified so it cannot masquerade as current control?
+9. Does this PR prove comments/Open Threads/labels/projects are not law unless enforced by source-truth files and gates?
 
 ## Forbidden Broad Work
 
@@ -123,9 +127,10 @@ This authority ledger does not authorize:
 
 For source-truth / authority-ledger work, the required proof commands are:
 
+- `npm run gate:command`
 - `npm run gate:continuity`
-- `npm run lint`
-- `npm run build`
+- `git diff --check`
+- focused source-truth/continuity tests if gates changed
 
 Passing prose is not proof. The PR receipt must report the changed-file list, command results, source-truth closeout, and an explicit statement that no product behavior changed.
 
@@ -145,7 +150,7 @@ Passing prose is not proof. The PR receipt must report the changed-file list, co
 - `ACTIVE_HANDOFF.md` still references `FOLDERA_LAUNCH_ROADMAP.md` and issue #48
 - stale active-looking docs keep their top authority markers
 - `.foldera-contract.json` cannot keep the old issue #62 contract active
-- `README.md` cannot regress to default Next.js boilerplate
+- README.md cannot regress to default Next.js boilerplate
 - PR Sentinel must run the continuity gate
 
 Use this file to decide authority. Use issue #48, `FOLDERA_OPERATING_SYSTEM.md`, and `FOLDERA_NORTH_STAR_LOCK.md` to decide what Foldera is. Use `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` to decide roadmap phase, backlog lane, business path, enterprise path, and next-seam recommendation. Use the active issue to decide what to change now.
