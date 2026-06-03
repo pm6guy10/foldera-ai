@@ -59,7 +59,7 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
-  it('passes when issue #156 is explicitly assigned as the North Star Lock seam', () => {
+  it('passes when issue #159 is explicitly assigned as the Growth Scout seam', () => {
     const fixtureRoot = createFixtureRoot();
 
     const failures = runContinuityGate(fixtureRoot);
@@ -67,14 +67,14 @@ describe('continuity gate writeback enforcement', () => {
     expect(failures).toEqual([]);
   });
 
-  it('fails when the active issue #156 seam is removed', () => {
+  it('fails when the active issue #159 seam is removed', () => {
     const fixtureRoot = createFixtureRoot();
     const handoffPath = path.join(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const original = fs.readFileSync(handoffPath, 'utf8');
     fs.writeFileSync(
       handoffPath,
       original.replace(
-        'Active implementation seam is issue #156: Foldera North Star Lock.',
+        'Active implementation seam is issue #159: Foldera Growth Scout - First 10 ICP Evidence Tracker.',
         'No active implementation seam is assigned.',
       ),
       'utf8',
