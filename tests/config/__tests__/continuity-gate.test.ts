@@ -10,6 +10,7 @@ const requiredFixtureFiles = [
   'FOLDERA_LAUNCH_ROADMAP.md',
   'FOLDERA_OPERATING_SYSTEM.md',
   'FOLDERA_NORTH_STAR_LOCK.md',
+  'FOLDERA_PRODUCT_OPERATING_SYSTEM.md',
   'CODEX_START.md',
   'AGENTS.md',
   'CLAUDE.md',
@@ -49,6 +50,14 @@ function createFixtureRoot(): string {
   return root;
 }
 
+function readFixtureFile(root: string, file: string): string {
+  return fs.readFileSync(path.join(root, file), 'utf8');
+}
+
+function writeFixtureFile(root: string, file: string, body: string): void {
+  fs.writeFileSync(path.join(root, file), body, 'utf8');
+}
+
 afterEach(() => {
   while (tempRoots.length > 0) {
     const root = tempRoots.pop();
@@ -59,7 +68,7 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
-  it('passes when no active seam is assigned after issue #159 and next seam is blocked until real evidence exists', () => {
+  it('passes when issue #163 is active and Product Operating System authority is wired', () => {
     const fixtureRoot = createFixtureRoot();
 
     const failures = runContinuityGate(fixtureRoot);
@@ -67,32 +76,22 @@ describe('continuity gate writeback enforcement', () => {
     expect(failures).toEqual([]);
   });
 
-  it('fails when the post-#159 blocked next-seam reason is removed', () => {
+  it('fails when the Product Operating System artifact is removed', () => {
     const fixtureRoot = createFixtureRoot();
-    const handoffPath = path.join(fixtureRoot, 'ACTIVE_HANDOFF.md');
-    const original = fs.readFileSync(handoffPath, 'utf8');
-    fs.writeFileSync(
-      handoffPath,
-      original.replace(
-        'Next seam: blocked - reason: no next growth/product seam is authorized until real first-10 ICP evidence exists in `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`.',
-        'Next seam: blocked - reason: missing.',
-      ),
-      'utf8',
-    );
+    fs.rmSync(path.join(fixtureRoot, 'FOLDERA_PRODUCT_OPERATING_SYSTEM.md'));
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must agree on the post-#159 blocked-until-evidence state.');
+    expect(failures).toContain('Missing required source-truth file: FOLDERA_PRODUCT_OPERATING_SYSTEM.md');
   });
 
   it('fails when the mandatory writeback rule is removed from ACTIVE_HANDOFF.md', () => {
     const fixtureRoot = createFixtureRoot();
-    const handoffPath = path.join(fixtureRoot, 'ACTIVE_HANDOFF.md');
-    const original = fs.readFileSync(handoffPath, 'utf8');
-    fs.writeFileSync(
-      handoffPath,
+    const original = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
+    writeFixtureFile(
+      fixtureRoot,
+      'ACTIVE_HANDOFF.md',
       original.replace('GitHub writeback before stop is mandatory.', 'GitHub writeback before stop is optional.'),
-      'utf8',
     );
 
     const failures = runContinuityGate(fixtureRoot);
@@ -104,12 +103,11 @@ describe('continuity gate writeback enforcement', () => {
 
   it('fails when the mandatory Codex run ledger closeout rule is removed from AGENTS.md', () => {
     const fixtureRoot = createFixtureRoot();
-    const agentsPath = path.join(fixtureRoot, 'AGENTS.md');
-    const original = fs.readFileSync(agentsPath, 'utf8');
-    fs.writeFileSync(
-      agentsPath,
+    const original = readFixtureFile(fixtureRoot, 'AGENTS.md');
+    writeFixtureFile(
+      fixtureRoot,
+      'AGENTS.md',
       original.replace('## MANDATORY CODEX RUN LEDGER CLOSEOUT', '## Optional Codex Run Ledger Closeout'),
-      'utf8',
     );
 
     const failures = runContinuityGate(fixtureRoot);
@@ -119,17 +117,43 @@ describe('continuity gate writeback enforcement', () => {
 
   it('fails when the PR template stops requiring North Star traceability', () => {
     const fixtureRoot = createFixtureRoot();
-    const templatePath = path.join(fixtureRoot, '.github/pull_request_template.md');
-    const original = fs.readFileSync(templatePath, 'utf8');
-    fs.writeFileSync(
-      templatePath,
+    const original = readFixtureFile(fixtureRoot, '.github/pull_request_template.md');
+    writeFixtureFile(
+      fixtureRoot,
+      '.github/pull_request_template.md',
       original.replace('North Star traceability for product/business/UX/runtime direction', 'Direction traceability'),
-      'utf8',
     );
 
     const failures = runContinuityGate(fixtureRoot);
 
     expect(failures).toContain('.github/pull_request_template.md must require North Star traceability when direction is implicated.');
   });
-});
 
+  it('fails when the PR template stops requiring Product Operating System traceability', () => {
+    const fixtureRoot = createFixtureRoot();
+    const original = readFixtureFile(fixtureRoot, '.github/pull_request_template.md');
+    writeFixtureFile(
+      fixtureRoot,
+      '.github/pull_request_template.md',
+      original.replace('- `FOLDERA_PRODUCT_OPERATING_SYSTEM.md`: cited / updated / unchanged - reason / not applicable - reason', ''),
+    );
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(failures).toContain('.github/pull_request_template.md must include the Product Operating System traceability row.');
+  });
+
+  it('fails when the source map stops classifying Product Operating System as current control', () => {
+    const fixtureRoot = createFixtureRoot();
+    const original = readFixtureFile(fixtureRoot, 'docs/SOURCE_OF_TRUTH_MAP.md');
+    writeFixtureFile(
+      fixtureRoot,
+      'docs/SOURCE_OF_TRUTH_MAP.md',
+      original.replace('| `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` |', '| `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `REFERENCE_ONLY` |'),
+    );
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(failures).toContain('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_PRODUCT_OPERATING_SYSTEM.md as CURRENT_CONTROL.');
+  });
+});

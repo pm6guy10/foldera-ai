@@ -18,6 +18,7 @@ const requiredFiles = [
   'FOLDERA_LAUNCH_ROADMAP.md',
   'FOLDERA_OPERATING_SYSTEM.md',
   'FOLDERA_NORTH_STAR_LOCK.md',
+  'FOLDERA_PRODUCT_OPERATING_SYSTEM.md',
   'CODEX_START.md',
   'AGENTS.md',
   'CLAUDE.md',
@@ -103,6 +104,9 @@ const requiredSourceOfTruthOrder = [
   'FOLDERA_BUILD_ORDER.yaml',
   'active GitHub issue',
   'issue #48',
+  'FOLDERA_NORTH_STAR_LOCK.md',
+  'FOLDERA_PRODUCT_OPERATING_SYSTEM.md',
+  'docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md',
   'FOLDERA_LAUNCH_ROADMAP.md',
 ];
 
@@ -290,10 +294,22 @@ export function runContinuityGate(root: string): string[] {
   if (!prTemplate.includes('- `FOLDERA_NORTH_STAR_LOCK.md`: cited / updated / unchanged - reason / not applicable - reason')) {
     failures.push('.github/pull_request_template.md must include the North Star traceability row.');
   }
+  if (!prTemplate.includes('- `FOLDERA_PRODUCT_OPERATING_SYSTEM.md`: cited / updated / unchanged - reason / not applicable - reason')) {
+    failures.push('.github/pull_request_template.md must include the Product Operating System traceability row.');
+  }
 
   const sourceTruthMap = readRepoFile(root, 'docs/SOURCE_OF_TRUTH_MAP.md');
   if (!sourceTruthMap.includes('| `FOLDERA_NORTH_STAR_LOCK.md` | `CURRENT_CONTROL` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_NORTH_STAR_LOCK.md as CURRENT_CONTROL.');
+  }
+  if (!sourceTruthMap.includes('| `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_PRODUCT_OPERATING_SYSTEM.md as CURRENT_CONTROL.');
+  }
+  if (!sourceTruthMap.includes('| `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` | `PROOF_GATE` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FIRST_10_ICP_EVIDENCE_TRACKER.md as proof doctrine/reference.');
+  }
+  if (!sourceTruthMap.includes('| `FOLDERA_LAUNCH_ROADMAP.md` | `REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_LAUNCH_ROADMAP.md as reference-only unless reconciled.');
   }
 
   const sentinel = readRepoFile(root, '.github/workflows/pr-sentinel.yml');

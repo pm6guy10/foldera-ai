@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-06-02 PT
-Current `origin/main` SHA after PR #161 merge: `84c476316a31901378d9627462d4fab155e40105`.
+Current `origin/main` SHA after PR #162 merge: `ca34870af4190e1e719ab55a93f4159297eb4135`.
 
 ## Canonical Boot Sequence
 1. Read `ACTIVE_HANDOFF.md`.
@@ -13,19 +13,19 @@ Current `origin/main` SHA after PR #161 merge: `84c476316a31901378d9627462d4fab1
 7. Use Vercel/Supabase only when the seam requires live/runtime truth.
 
 ## Active command gate
-No active implementation seam is assigned.
-Issue #159 is complete: PR #161 created `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`, merged at `84c476316a31901378d9627462d4fab155e40105`, and GitHub issue #159 is closed/completed.
-The first-10 ICP evidence tracker exists, but it contains placeholders only; it is not real first-10 customer evidence.
-No next growth/product seam is authorized until real first-10 ICP evidence exists in `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`.
-Issue #140 / PR #142 remains rail-only and parked externally blocked: deterministic Slack self-loop proof passed, live Slack send reached the rail, and the remaining real Slack button callback proof is externally blocked by Slack/Vercel callback delivery or preview access. Do not mutate PR #142 into product-brain, connector-platform, dashboard, or growth work.
+Active implementation seam is issue #163: Foldera Product Operating System - roadmap, backlog, and enterprise path.
+This is a docs/source-truth seam only.
+Issue #159 is complete via PR #161, and PR #162 realigned source truth to block fake growth while preserving `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`.
+Manual first-10 evidence remains proof doctrine/reference, but it is owner-rejected as the primary operating path and is no longer the only executable next move.
+Issue #140 / PR #142 remains rail-only and parked externally blocked; do not widen or patch it.
 Issue #136 remains open as the standing Codex Run Ledger only.
 
 ## Current slice:
+- Issue #163 is the only active seam: create `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` and reconcile roadmap/phase/backlog/enterprise source truth.
 - Issue #136 Codex Run Ledger governance is complete on `main` and remains open only as the standing ledger.
 - Issue #140 / PR #142 is parked as the live rail proof/blocker seam only; do not widen it.
-- Issue #156 Foldera North Star Lock is complete on `main` via PR #158, and `FOLDERA_NORTH_STAR_LOCK.md` remains CURRENT_CONTROL.
-- Issue #159 Growth Scout First 10 ICP Evidence Tracker is complete on `main` via PR #161.
-- No active seam is assigned; repo state is BLOCKED/NO_ACTION_SAFE until real first-10 ICP evidence justifies exactly one allowed next-issue class.
+- Issue #156 Foldera North Star Lock is complete on `main` via PR #158; `FOLDERA_NORTH_STAR_LOCK.md` remains product doctrine control.
+- Issue #159 Growth Scout First 10 ICP Evidence Tracker is complete on `main` via PR #161; placeholders are not evidence.
 - Issues #121, #99, and #48 are closed/superseded; issue #131 is closed/completed. Do not reopen them.
 - PR #124 and PR #125 are closed/superseded and must not be reopened or reused.
 
@@ -36,11 +36,13 @@ Remember where the user was, decide when to interrupt, give one next move, let t
 No dashboard/task-manager/inbox-summary/chatbot/surveillance drift.
 Issue #48 remains the product contract.
 Issue #48 is carried forward in repo source truth; it is closed/superseded and must not be reopened.
+`FOLDERA_NORTH_STAR_LOCK.md` controls product doctrine; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap, phase order, backlog lanes, and enterprise path.
 
 ## Blocked growth boundary
-The only safe next move is manual evidence collection/recording inside `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`.
-If no real evidence exists, stop; do not assign a new growth or product seam.
-Forbidden until a future GitHub issue is justified by real tracker evidence: product implementation, scraping, auto-DM, outreach automation, paid ads, public claim expansion, connector expansion, Slack / PR #142 work, landing/frontend/dashboard work, Supabase, Stripe, Teams/email/calendar, package files, customer data mutation, and broad cleanup.
+The first-10 tracker remains proof doctrine/reference and must not be deleted.
+Manual first-10 evidence is owner-rejected as the primary executable path.
+Placeholder rows in `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` are not evidence.
+Forbidden in issue #163: product implementation, Slack / PR #142 work, landing/frontend/dashboard work, Supabase, Stripe, package files, connectors, Teams/email/calendar, outreach, scraping, paid ads, customer data mutation, broad cleanup, fake enterprise readiness, fake SOC2/HIPAA/compliance claims, deleting the first-10 tracker, or starting Repo Intake Governor implementation.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
@@ -57,6 +59,6 @@ Forbidden until a future GitHub issue is justified by real tracker evidence: pro
 - No reopening #121/#131/#99/#48/#147/#151/#159.
 
 ## Next exact move
-Collect/manual-record real first-10 ICP evidence only in `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`.
-Next seam: blocked - reason: no next growth/product seam is authorized until real first-10 ICP evidence exists in `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`.
-Stop if no real first-10 ICP evidence exists.
+Run issue #163 only on branch `codex/product-operating-system-roadmap-lock`.
+Create one docs/source-truth PR that creates `FOLDERA_PRODUCT_OPERATING_SYSTEM.md`, updates active source truth, names exactly one next seam, runs required proof, posts PR receipt, posts issue #136 ledger receipt, and stops before implementation.
+Next seam after this PR: Repo Intake Governor v0.

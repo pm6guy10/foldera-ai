@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-05-29 PT
+Last updated: 2026-06-02 PT
 
 Issue #80 owns this authority ledger. Issue #113 extends enforcement for source-truth closeout and agent governance drift.
 
@@ -10,7 +10,14 @@ This file is Foldera's repo-control authority ledger.
 
 It governs how operators, reviewers, and coding agents decide what controls work in this repository.
 
-It is not product doctrine. Issue #48 and `FOLDERA_OPERATING_SYSTEM.md` control product doctrine. This file controls repo authority, conflict resolution, stale-doc containment, and proof expectations.
+It is not product doctrine. Issue #48 and `FOLDERA_OPERATING_SYSTEM.md` carry product doctrine, while `FOLDERA_NORTH_STAR_LOCK.md` controls current product doctrine. This file controls repo authority, conflict resolution, stale-doc containment, and proof expectations.
+
+Current product-direction split:
+
+- `FOLDERA_NORTH_STAR_LOCK.md` controls product doctrine.
+- `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap, phase order, backlog lanes, business roadmap, enterprise path, owner-burden rule, and next-seam recommendation.
+- `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` remains proof doctrine/reference; placeholder rows are not evidence.
+- `FOLDERA_LAUNCH_ROADMAP.md` is historical/reference unless a future GitHub issue explicitly reconciles it.
 
 ## Canonical Boot Sequence
 
@@ -52,11 +59,13 @@ When sources disagree, use this order:
 | --- | --- | --- | --- | --- | --- |
 | `ACTIVE_HANDOFF.md` | `CURRENT_CONTROL` | Names the single active seam, current truth, and next exact move. | Every Foldera session, reviewer, and agent boot. | Old roadmap order, unrelated issues, or broad cleanup outside the named seam. | `npm run gate:continuity` requires exactly one active seam line and roadmap/product references. |
 | `FOLDERA_BUILD_ORDER.yaml` | `CURRENT_CONTROL` | Machine-readable active issue, paused issues, source-truth order, terminal states, and closeout requirements. | Agents, reviewers, and gates checking current issue order. | Product doctrine or feature scope by itself. | `npm run gate:continuity` checks active issue parity, closeout values, and next-seam closeout. |
-| `FOLDERA_LAUNCH_ROADMAP.md` | `CURRENT_CONTROL` | Holds the long-form launch order and continuity policy. | Operators and agents deciding issue order or stop conditions. | Product doctrine by itself, or authority to override the active issue. | `npm run gate:continuity` checks for boot-sequence alignment and roadmap presence. |
+| `FOLDERA_LAUNCH_ROADMAP.md` | `REFERENCE_ONLY` | Preserves historical launch order and continuity policy from earlier rungs. | Operators and agents doing archaeology or checking stale launch assumptions. | Current active seam, product doctrine, roadmap phase order, or next-seam selection unless a future issue reconciles it. | Authority classification here plus active handoff/build-order; `npm run gate:continuity` still checks roadmap presence and boot-sequence alignment. |
 | GitHub issue named by `ACTIVE_HANDOFF.md` | `CURRENT_CONTROL` | Defines the one assigned implementation seam. | The current assignee, reviewer, and PR author. | Unassigned side quests, backlog grooming, or unrelated fixes. | Manual boot-sequence read plus PR scope review. |
 | GitHub issue #48 | `CURRENT_CONTROL` | Holds the Workday Presence Layer product contract. | Product reviewers, agents, and humans checking launch doctrine. | Historical Brandon-command-center behavior or dashboard/task-list drift. | Boot sequence plus explicit issue reference across control docs. |
 | `FOLDERA_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` | Defines Foldera's canonical product worldview. | Humans and agents checking what Foldera is and is not. | Repo execution order by itself, or stale issue selection. | `npm run gate:continuity` verifies boot-sequence alignment; issue #48 remains the doctrine anchor. |
 | `FOLDERA_NORTH_STAR_LOCK.md` | `CURRENT_CONTROL` | Reconciles product promise, buyer, pricing, public site, day-one app, runtime brain, Right Now, live rail boundary, issue order, gates, PR traceability, pilot readiness, and Brandon cognitive-load constraints. | Product/business/UX/runtime reviewers, PR authors, and agents when direction is implicated. | A second active issue, product implementation by itself, or permission to widen Slack/live rail, landing, Supabase, Stripe, package, connector, Teams/email/calendar, or dashboard work. | `npm run gate:command` verifies the file exists and required traceability/control language is present; `npm run gate:continuity` verifies the PR template requires North Star citation when direction is implicated. |
+| `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` | Converts the North Star into roadmap phases, backlog lanes, proof gates, business roadmap, enterprise-readiness path, owner-burden rule, and next-seam recommendation. | Agents, reviewers, and maintainers deciding phase order, allowed next seams, business/enterprise claims, and whether a PR advances the correct rung. | Product doctrine replacement, active seam selection outside GitHub issue truth, product/runtime implementation by itself, or permission to claim enterprise, pilot, or customer proof without the named gate. | `npm run gate:command` verifies the file exists and required phase/backlog/business/enterprise/owner-burden markers are present; PR receipts must cite/update/close it out when direction is implicated. |
+| `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` | `PROOF_GATE` | Preserves first-10 ICP proof doctrine and customer-evidence taxonomy. | Future customer-proof, pricing, channel, public-claim, and non-owner proof issues when evidence exists. | Active work selection by itself, fake customer evidence, placeholder rows as proof, outreach automation, scraping, paid ads, or product implementation. | Required file and issue #159 scope; source-truth gates check it remains present and subordinate; PR changed-file review blocks treating placeholders as proof. |
 | `docs/SOURCE_OF_TRUTH_MAP.md` | `CURRENT_CONTROL` | Explains repo authority, stale-doc classes, review rules, and proof requirements. | Reviewers, agents, and maintainers validating repo hygiene. | Product doctrine, feature scope expansion, or runtime behavior claims. | This file is required by `npm run gate:continuity`. |
 | `CODEX_START.md` | `EXECUTION_CONTRACT` | Defines Codex startup order, gate-first behavior, PR workflow, and live-truth requirements. | Codex operators and agent sessions. | Product doctrine overrides or competing active seam selection. | `npm run gate:continuity` checks canonical boot sequence and agent-governance rules. |
 | `AGENTS.md` | `EXECUTION_CONTRACT` | Defines repo-specific behavioral rules for coding agents. | Codex and agent runners operating in-repo. | Conflicting boot order, product redefinition, direct-main work, or unrelated issue work. | `npm run gate:continuity` checks canonical boot sequence and agent-governance rules. |
@@ -135,4 +144,4 @@ Passing prose is not proof. The PR receipt must report the changed-file list, co
 - `README.md` cannot regress to default Next.js boilerplate
 - PR Sentinel must run the continuity gate
 
-Use this file to decide authority. Use issue #48 and `FOLDERA_OPERATING_SYSTEM.md` to decide what Foldera is. Use the active issue to decide what to change now.
+Use this file to decide authority. Use issue #48, `FOLDERA_OPERATING_SYSTEM.md`, and `FOLDERA_NORTH_STAR_LOCK.md` to decide what Foldera is. Use `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` to decide roadmap phase, backlog lane, business path, enterprise path, and next-seam recommendation. Use the active issue to decide what to change now.
