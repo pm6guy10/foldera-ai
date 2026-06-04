@@ -5,12 +5,13 @@
   "backlog_id": "ISSUE_175_RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT",
   "base_commit": "34ac1b28be8c965a741eefbb1eb3f18a724bc45b",
   "money_loop_rung": "rung_2_schema_evidence_lane_audit",
-  "user_system_path": "issue #175 activates Rung 2 as a read-only audit of current schema/state/evidence support and first evidence-lane selection; issue #173 is completed by PR #174; the activation PR must not start the audit artifact",
+  "user_system_path": "issue #175 Rung 2 read-only audit maps current schema/state/evidence support and selects the deterministic work-packet fixture lane for Rung 3; no implementation or runtime/schema/provider mutation is authorized",
   "allowed_file_patterns": [
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
     ".foldera-contract.json",
     "docs/SOURCE_OF_TRUTH_MAP.md",
+    "docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md",
     "scripts/source-truth-check.ts",
     "tests/config/__tests__/**"
   ],
@@ -47,7 +48,6 @@
     "calendar expansion",
     "schema implementation",
     "source-lane implementation",
-    "audit artifact in activation PR",
     "data mutation",
     "outreach",
     "scraping",
@@ -57,8 +57,8 @@
     "fake compliance claims",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Issue #175 activation PR source-truth routing only: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, docs/SOURCE_OF_TRUTH_MAP.md, scripts/source-truth-check.ts, and focused tests/config/__tests__ only if required by gates.",
-  "forbidden_files_raw": "No audit artifact in the activation PR, no product/runtime/frontend/backend code, no schema/source-lane implementation, no Supabase migrations or data mutation, no Vercel changes, no Slack / PR #142 work, no Stripe, connectors, landing/dashboard/auth/backend, package/dependency changes, broad cleanup, fake claims, or treating FOLDERA_MASTER_SYNTHESIS_DRAFT.md as implementation authority.",
+  "allowed_files_raw": "Issue #175 audit PR source-truth and read-only artifact only: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, docs/SOURCE_OF_TRUTH_MAP.md, docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md, scripts/source-truth-check.ts, and focused tests/config/__tests__ only if required by gates.",
+  "forbidden_files_raw": "No product/runtime/frontend/backend code, no schema/source-lane implementation, no Supabase migrations or data mutation, no Vercel changes, no Slack / PR #142 work, no Stripe, connectors, landing/dashboard/auth/backend, package/dependency changes, broad cleanup, fake claims, or treating FOLDERA_MASTER_SYNTHESIS_DRAFT.md as implementation authority.",
   "required_local_proof": [
     "npm run health",
     "npm run gate:command",
@@ -67,8 +67,8 @@
     "npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose"
   ],
   "required_browser_proof": "Not applicable; source-truth build-sequence promotion seam only.",
-  "acceptance_condition": "Issue #175 is active; issue #173 is completed/superseded by PR #174; issue #170 remains completed/superseded by PR #172; FOLDERA_MASTER_SYNTHESIS_DRAFT.md remains REFERENCE_DRAFT and not implementation authority; #165 remains capture-only; PR #142 remains parked rail-only for this seam; issue #136 remains ledger-only; current seam is Rung 2 read-only audit current schema and choose first evidence lane; activation PR does not start the audit artifact and no forbidden product/runtime/schema-implementation/Supabase/Vercel/Slack/Stripe/connector surfaces are touched.",
-  "stop_condition": "Stop after one draft PR exists with source-truth proof, PR receipt, issue #136 ledger receipt, issue #175 active as Rung 2 read-only audit seam, issue #173 recorded completed by PR #174, and no audit artifact or implementation started.",
+  "acceptance_condition": "Issue #175 is active; current seam is Rung 2 read-only audit current schema and choose first evidence lane; docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md maps current workday state, evidence, triggers, safe silence, one-click actions, state mutation, receipts, source trail/privacy, and tests/gates; selected first evidence lane is deterministic work-packet fixture lane; issue #173 remains completed/superseded by PR #174; issue #170 remains completed/superseded by PR #172; FOLDERA_MASTER_SYNTHESIS_DRAFT.md remains REFERENCE_DRAFT and not implementation authority; #165 remains capture-only; PR #142 remains parked rail-only for this seam; issue #136 remains ledger-only; no forbidden product/runtime/schema-implementation/Supabase/Vercel/Slack/Stripe/connector surfaces are touched.",
+  "stop_condition": "Stop after one draft PR exists with the read-only audit artifact, selected deterministic work-packet fixture lane for Rung 3, source-truth proof, PR receipt, issue #136 ledger receipt, and no implementation started.",
   "is_user_facing": false,
   "browser_proof_command": "not applicable - source-truth build-sequence promotion seam only",
   "anti_regression_checks": [
@@ -83,9 +83,9 @@
     "Issue #140 / PR #142 remains parked rail-only for this seam",
     "Issue #136 remains ledger-only",
     "Rung 2 is active as a read-only schema/evidence-lane audit seam",
-    "Activation PR does not start the audit artifact",
+    "Rung 2 audit artifact exists and selects deterministic work-packet fixture lane",
     "No app/** or components/** files are authorized",
     "No Slack, Supabase, Vercel, Stripe, connector, landing, dashboard, auth, backend, package, dependency, schema implementation, source-lane implementation, or data mutation work is authorized"
   ],
-  "next_command": "Run issue #175 only: activation transition from #173 to the Rung 2 read-only schema/evidence-lane audit seam, prove source-truth gates, open one draft PR, post PR and issue #136 ledger receipts, and stop without starting the audit."
+  "next_command": "After issue #175 audit PR closes, run Rung 3 only: prove deterministic one-verdict fixture loop for the selected deterministic work-packet fixture lane, without schema/runtime/provider changes."
 }

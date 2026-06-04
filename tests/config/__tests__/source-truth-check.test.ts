@@ -11,6 +11,7 @@ const requiredFixtureFiles = [
   'FOLDERA_PRODUCT_OPERATING_SYSTEM.md',
   'FOLDERA_MASTER_SYNTHESIS_DRAFT.md',
   'docs/SOURCE_OF_TRUTH_MAP.md',
+  'docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md',
   '.foldera-contract.json',
 ];
 
@@ -66,6 +67,8 @@ describe('source truth command gate', () => {
     expect(contract.active_issue).toBe(175);
     expect(contract.authority_status).toBe('ACTIVE_RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT');
     expect(contract.forbidden_file_patterns).toContain('FOLDERA_MASTER_SYNTHESIS_DRAFT.md');
+    expect(handoff).toContain('Issue #175 audit selected first Rung 3 evidence lane: deterministic work-packet fixture lane');
+    expect(buildOrder).toContain('selected_first_evidence_lane: deterministic work-packet fixture lane');
     expect(failures).toEqual([]);
   });
 

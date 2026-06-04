@@ -26,6 +26,7 @@ const requiredFixtureFiles = [
   'FOLDERA_MASTER_AUDIT.md',
   '.foldera-contract.json',
   'docs/SOURCE_OF_TRUTH_MAP.md',
+  'docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md',
   'dot-cursorrules.fixture',
   'cursor-agent.fixture',
   '.github/pull_request_template.md',

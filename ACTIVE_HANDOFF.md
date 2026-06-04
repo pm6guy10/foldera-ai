@@ -49,6 +49,8 @@ Issue #48 remains the product contract.
 Allowed in issue #175 activation PR: source-truth transition files and focused source-truth/continuity gate tests only if required.
 Required result: active issue becomes #175; priority class becomes `RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT`; work type becomes `READ_ONLY_SCHEMA_EVIDENCE_AUDIT`; issue #173 is completed/superseded by PR #174; `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` remains `REFERENCE_DRAFT`; #165 remains capture-only; PR #142 remains parked rail-only; #136 remains ledger-only; next seam is Rung 3 deterministic one-verdict fixture loop only after the audit selects a lane.
 Forbidden in issue #175 activation PR: starting the audit artifact, product/runtime code, Supabase migrations, Vercel changes, Slack / PR #142, Stripe, connectors, landing/dashboard/auth/backend, broad cleanup, fake claims, or treating the draft as implementation authority.
+Audit artifact for later issue #175 audit work: `docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md`.
+Issue #175 audit selected first Rung 3 evidence lane: deterministic work-packet fixture lane (`tests/fixtures/work-packets/source-signals.ts` -> `lib/work-packets` receipt/review state).
 Forbidden in later issue #175 audit work: product/runtime/frontend/backend implementation, Supabase migrations or data mutation, Vercel changes, Slack / PR #142, Stripe, connectors, landing/dashboard/auth/backend, package/dependency changes, fake schema/customer/compliance claims, or starting Rung 3.
 
 ## GitHub writeback contract
@@ -62,6 +64,6 @@ Forbidden in later issue #175 audit work: product/runtime/frontend/backend imple
 - If a source-truth file is not updated, the PR receipt must say `unchanged - reason` or `not applicable - reason`.
 
 ## Next exact move
-Run issue #175 activation only on branch `codex/issue-175-rung-2-schema-evidence-audit`.
-Create one draft PR that activates Rung 2 as a read-only audit seam, records issue #173 completed/superseded by PR #174, proves source-truth gates, posts PR receipt, posts issue #136 ledger receipt, and stops without starting the audit.
-Next authorized move after this PR: run issue #175 audit only, producing one audit artifact and choosing or blocking the first evidence lane.
+Open one draft PR for issue #175 on branch `codex/issue-175-rung-2-schema-evidence-audit`.
+The PR must contain the read-only audit artifact, source-truth closeout, proof, PR receipt, and issue #136 ledger receipt.
+Next authorized move after this PR: Rung 3 deterministic one-verdict fixture loop only for the selected deterministic work-packet fixture lane.
