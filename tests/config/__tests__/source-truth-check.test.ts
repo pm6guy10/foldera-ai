@@ -46,7 +46,7 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
-  it('passes when issue #173 is active and the first executable MVP rung is promoted', () => {
+  it('passes when issue #175 is active as the Rung 2 read-only audit seam', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
@@ -54,16 +54,17 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(handoff).toContain('Active implementation seam is issue #173');
+    expect(handoff).toContain('Active implementation seam is issue #175');
+    expect(handoff).toContain('Issue #173 is complete/superseded by PR #174');
     expect(handoff).toContain('Issue #170 is complete/superseded by PR #172');
     expect(handoff).toContain('Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
-    expect(buildOrder).toContain('active_issue: 173');
-    expect(buildOrder).toContain('priority_class: FIRST_EXECUTABLE_MVP_RUNG_PROMOTION');
-    expect(buildOrder).toContain('work_type: SOURCE_TRUTH_BUILD_SEQUENCE_PROMOTION');
-    expect(buildOrder).toContain('next_seam: Rung 2 - Audit current schema and choose first evidence lane');
+    expect(buildOrder).toContain('active_issue: 175');
+    expect(buildOrder).toContain('priority_class: RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT');
+    expect(buildOrder).toContain('work_type: READ_ONLY_SCHEMA_EVIDENCE_AUDIT');
+    expect(buildOrder).toContain('next_seam: Rung 3 - Prove deterministic one-verdict fixture loop');
     expect(contract.active).toBe(true);
-    expect(contract.active_issue).toBe(173);
-    expect(contract.authority_status).toBe('ACTIVE_FIRST_EXECUTABLE_MVP_RUNG_PROMOTION');
+    expect(contract.active_issue).toBe(175);
+    expect(contract.authority_status).toBe('ACTIVE_RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT');
     expect(contract.forbidden_file_patterns).toContain('FOLDERA_MASTER_SYNTHESIS_DRAFT.md');
     expect(failures).toEqual([]);
   });
@@ -77,27 +78,27 @@ describe('source truth command gate', () => {
     expect(failures).toContain('Missing required file: FOLDERA_MASTER_SYNTHESIS_DRAFT.md');
   });
 
-  it('fails when ACTIVE_HANDOFF.md still points at completed issue #170', () => {
+  it('fails when ACTIVE_HANDOFF.md still points at completed issue #173', () => {
     const fixtureRoot = createFixtureRoot();
     const original = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
-    writeFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md', original.replace('Active implementation seam is issue #173', 'Active implementation seam is issue #170'));
+    writeFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md', original.replace('Active implementation seam is issue #175', 'Active implementation seam is issue #173'));
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md must assign active issue #173; found 170.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md must assign active issue #175; found 173.');
   });
 
-  it('fails when FOLDERA_BUILD_ORDER.yaml is still active for issue #170', () => {
+  it('fails when FOLDERA_BUILD_ORDER.yaml is still active for issue #173', () => {
     const fixtureRoot = createFixtureRoot();
     const original = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
-    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 173', 'active_issue: 170'));
+    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 175', 'active_issue: 173'));
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 173; found 170.');
+    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 175; found 173.');
   });
 
-  it('fails when .foldera-contract.json is not active for issue #173', () => {
+  it('fails when .foldera-contract.json is not active for issue #175', () => {
     const fixtureRoot = createFixtureRoot();
     const contract = JSON.parse(readFixtureFile(fixtureRoot, '.foldera-contract.json')) as Record<string, unknown>;
     contract.active = false;
@@ -106,8 +107,8 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('.foldera-contract.json active_issue must be 173; found none.');
-    expect(failures).toContain('.foldera-contract.json active must be true for issue #173.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be 175; found none.');
+    expect(failures).toContain('.foldera-contract.json active must be true for issue #175.');
   });
 
   it('fails when Open Threads is treated as implementation authority', () => {

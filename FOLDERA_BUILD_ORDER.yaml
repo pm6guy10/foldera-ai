@@ -21,11 +21,11 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 173
-priority_class: FIRST_EXECUTABLE_MVP_RUNG_PROMOTION
-work_type: SOURCE_TRUTH_BUILD_SEQUENCE_PROMOTION
-why_this_first: PR #172 completed issue #170 by upgrading FOLDERA_MASTER_SYNTHESIS_DRAFT.md into the build-bible-ready REFERENCE_DRAFT. Issue #173 is the source-truth routing seam that promotes the first executable MVP rung without starting schema audit or product implementation.
-next_seam: Rung 2 - Audit current schema and choose first evidence lane
+active_issue: 175
+priority_class: RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT
+work_type: READ_ONLY_SCHEMA_EVIDENCE_AUDIT
+why_this_first: PR #174 completed issue #173 by promoting the first executable MVP rung and naming Rung 2 as the next seam. Issue #175 is the read-only audit seam that maps current schema/state/evidence support and chooses the first evidence lane without product/runtime/schema implementation.
+next_seam: Rung 3 - Prove deterministic one-verdict fixture loop
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -50,7 +50,12 @@ predecessor_issues:
   - 163
   - 166
   - 170
+  - 173
 completed:
+  - issue: 173
+    pr: 174
+    merge_sha: 34ac1b28be8c965a741eefbb1eb3f18a724bc45b
+    result: First executable MVP rung promotion landed on main; Rung 2 read-only schema/evidence-lane audit is now the active seam.
   - issue: 170
     pr: 172
     merge_sha: ec63f75fd0a8dc84781540819c0ee9e2eb510674
@@ -113,14 +118,19 @@ closed_issues_do_not_reopen:
   - issue: 170
     status: completed_superseded
     reason: Master Synthesis build bible REFERENCE_DRAFT completed by PR #172 and is no longer active.
+  - issue: 173
+    status: completed_superseded
+    reason: First executable MVP rung promotion completed by PR #174 and is no longer active.
 forbidden_current_work:
   - product implementation
   - runtime code
   - frontend code
   - backend code
-  - schema audit
-  - source-lane audit
+  - schema implementation
+  - source-lane implementation
+  - audit artifact in activation PR
   - Supabase migrations
+  - data mutation
   - Vercel changes
   - Slack rail work
   - PR #142 changes
@@ -146,21 +156,26 @@ required_local_proof:
   - npm run gate:continuity
   - git diff --check
   - npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose
-required_issue_173_first_executable_mvp_rung_promotion:
-  - controlling_issue: 173
+required_issue_175_rung_2_schema_evidence_lane_audit_activation:
+  - controlling_issue: 175
   - artifact: FOLDERA_MASTER_SYNTHESIS_DRAFT.md
   - authority_status: REFERENCE_DRAFT
-  - active_issue: 173
-  - priority_class: FIRST_EXECUTABLE_MVP_RUNG_PROMOTION
-  - work_type: SOURCE_TRUTH_BUILD_SEQUENCE_PROMOTION
+  - active_issue: 175
+  - priority_class: RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT
+  - work_type: READ_ONLY_SCHEMA_EVIDENCE_AUDIT
+  - issue_173_status: completed_superseded_by_pr_174
   - issue_170_status: completed_superseded_by_pr_172
   - open_threads_issue_165_status: capture_only
   - pr_142_status: parked_rail_only_for_this_seam
   - issue_136_status: ledger_only
-  - next_rung: "Rung 2 - Audit current schema and choose first evidence lane"
-  - rung_2_scope: audit_read_only_unless_explicitly_authorized_later
+  - current_rung: "Rung 2 - Audit current schema and choose first evidence lane"
+  - activation_scope: source_truth_routing_only_no_audit_started
+  - rung_2_scope: read_only_audit_no_product_runtime_schema_mutation
+  - next_rung_after_audit: "Rung 3 - Prove deterministic one-verdict fixture loop"
   - product_runtime_frontend_backend_touched: forbidden
-  - schema_audit_started: forbidden
+  - audit_artifact_started_in_activation_pr: forbidden
+  - schema_implementation: forbidden
+  - data_mutation: forbidden
   - supabase_migrations: forbidden
   - vercel_changes: forbidden
   - slack_pr_142_changes: forbidden
@@ -177,13 +192,13 @@ build_sequence_from_master_synthesis:
   - Add bounded $29 early-access/payment path
   - Prove money-ready MVP end to end
   - Prove first non-owner validation
-post_172_master_synthesis_closeout:
-  state: ACTIVE_FIRST_EXECUTABLE_MVP_RUNG_PROMOTION
-  pr_172_merged: true
-  issue_170_completed_superseded: true
-  active_issue: 173
-  next_authorized_move: Promote first executable MVP rung from Master Synthesis
-  next_seam_after_173: Rung 2 - Audit current schema and choose first evidence lane
+post_174_first_executable_mvp_rung_closeout:
+  state: ACTIVE_RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT
+  pr_174_merged: true
+  issue_173_completed_superseded: true
+  active_issue: 175
+  next_authorized_move: Rung 2 - Audit current schema and choose first evidence lane
+  next_seam_after_175: Rung 3 - Prove deterministic one-verdict fixture loop only after audit lane selection
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -193,6 +208,6 @@ closeout_required_each_pr:
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock, Product Operating System, Master Synthesis REFERENCE_DRAFT, and issue #173 control current direction
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock, Product Operating System, Master Synthesis REFERENCE_DRAFT, and issue #175 control current direction
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - Rung 2 - Audit current schema and choose first evidence lane; read-only audit unless explicitly authorized later
+  next_seam: named - Rung 3 - Prove deterministic one-verdict fixture loop only after issue #175 audit selects a lane

@@ -15,16 +15,19 @@ type FolderaContract = {
   next_command?: string;
 };
 
-const ACTIVE_ISSUE = 173;
+const ACTIVE_ISSUE = 175;
 const OPEN_THREADS_ISSUE = 165;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMMAND_OS_PR = 167;
 const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
 const MASTER_SYNTHESIS_PR = 172;
-const BASE_COMMIT = 'ec63f75fd0a8dc84781540819c0ee9e2eb510674';
-const NEXT_SEAM = 'Rung 2 - Audit current schema and choose first evidence lane';
+const COMPLETED_FIRST_RUNG_ISSUE = 173;
+const FIRST_RUNG_PR = 174;
+const BASE_COMMIT = '34ac1b28be8c965a741eefbb1eb3f18a724bc45b';
+const NEXT_SEAM = 'Rung 3 - Prove deterministic one-verdict fixture loop';
 
 const REQUIRED_PROOF_COMMANDS = [
+  'npm run health',
   'npm run gate:command',
   'npm run gate:continuity',
   'git diff --check',
@@ -71,8 +74,10 @@ const FORBIDDEN_PRODUCT_PATHS = [
   'Teams expansion',
   'email expansion',
   'calendar expansion',
-  'schema audit',
-  'source-lane audit',
+  'schema implementation',
+  'source-lane implementation',
+  'audit artifact in activation PR',
+  'data mutation',
   'outreach',
   'scraping',
   'paid ads',
@@ -82,7 +87,7 @@ const FORBIDDEN_PRODUCT_PATHS = [
   'broad cleanup',
 ];
 
-const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE];
+const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE];
 
 function readRepoFile(root: string, file: string): string {
   const path = join(root, file);
@@ -145,8 +150,8 @@ function requireClosedIssueDoNotReopen(failures: string[], handoff: string, buil
       failures.push(`FOLDERA_BUILD_ORDER.yaml must classify issue #${issue} as closed/completed/superseded.`);
     }
   }
-  if (!handoff.includes('Issues #121, #99, #48, #131, #147, #151, #154, #159, #163, #166, and #170 are closed/completed/superseded. Do not reopen them.')) {
-    failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #166 and #170, out of scope.');
+  if (!handoff.includes('Issues #121, #99, #48, #131, #147, #151, #154, #159, #163, #166, #170, and #173 are closed/completed/superseded. Do not reopen them.')) {
+    failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #166, #170, and #173, out of scope.');
   }
 }
 
@@ -213,29 +218,30 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   if (buildIssue !== ACTIVE_ISSUE) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${ACTIVE_ISSUE}; found ${buildIssue ?? 'none'}.`);
   if (contractIssue !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_ISSUE}; found ${contractIssue ?? 'none'}.`);
   if (contract.active !== true) failures.push(`.foldera-contract.json active must be true for issue #${ACTIVE_ISSUE}.`);
-  if (contract.backlog_id !== 'ISSUE_173_FIRST_EXECUTABLE_MVP_RUNG_PROMOTION') failures.push('.foldera-contract.json backlog_id must resolve to issue #173 First Executable MVP Rung Promotion.');
-  if (contract.authority_status !== 'ACTIVE_FIRST_EXECUTABLE_MVP_RUNG_PROMOTION') failures.push('.foldera-contract.json authority_status must be ACTIVE_FIRST_EXECUTABLE_MVP_RUNG_PROMOTION.');
-  if (contract.base_commit !== BASE_COMMIT) failures.push(`.foldera-contract.json base_commit must be PR #${MASTER_SYNTHESIS_PR} merge SHA ${BASE_COMMIT}.`);
+  if (contract.backlog_id !== 'ISSUE_175_RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT') failures.push('.foldera-contract.json backlog_id must resolve to issue #175 Rung 2 schema/evidence-lane audit.');
+  if (contract.authority_status !== 'ACTIVE_RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT') failures.push('.foldera-contract.json authority_status must be ACTIVE_RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.');
+  if (contract.base_commit !== BASE_COMMIT) failures.push(`.foldera-contract.json base_commit must be PR #${FIRST_RUNG_PR} merge SHA ${BASE_COMMIT}.`);
 
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
-  if (priority !== 'FIRST_EXECUTABLE_MVP_RUNG_PROMOTION') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be FIRST_EXECUTABLE_MVP_RUNG_PROMOTION; found ${priority ?? 'none'}.`);
-  if (workType !== 'SOURCE_TRUTH_BUILD_SEQUENCE_PROMOTION') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_BUILD_SEQUENCE_PROMOTION; found ${workType ?? 'none'}.`);
+  if (priority !== 'RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT; found ${priority ?? 'none'}.`);
+  if (workType !== 'READ_ONLY_SCHEMA_EVIDENCE_AUDIT') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be READ_ONLY_SCHEMA_EVIDENCE_AUDIT; found ${workType ?? 'none'}.`);
   if (nextSeam !== NEXT_SEAM) failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must be ${NEXT_SEAM}; found ${nextSeam ?? 'none'}.`);
 
   for (const marker of [
     `Active implementation seam is issue #${ACTIVE_ISSUE}`,
+    `Issue #${COMPLETED_FIRST_RUNG_ISSUE} is complete/superseded by PR #${FIRST_RUNG_PR}`,
     `Issue #${COMPLETED_MASTER_SYNTHESIS_ISSUE} is complete/superseded by PR #${MASTER_SYNTHESIS_PR}`,
     `Issue #${OPEN_THREADS_ISSUE} Open Threads remains capture-only and cannot authorize implementation.`,
-    'This is a source-truth build-sequence promotion seam only.',
+    'This is a read-only schema/evidence-lane audit seam.',
     'FOLDERA_MASTER_SYNTHESIS_DRAFT.md` remains `REFERENCE_DRAFT`',
     'GitHub writeback is mandatory.',
     'One active seam only.',
     'Issue #140 / PR #142 remains rail-only and parked for this seam',
     'Issue #136 remains open as the standing Codex Run Ledger only.',
-    'Rung 2 - Audit current schema and choose first evidence lane',
-    'Rung 2 is audit/read-only unless explicitly authorized later',
+    'Rung 3 - Prove deterministic one-verdict fixture loop',
+    'This transition PR activates #175 only and must not start the audit artifact.',
   ]) {
     if (!handoff.includes(marker)) failures.push(`ACTIVE_HANDOFF.md is missing required marker: ${marker}`);
   }
@@ -250,19 +256,24 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   }
 
   for (const marker of [
-    'required_issue_173_first_executable_mvp_rung_promotion',
+    'required_issue_175_rung_2_schema_evidence_lane_audit_activation',
     `controlling_issue: ${ACTIVE_ISSUE}`,
     'artifact: FOLDERA_MASTER_SYNTHESIS_DRAFT.md',
     'authority_status: REFERENCE_DRAFT',
-    'priority_class: FIRST_EXECUTABLE_MVP_RUNG_PROMOTION',
-    'work_type: SOURCE_TRUTH_BUILD_SEQUENCE_PROMOTION',
+    'priority_class: RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT',
+    'work_type: READ_ONLY_SCHEMA_EVIDENCE_AUDIT',
+    'issue_173_status: completed_superseded_by_pr_174',
     'issue_170_status: completed_superseded_by_pr_172',
     'open_threads_issue_165_status: capture_only',
     'pr_142_status: parked_rail_only_for_this_seam',
     'issue_136_status: ledger_only',
-    'next_rung: "Rung 2 - Audit current schema and choose first evidence lane"',
-    'rung_2_scope: audit_read_only_unless_explicitly_authorized_later',
-    'schema_audit_started: forbidden',
+    'current_rung: "Rung 2 - Audit current schema and choose first evidence lane"',
+    'activation_scope: source_truth_routing_only_no_audit_started',
+    'rung_2_scope: read_only_audit_no_product_runtime_schema_mutation',
+    'next_rung_after_audit: "Rung 3 - Prove deterministic one-verdict fixture loop"',
+    'audit_artifact_started_in_activation_pr: forbidden',
+    'schema_implementation: forbidden',
+    'data_mutation: forbidden',
   ]) {
     if (!buildOrder.includes(marker)) failures.push(`FOLDERA_BUILD_ORDER.yaml is missing required marker: ${marker}`);
   }
@@ -271,6 +282,9 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   }
   if (!buildOrder.includes('reason: Master Synthesis build bible REFERENCE_DRAFT completed by PR #172 and is no longer active.')) {
     failures.push('FOLDERA_BUILD_ORDER.yaml must classify issue #170 as completed_superseded because PR #172 merged.');
+  }
+  if (!buildOrder.includes('reason: First executable MVP rung promotion completed by PR #174 and is no longer active.')) {
+    failures.push('FOLDERA_BUILD_ORDER.yaml must classify issue #173 as completed_superseded because PR #174 merged.');
   }
   for (const rung of [
     'Promote first executable MVP rung',
@@ -299,8 +313,11 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   if (!contract.acceptance_condition?.includes('not implementation authority')) {
     failures.push('.foldera-contract.json acceptance_condition must forbid treating the draft as implementation authority.');
   }
-  if (!contract.acceptance_condition?.includes('Rung 2 read-only audit current schema and choose first evidence lane')) {
-    failures.push('.foldera-contract.json acceptance_condition must name Rung 2 as the next read-only audit seam.');
+  if (!contract.acceptance_condition?.includes('current seam is Rung 2 read-only audit current schema and choose first evidence lane')) {
+    failures.push('.foldera-contract.json acceptance_condition must name Rung 2 as the active read-only audit seam.');
+  }
+  if (!contract.acceptance_condition?.includes('activation PR does not start the audit artifact')) {
+    failures.push('.foldera-contract.json acceptance_condition must forbid starting the audit artifact in the activation PR.');
   }
   if (!contract.next_command?.includes(`Run issue #${ACTIVE_ISSUE} only`)) failures.push(`.foldera-contract.json next_command must command issue #${ACTIVE_ISSUE} only.`);
 
@@ -309,7 +326,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
     '| `FOLDERA_NORTH_STAR_LOCK.md` | `CURRENT_CONTROL` |',
     '| `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` |',
     '| `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` | `REFERENCE_DRAFT` |',
-    'GitHub issue #173 `Promote first executable MVP rung from Master Synthesis`',
+    'GitHub issue #175 `Rung 2: audit current schema and choose first evidence lane`',
+    'GitHub issue #173 `Promote first executable MVP rung from Master Synthesis` | `REFERENCE_ONLY`',
     'GitHub issue #170 `Foldera Master Synthesis Lock Pass - customer, deliverable, build spec, and issue ladder` | `REFERENCE_ONLY`',
     'GitHub issue #166 `Repo Intake Governor v0 - classify owner input into repo truth` | `REFERENCE_ONLY`',
     'GitHub issue #165 `Open Threads - Foldera Owner Whiteboard`',
@@ -354,5 +372,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Issue #173 is active, issue #170 is completed by PR #172, and Rung 2 is the next read-only audit seam.');
+  console.log('Source truth check passed. Issue #175 is active, issue #173 is completed by PR #174, and Rung 2 is the active read-only audit seam.');
 }
