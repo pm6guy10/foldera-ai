@@ -19,8 +19,9 @@ const ACTIVE_ISSUE = 170;
 const OPEN_THREADS_ISSUE = 165;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMMAND_OS_PR = 167;
-const BASE_COMMIT = 'a624b49f1f6e28f1c422624d001e072745f2e4bd';
-const NEXT_SEAM = 'Upgrade FOLDERA_MASTER_SYNTHESIS_DRAFT.md into the hit-by-a-bus build bible under a future explicitly assigned issue';
+const REFERENCE_LOCK_PR = 171;
+const BASE_COMMIT = '32b8764413420bdbc1aa432ce97bb09f0dcd7df4';
+const NEXT_SEAM = 'Promote the first executable build rung from FOLDERA_MASTER_SYNTHESIS_DRAFT.md under a future explicitly assigned issue';
 
 const REQUIRED_PROOF_COMMANDS = [
   'npm run gate:command',
@@ -155,10 +156,24 @@ function checkDraft(root: string): string[] {
     return [error instanceof Error ? error.message : String(error)];
   }
   for (const marker of [
-    '# READINESS VERDICT - NOT BUILD-READY YET',
+    '# READINESS VERDICT',
     'Authority status: `REFERENCE_DRAFT`.',
-    'This draft is not yet sufficient to build from.',
-    '# REQUIRED NEXT PASS',
+    'Verdict: build-bible ready as a reference draft.',
+    'not implementation authority',
+    '# CUSTOMER / ICP LOCK',
+    '# $29 SELF-SERVE DELIVERABLE',
+    '# FIRST USER JOURNEY',
+    '# CURRENT REPO INVENTORY',
+    '# PRODUCT OPERATING MODEL',
+    '# TECHNICAL ARCHITECTURE MAP',
+    '# SIGNAL FLOW',
+    '# SUPABASE CURRENT/FUTURE SCHEMA MAP',
+    '# VERCEL CONFIGURATION MAP',
+    '# GITHUB WORKFLOW / REPO OS',
+    '# BUILD LADDER TO MONEY-READY MVP',
+    '# MONEY-READINESS THRESHOLD',
+    '# FORBIDDEN WORK',
+    '# STOP CONDITIONS',
     'hit-by-a-bus build bible',
     'customer / ICP',
     'buyer',
@@ -197,7 +212,7 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   if (contract.active !== true) failures.push(`.foldera-contract.json active must be true for issue #${ACTIVE_ISSUE}.`);
   if (contract.backlog_id !== 'ISSUE_170_MASTER_SYNTHESIS_BUILD_BIBLE_LOCK') failures.push('.foldera-contract.json backlog_id must resolve to issue #170 Master Synthesis Build Bible Lock.');
   if (contract.authority_status !== 'ACTIVE_MASTER_SYNTHESIS_REFERENCE_DRAFT_LOCK') failures.push('.foldera-contract.json authority_status must be ACTIVE_MASTER_SYNTHESIS_REFERENCE_DRAFT_LOCK.');
-  if (contract.base_commit !== BASE_COMMIT) failures.push(`.foldera-contract.json base_commit must be PR #${COMMAND_OS_PR} merge SHA ${BASE_COMMIT}.`);
+  if (contract.base_commit !== BASE_COMMIT) failures.push(`.foldera-contract.json base_commit must be PR #${REFERENCE_LOCK_PR} merge SHA ${BASE_COMMIT}.`);
 
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
@@ -211,7 +226,7 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
     `Issue #${COMPLETED_COMMAND_OS_ISSUE} / PR #${COMMAND_OS_PR} completed the Repo Intake Governor Command OS v0 and is superseded as the active seam.`,
     `Issue #${OPEN_THREADS_ISSUE} Open Threads remains capture-only and cannot authorize implementation.`,
     'This is a source-truth build-definition seam only.',
-    'READINESS VERDICT - NOT BUILD-READY YET',
+    'build-bible-ready `REFERENCE_DRAFT`',
     'GitHub writeback is mandatory.',
     'One active seam only.',
     'Issue #140 / PR #142 remains rail-only and parked externally blocked',
@@ -234,8 +249,9 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
     `controlling_issue: ${ACTIVE_ISSUE}`,
     'artifact: FOLDERA_MASTER_SYNTHESIS_DRAFT.md',
     'authority_status: REFERENCE_DRAFT',
-    'readiness_verdict: NOT_BUILD_READY_YET',
-    'next_pass_required: hit-by-a-bus build bible',
+    'readiness_verdict: BUILD_BIBLE_READY_REFERENCE_DRAFT',
+    'implementation_authority: forbidden',
+    'next_pass_required: first executable build rung under future explicitly assigned issue',
     'issue_166_status: completed_superseded_by_pr_167',
     'open_threads_issue_165_status: capture_only',
     'pr_142_status: parked_rail_only',
@@ -257,8 +273,11 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   if (!contract.acceptance_condition?.includes('FOLDERA_MASTER_SYNTHESIS_DRAFT.md exists as REFERENCE_DRAFT')) {
     failures.push('.foldera-contract.json acceptance_condition must require the Master Synthesis draft as REFERENCE_DRAFT.');
   }
-  if (!contract.acceptance_condition?.includes('READINESS VERDICT - NOT BUILD-READY YET')) {
-    failures.push('.foldera-contract.json acceptance_condition must require the not-build-ready verdict.');
+  if (!contract.acceptance_condition?.includes('build-bible-ready REFERENCE_DRAFT')) {
+    failures.push('.foldera-contract.json acceptance_condition must require the build-bible-ready REFERENCE_DRAFT verdict.');
+  }
+  if (!contract.acceptance_condition?.includes('explicitly forbids implementation authority')) {
+    failures.push('.foldera-contract.json acceptance_condition must forbid treating the draft as implementation authority.');
   }
   if (!contract.next_command?.includes(`Run issue #${ACTIVE_ISSUE} only`)) failures.push(`.foldera-contract.json next_command must command issue #${ACTIVE_ISSUE} only.`);
 
@@ -311,5 +330,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Issue #170 is active and FOLDERA_MASTER_SYNTHESIS_DRAFT.md is locked as REFERENCE_DRAFT, not build-ready.');
+  console.log('Source truth check passed. Issue #170 is active and FOLDERA_MASTER_SYNTHESIS_DRAFT.md is build-bible-ready as REFERENCE_DRAFT, not implementation authority.');
 }
