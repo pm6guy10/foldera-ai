@@ -12,6 +12,8 @@ source_of_truth_order:
   - FOLDERA_NORTH_STAR_LOCK.md
   - FOLDERA_PRODUCT_OPERATING_SYSTEM.md
   - docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md
+  - FOLDERA_MASTER_SYNTHESIS_DRAFT.md
+  - docs/SOURCE_OF_TRUTH_MAP.md
   - FOLDERA_LAUNCH_ROADMAP.md
 accepted_terminal_states:
   - BLOCKED
@@ -19,11 +21,11 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 166
-priority_class: REPO_INTAKE_GOVERNOR_COMMAND_OS
-work_type: COMMAND_OS_IMPLEMENTATION
-why_this_first: PR #164 completed issue #163 Product Operating System and named Repo Intake Governor v0 as the next seam. Issue #166 now reduces Brandon as manual router by classifying owner inputs into exactly one GitHub target, no-action receipt, blocked receipt, reference-only receipt, or open-thread capture. Issue #165 is the Open Threads capture inbox only; issue #140 / PR #142 remains parked rail-only and externally blocked; issue #136 remains ledger-only.
-next_seam: Run Repo Intake Governor against Brandon's next messy Foldera input
+active_issue: 170
+priority_class: MASTER_SYNTHESIS_BUILD_BIBLE_LOCK
+work_type: SOURCE_TRUTH_BUILD_DEFINITION
+why_this_first: PR #167 completed issue #166 Repo Intake Governor Command OS v0. Issue #170 is now the single active source-truth seam because the Master Synthesis draft must be placed under repo control as REFERENCE_DRAFT and explicitly marked not build-ready before any future build-bible lock pass can upgrade it.
+next_seam: Upgrade FOLDERA_MASTER_SYNTHESIS_DRAFT.md into the hit-by-a-bus build bible under a future explicitly assigned issue
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -45,59 +47,17 @@ predecessor_issues:
   - 154
   - 156
   - 159
+  - 163
+  - 166
 completed:
-  - issue: 106
-    pr: 107
-    merge_sha: 0c2e10a65d086502fe61dec9d3751ad087b30c85
-    result: Final repo hygiene merged; no #99 implementation started.
-  - issue: 113
-    pr: 114
-    merge_sha: 2292181e0e81c505256637272d0e612cd10440a2
-    result: Source-truth closeout enforcement merged; public funnel route contract became active.
-  - issue: 120
-    pr: 122
-    merge_sha: 7784505f42f3ee16713a36d619f4ea0ceaa640fd
-    result: Public funnel route contract completed; /start is the public Join Pilot target for landing CTAs.
-  - issue: 126
-    pr: 132
-    merge_sha: 9d1dc71ba747306b03fc527ea7058ccdfc8dd723
-    result: Supabase egress recovery completed and downgrade blocker resolved.
-  - issue: 131
-    pr: 135
-    merge_sha: 1f8f373016ce9b9e8a77b9ea99a2acb683cf406f
-    result: Slack test-mode MVP Presence Loop landed on main; issue #131 is closed/completed and must not be reopened.
-  - issue: 136
-    pr: 137
-    merge_sha: 46ff9ee99d8f920fc423b6de4d114022d6a8a521
-    result: Codex Run Ledger closeout discipline landed on main; issue #136 remains open only as the standing ledger.
-  - issue: 138
-    pr: 139
-    merge_sha: 5f1d3e73f90f1c30ad904c8e45db18a68ebc042e
-    result: Real Slack Self-Loop source-truth promotion landed without Slack implementation code.
-  - issue: 140
-    pr: 142
-    merge_sha: not_merged_external_blocker_accepted
-    result: PR #142 remains rail-only and parked externally blocked; deterministic proof passed, live Slack send reached the rail, and remaining real Slack button callback proof is externally blocked. Do not widen PR #142 into source-truth selection, growth work, or product work.
-  - issue: 143
-    pr: 145
-    merge_sha: e93f8fa5fdcd2a4fb907370a71791484678cbadc
-    result: Deterministic Work Packet Brain proof landed on main.
-  - issue: 146
-    pr: 146
-    merge_sha: 26c19af9070e40a2699a8af7857c3b205d94aee6
-    result: Source truth closed out after PR #145.
-  - issue: 147
-    pr: 149
-    merge_sha: d9ede1dd39c3de3b3fe5bd5e3592b0ced001fdf3
-    result: Public landing shell adaptation landed on main; issue #147 is closed/completed.
-  - issue: 151
-    pr: 153
-    merge_sha: be5d596c8033f9b273ceb025aa3c2c18333520f4
-    result: Source-backed Right Now selector landed on main; issue #151 is closed/completed.
-  - issue: 154
-    pr: 155
-    merge_sha: 816118c35f9a1d860c637bfd1532d7ba6f7e9c5e
-    result: Source-truth selection completed by selecting Foldera North Star Lock, then stopped BLOCKED because no controlling issue existed at the time; issue #156 supplied that controlling issue.
+  - issue: 166
+    pr: 167
+    merge_sha: a624b49f1f6e28f1c422624d001e072745f2e4bd
+    result: Repo Intake Governor Command OS v0 landed on main; issue #166 is completed/superseded as active source truth.
+  - issue: 163
+    pr: 164
+    merge_sha: ab0eb73f08c459af81e5bc5aa4680235410ad552
+    result: Product Operating System landed on main; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap/phase/backlog/business/enterprise path.
   - issue: 156
     pr: 158
     merge_sha: daf86948646dc26e1ef700d5370ac4916f52a1e3
@@ -105,178 +65,101 @@ completed:
   - issue: 159
     pr: 161
     merge_sha: 84c476316a31901378d9627462d4fab155e40105
-    result: First 10 ICP Evidence Tracker landed on main; `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` exists; issue #159 is closed/completed; no next growth/product seam is authorized until real first-10 ICP evidence exists.
-  - issue: 163
-    pr: 164
-    merge_sha: ab0eb73f08c459af81e5bc5aa4680235410ad552
-    result: Product Operating System landed on main; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap/phase/backlog/business/enterprise path and names Repo Intake Governor v0 as the next seam.
+    result: First 10 ICP Evidence Tracker landed on main; placeholders are not evidence.
+  - issue: 140
+    pr: 142
+    merge_sha: not_merged_external_blocker_accepted
+    result: PR #142 remains rail-only and parked externally blocked; do not widen PR #142.
+  - issue: 136
+    pr: 137
+    merge_sha: 46ff9ee99d8f920fc423b6de4d114022d6a8a521
+    result: Codex Run Ledger closeout discipline landed on main; issue #136 remains open only as the standing ledger.
 closed_issues_do_not_reopen:
   - issue: 121
     status: closed_superseded
-    reason: Landing lessons were carried into issue #147, which is now complete via PR #149.
+    reason: Landing lessons were carried into issue #147, which is complete.
   - issue: 131
     status: closed_completed
-    reason: Slack test-mode presence loop completed via PR #135; remaining Slack live rail proof belongs to #140 / PR #142.
+    reason: Slack test-mode presence loop completed via PR #135.
   - issue: 99
     status: closed_after_carry_forward
-    reason: Architecture constraints were carried forward to #140 and repo source truth.
+    reason: Architecture constraints were carried forward.
   - issue: 48
     status: closed_superseded
-    reason: Product doctrine is carried in repo source truth and the parked #140 rail.
+    reason: Product doctrine is carried in repo source truth.
   - issue: 147
     status: closed_completed
     reason: Public landing shell adaptation completed by PR #149.
   - issue: 151
     status: closed_completed
     reason: Source-backed Right Now selector completed by PR #153.
+  - issue: 154
+    status: closed_completed
+    reason: Source-truth selection completed.
   - issue: 159
     status: closed_completed
-    reason: First 10 ICP Evidence Tracker completed by PR #161; do not reopen for product implementation.
+    reason: First 10 ICP Evidence Tracker completed by PR #161.
   - issue: 163
     status: closed_completed
-    reason: Product Operating System completed by PR #164; do not reopen for Command OS implementation.
-closed_pull_requests_do_not_reopen:
-  - pr: 124
-    status: closed_do_not_reopen
-    reason: Superseded lane; do not reopen or reuse for current work.
-  - pr: 125
-    status: closed_do_not_reopen
-    reason: Closed/unmerged; do not reopen or reuse.
+    reason: Product Operating System completed by PR #164.
+  - issue: 166
+    status: completed_superseded
+    reason: Repo Intake Governor Command OS v0 completed by PR #167 and is no longer active.
 forbidden_current_work:
   - product implementation
-  - scraping
-  - auto-DM
-  - outreach automation
-  - paid ads
-  - public claim expansion
-  - selector changes
-  - source-backed-state changes
-  - PR #142 changes
-  - PR #142 widening
+  - runtime code
+  - Supabase migrations
+  - Vercel changes
   - Slack rail work
-  - Slack code patch
-  - Slack app settings
-  - Vercel settings
-  - Supabase schema
-  - Supabase data changes
-  - customer data mutation
-  - dashboard files
-  - auth rewrite
-  - backend changes
+  - PR #142 changes
   - Stripe changes
-  - package-lock or dependency changes
-  - Dependabot
-  - connector platform expansion
-  - Teams expansion
-  - email expansion
-  - calendar expansion
-  - paid model proof
-  - landing implementation
+  - connector additions
+  - landing files
+  - dashboard files
+  - auth files
+  - backend files
   - broad cleanup
+  - fake enterprise claims
+  - treating FOLDERA_MASTER_SYNTHESIS_DRAFT.md as build-ready
 allowed_current_work:
   - update ACTIVE_HANDOFF.md
   - update FOLDERA_BUILD_ORDER.yaml
   - update .foldera-contract.json
   - update docs/SOURCE_OF_TRUTH_MAP.md
-  - update .github/pull_request_template.md only if needed for phase traceability
-  - update scripts/source-truth-check.ts
-  - update scripts/continuity-gate.ts if needed
-  - create scripts/repo-intake-governor.ts
-  - create lib/repo-intake-governor/**
-  - create tests/repo-intake-governor/**
-  - create tests/fixtures/repo-intake-governor/**
-  - update tests/config/__tests__/**
-  - update package.json only for governor:intake and gate:repo-intake-governor scripts
+  - add FOLDERA_MASTER_SYNTHESIS_DRAFT.md
+  - update focused source-truth gate tests if required
+  - update focused continuity gate tests if required
 required_local_proof:
-  - npm run health
   - npm run gate:command
   - npm run gate:continuity
-  - npm run lint
-  - npm run build
   - git diff --check
-  - npm run gate:repo-intake-governor
   - npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose
-required_issue_140_live_rail_proof:
-  - PR #142 remains the rail PR and blocker evidence surface
-  - prove whether a real signed Slack button callback POST reaches /api/slack/interaction
-  - if no POST reaches Vercel, classify BLOCKED as Slack app/workspace/token/config or Socket Mode callback delivery
-  - do not patch Slack code until logs prove a code-owned failure
-  - preserve Done/Stuck/Break smaller/Snooze loop from completed issue #131
-  - do not expand into connector platform, Teams/email/calendar, dashboard, auth/backend, Supabase schema, Stripe, landing, growth automation, or product work
-required_issue_156_north_star_lock:
-  - `FOLDERA_NORTH_STAR_LOCK.md` remains CURRENT_CONTROL
-  - preserve issue #140 / PR #142 as rail-only and externally blocked unless GitHub source truth explicitly reassigns it
-  - preserve issue #136 as the standing ledger only
-  - do not implement Slack / PR #142 work, landing/frontend/dashboard work, Supabase schema/data, Stripe/package changes, connector expansion, Teams/email/calendar expansion, or broad cleanup
-required_issue_159_growth_scout:
-  - `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` exists
-  - cite and obey FOLDERA_NORTH_STAR_LOCK.md
-  - lock the growth ladder from no-growth mode through first 10 ICP users, first 3 real proof loops, first paid customer, repeatable channel, and scale narrative
-  - require owner-approved manual replies only and separate observed evidence from interpretation
-  - forbid paid ads, broad launch, automated outreach, scraping, auto-DM, marketing automation, fake beta proof, unsupported public claims, product implementation, Slack / PR #142 work, landing/frontend/dashboard work, Supabase schema/data, Stripe/package changes, connector expansion, Teams/email/calendar work, package files, and broad cleanup
-required_issue_163_product_operating_system:
-  - controlling_issue: 163
-  - artifact: FOLDERA_PRODUCT_OPERATING_SYSTEM.md
-  - preserve FOLDERA_NORTH_STAR_LOCK.md as product doctrine control
-  - preserve docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md as proof doctrine/reference
-  - reconcile post-#159 blocker so manual first-10 evidence is not the only executable next move
-  - define phase ladder from today to enterprise-ready
-  - define product backlog lanes
-  - define business roadmap
-  - define enterprise-ready definition without claiming enterprise readiness
-  - define owner-burden rule
-  - name exactly one next seam after this PR
-  - expected next seam Repo Intake Governor v0 unless stricter prerequisite is proven
-  - forbid product/runtime work, Slack / PR #142, landing/frontend/dashboard, Supabase, Stripe, package files, connectors, Teams/email/calendar, outreach, scraping, paid ads, customer data, broad cleanup, fake enterprise, fake compliance, deleting first-10 tracker, or starting Repo Intake Governor
-required_issue_166_repo_intake_governor:
-  - controlling_issue: 166
-  - open_threads_issue: 165
-  - product_operating_system_completed_issue: 163
-  - product_operating_system_completed_pr: 164
-  - command_os_v0_authorized: true
-  - open_threads_authority: capture only; not implementation authority
-  - implementation_surface: deterministic repo-local intake governor only
-  - required_input_classes: VISION, AUDIT_FINDING, ACTIVE_SEAM_COMMAND, BLOCKER_REPORT, BUSINESS_PLAN_UPDATE, ARCHITECTURE_DOCTRINE, PRODUCT_PROOF, REPO_HYGIENE, LESSON_LEARNED, REFERENCE_ONLY
-  - routing_outcomes: open-thread capture, comment/update existing issue, create one new issue, update active seam, no-action receipt, blocked receipt, reference-only receipt
-  - output_contract: Classification, Bucket, Existing GitHub target, New issue needed YES/NO, Active seam impact YES/NO, Why, One next move, Forbidden work, Proof required, Stop condition
+required_issue_170_master_synthesis_build_bible_lock:
+  - controlling_issue: 170
+  - artifact: FOLDERA_MASTER_SYNTHESIS_DRAFT.md
+  - authority_status: REFERENCE_DRAFT
+  - active_issue: 170
+  - priority_class: MASTER_SYNTHESIS_BUILD_BIBLE_LOCK
+  - work_type: SOURCE_TRUTH_BUILD_DEFINITION
+  - readiness_verdict: NOT_BUILD_READY_YET
+  - next_pass_required: hit-by-a-bus build bible
+  - issue_166_status: completed_superseded_by_pr_167
+  - open_threads_issue_165_status: capture_only
+  - pr_142_status: parked_rail_only
+  - issue_136_status: ledger_only
   - product_runtime_touched: forbidden
-  - slack_pr_142_status: parked rail-only externally blocked
-  - issue_136_status: ledger-only
-  - package_json_allowed: governor:intake and gate:repo-intake-governor scripts only
-  - package_lock_allowed: no
-  - labels_projects_authority: never authority
-  - next_authorized_move_after_pr: Run Repo Intake Governor against Brandon's next messy Foldera input
-post_159_reconciliation:
-  state: RECONCILED_BY_PRODUCT_OPERATING_SYSTEM
-  active_seam_assigned: true
-  active_issue: 166
-  first_10_tracker_status: proof doctrine/reference only; placeholders are not evidence
-  manual_first_10_status: owner-rejected as primary operating path
-  current_next_move: issue #166 Repo Intake Governor Command OS v0 PR
-  next_seam_after_issue_163: Repo Intake Governor v0
-post_164_command_os_transition:
-  state: ACTIVE_REPO_INTAKE_GOVERNOR_COMMAND_OS
-  pr_164_merged: true
-  issue_163_closed_completed: true
-  open_threads_issue: 165
-  repo_intake_governor_issue: 166
-  active_issue: 166
-  command_os_v0_authorized: true
-  open_threads_capture_only: true
-  next_authorized_move: Run Repo Intake Governor against Brandon's next messy Foldera input
-  blocked_work_until_future_issue:
-    - product runtime work
-    - Slack / PR #142
-    - landing/frontend/dashboard
-    - Supabase schema/data
-    - Stripe
-    - connectors
-    - Teams/email/calendar
-    - outreach
-    - scraping
-    - paid ads
-    - customer data
-    - enterprise/compliance claims
+  - supabase_migrations: forbidden
+  - vercel_changes: forbidden
+  - slack_pr_142_changes: forbidden
+  - stripe_changes: forbidden
+  - connectors_added: forbidden
+  - landing_dashboard_auth_backend_touched: forbidden
+post_167_master_synthesis_transition:
+  state: ACTIVE_MASTER_SYNTHESIS_REFERENCE_DRAFT_LOCK
+  pr_167_merged: true
+  issue_166_completed_superseded: true
+  active_issue: 170
+  next_authorized_move: Upgrade FOLDERA_MASTER_SYNTHESIS_DRAFT.md into the hit-by-a-bus build bible under a future explicitly assigned issue
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -286,6 +169,6 @@ closeout_required_each_pr:
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock and Product Operating System control current direction
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock, Product Operating System, and issue #170 control current direction
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - Run Repo Intake Governor against Brandon's next messy Foldera input
+  next_seam: named - upgrade the draft into the hit-by-a-bus build bible under a future explicitly assigned issue

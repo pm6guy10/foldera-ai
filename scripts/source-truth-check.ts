@@ -15,25 +15,17 @@ type FolderaContract = {
   next_command?: string;
 };
 
-type PackageJson = {
-  scripts?: Record<string, string>;
-};
-
-const ACTIVE_ISSUE = 166;
+const ACTIVE_ISSUE = 170;
 const OPEN_THREADS_ISSUE = 165;
-const COMPLETED_PRODUCT_OS_ISSUE = 163;
-const PRODUCT_OS_PR = 164;
-const BASE_COMMIT = 'ab0eb73f08c459af81e5bc5aa4680235410ad552';
-const NEXT_SEAM = "Run Repo Intake Governor against Brandon's next messy Foldera input";
+const COMPLETED_COMMAND_OS_ISSUE = 166;
+const COMMAND_OS_PR = 167;
+const BASE_COMMIT = 'a624b49f1f6e28f1c422624d001e072745f2e4bd';
+const NEXT_SEAM = 'Upgrade FOLDERA_MASTER_SYNTHESIS_DRAFT.md into the hit-by-a-bus build bible under a future explicitly assigned issue';
 
 const REQUIRED_PROOF_COMMANDS = [
-  'npm run health',
   'npm run gate:command',
   'npm run gate:continuity',
-  'npm run lint',
-  'npm run build',
   'git diff --check',
-  'npm run gate:repo-intake-governor',
   'npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose',
 ];
 
@@ -42,15 +34,9 @@ const REQUIRED_ALLOWED_FILES = [
   'FOLDERA_BUILD_ORDER.yaml',
   '.foldera-contract.json',
   'docs/SOURCE_OF_TRUTH_MAP.md',
-  '.github/pull_request_template.md',
+  'FOLDERA_MASTER_SYNTHESIS_DRAFT.md',
   'scripts/source-truth-check.ts',
-  'scripts/continuity-gate.ts',
-  'scripts/repo-intake-governor.ts',
-  'lib/repo-intake-governor/**',
-  'tests/repo-intake-governor/**',
-  'tests/fixtures/repo-intake-governor/**',
   'tests/config/__tests__/**',
-  'package.json',
 ];
 
 const FORBIDDEN_PRODUCT_PATHS = [
@@ -74,10 +60,11 @@ const FORBIDDEN_PRODUCT_PATHS = [
   'app/api/stripe/**',
   'lib/stripe/**',
   'lib/billing/**',
+  'package.json',
   'package-lock.json',
   'Dependabot',
-  'Slack app settings',
   'Vercel settings',
+  'Slack app settings',
   'connector platform expansion',
   'Teams expansion',
   'email expansion',
@@ -91,38 +78,7 @@ const FORBIDDEN_PRODUCT_PATHS = [
   'broad cleanup',
 ];
 
-const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, COMPLETED_PRODUCT_OS_ISSUE];
-
-const REQUIRED_PRODUCT_OS_SECTIONS = [
-  '## Authority status',
-  '## 1. Executive verdict',
-  '## 2. The holy-crap moment',
-  '## 3. Core product loop',
-  '## 4. Current repo state',
-  '## 5. Product non-goals',
-  '## 6. Phase ladder from today to enterprise-ready',
-  '## 7. Product backlog lanes',
-  '## 8. Business roadmap',
-  '## 9. Enterprise-ready definition',
-  '## 10. Owner-burden rule',
-  '## 11. Manual first-10 evidence status',
-  '## 12. Source-truth authority',
-  '## 13. Next-seam recommendation',
-];
-
-const REQUIRED_PRODUCT_OS_MARKERS = [
-  '`CURRENT_CONTROL`',
-  'Foldera is a Workday Presence Layer.',
-  'state + connectors + triggers + one intervention',
-  'one trusted next move, or safe silence',
-  'Enterprise-ready is not a 1-3 week claim.',
-  'Manual first-10 evidence remains proof doctrine but is owner-rejected as the primary executable path.',
-  'Placeholder tracker rows are not evidence.',
-  'Repo Intake Governor v0',
-  'Do not let the repo remain blocked on manual first-10 evidence as the only executable next move.',
-  '`FOLDERA_NORTH_STAR_LOCK.md` controls product doctrine.',
-  '`FOLDERA_PRODUCT_OPERATING_SYSTEM.md` for roadmap, phase order, backlog lanes, business roadmap, and enterprise path.',
-];
+const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE];
 
 function readRepoFile(root: string, file: string): string {
   const path = join(root, file);
@@ -142,19 +98,6 @@ function extractYamlNumber(raw: string, key: string): number | null {
 function extractYamlScalar(raw: string, key: string): string | null {
   const match = raw.match(new RegExp(`^${key}:\\s*(.+?)\\s*$`, 'm'));
   return match ? match[1].trim().replace(/^['"]|['"]$/g, '') : null;
-}
-
-function extractYamlList(raw: string, key: string): string[] {
-  const lines = raw.split(/\r?\n/);
-  const startIndex = lines.findIndex((line) => line.trim() === `${key}:`);
-  if (startIndex === -1) return [];
-  const values: string[] = [];
-  for (let index = startIndex + 1; index < lines.length; index += 1) {
-    const line = lines[index];
-    if (!line.startsWith('  - ')) break;
-    values.push(line.slice(4).trim());
-  }
-  return values;
 }
 
 function extractActiveHandoffIssue(raw: string): number | null {
@@ -177,52 +120,67 @@ function requireArrayIncludes(failures: string[], label: string, actual: string[
   }
 }
 
+function requireArrayExcludes(failures: string[], label: string, actual: string[] | undefined, forbidden: string[]): void {
+  const values = actual ?? [];
+  for (const entry of forbidden) {
+    if (values.includes(entry)) failures.push(`${label} must not include forbidden entry: ${entry}`);
+  }
+}
+
 function requireClosedIssueDoNotReopen(failures: string[], handoff: string, buildOrder: string): void {
   const lines = buildOrder.split(/\r?\n/);
   for (const issue of REQUIRED_CLOSED_ISSUES) {
-    const start = lines.findIndex((line) => new RegExp(`^\\s*- issue:\\s*${issue}\\s*$`).test(line));
-    const next = start === -1 ? -1 : lines.findIndex((line, index) => index > start && /^\s*- issue:\s*\d+\s*$/.test(line));
-    const body = start === -1 ? '' : lines.slice(start, next === -1 ? lines.length : next).join('\n');
-    if (!/(closed|completed|superseded)/i.test(body)) {
+    const issueBlocks = lines
+      .map((line, index) => ({ line, index }))
+      .filter(({ line }) => new RegExp(`^\\s*- issue:\\s*${issue}\\s*$`).test(line))
+      .map(({ index }) => {
+        const next = lines.findIndex((line, nextIndex) => nextIndex > index && /^\s*- issue:\s*\d+\s*$/.test(line));
+        return lines.slice(index, next === -1 ? lines.length : next).join('\n');
+      });
+    if (issueBlocks.length === 0 || !issueBlocks.some((body) => /(closed|completed|superseded)/i.test(body))) {
       failures.push(`FOLDERA_BUILD_ORDER.yaml must classify issue #${issue} as closed/completed/superseded.`);
     }
   }
-  for (const marker of [
-    'Issues #121, #99, and #48 are closed/superseded; issue #131 is closed/completed. Do not reopen them.',
-    'Issue #154 source-truth selection is closed/completed and must not compete with issue #166.',
-    `Issue #${COMPLETED_PRODUCT_OS_ISSUE} / PR #${PRODUCT_OS_PR} completed the Product Operating System.`,
-  ]) {
-    if (!handoff.includes(marker)) failures.push(`ACTIVE_HANDOFF.md is missing closed/superseded marker: ${marker}`);
+  if (!handoff.includes('Issues #121, #99, #48, #131, #147, #151, #154, #159, #163, and #166 are closed/completed/superseded. Do not reopen them.')) {
+    failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #166, out of scope.');
   }
 }
 
-function checkProductOperatingSystem(root: string): string[] {
+function checkDraft(root: string): string[] {
   const failures: string[] = [];
-  let productOs = '';
+  let draft = '';
   try {
-    productOs = readRepoFile(root, 'FOLDERA_PRODUCT_OPERATING_SYSTEM.md');
+    draft = readRepoFile(root, 'FOLDERA_MASTER_SYNTHESIS_DRAFT.md');
   } catch (error) {
     return [error instanceof Error ? error.message : String(error)];
   }
-  for (const section of REQUIRED_PRODUCT_OS_SECTIONS) {
-    if (!productOs.includes(section)) failures.push(`FOLDERA_PRODUCT_OPERATING_SYSTEM.md is missing required section: ${section}`);
-  }
-  for (const marker of REQUIRED_PRODUCT_OS_MARKERS) {
-    if (!productOs.includes(marker)) failures.push(`FOLDERA_PRODUCT_OPERATING_SYSTEM.md is missing required marker: ${marker}`);
-  }
-  return failures;
-}
-
-function checkPackageScripts(root: string): string[] {
-  const failures: string[] = [];
-  const packageJson = readJson<PackageJson>(root, 'package.json');
-  if (packageJson.scripts?.['governor:intake'] !== 'npx tsx scripts/repo-intake-governor.ts') {
-    failures.push('package.json must define scripts.governor:intake as npx tsx scripts/repo-intake-governor.ts.');
-  }
-  if (!packageJson.scripts?.['gate:repo-intake-governor']) {
-    failures.push('package.json must define scripts.gate:repo-intake-governor for Command OS proof.');
-  } else if (!packageJson.scripts['gate:repo-intake-governor'].includes('tests/repo-intake-governor')) {
-    failures.push('package.json scripts.gate:repo-intake-governor must run focused Repo Intake Governor tests.');
+  for (const marker of [
+    '# READINESS VERDICT - NOT BUILD-READY YET',
+    'Authority status: `REFERENCE_DRAFT`.',
+    'This draft is not yet sufficient to build from.',
+    '# REQUIRED NEXT PASS',
+    'hit-by-a-bus build bible',
+    'customer / ICP',
+    'buyer',
+    '$29/month self-serve deliverable',
+    'first user journey',
+    'current repo inventory',
+    'what exists',
+    'what is missing',
+    'React / Next / Tailwind frontend responsibilities',
+    'backend/API responsibilities',
+    'runtime brain',
+    'signal flow',
+    'Supabase current/future schema',
+    'Vercel configuration map',
+    'GitHub workflow',
+    'issue/PR ladder',
+    'proof gates',
+    'money-readiness threshold',
+    'forbidden work',
+    'stop conditions',
+  ]) {
+    if (!draft.includes(marker)) failures.push(`FOLDERA_MASTER_SYNTHESIS_DRAFT.md is missing required marker: ${marker}`);
   }
   return failures;
 }
@@ -237,103 +195,93 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   if (buildIssue !== ACTIVE_ISSUE) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${ACTIVE_ISSUE}; found ${buildIssue ?? 'none'}.`);
   if (contractIssue !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_ISSUE}; found ${contractIssue ?? 'none'}.`);
   if (contract.active !== true) failures.push(`.foldera-contract.json active must be true for issue #${ACTIVE_ISSUE}.`);
-  if (contract.backlog_id !== 'ISSUE_166_REPO_INTAKE_GOVERNOR_COMMAND_OS') failures.push('.foldera-contract.json backlog_id must resolve to issue #166 Repo Intake Governor Command OS.');
-  if (contract.authority_status !== 'ACTIVE_REPO_INTAKE_GOVERNOR_COMMAND_OS') failures.push('.foldera-contract.json authority_status must be ACTIVE_REPO_INTAKE_GOVERNOR_COMMAND_OS.');
-  if (contract.base_commit !== BASE_COMMIT) failures.push(`.foldera-contract.json base_commit must be PR #164 merge SHA ${BASE_COMMIT}.`);
+  if (contract.backlog_id !== 'ISSUE_170_MASTER_SYNTHESIS_BUILD_BIBLE_LOCK') failures.push('.foldera-contract.json backlog_id must resolve to issue #170 Master Synthesis Build Bible Lock.');
+  if (contract.authority_status !== 'ACTIVE_MASTER_SYNTHESIS_REFERENCE_DRAFT_LOCK') failures.push('.foldera-contract.json authority_status must be ACTIVE_MASTER_SYNTHESIS_REFERENCE_DRAFT_LOCK.');
+  if (contract.base_commit !== BASE_COMMIT) failures.push(`.foldera-contract.json base_commit must be PR #${COMMAND_OS_PR} merge SHA ${BASE_COMMIT}.`);
 
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
-  if (priority !== 'REPO_INTAKE_GOVERNOR_COMMAND_OS') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be REPO_INTAKE_GOVERNOR_COMMAND_OS; found ${priority ?? 'none'}.`);
-  if (workType !== 'COMMAND_OS_IMPLEMENTATION') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be COMMAND_OS_IMPLEMENTATION; found ${workType ?? 'none'}.`);
+  if (priority !== 'MASTER_SYNTHESIS_BUILD_BIBLE_LOCK') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be MASTER_SYNTHESIS_BUILD_BIBLE_LOCK; found ${priority ?? 'none'}.`);
+  if (workType !== 'SOURCE_TRUTH_BUILD_DEFINITION') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_BUILD_DEFINITION; found ${workType ?? 'none'}.`);
   if (nextSeam !== NEXT_SEAM) failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must be ${NEXT_SEAM}; found ${nextSeam ?? 'none'}.`);
-
-  const sourceOrder = extractYamlList(buildOrder, 'source_of_truth_order');
-  for (const entry of ['FOLDERA_NORTH_STAR_LOCK.md', 'FOLDERA_PRODUCT_OPERATING_SYSTEM.md', 'docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md']) {
-    if (!sourceOrder.includes(entry)) failures.push(`FOLDERA_BUILD_ORDER.yaml is missing source_of_truth_order entry: ${entry}`);
-  }
 
   for (const marker of [
     `Active implementation seam is issue #${ACTIVE_ISSUE}`,
-    `Issue #${COMPLETED_PRODUCT_OS_ISSUE} / PR #${PRODUCT_OS_PR} completed the Product Operating System.`,
-    `Open Threads issue #${OPEN_THREADS_ISSUE} is the raw-input inbox, not implementation authority.`,
-    'This is a repo-local deterministic Command OS seam.',
+    `Issue #${COMPLETED_COMMAND_OS_ISSUE} / PR #${COMMAND_OS_PR} completed the Repo Intake Governor Command OS v0 and is superseded as the active seam.`,
+    `Issue #${OPEN_THREADS_ISSUE} Open Threads remains capture-only and cannot authorize implementation.`,
+    'This is a source-truth build-definition seam only.',
+    'READINESS VERDICT - NOT BUILD-READY YET',
     'GitHub writeback is mandatory.',
     'One active seam only.',
     'Issue #140 / PR #142 remains rail-only and parked externally blocked',
     'Issue #136 remains open as the standing Codex Run Ledger only.',
-    '`FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap, phase order, backlog lanes, and enterprise path.',
   ]) {
     if (!handoff.includes(marker)) failures.push(`ACTIVE_HANDOFF.md is missing required marker: ${marker}`);
   }
-  for (const staleMarker of ['Run issue #163 only', 'Forbidden in issue #163', 'no Repo Intake Governor implementation started']) {
-    if (handoff.includes(staleMarker)) failures.push(`ACTIVE_HANDOFF.md still contains stale issue #163 command: ${staleMarker}`);
-  }
   for (const staleMarker of [
+    'Run issue #166 only',
+    'Forbidden in issue #166',
+    'Repo Intake Governor Command OS v0 files are authorized',
     'The only safe next move is manual evidence collection/recording',
     'Collect/manual-record real first-10 ICP evidence only',
   ]) {
-    if (handoff.includes(staleMarker)) failures.push(`ACTIVE_HANDOFF.md still contains stale manual-first-10-only command: ${staleMarker}`);
+    if (handoff.includes(staleMarker)) failures.push(`ACTIVE_HANDOFF.md still contains stale command: ${staleMarker}`);
   }
 
   for (const marker of [
-    'required_issue_166_repo_intake_governor',
+    'required_issue_170_master_synthesis_build_bible_lock',
     `controlling_issue: ${ACTIVE_ISSUE}`,
-    `open_threads_issue: ${OPEN_THREADS_ISSUE}`,
-    `product_operating_system_completed_issue: ${COMPLETED_PRODUCT_OS_ISSUE}`,
-    'command_os_v0_authorized: true',
-    'open_threads_authority: capture only; not implementation authority',
+    'artifact: FOLDERA_MASTER_SYNTHESIS_DRAFT.md',
+    'authority_status: REFERENCE_DRAFT',
+    'readiness_verdict: NOT_BUILD_READY_YET',
+    'next_pass_required: hit-by-a-bus build bible',
+    'issue_166_status: completed_superseded_by_pr_167',
+    'open_threads_issue_165_status: capture_only',
+    'pr_142_status: parked_rail_only',
+    'issue_136_status: ledger_only',
     'product_runtime_touched: forbidden',
-    'slack_pr_142_status: parked rail-only externally blocked',
   ]) {
     if (!buildOrder.includes(marker)) failures.push(`FOLDERA_BUILD_ORDER.yaml is missing required marker: ${marker}`);
   }
+  if (!buildOrder.includes('status: completed_superseded') || !buildOrder.includes('reason: Repo Intake Governor Command OS v0 completed by PR #167 and is no longer active.')) {
+    failures.push('FOLDERA_BUILD_ORDER.yaml must classify issue #166 as completed_superseded because PR #167 merged.');
+  }
 
-  requireClosedIssueDoNotReopen(failures, handoff, buildOrder);
   requireArrayIncludes(failures, '.foldera-contract.json allowed_file_patterns', contract.allowed_file_patterns, REQUIRED_ALLOWED_FILES);
   requireArrayIncludes(failures, '.foldera-contract.json forbidden_file_patterns', contract.forbidden_file_patterns, FORBIDDEN_PRODUCT_PATHS);
+  requireArrayExcludes(failures, '.foldera-contract.json allowed_file_patterns', contract.allowed_file_patterns, FORBIDDEN_PRODUCT_PATHS);
   requireArrayIncludes(failures, '.foldera-contract.json required_local_proof', contractProofCommands(contract), REQUIRED_PROOF_COMMANDS);
+  requireClosedIssueDoNotReopen(failures, handoff, buildOrder);
 
-  if (!contract.acceptance_condition?.includes('deterministic repo-local intake routing')) {
-    failures.push('.foldera-contract.json acceptance_condition must require deterministic repo-local intake routing.');
+  if (!contract.acceptance_condition?.includes('FOLDERA_MASTER_SYNTHESIS_DRAFT.md exists as REFERENCE_DRAFT')) {
+    failures.push('.foldera-contract.json acceptance_condition must require the Master Synthesis draft as REFERENCE_DRAFT.');
   }
-  if (!contract.acceptance_condition?.includes('Open Threads is capture-only')) {
-    failures.push('.foldera-contract.json acceptance_condition must keep Open Threads capture-only.');
+  if (!contract.acceptance_condition?.includes('READINESS VERDICT - NOT BUILD-READY YET')) {
+    failures.push('.foldera-contract.json acceptance_condition must require the not-build-ready verdict.');
   }
   if (!contract.next_command?.includes(`Run issue #${ACTIVE_ISSUE} only`)) failures.push(`.foldera-contract.json next_command must command issue #${ACTIVE_ISSUE} only.`);
-
-  failures.push(...checkPackageScripts(root));
-  failures.push(...checkProductOperatingSystem(root));
-
-  const northStar = readRepoFile(root, 'FOLDERA_NORTH_STAR_LOCK.md');
-  if (!northStar.includes('`CURRENT_CONTROL`')) failures.push('FOLDERA_NORTH_STAR_LOCK.md must remain CURRENT_CONTROL.');
-  if (!northStar.includes('Foldera is a Workday Presence Layer')) failures.push('FOLDERA_NORTH_STAR_LOCK.md must preserve Workday Presence Layer doctrine.');
 
   const sourceMap = readRepoFile(root, 'docs/SOURCE_OF_TRUTH_MAP.md');
   for (const marker of [
     '| `FOLDERA_NORTH_STAR_LOCK.md` | `CURRENT_CONTROL` |',
     '| `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` |',
-    '| `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` | `PROOF_GATE` |',
-    '| `FOLDERA_LAUNCH_ROADMAP.md` | `REFERENCE_ONLY` |',
+    '| `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` | `REFERENCE_DRAFT` |',
+    'GitHub issue #170 `Foldera Master Synthesis Lock Pass - customer, deliverable, build spec, and issue ladder`',
+    'GitHub issue #166 `Repo Intake Governor v0 - classify owner input into repo truth` | `REFERENCE_ONLY`',
     'GitHub issue #165 `Open Threads - Foldera Owner Whiteboard`',
-    'GitHub issue #166 `Repo Intake Governor v0 - classify owner input into repo truth`',
     'Open Threads captures raw thoughts; it does not authorize implementation.',
   ]) {
     if (!sourceMap.includes(marker)) failures.push(`docs/SOURCE_OF_TRUTH_MAP.md is missing required marker: ${marker}`);
   }
 
-  const tracker = readRepoFile(root, 'docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md');
-  if (!tracker.includes('# First 10 ICP Evidence Tracker')) failures.push('docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md must exist as the completed issue #159 tracker.');
-  if (!tracker.includes('This tracker cites and obeys `FOLDERA_NORTH_STAR_LOCK.md`.')) failures.push('docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md must cite the North Star Lock.');
+  const northStar = readRepoFile(root, 'FOLDERA_NORTH_STAR_LOCK.md');
+  if (!northStar.includes('Foldera is a Workday Presence Layer')) failures.push('FOLDERA_NORTH_STAR_LOCK.md must preserve Workday Presence Layer doctrine.');
 
-  const prTemplate = readRepoFile(root, '.github/pull_request_template.md');
-  if (!prTemplate.includes('- `FOLDERA_NORTH_STAR_LOCK.md`: cited / updated / unchanged - reason / not applicable - reason')) {
-    failures.push('.github/pull_request_template.md must include the North Star traceability row.');
-  }
-  if (!prTemplate.includes('- `FOLDERA_PRODUCT_OPERATING_SYSTEM.md`: cited / updated / unchanged - reason / not applicable - reason')) {
-    failures.push('.github/pull_request_template.md must include the Product Operating System traceability row.');
-  }
+  const productOs = readRepoFile(root, 'FOLDERA_PRODUCT_OPERATING_SYSTEM.md');
+  if (!productOs.includes('Repo Intake Governor v0')) failures.push('FOLDERA_PRODUCT_OPERATING_SYSTEM.md must retain completed Command OS context.');
 
+  failures.push(...checkDraft(root));
   return failures;
 }
 
@@ -345,17 +293,7 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
 
   try {
     handoff = readRepoFile(root, 'ACTIVE_HANDOFF.md');
-  } catch (error) {
-    failures.push(error instanceof Error ? error.message : String(error));
-  }
-
-  try {
     buildOrder = readRepoFile(root, 'FOLDERA_BUILD_ORDER.yaml');
-  } catch (error) {
-    failures.push(error instanceof Error ? error.message : String(error));
-  }
-
-  try {
     contract = readJson<FolderaContract>(root, '.foldera-contract.json');
   } catch (error) {
     failures.push(error instanceof Error ? error.message : String(error));
@@ -373,5 +311,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Issue #166 is active, Open Threads #165 is capture-only, Command OS v0 files are authorized, and Repo Intake Governor proof scripts are wired.');
+  console.log('Source truth check passed. Issue #170 is active and FOLDERA_MASTER_SYNTHESIS_DRAFT.md is locked as REFERENCE_DRAFT, not build-ready.');
 }
