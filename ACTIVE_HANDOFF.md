@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-06-04 PT
-Current `origin/main` SHA after PR #167 merge: `a624b49f1f6e28f1c422624d001e072745f2e4bd`.
+Current `origin/main` SHA after PR #171 merge: `32b8764413420bdbc1aa432ce97bb09f0dcd7df4`.
 
 ## Canonical Boot Sequence
 1. Read `ACTIVE_HANDOFF.md`.
@@ -23,8 +23,8 @@ GitHub writeback is mandatory.
 One active seam only.
 
 ## Current slice:
-- Issue #170 is the only active seam: place `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` under repo control as `REFERENCE_DRAFT` and define the lock-pass acceptance standard.
-- The draft is not build-ready and is not implementation authority.
+- Issue #170 is the only active seam: upgrade `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` into the hit-by-a-bus build bible as `REFERENCE_DRAFT`.
+- The draft is build-bible ready as a reference draft only; it is not implementation authority, not schema authority, and not permission to build.
 - Issue #166 is complete via PR #167; do not continue Command OS implementation in this seam.
 - Issue #165 is capture-only Open Threads; it feeds future routing but cannot authorize implementation.
 - Issue #163 / PR #164 completed Product Operating System; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` remains roadmap/phase/backlog/enterprise control.
@@ -42,8 +42,8 @@ Issue #48 remains the product contract.
 
 ## Master Synthesis boundary
 Allowed in issue #170: source-truth transition files, `FOLDERA_MASTER_SYNTHESIS_DRAFT.md`, and focused source-truth/continuity gate tests only if required.
-Required result: `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` exists as `REFERENCE_DRAFT`, states `READINESS VERDICT - NOT BUILD-READY YET`, and names the required next pass to upgrade it into the hit-by-a-bus build bible.
-Forbidden in issue #170: product/runtime code, Supabase migrations, Vercel changes, Slack / PR #142, Stripe, connectors, landing/dashboard/auth/backend, broad cleanup, fake claims, or treating the draft as build-ready.
+Required result: `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` exists as a build-bible-ready `REFERENCE_DRAFT` covering customer/ICP, buyer, $29 deliverable, first journey, repo inventory, responsibilities, signal flow, schemas, Vercel/GitHub maps, issue ladder, proof gates, money threshold, forbidden work, and stop conditions.
+Forbidden in issue #170: product/runtime code, Supabase migrations, Vercel changes, Slack / PR #142, Stripe, connectors, landing/dashboard/auth/backend, broad cleanup, fake claims, or treating the draft as implementation authority.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
@@ -56,6 +56,6 @@ Forbidden in issue #170: product/runtime code, Supabase migrations, Vercel chang
 - If a source-truth file is not updated, the PR receipt must say `unchanged - reason` or `not applicable - reason`.
 
 ## Next exact move
-Run issue #170 only on branch `codex/activate-170-master-bible-lock`.
-Create one draft PR that activates issue #170, adds `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` as `REFERENCE_DRAFT`, proves source-truth gates, posts PR receipt, posts issue #136 ledger receipt, and stops.
-Next authorized move after this PR: upgrade the draft into the hit-by-a-bus build bible only under a future explicitly assigned issue.
+Run issue #170 only on branch `codex/170-master-synthesis-build-bible-pass`.
+Create one draft PR that upgrades `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` into the hit-by-a-bus build bible as `REFERENCE_DRAFT`, proves source-truth gates, posts PR receipt, posts issue #136 ledger receipt, and stops.
+Next authorized move after this PR: promote the first executable build rung from the build bible only under a future explicitly assigned issue.

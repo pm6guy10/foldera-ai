@@ -24,8 +24,8 @@ accepted_terminal_states:
 active_issue: 170
 priority_class: MASTER_SYNTHESIS_BUILD_BIBLE_LOCK
 work_type: SOURCE_TRUTH_BUILD_DEFINITION
-why_this_first: PR #167 completed issue #166 Repo Intake Governor Command OS v0. Issue #170 is now the single active source-truth seam because the Master Synthesis draft must be placed under repo control as REFERENCE_DRAFT and explicitly marked not build-ready before any future build-bible lock pass can upgrade it.
-next_seam: Upgrade FOLDERA_MASTER_SYNTHESIS_DRAFT.md into the hit-by-a-bus build bible under a future explicitly assigned issue
+why_this_first: PR #167 completed issue #166 Repo Intake Governor Command OS v0. PR #171 completed the issue #170 activation/reference-draft lock rung. Issue #170 remains the single active source-truth seam for upgrading the Master Synthesis draft into the hit-by-a-bus build bible as REFERENCE_DRAFT, without making it implementation authority.
+next_seam: Promote the first executable build rung from FOLDERA_MASTER_SYNTHESIS_DRAFT.md under a future explicitly assigned issue
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -54,6 +54,10 @@ completed:
     pr: 167
     merge_sha: a624b49f1f6e28f1c422624d001e072745f2e4bd
     result: Repo Intake Governor Command OS v0 landed on main; issue #166 is completed/superseded as active source truth.
+  - issue: 170
+    pr: 171
+    merge_sha: 32b8764413420bdbc1aa432ce97bb09f0dcd7df4
+    result: Master Synthesis draft activation/reference-draft lock landed on main; issue #170 remains active for the build-bible reference draft upgrade pass only.
   - issue: 163
     pr: 164
     merge_sha: ab0eb73f08c459af81e5bc5aa4680235410ad552
@@ -120,13 +124,13 @@ forbidden_current_work:
   - backend files
   - broad cleanup
   - fake enterprise claims
-  - treating FOLDERA_MASTER_SYNTHESIS_DRAFT.md as build-ready
+  - treating FOLDERA_MASTER_SYNTHESIS_DRAFT.md as implementation authority
 allowed_current_work:
   - update ACTIVE_HANDOFF.md
   - update FOLDERA_BUILD_ORDER.yaml
   - update .foldera-contract.json
   - update docs/SOURCE_OF_TRUTH_MAP.md
-  - add FOLDERA_MASTER_SYNTHESIS_DRAFT.md
+  - update FOLDERA_MASTER_SYNTHESIS_DRAFT.md
   - update focused source-truth gate tests if required
   - update focused continuity gate tests if required
 required_local_proof:
@@ -141,8 +145,9 @@ required_issue_170_master_synthesis_build_bible_lock:
   - active_issue: 170
   - priority_class: MASTER_SYNTHESIS_BUILD_BIBLE_LOCK
   - work_type: SOURCE_TRUTH_BUILD_DEFINITION
-  - readiness_verdict: NOT_BUILD_READY_YET
-  - next_pass_required: hit-by-a-bus build bible
+  - readiness_verdict: BUILD_BIBLE_READY_REFERENCE_DRAFT
+  - implementation_authority: forbidden
+  - next_pass_required: first executable build rung under future explicitly assigned issue
   - issue_166_status: completed_superseded_by_pr_167
   - open_threads_issue_165_status: capture_only
   - pr_142_status: parked_rail_only
@@ -159,7 +164,13 @@ post_167_master_synthesis_transition:
   pr_167_merged: true
   issue_166_completed_superseded: true
   active_issue: 170
-  next_authorized_move: Upgrade FOLDERA_MASTER_SYNTHESIS_DRAFT.md into the hit-by-a-bus build bible under a future explicitly assigned issue
+  next_authorized_move: Upgrade FOLDERA_MASTER_SYNTHESIS_DRAFT.md into the hit-by-a-bus build bible as REFERENCE_DRAFT
+post_171_master_synthesis_reference_lock:
+  state: ACTIVE_MASTER_SYNTHESIS_BUILD_BIBLE_REFERENCE_DRAFT_PASS
+  pr_171_merged: true
+  issue_170_activation_reference_draft_lock_completed: true
+  active_issue: 170
+  next_authorized_move: Promote the first executable build rung from FOLDERA_MASTER_SYNTHESIS_DRAFT.md under a future explicitly assigned issue
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -171,4 +182,4 @@ current_pr_closeout:
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock, Product Operating System, and issue #170 control current direction
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - upgrade the draft into the hit-by-a-bus build bible under a future explicitly assigned issue
+  next_seam: named - promote the first executable build rung from the build bible under a future explicitly assigned issue

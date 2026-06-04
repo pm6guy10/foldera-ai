@@ -46,7 +46,7 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
-  it('passes when issue #170 is active and the Master Synthesis draft is reference-only', () => {
+  it('passes when issue #170 is active and the Master Synthesis draft is a build-bible reference draft', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
@@ -123,14 +123,24 @@ describe('source truth command gate', () => {
     expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
   });
 
-  it('fails when the draft loses its not-build-ready verdict', () => {
+  it('fails when the draft loses its build-bible reference verdict', () => {
     const fixtureRoot = createFixtureRoot();
     const original = readFixtureFile(fixtureRoot, 'FOLDERA_MASTER_SYNTHESIS_DRAFT.md');
-    writeFixtureFile(fixtureRoot, 'FOLDERA_MASTER_SYNTHESIS_DRAFT.md', original.replace('# READINESS VERDICT - NOT BUILD-READY YET', '# READINESS VERDICT - BUILD READY'));
+    writeFixtureFile(fixtureRoot, 'FOLDERA_MASTER_SYNTHESIS_DRAFT.md', original.replace('Verdict: build-bible ready as a reference draft.', 'Verdict: implementation authority.'));
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('FOLDERA_MASTER_SYNTHESIS_DRAFT.md is missing required marker: # READINESS VERDICT - NOT BUILD-READY YET');
+    expect(failures).toContain('FOLDERA_MASTER_SYNTHESIS_DRAFT.md is missing required marker: Verdict: build-bible ready as a reference draft.');
+  });
+
+  it('fails when the draft becomes implementation authority', () => {
+    const fixtureRoot = createFixtureRoot();
+    const original = readFixtureFile(fixtureRoot, 'FOLDERA_MASTER_SYNTHESIS_DRAFT.md');
+    writeFixtureFile(fixtureRoot, 'FOLDERA_MASTER_SYNTHESIS_DRAFT.md', original.replace(/not implementation authority/g, 'implementation authority'));
+
+    const failures = runSourceTruthCheck(fixtureRoot);
+
+    expect(failures).toContain('FOLDERA_MASTER_SYNTHESIS_DRAFT.md is missing required marker: not implementation authority');
   });
 
   it('fails when the source map stops classifying the draft as REFERENCE_DRAFT', () => {
