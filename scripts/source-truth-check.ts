@@ -15,13 +15,14 @@ type FolderaContract = {
   next_command?: string;
 };
 
-const ACTIVE_ISSUE = 170;
+const ACTIVE_ISSUE = 173;
 const OPEN_THREADS_ISSUE = 165;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMMAND_OS_PR = 167;
-const REFERENCE_LOCK_PR = 171;
-const BASE_COMMIT = '32b8764413420bdbc1aa432ce97bb09f0dcd7df4';
-const NEXT_SEAM = 'Promote the first executable build rung from FOLDERA_MASTER_SYNTHESIS_DRAFT.md under a future explicitly assigned issue';
+const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
+const MASTER_SYNTHESIS_PR = 172;
+const BASE_COMMIT = 'ec63f75fd0a8dc84781540819c0ee9e2eb510674';
+const NEXT_SEAM = 'Rung 2 - Audit current schema and choose first evidence lane';
 
 const REQUIRED_PROOF_COMMANDS = [
   'npm run gate:command',
@@ -35,7 +36,6 @@ const REQUIRED_ALLOWED_FILES = [
   'FOLDERA_BUILD_ORDER.yaml',
   '.foldera-contract.json',
   'docs/SOURCE_OF_TRUTH_MAP.md',
-  'FOLDERA_MASTER_SYNTHESIS_DRAFT.md',
   'scripts/source-truth-check.ts',
   'tests/config/__tests__/**',
 ];
@@ -63,6 +63,7 @@ const FORBIDDEN_PRODUCT_PATHS = [
   'lib/billing/**',
   'package.json',
   'package-lock.json',
+  'FOLDERA_MASTER_SYNTHESIS_DRAFT.md',
   'Dependabot',
   'Vercel settings',
   'Slack app settings',
@@ -70,6 +71,8 @@ const FORBIDDEN_PRODUCT_PATHS = [
   'Teams expansion',
   'email expansion',
   'calendar expansion',
+  'schema audit',
+  'source-lane audit',
   'outreach',
   'scraping',
   'paid ads',
@@ -79,7 +82,7 @@ const FORBIDDEN_PRODUCT_PATHS = [
   'broad cleanup',
 ];
 
-const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE];
+const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE];
 
 function readRepoFile(root: string, file: string): string {
   const path = join(root, file);
@@ -142,8 +145,8 @@ function requireClosedIssueDoNotReopen(failures: string[], handoff: string, buil
       failures.push(`FOLDERA_BUILD_ORDER.yaml must classify issue #${issue} as closed/completed/superseded.`);
     }
   }
-  if (!handoff.includes('Issues #121, #99, #48, #131, #147, #151, #154, #159, #163, and #166 are closed/completed/superseded. Do not reopen them.')) {
-    failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #166, out of scope.');
+  if (!handoff.includes('Issues #121, #99, #48, #131, #147, #151, #154, #159, #163, #166, and #170 are closed/completed/superseded. Do not reopen them.')) {
+    failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #166 and #170, out of scope.');
   }
 }
 
@@ -210,27 +213,29 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   if (buildIssue !== ACTIVE_ISSUE) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${ACTIVE_ISSUE}; found ${buildIssue ?? 'none'}.`);
   if (contractIssue !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_ISSUE}; found ${contractIssue ?? 'none'}.`);
   if (contract.active !== true) failures.push(`.foldera-contract.json active must be true for issue #${ACTIVE_ISSUE}.`);
-  if (contract.backlog_id !== 'ISSUE_170_MASTER_SYNTHESIS_BUILD_BIBLE_LOCK') failures.push('.foldera-contract.json backlog_id must resolve to issue #170 Master Synthesis Build Bible Lock.');
-  if (contract.authority_status !== 'ACTIVE_MASTER_SYNTHESIS_REFERENCE_DRAFT_LOCK') failures.push('.foldera-contract.json authority_status must be ACTIVE_MASTER_SYNTHESIS_REFERENCE_DRAFT_LOCK.');
-  if (contract.base_commit !== BASE_COMMIT) failures.push(`.foldera-contract.json base_commit must be PR #${REFERENCE_LOCK_PR} merge SHA ${BASE_COMMIT}.`);
+  if (contract.backlog_id !== 'ISSUE_173_FIRST_EXECUTABLE_MVP_RUNG_PROMOTION') failures.push('.foldera-contract.json backlog_id must resolve to issue #173 First Executable MVP Rung Promotion.');
+  if (contract.authority_status !== 'ACTIVE_FIRST_EXECUTABLE_MVP_RUNG_PROMOTION') failures.push('.foldera-contract.json authority_status must be ACTIVE_FIRST_EXECUTABLE_MVP_RUNG_PROMOTION.');
+  if (contract.base_commit !== BASE_COMMIT) failures.push(`.foldera-contract.json base_commit must be PR #${MASTER_SYNTHESIS_PR} merge SHA ${BASE_COMMIT}.`);
 
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
-  if (priority !== 'MASTER_SYNTHESIS_BUILD_BIBLE_LOCK') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be MASTER_SYNTHESIS_BUILD_BIBLE_LOCK; found ${priority ?? 'none'}.`);
-  if (workType !== 'SOURCE_TRUTH_BUILD_DEFINITION') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_BUILD_DEFINITION; found ${workType ?? 'none'}.`);
+  if (priority !== 'FIRST_EXECUTABLE_MVP_RUNG_PROMOTION') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be FIRST_EXECUTABLE_MVP_RUNG_PROMOTION; found ${priority ?? 'none'}.`);
+  if (workType !== 'SOURCE_TRUTH_BUILD_SEQUENCE_PROMOTION') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_BUILD_SEQUENCE_PROMOTION; found ${workType ?? 'none'}.`);
   if (nextSeam !== NEXT_SEAM) failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must be ${NEXT_SEAM}; found ${nextSeam ?? 'none'}.`);
 
   for (const marker of [
     `Active implementation seam is issue #${ACTIVE_ISSUE}`,
-    `Issue #${COMPLETED_COMMAND_OS_ISSUE} / PR #${COMMAND_OS_PR} completed the Repo Intake Governor Command OS v0 and is superseded as the active seam.`,
+    `Issue #${COMPLETED_MASTER_SYNTHESIS_ISSUE} is complete/superseded by PR #${MASTER_SYNTHESIS_PR}`,
     `Issue #${OPEN_THREADS_ISSUE} Open Threads remains capture-only and cannot authorize implementation.`,
-    'This is a source-truth build-definition seam only.',
-    'build-bible-ready `REFERENCE_DRAFT`',
+    'This is a source-truth build-sequence promotion seam only.',
+    'FOLDERA_MASTER_SYNTHESIS_DRAFT.md` remains `REFERENCE_DRAFT`',
     'GitHub writeback is mandatory.',
     'One active seam only.',
-    'Issue #140 / PR #142 remains rail-only and parked externally blocked',
+    'Issue #140 / PR #142 remains rail-only and parked for this seam',
     'Issue #136 remains open as the standing Codex Run Ledger only.',
+    'Rung 2 - Audit current schema and choose first evidence lane',
+    'Rung 2 is audit/read-only unless explicitly authorized later',
   ]) {
     if (!handoff.includes(marker)) failures.push(`ACTIVE_HANDOFF.md is missing required marker: ${marker}`);
   }
@@ -245,23 +250,41 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   }
 
   for (const marker of [
-    'required_issue_170_master_synthesis_build_bible_lock',
+    'required_issue_173_first_executable_mvp_rung_promotion',
     `controlling_issue: ${ACTIVE_ISSUE}`,
     'artifact: FOLDERA_MASTER_SYNTHESIS_DRAFT.md',
     'authority_status: REFERENCE_DRAFT',
-    'readiness_verdict: BUILD_BIBLE_READY_REFERENCE_DRAFT',
-    'implementation_authority: forbidden',
-    'next_pass_required: first executable build rung under future explicitly assigned issue',
-    'issue_166_status: completed_superseded_by_pr_167',
+    'priority_class: FIRST_EXECUTABLE_MVP_RUNG_PROMOTION',
+    'work_type: SOURCE_TRUTH_BUILD_SEQUENCE_PROMOTION',
+    'issue_170_status: completed_superseded_by_pr_172',
     'open_threads_issue_165_status: capture_only',
-    'pr_142_status: parked_rail_only',
+    'pr_142_status: parked_rail_only_for_this_seam',
     'issue_136_status: ledger_only',
-    'product_runtime_touched: forbidden',
+    'next_rung: "Rung 2 - Audit current schema and choose first evidence lane"',
+    'rung_2_scope: audit_read_only_unless_explicitly_authorized_later',
+    'schema_audit_started: forbidden',
   ]) {
     if (!buildOrder.includes(marker)) failures.push(`FOLDERA_BUILD_ORDER.yaml is missing required marker: ${marker}`);
   }
   if (!buildOrder.includes('status: completed_superseded') || !buildOrder.includes('reason: Repo Intake Governor Command OS v0 completed by PR #167 and is no longer active.')) {
     failures.push('FOLDERA_BUILD_ORDER.yaml must classify issue #166 as completed_superseded because PR #167 merged.');
+  }
+  if (!buildOrder.includes('reason: Master Synthesis build bible REFERENCE_DRAFT completed by PR #172 and is no longer active.')) {
+    failures.push('FOLDERA_BUILD_ORDER.yaml must classify issue #170 as completed_superseded because PR #172 merged.');
+  }
+  for (const rung of [
+    'Promote first executable MVP rung',
+    'Audit current schema and choose first evidence lane',
+    'Prove deterministic one-verdict fixture loop',
+    'Prove one-click state mutation receipt',
+    'Implement first user journey shell',
+    'Persist one source-backed workday state path',
+    'Prove trust/privacy/no-send rail',
+    'Add bounded $29 early-access/payment path',
+    'Prove money-ready MVP end to end',
+    'Prove first non-owner validation',
+  ]) {
+    if (!buildOrder.includes(`- ${rung}`)) failures.push(`FOLDERA_BUILD_ORDER.yaml build sequence must include: ${rung}`);
   }
 
   requireArrayIncludes(failures, '.foldera-contract.json allowed_file_patterns', contract.allowed_file_patterns, REQUIRED_ALLOWED_FILES);
@@ -270,14 +293,14 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   requireArrayIncludes(failures, '.foldera-contract.json required_local_proof', contractProofCommands(contract), REQUIRED_PROOF_COMMANDS);
   requireClosedIssueDoNotReopen(failures, handoff, buildOrder);
 
-  if (!contract.acceptance_condition?.includes('FOLDERA_MASTER_SYNTHESIS_DRAFT.md exists as REFERENCE_DRAFT')) {
-    failures.push('.foldera-contract.json acceptance_condition must require the Master Synthesis draft as REFERENCE_DRAFT.');
+  if (!contract.acceptance_condition?.includes('FOLDERA_MASTER_SYNTHESIS_DRAFT.md remains REFERENCE_DRAFT')) {
+    failures.push('.foldera-contract.json acceptance_condition must keep the Master Synthesis draft as REFERENCE_DRAFT.');
   }
-  if (!contract.acceptance_condition?.includes('build-bible-ready REFERENCE_DRAFT')) {
-    failures.push('.foldera-contract.json acceptance_condition must require the build-bible-ready REFERENCE_DRAFT verdict.');
-  }
-  if (!contract.acceptance_condition?.includes('explicitly forbids implementation authority')) {
+  if (!contract.acceptance_condition?.includes('not implementation authority')) {
     failures.push('.foldera-contract.json acceptance_condition must forbid treating the draft as implementation authority.');
+  }
+  if (!contract.acceptance_condition?.includes('Rung 2 read-only audit current schema and choose first evidence lane')) {
+    failures.push('.foldera-contract.json acceptance_condition must name Rung 2 as the next read-only audit seam.');
   }
   if (!contract.next_command?.includes(`Run issue #${ACTIVE_ISSUE} only`)) failures.push(`.foldera-contract.json next_command must command issue #${ACTIVE_ISSUE} only.`);
 
@@ -286,7 +309,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
     '| `FOLDERA_NORTH_STAR_LOCK.md` | `CURRENT_CONTROL` |',
     '| `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` |',
     '| `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` | `REFERENCE_DRAFT` |',
-    'GitHub issue #170 `Foldera Master Synthesis Lock Pass - customer, deliverable, build spec, and issue ladder`',
+    'GitHub issue #173 `Promote first executable MVP rung from Master Synthesis`',
+    'GitHub issue #170 `Foldera Master Synthesis Lock Pass - customer, deliverable, build spec, and issue ladder` | `REFERENCE_ONLY`',
     'GitHub issue #166 `Repo Intake Governor v0 - classify owner input into repo truth` | `REFERENCE_ONLY`',
     'GitHub issue #165 `Open Threads - Foldera Owner Whiteboard`',
     'Open Threads captures raw thoughts; it does not authorize implementation.',
@@ -330,5 +354,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Issue #170 is active and FOLDERA_MASTER_SYNTHESIS_DRAFT.md is build-bible-ready as REFERENCE_DRAFT, not implementation authority.');
+  console.log('Source truth check passed. Issue #173 is active, issue #170 is completed by PR #172, and Rung 2 is the next read-only audit seam.');
 }
