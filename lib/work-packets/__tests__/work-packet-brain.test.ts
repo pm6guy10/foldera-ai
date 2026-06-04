@@ -64,4 +64,45 @@ describe('deterministic MVP Work Packet Brain proof', () => {
       'Approve external update without human review',
     ]);
   });
+
+  it('proves the full deterministic fixture -> packet -> review card -> state-after receipt chain', () => {
+    const receipt = buildWorkPacketBrainReceipt({
+      user_id: 'user_test_179',
+      before_state: beforeState,
+      fixture_signals: workPacketFixtureSignals,
+      action: 'review_packet',
+      nowIso: '2026-06-02T15:20:00.000Z',
+    });
+
+    expect(receipt.before_fixture_signals.map((signal) => signal.fixture_id)).toEqual([
+      'gmail_owner_reply',
+      'calendar_review_window',
+      'slack_cfo_ping',
+    ]);
+    expect(receipt.generated_work_packet).toMatchObject({
+      packet_id: 'work_packet_test_gmail_owner_reply_calendar_review_window_slack_cfo_ping',
+      status: 'pending_review',
+      review_surface: 'slack',
+      quiet_by_default: true,
+    });
+    expect(receipt.slack_review_card_payload).toMatchObject({
+      packet_id: receipt.generated_work_packet.packet_id,
+      channel: 'test_dm',
+    });
+    expect(receipt.slack_review_card_payload.blocks).toHaveLength(2);
+    expect(receipt.review_or_dismiss_action).toBe('review_packet');
+    expect(receipt.packet_workday_state_after.packet.status).toBe('reviewed');
+    expect(receipt.packet_workday_state_after.workday_state.state_source).toBe('work_packet_review');
+    expect(receipt.packet_workday_state_after.workday_state.last_completed_step).toBe(
+      `Reviewed work packet ${receipt.generated_work_packet.packet_id}`,
+    );
+    expect(receipt.packet_workday_state_after.packet.source_trail).toEqual(
+      receipt.generated_work_packet.source_trail,
+    );
+    expect(receipt.packet_workday_state_after.packet.forbidden_actions).toEqual(
+      receipt.generated_work_packet.forbidden_actions,
+    );
+    expect(receipt.paid_model_call_required).toBe(false);
+    expect(receipt.live_connector_fetch_required).toBe(false);
+  });
 });

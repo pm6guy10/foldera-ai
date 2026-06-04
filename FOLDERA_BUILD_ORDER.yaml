@@ -21,11 +21,11 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 175
-priority_class: RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT
-work_type: READ_ONLY_SCHEMA_EVIDENCE_AUDIT
-why_this_first: PR #174 completed issue #173 by promoting the first executable MVP rung and naming Rung 2 as the next seam. Issue #175 is the read-only audit seam that maps current schema/state/evidence support and chooses the first evidence lane without product/runtime/schema implementation.
-next_seam: Rung 3 - Prove deterministic one-verdict fixture loop
+active_issue: 179
+priority_class: RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF
+work_type: TEST_MODE_DETERMINISTIC_FIXTURE_PROOF
+why_this_first: PR #177 completed issue #175 by selecting the deterministic work-packet fixture lane for Rung 3. Issue #179 proves that lane without product/runtime/provider/schema work.
+next_seam: blocked - reason issue #179 must be reviewed/merged before the next rung is authorized
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -51,35 +51,40 @@ predecessor_issues:
   - 166
   - 170
   - 173
+  - 175
 completed:
+  - issue: 175
+    pr: 177
+    merge_sha: 17e0699238cd11e80b4891f236be860abe32eb72
+    result: Read-only Rung 2 audit selected deterministic work-packet fixture lane for Rung 3.
   - issue: 173
     pr: 174
     merge_sha: 34ac1b28be8c965a741eefbb1eb3f18a724bc45b
-    result: First executable MVP rung promotion landed on main; Rung 2 read-only schema/evidence-lane audit is now the active seam.
+    result: First executable MVP rung promotion landed on main.
   - issue: 170
     pr: 172
     merge_sha: ec63f75fd0a8dc84781540819c0ee9e2eb510674
-    result: Master Synthesis build bible reference draft landed on main; FOLDERA_MASTER_SYNTHESIS_DRAFT.md is build-bible-ready REFERENCE_DRAFT and not implementation authority.
+    result: Master Synthesis build bible reference draft landed on main.
   - issue: 166
     pr: 167
     merge_sha: a624b49f1f6e28f1c422624d001e072745f2e4bd
-    result: Repo Intake Governor Command OS v0 landed on main; issue #166 is completed/superseded as active source truth.
+    result: Repo Intake Governor Command OS v0 landed on main.
   - issue: 163
     pr: 164
     merge_sha: ab0eb73f08c459af81e5bc5aa4680235410ad552
-    result: Product Operating System landed on main; FOLDERA_PRODUCT_OPERATING_SYSTEM.md controls roadmap/phase/backlog/business/enterprise path.
+    result: Product Operating System landed on main.
   - issue: 156
     pr: 158
     merge_sha: daf86948646dc26e1ef700d5370ac4916f52a1e3
-    result: Foldera North Star Lock landed on main; FOLDERA_NORTH_STAR_LOCK.md is CURRENT_CONTROL.
+    result: Foldera North Star Lock landed on main.
   - issue: 159
     pr: 161
     merge_sha: 84c476316a31901378d9627462d4fab155e40105
-    result: First 10 ICP Evidence Tracker landed on main; placeholders are not evidence.
+    result: First 10 ICP Evidence Tracker landed on main.
   - issue: 140
     pr: 142
     merge_sha: not_merged_external_blocker_accepted
-    result: PR #142 remains rail-only and parked for this source-truth routing seam; do not widen PR #142 here.
+    result: PR #142 remains rail-only and parked; do not widen PR #142 here.
   - issue: 136
     pr: 137
     merge_sha: 46ff9ee99d8f920fc423b6de4d114022d6a8a521
@@ -121,67 +126,67 @@ closed_issues_do_not_reopen:
   - issue: 173
     status: completed_superseded
     reason: First executable MVP rung promotion completed by PR #174 and is no longer active.
+  - issue: 175
+    status: closed_completed
+    reason: Rung 2 audit completed by PR #177 and selected deterministic work-packet fixture lane.
 forbidden_current_work:
   - product implementation
-  - runtime code
-  - frontend code
-  - backend code
+  - runtime provider work
+  - live Slack rail work
+  - PR #142 changes
   - schema implementation
-  - source-lane implementation
-  - audit artifact in activation PR
   - Supabase migrations
   - data mutation
   - Vercel changes
-  - Slack rail work
-  - PR #142 changes
   - Stripe changes
-  - connector additions
+  - auth changes
   - landing files
   - dashboard files
-  - auth files
-  - backend files
-  - broad cleanup
+  - package or dependency changes
+  - live connector fetch
+  - paid model call
   - fake enterprise claims
-  - treating FOLDERA_MASTER_SYNTHESIS_DRAFT.md as implementation authority
+  - fake compliance claims
+  - broad cleanup
 allowed_current_work:
   - update ACTIVE_HANDOFF.md
   - update FOLDERA_BUILD_ORDER.yaml
   - update .foldera-contract.json
   - update docs/SOURCE_OF_TRUTH_MAP.md
-  - add docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md
-  - update scripts/source-truth-check.ts if required by gates
-  - update focused source-truth gate tests if required
-  - update focused continuity gate tests if required
+  - update scripts/source-truth-check.ts
+  - update focused source-truth gate tests
+  - update focused continuity gate tests
+  - update tests/fixtures/work-packets/source-signals.ts
+  - update lib/work-packets/**
+  - update lib/slack-test-mode/work-packet-review.ts
+  - update lib/slack-test-mode/__tests__/work-packet-review.test.ts
+  - update lib/workday-presence/__tests__/work-packet-state-update.test.ts
 required_local_proof:
+  - npm run health
+  - npx vitest run lib/work-packets/__tests__/work-packet-brain.test.ts lib/slack-test-mode/__tests__/work-packet-review.test.ts lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose
   - npm run gate:command
   - npm run gate:continuity
   - git diff --check
-  - npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose
-required_issue_175_rung_2_schema_evidence_lane_audit_activation:
-  - controlling_issue: 175
-  - artifact: FOLDERA_MASTER_SYNTHESIS_DRAFT.md
-  - authority_status: REFERENCE_DRAFT
-  - active_issue: 175
-  - priority_class: RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT
-  - work_type: READ_ONLY_SCHEMA_EVIDENCE_AUDIT
-  - issue_173_status: completed_superseded_by_pr_174
-  - issue_170_status: completed_superseded_by_pr_172
-  - open_threads_issue_165_status: capture_only
-  - pr_142_status: parked_rail_only_for_this_seam
-  - issue_136_status: ledger_only
-  - current_rung: "Rung 2 - Audit current schema and choose first evidence lane"
-  - activation_scope: source_truth_routing_only_no_audit_started
-  - rung_2_scope: read_only_audit_no_product_runtime_schema_mutation
-  - next_rung_after_audit: "Rung 3 - Prove deterministic one-verdict fixture loop"
-  - product_runtime_frontend_backend_touched: forbidden
-  - audit_artifact_started_in_activation_pr: forbidden
-  - schema_implementation: forbidden
-  - data_mutation: forbidden
-  - supabase_migrations: forbidden
-  - vercel_changes: forbidden
-  - slack_pr_142_changes: forbidden
-  - stripe_changes: forbidden
-  - connectors_added: forbidden
+required_issue_179_rung_3_deterministic_work_packet_fixture_proof:
+  controlling_issue: 179
+  source_issue: 175
+  source_pr: 177
+  selected_first_evidence_lane: deterministic work-packet fixture lane
+  selected_lane_entrypoint: tests/fixtures/work-packets/source-signals.ts
+  selected_lane_receipt: lib/work-packets/receipt.ts
+  selected_lane_state_transition: lib/work-packets/transitions.ts
+  selected_lane_review_surface: lib/slack-test-mode/work-packet-review.ts
+  proof_chain: fixture signals -> generated work_packet -> TEST_MODE review card -> review/dismiss -> packet/workday state after
+  paid_model_call_required: false
+  live_connector_fetch_required: false
+  schema_implementation: forbidden
+  data_mutation: forbidden
+  supabase_migrations: forbidden
+  vercel_changes: forbidden
+  live_slack_pr_142_changes: forbidden
+  stripe_changes: forbidden
+  auth_changes: forbidden
+  landing_dashboard_changes: forbidden
 build_sequence_from_master_synthesis:
   - Promote first executable MVP rung
   - Audit current schema and choose first evidence lane
@@ -193,36 +198,15 @@ build_sequence_from_master_synthesis:
   - Add bounded $29 early-access/payment path
   - Prove money-ready MVP end to end
   - Prove first non-owner validation
-post_174_first_executable_mvp_rung_closeout:
-  state: ACTIVE_RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT
-  pr_174_merged: true
-  issue_173_completed_superseded: true
-  active_issue: 175
-  next_authorized_move: Rung 2 - Audit current schema and choose first evidence lane
-  next_seam_after_175: Rung 3 - Prove deterministic one-verdict fixture loop only after audit lane selection
-issue_175_rung_2_audit_closeout:
-  artifact: docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md
-  lane_selection_status: SELECTED
-  selected_first_evidence_lane: deterministic work-packet fixture lane
-  selected_lane_entrypoint: tests/fixtures/work-packets/source-signals.ts
-  selected_lane_receipt: lib/work-packets/receipt.ts
-  selected_lane_state_transition: lib/work-packets/transitions.ts
-  selected_lane_review_surface: lib/slack-test-mode/work-packet-review.ts
-  selected_lane_reason: Already repo-supported by deterministic fixtures, work-packet generation, Slack test-mode review card, review/dismiss transition, source trail, no-send rail, and receipt proof without schema migration, data mutation, live connector fetch, Vercel change, paid model call, or PR #142 Slack rail work.
-  blocked_first_lanes:
-    - first-class persisted workday-state schema requires future migration/schema issue
-    - live Slack callback remains parked rail-only under PR #142
-    - live connector evidence requires a later runtime/source reliability seam
-    - payment, landing, dashboard, auth, Stripe, Teams/email/calendar expansion, enterprise/privacy compliance claims are out of scope
+current_pr_closeout:
+  ACTIVE_HANDOFF.md: updated
+  FOLDERA_BUILD_ORDER.yaml: updated
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock, Product Operating System, Master Synthesis REFERENCE_DRAFT, issue #175 audit artifact, and issue #179 control current direction
+  docs/SOURCE_OF_TRUTH_MAP.md: updated
+  next_seam: blocked - issue #179 must be reviewed/merged before the next rung is authorized
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
   FOLDERA_LAUNCH_ROADMAP.md: updated / unchanged - reason / not applicable - reason
   docs/SOURCE_OF_TRUTH_MAP.md: updated / unchanged - reason / not applicable - reason
   next_seam: named / blocked - reason
-current_pr_closeout:
-  ACTIVE_HANDOFF.md: updated
-  FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock, Product Operating System, Master Synthesis REFERENCE_DRAFT, and issue #175 control current direction
-  docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - Rung 3 - Prove deterministic one-verdict fixture loop for selected deterministic work-packet fixture lane

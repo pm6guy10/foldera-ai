@@ -69,18 +69,18 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
-  it('passes when issue #175 is active as the Rung 2 read-only audit seam', () => {
+  it('passes when issue #179 is active as the Rung 3 deterministic fixture proof seam', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(handoff).toContain('Active implementation seam is issue #175');
+    expect(handoff).toContain('Active implementation seam is issue #179');
     expect(handoff).toContain('Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
-    expect(buildOrder).toContain('active_issue: 175');
-    expect(buildOrder).toContain('priority_class: RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT');
-    expect(buildOrder).toContain('next_seam: Rung 3 - Prove deterministic one-verdict fixture loop');
+    expect(buildOrder).toContain('active_issue: 179');
+    expect(buildOrder).toContain('priority_class: RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF');
+    expect(buildOrder).toContain('next_seam: blocked - reason issue #179 must be reviewed/merged before the next rung is authorized');
     expect(failures).toEqual([]);
   });
 

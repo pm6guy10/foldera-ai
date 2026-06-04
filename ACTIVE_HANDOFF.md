@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-06-04 PT
-Current `origin/main` SHA after PR #174 merge: `34ac1b28be8c965a741eefbb1eb3f18a724bc45b`.
+Current `origin/main` SHA after PR #177 merge: `17e0699238cd11e80b4891f236be860abe32eb72`.
 
 ## Canonical Boot Sequence
 1. Read `ACTIVE_HANDOFF.md`.
@@ -13,10 +13,11 @@ Current `origin/main` SHA after PR #174 merge: `34ac1b28be8c965a741eefbb1eb3f18a
 7. Use Vercel/Supabase only when the seam requires live/runtime truth.
 
 ## Active command gate
-Active implementation seam is issue #175: Rung 2 - Audit current schema and choose first evidence lane.
-This is a read-only schema/evidence-lane audit seam.
-Issue #173 is complete/superseded by PR #174: the first executable MVP rung was promoted and Rung 2 was named next.
-Issue #170 is complete/superseded by PR #172: `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` is build-bible-ready `REFERENCE_DRAFT`, not implementation authority.
+Active implementation seam is issue #179: Rung 3 - Prove deterministic one-verdict fixture loop.
+This is a deterministic TEST_MODE work-packet fixture proof seam.
+Issue #175 is complete via PR #177: the read-only audit selected the deterministic work-packet fixture lane.
+Issue #173 is complete/superseded by PR #174.
+Issue #170 is complete/superseded by PR #172.
 Issue #165 Open Threads remains capture-only and cannot authorize implementation.
 Issue #140 / PR #142 remains rail-only and parked for this seam; do not widen or patch it here.
 Issue #136 remains open as the standing Codex Run Ledger only.
@@ -24,18 +25,13 @@ GitHub writeback is mandatory.
 One active seam only.
 
 ## Current slice:
-- Issue #175 is the only active seam: audit current schema/state/evidence support and choose the first evidence lane.
-- `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` remains `REFERENCE_DRAFT`: source material only, not implementation authority, not schema authority, and not permission to build.
-- The next executable build sequence is: promote first executable MVP rung; audit current schema and choose first evidence lane; prove deterministic one-verdict fixture loop; prove one-click state mutation receipt; implement first user journey shell; persist one source-backed workday state path; prove trust/privacy/no-send rail; add bounded $29 early-access/payment path; prove money-ready MVP end to end; prove first non-owner validation.
-- Immediate next seam after issue #175: Rung 3 - Prove deterministic one-verdict fixture loop, only after issue #175 selects a first evidence lane or blocks lane selection.
-- Rung 2 is read-only audit work; it may inspect current repo files/schema artifacts but must not implement product/runtime/schema changes.
-- This transition PR activates #175 only and must not start the audit artifact.
-- Issue #173 is complete via PR #174; do not continue first-rung promotion work in this seam.
-- Issue #170 is complete/superseded by PR #172; do not reopen it.
-- Issue #166 is complete via PR #167; do not continue Command OS implementation in this seam.
-- Issue #165 is capture-only Open Threads; it feeds future routing but cannot authorize implementation.
-- Issue #140 / PR #142 is parked for this source-truth routing seam; do not touch Slack here.
-- Issues #121, #99, #48, #131, #147, #151, #154, #159, #163, #166, #170, and #173 are closed/completed/superseded. Do not reopen them.
+- Issue #179 is the only active seam: prove the deterministic one-verdict work-packet fixture loop selected by issue #175 / PR #177.
+- Exact lane: `tests/fixtures/work-packets/source-signals.ts` -> `lib/work-packets` packet generation/receipt/transitions -> `lib/slack-test-mode/work-packet-review.ts` TEST_MODE review card -> packet/workday state after.
+- Required proof chain: fixture signals enter; exactly one work packet is generated; exactly one TEST_MODE review card is produced; exactly one review/dismiss transition is applied; receipt records packet/workday state after; source trail and forbidden send actions remain intact; no paid model call or live connector fetch is required.
+- `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` remains `REFERENCE_DRAFT`: source material only, not implementation authority.
+- Issue #175 is closed/completed; do not reopen Rung 2 audit work.
+- Issue #140 / PR #142 is parked for this seam; do not touch live Slack/provider surfaces.
+- Issues #121, #99, #48, #131, #147, #151, #154, #159, #163, #166, #170, #173, and #175 are closed/completed/superseded. Do not reopen them.
 
 ## Product doctrine
 Foldera is a Workday Presence Layer / context conduit:
@@ -45,13 +41,10 @@ No dashboard/task-manager/inbox-summary/chatbot/surveillance drift.
 Issue #48 remains the product contract.
 `FOLDERA_NORTH_STAR_LOCK.md` controls product doctrine; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap, phase order, backlog lanes, and enterprise path.
 
-## Issue #175 boundary
-Allowed in issue #175 activation PR: source-truth transition files and focused source-truth/continuity gate tests only if required.
-Required result: active issue becomes #175; priority class becomes `RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT`; work type becomes `READ_ONLY_SCHEMA_EVIDENCE_AUDIT`; issue #173 is completed/superseded by PR #174; `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` remains `REFERENCE_DRAFT`; #165 remains capture-only; PR #142 remains parked rail-only; #136 remains ledger-only; next seam is Rung 3 deterministic one-verdict fixture loop only after the audit selects a lane.
-Forbidden in issue #175 activation PR: starting the audit artifact, product/runtime code, Supabase migrations, Vercel changes, Slack / PR #142, Stripe, connectors, landing/dashboard/auth/backend, broad cleanup, fake claims, or treating the draft as implementation authority.
-Audit artifact for later issue #175 audit work: `docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md`.
-Issue #175 audit selected first Rung 3 evidence lane: deterministic work-packet fixture lane (`tests/fixtures/work-packets/source-signals.ts` -> `lib/work-packets` receipt/review state).
-Forbidden in later issue #175 audit work: product/runtime/frontend/backend implementation, Supabase migrations or data mutation, Vercel changes, Slack / PR #142, Stripe, connectors, landing/dashboard/auth/backend, package/dependency changes, fake schema/customer/compliance claims, or starting Rung 3.
+## Issue #179 boundary
+Allowed in issue #179: source-truth transition files, focused source-truth/continuity gate tests, `tests/fixtures/work-packets/source-signals.ts`, `lib/work-packets/**`, `lib/slack-test-mode/work-packet-review.ts`, `lib/slack-test-mode/__tests__/work-packet-review.test.ts`, and `lib/workday-presence/__tests__/work-packet-state-update.test.ts`.
+Forbidden in issue #179: product/runtime/provider/schema/Supabase/Vercel/live Slack/PR #142/Stripe/auth/landing/dashboard work, package/dependency changes, data mutation, migrations, live connector fetch, paid/model calls, fake claims, or starting the next rung.
+Stop condition: one PR proves the deterministic fixture lane, posts a PR receipt and issue #136 ledger receipt, and stops without product/runtime/provider/schema work.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
@@ -64,6 +57,6 @@ Forbidden in later issue #175 audit work: product/runtime/frontend/backend imple
 - If a source-truth file is not updated, the PR receipt must say `unchanged - reason` or `not applicable - reason`.
 
 ## Next exact move
-Open one draft PR for issue #175 on branch `codex/issue-175-rung-2-schema-evidence-audit`.
-The PR must contain the read-only audit artifact, source-truth closeout, proof, PR receipt, and issue #136 ledger receipt.
-Next authorized move after this PR: Rung 3 deterministic one-verdict fixture loop only for the selected deterministic work-packet fixture lane.
+Open one draft PR for issue #179 on branch `codex/issue-179-rung-3-work-packet-fixture`.
+The PR must contain focused deterministic proof, source-truth closeout, PR receipt, and issue #136 ledger receipt.
+Next authorized move after this PR: blocked until issue #179 is reviewed/merged; do not start another rung.

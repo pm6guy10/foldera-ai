@@ -15,7 +15,9 @@ type FolderaContract = {
   next_command?: string;
 };
 
-const ACTIVE_ISSUE = 175;
+const ACTIVE_ISSUE = 179;
+const COMPLETED_RUNG_2_ISSUE = 175;
+const RUNG_2_PR = 177;
 const OPEN_THREADS_ISSUE = 165;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMMAND_OS_PR = 167;
@@ -23,15 +25,15 @@ const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
 const MASTER_SYNTHESIS_PR = 172;
 const COMPLETED_FIRST_RUNG_ISSUE = 173;
 const FIRST_RUNG_PR = 174;
-const BASE_COMMIT = '34ac1b28be8c965a741eefbb1eb3f18a724bc45b';
-const NEXT_SEAM = 'Rung 3 - Prove deterministic one-verdict fixture loop';
+const BASE_COMMIT = '17e0699238cd11e80b4891f236be860abe32eb72';
+const NEXT_SEAM = 'blocked - reason issue #179 must be reviewed/merged before the next rung is authorized';
 
 const REQUIRED_PROOF_COMMANDS = [
   'npm run health',
+  'npx vitest run lib/work-packets/__tests__/work-packet-brain.test.ts lib/slack-test-mode/__tests__/work-packet-review.test.ts lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose',
   'npm run gate:command',
   'npm run gate:continuity',
   'git diff --check',
-  'npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose',
 ];
 
 const REQUIRED_ALLOWED_FILES = [
@@ -39,9 +41,13 @@ const REQUIRED_ALLOWED_FILES = [
   'FOLDERA_BUILD_ORDER.yaml',
   '.foldera-contract.json',
   'docs/SOURCE_OF_TRUTH_MAP.md',
-  'docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md',
   'scripts/source-truth-check.ts',
   'tests/config/__tests__/**',
+  'tests/fixtures/work-packets/source-signals.ts',
+  'lib/work-packets/**',
+  'lib/slack-test-mode/work-packet-review.ts',
+  'lib/slack-test-mode/__tests__/work-packet-review.test.ts',
+  'lib/workday-presence/__tests__/work-packet-state-update.test.ts',
 ];
 
 const FORBIDDEN_PRODUCT_PATHS = [
@@ -52,7 +58,6 @@ const FORBIDDEN_PRODUCT_PATHS = [
   'next.config.mjs',
   'app/api/slack/**',
   'lib/slack/**',
-  'lib/slack-test-mode/**',
   'lib/workday-presence/source-backed-state.ts',
   'lib/workday-presence/__tests__/source-backed-state.test.ts',
   'supabase/**',
@@ -87,7 +92,7 @@ const FORBIDDEN_PRODUCT_PATHS = [
   'broad cleanup',
 ];
 
-const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE];
+const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE];
 
 function readRepoFile(root: string, file: string): string {
   const path = join(root, file);
@@ -150,7 +155,7 @@ function requireClosedIssueDoNotReopen(failures: string[], handoff: string, buil
       failures.push(`FOLDERA_BUILD_ORDER.yaml must classify issue #${issue} as closed/completed/superseded.`);
     }
   }
-  if (!handoff.includes('Issues #121, #99, #48, #131, #147, #151, #154, #159, #163, #166, #170, and #173 are closed/completed/superseded. Do not reopen them.')) {
+  if (!handoff.includes('Issues #121, #99, #48, #131, #147, #151, #154, #159, #163, #166, #170, #173, and #175 are closed/completed/superseded. Do not reopen them.')) {
     failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #166, #170, and #173, out of scope.');
   }
 }
@@ -218,30 +223,31 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   if (buildIssue !== ACTIVE_ISSUE) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${ACTIVE_ISSUE}; found ${buildIssue ?? 'none'}.`);
   if (contractIssue !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_ISSUE}; found ${contractIssue ?? 'none'}.`);
   if (contract.active !== true) failures.push(`.foldera-contract.json active must be true for issue #${ACTIVE_ISSUE}.`);
-  if (contract.backlog_id !== 'ISSUE_175_RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT') failures.push('.foldera-contract.json backlog_id must resolve to issue #175 Rung 2 schema/evidence-lane audit.');
-  if (contract.authority_status !== 'ACTIVE_RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT') failures.push('.foldera-contract.json authority_status must be ACTIVE_RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.');
-  if (contract.base_commit !== BASE_COMMIT) failures.push(`.foldera-contract.json base_commit must be PR #${FIRST_RUNG_PR} merge SHA ${BASE_COMMIT}.`);
+  if (contract.backlog_id !== 'ISSUE_179_RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF') failures.push('.foldera-contract.json backlog_id must resolve to issue #179 Rung 3 deterministic work-packet fixture proof.');
+  if (contract.authority_status !== 'ACTIVE_RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF') failures.push('.foldera-contract.json authority_status must be ACTIVE_RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF.');
+  if (contract.base_commit !== BASE_COMMIT) failures.push(`.foldera-contract.json base_commit must be PR #${RUNG_2_PR} merge SHA ${BASE_COMMIT}.`);
 
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
-  if (priority !== 'RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT; found ${priority ?? 'none'}.`);
-  if (workType !== 'READ_ONLY_SCHEMA_EVIDENCE_AUDIT') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be READ_ONLY_SCHEMA_EVIDENCE_AUDIT; found ${workType ?? 'none'}.`);
+  if (priority !== 'RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF; found ${priority ?? 'none'}.`);
+  if (workType !== 'TEST_MODE_DETERMINISTIC_FIXTURE_PROOF') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be TEST_MODE_DETERMINISTIC_FIXTURE_PROOF; found ${workType ?? 'none'}.`);
   if (nextSeam !== NEXT_SEAM) failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must be ${NEXT_SEAM}; found ${nextSeam ?? 'none'}.`);
 
   for (const marker of [
     `Active implementation seam is issue #${ACTIVE_ISSUE}`,
+    `Issue #${COMPLETED_RUNG_2_ISSUE} is complete via PR #${RUNG_2_PR}`,
     `Issue #${COMPLETED_FIRST_RUNG_ISSUE} is complete/superseded by PR #${FIRST_RUNG_PR}`,
     `Issue #${COMPLETED_MASTER_SYNTHESIS_ISSUE} is complete/superseded by PR #${MASTER_SYNTHESIS_PR}`,
     `Issue #${OPEN_THREADS_ISSUE} Open Threads remains capture-only and cannot authorize implementation.`,
-    'This is a read-only schema/evidence-lane audit seam.',
+    'This is a deterministic TEST_MODE work-packet fixture proof seam.',
     'FOLDERA_MASTER_SYNTHESIS_DRAFT.md` remains `REFERENCE_DRAFT`',
     'GitHub writeback is mandatory.',
     'One active seam only.',
     'Issue #140 / PR #142 remains rail-only and parked for this seam',
     'Issue #136 remains open as the standing Codex Run Ledger only.',
-    'Rung 3 - Prove deterministic one-verdict fixture loop',
-    'Issue #175 audit selected first Rung 3 evidence lane: deterministic work-packet fixture lane',
+    'Exact lane: `tests/fixtures/work-packets/source-signals.ts` -> `lib/work-packets`',
+    'Required proof chain: fixture signals enter; exactly one work packet is generated',
   ]) {
     if (!handoff.includes(marker)) failures.push(`ACTIVE_HANDOFF.md is missing required marker: ${marker}`);
   }
@@ -256,25 +262,18 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   }
 
   for (const marker of [
-    'required_issue_175_rung_2_schema_evidence_lane_audit_activation',
+    'required_issue_179_rung_3_deterministic_work_packet_fixture_proof',
     `controlling_issue: ${ACTIVE_ISSUE}`,
-    'artifact: FOLDERA_MASTER_SYNTHESIS_DRAFT.md',
-    'authority_status: REFERENCE_DRAFT',
-    'priority_class: RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT',
-    'work_type: READ_ONLY_SCHEMA_EVIDENCE_AUDIT',
-    'issue_173_status: completed_superseded_by_pr_174',
-    'issue_170_status: completed_superseded_by_pr_172',
-    'open_threads_issue_165_status: capture_only',
-    'pr_142_status: parked_rail_only_for_this_seam',
-    'issue_136_status: ledger_only',
-    'current_rung: "Rung 2 - Audit current schema and choose first evidence lane"',
-    'activation_scope: source_truth_routing_only_no_audit_started',
-    'rung_2_scope: read_only_audit_no_product_runtime_schema_mutation',
-    'next_rung_after_audit: "Rung 3 - Prove deterministic one-verdict fixture loop"',
-    'issue_175_rung_2_audit_closeout:',
-    'artifact: docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md',
-    'lane_selection_status: SELECTED',
+    'source_issue: 175',
+    'source_pr: 177',
     'selected_first_evidence_lane: deterministic work-packet fixture lane',
+    'selected_lane_entrypoint: tests/fixtures/work-packets/source-signals.ts',
+    'selected_lane_receipt: lib/work-packets/receipt.ts',
+    'selected_lane_state_transition: lib/work-packets/transitions.ts',
+    'selected_lane_review_surface: lib/slack-test-mode/work-packet-review.ts',
+    'proof_chain: fixture signals -> generated work_packet -> TEST_MODE review card -> review/dismiss -> packet/workday state after',
+    'paid_model_call_required: false',
+    'live_connector_fetch_required: false',
     'schema_implementation: forbidden',
     'data_mutation: forbidden',
   ]) {
@@ -288,6 +287,9 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   }
   if (!buildOrder.includes('reason: First executable MVP rung promotion completed by PR #174 and is no longer active.')) {
     failures.push('FOLDERA_BUILD_ORDER.yaml must classify issue #173 as completed_superseded because PR #174 merged.');
+  }
+  if (!buildOrder.includes('reason: Rung 2 audit completed by PR #177 and selected deterministic work-packet fixture lane.')) {
+    failures.push('FOLDERA_BUILD_ORDER.yaml must classify issue #175 as closed_completed because PR #177 merged.');
   }
   for (const rung of [
     'Promote first executable MVP rung',
@@ -310,28 +312,27 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   requireArrayIncludes(failures, '.foldera-contract.json required_local_proof', contractProofCommands(contract), REQUIRED_PROOF_COMMANDS);
   requireClosedIssueDoNotReopen(failures, handoff, buildOrder);
 
-  if (!contract.acceptance_condition?.includes('FOLDERA_MASTER_SYNTHESIS_DRAFT.md remains REFERENCE_DRAFT')) {
-    failures.push('.foldera-contract.json acceptance_condition must keep the Master Synthesis draft as REFERENCE_DRAFT.');
+  for (const marker of [
+    'current seam is Rung 3 deterministic one-verdict fixture loop proof',
+    'fixture signals -> generated work_packet -> TEST_MODE review card -> review/dismiss -> packet/workday state after',
+    'paid_model_call_required is false',
+    'live_connector_fetch_required is false',
+    'issue #175 remains completed by PR #177',
+    'issue #140 / PR #142 remains parked rail-only',
+  ]) {
+    if (!contract.acceptance_condition?.includes(marker)) failures.push(`.foldera-contract.json acceptance_condition is missing: ${marker}`);
   }
-  if (!contract.acceptance_condition?.includes('not implementation authority')) {
-    failures.push('.foldera-contract.json acceptance_condition must forbid treating the draft as implementation authority.');
-  }
-  if (!contract.acceptance_condition?.includes('current seam is Rung 2 read-only audit current schema and choose first evidence lane')) {
-    failures.push('.foldera-contract.json acceptance_condition must name Rung 2 as the active read-only audit seam.');
-  }
-  if (!contract.acceptance_condition?.includes('selected first evidence lane is deterministic work-packet fixture lane')) {
-    failures.push('.foldera-contract.json acceptance_condition must name the selected deterministic work-packet fixture lane.');
-  }
-  if (!contract.next_command?.includes('Rung 3 only')) failures.push('.foldera-contract.json next_command must route next work to Rung 3 only.');
+  if (!contract.next_command?.includes('stop')) failures.push('.foldera-contract.json next_command must stop after issue #179 closes.');
 
   const sourceMap = readRepoFile(root, 'docs/SOURCE_OF_TRUTH_MAP.md');
   for (const marker of [
     '| `FOLDERA_NORTH_STAR_LOCK.md` | `CURRENT_CONTROL` |',
     '| `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` |',
     '| `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` | `REFERENCE_DRAFT` |',
-    'GitHub issue #175 `Rung 2: audit current schema and choose first evidence lane`',
+    'GitHub issue #179 `Rung 3: prove deterministic work-packet fixture loop`',
+    'GitHub issue #175 `Rung 2: audit current schema and choose first evidence lane` | `REFERENCE_ONLY`',
     '| `docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md` | `CURRENT_CONTROL` |',
-    'selects deterministic work-packet fixture lane for Rung 3',
+    'selects deterministic work-packet fixture lane for issue #179',
     'GitHub issue #173 `Promote first executable MVP rung from Master Synthesis` | `REFERENCE_ONLY`',
     'GitHub issue #170 `Foldera Master Synthesis Lock Pass - customer, deliverable, build spec, and issue ladder` | `REFERENCE_ONLY`',
     'GitHub issue #166 `Repo Intake Governor v0 - classify owner input into repo truth` | `REFERENCE_ONLY`',
@@ -389,5 +390,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Issue #175 is active, issue #173 is completed by PR #174, and Rung 2 is the active read-only audit seam.');
+  console.log('Source truth check passed. Issue #179 is active, issue #175 is completed by PR #177, and Rung 3 is the active deterministic fixture proof seam.');
 }
