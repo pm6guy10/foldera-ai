@@ -39,6 +39,7 @@ const REQUIRED_ALLOWED_FILES = [
   'FOLDERA_BUILD_ORDER.yaml',
   '.foldera-contract.json',
   'docs/SOURCE_OF_TRUTH_MAP.md',
+  'docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md',
   'scripts/source-truth-check.ts',
   'tests/config/__tests__/**',
 ];
@@ -76,7 +77,6 @@ const FORBIDDEN_PRODUCT_PATHS = [
   'calendar expansion',
   'schema implementation',
   'source-lane implementation',
-  'audit artifact in activation PR',
   'data mutation',
   'outreach',
   'scraping',
@@ -241,7 +241,7 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
     'Issue #140 / PR #142 remains rail-only and parked for this seam',
     'Issue #136 remains open as the standing Codex Run Ledger only.',
     'Rung 3 - Prove deterministic one-verdict fixture loop',
-    'This transition PR activates #175 only and must not start the audit artifact.',
+    'Issue #175 audit selected first Rung 3 evidence lane: deterministic work-packet fixture lane',
   ]) {
     if (!handoff.includes(marker)) failures.push(`ACTIVE_HANDOFF.md is missing required marker: ${marker}`);
   }
@@ -271,7 +271,10 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
     'activation_scope: source_truth_routing_only_no_audit_started',
     'rung_2_scope: read_only_audit_no_product_runtime_schema_mutation',
     'next_rung_after_audit: "Rung 3 - Prove deterministic one-verdict fixture loop"',
-    'audit_artifact_started_in_activation_pr: forbidden',
+    'issue_175_rung_2_audit_closeout:',
+    'artifact: docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md',
+    'lane_selection_status: SELECTED',
+    'selected_first_evidence_lane: deterministic work-packet fixture lane',
     'schema_implementation: forbidden',
     'data_mutation: forbidden',
   ]) {
@@ -316,10 +319,10 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   if (!contract.acceptance_condition?.includes('current seam is Rung 2 read-only audit current schema and choose first evidence lane')) {
     failures.push('.foldera-contract.json acceptance_condition must name Rung 2 as the active read-only audit seam.');
   }
-  if (!contract.acceptance_condition?.includes('activation PR does not start the audit artifact')) {
-    failures.push('.foldera-contract.json acceptance_condition must forbid starting the audit artifact in the activation PR.');
+  if (!contract.acceptance_condition?.includes('selected first evidence lane is deterministic work-packet fixture lane')) {
+    failures.push('.foldera-contract.json acceptance_condition must name the selected deterministic work-packet fixture lane.');
   }
-  if (!contract.next_command?.includes(`Run issue #${ACTIVE_ISSUE} only`)) failures.push(`.foldera-contract.json next_command must command issue #${ACTIVE_ISSUE} only.`);
+  if (!contract.next_command?.includes('Rung 3 only')) failures.push('.foldera-contract.json next_command must route next work to Rung 3 only.');
 
   const sourceMap = readRepoFile(root, 'docs/SOURCE_OF_TRUTH_MAP.md');
   for (const marker of [
@@ -327,6 +330,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
     '| `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` |',
     '| `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` | `REFERENCE_DRAFT` |',
     'GitHub issue #175 `Rung 2: audit current schema and choose first evidence lane`',
+    '| `docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md` | `CURRENT_CONTROL` |',
+    'selects deterministic work-packet fixture lane for Rung 3',
     'GitHub issue #173 `Promote first executable MVP rung from Master Synthesis` | `REFERENCE_ONLY`',
     'GitHub issue #170 `Foldera Master Synthesis Lock Pass - customer, deliverable, build spec, and issue ladder` | `REFERENCE_ONLY`',
     'GitHub issue #166 `Repo Intake Governor v0 - classify owner input into repo truth` | `REFERENCE_ONLY`',
@@ -341,6 +346,18 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
 
   const productOs = readRepoFile(root, 'FOLDERA_PRODUCT_OPERATING_SYSTEM.md');
   if (!productOs.includes('Repo Intake Governor v0')) failures.push('FOLDERA_PRODUCT_OPERATING_SYSTEM.md must retain completed Command OS context.');
+
+  const rung2Audit = readRepoFile(root, 'docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md');
+  for (const marker of [
+    'Authority status: `ISSUE_175_READ_ONLY_AUDIT_ARTIFACT`.',
+    'Selected first evidence lane for Rung 3: deterministic work-packet fixture lane.',
+    'Lane selection status: `SELECTED`.',
+    'tests/fixtures/work-packets/source-signals.ts',
+    'buildWorkPacketBrainReceipt',
+    'No product/runtime implementation',
+  ]) {
+    if (!rung2Audit.includes(marker)) failures.push(`docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md is missing required marker: ${marker}`);
+  }
 
   failures.push(...checkDraft(root));
   return failures;

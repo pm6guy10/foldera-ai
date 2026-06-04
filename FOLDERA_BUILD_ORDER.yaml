@@ -148,6 +148,7 @@ allowed_current_work:
   - update FOLDERA_BUILD_ORDER.yaml
   - update .foldera-contract.json
   - update docs/SOURCE_OF_TRUTH_MAP.md
+  - add docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md
   - update scripts/source-truth-check.ts if required by gates
   - update focused source-truth gate tests if required
   - update focused continuity gate tests if required
@@ -199,6 +200,20 @@ post_174_first_executable_mvp_rung_closeout:
   active_issue: 175
   next_authorized_move: Rung 2 - Audit current schema and choose first evidence lane
   next_seam_after_175: Rung 3 - Prove deterministic one-verdict fixture loop only after audit lane selection
+issue_175_rung_2_audit_closeout:
+  artifact: docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md
+  lane_selection_status: SELECTED
+  selected_first_evidence_lane: deterministic work-packet fixture lane
+  selected_lane_entrypoint: tests/fixtures/work-packets/source-signals.ts
+  selected_lane_receipt: lib/work-packets/receipt.ts
+  selected_lane_state_transition: lib/work-packets/transitions.ts
+  selected_lane_review_surface: lib/slack-test-mode/work-packet-review.ts
+  selected_lane_reason: Already repo-supported by deterministic fixtures, work-packet generation, Slack test-mode review card, review/dismiss transition, source trail, no-send rail, and receipt proof without schema migration, data mutation, live connector fetch, Vercel change, paid model call, or PR #142 Slack rail work.
+  blocked_first_lanes:
+    - first-class persisted workday-state schema requires future migration/schema issue
+    - live Slack callback remains parked rail-only under PR #142
+    - live connector evidence requires a later runtime/source reliability seam
+    - payment, landing, dashboard, auth, Stripe, Teams/email/calendar expansion, enterprise/privacy compliance claims are out of scope
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
@@ -210,4 +225,4 @@ current_pr_closeout:
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock, Product Operating System, Master Synthesis REFERENCE_DRAFT, and issue #175 control current direction
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - Rung 3 - Prove deterministic one-verdict fixture loop only after issue #175 audit selects a lane
+  next_seam: named - Rung 3 - Prove deterministic one-verdict fixture loop for selected deterministic work-packet fixture lane
