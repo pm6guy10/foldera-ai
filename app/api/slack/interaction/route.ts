@@ -19,6 +19,8 @@ import { apiErrorForRoute, badRequest } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 async function persistState(
   userId: string,
   metadata: Record<string, unknown>,
@@ -53,6 +55,11 @@ function requireSlackInteractionConfig() {
   return { signingSecret, userId };
 }
 
+function validateSupabaseAuthUserId(userId: string): true | NextResponse {
+  if (UUID_PATTERN.test(userId)) return true;
+  return badRequest('Invalid FOLDERA_SELF_USER_ID: expected Supabase auth user UUID');
+}
+
 async function parseSlackBody(request: Request): Promise<{ rawBody: string; payload: SlackInteractionPayload | null }> {
   const rawBody = await request.text();
   const form = new URLSearchParams(rawBody);
@@ -66,6 +73,8 @@ export async function POST(request: Request) {
     const { signingSecret, userId } = requireSlackInteractionConfig();
     const { rawBody, payload } = await parseSlackBody(request);
     if (!payload) return badRequest('Slack interaction payload is required');
+    const validUserId = validateSupabaseAuthUserId(userId);
+    if (validUserId !== true) return validUserId;
 
     const signatureOk = verifySlackRequestSignature({
       signingSecret,

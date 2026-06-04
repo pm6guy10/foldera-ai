@@ -29,6 +29,7 @@ const beforeState = {
   created_at: '2026-05-20T12:00:00.000Z',
   updated_at: '2026-05-20T12:10:00.000Z',
 };
+const folderaAuthUserId = '11111111-1111-4111-8111-111111111111';
 
 vi.mock('@/lib/auth/resolve-user', () => ({ resolveUser: mockResolveUser }));
 vi.mock('@/lib/db/client', () => ({ createServerClient: () => mockSupabase }));
@@ -60,9 +61,9 @@ describe('real Slack self-loop routes', () => {
     vi.clearAllMocks();
     vi.stubEnv('FOLDERA_SLACK_SELF_CHANNEL_ID', 'CSELF');
     vi.stubEnv('SLACK_SIGNING_SECRET', 'test-signing-secret');
-    vi.stubEnv('FOLDERA_SELF_USER_ID', 'owner-user-id');
+    vi.stubEnv('FOLDERA_SELF_USER_ID', folderaAuthUserId);
     vi.stubEnv('SLACK_BOT_TOKEN', '');
-    mockResolveUser.mockResolvedValue({ userId: 'owner-user-id' });
+    mockResolveUser.mockResolvedValue({ userId: folderaAuthUserId });
     mockApiErrorForRoute.mockImplementation((error: unknown) =>
       NextResponse.json(
         { error: error instanceof Error ? error.message : String(error) },
@@ -133,6 +134,30 @@ describe('real Slack self-loop routes', () => {
 
     expect(response.status).toBe(500);
     expect(body.error).toBe('Missing SLACK_SIGNING_SECRET for Slack interaction verification');
+    expect(mockSupabase.auth.admin.updateUserById).not.toHaveBeenCalled();
+  });
+
+  it('returns a controlled error before Supabase auth when the configured Foldera user id is not a UUID', async () => {
+    vi.stubEnv('FOLDERA_SELF_USER_ID', 'U123SLACKUSER');
+    mockSupabase.auth.admin.getUserById.mockRejectedValue(
+      new Error('@supabase/auth-js: Expected parameter to be UUID but is not'),
+    );
+
+    const { POST } = await import('../interaction/route');
+    const response = await POST(
+      slackSignedRequest({
+        type: 'block_actions',
+        channel: { id: 'CSELF' },
+        message: { ts: '177.1' },
+        user: { id: 'U123SLACKUSER' },
+        actions: [{ action_id: 'done' }],
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error).toBe('Invalid FOLDERA_SELF_USER_ID: expected Supabase auth user UUID');
+    expect(mockSupabase.auth.admin.getUserById).not.toHaveBeenCalled();
     expect(mockSupabase.auth.admin.updateUserById).not.toHaveBeenCalled();
   });
 });
