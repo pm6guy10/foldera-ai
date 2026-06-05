@@ -1,24 +1,9 @@
 import { CheckCircle2, Clock3, FileText, MessageSquare, Sparkles } from 'lucide-react';
-
-const sourceTrail = [
-  {
-    label: 'Slack',
-    title: 'Marcus approved the estimate.',
-    detail: 'Redacted fixture content contains approval only; no raw private message body is stored.',
-  },
-  {
-    label: 'Calendar',
-    title: 'A review block starts at 3 PM PT.',
-    detail: 'The window leaves one focused slot for the renewal note.',
-  },
-];
-
-const evidenceRows = [
-  { label: 'Focus', value: 'Finalize revised estimate for Marcus' },
-  { label: 'Waiting on', value: 'Marcus approval' },
-  { label: 'Blocker', value: 'Waiting on Marcus' },
-  { label: 'Last step', value: 'None yet' },
-];
+import {
+  getMarcusLoopEvidenceRows,
+  getMarcusLoopNextMove,
+  marcusLoopSourceTrail,
+} from '@/lib/work-packets/marcus-loop-fixture';
 
 function LoopPanel({ done }: { done: boolean }) {
   return (
@@ -62,7 +47,7 @@ function LoopPanel({ done }: { done: boolean }) {
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {evidenceRows.map((row) => (
+            {getMarcusLoopEvidenceRows(done).map((row) => (
               <div key={row.label} className="rounded-2xl border border-white/10 bg-[#08111b]/75 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
                   {row.label}
@@ -80,7 +65,7 @@ function LoopPanel({ done }: { done: boolean }) {
               One next move
             </div>
             <p className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-[2.6rem]">
-              {done ? 'Stay quiet until a new source-backed trigger appears.' : 'Send Estimate'}
+              {getMarcusLoopNextMove(done)}
             </p>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
               Approved source evidence resolves the blocker and keeps the loop quiet until the
@@ -121,7 +106,7 @@ function LoopPanel({ done }: { done: boolean }) {
               Source trail
             </div>
             <div className="mt-5 space-y-4">
-              {sourceTrail.map((item) => (
+              {marcusLoopSourceTrail.map((item) => (
                 <article key={item.title} className="rounded-2xl border border-white/10 bg-[#071019]/80 p-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">
                     {item.label}
