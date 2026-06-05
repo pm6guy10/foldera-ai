@@ -1,0 +1,245 @@
+version: 1
+authority: SUPREME_EXECUTION_QUEUE
+authority_law: FOLDERA_EXECUTION_QUEUE.yaml overrides every other markdown source-truth file for execution routing.
+routing_mode: DETERMINISTIC_EXECUTION
+queue_update_law: Agents may not deviate from this queue without a signed-off QUEUE_UPDATE commit from Brandon.
+agent_law:
+  - Read this file first for execution routing.
+  - Identify the first ACTIVE task.
+  - Execute only that task.
+  - When proof passes, mark it COMPLETED, move the next QUEUED task to ACTIVE, and continue.
+  - Do not ask what is next.
+  - Do not start audits, hygiene passes, or source-truth reconciliation.
+  - Do not touch files outside the ACTIVE task allowed_files list.
+holy_crap_mvp_loop: "Marcus approved the estimate -> Approval Received -> Next Move: Send Estimate -> Done click updates state -> durable receipt proves the loop."
+items:
+  - id: "001"
+    task: "Create deterministic mock evidence fixture: Marcus approved the estimate."
+    status: COMPLETED
+    allowed_files:
+      - tests/fixtures/work-packets/source-signals.ts
+      - lib/work-packets/__tests__/work-packet-brain.test.ts
+    stop_condition: "a) fixture contains Marcus approval evidence; b) fixture source trail includes actor, action, subject, and timestamp; c) focused work-packet test consumes the fixture without live connector fetch."
+    proof_gate: "npm run test -- run lib/work-packets/__tests__/work-packet-brain.test.ts --reporter=verbose"
+  - id: "002"
+    task: "Build state inference from Waiting on Marcus to Approval Received and Next Move: Send Estimate."
+    status: ACTIVE
+    allowed_files:
+      - lib/work-packets/generator.ts
+      - lib/work-packets/types.ts
+      - lib/work-packets/__tests__/work-packet-brain.test.ts
+    stop_condition: "a) Waiting on Marcus input is detected; b) Marcus approval evidence changes verdict to Approval Received; c) generated packet next_move is Send Estimate."
+    proof_gate: "npm run test -- run lib/work-packets/__tests__/work-packet-brain.test.ts --reporter=verbose"
+  - id: "003"
+    task: "Generate the Right Now review card with the Marcus source trail."
+    status: QUEUED
+    allowed_files:
+      - lib/slack-test-mode/work-packet-review.ts
+      - lib/slack-test-mode/__tests__/work-packet-review.test.ts
+      - lib/work-packets/types.ts
+    stop_condition: "a) card title reflects Approval Received; b) card action is Send Estimate; c) source trail names the Marcus approval evidence."
+    proof_gate: "npm run test -- run lib/slack-test-mode/__tests__/work-packet-review.test.ts --reporter=verbose"
+  - id: "004"
+    task: "Implement Done click state mutation for the Marcus estimate loop."
+    status: QUEUED
+    allowed_files:
+      - lib/work-packets/transitions.ts
+      - lib/workday-presence/__tests__/work-packet-state-update.test.ts
+      - lib/work-packets/types.ts
+    stop_condition: "a) Done action marks the work packet completed; b) workday state records Send Estimate as completed; c) no live Slack or provider send occurs."
+    proof_gate: "npm run test -- run lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose"
+  - id: "005"
+    task: "Create durable proof receipt for the full Marcus loop."
+    status: QUEUED
+    allowed_files:
+      - lib/work-packets/receipt.ts
+      - lib/work-packets/__tests__/work-packet-brain.test.ts
+      - lib/slack-test-mode/__tests__/work-packet-review.test.ts
+      - lib/workday-presence/__tests__/work-packet-state-update.test.ts
+    stop_condition: "a) receipt records fixture signals; b) receipt records card generation and Done mutation; c) receipt proves paid_model_call_required=false, live_connector_fetch_required=false, and live_send_performed=false."
+    proof_gate: "npm run test -- run lib/work-packets/__tests__/work-packet-brain.test.ts lib/slack-test-mode/__tests__/work-packet-review.test.ts lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose"
+  - id: "006"
+    task: "Add queue-aware source-truth gate that requires exactly one ACTIVE task."
+    status: QUEUED
+    allowed_files:
+      - scripts/source-truth-check.ts
+      - tests/config/__tests__/source-truth-check.test.ts
+      - FOLDERA_EXECUTION_QUEUE.yaml
+    stop_condition: "a) gate parses queue; b) gate fails on zero or multiple ACTIVE tasks; c) gate reports the active task id."
+    proof_gate: "npm run gate:command"
+  - id: "007"
+    task: "Add queue advancement test for COMPLETED to ACTIVE promotion."
+    status: QUEUED
+    allowed_files:
+      - tests/config/__tests__/source-truth-check.test.ts
+      - scripts/source-truth-check.ts
+      - FOLDERA_EXECUTION_QUEUE.yaml
+    stop_condition: "a) completed task is ignored; b) next queued task can become ACTIVE; c) queue order remains deterministic."
+    proof_gate: "npm run test -- run tests/config/__tests__/source-truth-check.test.ts --reporter=verbose"
+  - id: "008"
+    task: "Persist Marcus loop receipt as a deterministic artifact fixture."
+    status: QUEUED
+    allowed_files:
+      - tests/fixtures/work-packets/marcus-estimate-receipt.json
+      - lib/work-packets/receipt.ts
+      - lib/work-packets/__tests__/work-packet-brain.test.ts
+    stop_condition: "a) JSON receipt fixture exists; b) receipt validates against work-packet receipt shape; c) receipt can be regenerated deterministically."
+    proof_gate: "npm run test -- run lib/work-packets/__tests__/work-packet-brain.test.ts --reporter=verbose"
+  - id: "009"
+    task: "Add no-send rail assertion to the Marcus card path."
+    status: QUEUED
+    allowed_files:
+      - lib/slack-test-mode/work-packet-review.ts
+      - lib/slack-test-mode/__tests__/work-packet-review.test.ts
+    stop_condition: "a) review card is TEST_MODE only; b) payload exposes no live send target; c) test fails if live send metadata appears."
+    proof_gate: "npm run test -- run lib/slack-test-mode/__tests__/work-packet-review.test.ts --reporter=verbose"
+  - id: "010"
+    task: "Add safe-silence case when Marcus approval evidence is absent."
+    status: QUEUED
+    allowed_files:
+      - tests/fixtures/work-packets/source-signals.ts
+      - lib/work-packets/generator.ts
+      - lib/work-packets/__tests__/work-packet-brain.test.ts
+    stop_condition: "a) waiting state without approval creates no Send Estimate action; b) receipt says no intervention; c) source trail explains missing evidence."
+    proof_gate: "npm run test -- run lib/work-packets/__tests__/work-packet-brain.test.ts --reporter=verbose"
+  - id: "011"
+    task: "Add conflicting evidence case and preserve one-verdict output."
+    status: QUEUED
+    allowed_files:
+      - tests/fixtures/work-packets/source-signals.ts
+      - lib/work-packets/generator.ts
+      - lib/work-packets/__tests__/work-packet-brain.test.ts
+    stop_condition: "a) conflicting signals do not produce multiple actions; b) selected verdict is deterministic; c) receipt records why alternatives were ignored."
+    proof_gate: "npm run test -- run lib/work-packets/__tests__/work-packet-brain.test.ts --reporter=verbose"
+  - id: "012"
+    task: "Expose a local proof script for the Marcus loop."
+    status: QUEUED
+    allowed_files:
+      - scripts/proof-marcus-estimate-loop.ts
+      - package.json
+      - lib/work-packets/**
+      - tests/fixtures/work-packets/source-signals.ts
+    stop_condition: "a) npm script runs one deterministic Marcus loop; b) script prints receipt JSON; c) script exits nonzero on missing Done mutation."
+    proof_gate: "npm run proof:marcus-estimate-loop"
+  - id: "013"
+    task: "Create first user journey shell for the estimate approval loop."
+    status: QUEUED
+    allowed_files:
+      - app/foldera-loop/page.tsx
+      - components/foldera-loop/**
+      - tests/e2e/foldera-loop.spec.ts
+    stop_condition: "a) route renders current state, evidence, one next move, and one Done action; b) no dashboard/task-list UI appears; c) Playwright proves no horizontal overflow."
+    proof_gate: "npm run test:e2e -- tests/e2e/foldera-loop.spec.ts --reporter=list"
+  - id: "014"
+    task: "Wire journey shell to deterministic Marcus fixture only."
+    status: QUEUED
+    allowed_files:
+      - app/foldera-loop/page.tsx
+      - components/foldera-loop/**
+      - lib/work-packets/**
+      - tests/e2e/foldera-loop.spec.ts
+    stop_condition: "a) shell reads deterministic fixture; b) shell shows Send Estimate from receipt; c) shell does not fetch live connector/provider data."
+    proof_gate: "npm run test:e2e -- tests/e2e/foldera-loop.spec.ts --reporter=list"
+  - id: "015"
+    task: "Persist one source-backed workday state path locally."
+    status: QUEUED
+    allowed_files:
+      - lib/workday-presence/source-backed-state.ts
+      - lib/workday-presence/__tests__/source-backed-state.test.ts
+      - lib/work-packets/types.ts
+    stop_condition: "a) state stores waiting_on, approval_received, next_move, and source ids; b) update is deterministic; c) test uses local fixture only."
+    proof_gate: "npm run test -- run lib/workday-presence/__tests__/source-backed-state.test.ts --reporter=verbose"
+  - id: "016"
+    task: "Connect Done action to persisted local workday state."
+    status: QUEUED
+    allowed_files:
+      - lib/workday-presence/source-backed-state.ts
+      - lib/workday-presence/__tests__/source-backed-state.test.ts
+      - lib/work-packets/transitions.ts
+    stop_condition: "a) Done mutates persisted state; b) mutation preserves receipt id; c) duplicate Done is idempotent."
+    proof_gate: "npm run test -- run lib/workday-presence/__tests__/source-backed-state.test.ts --reporter=verbose"
+  - id: "017"
+    task: "Add privacy rail proof for source-backed state."
+    status: QUEUED
+    allowed_files:
+      - lib/workday-presence/source-backed-state.ts
+      - lib/workday-presence/__tests__/source-backed-state.test.ts
+      - scripts/privacy-rail-check.ts
+    stop_condition: "a) no secret/token fields are persisted; b) no raw message body is required for proof; c) privacy rail command fails on forbidden fields."
+    proof_gate: "npm run gate:privacy-rail"
+  - id: "018"
+    task: "Add trust copy to the journey shell without enterprise claims."
+    status: QUEUED
+    allowed_files:
+      - app/foldera-loop/page.tsx
+      - components/foldera-loop/**
+      - tests/e2e/foldera-loop.spec.ts
+    stop_condition: "a) page states local fixture/no-send truth; b) page avoids enterprise/compliance claims; c) test greps forbidden claims."
+    proof_gate: "npm run test:e2e -- tests/e2e/foldera-loop.spec.ts --reporter=list"
+  - id: "019"
+    task: "Add bounded early-access payment intent shell without live charge."
+    status: QUEUED
+    allowed_files:
+      - app/early-access/page.tsx
+      - components/early-access/**
+      - tests/e2e/early-access.spec.ts
+    stop_condition: "a) $29 early-access offer is visible; b) payment action is disabled or test-mode only; c) no Stripe secret or live charge path is added."
+    proof_gate: "npm run test:e2e -- tests/e2e/early-access.spec.ts --reporter=list"
+  - id: "020"
+    task: "Add money-ready MVP end-to-end smoke for loop plus early access."
+    status: QUEUED
+    allowed_files:
+      - tests/e2e/holy-crap-mvp-loop.spec.ts
+      - app/foldera-loop/page.tsx
+      - app/early-access/page.tsx
+      - components/foldera-loop/**
+      - components/early-access/**
+    stop_condition: "a) user sees approval evidence; b) user clicks Done and sees receipt; c) user can reach early-access offer without unsupported claims."
+    proof_gate: "npm run test:e2e -- tests/e2e/holy-crap-mvp-loop.spec.ts --reporter=list"
+  - id: "021"
+    task: "Create first non-owner validation capture path."
+    status: QUEUED
+    allowed_files:
+      - app/validation/page.tsx
+      - components/validation/**
+      - tests/e2e/validation.spec.ts
+    stop_condition: "a) page captures non-owner reaction to the Marcus loop; b) fields are minimal and product-specific; c) no fake customer evidence is seeded."
+    proof_gate: "npm run test:e2e -- tests/e2e/validation.spec.ts --reporter=list"
+  - id: "022"
+    task: "Persist non-owner validation locally with explicit consent."
+    status: QUEUED
+    allowed_files:
+      - lib/validation/**
+      - app/validation/page.tsx
+      - tests/e2e/validation.spec.ts
+      - tests/validation/**
+    stop_condition: "a) validation response includes consent; b) saved record is source-backed; c) test proves no owner-seeded fake evidence."
+    proof_gate: "npm run test -- run tests/validation --reporter=verbose"
+  - id: "023"
+    task: "Add launch proof summary for the Holy Crap MVP loop."
+    status: QUEUED
+    allowed_files:
+      - scripts/proof-holy-crap-mvp.ts
+      - tests/fixtures/work-packets/**
+      - lib/work-packets/**
+      - lib/workday-presence/**
+    stop_condition: "a) script runs fixture, card, Done mutation, receipt, and local state proof; b) summary prints PASS/FAIL per step; c) no audit output is generated."
+    proof_gate: "npm run proof:holy-crap-mvp"
+  - id: "024"
+    task: "Require queue gate in command gate."
+    status: QUEUED
+    allowed_files:
+      - scripts/source-truth-check.ts
+      - tests/config/__tests__/source-truth-check.test.ts
+      - FOLDERA_EXECUTION_QUEUE.yaml
+    stop_condition: "a) npm run gate:command validates queue authority; b) first ACTIVE task is reported; c) audit/hygiene routing files cannot override the queue."
+    proof_gate: "npm run gate:command"
+  - id: "025"
+    task: "Require queue gate in continuity gate."
+    status: QUEUED
+    allowed_files:
+      - scripts/continuity-gate.ts
+      - tests/config/__tests__/continuity-gate.test.ts
+      - FOLDERA_EXECUTION_QUEUE.yaml
+    stop_condition: "a) npm run gate:continuity validates deterministic queue continuity; b) completed items cannot become active again; c) next queued item is deterministic."
+    proof_gate: "npm run gate:continuity"

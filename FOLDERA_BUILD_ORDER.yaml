@@ -21,11 +21,11 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 179
-priority_class: RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF
-work_type: TEST_MODE_DETERMINISTIC_FIXTURE_PROOF
-why_this_first: PR #177 completed issue #175 by selecting the deterministic work-packet fixture lane for Rung 3. Issue #179 proves that lane without product/runtime/provider/schema work.
-next_seam: blocked - reason issue #179 must be reviewed/merged before the next rung is authorized
+active_issue: 183
+priority_class: DETERMINISTIC_EXECUTION_QUEUE
+work_type: QUEUE_CONTROLLED_DETERMINISTIC_MVP_LOOP
+why_this_first: PR #180 completed issue #179, and execution is now controlled entirely by FOLDERA_EXECUTION_QUEUE.yaml starting at Task 002.
+next_seam: queue-controlled - reason advance only through sequential queue tasks after each proof gate passes
 required_gate_command: npm run gate:command
 predecessor_issues:
   - 101
@@ -57,6 +57,10 @@ completed:
     pr: 177
     merge_sha: 17e0699238cd11e80b4891f236be860abe32eb72
     result: Read-only Rung 2 audit selected deterministic work-packet fixture lane for Rung 3.
+  - issue: 179
+    pr: 180
+    merge_sha: b1e932e63c2fd261a2fc0c57edf99b0e4f8d5b80
+    result: Deterministic fixture-loop proof landed; execution now advances through FOLDERA_EXECUTION_QUEUE.yaml.
   - issue: 173
     pr: 174
     merge_sha: 34ac1b28be8c965a741eefbb1eb3f18a724bc45b
@@ -151,6 +155,7 @@ forbidden_current_work:
 allowed_current_work:
   - update ACTIVE_HANDOFF.md
   - update FOLDERA_BUILD_ORDER.yaml
+  - update FOLDERA_EXECUTION_QUEUE.yaml
   - update .foldera-contract.json
   - update docs/SOURCE_OF_TRUTH_MAP.md
   - update scripts/source-truth-check.ts
@@ -163,9 +168,7 @@ allowed_current_work:
   - update lib/workday-presence/__tests__/work-packet-state-update.test.ts
 required_local_proof:
   - npm run health
-  - npx vitest run lib/work-packets/__tests__/work-packet-brain.test.ts lib/slack-test-mode/__tests__/work-packet-review.test.ts lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose
-  - npm run gate:command
-  - npm run gate:continuity
+  - queue task proof gate for the current ACTIVE item in FOLDERA_EXECUTION_QUEUE.yaml
   - git diff --check
 required_issue_179_rung_3_deterministic_work_packet_fixture_proof:
   controlling_issue: 179
@@ -203,7 +206,7 @@ current_pr_closeout:
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock, Product Operating System, Master Synthesis REFERENCE_DRAFT, issue #175 audit artifact, and issue #179 control current direction
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: blocked - issue #179 must be reviewed/merged before the next rung is authorized
+  next_seam: queue-controlled - advance only through the next sequential ACTIVE queue task
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason

@@ -1,14 +1,17 @@
 {
-  "authority_status": "ACTIVE_RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF",
+  "authority_status": "DETERMINISTIC_EXECUTION_QUEUE_ACTIVE",
   "active": true,
-  "active_issue": 179,
-  "backlog_id": "ISSUE_179_RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF",
-  "base_commit": "17e0699238cd11e80b4891f236be860abe32eb72",
-  "money_loop_rung": "rung_3_deterministic_work_packet_fixture_proof",
-  "user_system_path": "issue #179 proves the deterministic one-verdict work-packet fixture lane selected by issue #175 / PR #177, from tests/fixtures/work-packets/source-signals.ts through lib/work-packets receipt/review state; no product/runtime/provider/schema mutation is authorized",
+  "active_issue": null,
+  "backlog_id": "FOLDERA_EXECUTION_QUEUE",
+  "base_commit": "b1e932e63c2fd261a2fc0c57edf99b0e4f8d5b80",
+  "money_loop_rung": "holy_crap_mvp_loop",
+  "user_system_path": "Deterministic execution now starts from FOLDERA_EXECUTION_QUEUE.yaml. The first ACTIVE task is Mock Evidence: create the Marcus approved the estimate fixture.",
+  "supreme_authority_file": "FOLDERA_EXECUTION_QUEUE.yaml",
+  "no_routing_contract": "The Agent is forbidden from asking 'What is next?' or 'Should we audit this?'. The Agent must read FOLDERA_EXECUTION_QUEUE.yaml, identify the first ACTIVE task, and execute it. If the task is completed, the Agent marks it COMPLETED, moves the next item to ACTIVE, and immediately begins the next task. The Agent may not deviate from the queue without a signed-off QUEUE_UPDATE commit from Brandon.",
   "allowed_file_patterns": [
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
+    "FOLDERA_EXECUTION_QUEUE.yaml",
     ".foldera-contract.json",
     "docs/SOURCE_OF_TRUTH_MAP.md",
     "scripts/source-truth-check.ts",
@@ -60,7 +63,7 @@
     "fake compliance claims",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Issue #179 Rung 3 deterministic fixture proof only: source-truth files/gates plus tests/fixtures/work-packets/source-signals.ts, lib/work-packets/**, lib/slack-test-mode/work-packet-review.ts, its focused test, and lib/workday-presence work-packet state-update test.",
+  "allowed_files_raw": "Current routing change only: create FOLDERA_EXECUTION_QUEUE.yaml and update .foldera-contract.json with the no-routing deterministic execution law. Subsequent work is controlled by the first ACTIVE queue item allowed_files.",
   "forbidden_files_raw": "No product/runtime/provider/schema/Supabase/Vercel/live Slack/PR #142/Stripe/auth/landing/dashboard work, no package/dependency changes, no data mutation, no migrations, no live connector fetch, no paid/model call, no fake claims, and no broad cleanup.",
   "required_local_proof": [
     "npm run health",
@@ -70,22 +73,18 @@
     "git diff --check"
   ],
   "required_browser_proof": "Not applicable; deterministic TEST_MODE fixture proof only.",
-  "acceptance_condition": "Issue #179 is active; current seam is Rung 3 deterministic one-verdict fixture loop proof; receipt proves fixture signals -> generated work_packet -> TEST_MODE review card -> review/dismiss -> packet/workday state after; source trail and forbidden send actions remain intact; paid_model_call_required is false; live_connector_fetch_required is false; issue #175 remains completed by PR #177; issue #140 / PR #142 remains parked rail-only; issue #136 remains ledger-only; no forbidden product/runtime/provider/schema/Supabase/Vercel/live Slack/Stripe/auth/landing/dashboard/package/dependency surfaces are touched.",
-  "stop_condition": "Stop after one PR exists for issue #179 with focused deterministic proof, source-truth proof, PR receipt, issue #136 ledger receipt, and no follow-on seam started.",
+  "acceptance_condition": "FOLDERA_EXECUTION_QUEUE.yaml exists, contains 20-30 granular build steps for the Holy Crap MVP loop, and item 001 is ACTIVE. .foldera-contract.json contains the no-routing contract. No product/runtime implementation starts in this change.",
+  "stop_condition": "Stop when FOLDERA_EXECUTION_QUEUE.yaml exists, .foldera-contract.json is updated with the no-routing contract, and the first task is marked ACTIVE.",
   "is_user_facing": false,
   "browser_proof_command": "not applicable - deterministic TEST_MODE fixture proof only",
   "anti_regression_checks": [
-    "ACTIVE_HANDOFF.md names issue #179 as the single active seam",
-    "FOLDERA_BUILD_ORDER.yaml active_issue is 179",
-    ".foldera-contract.json active is true and active_issue is 179",
-    "Issue #175 is completed by PR #177",
-    "Selected lane remains deterministic work-packet fixture lane",
-    "Proof starts from tests/fixtures/work-packets/source-signals.ts",
-    "Proof uses lib/work-packets receipt and transitions",
-    "TEST_MODE review card is allowed but live Slack / PR #142 remains forbidden",
-    "No paid model call or live connector fetch is required",
-    "No app/** or components/** files are authorized",
-    "No Supabase, Vercel, Stripe, auth, landing, dashboard, package, dependency, schema implementation, or data mutation work is authorized"
+    "FOLDERA_EXECUTION_QUEUE.yaml exists",
+    "Exactly one queue item is ACTIVE",
+    "The first ACTIVE queue item is id 001",
+    ".foldera-contract.json contains no_routing_contract",
+    "The queue contains no audit or hygiene tasks",
+    "The first five queue items are Mock Evidence, State Inference, Card Generation, State Mutation, and Receipt Generation",
+    "No product/runtime implementation starts in the queue creation change"
   ],
-  "next_command": "After issue #179 PR closes, stop; the next rung is blocked until reviewed/merged source truth authorizes it."
+  "next_command": "Read FOLDERA_EXECUTION_QUEUE.yaml, execute the first ACTIVE task, and do not ask what is next."
 }

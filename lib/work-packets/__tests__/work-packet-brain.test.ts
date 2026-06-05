@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import type { PacketSourceSignal } from '../types';
 import { buildWorkPacketBrainReceipt } from '../receipt';
-import { workPacketFixtureSignals } from '@/tests/fixtures/work-packets/source-signals';
+import {
+  marcusApprovedEstimateSignal,
+  workPacketFixtureSignals,
+} from '@/tests/fixtures/work-packets/source-signals';
 
 const beforeState = {
   current_focus: 'Close ACME renewal decision',
@@ -18,6 +22,22 @@ const beforeState = {
 };
 
 describe('deterministic MVP Work Packet Brain proof', () => {
+  it('loads the Marcus approved estimate evidence fixture with typed source-signal fields', () => {
+    const signal = marcusApprovedEstimateSignal satisfies PacketSourceSignal;
+
+    expect(signal.fixture_id).toBe('slack_marcus_estimate_approved');
+    expect(signal.source_type).toBe('slack_fixture');
+    expect(signal.source_id).toBe('slack-thread-marcus-estimate-approval');
+    expect(signal.source_label).toContain('Marcus');
+    expect(signal.observed_at).toBe('2026-06-04T16:12:00.000Z');
+    expect(signal.summary).toContain('Marcus approved the estimate');
+    expect(signal.summary).toContain('Redacted fixture content');
+    expect(signal.relevance_reason).toContain('Actor Marcus');
+    expect(signal.relevance_reason).toContain('approval action');
+    expect(signal.relevance_reason).toContain('estimate subject');
+    expect(signal.safe_reference).toBe('fixture:slack_marcus_estimate_approved#summary');
+  });
+
   it('builds one source-backed work_packet from multiple fixture source signals', () => {
     const receipt = buildWorkPacketBrainReceipt({
       user_id: 'user_test_143',

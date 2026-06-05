@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-06-04 PT
-Current `origin/main` SHA after PR #177 merge: `17e0699238cd11e80b4891f236be860abe32eb72`.
+Current `origin/main` SHA after PR #180 merge: `b1e932e63c2fd261a2fc0c57edf99b0e4f8d5b80`.
 
 ## Canonical Boot Sequence
 1. Read `ACTIVE_HANDOFF.md`.
@@ -13,25 +13,28 @@ Current `origin/main` SHA after PR #177 merge: `17e0699238cd11e80b4891f236be860a
 7. Use Vercel/Supabase only when the seam requires live/runtime truth.
 
 ## Active command gate
-Active implementation seam is issue #179: Rung 3 - Prove deterministic one-verdict fixture loop.
-This is a deterministic TEST_MODE work-packet fixture proof seam.
+Issue #179 is completed by merged PR #180.
+Active implementation seam is `EXECUTION_QUEUE`.
+The active seam is now controlled entirely by `FOLDERA_EXECUTION_QUEUE.yaml`.
+Task `001` is completed and Task `002` is active.
 Issue #175 is complete via PR #177: the read-only audit selected the deterministic work-packet fixture lane.
 Issue #173 is complete/superseded by PR #174.
 Issue #170 is complete/superseded by PR #172.
 Issue #165 Open Threads remains capture-only and cannot authorize implementation.
-Issue #140 / PR #142 remains rail-only and parked for this seam; do not widen or patch it here.
+Issue #140 / PR #142 remains rail-only and parked outside this deterministic queue phase.
 Issue #136 remains open as the standing Codex Run Ledger only.
 GitHub writeback is mandatory.
 One active seam only.
 
 ## Current slice:
-- Issue #179 is the only active seam: prove the deterministic one-verdict work-packet fixture loop selected by issue #175 / PR #177.
-- Exact lane: `tests/fixtures/work-packets/source-signals.ts` -> `lib/work-packets` packet generation/receipt/transitions -> `lib/slack-test-mode/work-packet-review.ts` TEST_MODE review card -> packet/workday state after.
-- Required proof chain: fixture signals enter; exactly one work packet is generated; exactly one TEST_MODE review card is produced; exactly one review/dismiss transition is applied; receipt records packet/workday state after; source trail and forbidden send actions remain intact; no paid model call or live connector fetch is required.
+- Queue authority has replaced issue-by-issue routing for this phase.
+- Execute only the first `ACTIVE` task in `FOLDERA_EXECUTION_QUEUE.yaml`, then advance it deterministically when its proof gate passes.
+- Current active task is `002`: build deterministic state inference from Waiting on Marcus to Approval Received with next move `Send Estimate`.
+- Current lane remains deterministic TEST_MODE only: `tests/fixtures/work-packets/source-signals.ts` -> `lib/work-packets` packet generation/receipt/transitions -> `lib/slack-test-mode/work-packet-review.ts` TEST_MODE review card -> packet/workday state after.
+- No paid model call, live connector fetch, live Slack delivery, Vercel, Supabase, or schema work is authorized in this queue phase.
 - `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` remains `REFERENCE_DRAFT`: source material only, not implementation authority.
-- Issue #175 is closed/completed; do not reopen Rung 2 audit work.
 - Issue #140 / PR #142 is parked for this seam; do not touch live Slack/provider surfaces.
-- Issues #121, #99, #48, #131, #147, #151, #154, #159, #163, #166, #170, #173, and #175 are closed/completed/superseded. Do not reopen them.
+- Issues #121, #99, #48, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, and #179 are closed/completed/superseded. Do not reopen them here.
 
 ## Product doctrine
 Foldera is a Workday Presence Layer / context conduit:
@@ -41,10 +44,11 @@ No dashboard/task-manager/inbox-summary/chatbot/surveillance drift.
 Issue #48 remains the product contract.
 `FOLDERA_NORTH_STAR_LOCK.md` controls product doctrine; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap, phase order, backlog lanes, and enterprise path.
 
-## Issue #179 boundary
-Allowed in issue #179: source-truth transition files, focused source-truth/continuity gate tests, `tests/fixtures/work-packets/source-signals.ts`, `lib/work-packets/**`, `lib/slack-test-mode/work-packet-review.ts`, `lib/slack-test-mode/__tests__/work-packet-review.test.ts`, and `lib/workday-presence/__tests__/work-packet-state-update.test.ts`.
-Forbidden in issue #179: product/runtime/provider/schema/Supabase/Vercel/live Slack/PR #142/Stripe/auth/landing/dashboard work, package/dependency changes, data mutation, migrations, live connector fetch, paid/model calls, fake claims, or starting the next rung.
-Stop condition: one PR proves the deterministic fixture lane, posts a PR receipt and issue #136 ledger receipt, and stops without product/runtime/provider/schema work.
+## Execution queue boundary
+Allowed files are controlled by the current `ACTIVE` queue item in `FOLDERA_EXECUTION_QUEUE.yaml`.
+Current task `002` allows only `lib/work-packets/generator.ts`, `lib/work-packets/types.ts`, and `lib/work-packets/__tests__/work-packet-brain.test.ts`.
+Forbidden in this queue phase: product/runtime/provider/schema/Supabase/Vercel/live Slack/PR #142/Stripe/auth/landing/dashboard work, package/dependency changes, data mutation, migrations, live connector fetch, paid/model calls, fake claims, or queue drift outside ordered advancement.
+Stop condition: continue deterministic queue execution until Task `005` is completed or a hard TypeScript test failure blocks progress.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
@@ -57,6 +61,5 @@ Stop condition: one PR proves the deterministic fixture lane, posts a PR receipt
 - If a source-truth file is not updated, the PR receipt must say `unchanged - reason` or `not applicable - reason`.
 
 ## Next exact move
-Open one draft PR for issue #179 on branch `codex/issue-179-rung-3-work-packet-fixture`.
-The PR must contain focused deterministic proof, source-truth closeout, PR receipt, and issue #136 ledger receipt.
-Next authorized move after this PR: blocked until issue #179 is reviewed/merged; do not start another rung.
+Read `FOLDERA_EXECUTION_QUEUE.yaml`, execute active Task `002`, and advance the queue only if its proof gate passes.
+Next authorized move after Task `002`: mark Task `002` completed, mark Task `003` active, commit locally, and continue.
