@@ -87,7 +87,7 @@ items:
     proof_gate: "npm run test -- run lib/work-packets/__tests__/work-packet-brain.test.ts --reporter=verbose"
   - id: "009"
     task: "Add no-send rail assertion to the Marcus card path."
-    status: ACTIVE
+    status: COMPLETED
     allowed_files:
       - lib/slack-test-mode/work-packet-review.ts
       - lib/slack-test-mode/__tests__/work-packet-review.test.ts
@@ -95,7 +95,7 @@ items:
     proof_gate: "npm run test -- run lib/slack-test-mode/__tests__/work-packet-review.test.ts --reporter=verbose"
   - id: "010"
     task: "Add safe-silence case when Marcus approval evidence is absent."
-    status: QUEUED
+    status: ACTIVE
     allowed_files:
       - tests/fixtures/work-packets/source-signals.ts
       - lib/work-packets/generator.ts

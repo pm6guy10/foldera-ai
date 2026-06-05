@@ -45,7 +45,7 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
-  it('passes when Task 008 is completed and Task 009 is ACTIVE', () => {
+  it('passes when Task 009 is completed and Task 010 is ACTIVE', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
@@ -69,6 +69,8 @@ describe('source truth command gate', () => {
     expect(queue).toContain('- id: "008"');
     expect(queue).toContain('status: COMPLETED');
     expect(queue).toContain('- id: "009"');
+    expect(queue).toContain('status: COMPLETED');
+    expect(queue).toContain('- id: "010"');
     expect(queue).toContain('status: ACTIVE');
     expect(contract.active).toBe(true);
     expect(contract.active_issue).toBeNull();
