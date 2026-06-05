@@ -6,6 +6,50 @@ import { selectSourceBackedRightNowState } from '../source-backed-state';
 const nowIso = '2026-06-02T20:00:00.000Z';
 
 describe('source-backed Right Now state selector', () => {
+  it('stores waiting_on, approval_received, next_move, and source ids from one source-backed path', () => {
+    const state = selectSourceBackedRightNowState({
+      nowIso,
+      commitments: [
+        {
+          id: 'commitment_approve_1',
+          source: 'gmail',
+          source_id: 'gmail-thread-789',
+          type: 'promise',
+          status: 'open',
+          due_at: '2026-06-02T22:00:00.000Z',
+          owner_name: 'Renewal owner',
+          project: 'Close ACME renewal',
+          approval_received: 'Marcus approved the estimate.',
+          commitment_text: 'Confirm renewal owner decision before end of day.',
+        },
+      ],
+      actions: [
+        {
+          id: 'act_approval_1',
+          source: 'foldera',
+          source_id: 'foldera-action-1',
+          action_type: 'draft_review',
+          generated_at: '2026-06-02T19:45:00.000Z',
+          evidence: {
+            redacted_summary: 'Existing draft evidence says renewal answer needs review.',
+          },
+        },
+      ],
+    });
+
+    expect(state).not.toBeNull();
+    expect(state?.waiting_on).toBe('Waiting on Renewal owner');
+    expect(state?.approval_received).toBe('Marcus approved the estimate.');
+    expect(state?.next_move).toContain('Review the active commitment and take one human-confirmed next step');
+    expect(state?.source_ids).toEqual([
+      'gmail-thread-789',
+      'commitment_approve_1',
+      'foldera-action-1',
+      'act_approval_1',
+    ]);
+    expect(state?.source_trail).toHaveLength(2);
+  });
+
   it('selects one source-backed state from tkg_signals-shaped rows', () => {
     const state = selectSourceBackedRightNowState({
       nowIso,

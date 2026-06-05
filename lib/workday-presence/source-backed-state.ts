@@ -12,6 +12,11 @@ export type SourceBackedStateInput = {
   nowIso?: string;
 };
 
+export type SourceBackedWorkdayPresenceState = WorkdayPresenceState & {
+  approval_received: string | null;
+  source_ids: string[];
+};
+
 function clean(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
@@ -87,6 +92,19 @@ function sourceTrail(input: {
   };
 }
 
+function sourceIdsFromTrail(trail: WorkdayPresenceSourceTrailEntry[]): string[] {
+  const ids: string[] = [];
+  for (const entry of trail) {
+    for (const candidate of [entry.source_id, entry.row_id]) {
+      const id = clean(candidate);
+      if (id && !ids.includes(id)) {
+        ids.push(id);
+      }
+    }
+  }
+  return ids;
+}
+
 function buildState(input: {
   focus: string;
   nextMove: string;
@@ -94,7 +112,8 @@ function buildState(input: {
   trail: WorkdayPresenceSourceTrailEntry;
   nowIso: string;
   waitingOn?: string | null;
-}): WorkdayPresenceState {
+  approvalReceived?: string | null;
+}): SourceBackedWorkdayPresenceState {
   return {
     current_focus: input.focus,
     next_move: input.nextMove,
@@ -102,9 +121,11 @@ function buildState(input: {
     blocker: null,
     do_not_touch: 'Do not auto-send or mutate source systems.',
     waiting_on: input.waitingOn ?? null,
+    approval_received: input.approvalReceived ?? null,
     last_completed_step: null,
     state_source: 'source_backed',
     source_trail: [input.trail],
+    source_ids: sourceIdsFromTrail([input.trail]),
     snoozed_until: null,
     interaction_history: [],
     created_at: input.nowIso,
@@ -112,7 +133,14 @@ function buildState(input: {
   };
 }
 
-function stateFromCommitment(row: SourceBackedRow, nowIso: string): WorkdayPresenceState | null {
+function approvalReceived(row: SourceBackedRow): string | null {
+  return firstClean(row, ['approval_received', 'approval_status', 'approval', 'decision', 'response_status']);
+}
+
+function stateFromCommitment(
+  row: SourceBackedRow,
+  nowIso: string,
+): SourceBackedWorkdayPresenceState | null {
   if (isSuppressed(row)) return null;
   const status = firstClean(row, ['status', 'state']);
   if (status && ['done', 'completed', 'closed', 'suppressed'].includes(status.toLowerCase())) return null;
@@ -141,10 +169,14 @@ function stateFromCommitment(row: SourceBackedRow, nowIso: string): WorkdayPrese
     trail,
     nowIso,
     waitingOn: owner ? `Waiting on ${owner}` : null,
+    approvalReceived: approvalReceived(row),
   });
 }
 
-function stateFromSignal(row: SourceBackedRow, nowIso: string): WorkdayPresenceState | null {
+function stateFromSignal(
+  row: SourceBackedRow,
+  nowIso: string,
+): SourceBackedWorkdayPresenceState | null {
   const summary = evidenceSummary(row);
   if (!summary) return null;
 
@@ -165,6 +197,7 @@ function stateFromSignal(row: SourceBackedRow, nowIso: string): WorkdayPresenceS
     why: `A consented ${source} row was selected as source-backed evidence without reading raw private content.`,
     trail,
     nowIso,
+    approvalReceived: approvalReceived(row),
   });
 }
 
@@ -186,7 +219,7 @@ function actionEvidenceTrails(actions: SourceBackedRow[]): WorkdayPresenceSource
 
 export function selectSourceBackedRightNowState(
   input: SourceBackedStateInput,
-): WorkdayPresenceState | null {
+): SourceBackedWorkdayPresenceState | null {
   const nowIso = input.nowIso ?? new Date().toISOString();
   const commitments = [...(input.commitments ?? [])].sort(byNewest);
   const signals = [...(input.signals ?? [])].sort(byNewest);
@@ -198,8 +231,10 @@ export function selectSourceBackedRightNowState(
 
   if (!selected) return null;
 
+  const sourceTrail = [...selected.source_trail, ...actionTrail].slice(0, 2);
   return {
     ...selected,
-    source_trail: [...selected.source_trail, ...actionTrail].slice(0, 2),
+    source_trail: sourceTrail,
+    source_ids: sourceIdsFromTrail(sourceTrail),
   };
 }
