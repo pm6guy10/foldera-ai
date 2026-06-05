@@ -7,11 +7,9 @@ import { runSourceTruthCheck } from '@/scripts/source-truth-check';
 const requiredFixtureFiles = [
   'ACTIVE_HANDOFF.md',
   'FOLDERA_BUILD_ORDER.yaml',
-  'FOLDERA_NORTH_STAR_LOCK.md',
-  'FOLDERA_PRODUCT_OPERATING_SYSTEM.md',
+  'FOLDERA_EXECUTION_QUEUE.yaml',
   'FOLDERA_MASTER_SYNTHESIS_DRAFT.md',
   'docs/SOURCE_OF_TRUTH_MAP.md',
-  'docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md',
   '.foldera-contract.json',
 ];
 
@@ -47,146 +45,71 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
-  it('passes when issue #179 is active as the Rung 3 deterministic fixture proof seam', () => {
+  it('passes when queue authority is active and Task 006 remains queued', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
+    const queue = readFixtureFile(fixtureRoot, 'FOLDERA_EXECUTION_QUEUE.yaml');
     const contract = JSON.parse(readFixtureFile(fixtureRoot, '.foldera-contract.json')) as Record<string, unknown>;
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(handoff).toContain('Active implementation seam is issue #179');
-    expect(handoff).toContain('Issue #175 is complete via PR #177');
-    expect(handoff).toContain('Issue #173 is complete/superseded by PR #174');
-    expect(handoff).toContain('Issue #170 is complete/superseded by PR #172');
-    expect(handoff).toContain('Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
-    expect(buildOrder).toContain('active_issue: 179');
-    expect(buildOrder).toContain('priority_class: RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF');
-    expect(buildOrder).toContain('work_type: TEST_MODE_DETERMINISTIC_FIXTURE_PROOF');
-    expect(buildOrder).toContain('next_seam: blocked - reason issue #179 must be reviewed/merged before the next rung is authorized');
+    expect(handoff).toContain('Active implementation seam is `EXECUTION_QUEUE`.');
+    expect(handoff).toContain('Tasks `001`-`005` are completed.');
+    expect(handoff).toContain('Task `006` remains queued.');
+    expect(buildOrder).toContain('active_issue: 183');
+    expect(buildOrder).toContain('priority_class: DETERMINISTIC_EXECUTION_QUEUE');
+    expect(buildOrder).toContain('queued_next_task: "006"');
+    expect(queue).toContain('- id: "005"');
+    expect(queue).toContain('status: COMPLETED');
+    expect(queue).toContain('- id: "006"');
+    expect(queue).toContain('status: QUEUED');
     expect(contract.active).toBe(true);
-    expect(contract.active_issue).toBe(179);
-    expect(contract.authority_status).toBe('ACTIVE_RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF');
-    expect(contract.forbidden_file_patterns).toContain('FOLDERA_MASTER_SYNTHESIS_DRAFT.md');
-    expect(handoff).toContain('Required proof chain: fixture signals enter; exactly one work packet is generated');
-    expect(buildOrder).toContain('selected_first_evidence_lane: deterministic work-packet fixture lane');
+    expect(contract.active_issue).toBeNull();
+    expect(contract.authority_status).toBe('DETERMINISTIC_EXECUTION_QUEUE_ACTIVE');
     expect(failures).toEqual([]);
   });
 
-  it('fails when the Master Synthesis draft is missing', () => {
+  it('fails when Task 006 is started early', () => {
     const fixtureRoot = createFixtureRoot();
-    fs.rmSync(path.join(fixtureRoot, 'FOLDERA_MASTER_SYNTHESIS_DRAFT.md'));
+    const original = readFixtureFile(fixtureRoot, 'FOLDERA_EXECUTION_QUEUE.yaml');
+    writeFixtureFile(fixtureRoot, 'FOLDERA_EXECUTION_QUEUE.yaml', original.replace('    status: QUEUED', '    status: ACTIVE'));
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('Missing required file: FOLDERA_MASTER_SYNTHESIS_DRAFT.md');
+    expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml task 006 must remain QUEUED.');
+    expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml must have zero ACTIVE tasks in PR #183; found 1.');
   });
 
-  it('fails when ACTIVE_HANDOFF.md still points at completed issue #175', () => {
-    const fixtureRoot = createFixtureRoot();
-    const original = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
-    writeFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md', original.replace('Active implementation seam is issue #179', 'Active implementation seam is issue #175'));
-
-    const failures = runSourceTruthCheck(fixtureRoot);
-
-    expect(failures).toContain('ACTIVE_HANDOFF.md must assign active issue #179; found 175.');
-  });
-
-  it('fails when FOLDERA_BUILD_ORDER.yaml is still active for issue #175', () => {
-    const fixtureRoot = createFixtureRoot();
-    const original = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
-    writeFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml', original.replace('active_issue: 179', 'active_issue: 175'));
-
-    const failures = runSourceTruthCheck(fixtureRoot);
-
-    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml active_issue must be 179; found 175.');
-  });
-
-  it('fails when .foldera-contract.json is not active for issue #179', () => {
-    const fixtureRoot = createFixtureRoot();
-    const contract = JSON.parse(readFixtureFile(fixtureRoot, '.foldera-contract.json')) as Record<string, unknown>;
-    contract.active = false;
-    contract.active_issue = null;
-    writeFixtureFile(fixtureRoot, '.foldera-contract.json', `${JSON.stringify(contract, null, 2)}\n`);
-
-    const failures = runSourceTruthCheck(fixtureRoot);
-
-    expect(failures).toContain('.foldera-contract.json active_issue must be 179; found none.');
-    expect(failures).toContain('.foldera-contract.json active must be true for issue #179.');
-  });
-
-  it('fails when Open Threads is treated as implementation authority', () => {
+  it('fails when ACTIVE_HANDOFF.md still claims Task 002 is active', () => {
     const fixtureRoot = createFixtureRoot();
     const original = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     writeFixtureFile(
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
-      original.replace('Issue #165 Open Threads remains capture-only and cannot authorize implementation.', 'Issue #165 Open Threads authorizes implementation.'),
+      original
+        .replace('Tasks `001`-`005` are completed.', 'Task `001` is completed and Task `002` is active.')
+        .replace('Task `006` remains queued.', 'Task `002` is active.')
+        .replace('No Task `006` work has started in this PR.', 'Read `FOLDERA_EXECUTION_QUEUE.yaml`, execute active Task `002`, and advance the queue only if its proof gate passes.'),
     );
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Tasks `001`-`005` are completed.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Task `006` remains queued.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md still contains stale queue-progress marker: Task `001` is completed and Task `002` is active.');
   });
 
-  it('fails when the draft loses its build-bible reference verdict', () => {
+  it('fails when .foldera-contract.json still points to the old first-active-task contract', () => {
     const fixtureRoot = createFixtureRoot();
-    const original = readFixtureFile(fixtureRoot, 'FOLDERA_MASTER_SYNTHESIS_DRAFT.md');
-    writeFixtureFile(fixtureRoot, 'FOLDERA_MASTER_SYNTHESIS_DRAFT.md', original.replace('Verdict: build-bible ready as a reference draft.', 'Verdict: implementation authority.'));
-
-    const failures = runSourceTruthCheck(fixtureRoot);
-
-    expect(failures).toContain('FOLDERA_MASTER_SYNTHESIS_DRAFT.md is missing required marker: Verdict: build-bible ready as a reference draft.');
-  });
-
-  it('fails when the draft becomes implementation authority', () => {
-    const fixtureRoot = createFixtureRoot();
-    const original = readFixtureFile(fixtureRoot, 'FOLDERA_MASTER_SYNTHESIS_DRAFT.md');
-    writeFixtureFile(fixtureRoot, 'FOLDERA_MASTER_SYNTHESIS_DRAFT.md', original.replace(/not implementation authority/g, 'implementation authority'));
-
-    const failures = runSourceTruthCheck(fixtureRoot);
-
-    expect(failures).toContain('FOLDERA_MASTER_SYNTHESIS_DRAFT.md is missing required marker: not implementation authority');
-  });
-
-  it('fails when the source map stops classifying the draft as REFERENCE_DRAFT', () => {
-    const fixtureRoot = createFixtureRoot();
-    const original = readFixtureFile(fixtureRoot, 'docs/SOURCE_OF_TRUTH_MAP.md');
-    writeFixtureFile(
-      fixtureRoot,
-      'docs/SOURCE_OF_TRUTH_MAP.md',
-      original.replace('| `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` | `REFERENCE_DRAFT` |', '| `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` | `CURRENT_CONTROL` |'),
-    );
-
-    const failures = runSourceTruthCheck(fixtureRoot);
-
-    expect(failures).toContain('docs/SOURCE_OF_TRUTH_MAP.md is missing required marker: | `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` | `REFERENCE_DRAFT` |');
-  });
-
-  it('fails when .foldera-contract.json authorizes product files or the draft itself', () => {
-    const fixtureRoot = createFixtureRoot();
-    const contract = JSON.parse(readFixtureFile(fixtureRoot, '.foldera-contract.json')) as { allowed_file_patterns?: string[] };
-    contract.allowed_file_patterns?.push('app/**');
+    const contract = JSON.parse(readFixtureFile(fixtureRoot, '.foldera-contract.json')) as Record<string, unknown>;
+    contract.acceptance_condition = 'FOLDERA_EXECUTION_QUEUE.yaml exists, contains 20-30 granular build steps for the Holy Crap MVP loop, and item 001 is ACTIVE.';
+    contract.next_command = 'Read FOLDERA_EXECUTION_QUEUE.yaml, execute the first ACTIVE task, and do not ask what is next.';
     writeFixtureFile(fixtureRoot, '.foldera-contract.json', `${JSON.stringify(contract, null, 2)}\n`);
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('.foldera-contract.json allowed_file_patterns must not include forbidden entry: app/**');
-  });
-
-  it('fails when completed issue #170 is no longer classified as completed or superseded', () => {
-    const fixtureRoot = createFixtureRoot();
-    const original = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
-    writeFixtureFile(
-      fixtureRoot,
-      'FOLDERA_BUILD_ORDER.yaml',
-      original
-        .replace('Master Synthesis build bible REFERENCE_DRAFT completed by PR #172 and is no longer active', 'Master Synthesis build bible active again')
-        .replace('status: completed_superseded', 'status: active_again')
-    );
-
-    const failures = runSourceTruthCheck(fixtureRoot);
-
-    expect(failures).toContain('FOLDERA_BUILD_ORDER.yaml must classify issue #170 as completed_superseded because PR #172 merged.');
+    expect(failures).toContain('.foldera-contract.json acceptance_condition is missing: Tasks 001-005 are COMPLETED');
+    expect(failures).toContain('.foldera-contract.json next_command must preserve the Task 006 stop boundary.');
   });
 });

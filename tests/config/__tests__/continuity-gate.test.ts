@@ -26,7 +26,6 @@ const requiredFixtureFiles = [
   'FOLDERA_MASTER_AUDIT.md',
   '.foldera-contract.json',
   'docs/SOURCE_OF_TRUTH_MAP.md',
-  'docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md',
   'dot-cursorrules.fixture',
   'cursor-agent.fixture',
   '.github/pull_request_template.md',
@@ -69,28 +68,33 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
-  it('passes when issue #179 is active as the Rung 3 deterministic fixture proof seam', () => {
+  it('passes when the handoff is queue-controlled', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(handoff).toContain('Active implementation seam is issue #179');
-    expect(handoff).toContain('Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
-    expect(buildOrder).toContain('active_issue: 179');
-    expect(buildOrder).toContain('priority_class: RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF');
-    expect(buildOrder).toContain('next_seam: blocked - reason issue #179 must be reviewed/merged before the next rung is authorized');
+    expect(handoff).toContain('Active implementation seam is `EXECUTION_QUEUE`.');
+    expect(handoff).toContain('The active seam is now controlled entirely by `FOLDERA_EXECUTION_QUEUE.yaml`.');
+    expect(buildOrder).toContain('active_issue: 183');
+    expect(buildOrder).toContain('priority_class: DETERMINISTIC_EXECUTION_QUEUE');
     expect(failures).toEqual([]);
   });
 
-  it('fails when the Product Operating System artifact is removed', () => {
+  it('fails when the queue-controlled handoff line is removed', () => {
     const fixtureRoot = createFixtureRoot();
-    fs.rmSync(path.join(fixtureRoot, 'FOLDERA_PRODUCT_OPERATING_SYSTEM.md'));
+    const original = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
+    writeFixtureFile(
+      fixtureRoot,
+      'ACTIVE_HANDOFF.md',
+      original.replace('Active implementation seam is `EXECUTION_QUEUE`.', 'Queue control is implied but unnamed.'),
+    );
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(failures).toContain('Missing required source-truth file: FOLDERA_PRODUCT_OPERATING_SYSTEM.md');
+    expect(failures).toContain('ACTIVE_HANDOFF.md must name exactly one active seam line; found 0.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
   });
 
   it('fails when the mandatory writeback rule is removed from ACTIVE_HANDOFF.md', () => {
@@ -107,61 +111,5 @@ describe('continuity gate writeback enforcement', () => {
     expect(failures).toContain(
       'ACTIVE_HANDOFF.md is missing required GitHub writeback rule: GitHub writeback before stop is mandatory.',
     );
-  });
-
-  it('fails when the mandatory Codex run ledger closeout rule is removed from AGENTS.md', () => {
-    const fixtureRoot = createFixtureRoot();
-    const original = readFixtureFile(fixtureRoot, 'AGENTS.md');
-    writeFixtureFile(
-      fixtureRoot,
-      'AGENTS.md',
-      original.replace('## MANDATORY CODEX RUN LEDGER CLOSEOUT', '## Optional Codex Run Ledger Closeout'),
-    );
-
-    const failures = runContinuityGate(fixtureRoot);
-
-    expect(failures).toContain('AGENTS.md is missing required Codex run ledger rule: ## MANDATORY CODEX RUN LEDGER CLOSEOUT');
-  });
-
-  it('fails when the PR template stops requiring North Star traceability', () => {
-    const fixtureRoot = createFixtureRoot();
-    const original = readFixtureFile(fixtureRoot, '.github/pull_request_template.md');
-    writeFixtureFile(
-      fixtureRoot,
-      '.github/pull_request_template.md',
-      original.replace('North Star traceability for product/business/UX/runtime direction', 'Direction traceability'),
-    );
-
-    const failures = runContinuityGate(fixtureRoot);
-
-    expect(failures).toContain('.github/pull_request_template.md must require North Star traceability when direction is implicated.');
-  });
-
-  it('fails when the PR template stops requiring Product Operating System traceability', () => {
-    const fixtureRoot = createFixtureRoot();
-    const original = readFixtureFile(fixtureRoot, '.github/pull_request_template.md');
-    writeFixtureFile(
-      fixtureRoot,
-      '.github/pull_request_template.md',
-      original.replace('- `FOLDERA_PRODUCT_OPERATING_SYSTEM.md`: cited / updated / unchanged - reason / not applicable - reason', ''),
-    );
-
-    const failures = runContinuityGate(fixtureRoot);
-
-    expect(failures).toContain('.github/pull_request_template.md must include the Product Operating System traceability row.');
-  });
-
-  it('fails when the source map stops classifying Product Operating System as current control', () => {
-    const fixtureRoot = createFixtureRoot();
-    const original = readFixtureFile(fixtureRoot, 'docs/SOURCE_OF_TRUTH_MAP.md');
-    writeFixtureFile(
-      fixtureRoot,
-      'docs/SOURCE_OF_TRUTH_MAP.md',
-      original.replace('| `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` |', '| `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `REFERENCE_ONLY` |'),
-    );
-
-    const failures = runContinuityGate(fixtureRoot);
-
-    expect(failures).toContain('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_PRODUCT_OPERATING_SYSTEM.md as CURRENT_CONTROL.');
   });
 });

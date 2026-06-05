@@ -16,7 +16,9 @@ Current `origin/main` SHA after PR #180 merge: `b1e932e63c2fd261a2fc0c57edf99b0e
 Issue #179 is completed by merged PR #180.
 Active implementation seam is `EXECUTION_QUEUE`.
 The active seam is now controlled entirely by `FOLDERA_EXECUTION_QUEUE.yaml`.
-Task `001` is completed and Task `002` is active.
+Tasks `001`-`005` are completed.
+Task `006` remains queued.
+No Task `006` work has started in this PR.
 Issue #175 is complete via PR #177: the read-only audit selected the deterministic work-packet fixture lane.
 Issue #173 is complete/superseded by PR #174.
 Issue #170 is complete/superseded by PR #172.
@@ -28,8 +30,9 @@ One active seam only.
 
 ## Current slice:
 - Queue authority has replaced issue-by-issue routing for this phase.
-- Execute only the first `ACTIVE` task in `FOLDERA_EXECUTION_QUEUE.yaml`, then advance it deterministically when its proof gate passes.
-- Current active task is `002`: build deterministic state inference from Waiting on Marcus to Approval Received with next move `Send Estimate`.
+- PR #183 is a source-truth and gate-alignment seam only.
+- Tasks `001`-`005` are completed in `FOLDERA_EXECUTION_QUEUE.yaml`.
+- Task `006` remains `QUEUED`; there is intentionally no current `ACTIVE` task in this PR.
 - Current lane remains deterministic TEST_MODE only: `tests/fixtures/work-packets/source-signals.ts` -> `lib/work-packets` packet generation/receipt/transitions -> `lib/slack-test-mode/work-packet-review.ts` TEST_MODE review card -> packet/workday state after.
 - No paid model call, live connector fetch, live Slack delivery, Vercel, Supabase, or schema work is authorized in this queue phase.
 - `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` remains `REFERENCE_DRAFT`: source material only, not implementation authority.
@@ -45,10 +48,10 @@ Issue #48 remains the product contract.
 `FOLDERA_NORTH_STAR_LOCK.md` controls product doctrine; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap, phase order, backlog lanes, and enterprise path.
 
 ## Execution queue boundary
-Allowed files are controlled by the current `ACTIVE` queue item in `FOLDERA_EXECUTION_QUEUE.yaml`.
-Current task `002` allows only `lib/work-packets/generator.ts`, `lib/work-packets/types.ts`, and `lib/work-packets/__tests__/work-packet-brain.test.ts`.
-Forbidden in this queue phase: product/runtime/provider/schema/Supabase/Vercel/live Slack/PR #142/Stripe/auth/landing/dashboard work, package/dependency changes, data mutation, migrations, live connector fetch, paid/model calls, fake claims, or queue drift outside ordered advancement.
-Stop condition: continue deterministic queue execution until Task `005` is completed or a hard TypeScript test failure blocks progress.
+Allowed files for this seam are the queue-control and gate/test files needed to prove the queue-controlled source truth is coherent.
+Current queue truth is: Tasks `001`-`005` are `COMPLETED`, Task `006` is `QUEUED`, and no queue item is currently `ACTIVE`.
+Forbidden in this queue phase: starting Task `006`, product/runtime/provider/schema/Supabase/Vercel/live Slack/PR #142/Stripe/auth/landing/dashboard work, package/dependency changes, data mutation, migrations, live connector fetch, paid/model calls, fake claims, or queue drift outside ordered advancement.
+Stop condition: stop when the queue-controlled source truth and gate/test layer agree that Tasks `001`-`005` are completed and Task `006` has not started.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
@@ -61,5 +64,5 @@ Stop condition: continue deterministic queue execution until Task `005` is compl
 - If a source-truth file is not updated, the PR receipt must say `unchanged - reason` or `not applicable - reason`.
 
 ## Next exact move
-Read `FOLDERA_EXECUTION_QUEUE.yaml`, execute active Task `002`, and advance the queue only if its proof gate passes.
-Next authorized move after Task `002`: mark Task `002` completed, mark Task `003` active, commit locally, and continue.
+Fix the queue-control gate/test blocker only.
+Next authorized move after PR #183 merges: start Task `006` in a separate run; do not start it in this PR.
