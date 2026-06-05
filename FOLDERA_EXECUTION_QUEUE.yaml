@@ -41,7 +41,7 @@ items:
     proof_gate: "npm run test -- run lib/slack-test-mode/__tests__/work-packet-review.test.ts --reporter=verbose"
   - id: "004"
     task: "Implement Done click state mutation for the Marcus estimate loop."
-    status: ACTIVE
+    status: COMPLETED
     allowed_files:
       - lib/work-packets/transitions.ts
       - lib/workday-presence/__tests__/work-packet-state-update.test.ts
@@ -50,7 +50,7 @@ items:
     proof_gate: "npm run test -- run lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose"
   - id: "005"
     task: "Create durable proof receipt for the full Marcus loop."
-    status: QUEUED
+    status: ACTIVE
     allowed_files:
       - lib/work-packets/receipt.ts
       - lib/work-packets/__tests__/work-packet-brain.test.ts

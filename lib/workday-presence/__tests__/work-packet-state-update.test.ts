@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { buildDeterministicWorkPacket } from '@/lib/work-packets/generator';
 import { applyWorkPacketReviewTransition } from '@/lib/work-packets/transitions';
-import { workPacketFixtureSignals } from '@/tests/fixtures/work-packets/source-signals';
+import {
+  marcusApprovedEstimateSignal,
+  workPacketFixtureSignals,
+} from '@/tests/fixtures/work-packets/source-signals';
 
 const state = {
   current_focus: 'Close ACME renewal decision',
@@ -24,6 +27,20 @@ const packet = buildDeterministicWorkPacket({
   workday_state: state,
   source_signals: workPacketFixtureSignals,
   nowIso: '2026-06-02T15:00:00.000Z',
+});
+
+const marcusPacket = buildDeterministicWorkPacket({
+  test_mode: true,
+  user_id: 'user_test_004',
+  workday_state: {
+    ...state,
+    current_focus: 'Finalize revised estimate for Marcus',
+    next_move: 'Wait for Marcus to approve the revised estimate',
+    blocker: 'Waiting on Marcus',
+    waiting_on: 'Marcus approval',
+  },
+  source_signals: [marcusApprovedEstimateSignal, workPacketFixtureSignals[1]],
+  nowIso: '2026-06-04T16:30:00.000Z',
 });
 
 describe('work packet review/dismiss state updates', () => {
@@ -65,5 +82,27 @@ describe('work packet review/dismiss state updates', () => {
     });
     expect(result.workday_state.state_source).toBe('work_packet_dismiss');
     expect(result.workday_state.waiting_on).toContain('stay quiet');
+  });
+
+  it('marks the Marcus packet done and records Send Estimate as the completed step', () => {
+    const result = applyWorkPacketReviewTransition({
+      packet: marcusPacket,
+      workday_state: marcusPacket.workday_state_snapshot,
+      action: 'done',
+      nowIso: '2026-06-04T16:35:00.000Z',
+      reason: 'Done click completed the Marcus estimate loop.',
+    });
+
+    expect(result.packet.status).toBe('completed');
+    expect(result.packet.audit_trail.at(-1)).toEqual({
+      event: 'packet_completed',
+      actor: 'human',
+      at: '2026-06-04T16:35:00.000Z',
+      reason: 'Done click completed the Marcus estimate loop.',
+    });
+    expect(result.workday_state.last_completed_step).toBe('Send Estimate');
+    expect(result.workday_state.next_move).toBe('Stay quiet until a new source-backed trigger appears.');
+    expect(result.workday_state.waiting_on).toBe(null);
+    expect(result.workday_state.state_source).toBe('work_packet_done');
   });
 });
