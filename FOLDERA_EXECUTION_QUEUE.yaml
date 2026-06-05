@@ -60,7 +60,7 @@ items:
     proof_gate: "npm run test -- run lib/work-packets/__tests__/work-packet-brain.test.ts lib/slack-test-mode/__tests__/work-packet-review.test.ts lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose"
   - id: "006"
     task: "Add queue-aware source-truth gate that requires exactly one ACTIVE task."
-    status: QUEUED
+    status: COMPLETED
     allowed_files:
       - scripts/source-truth-check.ts
       - tests/config/__tests__/source-truth-check.test.ts
@@ -69,7 +69,7 @@ items:
     proof_gate: "npm run gate:command"
   - id: "007"
     task: "Add queue advancement test for COMPLETED to ACTIVE promotion."
-    status: QUEUED
+    status: COMPLETED
     allowed_files:
       - tests/config/__tests__/source-truth-check.test.ts
       - scripts/source-truth-check.ts
@@ -78,7 +78,7 @@ items:
     proof_gate: "npm run test -- run tests/config/__tests__/source-truth-check.test.ts --reporter=verbose"
   - id: "008"
     task: "Persist Marcus loop receipt as a deterministic artifact fixture."
-    status: QUEUED
+    status: ACTIVE
     allowed_files:
       - tests/fixtures/work-packets/marcus-estimate-receipt.json
       - lib/work-packets/receipt.ts

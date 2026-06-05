@@ -30,7 +30,6 @@ const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
 const COMPLETED_FIRST_RUNG_ISSUE = 173;
 const BASE_COMMIT = 'b1e932e63c2fd261a2fc0c57edf99b0e4f8d5b80';
-const NEXT_TASK_ID = '006';
 const COMPLETED_TASK_IDS = ['001', '002', '003', '004', '005'];
 
 const REQUIRED_PROOF_COMMANDS = [
@@ -162,7 +161,7 @@ function parseQueueItems(raw: string): QueueItem[] {
   });
 }
 
-function checkQueueState(failures: string[], queueRaw: string): void {
+function checkQueueState(failures: string[], queueRaw: string): string | null {
   if (!queueRaw.includes('authority: SUPREME_EXECUTION_QUEUE')) {
     failures.push('FOLDERA_EXECUTION_QUEUE.yaml must set authority: SUPREME_EXECUTION_QUEUE.');
   }
@@ -172,13 +171,23 @@ function checkQueueState(failures: string[], queueRaw: string): void {
 
   const items = parseQueueItems(queueRaw);
   const byId = new Map(items.map((item) => [item.id, item.status]));
-  const activeCount = items.filter((item) => item.status === 'ACTIVE').length;
+  const activeItems = items.filter((item) => item.status === 'ACTIVE');
 
   for (const id of COMPLETED_TASK_IDS) {
     if (byId.get(id) !== 'COMPLETED') failures.push(`FOLDERA_EXECUTION_QUEUE.yaml task ${id} must be COMPLETED.`);
   }
-  if (byId.get(NEXT_TASK_ID) !== 'QUEUED') failures.push(`FOLDERA_EXECUTION_QUEUE.yaml task ${NEXT_TASK_ID} must remain QUEUED.`);
-  if (activeCount !== 0) failures.push(`FOLDERA_EXECUTION_QUEUE.yaml must have zero ACTIVE tasks in PR #${CONTROLLING_PR}; found ${activeCount}.`);
+  if (activeItems.length !== 1) {
+    failures.push(`FOLDERA_EXECUTION_QUEUE.yaml must have exactly one ACTIVE task in PR #${CONTROLLING_PR}; found ${activeItems.length}.`);
+    return null;
+  }
+
+  return activeItems[0]?.id ?? null;
+}
+
+function getActiveTaskId(queueRaw: string): string | null {
+  const items = parseQueueItems(queueRaw);
+  const activeItems = items.filter((item) => item.status === 'ACTIVE');
+  return activeItems.length === 1 ? activeItems[0]?.id ?? null : null;
 }
 
 function requireClosedIssueDoNotReopen(failures: string[], handoff: string, buildOrder: string): void {
@@ -317,6 +326,7 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   }
 
   failures.push(...checkDraft(root));
+
   return failures;
 }
 
@@ -348,5 +358,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Queue authority is active, Tasks 001-005 are completed, and Task 006 remains queued.');
+  const queueRaw = readRepoFile(process.cwd(), 'FOLDERA_EXECUTION_QUEUE.yaml');
+  const activeTaskId = getActiveTaskId(queueRaw) ?? 'unknown';
+  console.log(`Source truth check passed. Queue authority is active, Task ${activeTaskId} is ACTIVE, and Tasks 001-005 are completed.`);
 }

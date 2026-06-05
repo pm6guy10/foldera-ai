@@ -45,7 +45,7 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
-  it('passes when queue authority is active and Task 006 remains queued', () => {
+  it('passes when Task 007 is completed and Task 008 is ACTIVE', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
@@ -63,22 +63,35 @@ describe('source truth command gate', () => {
     expect(queue).toContain('- id: "005"');
     expect(queue).toContain('status: COMPLETED');
     expect(queue).toContain('- id: "006"');
-    expect(queue).toContain('status: QUEUED');
+    expect(queue).toContain('status: COMPLETED');
+    expect(queue).toContain('- id: "007"');
+    expect(queue).toContain('status: COMPLETED');
+    expect(queue).toContain('- id: "008"');
+    expect(queue).toContain('status: ACTIVE');
     expect(contract.active).toBe(true);
     expect(contract.active_issue).toBeNull();
     expect(contract.authority_status).toBe('DETERMINISTIC_EXECUTION_QUEUE_ACTIVE');
     expect(failures).toEqual([]);
   });
 
-  it('fails when Task 006 is started early', () => {
+  it('fails when the queue has zero ACTIVE tasks', () => {
+    const fixtureRoot = createFixtureRoot();
+    const original = readFixtureFile(fixtureRoot, 'FOLDERA_EXECUTION_QUEUE.yaml');
+    writeFixtureFile(fixtureRoot, 'FOLDERA_EXECUTION_QUEUE.yaml', original.replace('    status: ACTIVE', '    status: QUEUED'));
+
+    const failures = runSourceTruthCheck(fixtureRoot);
+
+    expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml must have exactly one ACTIVE task in PR #183; found 0.');
+  });
+
+  it('fails when the queue has multiple ACTIVE tasks', () => {
     const fixtureRoot = createFixtureRoot();
     const original = readFixtureFile(fixtureRoot, 'FOLDERA_EXECUTION_QUEUE.yaml');
     writeFixtureFile(fixtureRoot, 'FOLDERA_EXECUTION_QUEUE.yaml', original.replace('    status: QUEUED', '    status: ACTIVE'));
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml task 006 must remain QUEUED.');
-    expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml must have zero ACTIVE tasks in PR #183; found 1.');
+    expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml must have exactly one ACTIVE task in PR #183; found 2.');
   });
 
   it('fails when ACTIVE_HANDOFF.md still claims Task 002 is active', () => {
