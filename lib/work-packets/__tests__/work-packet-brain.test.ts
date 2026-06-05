@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { PacketSourceSignal } from '../types';
 import { buildWorkPacketBrainReceipt } from '../receipt';
+import { buildDeterministicWorkPacket } from '../generator';
 import {
   marcusApprovedEstimateSignal,
   workPacketFixtureSignals,
@@ -61,6 +62,30 @@ describe('deterministic MVP Work Packet Brain proof', () => {
     expect(receipt.generated_work_packet.quiet_by_default).toBe(true);
     expect(receipt.paid_model_call_required).toBe(false);
     expect(receipt.live_connector_fetch_required).toBe(false);
+  });
+
+  it('infers Approval Received and the next move Send Estimate from the Marcus approval fixture', () => {
+    const packet = buildDeterministicWorkPacket({
+      test_mode: true,
+      user_id: 'user_test_002',
+      workday_state: {
+        ...beforeState,
+        current_focus: 'Finalize revised estimate for Marcus',
+        next_move: 'Wait for Marcus to approve the revised estimate',
+        blocker: 'Waiting on Marcus',
+        waiting_on: 'Marcus approval',
+      },
+      source_signals: [marcusApprovedEstimateSignal, workPacketFixtureSignals[1]],
+      nowIso: '2026-06-04T16:30:00.000Z',
+    });
+
+    expect(packet.verdict).toBe('Approval Received');
+    expect(packet.next_move).toBe('Send Estimate');
+    expect(packet.triggering_reason).toContain('Waiting on Marcus');
+    expect(packet.prepared_work).toContain('Send Estimate');
+    expect(packet.source_trail.map((entry) => entry.fixture_id)).toContain(
+      'slack_marcus_estimate_approved',
+    );
   });
 
   it('keeps Send, Auto-send, and Reply automatically out of default actions', () => {

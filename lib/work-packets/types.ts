@@ -53,6 +53,8 @@ export type WorkPacketAuditEntry = {
 export type WorkPacket = {
   packet_id: string;
   user_id: string;
+  verdict: string;
+  next_move: string;
   triggering_reason: string;
   workday_state_snapshot: WorkdayPresenceState;
   source_trail: SourceTrailEntry[];
