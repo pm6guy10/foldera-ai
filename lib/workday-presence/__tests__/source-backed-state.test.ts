@@ -4,6 +4,7 @@ import { buildRightNowMessagePayload } from '../message';
 import { buildDeterministicWorkPacket } from '@/lib/work-packets/generator';
 import { applyWorkPacketReviewTransition } from '@/lib/work-packets/transitions';
 import { selectSourceBackedRightNowState } from '../source-backed-state';
+import { collectPrivacyRailViolations } from '@/scripts/privacy-rail-check';
 import {
   marcusApprovedEstimateSignal,
   workPacketFixtureSignals,
@@ -252,5 +253,34 @@ describe('source-backed Right Now state selector', () => {
     expect(secondResult.workday_state).toEqual(firstResult.workday_state);
     expect(secondResult.workday_state.state_source).toBe('work_packet_done');
     expect(secondResult.workday_state.last_completed_step).toBe('Send Estimate');
+  });
+
+  it('flags forbidden persisted fields in the privacy rail checker', () => {
+    const violations = collectPrivacyRailViolations({
+      current_focus: 'Close ACME renewal decision',
+      next_move: 'Send owner confirmation note',
+      why_it_matters: 'The renewal window closes at 4 PM PT.',
+      blocker: null,
+      do_not_touch: null,
+      waiting_on: 'Owner confirmation',
+      last_completed_step: null,
+      state_source: 'source_backed',
+      source_trail: [],
+      snoozed_until: null,
+      interaction_history: [],
+      created_at: '2026-06-05T23:00:00.000Z',
+      updated_at: '2026-06-05T23:00:00.000Z',
+      secret: 'do-not-persist',
+      access_token: 'do-not-persist',
+      nested: {
+        password: 'do-not-persist',
+      },
+    });
+
+    expect(violations).toEqual([
+      { path: 'state', key: 'secret' },
+      { path: 'state', key: 'access_token' },
+      { path: 'state.nested', key: 'password' },
+    ]);
   });
 });
