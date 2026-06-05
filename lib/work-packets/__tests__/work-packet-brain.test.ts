@@ -150,4 +150,38 @@ describe('deterministic MVP Work Packet Brain proof', () => {
     expect(receipt.paid_model_call_required).toBe(false);
     expect(receipt.live_connector_fetch_required).toBe(false);
   });
+
+  it('builds a durable Marcus loop receipt with card generation, done mutation, and no-send proof', () => {
+    const beforeMarcusState = {
+      ...beforeState,
+      current_focus: 'Finalize revised estimate for Marcus',
+      next_move: 'Wait for Marcus to approve the revised estimate',
+      blocker: 'Waiting on Marcus',
+      waiting_on: 'Marcus approval',
+    };
+
+    const receipt = buildWorkPacketBrainReceipt({
+      user_id: 'user_test_005',
+      before_state: beforeMarcusState,
+      fixture_signals: [marcusApprovedEstimateSignal, workPacketFixtureSignals[1]],
+      action: 'done',
+      nowIso: '2026-06-04T16:40:00.000Z',
+    });
+
+    expect(receipt.before_fixture_signals.map((signal) => signal.fixture_id)).toEqual([
+      'slack_marcus_estimate_approved',
+      'calendar_review_window',
+    ]);
+    expect(receipt.review_card_generated).toBe(true);
+    expect(receipt.done_mutation_applied).toBe(true);
+    expect(receipt.generated_work_packet.verdict).toBe('Approval Received');
+    expect(receipt.generated_work_packet.next_move).toBe('Send Estimate');
+    expect(receipt.packet_workday_state_after.packet.status).toBe('completed');
+    expect(receipt.packet_workday_state_after.workday_state.last_completed_step).toBe(
+      'Send Estimate',
+    );
+    expect(receipt.paid_model_call_required).toBe(false);
+    expect(receipt.live_connector_fetch_required).toBe(false);
+    expect(receipt.live_send_performed).toBe(false);
+  });
 });

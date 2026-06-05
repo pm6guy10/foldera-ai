@@ -50,7 +50,7 @@ items:
     proof_gate: "npm run test -- run lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose"
   - id: "005"
     task: "Create durable proof receipt for the full Marcus loop."
-    status: ACTIVE
+    status: COMPLETED
     allowed_files:
       - lib/work-packets/receipt.ts
       - lib/work-packets/__tests__/work-packet-brain.test.ts

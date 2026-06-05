@@ -30,10 +30,13 @@ export function buildWorkPacketBrainReceipt(input: {
     before_fixture_signals: input.fixture_signals,
     generated_work_packet: workPacket,
     slack_review_card_payload: slackReviewCard,
+    review_card_generated: true,
     review_or_dismiss_action: input.action,
     packet_workday_state_after: transition,
+    done_mutation_applied: input.action === 'done',
     paid_model_call_required: false,
     live_connector_fetch_required: false,
+    live_send_performed: false,
     quiet_by_default: true,
   };
 }
