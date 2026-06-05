@@ -32,7 +32,7 @@ items:
     proof_gate: "npm run test -- run lib/work-packets/__tests__/work-packet-brain.test.ts --reporter=verbose"
   - id: "003"
     task: "Generate the Right Now review card with the Marcus source trail."
-    status: ACTIVE
+    status: COMPLETED
     allowed_files:
       - lib/slack-test-mode/work-packet-review.ts
       - lib/slack-test-mode/__tests__/work-packet-review.test.ts
@@ -41,7 +41,7 @@ items:
     proof_gate: "npm run test -- run lib/slack-test-mode/__tests__/work-packet-review.test.ts --reporter=verbose"
   - id: "004"
     task: "Implement Done click state mutation for the Marcus estimate loop."
-    status: QUEUED
+    status: ACTIVE
     allowed_files:
       - lib/work-packets/transitions.ts
       - lib/workday-presence/__tests__/work-packet-state-update.test.ts
