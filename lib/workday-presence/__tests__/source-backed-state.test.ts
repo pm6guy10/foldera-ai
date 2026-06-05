@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { applyWorkdayPresenceAction } from '../actions';
 import { buildRightNowMessagePayload } from '../message';
+import { buildDeterministicWorkPacket } from '@/lib/work-packets/generator';
+import { applyWorkPacketReviewTransition } from '@/lib/work-packets/transitions';
 import { selectSourceBackedRightNowState } from '../source-backed-state';
+import {
+  marcusApprovedEstimateSignal,
+  workPacketFixtureSignals,
+} from '@/tests/fixtures/work-packets/source-signals';
 
 const nowIso = '2026-06-02T20:00:00.000Z';
 
@@ -200,4 +206,51 @@ describe('source-backed Right Now state selector', () => {
       expect(result.nextState.interaction_history).toEqual([]);
     },
   );
+
+  it('keeps the Done mutation idempotent and preserves the packet receipt id', () => {
+    const beforeState = {
+      current_focus: 'Finalize revised estimate for Marcus',
+      next_move: 'Wait for Marcus to approve the revised estimate',
+      why_it_matters: 'The review window is today and the decision needs one safe next move.',
+      blocker: 'Waiting on Marcus',
+      do_not_touch: 'Do not send automatically',
+      waiting_on: 'Marcus approval',
+      last_completed_step: null,
+      state_source: 'manual_anchor',
+      snoozed_until: null,
+      interaction_history: [],
+      created_at: '2026-06-04T16:20:00.000Z',
+      updated_at: '2026-06-04T16:25:00.000Z',
+    };
+
+    const packet = buildDeterministicWorkPacket({
+      test_mode: true,
+      user_id: 'user_test_016',
+      workday_state: beforeState,
+      source_signals: [marcusApprovedEstimateSignal, workPacketFixtureSignals[1]],
+      nowIso: '2026-06-04T16:30:00.000Z',
+    });
+
+    const firstResult = applyWorkPacketReviewTransition({
+      packet,
+      workday_state: packet.workday_state_snapshot,
+      action: 'done',
+      nowIso: '2026-06-04T16:35:00.000Z',
+      reason: 'Done click completed the Marcus estimate loop.',
+    });
+
+    const secondResult = applyWorkPacketReviewTransition({
+      packet: firstResult.packet,
+      workday_state: firstResult.workday_state,
+      action: 'done',
+      nowIso: '2026-06-04T16:36:00.000Z',
+      reason: 'Duplicate Done should be idempotent.',
+    });
+
+    expect(firstResult.packet.packet_id).toBe(secondResult.packet.packet_id);
+    expect(firstResult.packet.audit_trail).toEqual(secondResult.packet.audit_trail);
+    expect(secondResult.workday_state).toEqual(firstResult.workday_state);
+    expect(secondResult.workday_state.state_source).toBe('work_packet_done');
+    expect(secondResult.workday_state.last_completed_step).toBe('Send Estimate');
+  });
 });

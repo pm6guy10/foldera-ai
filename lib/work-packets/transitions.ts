@@ -16,7 +16,7 @@ export function applyWorkPacketReviewTransition(input: {
   const nowIso = input.nowIso ?? new Date().toISOString();
   const actor = input.actor ?? 'human';
 
-  if (input.packet.status !== 'pending_review') {
+  if (input.action !== 'done' && input.packet.status !== 'pending_review') {
     throw new Error('work_packet transition requires pending_review status');
   }
 
@@ -78,6 +78,17 @@ export function applyWorkPacketReviewTransition(input: {
   }
 
   if (input.action === 'done') {
+    if (input.packet.status === 'completed') {
+      return {
+        packet: input.packet,
+        workday_state: input.workday_state,
+      };
+    }
+
+    if (input.packet.status !== 'pending_review') {
+      throw new Error('work_packet done transition requires pending_review or completed status');
+    }
+
     const packet: WorkPacket = {
       ...input.packet,
       status: 'completed',
