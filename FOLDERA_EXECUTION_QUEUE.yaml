@@ -151,7 +151,7 @@ items:
     proof_gate: "npm run test -- run lib/workday-presence/__tests__/source-backed-state.test.ts --reporter=verbose"
   - id: "016"
     task: "Connect Done action to persisted local workday state."
-    status: ACTIVE
+    status: COMPLETED
     allowed_files:
       - lib/workday-presence/source-backed-state.ts
       - lib/workday-presence/__tests__/source-backed-state.test.ts
@@ -160,7 +160,7 @@ items:
     proof_gate: "npm run test -- run lib/workday-presence/__tests__/source-backed-state.test.ts --reporter=verbose"
   - id: "017"
     task: "Add privacy rail proof for source-backed state."
-    status: QUEUED
+    status: ACTIVE
     allowed_files:
       - lib/workday-presence/source-backed-state.ts
       - lib/workday-presence/__tests__/source-backed-state.test.ts
