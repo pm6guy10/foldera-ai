@@ -78,14 +78,27 @@ describe('Slack test-mode work packet review card', () => {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: expect.stringContaining('Approval Received'),
+      text: expect.stringContaining('Approval Received'),
       },
     });
 
     const approvalBlock = card.blocks[0];
+    const actionsBlock = card.blocks[1];
     if (approvalBlock.type === 'section') {
       expect(approvalBlock.text.text).toContain('Next move: Send Estimate');
       expect(approvalBlock.text.text).toContain('Marcus approved the estimate');
+    }
+    expect(card.channel).toBe('test_dm');
+    expect(actionsBlock.type).toBe('actions');
+    if (actionsBlock.type === 'actions') {
+      const labels = actionsBlock.elements.map((element) => element.text.text);
+      expect(labels).toEqual(['Review packet', 'View sources', 'Dismiss']);
+      expect(labels.join(' ')).not.toMatch(/Send|Auto-send|Reply automatically/);
+      expect(actionsBlock.elements.map((element) => element.action_id)).toEqual([
+        'review_packet',
+        'view_sources',
+        'dismiss',
+      ]);
     }
   });
 });

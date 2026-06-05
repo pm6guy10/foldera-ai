@@ -34,6 +34,7 @@ For any Foldera task, use this order:
 - Source-truth closeout is required before stop.
 - GitHub issue receipt is required before stop.
 - Proof is required before calling work done.
+- Queue task completion is not a stop condition: a task is complete only after it is proven, committed, pushed, reflected in `FOLDERA_EXECUTION_QUEUE.yaml`/source truth, and receipted in the active PR and issue #136; after that, continue automatically to the next authorized queue task.
 - Brandon must not be the relay, tester, merger, stale-truth repair person, or project manager for agent drift.
 
 ## Source-of-Truth Loading Hierarchy
