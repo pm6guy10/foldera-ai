@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { PacketSourceSignal } from '../types';
 import { buildWorkPacketBrainReceipt } from '../receipt';
@@ -21,6 +23,10 @@ const beforeState = {
   created_at: '2026-06-02T13:00:00.000Z',
   updated_at: '2026-06-02T13:10:00.000Z',
 };
+
+function readJsonFixture<T>(relativePath: string): T {
+  return JSON.parse(fs.readFileSync(path.join(process.cwd(), relativePath), 'utf8')) as T;
+}
 
 describe('deterministic MVP Work Packet Brain proof', () => {
   it('loads the Marcus approved estimate evidence fixture with typed source-signal fields', () => {
@@ -180,6 +186,31 @@ describe('deterministic MVP Work Packet Brain proof', () => {
     expect(receipt.packet_workday_state_after.workday_state.last_completed_step).toBe(
       'Send Estimate',
     );
+    expect(receipt.paid_model_call_required).toBe(false);
+    expect(receipt.live_connector_fetch_required).toBe(false);
+    expect(receipt.live_send_performed).toBe(false);
+  });
+
+  it('persists the Marcus loop receipt as a deterministic artifact fixture', () => {
+    const receipt = buildWorkPacketBrainReceipt({
+      user_id: 'user_test_005',
+      before_state: {
+        ...beforeState,
+        current_focus: 'Finalize revised estimate for Marcus',
+        next_move: 'Wait for Marcus to approve the revised estimate',
+        blocker: 'Waiting on Marcus',
+        waiting_on: 'Marcus approval',
+      },
+      fixture_signals: [marcusApprovedEstimateSignal, workPacketFixtureSignals[1]],
+      action: 'done',
+      nowIso: '2026-06-04T16:40:00.000Z',
+    });
+
+    const fixture = readJsonFixture<typeof receipt>('tests/fixtures/work-packets/marcus-estimate-receipt.json');
+
+    expect(receipt).toEqual(fixture);
+    expect(receipt.review_card_generated).toBe(true);
+    expect(receipt.done_mutation_applied).toBe(true);
     expect(receipt.paid_model_call_required).toBe(false);
     expect(receipt.live_connector_fetch_required).toBe(false);
     expect(receipt.live_send_performed).toBe(false);

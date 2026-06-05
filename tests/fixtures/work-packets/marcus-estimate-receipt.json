@@ -1,0 +1,283 @@
+{
+  "before_fixture_signals": [
+    {
+      "fixture_id": "slack_marcus_estimate_approved",
+      "source_type": "slack_fixture",
+      "source_id": "slack-thread-marcus-estimate-approval",
+      "source_label": "Slack: Marcus approved estimate",
+      "observed_at": "2026-06-04T16:12:00.000Z",
+      "summary": "Marcus approved the estimate. Redacted fixture content contains approval only; no raw private message body is stored.",
+      "relevance_reason": "Actor Marcus performed approval action on estimate subject, creating deterministic evidence for the next move.",
+      "safe_reference": "fixture:slack_marcus_estimate_approved#summary"
+    },
+    {
+      "fixture_id": "calendar_review_window",
+      "source_type": "calendar_fixture",
+      "source_id": "calendar-acme-renewal-review",
+      "source_label": "Calendar: ACME renewal review window",
+      "observed_at": "2026-06-02T14:20:00.000Z",
+      "summary": "A review block starts at 3 PM PT, leaving one focused window for the renewal note.",
+      "relevance_reason": "Establishes timing for one reviewable intervention.",
+      "safe_reference": "fixture:calendar_review_window#summary"
+    }
+  ],
+  "generated_work_packet": {
+    "packet_id": "work_packet_test_calendar_review_window_slack_marcus_estimate_approved",
+    "user_id": "user_test_005",
+    "verdict": "Approval Received",
+    "next_move": "Send Estimate",
+    "triggering_reason": "Waiting on Marcus is resolved because deterministic fixture evidence shows Marcus approved the estimate.",
+    "workday_state_snapshot": {
+      "current_focus": "Finalize revised estimate for Marcus",
+      "next_move": "Wait for Marcus to approve the revised estimate",
+      "why_it_matters": "The review window is today and the decision needs one safe next move.",
+      "blocker": "Waiting on Marcus",
+      "do_not_touch": "Do not send the renewal note automatically",
+      "waiting_on": "Marcus approval",
+      "last_completed_step": null,
+      "state_source": "manual_anchor",
+      "snoozed_until": null,
+      "interaction_history": [],
+      "created_at": "2026-06-02T13:00:00.000Z",
+      "updated_at": "2026-06-02T13:10:00.000Z"
+    },
+    "source_trail": [
+      {
+        "source_type": "calendar_fixture",
+        "source_id": "calendar-acme-renewal-review",
+        "fixture_id": "calendar_review_window",
+        "source_label": "Calendar: ACME renewal review window",
+        "observed_at": "2026-06-02T14:20:00.000Z",
+        "relevance_reason": "Establishes timing for one reviewable intervention.",
+        "excerpt_or_summary": "A review block starts at 3 PM PT, leaving one focused window for the renewal note.",
+        "safe_reference": "fixture:calendar_review_window#summary"
+      },
+      {
+        "source_type": "slack_fixture",
+        "source_id": "slack-thread-marcus-estimate-approval",
+        "fixture_id": "slack_marcus_estimate_approved",
+        "source_label": "Slack: Marcus approved estimate",
+        "observed_at": "2026-06-04T16:12:00.000Z",
+        "relevance_reason": "Actor Marcus performed approval action on estimate subject, creating deterministic evidence for the next move.",
+        "excerpt_or_summary": "Marcus approved the estimate. Redacted fixture content contains approval only; no raw private message body is stored.",
+        "safe_reference": "fixture:slack_marcus_estimate_approved#summary"
+      }
+    ],
+    "normalized_signals": [
+      {
+        "signal_id": "normalized_calendar_review_window",
+        "source_type": "calendar_fixture",
+        "observed_at": "2026-06-02T14:20:00.000Z",
+        "summary": "A review block starts at 3 PM PT, leaving one focused window for the renewal note.",
+        "relevance_reason": "Establishes timing for one reviewable intervention."
+      },
+      {
+        "signal_id": "normalized_slack_marcus_estimate_approved",
+        "source_type": "slack_fixture",
+        "observed_at": "2026-06-04T16:12:00.000Z",
+        "summary": "Marcus approved the estimate. Redacted fixture content contains approval only; no raw private message body is stored.",
+        "relevance_reason": "Actor Marcus performed approval action on estimate subject, creating deterministic evidence for the next move."
+      }
+    ],
+    "consolidated_context": "A review block starts at 3 PM PT, leaving one focused window for the renewal note. Marcus approved the estimate. Redacted fixture content contains approval only; no raw private message body is stored.",
+    "prepared_work": "Review \"Finalize revised estimate for Marcus\" using 2 source-backed signals, then move forward with: Send Estimate",
+    "confidence_or_safety_reason": "TEST_MODE deterministic packet. Safe for review because it uses 2 fixture signals, safe references only, and no raw private payload dump.",
+    "allowed_actions": [
+      {
+        "id": "review_packet",
+        "label": "Review packet"
+      },
+      {
+        "id": "view_sources",
+        "label": "View sources"
+      },
+      {
+        "id": "dismiss",
+        "label": "Dismiss"
+      }
+    ],
+    "forbidden_actions": [
+      "Send",
+      "Auto-send",
+      "Reply automatically",
+      "Approve external update without human review"
+    ],
+    "review_surface": "slack",
+    "created_at": "2026-06-04T16:40:00.000Z",
+    "status": "pending_review",
+    "audit_trail": [
+      {
+        "event": "packet_generated",
+        "actor": "system",
+        "at": "2026-06-04T16:40:00.000Z",
+        "reason": "Generated from first observed fixture calendar_review_window plus 1 corroborating signal(s)."
+      }
+    ],
+    "quiet_by_default": true
+  },
+  "slack_review_card_payload": {
+    "packet_id": "work_packet_test_calendar_review_window_slack_marcus_estimate_approved",
+    "channel": "test_dm",
+    "blocks": [
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": "*Approval Received*\nNext move: Send Estimate\nReview \"Finalize revised estimate for Marcus\" using 2 source-backed signals, then move forward with: Send Estimate\nEvidence: Marcus approved the estimate. Redacted fixture content contains approval only; no raw private message body is stored.\nSource trail: 2 safe references\nTEST_MODE deterministic packet. Safe for review because it uses 2 fixture signals, safe references only, and no raw private payload dump."
+        }
+      },
+      {
+        "type": "actions",
+        "elements": [
+          {
+            "type": "button",
+            "text": {
+              "type": "plain_text",
+              "text": "Review packet"
+            },
+            "action_id": "review_packet"
+          },
+          {
+            "type": "button",
+            "text": {
+              "type": "plain_text",
+              "text": "View sources"
+            },
+            "action_id": "view_sources"
+          },
+          {
+            "type": "button",
+            "text": {
+              "type": "plain_text",
+              "text": "Dismiss"
+            },
+            "action_id": "dismiss"
+          }
+        ]
+      }
+    ]
+  },
+  "review_card_generated": true,
+  "review_or_dismiss_action": "done",
+  "packet_workday_state_after": {
+    "packet": {
+      "packet_id": "work_packet_test_calendar_review_window_slack_marcus_estimate_approved",
+      "user_id": "user_test_005",
+      "verdict": "Approval Received",
+      "next_move": "Send Estimate",
+      "triggering_reason": "Waiting on Marcus is resolved because deterministic fixture evidence shows Marcus approved the estimate.",
+      "workday_state_snapshot": {
+        "current_focus": "Finalize revised estimate for Marcus",
+        "next_move": "Wait for Marcus to approve the revised estimate",
+        "why_it_matters": "The review window is today and the decision needs one safe next move.",
+        "blocker": "Waiting on Marcus",
+        "do_not_touch": "Do not send the renewal note automatically",
+        "waiting_on": "Marcus approval",
+        "last_completed_step": null,
+        "state_source": "manual_anchor",
+        "snoozed_until": null,
+        "interaction_history": [],
+        "created_at": "2026-06-02T13:00:00.000Z",
+        "updated_at": "2026-06-02T13:10:00.000Z"
+      },
+      "source_trail": [
+        {
+          "source_type": "calendar_fixture",
+          "source_id": "calendar-acme-renewal-review",
+          "fixture_id": "calendar_review_window",
+          "source_label": "Calendar: ACME renewal review window",
+          "observed_at": "2026-06-02T14:20:00.000Z",
+          "relevance_reason": "Establishes timing for one reviewable intervention.",
+          "excerpt_or_summary": "A review block starts at 3 PM PT, leaving one focused window for the renewal note.",
+          "safe_reference": "fixture:calendar_review_window#summary"
+        },
+        {
+          "source_type": "slack_fixture",
+          "source_id": "slack-thread-marcus-estimate-approval",
+          "fixture_id": "slack_marcus_estimate_approved",
+          "source_label": "Slack: Marcus approved estimate",
+          "observed_at": "2026-06-04T16:12:00.000Z",
+          "relevance_reason": "Actor Marcus performed approval action on estimate subject, creating deterministic evidence for the next move.",
+          "excerpt_or_summary": "Marcus approved the estimate. Redacted fixture content contains approval only; no raw private message body is stored.",
+          "safe_reference": "fixture:slack_marcus_estimate_approved#summary"
+        }
+      ],
+      "normalized_signals": [
+        {
+          "signal_id": "normalized_calendar_review_window",
+          "source_type": "calendar_fixture",
+          "observed_at": "2026-06-02T14:20:00.000Z",
+          "summary": "A review block starts at 3 PM PT, leaving one focused window for the renewal note.",
+          "relevance_reason": "Establishes timing for one reviewable intervention."
+        },
+        {
+          "signal_id": "normalized_slack_marcus_estimate_approved",
+          "source_type": "slack_fixture",
+          "observed_at": "2026-06-04T16:12:00.000Z",
+          "summary": "Marcus approved the estimate. Redacted fixture content contains approval only; no raw private message body is stored.",
+          "relevance_reason": "Actor Marcus performed approval action on estimate subject, creating deterministic evidence for the next move."
+        }
+      ],
+      "consolidated_context": "A review block starts at 3 PM PT, leaving one focused window for the renewal note. Marcus approved the estimate. Redacted fixture content contains approval only; no raw private message body is stored.",
+      "prepared_work": "Review \"Finalize revised estimate for Marcus\" using 2 source-backed signals, then move forward with: Send Estimate",
+      "confidence_or_safety_reason": "TEST_MODE deterministic packet. Safe for review because it uses 2 fixture signals, safe references only, and no raw private payload dump.",
+      "allowed_actions": [
+        {
+          "id": "review_packet",
+          "label": "Review packet"
+        },
+        {
+          "id": "view_sources",
+          "label": "View sources"
+        },
+        {
+          "id": "dismiss",
+          "label": "Dismiss"
+        }
+      ],
+      "forbidden_actions": [
+        "Send",
+        "Auto-send",
+        "Reply automatically",
+        "Approve external update without human review"
+      ],
+      "review_surface": "slack",
+      "created_at": "2026-06-04T16:40:00.000Z",
+      "status": "completed",
+      "audit_trail": [
+        {
+          "event": "packet_generated",
+          "actor": "system",
+          "at": "2026-06-04T16:40:00.000Z",
+          "reason": "Generated from first observed fixture calendar_review_window plus 1 corroborating signal(s)."
+        },
+        {
+          "event": "packet_completed",
+          "actor": "human",
+          "at": "2026-06-04T16:40:00.000Z",
+          "reason": "Human marked the packet done after completing the next move."
+        }
+      ],
+      "quiet_by_default": true
+    },
+    "workday_state": {
+      "current_focus": "Finalize revised estimate for Marcus",
+      "next_move": "Stay quiet until a new source-backed trigger appears.",
+      "why_it_matters": "The review window is today and the decision needs one safe next move.",
+      "blocker": null,
+      "do_not_touch": "Do not send the renewal note automatically",
+      "waiting_on": null,
+      "last_completed_step": "Send Estimate",
+      "state_source": "work_packet_done",
+      "snoozed_until": null,
+      "interaction_history": [],
+      "created_at": "2026-06-02T13:00:00.000Z",
+      "updated_at": "2026-06-04T16:40:00.000Z"
+    }
+  },
+  "done_mutation_applied": true,
+  "paid_model_call_required": false,
+  "live_connector_fetch_required": false,
+  "live_send_performed": false,
+  "quiet_by_default": true
+}
