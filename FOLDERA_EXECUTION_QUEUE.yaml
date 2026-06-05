@@ -123,7 +123,7 @@ items:
     proof_gate: "npm run proof:marcus-estimate-loop"
   - id: "013"
     task: "Create first user journey shell for the estimate approval loop."
-    status: ACTIVE
+    status: COMPLETED
     allowed_files:
       - app/foldera-loop/page.tsx
       - components/foldera-loop/**
@@ -132,7 +132,7 @@ items:
     proof_gate: "npm run test:e2e -- tests/e2e/foldera-loop.spec.ts --reporter=list"
   - id: "014"
     task: "Wire journey shell to deterministic Marcus fixture only."
-    status: QUEUED
+    status: ACTIVE
     allowed_files:
       - app/foldera-loop/page.tsx
       - components/foldera-loop/**
