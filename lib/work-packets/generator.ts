@@ -33,6 +33,11 @@ function inferVerdict(input: {
       signal.fixture_id === 'slack_marcus_estimate_approved' &&
       signal.summary.includes('Marcus approved the estimate'),
   );
+  const marcusDeferred = input.source_signals.some(
+    (signal) =>
+      signal.fixture_id === 'slack_marcus_estimate_deferred' &&
+      signal.summary.includes('defer the estimate'),
+  );
 
   if (waitingOnMarcus && !marcusApproved) {
     return {
@@ -47,8 +52,9 @@ function inferVerdict(input: {
     return {
       verdict: 'Approval Received',
       nextMove: 'Send Estimate',
-      triggeringReason:
-        'Waiting on Marcus is resolved because deterministic fixture evidence shows Marcus approved the estimate.',
+      triggeringReason: marcusDeferred
+        ? 'Waiting on Marcus is resolved because deterministic fixture evidence shows Marcus approved the estimate, and the deferred alternative is ignored.'
+        : 'Waiting on Marcus is resolved because deterministic fixture evidence shows Marcus approved the estimate.',
     };
   }
 

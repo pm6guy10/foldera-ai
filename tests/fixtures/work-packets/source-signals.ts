@@ -43,3 +43,16 @@ export const marcusApprovedEstimateSignal: PacketSourceSignal = {
   relevance_reason: 'Actor Marcus performed approval action on estimate subject, creating deterministic evidence for the next move.',
   safe_reference: 'fixture:slack_marcus_estimate_approved#summary',
 };
+
+export const marcusEstimateDeferredSignal: PacketSourceSignal = {
+  fixture_id: 'slack_marcus_estimate_deferred',
+  source_type: 'slack_fixture',
+  source_id: 'slack-thread-marcus-estimate-deferred',
+  source_label: 'Slack: Marcus deferred estimate',
+  observed_at: '2026-06-04T16:11:30.000Z',
+  summary:
+    'Marcus asked to defer the estimate until a final check. Redacted fixture content contains a conflicting non-approval signal only.',
+  relevance_reason:
+    'Conflicts with approval evidence but should still collapse into one deterministic verdict.',
+  safe_reference: 'fixture:slack_marcus_estimate_deferred#summary',
+};

@@ -6,6 +6,7 @@ import { buildWorkPacketBrainReceipt } from '../receipt';
 import { buildDeterministicWorkPacket } from '../generator';
 import {
   marcusApprovedEstimateSignal,
+  marcusEstimateDeferredSignal,
   workPacketFixtureSignals,
 } from '@/tests/fixtures/work-packets/source-signals';
 
@@ -117,6 +118,43 @@ describe('deterministic MVP Work Packet Brain proof', () => {
       'slack_marcus_estimate_approved',
     );
     expect(packet.prepared_work).toContain('Finalize revised estimate for Marcus');
+  });
+
+  it('keeps one deterministic verdict when approval and defer signals conflict', () => {
+    const packet = buildDeterministicWorkPacket({
+      test_mode: true,
+      user_id: 'user_test_011',
+      workday_state: {
+        ...beforeState,
+        current_focus: 'Finalize revised estimate for Marcus',
+        next_move: 'Wait for Marcus to approve the revised estimate',
+        blocker: 'Waiting on Marcus',
+        waiting_on: 'Marcus approval',
+      },
+      source_signals: [
+        marcusEstimateDeferredSignal,
+        marcusApprovedEstimateSignal,
+        workPacketFixtureSignals[1],
+      ],
+      nowIso: '2026-06-04T16:36:00.000Z',
+    });
+
+    expect(packet.verdict).toBe('Approval Received');
+    expect(packet.next_move).toBe('Send Estimate');
+    expect(packet.allowed_actions).toHaveLength(3);
+    expect(packet.allowed_actions.map((action) => action.label)).toEqual([
+      'Review packet',
+      'View sources',
+      'Dismiss',
+    ]);
+    expect(packet.triggering_reason).toContain('approved the estimate');
+    expect(packet.triggering_reason).toContain('deferred alternative is ignored');
+    expect(packet.triggering_reason).not.toContain('multiple');
+    expect(packet.source_trail.map((entry) => entry.fixture_id)).toEqual([
+      'calendar_review_window',
+      'slack_marcus_estimate_deferred',
+      'slack_marcus_estimate_approved',
+    ]);
   });
 
   it('keeps Send, Auto-send, and Reply automatically out of default actions', () => {

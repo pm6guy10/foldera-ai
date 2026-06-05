@@ -104,7 +104,7 @@ items:
     proof_gate: "npm run test -- run lib/work-packets/__tests__/work-packet-brain.test.ts --reporter=verbose"
   - id: "011"
     task: "Add conflicting evidence case and preserve one-verdict output."
-    status: ACTIVE
+    status: COMPLETED
     allowed_files:
       - tests/fixtures/work-packets/source-signals.ts
       - lib/work-packets/generator.ts
@@ -113,7 +113,7 @@ items:
     proof_gate: "npm run test -- run lib/work-packets/__tests__/work-packet-brain.test.ts --reporter=verbose"
   - id: "012"
     task: "Expose a local proof script for the Marcus loop."
-    status: QUEUED
+    status: ACTIVE
     allowed_files:
       - scripts/proof-marcus-estimate-loop.ts
       - package.json
