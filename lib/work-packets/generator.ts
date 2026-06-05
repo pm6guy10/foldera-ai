@@ -34,6 +34,15 @@ function inferVerdict(input: {
       signal.summary.includes('Marcus approved the estimate'),
   );
 
+  if (waitingOnMarcus && !marcusApproved) {
+    return {
+      verdict: 'Review Required',
+      nextMove: input.workday_state.next_move,
+      triggeringReason:
+        'Marcus approval evidence is absent, so stay quiet and keep the current next move.',
+    };
+  }
+
   if (waitingOnMarcus && marcusApproved) {
     return {
       verdict: 'Approval Received',

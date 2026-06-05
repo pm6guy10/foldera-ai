@@ -94,6 +94,31 @@ describe('deterministic MVP Work Packet Brain proof', () => {
     );
   });
 
+  it('stays quiet when Marcus approval evidence is absent', () => {
+    const packet = buildDeterministicWorkPacket({
+      test_mode: true,
+      user_id: 'user_test_010',
+      workday_state: {
+        ...beforeState,
+        current_focus: 'Finalize revised estimate for Marcus',
+        next_move: 'Wait for Marcus to approve the revised estimate',
+        blocker: 'Waiting on Marcus',
+        waiting_on: 'Marcus approval',
+      },
+      source_signals: workPacketFixtureSignals,
+      nowIso: '2026-06-04T16:35:00.000Z',
+    });
+
+    expect(packet.verdict).toBe('Review Required');
+    expect(packet.next_move).toBe('Wait for Marcus to approve the revised estimate');
+    expect(packet.triggering_reason).toContain('Marcus approval evidence is absent');
+    expect(packet.triggering_reason).not.toContain('Send Estimate');
+    expect(packet.source_trail.map((entry) => entry.fixture_id)).not.toContain(
+      'slack_marcus_estimate_approved',
+    );
+    expect(packet.prepared_work).toContain('Finalize revised estimate for Marcus');
+  });
+
   it('keeps Send, Auto-send, and Reply automatically out of default actions', () => {
     const receipt = buildWorkPacketBrainReceipt({
       user_id: 'user_test_143',
