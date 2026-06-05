@@ -132,7 +132,7 @@ items:
     proof_gate: "npm run test:e2e -- tests/e2e/foldera-loop.spec.ts --reporter=list"
   - id: "014"
     task: "Wire journey shell to deterministic Marcus fixture only."
-    status: ACTIVE
+    status: COMPLETED
     allowed_files:
       - app/foldera-loop/page.tsx
       - components/foldera-loop/**
@@ -142,7 +142,7 @@ items:
     proof_gate: "npm run test:e2e -- tests/e2e/foldera-loop.spec.ts --reporter=list"
   - id: "015"
     task: "Persist one source-backed workday state path locally."
-    status: QUEUED
+    status: ACTIVE
     allowed_files:
       - lib/workday-presence/source-backed-state.ts
       - lib/workday-presence/__tests__/source-backed-state.test.ts
