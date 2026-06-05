@@ -77,5 +77,34 @@ export function applyWorkPacketReviewTransition(input: {
     };
   }
 
+  if (input.action === 'done') {
+    const packet: WorkPacket = {
+      ...input.packet,
+      status: 'completed',
+      audit_trail: [
+        ...input.packet.audit_trail,
+        {
+          event: 'packet_completed',
+          actor,
+          at: nowIso,
+          reason: input.reason ?? 'Human marked the packet done after completing the next move.',
+        },
+      ],
+    };
+    return {
+      packet,
+      workday_state: {
+        ...input.workday_state,
+        blocker: null,
+        snoozed_until: null,
+        waiting_on: null,
+        last_completed_step: input.packet.next_move,
+        next_move: 'Stay quiet until a new source-backed trigger appears.',
+        state_source: 'work_packet_done',
+        updated_at: nowIso,
+      },
+    };
+  }
+
   throw new Error('Invalid work_packet transition action');
 }

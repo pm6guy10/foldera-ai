@@ -21,12 +21,12 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 179
-priority_class: RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF
-work_type: TEST_MODE_DETERMINISTIC_FIXTURE_PROOF
-why_this_first: PR #177 completed issue #175 by selecting the deterministic work-packet fixture lane for Rung 3. Issue #179 proves that lane without product/runtime/provider/schema work.
-next_seam: blocked - reason issue #179 must be reviewed/merged before the next rung is authorized
-required_gate_command: npm run gate:command
+active_issue: 183
+priority_class: DETERMINISTIC_EXECUTION_QUEUE
+work_type: QUEUE_CONTROLLED_DETERMINISTIC_MVP_LOOP
+why_this_first: PR #180 completed issue #179, Tasks 001-005 are now completed, and PR #183 exists only to align the source-truth and gate/test layer with queue-controlled execution before Task 006 begins.
+next_seam: queue-controlled - reason Task 006 remains queued until PR #183 merges; do not start Task 006 in this PR
+required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
   - 101
   - 94
@@ -57,6 +57,10 @@ completed:
     pr: 177
     merge_sha: 17e0699238cd11e80b4891f236be860abe32eb72
     result: Read-only Rung 2 audit selected deterministic work-packet fixture lane for Rung 3.
+  - issue: 179
+    pr: 180
+    merge_sha: b1e932e63c2fd261a2fc0c57edf99b0e4f8d5b80
+    result: Deterministic fixture-loop proof landed; execution now advances through FOLDERA_EXECUTION_QUEUE.yaml.
   - issue: 173
     pr: 174
     merge_sha: 34ac1b28be8c965a741eefbb1eb3f18a724bc45b
@@ -151,9 +155,11 @@ forbidden_current_work:
 allowed_current_work:
   - update ACTIVE_HANDOFF.md
   - update FOLDERA_BUILD_ORDER.yaml
+  - update FOLDERA_EXECUTION_QUEUE.yaml
   - update .foldera-contract.json
   - update docs/SOURCE_OF_TRUTH_MAP.md
   - update scripts/source-truth-check.ts
+  - update scripts/continuity-gate.ts
   - update focused source-truth gate tests
   - update focused continuity gate tests
   - update tests/fixtures/work-packets/source-signals.ts
@@ -163,27 +169,31 @@ allowed_current_work:
   - update lib/workday-presence/__tests__/work-packet-state-update.test.ts
 required_local_proof:
   - npm run health
-  - npx vitest run lib/work-packets/__tests__/work-packet-brain.test.ts lib/slack-test-mode/__tests__/work-packet-review.test.ts lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose
-  - npm run gate:command
+  - npx tsx scripts/source-truth-check.ts
   - npm run gate:continuity
+  - npm run lint
+  - npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose
+  - npx vitest run lib/work-packets/__tests__/work-packet-brain.test.ts lib/slack-test-mode/__tests__/work-packet-review.test.ts lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose
   - git diff --check
-required_issue_179_rung_3_deterministic_work_packet_fixture_proof:
-  controlling_issue: 179
-  source_issue: 175
-  source_pr: 177
-  selected_first_evidence_lane: deterministic work-packet fixture lane
-  selected_lane_entrypoint: tests/fixtures/work-packets/source-signals.ts
-  selected_lane_receipt: lib/work-packets/receipt.ts
-  selected_lane_state_transition: lib/work-packets/transitions.ts
-  selected_lane_review_surface: lib/slack-test-mode/work-packet-review.ts
-  proof_chain: fixture signals -> generated work_packet -> TEST_MODE review card -> review/dismiss -> packet/workday state after
+required_queue_control_closeout:
+  controlling_pr: 183
+  routing_authority: FOLDERA_EXECUTION_QUEUE.yaml
+  completed_tasks:
+    - "001"
+    - "002"
+    - "003"
+    - "004"
+    - "005"
+  queued_next_task: "006"
+  active_task_count: 0
+  task_006_started: false
   paid_model_call_required: false
   live_connector_fetch_required: false
+  live_slack_pr_142_changes: forbidden
   schema_implementation: forbidden
   data_mutation: forbidden
   supabase_migrations: forbidden
   vercel_changes: forbidden
-  live_slack_pr_142_changes: forbidden
   stripe_changes: forbidden
   auth_changes: forbidden
   landing_dashboard_changes: forbidden
@@ -201,9 +211,9 @@ build_sequence_from_master_synthesis:
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock, Product Operating System, Master Synthesis REFERENCE_DRAFT, issue #175 audit artifact, and issue #179 control current direction
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock, Product Operating System, Master Synthesis REFERENCE_DRAFT, and queue authority control current direction
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: blocked - issue #179 must be reviewed/merged before the next rung is authorized
+  next_seam: named - Task 006 remains queued until PR #183 merges; do not start it in this PR
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason

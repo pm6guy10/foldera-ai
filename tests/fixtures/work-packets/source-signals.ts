@@ -32,3 +32,14 @@ export const workPacketFixtureSignals: PacketSourceSignal[] = [
     safe_reference: 'fixture:slack_cfo_ping#summary',
   },
 ];
+
+export const marcusApprovedEstimateSignal: PacketSourceSignal = {
+  fixture_id: 'slack_marcus_estimate_approved',
+  source_type: 'slack_fixture',
+  source_id: 'slack-thread-marcus-estimate-approval',
+  source_label: 'Slack: Marcus approved estimate',
+  observed_at: '2026-06-04T16:12:00.000Z',
+  summary: 'Marcus approved the estimate. Redacted fixture content contains approval only; no raw private message body is stored.',
+  relevance_reason: 'Actor Marcus performed approval action on estimate subject, creating deterministic evidence for the next move.',
+  safe_reference: 'fixture:slack_marcus_estimate_approved#summary',
+};

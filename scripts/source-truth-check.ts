@@ -15,33 +15,42 @@ type FolderaContract = {
   next_command?: string;
 };
 
-const ACTIVE_ISSUE = 179;
+type QueueItem = {
+  id: string;
+  status: string;
+};
+
+const CONTROLLING_PR = 183;
 const COMPLETED_RUNG_2_ISSUE = 175;
 const RUNG_2_PR = 177;
+const COMPLETED_RUNG_3_ISSUE = 179;
+const RUNG_3_PR = 180;
 const OPEN_THREADS_ISSUE = 165;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
-const COMMAND_OS_PR = 167;
 const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
-const MASTER_SYNTHESIS_PR = 172;
 const COMPLETED_FIRST_RUNG_ISSUE = 173;
-const FIRST_RUNG_PR = 174;
-const BASE_COMMIT = '17e0699238cd11e80b4891f236be860abe32eb72';
-const NEXT_SEAM = 'blocked - reason issue #179 must be reviewed/merged before the next rung is authorized';
+const BASE_COMMIT = 'b1e932e63c2fd261a2fc0c57edf99b0e4f8d5b80';
+const NEXT_TASK_ID = '006';
+const COMPLETED_TASK_IDS = ['001', '002', '003', '004', '005'];
 
 const REQUIRED_PROOF_COMMANDS = [
   'npm run health',
-  'npx vitest run lib/work-packets/__tests__/work-packet-brain.test.ts lib/slack-test-mode/__tests__/work-packet-review.test.ts lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose',
-  'npm run gate:command',
+  'npx tsx scripts/source-truth-check.ts',
   'npm run gate:continuity',
+  'npm run lint',
+  'npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose',
+  'npx vitest run lib/work-packets/__tests__/work-packet-brain.test.ts lib/slack-test-mode/__tests__/work-packet-review.test.ts lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose',
   'git diff --check',
 ];
 
 const REQUIRED_ALLOWED_FILES = [
   'ACTIVE_HANDOFF.md',
   'FOLDERA_BUILD_ORDER.yaml',
+  'FOLDERA_EXECUTION_QUEUE.yaml',
   '.foldera-contract.json',
   'docs/SOURCE_OF_TRUTH_MAP.md',
   'scripts/source-truth-check.ts',
+  'scripts/continuity-gate.ts',
   'tests/config/__tests__/**',
   'tests/fixtures/work-packets/source-signals.ts',
   'lib/work-packets/**',
@@ -114,15 +123,13 @@ function extractYamlScalar(raw: string, key: string): string | null {
   return match ? match[1].trim().replace(/^['"]|['"]$/g, '') : null;
 }
 
-function extractActiveHandoffIssue(raw: string): number | null {
-  const match = raw.match(/^Active implementation seam is issue #(\d+).*$/m);
-  return match ? Number(match[1]) : null;
-}
-
 function contractProofCommands(contract: FolderaContract): string[] {
   if (Array.isArray(contract.required_local_proof)) return contract.required_local_proof;
   if (typeof contract.required_local_proof === 'string') {
-    return contract.required_local_proof.split(/[;\n]/).map((entry) => entry.trim()).filter(Boolean);
+    return contract.required_local_proof
+      .split(/[;\n]/)
+      .map((entry) => entry.trim())
+      .filter(Boolean);
   }
   return [];
 }
@@ -141,6 +148,39 @@ function requireArrayExcludes(failures: string[], label: string, actual: string[
   }
 }
 
+function parseQueueItems(raw: string): QueueItem[] {
+  const sections = raw.split(/\n  - id: "/).slice(1);
+  return sections.map((section) => {
+    const [idLine, ...rest] = section.split(/\r?\n/);
+    const id = idLine.replace(/".*$/, '').trim();
+    const body = rest.join('\n');
+    const statusMatch = body.match(/^\s{4}status:\s*([A-Z_]+)\s*$/m);
+    return {
+      id,
+      status: statusMatch ? statusMatch[1] : 'MISSING',
+    };
+  });
+}
+
+function checkQueueState(failures: string[], queueRaw: string): void {
+  if (!queueRaw.includes('authority: SUPREME_EXECUTION_QUEUE')) {
+    failures.push('FOLDERA_EXECUTION_QUEUE.yaml must set authority: SUPREME_EXECUTION_QUEUE.');
+  }
+  if (!queueRaw.includes('authority_law: FOLDERA_EXECUTION_QUEUE.yaml overrides every other markdown source-truth file for execution routing.')) {
+    failures.push('FOLDERA_EXECUTION_QUEUE.yaml must declare queue-routing authority.');
+  }
+
+  const items = parseQueueItems(queueRaw);
+  const byId = new Map(items.map((item) => [item.id, item.status]));
+  const activeCount = items.filter((item) => item.status === 'ACTIVE').length;
+
+  for (const id of COMPLETED_TASK_IDS) {
+    if (byId.get(id) !== 'COMPLETED') failures.push(`FOLDERA_EXECUTION_QUEUE.yaml task ${id} must be COMPLETED.`);
+  }
+  if (byId.get(NEXT_TASK_ID) !== 'QUEUED') failures.push(`FOLDERA_EXECUTION_QUEUE.yaml task ${NEXT_TASK_ID} must remain QUEUED.`);
+  if (activeCount !== 0) failures.push(`FOLDERA_EXECUTION_QUEUE.yaml must have zero ACTIVE tasks in PR #${CONTROLLING_PR}; found ${activeCount}.`);
+}
+
 function requireClosedIssueDoNotReopen(failures: string[], handoff: string, buildOrder: string): void {
   const lines = buildOrder.split(/\r?\n/);
   for (const issue of REQUIRED_CLOSED_ISSUES) {
@@ -155,8 +195,8 @@ function requireClosedIssueDoNotReopen(failures: string[], handoff: string, buil
       failures.push(`FOLDERA_BUILD_ORDER.yaml must classify issue #${issue} as closed/completed/superseded.`);
     }
   }
-  if (!handoff.includes('Issues #121, #99, #48, #131, #147, #151, #154, #159, #163, #166, #170, #173, and #175 are closed/completed/superseded. Do not reopen them.')) {
-    failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #166, #170, and #173, out of scope.');
+  if (!handoff.includes('Issues #121, #99, #48, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, and #179 are closed/completed/superseded. Do not reopen them here.')) {
+    failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #179, out of scope.');
   }
 }
 
@@ -187,123 +227,64 @@ function checkDraft(root: string): string[] {
     '# MONEY-READINESS THRESHOLD',
     '# FORBIDDEN WORK',
     '# STOP CONDITIONS',
-    'hit-by-a-bus build bible',
-    'customer / ICP',
-    'buyer',
-    '$29/month self-serve deliverable',
-    'first user journey',
-    'current repo inventory',
-    'what exists',
-    'what is missing',
-    'React / Next / Tailwind frontend responsibilities',
-    'backend/API responsibilities',
-    'runtime brain',
-    'signal flow',
-    'Supabase current/future schema',
-    'Vercel configuration map',
-    'GitHub workflow',
-    'issue/PR ladder',
-    'proof gates',
-    'money-readiness threshold',
-    'forbidden work',
-    'stop conditions',
   ]) {
     if (!draft.includes(marker)) failures.push(`FOLDERA_MASTER_SYNTHESIS_DRAFT.md is missing required marker: ${marker}`);
   }
   return failures;
 }
 
-function checkSourceTruth(root: string, handoff: string, buildOrder: string, contract: FolderaContract): string[] {
+function checkSourceTruth(root: string, handoff: string, buildOrder: string, contract: FolderaContract, queueRaw: string): string[] {
   const failures: string[] = [];
-  const handoffIssue = extractActiveHandoffIssue(handoff);
   const buildIssue = extractYamlNumber(buildOrder, 'active_issue');
-  const contractIssue = contract.active_issue ?? null;
 
-  if (handoffIssue !== ACTIVE_ISSUE) failures.push(`ACTIVE_HANDOFF.md must assign active issue #${ACTIVE_ISSUE}; found ${handoffIssue ?? 'none'}.`);
-  if (buildIssue !== ACTIVE_ISSUE) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${ACTIVE_ISSUE}; found ${buildIssue ?? 'none'}.`);
-  if (contractIssue !== ACTIVE_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_ISSUE}; found ${contractIssue ?? 'none'}.`);
-  if (contract.active !== true) failures.push(`.foldera-contract.json active must be true for issue #${ACTIVE_ISSUE}.`);
-  if (contract.backlog_id !== 'ISSUE_179_RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF') failures.push('.foldera-contract.json backlog_id must resolve to issue #179 Rung 3 deterministic work-packet fixture proof.');
-  if (contract.authority_status !== 'ACTIVE_RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF') failures.push('.foldera-contract.json authority_status must be ACTIVE_RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF.');
-  if (contract.base_commit !== BASE_COMMIT) failures.push(`.foldera-contract.json base_commit must be PR #${RUNG_2_PR} merge SHA ${BASE_COMMIT}.`);
+  if (buildIssue !== CONTROLLING_PR) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${CONTROLLING_PR}; found ${buildIssue ?? 'none'}.`);
+  if (contract.active !== true) failures.push(`.foldera-contract.json active must be true for PR #${CONTROLLING_PR}.`);
+  if (contract.active_issue !== null) failures.push(`.foldera-contract.json active_issue must be null in queue-controlled mode; found ${contract.active_issue}.`);
+  if (contract.backlog_id !== 'FOLDERA_EXECUTION_QUEUE') failures.push('.foldera-contract.json backlog_id must be FOLDERA_EXECUTION_QUEUE.');
+  if (contract.authority_status !== 'DETERMINISTIC_EXECUTION_QUEUE_ACTIVE') failures.push('.foldera-contract.json authority_status must be DETERMINISTIC_EXECUTION_QUEUE_ACTIVE.');
+  if (contract.base_commit !== BASE_COMMIT) failures.push(`.foldera-contract.json base_commit must be PR #${RUNG_3_PR} merge SHA ${BASE_COMMIT}.`);
 
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
-  if (priority !== 'RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be RUNG_3_DETERMINISTIC_WORK_PACKET_FIXTURE_PROOF; found ${priority ?? 'none'}.`);
-  if (workType !== 'TEST_MODE_DETERMINISTIC_FIXTURE_PROOF') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be TEST_MODE_DETERMINISTIC_FIXTURE_PROOF; found ${workType ?? 'none'}.`);
-  if (nextSeam !== NEXT_SEAM) failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must be ${NEXT_SEAM}; found ${nextSeam ?? 'none'}.`);
+  if (priority !== 'DETERMINISTIC_EXECUTION_QUEUE') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be DETERMINISTIC_EXECUTION_QUEUE; found ${priority ?? 'none'}.`);
+  if (workType !== 'QUEUE_CONTROLLED_DETERMINISTIC_MVP_LOOP') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be QUEUE_CONTROLLED_DETERMINISTIC_MVP_LOOP; found ${workType ?? 'none'}.`);
+  if (nextSeam !== 'queue-controlled - reason Task 006 remains queued until PR #183 merges; do not start Task 006 in this PR') {
+    failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must preserve the Task 006 queued boundary; found ${nextSeam ?? 'none'}.`);
+  }
 
   for (const marker of [
-    `Active implementation seam is issue #${ACTIVE_ISSUE}`,
-    `Issue #${COMPLETED_RUNG_2_ISSUE} is complete via PR #${RUNG_2_PR}`,
-    `Issue #${COMPLETED_FIRST_RUNG_ISSUE} is complete/superseded by PR #${FIRST_RUNG_PR}`,
-    `Issue #${COMPLETED_MASTER_SYNTHESIS_ISSUE} is complete/superseded by PR #${MASTER_SYNTHESIS_PR}`,
-    `Issue #${OPEN_THREADS_ISSUE} Open Threads remains capture-only and cannot authorize implementation.`,
-    'This is a deterministic TEST_MODE work-packet fixture proof seam.',
-    'FOLDERA_MASTER_SYNTHESIS_DRAFT.md` remains `REFERENCE_DRAFT`',
+    'Issue #179 is completed by merged PR #180.',
+    'Active implementation seam is `EXECUTION_QUEUE`.',
+    'The active seam is now controlled entirely by `FOLDERA_EXECUTION_QUEUE.yaml`.',
+    'Tasks `001`-`005` are completed.',
+    'Task `006` remains queued.',
+    'No Task `006` work has started in this PR.',
+    'PR #183 is a source-truth and gate-alignment seam only.',
+    'Issue #140 / PR #142 is parked for this seam; do not touch live Slack/provider surfaces.',
     'GitHub writeback is mandatory.',
     'One active seam only.',
-    'Issue #140 / PR #142 remains rail-only and parked for this seam',
-    'Issue #136 remains open as the standing Codex Run Ledger only.',
-    'Exact lane: `tests/fixtures/work-packets/source-signals.ts` -> `lib/work-packets`',
-    'Required proof chain: fixture signals enter; exactly one work packet is generated',
   ]) {
     if (!handoff.includes(marker)) failures.push(`ACTIVE_HANDOFF.md is missing required marker: ${marker}`);
   }
   for (const staleMarker of [
-    'Run issue #166 only',
-    'Forbidden in issue #166',
-    'Repo Intake Governor Command OS v0 files are authorized',
-    'The only safe next move is manual evidence collection/recording',
-    'Collect/manual-record real first-10 ICP evidence only',
+    'Active implementation seam is issue #179',
+    'Current active task is `002`',
+    'Task `001` is completed and Task `002` is active.',
+    'Read `FOLDERA_EXECUTION_QUEUE.yaml`, execute active Task `002`, and advance the queue only if its proof gate passes.',
   ]) {
-    if (handoff.includes(staleMarker)) failures.push(`ACTIVE_HANDOFF.md still contains stale command: ${staleMarker}`);
+    if (handoff.includes(staleMarker)) failures.push(`ACTIVE_HANDOFF.md still contains stale queue-progress marker: ${staleMarker}`);
   }
 
   for (const marker of [
-    'required_issue_179_rung_3_deterministic_work_packet_fixture_proof',
-    `controlling_issue: ${ACTIVE_ISSUE}`,
-    'source_issue: 175',
-    'source_pr: 177',
-    'selected_first_evidence_lane: deterministic work-packet fixture lane',
-    'selected_lane_entrypoint: tests/fixtures/work-packets/source-signals.ts',
-    'selected_lane_receipt: lib/work-packets/receipt.ts',
-    'selected_lane_state_transition: lib/work-packets/transitions.ts',
-    'selected_lane_review_surface: lib/slack-test-mode/work-packet-review.ts',
-    'proof_chain: fixture signals -> generated work_packet -> TEST_MODE review card -> review/dismiss -> packet/workday state after',
-    'paid_model_call_required: false',
-    'live_connector_fetch_required: false',
-    'schema_implementation: forbidden',
-    'data_mutation: forbidden',
+    'required_queue_control_closeout:',
+    'controlling_pr: 183',
+    'routing_authority: FOLDERA_EXECUTION_QUEUE.yaml',
+    'queued_next_task: "006"',
+    'active_task_count: 0',
+    'task_006_started: false',
   ]) {
-    if (!buildOrder.includes(marker)) failures.push(`FOLDERA_BUILD_ORDER.yaml is missing required marker: ${marker}`);
-  }
-  if (!buildOrder.includes('status: completed_superseded') || !buildOrder.includes('reason: Repo Intake Governor Command OS v0 completed by PR #167 and is no longer active.')) {
-    failures.push('FOLDERA_BUILD_ORDER.yaml must classify issue #166 as completed_superseded because PR #167 merged.');
-  }
-  if (!buildOrder.includes('reason: Master Synthesis build bible REFERENCE_DRAFT completed by PR #172 and is no longer active.')) {
-    failures.push('FOLDERA_BUILD_ORDER.yaml must classify issue #170 as completed_superseded because PR #172 merged.');
-  }
-  if (!buildOrder.includes('reason: First executable MVP rung promotion completed by PR #174 and is no longer active.')) {
-    failures.push('FOLDERA_BUILD_ORDER.yaml must classify issue #173 as completed_superseded because PR #174 merged.');
-  }
-  if (!buildOrder.includes('reason: Rung 2 audit completed by PR #177 and selected deterministic work-packet fixture lane.')) {
-    failures.push('FOLDERA_BUILD_ORDER.yaml must classify issue #175 as closed_completed because PR #177 merged.');
-  }
-  for (const rung of [
-    'Promote first executable MVP rung',
-    'Audit current schema and choose first evidence lane',
-    'Prove deterministic one-verdict fixture loop',
-    'Prove one-click state mutation receipt',
-    'Implement first user journey shell',
-    'Persist one source-backed workday state path',
-    'Prove trust/privacy/no-send rail',
-    'Add bounded $29 early-access/payment path',
-    'Prove money-ready MVP end to end',
-    'Prove first non-owner validation',
-  ]) {
-    if (!buildOrder.includes(`- ${rung}`)) failures.push(`FOLDERA_BUILD_ORDER.yaml build sequence must include: ${rung}`);
+    if (!buildOrder.includes(marker)) failures.push(`FOLDERA_BUILD_ORDER.yaml is missing required queue-control marker: ${marker}`);
   }
 
   requireArrayIncludes(failures, '.foldera-contract.json allowed_file_patterns', contract.allowed_file_patterns, REQUIRED_ALLOWED_FILES);
@@ -311,53 +292,28 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, con
   requireArrayExcludes(failures, '.foldera-contract.json allowed_file_patterns', contract.allowed_file_patterns, FORBIDDEN_PRODUCT_PATHS);
   requireArrayIncludes(failures, '.foldera-contract.json required_local_proof', contractProofCommands(contract), REQUIRED_PROOF_COMMANDS);
   requireClosedIssueDoNotReopen(failures, handoff, buildOrder);
+  checkQueueState(failures, queueRaw);
 
   for (const marker of [
-    'current seam is Rung 3 deterministic one-verdict fixture loop proof',
-    'fixture signals -> generated work_packet -> TEST_MODE review card -> review/dismiss -> packet/workday state after',
-    'paid_model_call_required is false',
-    'live_connector_fetch_required is false',
-    'issue #175 remains completed by PR #177',
-    'issue #140 / PR #142 remains parked rail-only',
+    'Tasks 001-005 are COMPLETED',
+    'Task 006 remains QUEUED',
+    'active task count is 0',
+    'no Task 006 work has started',
   ]) {
     if (!contract.acceptance_condition?.includes(marker)) failures.push(`.foldera-contract.json acceptance_condition is missing: ${marker}`);
   }
-  if (!contract.next_command?.includes('stop')) failures.push('.foldera-contract.json next_command must stop after issue #179 closes.');
+  if (!contract.next_command?.toLowerCase().includes('do not start task 006 in this pr')) {
+    failures.push('.foldera-contract.json next_command must preserve the Task 006 stop boundary.');
+  }
 
   const sourceMap = readRepoFile(root, 'docs/SOURCE_OF_TRUTH_MAP.md');
   for (const marker of [
-    '| `FOLDERA_NORTH_STAR_LOCK.md` | `CURRENT_CONTROL` |',
-    '| `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` |',
-    '| `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` | `REFERENCE_DRAFT` |',
-    'GitHub issue #179 `Rung 3: prove deterministic work-packet fixture loop`',
-    'GitHub issue #175 `Rung 2: audit current schema and choose first evidence lane` | `REFERENCE_ONLY`',
-    '| `docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md` | `CURRENT_CONTROL` |',
-    'selects deterministic work-packet fixture lane for issue #179',
-    'GitHub issue #173 `Promote first executable MVP rung from Master Synthesis` | `REFERENCE_ONLY`',
-    'GitHub issue #170 `Foldera Master Synthesis Lock Pass - customer, deliverable, build spec, and issue ladder` | `REFERENCE_ONLY`',
-    'GitHub issue #166 `Repo Intake Governor v0 - classify owner input into repo truth` | `REFERENCE_ONLY`',
-    'GitHub issue #165 `Open Threads - Foldera Owner Whiteboard`',
-    'Open Threads captures raw thoughts; it does not authorize implementation.',
+    '| `FOLDERA_EXECUTION_QUEUE.yaml` | `CURRENT_CONTROL` |',
+    'GitHub issue #179 `Rung 3: prove deterministic work-packet fixture loop` | `REFERENCE_ONLY`',
+    '| `docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md` | `REFERENCE_ONLY` |',
+    'queue authority lives in `FOLDERA_EXECUTION_QUEUE.yaml`',
   ]) {
     if (!sourceMap.includes(marker)) failures.push(`docs/SOURCE_OF_TRUTH_MAP.md is missing required marker: ${marker}`);
-  }
-
-  const northStar = readRepoFile(root, 'FOLDERA_NORTH_STAR_LOCK.md');
-  if (!northStar.includes('Foldera is a Workday Presence Layer')) failures.push('FOLDERA_NORTH_STAR_LOCK.md must preserve Workday Presence Layer doctrine.');
-
-  const productOs = readRepoFile(root, 'FOLDERA_PRODUCT_OPERATING_SYSTEM.md');
-  if (!productOs.includes('Repo Intake Governor v0')) failures.push('FOLDERA_PRODUCT_OPERATING_SYSTEM.md must retain completed Command OS context.');
-
-  const rung2Audit = readRepoFile(root, 'docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md');
-  for (const marker of [
-    'Authority status: `ISSUE_175_READ_ONLY_AUDIT_ARTIFACT`.',
-    'Selected first evidence lane for Rung 3: deterministic work-packet fixture lane.',
-    'Lane selection status: `SELECTED`.',
-    'tests/fixtures/work-packets/source-signals.ts',
-    'buildWorkPacketBrainReceipt',
-    'No product/runtime implementation',
-  ]) {
-    if (!rung2Audit.includes(marker)) failures.push(`docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md is missing required marker: ${marker}`);
   }
 
   failures.push(...checkDraft(root));
@@ -368,18 +324,20 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   const failures: string[] = [];
   let handoff = '';
   let buildOrder = '';
+  let queueRaw = '';
   let contract: FolderaContract | null = null;
 
   try {
     handoff = readRepoFile(root, 'ACTIVE_HANDOFF.md');
     buildOrder = readRepoFile(root, 'FOLDERA_BUILD_ORDER.yaml');
+    queueRaw = readRepoFile(root, 'FOLDERA_EXECUTION_QUEUE.yaml');
     contract = readJson<FolderaContract>(root, '.foldera-contract.json');
   } catch (error) {
     failures.push(error instanceof Error ? error.message : String(error));
   }
 
   if (failures.length > 0) return failures;
-  return checkSourceTruth(root, handoff, buildOrder, contract as FolderaContract);
+  return checkSourceTruth(root, handoff, buildOrder, contract as FolderaContract, queueRaw);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
@@ -390,5 +348,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Issue #179 is active, issue #175 is completed by PR #177, and Rung 3 is the active deterministic fixture proof seam.');
+  console.log('Source truth check passed. Queue authority is active, Tasks 001-005 are completed, and Task 006 remains queued.');
 }

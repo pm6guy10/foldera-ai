@@ -30,7 +30,7 @@ export type NormalizedPacketSignal = {
   relevance_reason: string;
 };
 
-export type WorkPacketActionId = 'review_packet' | 'view_sources' | 'dismiss';
+export type WorkPacketActionId = 'review_packet' | 'view_sources' | 'dismiss' | 'done';
 
 export type WorkPacketAction = {
   id: WorkPacketActionId;
@@ -44,7 +44,7 @@ export type WorkPacketForbiddenAction =
   | 'Approve external update without human review';
 
 export type WorkPacketAuditEntry = {
-  event: 'packet_generated' | 'packet_reviewed' | 'packet_dismissed';
+  event: 'packet_generated' | 'packet_reviewed' | 'packet_dismissed' | 'packet_completed';
   actor: 'system' | 'human';
   at: string;
   reason: string;
@@ -53,6 +53,8 @@ export type WorkPacketAuditEntry = {
 export type WorkPacket = {
   packet_id: string;
   user_id: string;
+  verdict: string;
+  next_move: string;
   triggering_reason: string;
   workday_state_snapshot: WorkdayPresenceState;
   source_trail: SourceTrailEntry[];
@@ -64,12 +66,12 @@ export type WorkPacket = {
   forbidden_actions: WorkPacketForbiddenAction[];
   review_surface: 'slack';
   created_at: string;
-  status: 'pending_review' | 'reviewed' | 'dismissed';
+  status: 'pending_review' | 'reviewed' | 'dismissed' | 'completed';
   audit_trail: WorkPacketAuditEntry[];
   quiet_by_default: true;
 };
 
-export type WorkPacketTransitionAction = Extract<WorkPacketActionId, 'review_packet' | 'dismiss'>;
+export type WorkPacketTransitionAction = Extract<WorkPacketActionId, 'review_packet' | 'dismiss' | 'done'>;
 
 export type WorkPacketTransitionResult = {
   packet: WorkPacket;

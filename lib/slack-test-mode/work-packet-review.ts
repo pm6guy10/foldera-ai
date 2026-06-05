@@ -6,9 +6,12 @@ export type WorkPacketReviewCardPayload = SlackTestModeMessage & {
 };
 
 export function buildSlackTestModeWorkPacketReviewCard(packet: WorkPacket): WorkPacketReviewCardPayload {
+  const leadSource = packet.source_trail[packet.source_trail.length - 1];
   const text = [
-    `Work packet ${packet.packet_id}`,
+    `*${packet.verdict}*`,
+    `Next move: ${packet.next_move}`,
     packet.prepared_work,
+    `Evidence: ${leadSource.excerpt_or_summary}`,
     `Source trail: ${packet.source_trail.length} safe references`,
     packet.confidence_or_safety_reason,
   ].join('\n');

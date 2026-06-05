@@ -16,9 +16,10 @@ Current product-direction split:
 
 - `FOLDERA_NORTH_STAR_LOCK.md` controls product doctrine.
 - `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap, phase order, backlog lanes, business roadmap, enterprise path, owner-burden rule, and next-seam recommendation.
-- GitHub issue #179 `Rung 3: prove deterministic work-packet fixture loop` controls the active deterministic TEST_MODE fixture proof seam.
+- `FOLDERA_EXECUTION_QUEUE.yaml` controls the active deterministic execution seam for the Holy Crap MVP loop.
+- GitHub issue #179 `Rung 3: prove deterministic work-packet fixture loop` is completed by PR #180.
 - GitHub issue #175 `Rung 2: audit current schema and choose first evidence lane` is completed by PR #177.
-- `docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md` is the issue #175 read-only audit artifact and selects the deterministic work-packet fixture lane for issue #179.
+- `docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md` is the issue #175 read-only audit artifact that selected the deterministic work-packet fixture lane for the completed issue #179 seam.
 - GitHub issue #173 `Promote first executable MVP rung from Master Synthesis` is completed/superseded by PR #174.
 - `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` is `REFERENCE_DRAFT`: build-bible-ready source material only, not implementation authority.
 - GitHub issue #170 `Foldera Master Synthesis Lock Pass - customer, deliverable, build spec, and issue ladder` is completed/superseded by PR #172.
@@ -32,12 +33,13 @@ Current product-direction split:
 For any Foldera task, use this order:
 
 1. Read `ACTIVE_HANDOFF.md`.
-2. Read `FOLDERA_LAUNCH_ROADMAP.md`.
-3. Read the active issue named by `ACTIVE_HANDOFF.md`.
-4. Read issue #48 for product doctrine.
-5. Read relevant execution/proof docs only for the active seam.
-6. Check latest open PRs and recent merged PRs when repo/deploy truth matters.
-7. Use Vercel/Supabase only when the seam requires live/runtime truth.
+2. Read `FOLDERA_EXECUTION_QUEUE.yaml` when `ACTIVE_HANDOFF.md` says execution is queue-controlled.
+3. Read `FOLDERA_LAUNCH_ROADMAP.md`.
+4. Read the active issue named by `ACTIVE_HANDOFF.md` when the active seam is issue-controlled.
+5. Read issue #48 for product doctrine.
+6. Read relevant execution/proof docs only for the active seam.
+7. Check latest open PRs and recent merged PRs when repo/deploy truth matters.
+8. Use Vercel/Supabase only when the seam requires live/runtime truth.
 
 ## Authority Classes
 
@@ -55,11 +57,12 @@ For any Foldera task, use this order:
 When sources disagree, use this order:
 
 1. Explicit GitHub source truth plus `ACTIVE_HANDOFF.md` beat chat memory, local branch history, and old receipts.
-2. The active issue named by `ACTIVE_HANDOFF.md` beats backlog, audit, and reference documents.
-3. Issue #48 plus `FOLDERA_OPERATING_SYSTEM.md` beat older product-spec framing.
-4. Gate, CI, and browser or runtime proof beat prose claims.
-5. Stale, archived, or reference-only files cannot control implementation even if they contain detailed instructions.
-6. If a rule is not enforced by a gate, CI check, required file, or test, treat it as guidance until enforcement exists.
+2. When `ACTIVE_HANDOFF.md` declares queue-controlled execution, `FOLDERA_EXECUTION_QUEUE.yaml` beats issue-by-issue routing for task selection.
+3. The active issue named by `ACTIVE_HANDOFF.md` beats backlog, audit, and reference documents when the seam is issue-controlled.
+4. Issue #48 plus `FOLDERA_OPERATING_SYSTEM.md` beat older product-spec framing.
+5. Gate, CI, and browser or runtime proof beat prose claims.
+6. Stale, archived, or reference-only files cannot control implementation even if they contain detailed instructions.
+7. If a rule is not enforced by a gate, CI check, required file, or test, treat it as guidance until enforcement exists.
 
 ## Authority Ledger
 
@@ -67,15 +70,16 @@ When sources disagree, use this order:
 | --- | --- | --- | --- | --- | --- |
 | `ACTIVE_HANDOFF.md` | `CURRENT_CONTROL` | Names the single active seam, current truth, and next exact move. | Every Foldera session, reviewer, and agent boot. | Old roadmap order, unrelated issues, or broad cleanup outside the named seam. | `npm run gate:continuity` requires exactly one active seam line and roadmap/product references. |
 | `FOLDERA_BUILD_ORDER.yaml` | `CURRENT_CONTROL` | Machine-readable active issue, paused issues, source-truth order, terminal states, and closeout requirements. | Agents, reviewers, and gates checking current issue order. | Product doctrine or feature scope by itself. | `npm run gate:continuity` checks active issue parity, closeout values, and next-seam closeout. |
+| `FOLDERA_EXECUTION_QUEUE.yaml` | `CURRENT_CONTROL` | Machine-readable deterministic queue for the Holy Crap MVP loop when handoff declares queue-controlled execution. | Agents and reviewers advancing the current queue task. | Product doctrine by itself, live/runtime/provider work, or out-of-order task selection. | Queue task proof gates plus queue-state review in source truth. |
 | `FOLDERA_LAUNCH_ROADMAP.md` | `REFERENCE_ONLY` | Preserves historical launch order and continuity policy from earlier rungs. | Operators and agents doing archaeology or checking stale launch assumptions. | Current active seam, product doctrine, roadmap phase order, or next-seam selection unless a future issue reconciles it. | Authority classification here plus active handoff/build-order; `npm run gate:continuity` still checks roadmap presence and boot-sequence alignment. |
 | GitHub issue named by `ACTIVE_HANDOFF.md` | `CURRENT_CONTROL` | Defines the one assigned implementation seam. | The current assignee, reviewer, and PR author. | Unassigned side quests, backlog grooming, or unrelated fixes. | Manual boot-sequence read plus PR scope review. |
 | GitHub issue #48 | `CURRENT_CONTROL` | Holds the Workday Presence Layer product contract. | Product reviewers, agents, and humans checking launch doctrine. | Historical Brandon-command-center behavior or dashboard/task-list drift. | Boot sequence plus explicit issue reference across control docs. |
 | `FOLDERA_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` | Defines Foldera's canonical product worldview. | Humans and agents checking what Foldera is and is not. | Repo execution order by itself, or stale issue selection. | `npm run gate:continuity` verifies boot-sequence alignment; issue #48 remains the doctrine anchor. |
 | `FOLDERA_NORTH_STAR_LOCK.md` | `CURRENT_CONTROL` | Reconciles product promise, buyer, pricing, public site, day-one app, runtime brain, Right Now, live rail boundary, issue order, gates, PR traceability, pilot readiness, and Brandon cognitive-load constraints. | Product/business/UX/runtime reviewers, PR authors, and agents when direction is implicated. | A second active issue, product implementation by itself, or permission to widen Slack/live rail, landing, Supabase, Stripe, package, connector, Teams/email/calendar, or dashboard work. | `npm run gate:command` verifies the file exists and required traceability/control language is present; `npm run gate:continuity` verifies the PR template requires North Star citation when direction is implicated. |
 | `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` | Converts the North Star into roadmap phases, backlog lanes, proof gates, business roadmap, enterprise-readiness path, owner-burden rule, and next-seam recommendation. | Agents, reviewers, and maintainers deciding phase order, allowed next seams, business/enterprise claims, and whether a PR advances the correct rung. | Product doctrine replacement, active seam selection outside GitHub issue truth, product/runtime implementation by itself, or permission to claim enterprise, pilot, or customer proof without the named gate. | `npm run gate:command` verifies the file exists and required phase/backlog/business/enterprise/owner-burden markers are present; PR receipts must cite/update/close it out when direction is implicated. |
-| GitHub issue #179 `Rung 3: prove deterministic work-packet fixture loop` | `CURRENT_CONTROL` | Defines the active deterministic TEST_MODE proof seam from fixture source signals through work-packet receipt/review state. | The current assignee, reviewer, PR author, and source-truth gates for issue #179. | Product/runtime/provider/schema/Supabase/Vercel/live Slack/PR #142/Stripe/auth/landing/dashboard work, package/dependency changes, data mutation, live connector fetch, paid/model calls, fake claims, or starting the next rung. | `npm run gate:command`, `npm run gate:continuity`, focused work-packet Vitest lane, PR changed-file review, and GitHub receipts. |
-| GitHub issue #175 `Rung 2: audit current schema and choose first evidence lane` | `REFERENCE_ONLY` | Completed read-only audit seam retained for receipt history and future routing context. | Agents and reviewers tracing PR #177 or validating why issue #179 is now active. | Active seam selection, product/runtime/schema work, or reopening Rung 2 audit in issue #179. | FOLDERA_BUILD_ORDER.yaml marks issue #175 closed/completed by PR #177. |
-| `docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md` | `CURRENT_CONTROL` | Maps current repo support for workday state, evidence, triggers, safe silence, one-click actions, state mutation, receipts, source trail/privacy, and tests/gates; selects deterministic work-packet fixture lane for issue #179. | Issue #179 deterministic fixture-loop seam and reviewers checking why the lane is safe. | Product/runtime/schema implementation, live Slack proof, live connector proof, production persistence claims, non-owner proof, pilot readiness, enterprise readiness, or compliance claims. | Required source artifact for issue #179 routing; source-truth gates check this artifact and selected lane markers. |
+| GitHub issue #179 `Rung 3: prove deterministic work-packet fixture loop` | `REFERENCE_ONLY` | Completed deterministic TEST_MODE proof seam retained for receipt history and queue provenance. | Agents and reviewers tracing PR #180 or validating why queue-controlled execution became safe. | Current seam selection, queue advancement, or permission to start Task 006. | FOLDERA_BUILD_ORDER.yaml and `FOLDERA_EXECUTION_QUEUE.yaml` keep issue #179 completed and subordinate to queue authority. |
+| GitHub issue #175 `Rung 2: audit current schema and choose first evidence lane` | `REFERENCE_ONLY` | Completed read-only audit seam retained for receipt history and future routing context. | Agents and reviewers tracing PR #177 or validating why issue #179 was selected. | Active seam selection, product/runtime/schema work, or reopening Rung 2 audit in queue-controlled execution. | FOLDERA_BUILD_ORDER.yaml marks issue #175 closed/completed by PR #177. |
+| `docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md` | `REFERENCE_ONLY` | Maps repo support that selected the deterministic work-packet fixture lane before queue-controlled execution began. | Reviewers checking why the queue starts from the Marcus deterministic lane. | Current queue advancement, product/runtime/schema implementation, live Slack proof, production persistence claims, non-owner proof, pilot readiness, enterprise readiness, or compliance claims. | Source-truth gates may validate the artifact exists, but queue authority lives in `FOLDERA_EXECUTION_QUEUE.yaml`. |
 | GitHub issue #173 `Promote first executable MVP rung from Master Synthesis` | `REFERENCE_ONLY` | Completed first executable MVP rung promotion retained for receipt history and future routing context. | Agents and reviewers tracing PR #174 or validating why Rung 2 is now active. | Active seam selection, product/runtime work, or reopening first-rung promotion in issue #175. | FOLDERA_BUILD_ORDER.yaml marks issue #173 completed/superseded by PR #174. |
 | GitHub issue #170 `Foldera Master Synthesis Lock Pass - customer, deliverable, build spec, and issue ladder` | `REFERENCE_ONLY` | Completed build-bible reference-draft seam retained for receipt history and future routing context. | Agents and reviewers tracing PR #172 or validating why the build bible is now source material. | Active seam selection, product/runtime work, or reopening the Master Synthesis build-bible implementation in issue #173. | FOLDERA_BUILD_ORDER.yaml marks issue #170 completed/superseded by PR #172. |
 | `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` | `REFERENCE_DRAFT` | Preserves the Master Synthesis build bible in repo as reference-only source material. | Future source-truth/build-definition issues when explicitly assigned. | Current implementation authority, active seam selection, product/runtime changes, schema migrations, deployment changes, or customer/enterprise claims. | Issue #175 source-truth gate checks `REFERENCE_DRAFT`, `READINESS VERDICT`, `build-bible ready as a reference draft`, and explicit `not implementation authority` language. |

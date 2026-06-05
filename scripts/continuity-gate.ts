@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const canonicalSequence: Array<string | string[]> = [
   '1. Read `ACTIVE_HANDOFF.md`.',
-  ['2. Read `FOLDERA_BUILD_ORDER.yaml`.', '2. Read `FOLDERA_LAUNCH_ROADMAP.md`.'],
+  ['2. Read `FOLDERA_BUILD_ORDER.yaml`.', '2. Read `FOLDERA_EXECUTION_QUEUE.yaml` when `ACTIVE_HANDOFF.md` says execution is queue-controlled.', '2. Read `FOLDERA_LAUNCH_ROADMAP.md`.'],
   '3. Read the active issue named by `ACTIVE_HANDOFF.md`.',
   '4. Read issue #48 for product doctrine.',
   '5. Read relevant execution/proof docs only for the active seam.',
@@ -61,7 +61,7 @@ const requiredAgentGovernanceRules: Array<{ label: string; variants: string[] }>
 const directMainCommand = ['Push', 'directly', 'to', '`?main`?'].join(' ');
 
 const forbiddenAgentGovernancePatterns = [
-  new RegExp(`^\s*-\s*${directMainCommand}`, 'im'),
+  new RegExp(`^\\s*-\\s*${directMainCommand}`, 'im'),
   /^\s*-\s*Never create branches/im,
   /continue to the next highest-leverage seam/i,
   /then continue to the next/i,
@@ -141,6 +141,11 @@ function extractYamlScalar(raw: string, key: string): string | null {
   return match ? match[1].trim().replace(/^['"]|['"]$/g, '') : null;
 }
 
+function detectQueueControlledHandoff(raw: string): boolean {
+  return raw.includes('Active implementation seam is `EXECUTION_QUEUE`.')
+    && raw.includes('The active seam is now controlled entirely by `FOLDERA_EXECUTION_QUEUE.yaml`.');
+}
+
 function extractActiveHandoffIssue(raw: string): number | null {
   const match = raw.match(/^Active implementation seam is issue #(\d+).*$/m);
   return match ? Number(match[1]) : null;
@@ -194,7 +199,8 @@ export function runContinuityGate(root: string): string[] {
   }
 
   const activeHandoff = readRepoFile(root, 'ACTIVE_HANDOFF.md');
-  const activeSeamLines = activeHandoff.match(/^Active implementation seam is issue #\d+.*$/gm) ?? [];
+  const queueControlled = detectQueueControlledHandoff(activeHandoff);
+  const activeSeamLines = activeHandoff.match(/^Active implementation seam is (?:issue #\d+.*|`EXECUTION_QUEUE`\.)$/gm) ?? [];
   if (!activeHandoff.includes('FOLDERA_BUILD_ORDER.yaml')) failures.push('ACTIVE_HANDOFF.md must reference FOLDERA_BUILD_ORDER.yaml.');
   if (!activeHandoff.includes('Issue #48 remains the product contract.')) failures.push('ACTIVE_HANDOFF.md must reference issue #48 as the product contract.');
   for (const rule of requiredWritebackRules) {
@@ -213,28 +219,10 @@ export function runContinuityGate(root: string): string[] {
   const handoffIssue = extractActiveHandoffIssue(activeHandoff);
   const buildOrderIssue = extractYamlNumber(buildOrder, 'active_issue');
   const buildOrderIssueScalar = extractYamlScalar(buildOrder, 'active_issue');
-  const oldPost145Blocked = /Next seam:\s*blocked - reason:\s*no next seam assigned after PR #145 merge/i.test(activeHandoff)
-    && /next_seam:\s*blocked - reason no next seam assigned after PR #145 merge/i.test(buildOrder)
-    && buildOrderIssueScalar === 'null';
-  const post159BlockedUntilEvidence = activeHandoff.includes('No active implementation seam is assigned.')
-    && activeHandoff.includes('Issue #159 is complete: PR #161 created `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`')
-    && activeHandoff.includes('Next seam: blocked - reason: no next growth/product seam is authorized until real first-10 ICP evidence exists in `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md`.')
-    && buildOrder.includes('priority_class: BLOCKED_NO_ACTION_SAFE')
-    && buildOrder.includes('work_type: SOURCE_TRUTH_CLOSEOUT_POST_159')
-    && buildOrder.includes('next_seam: blocked - reason no next growth/product seam is authorized until real first-10 ICP evidence exists in docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md')
-    && buildOrderIssueScalar === 'null';
-  const nextSeamBlocked = oldPost145Blocked || post159BlockedUntilEvidence;
-  if (buildOrderIssueScalar === 'null' && !nextSeamBlocked) {
-    failures.push('ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must agree on the post-#159 blocked-until-evidence state.');
-  }
-  if (nextSeamBlocked) {
-    if (activeSeamLines.length !== 0) failures.push(`ACTIVE_HANDOFF.md must name zero active seam lines when next seam is blocked; found ${activeSeamLines.length}.`);
-  } else {
-    if (activeSeamLines.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam line; found ${activeSeamLines.length}.`);
-    if (handoffIssue === null) failures.push('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
-    if (buildOrderIssue === null) failures.push('FOLDERA_BUILD_ORDER.yaml active_issue could not be parsed.');
-  }
-  if (handoffIssue !== null && buildOrderIssue !== null && handoffIssue !== buildOrderIssue) {
+  if (activeSeamLines.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam line; found ${activeSeamLines.length}.`);
+  if (!queueControlled && handoffIssue === null) failures.push('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
+  if (buildOrderIssue === null && buildOrderIssueScalar !== 'null') failures.push('FOLDERA_BUILD_ORDER.yaml active_issue could not be parsed.');
+  if (!queueControlled && handoffIssue !== null && buildOrderIssue !== null && handoffIssue !== buildOrderIssue) {
     failures.push(`ACTIVE_HANDOFF.md active seam issue #${handoffIssue} must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
   }
 
@@ -310,6 +298,9 @@ export function runContinuityGate(root: string): string[] {
   }
   if (!sourceTruthMap.includes('| `FOLDERA_LAUNCH_ROADMAP.md` | `REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_LAUNCH_ROADMAP.md as reference-only unless reconciled.');
+  }
+  if (!sourceTruthMap.includes('| `FOLDERA_EXECUTION_QUEUE.yaml` | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_EXECUTION_QUEUE.yaml as CURRENT_CONTROL.');
   }
 
   const sentinel = readRepoFile(root, '.github/workflows/pr-sentinel.yml');
