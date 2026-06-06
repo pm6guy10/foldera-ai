@@ -7,11 +7,11 @@ type QueueItem = {
   status: string;
 };
 
-const CONTROLLING_PR = 196;
+const CONTROLLING_PR = 194;
 const COMPLETED_RUNG_2_ISSUE = 175;
 const COMPLETED_RUNG_3_ISSUE = 179;
 const MASTER_BIBLE_ISSUE = 181;
-const SOURCE_TRUTH_CLOSEOUT_ISSUE = 196;
+const SOURCE_TRUTH_CLOSEOUT_ISSUE = 194;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
 const COMPLETED_FIRST_RUNG_ISSUE = 173;
@@ -76,8 +76,8 @@ function requireClosedIssueDoNotReopen(failures: string[], handoff: string, buil
       failures.push(`FOLDERA_BUILD_ORDER.yaml must classify issue #${issue} as closed/completed/superseded.`);
     }
   }
-  if (!handoff.includes('Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, #183, and #192 are closed/completed/superseded. Do not reopen them here.')) {
-    failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #181, #183, and #192, out of scope.');
+  if (!handoff.includes('Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, #183, #192, and #196 are closed/completed/superseded. Do not reopen them here.')) {
+    failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #181, #183, #192, and #196, out of scope.');
   }
 }
 
@@ -138,21 +138,21 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
-  if (priority !== 'ROOT_SOURCE_TRUTH_SWEEP') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be ROOT_SOURCE_TRUTH_SWEEP; found ${priority ?? 'none'}.`);
-  if (workType !== 'SOURCE_TRUTH_CLEANUP') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_CLEANUP; found ${workType ?? 'none'}.`);
-  if (nextSeam !== 'root source-truth cleanup - reason issue #196 is the active seam and issue #194 is paused until the cleanup closes') {
-    failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must preserve the cleanup activation boundary; found ${nextSeam ?? 'none'}.`);
+  if (priority !== 'MASTER_BIBLE_CLOSEOUT') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be MASTER_BIBLE_CLOSEOUT; found ${priority ?? 'none'}.`);
+  if (workType !== 'SOURCE_TRUTH_CLOSEOUT') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_CLOSEOUT; found ${workType ?? 'none'}.`);
+  if (nextSeam !== 'first money-loop issue - reason Master Bible closeout is complete and issue #194 is now the active execution issue') {
+    failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must preserve the first money-loop activation boundary; found ${nextSeam ?? 'none'}.`);
   }
 
   for (const marker of [
     'Issue #181 is completed by merged PR #191.',
     'Issue #192 is completed by merged PR #193.',
-    'Active implementation seam is issue #196.',
-    'The active seam is the root source-truth archive/delete sweep: `Root source-truth archive/delete sweep`.',
+    'Issue #196 is completed by merged PR #197.',
+    'Active implementation seam is issue #194.',
+    'The active seam is the first money-loop issue: `Prove sources become signals, signals become context, and context becomes one next move`.',
     '`FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.',
     '`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.',
     'PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.',
-    'Issue #194 is paused and becomes the next authorized move after this sweep closes.',
     'Issue #140 / PR #142 remains rail-only and parked outside this sweep.',
     'GitHub writeback is mandatory.',
     'One active seam only.',
@@ -165,9 +165,9 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'Task `006` remains queued.',
     'No Task `006` work has started in this PR.',
     'PR #183 is a source-truth and gate-alignment seam only.',
-    'Active implementation seam is issue #194.',
-    'The active seam is the first money-loop issue: `Prove sources become signals, signals become context, and context becomes one next move`.',
-    'Issue #194 is the active first money-loop seam.',
+    'Issue #196 is the active source-truth cleanup seam.',
+    'The active seam is the root source-truth archive/delete sweep: `Root source-truth archive/delete sweep`.',
+    'Issue #196 is the active source-truth cleanup seam.',
   ]) {
     if (handoff.includes(staleMarker)) failures.push(`ACTIVE_HANDOFF.md still contains stale queue-progress marker: ${staleMarker}`);
   }
@@ -189,13 +189,14 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
   for (const marker of [
     '| `FOLDERA_MASTER_BIBLE.md` | `KEEP_REFERENCE_ONLY` |',
     '| `FOLDERA_EXECUTION_QUEUE.yaml` | `KEEP_REFERENCE_ONLY` |',
-    '| GitHub issue #196 | `CURRENT_CONTROL` |',
-    '| GitHub issue #194 | `REFERENCE_ONLY` |',
+    '| GitHub issue #196 | `REFERENCE_ONLY` |',
+    '| GitHub issue #194 | `CURRENT_CONTROL` |',
     '| `FOLDERA_OPERATING_SYSTEM.md` | `SHIM_TO_CANONICAL` |',
     '| `FOLDERA_LAUNCH_ROADMAP.md` | `SHIM_TO_CANONICAL` |',
     'GitHub issue #181 / PR #191 is the single promotion path for that master-bible execution-layer bundle.',
     'GitHub issue #192 is the completed source-truth closeout issue that aligned the handoff and build-order files around the merged Master Bible.',
-    'GitHub issue #196 is the current control issue for the root source-truth cleanup sweep.',
+    'GitHub issue #196 is the completed source-truth cleanup issue retained for receipt history.',
+    'GitHub issue #194 is the current control issue for the first money-loop verdict loop.',
   ]) {
     if (!sourceMap.includes(marker)) failures.push(`docs/SOURCE_OF_TRUTH_MAP.md is missing required marker: ${marker}`);
   }

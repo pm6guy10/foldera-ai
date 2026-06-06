@@ -76,10 +76,11 @@ describe('continuity gate writeback enforcement', () => {
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(handoff).toContain('Active implementation seam is issue #196.');
-    expect(handoff).toContain('The active seam is the root source-truth archive/delete sweep:');
-    expect(buildOrder).toContain('active_issue: 196');
-    expect(buildOrder).toContain('priority_class: ROOT_SOURCE_TRUTH_SWEEP');
+    expect(handoff).toContain('Issue #196 is completed by merged PR #197.');
+    expect(handoff).toContain('Active implementation seam is issue #194.');
+    expect(handoff).toContain('The active seam is the first money-loop issue:');
+    expect(buildOrder).toContain('active_issue: 194');
+    expect(buildOrder).toContain('priority_class: MASTER_BIBLE_CLOSEOUT');
     expect(failures).toEqual([]);
   });
 
@@ -89,7 +90,10 @@ describe('continuity gate writeback enforcement', () => {
     writeFixtureFile(
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
-      original.replace('Active implementation seam is issue #196.', 'Queue control is implied but unnamed.'),
+      original
+        .replace('Issue #196 is completed by merged PR #197.', 'Issue #196 is now the active source-truth cleanup seam.')
+        .replace('Active implementation seam is issue #194.', 'Queue control is implied but unnamed.')
+        .replace('The active seam is the first money-loop issue: `Prove sources become signals, signals become context, and context becomes one next move`.', 'The active seam is the root source-truth archive/delete sweep: `Root source-truth archive/delete sweep`.'),
     );
 
     const failures = runContinuityGate(fixtureRoot);

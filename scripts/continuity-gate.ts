@@ -298,16 +298,16 @@ export function runContinuityGate(root: string): string[] {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_PRODUCT_OPERATING_SYSTEM.md as CURRENT_CONTROL.');
   }
   if (!sourceTruthMap.includes('| `FOLDERA_MASTER_BIBLE.md` | `KEEP_REFERENCE_ONLY` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_MASTER_BIBLE.md as KEEP_REFERENCE_ONLY after the cleanup sweep.');
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_MASTER_BIBLE.md as KEEP_REFERENCE_ONLY after the closeout sweep.');
   }
   if (!sourceTruthMap.includes('| `FOLDERA_EXECUTION_QUEUE.yaml` | `KEEP_REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_EXECUTION_QUEUE.yaml as KEEP_REFERENCE_ONLY when the queue is inactive.');
   }
-  if (!sourceTruthMap.includes('| GitHub issue #196 | `CURRENT_CONTROL` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #196 as CURRENT_CONTROL for the root source-truth cleanup sweep.');
+  if (!sourceTruthMap.includes('| GitHub issue #196 | `REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #196 as REFERENCE_ONLY after the cleanup closeout completes.');
   }
-  if (!sourceTruthMap.includes('| GitHub issue #194 | `REFERENCE_ONLY` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #194 as REFERENCE_ONLY while the cleanup sweep is active.');
+  if (!sourceTruthMap.includes('| GitHub issue #194 | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #194 as CURRENT_CONTROL for the first money-loop seam.');
   }
   if (!sourceTruthMap.includes('| `FOLDERA_OPERATING_SYSTEM.md` | `SHIM_TO_CANONICAL` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_OPERATING_SYSTEM.md as SHIM_TO_CANONICAL.');
