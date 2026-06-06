@@ -10,18 +10,20 @@ This file is Foldera's repo-control authority ledger.
 
 It governs how operators, reviewers, and coding agents decide what controls work in this repository.
 
-It is not product doctrine. Issue #48 and `FOLDERA_OPERATING_SYSTEM.md` carry product doctrine, while `FOLDERA_NORTH_STAR_LOCK.md` controls current product doctrine. This file controls repo authority, conflict resolution, stale-doc containment, and proof expectations.
+It is not product doctrine. Issue #48, `FOLDERA_NORTH_STAR_LOCK.md`, and `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` carry product doctrine, while `FOLDERA_OPERATING_SYSTEM.md` and `FOLDERA_LAUNCH_ROADMAP.md` are shims. This file controls repo authority, conflict resolution, stale-doc containment, and proof expectations.
 
 Current product-direction split:
 
 - `FOLDERA_NORTH_STAR_LOCK.md` controls product doctrine.
 - `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap, phase order, backlog lanes, business roadmap, enterprise path, owner-burden rule, and next-seam recommendation.
 - `FOLDERA_MASTER_BIBLE.md` is the canonical master-bible reference authority promoted by PR #191.
+- `FOLDERA_OPERATING_SYSTEM.md` and `FOLDERA_LAUNCH_ROADMAP.md` are shim files that point at the canonical control chain.
 - `FOLDERA_EXECUTION_QUEUE.yaml` is inactive/reference-only until a future explicit activation issue reopens it.
 - `FOLDERA_PRODUCT_SPEC_NEXT.md`, `FOLDERA_GITHUB_ISSUE_PR_PLAN.md`, `FOLDERA_BUILD_SPEC.md`, `FOLDERA_CAPABILITY_MAP.md`, `FOLDERA_QUEUE_GENERATION_RULES.md`, and `FOLDERA_EXECUTION_QUEUE_NEXT_DRAFT.yaml` are the bundled planning-layer artifacts for PR #191.
 - GitHub issue #181 / PR #191 is the single promotion path for that master-bible execution-layer bundle.
 - GitHub issue #192 is the completed source-truth closeout issue that aligned the handoff and build-order files around the merged Master Bible.
-- GitHub issue #194 is the current control issue for the first money-loop verdict loop.
+- GitHub issue #196 is the current control issue for the root source-truth cleanup sweep.
+- GitHub issue #194 is paused until the cleanup sweep closes.
 - GitHub issue #181 / PR #190 is superseded by PR #191 and must not be treated as a competing authority.
 - GitHub issue #179 `Rung 3: prove deterministic work-packet fixture loop` is completed by PR #180.
 - GitHub issue #175 `Rung 2: audit current schema and choose first evidence lane` is completed by PR #177.
@@ -32,7 +34,54 @@ Current product-direction split:
 - GitHub issue #166 `Repo Intake Governor v0 - classify owner input into repo truth` is completed/superseded as the active seam by PR #167.
 - GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` is the raw-input inbox. Open Threads captures raw thoughts; it does not authorize implementation.
 - `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` remains proof doctrine/reference; placeholder rows are not evidence.
-- `FOLDERA_LAUNCH_ROADMAP.md` is historical/reference unless a future GitHub issue explicitly reconciles it.
+- `FOLDERA_LAUNCH_ROADMAP.md` is a shim to the canonical control chain.
+
+## Final Cleanup Classification
+
+This ledger is the final cleanup view for old guidance files. It is the authoritative classification for the archive/delete sweep.
+
+| File | Final classification | Canonical pointer / note |
+| --- | --- | --- |
+| `ACTIVE_HANDOFF.md` | `KEEP_CURRENT_CONTROL` | Current seam and next move. |
+| `FOLDERA_BUILD_ORDER.yaml` | `KEEP_CURRENT_CONTROL` | Machine-readable active issue and closeout requirements. |
+| `.foldera-contract.json` | `KEEP_CURRENT_CONTROL` | Cleanup contract and allowed-file boundary. |
+| `FOLDERA_MASTER_BIBLE.md` | `KEEP_REFERENCE_ONLY` | Canonical master bible reference authority. |
+| `FOLDERA_NORTH_STAR_LOCK.md` | `KEEP_CURRENT_CONTROL` | Product doctrine. |
+| `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `KEEP_CURRENT_CONTROL` | Roadmap, phase order, backlog lanes, and next-seam recommendation. |
+| `docs/SOURCE_OF_TRUTH_MAP.md` | `KEEP_CURRENT_CONTROL` | Final cleanup ledger and authority map. |
+| `FOLDERA_EXECUTION_QUEUE.yaml` | `KEEP_REFERENCE_ONLY` | Inactive queue retained for archaeology. |
+| `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` | `KEEP_REFERENCE_DRAFT` | Reference draft only, not implementation authority. |
+| `FOLDERA_PRODUCT_SPEC_NEXT.md` | `KEEP_REFERENCE_DRAFT` | Draft product spec. |
+| `FOLDERA_GITHUB_ISSUE_PR_PLAN.md` | `KEEP_REFERENCE_DRAFT` | Draft issue/PR plan. |
+| `FOLDERA_BUILD_SPEC.md` | `KEEP_REFERENCE_DRAFT` | Draft build spec. |
+| `FOLDERA_CAPABILITY_MAP.md` | `KEEP_REFERENCE_DRAFT` | Draft capability map. |
+| `FOLDERA_QUEUE_GENERATION_RULES.md` | `KEEP_REFERENCE_DRAFT` | Draft queue-generation rules. |
+| `FOLDERA_EXECUTION_QUEUE_NEXT_DRAFT.yaml` | `KEEP_REFERENCE_DRAFT` | Draft queue-only artifact. |
+| `FOLDERA_OPERATING_SYSTEM.md` | `SHIM_TO_CANONICAL` | Compatibility shim to the canonical control chain. |
+| `FOLDERA_LAUNCH_ROADMAP.md` | `SHIM_TO_CANONICAL` | Historical roadmap shim to the canonical control chain. |
+| `FOLDERA_OPERATING_DOCTRINE.md` | `SHIM_TO_CANONICAL` | Historical doctrine shim to the canonical control chain. |
+| `FOLDERA_PRODUCT_SPEC.md` | `SHIM_TO_CANONICAL` | Legacy product spec shim. |
+| `FOLDERA_PRODUCTION_BACKLOG.md` | `SHIM_TO_CANONICAL` | Legacy backlog shim. |
+| `FOLDERA_MASTER_AUDIT.md` | `SHIM_TO_CANONICAL` | Legacy audit shim. |
+| `FOLDERA_SHIP_SPEC.md` | `SHIM_TO_CANONICAL` | Legacy ship spec shim. |
+| `WHATS_NEXT.md` | `SHIM_TO_CANONICAL` | Legacy status log shim. |
+| `AGENTS.md` | `KEEP_EXECUTION_CONTRACT` | Agent execution contract. |
+| `CLAUDE.md` | `KEEP_EXECUTION_CONTRACT` | Alternate-agent execution contract. |
+| `CODEX_START.md` | `KEEP_EXECUTION_CONTRACT` | Codex boot contract. |
+| `GPT.md` | `KEEP_EXECUTION_CONTRACT` | Owner/PM boot contract. |
+| `.cursorrules` | `KEEP_EXECUTION_CONTRACT` | Cursor compatibility contract. |
+| `.cursor/rules/agent.mdc` | `KEEP_EXECUTION_CONTRACT` | Cursor agent contract. |
+| `README.md` | `KEEP_EXECUTION_CONTRACT` | Repo entrypoint and command index. |
+| `SYSTEM_RUNBOOK.md` | `KEEP_EXECUTION_CONTRACT` | Operator runbook. |
+| `ACCEPTANCE_GATE.md` | `KEEP_EXECUTION_CONTRACT` | Proof gate contract. |
+| `CURRENT_STATE.md` | `KEEP_EXECUTION_CONTRACT` | Runtime truth surface. |
+| `SESSION_HISTORY.md` | `KEEP_EXECUTION_CONTRACT` | Append-only receipt history. |
+| `BRANDON.md` | `KEEP_REFERENCE_ONLY` | Taste / judgment reference. |
+| `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` | `KEEP_REFERENCE_ONLY` | Proof doctrine reference. |
+| `docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md` | `KEEP_REFERENCE_ONLY` | Read-only audit reference. |
+| `docs/archive/**` | `ARCHIVE_HISTORICAL` | Archived historical docs only. |
+
+No file was deleted in this sweep; none were proven `DELETE_IF_UNREFERENCED` and non-required.
 
 ## Canonical Boot Sequence
 
@@ -65,7 +114,7 @@ When sources disagree, use this order:
 1. Explicit GitHub source truth plus `ACTIVE_HANDOFF.md` beat chat memory, local branch history, and old receipts.
 2. When `ACTIVE_HANDOFF.md` declares queue-controlled execution, `FOLDERA_EXECUTION_QUEUE.yaml` beats issue-by-issue routing for task selection.
 3. The active issue named by `ACTIVE_HANDOFF.md` beats backlog, audit, and reference documents when the seam is issue-controlled.
-4. Issue #48 plus `FOLDERA_OPERATING_SYSTEM.md` beat older product-spec framing.
+4. Issue #48 plus `FOLDERA_NORTH_STAR_LOCK.md` and `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` beat older product-spec framing.
 5. Gate, CI, and browser or runtime proof beat prose claims.
 6. Stale, archived, or reference-only files cannot control implementation even if they contain detailed instructions.
 7. If a rule is not enforced by a gate, CI check, required file, or test, treat it as guidance until enforcement exists.
@@ -78,12 +127,13 @@ When sources disagree, use this order:
 | `FOLDERA_BUILD_ORDER.yaml` | `CURRENT_CONTROL` | Machine-readable active issue, paused issues, source-truth order, terminal states, and closeout requirements. | Agents, reviewers, and gates checking current issue order. | Product doctrine or feature scope by itself. | `npm run gate:continuity` checks active issue parity, closeout values, and next-seam closeout. |
 | `FOLDERA_MASTER_BIBLE.md` | `REFERENCE_ONLY` | Canonical master bible for Foldera's product, money path, build order, forbidden work, proof rules, and Codex loop. | Future source-truth/build-definition issues when explicitly assigned. | Active seam selection, product/runtime implementation, queue activation, or unsupported customer claims. | Source-truth gates and PR receipts must treat it as reference authority, not live control. |
 | `FOLDERA_EXECUTION_QUEUE.yaml` | `REFERENCE_ONLY` | Inactive deterministic queue artifact retained for archaeology and future activation when explicitly re-authorized. | Agents and reviewers tracing prior Holy Crap MVP queue state. | Current seam selection, active task routing, or queue activation by implication. | Queue state is reviewed only when a future issue explicitly reactivates it. |
-| `FOLDERA_LAUNCH_ROADMAP.md` | `REFERENCE_ONLY` | Preserves historical launch order and continuity policy from earlier rungs. | Operators and agents doing archaeology or checking stale launch assumptions. | Current active seam, product doctrine, roadmap phase order, or next-seam selection unless a future issue reconciles it. | Authority classification here plus active handoff/build-order; `npm run gate:continuity` still checks roadmap presence and boot-sequence alignment. |
+| `FOLDERA_LAUNCH_ROADMAP.md` | `SHIM_TO_CANONICAL` | Preserves historical launch order as a shim to the canonical control chain. | Operators and agents checking old links. | Current active seam, product doctrine, roadmap phase order, or next-seam selection. | Authority classification here plus active handoff/build-order; `npm run gate:continuity` still checks roadmap presence and boot-sequence alignment. |
 | GitHub issue named by `ACTIVE_HANDOFF.md` | `CURRENT_CONTROL` | Defines the one assigned implementation seam. | The current assignee, reviewer, and PR author. | Unassigned side quests, backlog grooming, or unrelated fixes. | Manual boot-sequence read plus PR scope review. |
 | GitHub issue #192 | `REFERENCE_ONLY` | Completed source-truth closeout seam retained for receipt history and future routing context. | Agents and reviewers tracing PR #193 or validating why the Master Bible closeout finished. | Active seam selection, queue activation, or product/runtime implementation. | FOLDERA_BUILD_ORDER.yaml marks issue #192 closed/completed by PR #193. |
-| GitHub issue #194 | `CURRENT_CONTROL` | The first money-loop verdict-loop issue that follows the Master Bible closeout. | The current assignee, reviewer, and PR author for the next active seam. | Queue activation, product/runtime implementation outside the verdict loop, or unrelated cleanup. | Manual boot-sequence read plus PR scope review. |
+| GitHub issue #196 | `CURRENT_CONTROL` | The root source-truth cleanup sweep that follows the Master Bible closeout. | The current assignee, reviewer, and PR author for the cleanup seam. | Product/runtime implementation, queue activation, or unrelated cleanup outside the sweep. | Manual boot-sequence read plus PR scope review. |
+| GitHub issue #194 | `REFERENCE_ONLY` | The next authorized move after the cleanup sweep closes. | The cleanup seam's next implementation pass. | Current active seam selection while issue #196 is in flight. | `FOLDERA_BUILD_ORDER.yaml` and `ACTIVE_HANDOFF.md` keep it paused until the sweep closes. |
 | GitHub issue #48 | `CURRENT_CONTROL` | Holds the Workday Presence Layer product contract. | Product reviewers, agents, and humans checking launch doctrine. | Historical Brandon-command-center behavior or dashboard/task-list drift. | Boot sequence plus explicit issue reference across control docs. |
-| `FOLDERA_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` | Defines Foldera's canonical product worldview. | Humans and agents checking what Foldera is and is not. | Repo execution order by itself, or stale issue selection. | `npm run gate:continuity` verifies boot-sequence alignment; issue #48 remains the doctrine anchor. |
+| `FOLDERA_OPERATING_SYSTEM.md` | `SHIM_TO_CANONICAL` | Compatibility shim to the canonical control chain. | Humans and agents checking old links. | Repo execution order by itself, or stale issue selection. | `npm run gate:continuity` verifies boot-sequence alignment; issue #48 remains the doctrine anchor. |
 | `FOLDERA_NORTH_STAR_LOCK.md` | `CURRENT_CONTROL` | Reconciles product promise, buyer, pricing, public site, day-one app, runtime brain, Right Now, live rail boundary, issue order, gates, PR traceability, pilot readiness, and Brandon cognitive-load constraints. | Product/business/UX/runtime reviewers, PR authors, and agents when direction is implicated. | A second active issue, product implementation by itself, or permission to widen Slack/live rail, landing, Supabase, Stripe, package, connector, Teams/email/calendar, or dashboard work. | `npm run gate:command` verifies the file exists and required traceability/control language is present; `npm run gate:continuity` verifies the PR template requires North Star citation when direction is implicated. |
 | `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` | Converts the North Star into roadmap phases, backlog lanes, proof gates, business roadmap, enterprise-readiness path, owner-burden rule, and next-seam recommendation. | Agents, reviewers, and maintainers deciding phase order, allowed next seams, business/enterprise claims, and whether a PR advances the correct rung. | Product doctrine replacement, active seam selection outside GitHub issue truth, product/runtime implementation by itself, or permission to claim enterprise, pilot, or customer proof without the named gate. | `npm run gate:command` verifies the file exists and required phase/backlog/business/enterprise/owner-burden markers are present; PR receipts must cite/update/close it out when direction is implicated. |
 | `FOLDERA_PRODUCT_SPEC_NEXT.md` | `REFERENCE_ONLY` | Executable next product-spec layer derived from the master bible. | Future product-spec promotion issues. | Active implementation authority or product/runtime changes by itself. | Source-truth gates and PR receipts must treat it as draft planning, not live control. |
@@ -118,11 +168,11 @@ When sources disagree, use this order:
 | `CURRENT_STATE.md` | `PROOF_GATE` | Captures current runtime blockers and environment truth. | Operators only when the active seam needs live/runtime state. | Default startup order for every task. | Read by judgment; authority class recorded here. |
 | `SESSION_HISTORY.md` | `REFERENCE_ONLY` | Keeps append-only recent receipts. | Humans checking prior outcomes or proof history. | Current command state, next issue, or repo doctrine. | Classification in this ledger; reviewers reject attempts to use it as current control. |
 | `BRANDON.md` | `REFERENCE_ONLY` | Preserves product taste and judgment when a seam needs feel decisions. | Humans or agents resolving style/tone questions within scope. | Active seam selection, product doctrine replacement, or broad feature authority. | Classification in this ledger. |
-| `FOLDERA_PRODUCT_SPEC.md` | `REFERENCE_ONLY` | Retains older spec detail for historical context. | Operators doing archaeology or comparing older assumptions. | Current doctrine, launch order, or current active work. | Top authority marker checked by `npm run gate:continuity`. |
-| `FOLDERA_PRODUCTION_BACKLOG.md` | `REFERENCE_ONLY` | Preserves backlog context and older sequencing notes. | Humans checking historical backlog decisions. | The active seam or launch priority when GitHub and handoff disagree. | Top authority marker checked by `npm run gate:continuity`. |
-| `FOLDERA_MASTER_AUDIT.md` | `REFERENCE_ONLY` | Retains audit evidence and earlier findings. | Humans tracing prior evidence. | Current execution or scope selection. | Top authority marker checked by `npm run gate:continuity`. |
-| `FOLDERA_SHIP_SPEC.md` | `HISTORICAL_ARCHIVE` | Stores historical launch/spec framing. | Archaeology only. | Present-day launch direction, product doctrine, or implementation scope. | Top authority marker checked by `npm run gate:continuity`. |
-| `WHATS_NEXT.md` | `HISTORICAL_ARCHIVE` | Preserves an older status log. | Archaeology only. | Current next move, active seam, or handoff logic. | Top authority marker checked by `npm run gate:continuity`. |
+| `FOLDERA_PRODUCT_SPEC.md` | `SHIM_TO_CANONICAL` | Legacy product spec shim. | Operators checking old links. | Current doctrine, launch order, or current active work. | Top authority marker checked by `npm run gate:continuity`. |
+| `FOLDERA_PRODUCTION_BACKLOG.md` | `SHIM_TO_CANONICAL` | Legacy backlog shim. | Humans checking old links. | The active seam or launch priority when GitHub and handoff disagree. | Top authority marker checked by `npm run gate:continuity`. |
+| `FOLDERA_MASTER_AUDIT.md` | `SHIM_TO_CANONICAL` | Legacy audit shim. | Humans checking old links. | Current execution or scope selection. | Top authority marker checked by `npm run gate:continuity`. |
+| `FOLDERA_SHIP_SPEC.md` | `SHIM_TO_CANONICAL` | Legacy ship spec shim. | Archaeology only. | Present-day launch direction, product doctrine, or implementation scope. | Top authority marker checked by `npm run gate:continuity`. |
+| `WHATS_NEXT.md` | `SHIM_TO_CANONICAL` | Legacy status log shim. | Archaeology only. | Current next move, active seam, or handoff logic. | Top authority marker checked by `npm run gate:continuity`. |
 | `.foldera-contract.json` | `STALE_REMOVE_OR_ARCHIVE` | Preserves a stale generated contract until a current controller regenerates it safely. | Reference-only debugging for old issue history. | Any current issue scope, file allowlist, proof requirement, or stop condition. | `npm run gate:continuity` fails if the old issue #62 contract is still treated as active. |
 
 ## Reviewer Checklist
@@ -179,4 +229,4 @@ Passing prose is not proof. The PR receipt must report the changed-file list, co
 - `README.md` cannot regress to default Next.js boilerplate
 - PR Sentinel must run the continuity gate
 
-Use this file to decide authority. Use issue #48, `FOLDERA_OPERATING_SYSTEM.md`, and `FOLDERA_NORTH_STAR_LOCK.md` to decide what Foldera is. Use `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` to decide roadmap phase, backlog lane, business path, enterprise path, and next-seam recommendation. Use the active issue to decide what to change now.
+Use this file to decide authority. Use issue #48, `FOLDERA_NORTH_STAR_LOCK.md`, and `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` to decide what Foldera is. Use `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` to decide roadmap phase, backlog lane, business path, enterprise path, and next-seam recommendation. Use the active issue to decide what to change now.

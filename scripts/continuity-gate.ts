@@ -70,11 +70,14 @@ const forbiddenAgentGovernancePatterns = [
 
 const staleDocHeaders: Record<string, string[]> = {
   'ACCEPTANCE_GATE.md': ['Authority status: PROOF_GATE'],
-  'FOLDERA_PRODUCT_SPEC.md': ['Authority status: REFERENCE_ONLY'],
-  'FOLDERA_PRODUCTION_BACKLOG.md': ['Authority status: REFERENCE_ONLY'],
-  'FOLDERA_MASTER_AUDIT.md': ['Authority status: REFERENCE_ONLY'],
-  'FOLDERA_SHIP_SPEC.md': ['Authority status: HISTORICAL_ARCHIVE'],
-  'WHATS_NEXT.md': ['Authority status: HISTORICAL_ARCHIVE'],
+  'FOLDERA_OPERATING_SYSTEM.md': ['Authority status: SHIM_TO_CANONICAL'],
+  'FOLDERA_LAUNCH_ROADMAP.md': ['Authority status: SHIM_TO_CANONICAL'],
+  'FOLDERA_OPERATING_DOCTRINE.md': ['Authority status: SHIM_TO_CANONICAL'],
+  'FOLDERA_PRODUCT_SPEC.md': ['Authority status: SHIM_TO_CANONICAL'],
+  'FOLDERA_PRODUCTION_BACKLOG.md': ['Authority status: SHIM_TO_CANONICAL'],
+  'FOLDERA_MASTER_AUDIT.md': ['Authority status: SHIM_TO_CANONICAL'],
+  'FOLDERA_SHIP_SPEC.md': ['Authority status: SHIM_TO_CANONICAL'],
+  'WHATS_NEXT.md': ['Authority status: SHIM_TO_CANONICAL'],
 };
 
 const requiredWritebackRules = [
@@ -294,23 +297,23 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('| `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_PRODUCT_OPERATING_SYSTEM.md as CURRENT_CONTROL.');
   }
-  if (!sourceTruthMap.includes('| `FOLDERA_MASTER_BIBLE.md` | `REFERENCE_ONLY` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_MASTER_BIBLE.md as reference-only after PR #191.');
+  if (!sourceTruthMap.includes('| `FOLDERA_MASTER_BIBLE.md` | `KEEP_REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_MASTER_BIBLE.md as KEEP_REFERENCE_ONLY after the cleanup sweep.');
   }
-  if (!sourceTruthMap.includes('| `FOLDERA_EXECUTION_QUEUE.yaml` | `REFERENCE_ONLY` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_EXECUTION_QUEUE.yaml as reference-only when the queue is inactive.');
+  if (!sourceTruthMap.includes('| `FOLDERA_EXECUTION_QUEUE.yaml` | `KEEP_REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_EXECUTION_QUEUE.yaml as KEEP_REFERENCE_ONLY when the queue is inactive.');
   }
-  if (!sourceTruthMap.includes('| GitHub issue #192 | `REFERENCE_ONLY` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #192 as reference-only after the source-truth closeout completes.');
+  if (!sourceTruthMap.includes('| GitHub issue #196 | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #196 as CURRENT_CONTROL for the root source-truth cleanup sweep.');
   }
-  if (!sourceTruthMap.includes('| GitHub issue #194 | `CURRENT_CONTROL` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #194 as CURRENT_CONTROL for the first money-loop seam.');
+  if (!sourceTruthMap.includes('| GitHub issue #194 | `REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #194 as REFERENCE_ONLY while the cleanup sweep is active.');
   }
-  if (!sourceTruthMap.includes('| `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` | `PROOF_GATE` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FIRST_10_ICP_EVIDENCE_TRACKER.md as proof doctrine/reference.');
+  if (!sourceTruthMap.includes('| `FOLDERA_OPERATING_SYSTEM.md` | `SHIM_TO_CANONICAL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_OPERATING_SYSTEM.md as SHIM_TO_CANONICAL.');
   }
-  if (!sourceTruthMap.includes('| `FOLDERA_LAUNCH_ROADMAP.md` | `REFERENCE_ONLY` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_LAUNCH_ROADMAP.md as reference-only unless reconciled.');
+  if (!sourceTruthMap.includes('| `FOLDERA_LAUNCH_ROADMAP.md` | `SHIM_TO_CANONICAL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_LAUNCH_ROADMAP.md as SHIM_TO_CANONICAL.');
   }
 
   const sentinel = readRepoFile(root, '.github/workflows/pr-sentinel.yml');
