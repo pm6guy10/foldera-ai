@@ -12,6 +12,7 @@
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
     "FOLDERA_EXECUTION_QUEUE.yaml",
+    "FOLDERA_MASTER_BIBLE.md",
     ".foldera-contract.json",
     "docs/SOURCE_OF_TRUTH_MAP.md",
     "scripts/source-truth-check.ts",
