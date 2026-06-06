@@ -49,7 +49,7 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
-  it('passes when the first money-loop implementation seam is active and the queue remains inactive', () => {
+  it('passes when the verdict loop is closed out and the queue remains inactive', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
@@ -63,20 +63,20 @@ describe('source truth command gate', () => {
     expect(handoff).toContain('Issue #192 is completed by merged PR #193.');
     expect(handoff).toContain('Issue #196 is completed by merged PR #197.');
     expect(handoff).toContain('Issue #198 is completed by merged PR #198 and restored issue #194 as active control.');
-    expect(handoff).toContain('Active implementation seam is issue #194.');
-    expect(handoff).toContain('The active seam is the first money-loop issue: `Prove sources become signals, signals become context, and context becomes one next move`.');
+    expect(handoff).toContain('Issue #194 is completed by merged PR #201.');
+    expect(handoff).toContain('No active implementation seam remains after PR #201.');
+    expect(handoff).toContain('The next authorized move is durable response/state/receipt loop.');
     expect(handoff).toContain('`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.');
-    expect(buildOrder).toContain('active_issue: 194');
-    expect(buildOrder).toContain('priority_class: FIRST_MONEY_LOOP');
-    expect(buildOrder).toContain('work_type: VERDICT_LOOP_IMPLEMENTATION');
-    expect(buildOrder).toContain('next_seam: issue #194 implementation proof - reason prove evidence -> signals -> context -> one verdict, safe silence when justified, and durable receipt required');
+    expect(buildOrder).toContain('active_issue: null');
+    expect(buildOrder).toContain('priority_class: NEXT_AUTHORIZED_RUNG');
+    expect(buildOrder).toContain('work_type: SOURCE_TRUTH_CLOSEOUT');
+    expect(buildOrder).toContain('next_seam: durable response/state/receipt loop - reason PR #201 completed issue #194 and the next authorized rung is now durable response/state/receipt loop');
     expect(queue).toContain('- id: "005"');
     expect(queue).toContain('status: COMPLETED');
     expect(queue).toContain('- id: "006"');
     expect(queue).toContain('status: QUEUED');
     expect(queue).toContain('authority: REFERENCE_ONLY');
     expect(queue).toContain('routing_mode: REFERENCE_ONLY');
-    expect(queue).toContain('Historical queue artifact; issue #194 now controls the first money-loop implementation seam.');
     expect(productSpec).toContain('## Locked Revenue Ladder');
     expect(productSpec).toContain('`#194` verdict loop proof');
     expect(productSpec).toContain('money-ready MVP proof');
@@ -94,7 +94,7 @@ describe('source truth command gate', () => {
     const failures = runSourceTruthCheck(fixtureRoot);
 
     expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml task 006 must remain QUEUED.');
-    expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml must have zero ACTIVE tasks in PR #194; found 1.');
+    expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml must have zero ACTIVE tasks in PR #201; found 1.');
   });
 
   it('fails when the queue still claims supreme authority', () => {
@@ -153,21 +153,13 @@ describe('source truth command gate', () => {
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
       original
-        .replace('Issue #196 is completed by merged PR #197.', 'Issue #196 is now the active source-truth cleanup seam.')
-        .replace('Active implementation seam is issue #194.', 'Active implementation seam is `EXECUTION_QUEUE`.')
-        .replace('The active seam is the first money-loop issue: `Prove sources become signals, signals become context, and context becomes one next move`.', 'The active seam is the root source-truth archive/delete sweep: `Root source-truth archive/delete sweep`.')
-        .replace('`FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.', 'The active seam is now controlled entirely by `FOLDERA_EXECUTION_QUEUE.yaml`.')
-        .replace('`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.', 'Task `006` remains queued.')
-        .replace('PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.', 'No Task `006` work has started in this PR.')
-        .replace('Issue #140 / PR #142 remains rail-only and parked outside this sweep.', 'PR #183 is a source-truth and gate-alignment seam only.'),
+        .replace('No active implementation seam remains after PR #201.', 'Active implementation seam is issue #194.'),
     );
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Issue #196 is completed by merged PR #197.');
-    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Active implementation seam is issue #194.');
-    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: The active seam is the first money-loop issue: `Prove sources become signals, signals become context, and context becomes one next move`.');
-    expect(failures).toContain('ACTIVE_HANDOFF.md still contains stale queue-progress marker: Active implementation seam is `EXECUTION_QUEUE`.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: No active implementation seam remains after PR #201.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md must not name an active seam issue after PR #201 closeout.');
   });
 
   it('ignores stale .foldera-contract.json queue authority fields', () => {

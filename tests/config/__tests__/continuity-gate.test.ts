@@ -69,7 +69,7 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
-  it('passes when the handoff points at the implementation seam', () => {
+  it('passes when the handoff points at the closeout state', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
@@ -77,13 +77,12 @@ describe('continuity gate writeback enforcement', () => {
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(handoff).toContain('Issue #196 is completed by merged PR #197.');
-    expect(handoff).toContain('Active implementation seam is issue #194.');
-    expect(handoff).toContain('The active seam is the first money-loop issue:');
-    expect(buildOrder).toContain('active_issue: 194');
-    expect(buildOrder).toContain('priority_class: FIRST_MONEY_LOOP');
-    expect(buildOrder).toContain('FOLDERA_PRODUCT_SPEC_NEXT.md');
-    expect(buildOrder).toContain('FOLDERA_GITHUB_ISSUE_PR_PLAN.md');
+    expect(handoff).toContain('Issue #194 is completed by merged PR #201.');
+    expect(handoff).toContain('No active implementation seam remains after PR #201.');
+    expect(handoff).toContain('The next authorized move is durable response/state/receipt loop.');
+    expect(buildOrder).toContain('active_issue: null');
+    expect(buildOrder).toContain('priority_class: NEXT_AUTHORIZED_RUNG');
+    expect(buildOrder).toContain('work_type: SOURCE_TRUTH_CLOSEOUT');
     expect(prTemplate).toContain('## Receipt summary');
     expect(prTemplate).toContain('Active issue:');
     expect(prTemplate).toContain('Next authorized move:');
@@ -101,15 +100,12 @@ describe('continuity gate writeback enforcement', () => {
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
       original
-        .replace('Issue #196 is completed by merged PR #197.', 'Issue #196 is now the active source-truth cleanup seam.')
-        .replace('Active implementation seam is issue #194.', 'Queue control is implied but unnamed.')
-        .replace('The active seam is the first money-loop issue: `Prove sources become signals, signals become context, and context becomes one next move`.', 'The active seam is the root source-truth archive/delete sweep: `Root source-truth archive/delete sweep`.'),
+        .replace('No active implementation seam remains after PR #201.', 'Active implementation seam is issue #194.'),
     );
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md must name exactly one active seam line; found 0.');
-    expect(failures).toContain('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md must not name an active issue after PR #201 closeout; found issue #194.');
   });
 
   it('fails when the mandatory writeback rule is removed from ACTIVE_HANDOFF.md', () => {

@@ -28,11 +28,11 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 194
-priority_class: FIRST_MONEY_LOOP
-work_type: VERDICT_LOOP_IMPLEMENTATION
-why_this_first: PR #198 restored issue #194 as the active first money-loop implementation seam, PR #199 finished the control-text bridge, PR #197 completed the root source-truth cleanup, and the Master Bible remains the canonical repo plan.
-next_seam: issue #194 implementation proof - reason prove evidence -> signals -> context -> one verdict, safe silence when justified, and durable receipt required
+active_issue: null
+priority_class: NEXT_AUTHORIZED_RUNG
+work_type: SOURCE_TRUTH_CLOSEOUT
+why_this_first: PR #201 completed issue #194 and the repo now advances to the durable response/state/receipt loop rung without a new active issue.
+next_seam: durable response/state/receipt loop - reason PR #201 completed issue #194 and the next authorized rung is now durable response/state/receipt loop
 required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
   - 101
@@ -76,6 +76,10 @@ completed:
     pr: 198
     merge_sha: e2fb1eff5f21e8233416e272abca978518d4c6b3
     result: Restored issue #194 as the active first money-loop implementation seam after the closeout sweep.
+  - issue: 194
+    pr: 201
+    merge_sha: 689d05f0ff1e2cac3130945b33befc83cb270daa
+    result: First money-loop verdict loop completed and the next authorized rung is durable response/state/receipt loop.
   - issue: 175
     pr: 177
     merge_sha: 17e0699238cd11e80b4891f236be860abe32eb72
@@ -162,9 +166,12 @@ closed_issues_do_not_reopen:
   - issue: 192
     status: closed_completed
     reason: Master Bible source-truth closeout completed by PR #193 and the first money-loop issue is now active.
+  - issue: 194
+    status: closed_completed
+    reason: First money-loop verdict loop completed by PR #201 and is now superseded by the durable response/state/receipt loop rung.
   - issue: 196
     status: closed_completed
-    reason: Root source-truth cleanup completed by PR #197 and issue #194 is now active.
+    reason: Root source-truth cleanup completed by PR #197 and issue #194 is now complete.
   - issue: 183
     status: closed_completed
     reason: Queue-control closeout completed by PR #183 and is now superseded by the Master Bible source-truth closeout.
@@ -235,9 +242,9 @@ build_sequence_from_master_synthesis:
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
-  FOLDERA_LAUNCH_ROADMAP.md: unchanged - reason historical roadmap is now shimmed and no longer controls the active seam
+  FOLDERA_LAUNCH_ROADMAP.md: unchanged - reason historical roadmap remains shimmed and no longer controls the active seam
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - issue #194 implementation proof is the next authorized move
+  next_seam: named - durable response/state/receipt loop is the next authorized move
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason

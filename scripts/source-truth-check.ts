@@ -7,18 +7,19 @@ type QueueItem = {
   status: string;
 };
 
-const CONTROLLING_PR = 194;
+const CLOSEOUT_PR = 201;
 const COMPLETED_RUNG_2_ISSUE = 175;
 const COMPLETED_RUNG_3_ISSUE = 179;
 const MASTER_BIBLE_ISSUE = 181;
-const SOURCE_TRUTH_CLOSEOUT_ISSUE = 194;
+const COMPLETED_VERDICT_LOOP_ISSUE = 194;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
 const COMPLETED_FIRST_RUNG_ISSUE = 173;
+const NEXT_AUTHORIZED_RUNG = 'durable response/state/receipt loop';
 const NEXT_TASK_ID = '006';
 const COMPLETED_TASK_IDS = ['001', '002', '003', '004', '005'];
 
-const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE, MASTER_BIBLE_ISSUE, 183];
+const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE, MASTER_BIBLE_ISSUE, 183, COMPLETED_VERDICT_LOOP_ISSUE];
 
 function readRepoFile(root: string, file: string): string {
   const path = join(root, file);
@@ -34,6 +35,11 @@ function extractYamlNumber(raw: string, key: string): number | null {
 function extractYamlScalar(raw: string, key: string): string | null {
   const match = raw.match(new RegExp(`^${key}:\\s*(.+?)\\s*$`, 'm'));
   return match ? match[1].trim().replace(/^['"]|['"]$/g, '') : null;
+}
+
+function extractActiveHandoffIssue(raw: string): number | null {
+  const match = raw.match(/^Active implementation seam is issue #(\d+).*$/m);
+  return match ? Number(match[1]) : null;
 }
 
 function parseQueueItems(raw: string): QueueItem[] {
@@ -59,7 +65,7 @@ function checkQueueState(failures: string[], queueRaw: string): void {
     if (byId.get(id) !== 'COMPLETED') failures.push(`FOLDERA_EXECUTION_QUEUE.yaml task ${id} must be COMPLETED.`);
   }
   if (byId.get(NEXT_TASK_ID) !== 'QUEUED') failures.push(`FOLDERA_EXECUTION_QUEUE.yaml task ${NEXT_TASK_ID} must remain QUEUED.`);
-  if (activeCount !== 0) failures.push(`FOLDERA_EXECUTION_QUEUE.yaml must have zero ACTIVE tasks in PR #${CONTROLLING_PR}; found ${activeCount}.`);
+  if (activeCount !== 0) failures.push(`FOLDERA_EXECUTION_QUEUE.yaml must have zero ACTIVE tasks in PR #${CLOSEOUT_PR}; found ${activeCount}.`);
 }
 
 function requireClosedIssueDoNotReopen(failures: string[], handoff: string, buildOrder: string): void {
@@ -76,8 +82,8 @@ function requireClosedIssueDoNotReopen(failures: string[], handoff: string, buil
       failures.push(`FOLDERA_BUILD_ORDER.yaml must classify issue #${issue} as closed/completed/superseded.`);
     }
   }
-  if (!handoff.includes('Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, #183, #192, and #196 are closed/completed/superseded. Do not reopen them here.')) {
-    failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #181, #183, #192, and #196, out of scope.');
+  if (!handoff.includes('Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, #183, #192, #194, and #196 are closed/completed/superseded. Do not reopen them here.')) {
+    failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #181, #183, #192, #194, and #196, out of scope.');
   }
 }
 
@@ -133,23 +139,25 @@ function checkMasterBible(root: string): string[] {
 function checkSourceTruth(root: string, handoff: string, buildOrder: string, queueRaw: string): string[] {
   const failures: string[] = [];
   const buildIssue = extractYamlNumber(buildOrder, 'active_issue');
+  const handoffIssue = extractActiveHandoffIssue(handoff);
 
-  if (buildIssue !== SOURCE_TRUTH_CLOSEOUT_ISSUE) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${SOURCE_TRUTH_CLOSEOUT_ISSUE}; found ${buildIssue ?? 'none'}.`);
+  if (buildIssue !== null) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be null after PR #${CLOSEOUT_PR} closeout; found ${buildIssue ?? 'none'}.`);
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
-  if (priority !== 'FIRST_MONEY_LOOP') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be FIRST_MONEY_LOOP; found ${priority ?? 'none'}.`);
-  if (workType !== 'VERDICT_LOOP_IMPLEMENTATION') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be VERDICT_LOOP_IMPLEMENTATION; found ${workType ?? 'none'}.`);
-  if (nextSeam !== 'issue #194 implementation proof - reason prove evidence -> signals -> context -> one verdict, safe silence when justified, and durable receipt required') {
-    failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must preserve the first money-loop activation boundary; found ${nextSeam ?? 'none'}.`);
+  if (priority !== 'NEXT_AUTHORIZED_RUNG') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be NEXT_AUTHORIZED_RUNG; found ${priority ?? 'none'}.`);
+  if (workType !== 'SOURCE_TRUTH_CLOSEOUT') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_CLOSEOUT; found ${workType ?? 'none'}.`);
+  if (nextSeam !== `${NEXT_AUTHORIZED_RUNG} - reason PR #${CLOSEOUT_PR} completed issue #${COMPLETED_VERDICT_LOOP_ISSUE} and the next authorized rung is now durable response/state/receipt loop`) {
+    failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must name the next authorized rung; found ${nextSeam ?? 'none'}.`);
   }
 
   for (const marker of [
     'Issue #181 is completed by merged PR #191.',
     'Issue #192 is completed by merged PR #193.',
     'Issue #196 is completed by merged PR #197.',
-    'Active implementation seam is issue #194.',
-    'The active seam is the first money-loop issue: `Prove sources become signals, signals become context, and context becomes one next move`.',
+    'Issue #194 is completed by merged PR #201.',
+    'No active implementation seam remains after PR #201.',
+    'The next authorized move is durable response/state/receipt loop.',
     '`FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.',
     '`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.',
     'PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.',
@@ -158,6 +166,9 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'One active seam only.',
   ]) {
     if (!handoff.includes(marker)) failures.push(`ACTIVE_HANDOFF.md is missing required marker: ${marker}`);
+  }
+  if (handoffIssue !== null) {
+    failures.push(`ACTIVE_HANDOFF.md must not name an active seam issue after PR #${CLOSEOUT_PR} closeout.`);
   }
   for (const staleMarker of [
     'Active implementation seam is `EXECUTION_QUEUE`.',
@@ -168,6 +179,7 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'Issue #196 is the active source-truth cleanup seam.',
     'The active seam is the root source-truth archive/delete sweep: `Root source-truth archive/delete sweep`.',
     'Issue #196 is the active source-truth cleanup seam.',
+    'Issue #194 is the active first money-loop implementation seam.',
   ]) {
     if (handoff.includes(staleMarker)) failures.push(`ACTIVE_HANDOFF.md still contains stale queue-progress marker: ${staleMarker}`);
   }
@@ -190,14 +202,14 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     '| `FOLDERA_MASTER_BIBLE.md` | `KEEP_REFERENCE_ONLY` |',
     '| `FOLDERA_EXECUTION_QUEUE.yaml` | `KEEP_REFERENCE_ONLY` |',
     '| GitHub issue #196 | `REFERENCE_ONLY` |',
-    '| GitHub issue #194 | `CURRENT_CONTROL` |',
+    '| GitHub issue #194 | `REFERENCE_ONLY` |',
     '| `FOLDERA_OPERATING_SYSTEM.md` | `SHIM_TO_CANONICAL` |',
     '| `FOLDERA_LAUNCH_ROADMAP.md` | `SHIM_TO_CANONICAL` |',
     'GitHub issue #181 / PR #191 is the single promotion path for that master-bible execution-layer bundle.',
     'GitHub issue #192 is the completed source-truth closeout issue that aligned the handoff and build-order files around the merged Master Bible.',
     'GitHub issue #196 is the completed source-truth cleanup issue retained for receipt history.',
     'GitHub issue #198 / PR #198 restored issue #194 as active control after the cleanup sweep.',
-    'GitHub issue #194 is the current control issue for the first money-loop implementation seam.',
+    'GitHub issue #194 / PR #201 completed the first money-loop verdict-loop seam and returned the repo to a no-active-seam state.',
   ]) {
     if (!sourceMap.includes(marker)) failures.push(`docs/SOURCE_OF_TRUTH_MAP.md is missing required marker: ${marker}`);
   }
@@ -206,7 +218,6 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'authority: REFERENCE_ONLY',
     'routing_mode: REFERENCE_ONLY',
     'queue_update_law: Future queue activation requires an explicit activation issue; this file does not control current execution.',
-    'Historical queue artifact; issue #194 now controls the first money-loop implementation seam.',
   ];
   for (const marker of queueAuthorityMarkers) {
     if (!queueRaw.includes(marker)) failures.push(`FOLDERA_EXECUTION_QUEUE.yaml is missing required reference-only marker: ${marker}`);
@@ -278,5 +289,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. The Master Bible remains reference authority, the queue remains inactive, and the first money-loop issue is now the active seam.');
+  console.log('Source truth check passed. The Master Bible remains reference authority, the queue remains inactive, and the next authorized rung is durable response/state/receipt loop.');
 }
