@@ -9,6 +9,7 @@ const requiredFixtureFiles = [
   'FOLDERA_BUILD_ORDER.yaml',
   'FOLDERA_MASTER_BIBLE.md',
   'FOLDERA_EXECUTION_QUEUE.yaml',
+  'FOLDERA_OPERATING_DOCTRINE.md',
   'FOLDERA_MASTER_SYNTHESIS_DRAFT.md',
   'docs/SOURCE_OF_TRUTH_MAP.md',
   '.foldera-contract.json',
@@ -89,6 +90,7 @@ describe('source truth command gate', () => {
       'ACTIVE_HANDOFF.md',
       original
         .replace('Active implementation seam is issue #196.', 'Active implementation seam is `EXECUTION_QUEUE`.')
+        .replace('The active seam is the root source-truth archive/delete sweep: `Root source-truth archive/delete sweep`.', 'The active seam is the first money-loop issue: `Prove sources become signals, signals become context, and context becomes one next move`.')
         .replace('`FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.', 'The active seam is now controlled entirely by `FOLDERA_EXECUTION_QUEUE.yaml`.')
         .replace('`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.', 'Task `006` remains queued.')
         .replace('PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.', 'No Task `006` work has started in this PR.')

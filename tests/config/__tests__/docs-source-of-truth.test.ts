@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 describe('documentation source-of-truth boundaries', () => {
   it('keeps the operating constitution and gate-first boot contract present as repo-owned doctrine', () => {
     const operatingSystem = fs.readFileSync(path.join(process.cwd(), 'FOLDERA_OPERATING_SYSTEM.md'), 'utf8');
+    const operatingDoctrine = fs.readFileSync(path.join(process.cwd(), 'FOLDERA_OPERATING_DOCTRINE.md'), 'utf8');
     const codexStart = fs.readFileSync(path.join(process.cwd(), 'CODEX_START.md'), 'utf8');
     const activeHandoff = fs.readFileSync(path.join(process.cwd(), 'ACTIVE_HANDOFF.md'), 'utf8');
     const buildOrder = fs.readFileSync(path.join(process.cwd(), 'FOLDERA_BUILD_ORDER.yaml'), 'utf8');
@@ -19,11 +20,13 @@ describe('documentation source-of-truth boundaries', () => {
     const activeBootSequenceLineTwo = '2. Read `FOLDERA_BUILD_ORDER.yaml`.';
     const acceptedBootSequenceLineTwo = [activeBootSequenceLineTwo, '2. Read `FOLDERA_LAUNCH_ROADMAP.md`.'];
 
-    expect(operatingSystem).toContain('Foldera is not a dashboard.');
-    expect(operatingSystem).toContain('Foldera is an operator.');
-    expect(operatingSystem).toContain('Produce finished value.');
-    expect(operatingSystem).toContain('Safely self-prepare or self-recover.');
-    expect(operatingSystem).toContain('Ask for one irreducible blocker');
+    expect(operatingSystem).toContain('Authority status: SHIM_TO_CANONICAL.');
+    expect(operatingSystem).toContain('Use these files for current control:');
+    expect(operatingSystem).toContain('`FOLDERA_MASTER_BIBLE.md`');
+    expect(operatingSystem).toContain('`docs/SOURCE_OF_TRUTH_MAP.md`');
+    expect(operatingDoctrine).toContain('Authority status: SHIM_TO_CANONICAL.');
+    expect(operatingDoctrine).toContain('do not use this file as current control');
+    expect(operatingDoctrine).toContain('For product doctrine, read `FOLDERA_NORTH_STAR_LOCK.md`');
     expect(codexStart).toContain("You are Foldera's acting senior operator");
     expect(codexStart).toContain('One active seam only');
     expect(codexStart).toContain('move Foldera through the first failing gate with proof');
