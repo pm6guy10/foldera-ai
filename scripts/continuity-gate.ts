@@ -117,6 +117,15 @@ const requiredSourceOfTruthOrder = [
 const requiredTerminalStates = ['BLOCKED', 'PROOF', 'PR OPENED', 'MERGE READY', 'STOPPED'];
 const requiredCloseoutFiles = ['ACTIVE_HANDOFF.md', 'FOLDERA_BUILD_ORDER.yaml', 'FOLDERA_LAUNCH_ROADMAP.md', 'docs/SOURCE_OF_TRUTH_MAP.md'];
 const requiredCloseoutValues = ['updated', 'unchanged - reason', 'not applicable - reason'];
+const requiredReceiptSummaryMarkers: Array<{ marker: string; failure: string }> = [
+  { marker: '## Receipt summary', failure: '.github/pull_request_template.md must include a receipt summary section.' },
+  { marker: '- Active issue:', failure: '.github/pull_request_template.md must declare the active issue in the receipt summary.' },
+  { marker: '- Next authorized move:', failure: '.github/pull_request_template.md must declare the next authorized move in the receipt summary.' },
+  { marker: '- Forbidden work touched: YES/NO', failure: '.github/pull_request_template.md must declare forbidden work touched in the receipt summary.' },
+  { marker: '- Proof run:', failure: '.github/pull_request_template.md must declare the proof run in the receipt summary.' },
+  { marker: '- Source-truth closeout status:', failure: '.github/pull_request_template.md must declare the source-truth closeout status in the receipt summary.' },
+  { marker: '- Stop condition:', failure: '.github/pull_request_template.md must declare the stop condition in the receipt summary.' },
+];
 
 function readRepoFile(root: string, file: string): string {
   return readFileSync(join(root, file), 'utf8');
@@ -269,6 +278,9 @@ export function runContinuityGate(root: string): string[] {
   }
 
   const prTemplate = readRepoFile(root, '.github/pull_request_template.md');
+  for (const { marker, failure } of requiredReceiptSummaryMarkers) {
+    if (!prTemplate.includes(marker)) failures.push(failure);
+  }
   if (!prTemplate.includes('## Source-truth closeout')) failures.push('.github/pull_request_template.md must include Source-truth closeout section.');
   for (const file of requiredCloseoutFiles) {
     if (!prTemplate.includes(`- \`${file}\`:`)) failures.push(`.github/pull_request_template.md is missing source-truth closeout row for ${file}.`);
