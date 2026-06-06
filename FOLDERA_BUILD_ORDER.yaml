@@ -22,13 +22,11 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 196
-paused_issues:
-  - 194
-priority_class: ROOT_SOURCE_TRUTH_SWEEP
-work_type: SOURCE_TRUTH_CLEANUP
-why_this_first: PR #193 completed the Master Bible closeout, issue #196 is the root source-truth sweep that must eliminate competing guidance, and issue #194 becomes the next authorized move after the cleanup closes.
-next_seam: root source-truth cleanup - reason issue #196 is the active seam and issue #194 is paused until the cleanup closes
+active_issue: 194
+priority_class: MASTER_BIBLE_CLOSEOUT
+work_type: SOURCE_TRUTH_CLOSEOUT
+why_this_first: PR #197 completed the root source-truth cleanup, issue #194 is the first money-loop issue that should follow the closeout, and the Master Bible remains the canonical repo plan.
+next_seam: first money-loop issue - reason Master Bible closeout is complete and issue #194 is now the active execution issue
 required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
   - 101
@@ -64,6 +62,10 @@ completed:
     pr: 193
     merge_sha: 61636bc62e9b3c31af6f7d8baa9ab84eebe3ec5e
     result: Master Bible source-truth closeout landed on main and the first money-loop issue is now the next active seam.
+  - issue: 196
+    pr: 197
+    merge_sha: 2612ec05c6ba4efead00fde4825eee11d3a6d0fe
+    result: Root source-truth cleanup landed on main and the first money-loop issue is now the next active seam.
   - issue: 175
     pr: 177
     merge_sha: 17e0699238cd11e80b4891f236be860abe32eb72
@@ -150,6 +152,9 @@ closed_issues_do_not_reopen:
   - issue: 192
     status: closed_completed
     reason: Master Bible source-truth closeout completed by PR #193 and the first money-loop issue is now active.
+  - issue: 196
+    status: closed_completed
+    reason: Root source-truth cleanup completed by PR #197 and issue #194 is now active.
   - issue: 183
     status: closed_completed
     reason: Queue-control closeout completed by PR #183 and is now superseded by the Master Bible source-truth closeout.

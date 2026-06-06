@@ -57,13 +57,13 @@ describe('source truth command gate', () => {
 
     expect(handoff).toContain('Issue #181 is completed by merged PR #191.');
     expect(handoff).toContain('Issue #192 is completed by merged PR #193.');
-    expect(handoff).toContain('Active implementation seam is issue #196.');
-    expect(handoff).toContain('The active seam is the root source-truth archive/delete sweep: `Root source-truth archive/delete sweep`.');
-    expect(handoff).toContain('Issue #194 is paused and becomes the next authorized move after this sweep closes.');
+    expect(handoff).toContain('Issue #196 is completed by merged PR #197.');
+    expect(handoff).toContain('Active implementation seam is issue #194.');
+    expect(handoff).toContain('The active seam is the first money-loop issue: `Prove sources become signals, signals become context, and context becomes one next move`.');
     expect(handoff).toContain('`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.');
-    expect(buildOrder).toContain('active_issue: 196');
-    expect(buildOrder).toContain('priority_class: ROOT_SOURCE_TRUTH_SWEEP');
-    expect(buildOrder).toContain('work_type: SOURCE_TRUTH_CLEANUP');
+    expect(buildOrder).toContain('active_issue: 194');
+    expect(buildOrder).toContain('priority_class: MASTER_BIBLE_CLOSEOUT');
+    expect(buildOrder).toContain('work_type: SOURCE_TRUTH_CLOSEOUT');
     expect(queue).toContain('- id: "005"');
     expect(queue).toContain('status: COMPLETED');
     expect(queue).toContain('- id: "006"');
@@ -79,7 +79,7 @@ describe('source truth command gate', () => {
     const failures = runSourceTruthCheck(fixtureRoot);
 
     expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml task 006 must remain QUEUED.');
-    expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml must have zero ACTIVE tasks in PR #196; found 1.');
+    expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml must have zero ACTIVE tasks in PR #194; found 1.');
   });
 
   it('fails when ACTIVE_HANDOFF.md still claims queue control', () => {
@@ -89,8 +89,9 @@ describe('source truth command gate', () => {
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
       original
-        .replace('Active implementation seam is issue #196.', 'Active implementation seam is `EXECUTION_QUEUE`.')
-        .replace('The active seam is the root source-truth archive/delete sweep: `Root source-truth archive/delete sweep`.', 'The active seam is the first money-loop issue: `Prove sources become signals, signals become context, and context becomes one next move`.')
+        .replace('Issue #196 is completed by merged PR #197.', 'Issue #196 is now the active source-truth cleanup seam.')
+        .replace('Active implementation seam is issue #194.', 'Active implementation seam is `EXECUTION_QUEUE`.')
+        .replace('The active seam is the first money-loop issue: `Prove sources become signals, signals become context, and context becomes one next move`.', 'The active seam is the root source-truth archive/delete sweep: `Root source-truth archive/delete sweep`.')
         .replace('`FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.', 'The active seam is now controlled entirely by `FOLDERA_EXECUTION_QUEUE.yaml`.')
         .replace('`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.', 'Task `006` remains queued.')
         .replace('PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.', 'No Task `006` work has started in this PR.')
@@ -99,8 +100,9 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Active implementation seam is issue #196.');
-    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: The active seam is the root source-truth archive/delete sweep: `Root source-truth archive/delete sweep`.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Issue #196 is completed by merged PR #197.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Active implementation seam is issue #194.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: The active seam is the first money-loop issue: `Prove sources become signals, signals become context, and context becomes one next move`.');
     expect(failures).toContain('ACTIVE_HANDOFF.md still contains stale queue-progress marker: Active implementation seam is `EXECUTION_QUEUE`.');
   });
 

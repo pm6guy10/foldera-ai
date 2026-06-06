@@ -1,13 +1,13 @@
 {
-  "authority_status": "ROOT_SOURCE_TRUTH_SWEEP_ACTIVE",
+  "authority_status": "MASTER_BIBLE_FIRST_MONEY_LOOP_ACTIVE",
   "active": true,
-  "active_issue": 196,
-  "backlog_id": "ROOT_SOURCE_TRUTH_SWEEP",
-  "base_commit": "61636bc62e9b3c31af6f7d8baa9ab84eebe3ec5e",
-  "money_loop_rung": "source_truth_cleanup_sweep",
-  "user_system_path": "The Master Bible is reference authority and issue #196 is the active source-truth cleanup seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must point at the same issue and the queue file must remain inactive/reference-only.",
+  "active_issue": 194,
+  "backlog_id": "FOLDERA_MASTER_BIBLE_FIRST_MONEY_LOOP",
+  "base_commit": "2612ec05c6ba4efead00fde4825eee11d3a6d0fe",
+  "money_loop_rung": "first_money_loop_verdict_loop",
+  "user_system_path": "The Master Bible is reference authority and issue #194 is the active first money-loop seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must point at the same issue and the queue file must remain inactive/reference-only.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
-  "no_routing_contract": "The Agent is forbidden from asking 'What is next?' or 'Should we audit this?'. The Agent must read ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, and the source-truth map and follow the active issue exactly. The Agent may not deviate from the source-truth cleanup without a signed-off source-truth closeout commit from Brandon.",
+  "no_routing_contract": "The Agent is forbidden from asking 'What is next?' or 'Should we audit this?'. The Agent must read ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, and the source-truth map and follow the active issue exactly. The Agent may not deviate from the source-truth closeout without a signed-off source-truth closeout commit from Brandon.",
   "allowed_file_patterns": [
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
@@ -69,8 +69,8 @@
     "fake compliance claims",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Current seam is source-truth cleanup only: keep the Master Bible reference-only, point the repo at issue #196, and align source-truth, gate/test files, and root guidance shims without starting product implementation.",
-  "forbidden_files_raw": "No product/runtime/provider/schema/Supabase/Vercel/live Slack/PR #142/Stripe/auth/landing/dashboard work, no package/dependency changes, no data mutation, no migrations, no live connector fetch, no paid/model call, no fake claims, and no broad cleanup outside the cleanup sweep.",
+  "allowed_files_raw": "Current seam is source-truth closeout only: keep the Master Bible reference-only, point the repo at issue #194, and align source-truth, gate/test files, and root guidance shims without starting product implementation.",
+  "forbidden_files_raw": "No product/runtime/provider/schema/Supabase/Vercel/live Slack/PR #142/Stripe/auth/landing/dashboard work, no package/dependency changes, no data mutation, no migrations, no live connector fetch, no paid/model call, no fake claims, and no broad cleanup outside the closeout sweep.",
   "required_local_proof": [
     "npm run health",
     "npx tsx scripts/source-truth-check.ts",
@@ -81,17 +81,17 @@
     "git diff --check"
   ],
   "required_browser_proof": "Not applicable; deterministic TEST_MODE fixture proof only.",
-  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, and the shimmed root guidance files all agree that issue #196 is the active source-truth cleanup seam, the Master Bible remains reference authority, and the queue file remains inactive/reference-only. No product/runtime implementation starts in this change.",
-  "stop_condition": "Stop when the source-truth cleanup and gate/test layer both accept issue #196 as active with no queue activation.",
+  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, and the shimmed root guidance files all agree that issue #194 is the active first money-loop seam, the Master Bible remains reference authority, and the queue file remains inactive/reference-only. No product/runtime implementation starts in this change.",
+  "stop_condition": "Stop when the source-truth closeout and gate/test layer both accept issue #194 as active with no queue activation.",
   "is_user_facing": false,
   "browser_proof_command": "not applicable - deterministic TEST_MODE fixture proof only",
   "anti_regression_checks": [
     "FOLDERA_MASTER_BIBLE.md is reference authority",
-    "issue #196 is the active source-truth cleanup seam",
+    "issue #194 is the active first money-loop seam",
     "FOLDERA_EXECUTION_QUEUE.yaml remains inactive/reference-only",
     ".foldera-contract.json contains no_routing_contract",
-    "The cleanup sweep is the only active seam",
-    "No product/runtime implementation starts in the source-truth cleanup change"
+    "The first money-loop seam is the only active seam",
+    "No product/runtime implementation starts in the source-truth closeout change"
   ],
-  "next_command": "Continue the source-truth cleanup branch and keep issue #196 as the only active seam until the PR merges."
+  "next_command": "Continue the first money-loop branch and keep issue #194 as the only active seam until the PR merges."
 }
