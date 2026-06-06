@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-06-06 PT
-Current `origin/main` SHA after PR #198 merge: `e2fb1eff5f21e8233416e272abca978518d4c6b3`.
+Current `origin/main` SHA after PR #199 merge: `71c393b731422f5ed9d31ef629c88452ca353748`.
 
 ## Canonical Boot Sequence
 1. Read `ACTIVE_HANDOFF.md`.
@@ -17,6 +17,7 @@ Issue #181 is completed by merged PR #191.
 Issue #192 is completed by merged PR #193.
 Issue #196 is completed by merged PR #197.
 Issue #198 is completed by merged PR #198 and restored issue #194 as active control.
+Issue #199 finished the control-text bridge for issue #194 without starting product implementation.
 Active implementation seam is issue #194.
 The active seam is the first money-loop issue: `Prove sources become signals, signals become context, and context becomes one next move`.
 `FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.
@@ -35,8 +36,10 @@ One active seam only.
 - PR #193 landed the Master Bible closeout and issue #192 is now closed by merge.
 - PR #197 landed the root source-truth cleanup closeout and issue #196 is now closed by merge.
 - PR #198 restored issue #194 as the active seam after the closeout sweep.
+- PR #199 finished the control-text bridge for issue #194 and kept the seam limited to repo authority.
 - Issue #194 is the active first money-loop implementation seam.
 - The current lane is issue #194 implementation authorization: prove evidence -> signals -> context -> one verdict, safe silence when justified, one verdict only, no multiple competing moves, and durable receipt required.
+- The locked revenue ladder after issue #194 is: durable response/state/receipt loop -> first user journey shell -> trust/privacy/no-send rail -> bounded self-serve paid path -> money-ready MVP proof -> first non-owner validation.
 - `FOLDERA_MASTER_BIBLE.md` is the human-readable company plan; supporting docs remain subordinate.
 - `FOLDERA_EXECUTION_QUEUE.yaml` stays inactive/reference-only until a future explicit activation issue reopens it.
 - `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` remains `REFERENCE_DRAFT`: source material only, not implementation authority.
@@ -53,7 +56,7 @@ Issue #48 remains the product contract.
 
 ## Source-truth boundary
 Allowed files for this seam are the narrow runtime brain modules, fixtures, focused tests, and source-truth/gate files needed to prove the evidence -> signals -> context -> verdict loop.
-Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, PR #198 restored issue #194 as active control, and the queue file remains inactive/reference-only.
+Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, PR #199 finished the control-text bridge for issue #194, and the queue file remains inactive/reference-only.
 Forbidden in this seam: live Slack, Supabase migrations or data mutation, Vercel settings, Stripe/auth/dashboard work, package/dependency changes, queue activation, Dependabot, live connector fetch, paid model call, fake claims, or broad cleanup.
 Stop condition: stop when the source-truth docs and gate/test layer agree that the repo has one clear control path, the queue remains inactive, and issue #194 is the single active implementation seam.
 

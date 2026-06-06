@@ -9,6 +9,8 @@ const requiredFixtureFiles = [
   'FOLDERA_BUILD_ORDER.yaml',
   'FOLDERA_MASTER_BIBLE.md',
   'FOLDERA_EXECUTION_QUEUE.yaml',
+  'FOLDERA_PRODUCT_SPEC_NEXT.md',
+  'FOLDERA_GITHUB_ISSUE_PR_PLAN.md',
   'FOLDERA_OPERATING_DOCTRINE.md',
   'FOLDERA_MASTER_SYNTHESIS_DRAFT.md',
   'docs/SOURCE_OF_TRUTH_MAP.md',
@@ -52,6 +54,8 @@ describe('source truth command gate', () => {
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
     const queue = readFixtureFile(fixtureRoot, 'FOLDERA_EXECUTION_QUEUE.yaml');
+    const productSpec = readFixtureFile(fixtureRoot, 'FOLDERA_PRODUCT_SPEC_NEXT.md');
+    const issuePlan = readFixtureFile(fixtureRoot, 'FOLDERA_GITHUB_ISSUE_PR_PLAN.md');
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
@@ -70,6 +74,15 @@ describe('source truth command gate', () => {
     expect(queue).toContain('status: COMPLETED');
     expect(queue).toContain('- id: "006"');
     expect(queue).toContain('status: QUEUED');
+    expect(queue).toContain('authority: REFERENCE_ONLY');
+    expect(queue).toContain('routing_mode: REFERENCE_ONLY');
+    expect(queue).toContain('Historical queue artifact; issue #194 now controls the first money-loop implementation seam.');
+    expect(productSpec).toContain('## Locked Revenue Ladder');
+    expect(productSpec).toContain('`#194` verdict loop proof');
+    expect(productSpec).toContain('money-ready MVP proof');
+    expect(issuePlan).toContain('## Locked Revenue Ladder');
+    expect(issuePlan).toContain('Prove money-ready MVP end to end');
+    expect(issuePlan).toContain('Prove first non-owner validation');
     expect(failures).toEqual([]);
   });
 
@@ -82,6 +95,55 @@ describe('source truth command gate', () => {
 
     expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml task 006 must remain QUEUED.');
     expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml must have zero ACTIVE tasks in PR #194; found 1.');
+  });
+
+  it('fails when the queue still claims supreme authority', () => {
+    const fixtureRoot = createFixtureRoot();
+    const original = readFixtureFile(fixtureRoot, 'FOLDERA_EXECUTION_QUEUE.yaml');
+    writeFixtureFile(
+      fixtureRoot,
+      'FOLDERA_EXECUTION_QUEUE.yaml',
+      original
+        .replace('authority: REFERENCE_ONLY', 'authority: SUPREME_EXECUTION_QUEUE')
+        .replace(
+          'authority_law: This queue is historical archaeology only and does not override ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, or docs/SOURCE_OF_TRUTH_MAP.md.',
+          'authority_law: FOLDERA_EXECUTION_QUEUE.yaml overrides every other markdown source-truth file for execution routing.',
+        )
+        .replace('routing_mode: REFERENCE_ONLY', 'routing_mode: DETERMINISTIC_EXECUTION')
+        .replace(
+          'queue_update_law: Future queue activation requires an explicit activation issue; this file does not control current execution.',
+          'queue_update_law: Agents may not deviate from this queue without a signed-off QUEUE_UPDATE commit from Brandon.',
+        )
+        .replace(
+          'Treat this file as reference-only unless a future explicit activation issue reauthorizes it.',
+          'Read this file first for execution routing.',
+        )
+        .replace(
+          'Read ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml first for current execution.',
+          'Identify the first ACTIVE task.',
+        )
+        .replace(
+          'Do not advance tasks, infer active work, or mutate this file as live control.',
+          'Execute only that task.',
+        )
+        .replace(
+          'The task list is retained for archaeology only.',
+          'When proof passes, mark it COMPLETED, move the next QUEUED task to ACTIVE, and continue.',
+        )
+        .replace(
+          'Historical queue artifact; issue #194 now controls the first money-loop implementation seam.',
+          'Do not ask what is next.',
+        ),
+    );
+
+    const failures = runSourceTruthCheck(fixtureRoot);
+
+    expect(failures).toContain(
+      'FOLDERA_EXECUTION_QUEUE.yaml is missing required reference-only marker: authority: REFERENCE_ONLY',
+    );
+    expect(failures).toContain(
+      'FOLDERA_EXECUTION_QUEUE.yaml still contains stale queue-authority marker: authority: SUPREME_EXECUTION_QUEUE',
+    );
   });
 
   it('fails when ACTIVE_HANDOFF.md still claims queue control', () => {

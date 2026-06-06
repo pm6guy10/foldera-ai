@@ -202,6 +202,51 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     if (!sourceMap.includes(marker)) failures.push(`docs/SOURCE_OF_TRUTH_MAP.md is missing required marker: ${marker}`);
   }
 
+  const queueAuthorityMarkers = [
+    'authority: REFERENCE_ONLY',
+    'routing_mode: REFERENCE_ONLY',
+    'queue_update_law: Future queue activation requires an explicit activation issue; this file does not control current execution.',
+    'Historical queue artifact; issue #194 now controls the first money-loop implementation seam.',
+  ];
+  for (const marker of queueAuthorityMarkers) {
+    if (!queueRaw.includes(marker)) failures.push(`FOLDERA_EXECUTION_QUEUE.yaml is missing required reference-only marker: ${marker}`);
+  }
+  for (const staleMarker of [
+    'authority: SUPREME_EXECUTION_QUEUE',
+    'authority_law: FOLDERA_EXECUTION_QUEUE.yaml overrides every other markdown source-truth file for execution routing.',
+    'routing_mode: DETERMINISTIC_EXECUTION',
+    'Read this file first for execution routing.',
+    'Identify the first ACTIVE task.',
+    'When proof passes, mark it COMPLETED, move the next QUEUED task to ACTIVE, and continue.',
+    'Do not start audits, hygiene passes, or source-truth reconciliation.',
+  ]) {
+    if (queueRaw.includes(staleMarker)) failures.push(`FOLDERA_EXECUTION_QUEUE.yaml still contains stale queue-authority marker: ${staleMarker}`);
+  }
+
+  const productSpecNext = readRepoFile(root, 'FOLDERA_PRODUCT_SPEC_NEXT.md');
+  for (const marker of [
+    'Authority status: `DRAFT_PRODUCT_SPEC_NOT_ACTIVE`',
+    '## Locked Revenue Ladder',
+    '`#194` verdict loop proof',
+    'durable response/state/receipt loop',
+    'bounded self-serve paid path',
+    'money-ready MVP proof',
+    'first non-owner validation',
+  ]) {
+    if (!productSpecNext.includes(marker)) failures.push(`FOLDERA_PRODUCT_SPEC_NEXT.md is missing required revenue-ladder marker: ${marker}`);
+  }
+
+  const issuePlan = readRepoFile(root, 'FOLDERA_GITHUB_ISSUE_PR_PLAN.md');
+  for (const marker of [
+    'Authority status: `DRAFT_EXECUTION_PLAN_NOT_ACTIVE`',
+    '## Locked Revenue Ladder',
+    '`#194` verdict loop proof',
+    'Prove money-ready MVP end to end',
+    'Prove first non-owner validation',
+  ]) {
+    if (!issuePlan.includes(marker)) failures.push(`FOLDERA_GITHUB_ISSUE_PR_PLAN.md is missing required revenue-ladder marker: ${marker}`);
+  }
+
   failures.push(...checkMasterBible(root));
   failures.push(...checkDraft(root));
   return failures;

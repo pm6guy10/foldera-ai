@@ -14,6 +14,12 @@ source_of_truth_order:
   - FOLDERA_PRODUCT_OPERATING_SYSTEM.md
   - docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md
   - FOLDERA_MASTER_SYNTHESIS_DRAFT.md
+  - FOLDERA_PRODUCT_SPEC_NEXT.md
+  - FOLDERA_GITHUB_ISSUE_PR_PLAN.md
+  - FOLDERA_BUILD_SPEC.md
+  - FOLDERA_CAPABILITY_MAP.md
+  - FOLDERA_QUEUE_GENERATION_RULES.md
+  - FOLDERA_EXECUTION_QUEUE_NEXT_DRAFT.yaml
   - docs/SOURCE_OF_TRUTH_MAP.md
   - FOLDERA_LAUNCH_ROADMAP.md
 accepted_terminal_states:
@@ -25,7 +31,7 @@ accepted_terminal_states:
 active_issue: 194
 priority_class: FIRST_MONEY_LOOP
 work_type: VERDICT_LOOP_IMPLEMENTATION
-why_this_first: PR #198 restored issue #194 as the active first money-loop implementation seam, PR #197 completed the root source-truth cleanup, and the Master Bible remains the canonical repo plan.
+why_this_first: PR #198 restored issue #194 as the active first money-loop implementation seam, PR #199 finished the control-text bridge, PR #197 completed the root source-truth cleanup, and the Master Bible remains the canonical repo plan.
 next_seam: issue #194 implementation proof - reason prove evidence -> signals -> context -> one verdict, safe silence when justified, and durable receipt required
 required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
@@ -219,14 +225,11 @@ required_master_bible_closeout:
   auth_changes: forbidden
   landing_dashboard_changes: forbidden
 build_sequence_from_master_synthesis:
-  - Promote first executable MVP rung
-  - Audit current schema and choose first evidence lane
-  - Prove deterministic one-verdict fixture loop
-  - Prove one-click state mutation receipt
-  - Implement first user journey shell
-  - Persist one source-backed workday state path
+  - Prove sources become signals, signals become context, and context becomes one next move
+  - Prove one durable response/state/receipt loop
+  - Build the first user journey shell
   - Prove trust/privacy/no-send rail
-  - Add bounded $29 early-access/payment path
+  - Add bounded self-serve $29 early-access/payment path
   - Prove money-ready MVP end to end
   - Prove first non-owner validation
 current_pr_closeout:
@@ -234,7 +237,7 @@ current_pr_closeout:
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - reason historical roadmap is now shimmed and no longer controls the active seam
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - issue #194 implementation proof is the next authorized move after the control-text PR lands
+  next_seam: named - issue #194 implementation proof is the next authorized move
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason

@@ -1,17 +1,17 @@
 version: 1
-authority: SUPREME_EXECUTION_QUEUE
-authority_law: FOLDERA_EXECUTION_QUEUE.yaml overrides every other markdown source-truth file for execution routing.
-routing_mode: DETERMINISTIC_EXECUTION
-queue_update_law: Agents may not deviate from this queue without a signed-off QUEUE_UPDATE commit from Brandon.
+authority: REFERENCE_ONLY
+authority_law: This queue is historical archaeology only and does not override ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, or docs/SOURCE_OF_TRUTH_MAP.md.
+routing_mode: REFERENCE_ONLY
+queue_update_law: Future queue activation requires an explicit activation issue; this file does not control current execution.
 agent_law:
-  - Read this file first for execution routing.
-  - Identify the first ACTIVE task.
-  - Execute only that task.
-  - When proof passes, mark it COMPLETED, move the next QUEUED task to ACTIVE, and continue.
+  - Treat this file as reference-only unless a future explicit activation issue reauthorizes it.
+  - Read ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml first for current execution.
+  - Do not advance tasks, infer active work, or mutate this file as live control.
+  - The task list is retained for archaeology only.
   - Do not ask what is next.
-  - Do not start audits, hygiene passes, or source-truth reconciliation.
-  - Do not touch files outside the ACTIVE task allowed_files list.
-holy_crap_mvp_loop: "Marcus approved the estimate -> Approval Received -> Next Move: Send Estimate -> Done click updates state -> durable receipt proves the loop."
+  - Do not start audits, hygiene passes, or source-truth reconciliation from this queue.
+  - Do not touch files outside the active issue contract when a future activation issue exists.
+holy_crap_mvp_loop: "Historical queue artifact; issue #194 now controls the first money-loop implementation seam."
 items:
   - id: "001"
     task: "Create deterministic mock evidence fixture: Marcus approved the estimate."
