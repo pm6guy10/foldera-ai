@@ -213,7 +213,8 @@ export function runContinuityGate(root: string): string[] {
 
   const activeHandoff = readRepoFile(root, 'ACTIVE_HANDOFF.md');
   const queueControlled = detectQueueControlledHandoff(activeHandoff);
-  const activeSeamLines = activeHandoff.match(/^Active implementation seam is (?:issue #\d+.*|`EXECUTION_QUEUE`\.)$/gm) ?? [];
+  const activeSeamLines = activeHandoff.match(/^Active implementation seam is issue #\d+.*$|^No active implementation seam remains after PR #201\.$/gm) ?? [];
+  const hasNoActiveSeam = activeHandoff.includes('No active implementation seam remains after PR #201.');
   if (!activeHandoff.includes('FOLDERA_BUILD_ORDER.yaml')) failures.push('ACTIVE_HANDOFF.md must reference FOLDERA_BUILD_ORDER.yaml.');
   if (!activeHandoff.includes('Issue #48 remains the product contract.')) failures.push('ACTIVE_HANDOFF.md must reference issue #48 as the product contract.');
   for (const rule of requiredWritebackRules) {
@@ -233,8 +234,12 @@ export function runContinuityGate(root: string): string[] {
   const buildOrderIssue = extractYamlNumber(buildOrder, 'active_issue');
   const buildOrderIssueScalar = extractYamlScalar(buildOrder, 'active_issue');
   if (activeSeamLines.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam line; found ${activeSeamLines.length}.`);
-  if (!queueControlled && handoffIssue === null) failures.push('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
+  if (!queueControlled && handoffIssue === null && !hasNoActiveSeam) failures.push('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
+  if (!queueControlled && handoffIssue !== null && buildOrderIssue === null) {
+    failures.push(`ACTIVE_HANDOFF.md must not name an active issue after PR #201 closeout; found issue #${handoffIssue}.`);
+  }
   if (buildOrderIssue === null && buildOrderIssueScalar !== 'null') failures.push('FOLDERA_BUILD_ORDER.yaml active_issue could not be parsed.');
+  if (!queueControlled && buildOrderIssue !== null) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be null after PR #201 closeout; found #${buildOrderIssue}.`);
   if (!queueControlled && handoffIssue !== null && buildOrderIssue !== null && handoffIssue !== buildOrderIssue) {
     failures.push(`ACTIVE_HANDOFF.md active seam issue #${handoffIssue} must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
   }
@@ -318,14 +323,17 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('| GitHub issue #196 | `REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #196 as REFERENCE_ONLY after the cleanup closeout completes.');
   }
-  if (!sourceTruthMap.includes('| GitHub issue #194 | `CURRENT_CONTROL` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #194 as CURRENT_CONTROL for the first money-loop seam.');
+  if (!sourceTruthMap.includes('| GitHub issue #194 | `REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #194 as REFERENCE_ONLY after PR #201 closes the verdict loop.');
   }
   if (!sourceTruthMap.includes('| `FOLDERA_OPERATING_SYSTEM.md` | `SHIM_TO_CANONICAL` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_OPERATING_SYSTEM.md as SHIM_TO_CANONICAL.');
   }
   if (!sourceTruthMap.includes('| `FOLDERA_LAUNCH_ROADMAP.md` | `SHIM_TO_CANONICAL` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_LAUNCH_ROADMAP.md as SHIM_TO_CANONICAL.');
+  }
+  if (!sourceTruthMap.includes('GitHub issue #194 / PR #201 completed the first money-loop verdict-loop seam and returned the repo to a no-active-seam state.')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #194 / PR #201 as completed and no longer current control.');
   }
 
   const sentinel = readRepoFile(root, '.github/workflows/pr-sentinel.yml');
