@@ -104,6 +104,7 @@ const requiredSourceOfTruthOrder = [
   'FOLDERA_BUILD_ORDER.yaml',
   'active GitHub issue',
   'issue #48',
+  'FOLDERA_MASTER_BIBLE.md',
   'FOLDERA_NORTH_STAR_LOCK.md',
   'FOLDERA_PRODUCT_OPERATING_SYSTEM.md',
   'docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md',
@@ -293,14 +294,20 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('| `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_PRODUCT_OPERATING_SYSTEM.md as CURRENT_CONTROL.');
   }
+  if (!sourceTruthMap.includes('| `FOLDERA_MASTER_BIBLE.md` | `REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_MASTER_BIBLE.md as reference-only after PR #191.');
+  }
+  if (!sourceTruthMap.includes('| `FOLDERA_EXECUTION_QUEUE.yaml` | `REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_EXECUTION_QUEUE.yaml as reference-only when the queue is inactive.');
+  }
+  if (!sourceTruthMap.includes('| GitHub issue #192 | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #192 as CURRENT_CONTROL for the source-truth closeout seam.');
+  }
   if (!sourceTruthMap.includes('| `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` | `PROOF_GATE` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FIRST_10_ICP_EVIDENCE_TRACKER.md as proof doctrine/reference.');
   }
   if (!sourceTruthMap.includes('| `FOLDERA_LAUNCH_ROADMAP.md` | `REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_LAUNCH_ROADMAP.md as reference-only unless reconciled.');
-  }
-  if (!sourceTruthMap.includes('| `FOLDERA_EXECUTION_QUEUE.yaml` | `CURRENT_CONTROL` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_EXECUTION_QUEUE.yaml as CURRENT_CONTROL.');
   }
 
   const sentinel = readRepoFile(root, '.github/workflows/pr-sentinel.yml');

@@ -2,115 +2,28 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-type FolderaContract = {
-  active?: boolean;
-  active_issue?: number | null;
-  backlog_id?: string;
-  authority_status?: string;
-  base_commit?: string;
-  allowed_file_patterns?: string[];
-  forbidden_file_patterns?: string[];
-  required_local_proof?: string[] | string;
-  acceptance_condition?: string;
-  next_command?: string;
-};
-
 type QueueItem = {
   id: string;
   status: string;
 };
 
-const CONTROLLING_PR = 183;
+const CONTROLLING_PR = 192;
 const COMPLETED_RUNG_2_ISSUE = 175;
-const RUNG_2_PR = 177;
 const COMPLETED_RUNG_3_ISSUE = 179;
-const RUNG_3_PR = 180;
-const OPEN_THREADS_ISSUE = 165;
+const MASTER_BIBLE_ISSUE = 181;
+const SOURCE_TRUTH_CLOSEOUT_ISSUE = 192;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
 const COMPLETED_FIRST_RUNG_ISSUE = 173;
-const BASE_COMMIT = 'b1e932e63c2fd261a2fc0c57edf99b0e4f8d5b80';
 const NEXT_TASK_ID = '006';
 const COMPLETED_TASK_IDS = ['001', '002', '003', '004', '005'];
 
-const REQUIRED_PROOF_COMMANDS = [
-  'npm run health',
-  'npx tsx scripts/source-truth-check.ts',
-  'npm run gate:continuity',
-  'npm run lint',
-  'npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose',
-  'npx vitest run lib/work-packets/__tests__/work-packet-brain.test.ts lib/slack-test-mode/__tests__/work-packet-review.test.ts lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose',
-  'git diff --check',
-];
-
-const REQUIRED_ALLOWED_FILES = [
-  'ACTIVE_HANDOFF.md',
-  'FOLDERA_BUILD_ORDER.yaml',
-  'FOLDERA_EXECUTION_QUEUE.yaml',
-  '.foldera-contract.json',
-  'docs/SOURCE_OF_TRUTH_MAP.md',
-  'scripts/source-truth-check.ts',
-  'scripts/continuity-gate.ts',
-  'tests/config/__tests__/**',
-  'tests/fixtures/work-packets/source-signals.ts',
-  'lib/work-packets/**',
-  'lib/slack-test-mode/work-packet-review.ts',
-  'lib/slack-test-mode/__tests__/work-packet-review.test.ts',
-  'lib/workday-presence/__tests__/work-packet-state-update.test.ts',
-];
-
-const FORBIDDEN_PRODUCT_PATHS = [
-  'app/**',
-  'components/**',
-  'components/foldera/LandingPage.tsx',
-  'app/page.tsx',
-  'next.config.mjs',
-  'app/api/slack/**',
-  'lib/slack/**',
-  'lib/workday-presence/source-backed-state.ts',
-  'lib/workday-presence/__tests__/source-backed-state.test.ts',
-  'supabase/**',
-  'app/dashboard/**',
-  'components/dashboard/**',
-  'lib/auth/**',
-  'app/api/auth/**',
-  'app/api/google/**',
-  'app/api/microsoft/**',
-  'app/api/stripe/**',
-  'lib/stripe/**',
-  'lib/billing/**',
-  'package.json',
-  'package-lock.json',
-  'FOLDERA_MASTER_SYNTHESIS_DRAFT.md',
-  'Dependabot',
-  'Vercel settings',
-  'Slack app settings',
-  'connector platform expansion',
-  'Teams expansion',
-  'email expansion',
-  'calendar expansion',
-  'schema implementation',
-  'source-lane implementation',
-  'data mutation',
-  'outreach',
-  'scraping',
-  'paid ads',
-  'customer data mutation',
-  'fake enterprise claims',
-  'fake compliance claims',
-  'broad cleanup',
-];
-
-const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE];
+const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE, MASTER_BIBLE_ISSUE, 183];
 
 function readRepoFile(root: string, file: string): string {
   const path = join(root, file);
   if (!existsSync(path)) throw new Error(`Missing required file: ${file}`);
   return readFileSync(path, 'utf8');
-}
-
-function readJson<T>(root: string, file: string): T {
-  return JSON.parse(readRepoFile(root, file)) as T;
 }
 
 function extractYamlNumber(raw: string, key: string): number | null {
@@ -121,31 +34,6 @@ function extractYamlNumber(raw: string, key: string): number | null {
 function extractYamlScalar(raw: string, key: string): string | null {
   const match = raw.match(new RegExp(`^${key}:\\s*(.+?)\\s*$`, 'm'));
   return match ? match[1].trim().replace(/^['"]|['"]$/g, '') : null;
-}
-
-function contractProofCommands(contract: FolderaContract): string[] {
-  if (Array.isArray(contract.required_local_proof)) return contract.required_local_proof;
-  if (typeof contract.required_local_proof === 'string') {
-    return contract.required_local_proof
-      .split(/[;\n]/)
-      .map((entry) => entry.trim())
-      .filter(Boolean);
-  }
-  return [];
-}
-
-function requireArrayIncludes(failures: string[], label: string, actual: string[] | undefined, expected: string[]): void {
-  const values = actual ?? [];
-  for (const entry of expected) {
-    if (!values.includes(entry)) failures.push(`${label} must include: ${entry}`);
-  }
-}
-
-function requireArrayExcludes(failures: string[], label: string, actual: string[] | undefined, forbidden: string[]): void {
-  const values = actual ?? [];
-  for (const entry of forbidden) {
-    if (values.includes(entry)) failures.push(`${label} must not include forbidden entry: ${entry}`);
-  }
 }
 
 function parseQueueItems(raw: string): QueueItem[] {
@@ -163,13 +51,6 @@ function parseQueueItems(raw: string): QueueItem[] {
 }
 
 function checkQueueState(failures: string[], queueRaw: string): void {
-  if (!queueRaw.includes('authority: SUPREME_EXECUTION_QUEUE')) {
-    failures.push('FOLDERA_EXECUTION_QUEUE.yaml must set authority: SUPREME_EXECUTION_QUEUE.');
-  }
-  if (!queueRaw.includes('authority_law: FOLDERA_EXECUTION_QUEUE.yaml overrides every other markdown source-truth file for execution routing.')) {
-    failures.push('FOLDERA_EXECUTION_QUEUE.yaml must declare queue-routing authority.');
-  }
-
   const items = parseQueueItems(queueRaw);
   const byId = new Map(items.map((item) => [item.id, item.status]));
   const activeCount = items.filter((item) => item.status === 'ACTIVE').length;
@@ -195,8 +76,8 @@ function requireClosedIssueDoNotReopen(failures: string[], handoff: string, buil
       failures.push(`FOLDERA_BUILD_ORDER.yaml must classify issue #${issue} as closed/completed/superseded.`);
     }
   }
-  if (!handoff.includes('Issues #121, #99, #48, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, and #179 are closed/completed/superseded. Do not reopen them here.')) {
-    failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #179, out of scope.');
+  if (!handoff.includes('Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, and #183 are closed/completed/superseded. Do not reopen them here.')) {
+    failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #181 and #183, out of scope.');
   }
 }
 
@@ -233,89 +114,85 @@ function checkDraft(root: string): string[] {
   return failures;
 }
 
-function checkSourceTruth(root: string, handoff: string, buildOrder: string, contract: FolderaContract, queueRaw: string): string[] {
+function checkMasterBible(root: string): string[] {
+  const bible = readRepoFile(root, 'FOLDERA_MASTER_BIBLE.md');
+  const failures: string[] = [];
+  for (const marker of [
+    'Authority status: `REFERENCE_AUTHORITY_AFTER_MERGE`',
+    'Controlling issue: #181',
+    'This bible is reference authority, not live execution authority.',
+    'It does not activate queue tasks.',
+    'It does not mutate `FOLDERA_EXECUTION_QUEUE.yaml`.',
+    'When Brandon says "run until you get stuck", Codex should:',
+  ]) {
+    if (!bible.includes(marker)) failures.push(`FOLDERA_MASTER_BIBLE.md is missing required marker: ${marker}`);
+  }
+  return failures;
+}
+
+function checkSourceTruth(root: string, handoff: string, buildOrder: string, queueRaw: string): string[] {
   const failures: string[] = [];
   const buildIssue = extractYamlNumber(buildOrder, 'active_issue');
 
-  if (buildIssue !== CONTROLLING_PR) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${CONTROLLING_PR}; found ${buildIssue ?? 'none'}.`);
-  if (contract.active !== true) failures.push(`.foldera-contract.json active must be true for PR #${CONTROLLING_PR}.`);
-  if (contract.active_issue !== null) failures.push(`.foldera-contract.json active_issue must be null in queue-controlled mode; found ${contract.active_issue}.`);
-  if (contract.backlog_id !== 'FOLDERA_EXECUTION_QUEUE') failures.push('.foldera-contract.json backlog_id must be FOLDERA_EXECUTION_QUEUE.');
-  if (contract.authority_status !== 'DETERMINISTIC_EXECUTION_QUEUE_ACTIVE') failures.push('.foldera-contract.json authority_status must be DETERMINISTIC_EXECUTION_QUEUE_ACTIVE.');
-  if (contract.base_commit !== BASE_COMMIT) failures.push(`.foldera-contract.json base_commit must be PR #${RUNG_3_PR} merge SHA ${BASE_COMMIT}.`);
-
+  if (buildIssue !== SOURCE_TRUTH_CLOSEOUT_ISSUE) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${SOURCE_TRUTH_CLOSEOUT_ISSUE}; found ${buildIssue ?? 'none'}.`);
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
-  if (priority !== 'DETERMINISTIC_EXECUTION_QUEUE') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be DETERMINISTIC_EXECUTION_QUEUE; found ${priority ?? 'none'}.`);
-  if (workType !== 'QUEUE_CONTROLLED_DETERMINISTIC_MVP_LOOP') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be QUEUE_CONTROLLED_DETERMINISTIC_MVP_LOOP; found ${workType ?? 'none'}.`);
-  if (nextSeam !== 'queue-controlled - reason Task 006 remains queued until PR #183 merges; do not start Task 006 in this PR') {
-    failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must preserve the Task 006 queued boundary; found ${nextSeam ?? 'none'}.`);
+  if (priority !== 'MASTER_BIBLE_CLOSEOUT') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be MASTER_BIBLE_CLOSEOUT; found ${priority ?? 'none'}.`);
+  if (workType !== 'SOURCE_TRUTH_CLOSEOUT') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_CLOSEOUT; found ${workType ?? 'none'}.`);
+  if (nextSeam !== 'first money-loop issue - reason Master Bible closeout must land before the next execution issue is authorized') {
+    failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must preserve the Master Bible closeout boundary; found ${nextSeam ?? 'none'}.`);
   }
 
   for (const marker of [
-    'Issue #179 is completed by merged PR #180.',
-    'Active implementation seam is `EXECUTION_QUEUE`.',
-    'The active seam is now controlled entirely by `FOLDERA_EXECUTION_QUEUE.yaml`.',
-    'Tasks `001`-`005` are completed.',
-    'Task `006` remains queued.',
-    'No Task `006` work has started in this PR.',
-    'PR #183 is a source-truth and gate-alignment seam only.',
-    'Issue #140 / PR #142 is parked for this seam; do not touch live Slack/provider surfaces.',
+    'Issue #181 is completed by merged PR #191.',
+    'Active implementation seam is issue #192.',
+    'The active seam is the source-truth closeout for the Master Bible promotion.',
+    '`FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.',
+    '`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.',
+    'PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.',
+    'Issue #140 / PR #142 remains rail-only and parked outside this source-truth closeout seam.',
     'GitHub writeback is mandatory.',
     'One active seam only.',
   ]) {
     if (!handoff.includes(marker)) failures.push(`ACTIVE_HANDOFF.md is missing required marker: ${marker}`);
   }
   for (const staleMarker of [
-    'Active implementation seam is issue #179',
-    'Current active task is `002`',
-    'Task `001` is completed and Task `002` is active.',
-    'Read `FOLDERA_EXECUTION_QUEUE.yaml`, execute active Task `002`, and advance the queue only if its proof gate passes.',
+    'Active implementation seam is `EXECUTION_QUEUE`.',
+    'The active seam is now controlled entirely by `FOLDERA_EXECUTION_QUEUE.yaml`.',
+    'Task `006` remains queued.',
+    'No Task `006` work has started in this PR.',
+    'PR #183 is a source-truth and gate-alignment seam only.',
+    'queue-controlled - reason Task 006 remains queued until PR #183 merges; do not start Task 006 in this PR',
   ]) {
     if (handoff.includes(staleMarker)) failures.push(`ACTIVE_HANDOFF.md still contains stale queue-progress marker: ${staleMarker}`);
   }
 
   for (const marker of [
-    'required_queue_control_closeout:',
-    'controlling_pr: 183',
-    'routing_authority: FOLDERA_EXECUTION_QUEUE.yaml',
-    'queued_next_task: "006"',
-    'active_task_count: 0',
-    'task_006_started: false',
+    'required_master_bible_closeout:',
+    'controlling_pr: 191',
+    'routing_authority: FOLDERA_MASTER_BIBLE.md',
+    'master_bible_status: canonical_reference_authority',
+    'queue_file_status: inactive_reference_only',
+    'queue_activation: forbidden_without_explicit_future_activation_issue',
   ]) {
     if (!buildOrder.includes(marker)) failures.push(`FOLDERA_BUILD_ORDER.yaml is missing required queue-control marker: ${marker}`);
   }
-
-  requireArrayIncludes(failures, '.foldera-contract.json allowed_file_patterns', contract.allowed_file_patterns, REQUIRED_ALLOWED_FILES);
-  requireArrayIncludes(failures, '.foldera-contract.json forbidden_file_patterns', contract.forbidden_file_patterns, FORBIDDEN_PRODUCT_PATHS);
-  requireArrayExcludes(failures, '.foldera-contract.json allowed_file_patterns', contract.allowed_file_patterns, FORBIDDEN_PRODUCT_PATHS);
-  requireArrayIncludes(failures, '.foldera-contract.json required_local_proof', contractProofCommands(contract), REQUIRED_PROOF_COMMANDS);
   requireClosedIssueDoNotReopen(failures, handoff, buildOrder);
   checkQueueState(failures, queueRaw);
 
-  for (const marker of [
-    'Tasks 001-005 are COMPLETED',
-    'Task 006 remains QUEUED',
-    'active task count is 0',
-    'no Task 006 work has started',
-  ]) {
-    if (!contract.acceptance_condition?.includes(marker)) failures.push(`.foldera-contract.json acceptance_condition is missing: ${marker}`);
-  }
-  if (!contract.next_command?.toLowerCase().includes('do not start task 006 in this pr')) {
-    failures.push('.foldera-contract.json next_command must preserve the Task 006 stop boundary.');
-  }
-
   const sourceMap = readRepoFile(root, 'docs/SOURCE_OF_TRUTH_MAP.md');
   for (const marker of [
-    '| `FOLDERA_EXECUTION_QUEUE.yaml` | `CURRENT_CONTROL` |',
-    'GitHub issue #179 `Rung 3: prove deterministic work-packet fixture loop` | `REFERENCE_ONLY`',
-    '| `docs/RUNG_2_SCHEMA_EVIDENCE_LANE_AUDIT.md` | `REFERENCE_ONLY` |',
-    'queue authority lives in `FOLDERA_EXECUTION_QUEUE.yaml`',
+    '| `FOLDERA_MASTER_BIBLE.md` | `REFERENCE_ONLY` |',
+    '| `FOLDERA_EXECUTION_QUEUE.yaml` | `REFERENCE_ONLY` |',
+    '| GitHub issue #192 | `CURRENT_CONTROL` |',
+    'GitHub issue #181 / PR #191 is the single promotion path for that master-bible execution-layer bundle.',
+    'GitHub issue #192 is the source-truth closeout issue that aligns the handoff and build-order files around the merged Master Bible.',
   ]) {
     if (!sourceMap.includes(marker)) failures.push(`docs/SOURCE_OF_TRUTH_MAP.md is missing required marker: ${marker}`);
   }
 
+  failures.push(...checkMasterBible(root));
   failures.push(...checkDraft(root));
   return failures;
 }
@@ -325,19 +202,17 @@ export function runSourceTruthCheck(root = process.cwd()): string[] {
   let handoff = '';
   let buildOrder = '';
   let queueRaw = '';
-  let contract: FolderaContract | null = null;
 
   try {
     handoff = readRepoFile(root, 'ACTIVE_HANDOFF.md');
     buildOrder = readRepoFile(root, 'FOLDERA_BUILD_ORDER.yaml');
     queueRaw = readRepoFile(root, 'FOLDERA_EXECUTION_QUEUE.yaml');
-    contract = readJson<FolderaContract>(root, '.foldera-contract.json');
   } catch (error) {
     failures.push(error instanceof Error ? error.message : String(error));
   }
 
   if (failures.length > 0) return failures;
-  return checkSourceTruth(root, handoff, buildOrder, contract as FolderaContract, queueRaw);
+  return checkSourceTruth(root, handoff, buildOrder, queueRaw);
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
@@ -348,5 +223,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Queue authority is active, Tasks 001-005 are completed, and Task 006 remains queued.');
+  console.log('Source truth check passed. The Master Bible closeout is active, the queue remains inactive, and the next money-loop issue is not yet started.');
 }
