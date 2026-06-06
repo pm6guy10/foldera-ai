@@ -20,6 +20,29 @@ Prove a narrow, honest Foldera loop where:
 - the user responds with one click
 - durable state and receipts update
 
+## Locked Revenue Ladder
+
+This file is executable planning material for the revenue ladder, not a second authority tower.
+
+The repo should move through these rungs in order:
+
+1. `#194` verdict loop proof
+2. durable response/state/receipt loop
+3. first user journey shell
+4. trust/privacy/no-send rail
+5. bounded self-serve paid path
+6. money-ready MVP proof
+7. first non-owner validation
+
+Each rung must be written so a future issue can answer:
+
+- exact user outcome
+- allowed files/surfaces
+- forbidden work
+- proof commands
+- stop condition
+- next authorized move
+
 ## MVP Loop
 
 1. user enters or connects one honest source/evidence lane

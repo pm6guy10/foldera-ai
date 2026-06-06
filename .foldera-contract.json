@@ -9,9 +9,12 @@
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent is forbidden from asking 'What is next?' or 'Should we audit this?'. The Agent must read ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, and the source-truth map and follow the active issue exactly. The Agent may not deviate from the source-truth closeout without a signed-off source-truth closeout commit from Brandon.",
   "allowed_file_patterns": [
+    ".github/pull_request_template.md",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
+    "FOLDERA_EXECUTION_QUEUE.yaml",
     "FOLDERA_MASTER_BIBLE.md",
+    "FOLDERA_PRODUCT_SPEC_NEXT.md",
     "FOLDERA_GITHUB_ISSUE_PR_PLAN.md",
     ".foldera-contract.json",
     "docs/SOURCE_OF_TRUTH_MAP.md",

@@ -2,6 +2,14 @@
 
 ## Current truth
 
+## Receipt summary
+
+- Active issue:
+- Next authorized move:
+- Forbidden work touched: YES/NO
+- Proof run:
+- Source-truth closeout status:
+- Stop condition:
 
 ## Issue implemented
 

@@ -73,6 +73,7 @@ describe('continuity gate writeback enforcement', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
+    const prTemplate = readFixtureFile(fixtureRoot, '.github/pull_request_template.md');
 
     const failures = runContinuityGate(fixtureRoot);
 
@@ -81,6 +82,15 @@ describe('continuity gate writeback enforcement', () => {
     expect(handoff).toContain('The active seam is the first money-loop issue:');
     expect(buildOrder).toContain('active_issue: 194');
     expect(buildOrder).toContain('priority_class: FIRST_MONEY_LOOP');
+    expect(buildOrder).toContain('FOLDERA_PRODUCT_SPEC_NEXT.md');
+    expect(buildOrder).toContain('FOLDERA_GITHUB_ISSUE_PR_PLAN.md');
+    expect(prTemplate).toContain('## Receipt summary');
+    expect(prTemplate).toContain('Active issue:');
+    expect(prTemplate).toContain('Next authorized move:');
+    expect(prTemplate).toContain('Forbidden work touched: YES/NO');
+    expect(prTemplate).toContain('Proof run:');
+    expect(prTemplate).toContain('Source-truth closeout status:');
+    expect(prTemplate).toContain('Stop condition:');
     expect(failures).toEqual([]);
   });
 
@@ -115,6 +125,22 @@ describe('continuity gate writeback enforcement', () => {
 
     expect(failures).toContain(
       'ACTIVE_HANDOFF.md is missing required GitHub writeback rule: GitHub writeback before stop is mandatory.',
+    );
+  });
+
+  it('fails when the pull request template stops requiring the receipt summary fields', () => {
+    const fixtureRoot = createFixtureRoot();
+    const original = readFixtureFile(fixtureRoot, '.github/pull_request_template.md');
+    writeFixtureFile(
+      fixtureRoot,
+      '.github/pull_request_template.md',
+      original.replace('Active issue:', 'Issue routed:'),
+    );
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(failures).toContain(
+      '.github/pull_request_template.md must declare the active issue in the receipt summary.',
     );
   });
 });

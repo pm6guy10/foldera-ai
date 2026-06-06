@@ -19,6 +19,29 @@ The plan starts from the Master Bible and turns it into ordered GitHub work.
 - Do not mark any draft task active.
 - Do not use PR #189 as authority; it is context only.
 
+## Locked Revenue Ladder
+
+This file is executable planning material for the revenue ladder, not a second authority tower.
+
+The ladder is:
+
+1. `#194` verdict loop proof
+2. durable response/state/receipt loop
+3. first user journey shell
+4. trust/privacy/no-send rail
+5. bounded self-serve paid path
+6. money-ready MVP proof
+7. first non-owner validation
+
+Every rung should specify:
+
+- exact user outcome
+- allowed files/surfaces
+- forbidden work
+- proof commands
+- stop condition
+- next authorized move
+
 ## Issue Order
 
 ### 1. Issue title
@@ -400,6 +423,103 @@ Receipt requirements:
 Stop condition:
 
 - paid-pilot threshold is proven or blocked with exact reason.
+
+### 9. Future issue title
+
+`Prove money-ready MVP end to end`
+
+Branch:
+
+`codex/money-ready-mvp-proof`
+
+Issue body:
+
+- prove the end-to-end paid-ready path from source-backed verdict to durable receipt
+- ensure the offer can be understood and reached without unsupported claims
+- keep the paid path bounded and testable
+
+Allowed files:
+
+- user-facing proof surfaces if explicitly authorized
+- focused tests
+- source-truth docs if required
+
+Forbidden files/surfaces:
+
+- live Slack
+- Supabase migrations or data mutation
+- Vercel settings
+- Stripe/auth/dashboard
+- package/dependency changes
+- queue activation
+- Dependabot
+- PR #189
+
+Proof commands:
+
+- end-to-end proof command(s) required by the issue
+- `npm run health`
+- `npx tsx scripts/source-truth-check.ts`
+- `npm run gate:continuity`
+- `git diff --check`
+
+Receipt requirements:
+
+- money-ready verdict
+- blocker if not ready
+- next human decision
+
+Stop condition:
+
+- the paid-ready path is proven or blocked with an exact reason.
+
+### 10. Future issue title
+
+`Prove first non-owner validation`
+
+Branch:
+
+`codex/non-owner-validation-proof`
+
+Issue body:
+
+- capture the first non-owner validation signal for the paid-ready path
+- keep the feedback minimal and honest
+- do not seed fake customer evidence
+
+Allowed files:
+
+- validation capture surfaces if explicitly authorized
+- focused tests
+- source-truth docs if required
+
+Forbidden files/surfaces:
+
+- live Slack
+- Supabase migrations or data mutation
+- Vercel settings
+- Stripe/auth/dashboard
+- package/dependency changes
+- queue activation
+- Dependabot
+- PR #189
+
+Proof commands:
+
+- validation capture proof commands required by the issue
+- `npm run health`
+- `npx tsx scripts/source-truth-check.ts`
+- `npm run gate:continuity`
+- `git diff --check`
+
+Receipt requirements:
+
+- non-owner validation captured or exact blocker
+- next human decision
+
+Stop condition:
+
+- the first non-owner validation path is proven or blocked with exact reason.
 
 ## When Codex Must Stop and Ask Brandon
 
