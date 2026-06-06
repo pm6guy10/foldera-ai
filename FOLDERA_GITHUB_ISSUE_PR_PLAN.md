@@ -136,22 +136,28 @@ Branch:
 
 Issue body:
 
-- prove evidence -> signals -> context -> verdict
+- prove evidence -> signals -> context -> one verdict
 - one verdict only
 - safe silence when justified
 - no multiple competing moves
+- durable receipt required
 
 Allowed files:
 
-- runtime brain modules if the issue explicitly scopes them
+- runtime brain modules only if directly required for the evidence -> signals -> context -> verdict loop
 - fixtures
 - focused tests
+- source-truth/gate files if required
 
 Forbidden files/surfaces:
 
 - live Slack
-- Supabase migrations
-- billing/auth/dashboard/product breadth
+- Supabase migrations or data mutation
+- Vercel settings
+- Stripe/auth/dashboard
+- package/dependency changes
+- queue activation
+- Dependabot
 - PR #189
 
 Proof commands:
@@ -167,6 +173,7 @@ Receipt requirements:
 - before/after evidence
 - selected verdict
 - rejected unsafe candidates
+- durable receipt
 - proof results
 
 Stop condition:

@@ -69,7 +69,7 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
-  it('passes when the handoff points at the cleanup seam', () => {
+  it('passes when the handoff points at the implementation seam', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
@@ -80,7 +80,7 @@ describe('continuity gate writeback enforcement', () => {
     expect(handoff).toContain('Active implementation seam is issue #194.');
     expect(handoff).toContain('The active seam is the first money-loop issue:');
     expect(buildOrder).toContain('active_issue: 194');
-    expect(buildOrder).toContain('priority_class: MASTER_BIBLE_CLOSEOUT');
+    expect(buildOrder).toContain('priority_class: FIRST_MONEY_LOOP');
     expect(failures).toEqual([]);
   });
 
