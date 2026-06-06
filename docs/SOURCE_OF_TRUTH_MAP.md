@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-05 PT
+Last updated: 2026-06-06 PT
 
 Issue #80 owns this authority ledger. Issue #113 extends enforcement for source-truth closeout and agent governance drift.
 
@@ -20,7 +20,8 @@ Current product-direction split:
 - `FOLDERA_EXECUTION_QUEUE.yaml` is inactive/reference-only until a future explicit activation issue reopens it.
 - `FOLDERA_PRODUCT_SPEC_NEXT.md`, `FOLDERA_GITHUB_ISSUE_PR_PLAN.md`, `FOLDERA_BUILD_SPEC.md`, `FOLDERA_CAPABILITY_MAP.md`, `FOLDERA_QUEUE_GENERATION_RULES.md`, and `FOLDERA_EXECUTION_QUEUE_NEXT_DRAFT.yaml` are the bundled planning-layer artifacts for PR #191.
 - GitHub issue #181 / PR #191 is the single promotion path for that master-bible execution-layer bundle.
-- GitHub issue #192 is the source-truth closeout issue that aligns the handoff and build-order files around the merged Master Bible.
+- GitHub issue #192 is the completed source-truth closeout issue that aligned the handoff and build-order files around the merged Master Bible.
+- GitHub issue #194 is the current control issue for the first money-loop verdict loop.
 - GitHub issue #181 / PR #190 is superseded by PR #191 and must not be treated as a competing authority.
 - GitHub issue #179 `Rung 3: prove deterministic work-packet fixture loop` is completed by PR #180.
 - GitHub issue #175 `Rung 2: audit current schema and choose first evidence lane` is completed by PR #177.
@@ -79,7 +80,8 @@ When sources disagree, use this order:
 | `FOLDERA_EXECUTION_QUEUE.yaml` | `REFERENCE_ONLY` | Inactive deterministic queue artifact retained for archaeology and future activation when explicitly re-authorized. | Agents and reviewers tracing prior Holy Crap MVP queue state. | Current seam selection, active task routing, or queue activation by implication. | Queue state is reviewed only when a future issue explicitly reactivates it. |
 | `FOLDERA_LAUNCH_ROADMAP.md` | `REFERENCE_ONLY` | Preserves historical launch order and continuity policy from earlier rungs. | Operators and agents doing archaeology or checking stale launch assumptions. | Current active seam, product doctrine, roadmap phase order, or next-seam selection unless a future issue reconciles it. | Authority classification here plus active handoff/build-order; `npm run gate:continuity` still checks roadmap presence and boot-sequence alignment. |
 | GitHub issue named by `ACTIVE_HANDOFF.md` | `CURRENT_CONTROL` | Defines the one assigned implementation seam. | The current assignee, reviewer, and PR author. | Unassigned side quests, backlog grooming, or unrelated fixes. | Manual boot-sequence read plus PR scope review. |
-| GitHub issue #192 | `CURRENT_CONTROL` | The source-truth closeout issue that makes the Master Bible and the active repo-control docs agree. | The current assignee, reviewer, and PR author for this closeout seam. | Queue activation, product/runtime implementation, or unrelated cleanup. | Manual boot-sequence read plus PR scope review. |
+| GitHub issue #192 | `REFERENCE_ONLY` | Completed source-truth closeout seam retained for receipt history and future routing context. | Agents and reviewers tracing PR #193 or validating why the Master Bible closeout finished. | Active seam selection, queue activation, or product/runtime implementation. | FOLDERA_BUILD_ORDER.yaml marks issue #192 closed/completed by PR #193. |
+| GitHub issue #194 | `CURRENT_CONTROL` | The first money-loop verdict-loop issue that follows the Master Bible closeout. | The current assignee, reviewer, and PR author for the next active seam. | Queue activation, product/runtime implementation outside the verdict loop, or unrelated cleanup. | Manual boot-sequence read plus PR scope review. |
 | GitHub issue #48 | `CURRENT_CONTROL` | Holds the Workday Presence Layer product contract. | Product reviewers, agents, and humans checking launch doctrine. | Historical Brandon-command-center behavior or dashboard/task-list drift. | Boot sequence plus explicit issue reference across control docs. |
 | `FOLDERA_OPERATING_SYSTEM.md` | `CURRENT_CONTROL` | Defines Foldera's canonical product worldview. | Humans and agents checking what Foldera is and is not. | Repo execution order by itself, or stale issue selection. | `npm run gate:continuity` verifies boot-sequence alignment; issue #48 remains the doctrine anchor. |
 | `FOLDERA_NORTH_STAR_LOCK.md` | `CURRENT_CONTROL` | Reconciles product promise, buyer, pricing, public site, day-one app, runtime brain, Right Now, live rail boundary, issue order, gates, PR traceability, pilot readiness, and Brandon cognitive-load constraints. | Product/business/UX/runtime reviewers, PR authors, and agents when direction is implicated. | A second active issue, product implementation by itself, or permission to widen Slack/live rail, landing, Supabase, Stripe, package, connector, Teams/email/calendar, or dashboard work. | `npm run gate:command` verifies the file exists and required traceability/control language is present; `npm run gate:continuity` verifies the PR template requires North Star citation when direction is implicated. |

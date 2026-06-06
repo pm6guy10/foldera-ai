@@ -22,11 +22,11 @@ accepted_terminal_states:
   - PR OPENED
   - MERGE READY
   - STOPPED
-active_issue: 192
+active_issue: 194
 priority_class: MASTER_BIBLE_CLOSEOUT
 work_type: SOURCE_TRUTH_CLOSEOUT
-why_this_first: PR #191 completed issue #181, the Master Bible is now the canonical repo plan, and PR #192 exists only to align the source-truth and gate/test layer around that merged authority before the next money-loop issue begins.
-next_seam: first money-loop issue - reason Master Bible closeout must land before the next execution issue is authorized
+why_this_first: PR #193 completed the Master Bible closeout, the Master Bible is now the canonical repo plan, and issue #194 is the first money-loop issue that should follow the closeout.
+next_seam: first money-loop issue - reason Master Bible closeout is complete and issue #194 is now the active execution issue
 required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
   - 101
@@ -58,6 +58,10 @@ completed:
     pr: 191
     merge_sha: 90146a976d9a3c0496876bd539ae3e8cee26060c
     result: Master Bible execution-layer bundle landed on main and the planning-layer authority is now established.
+  - issue: 192
+    pr: 193
+    merge_sha: 61636bc62e9b3c31af6f7d8baa9ab84eebe3ec5e
+    result: Master Bible source-truth closeout landed on main and the first money-loop issue is now the next active seam.
   - issue: 175
     pr: 177
     merge_sha: 17e0699238cd11e80b4891f236be860abe32eb72
@@ -141,6 +145,9 @@ closed_issues_do_not_reopen:
   - issue: 181
     status: closed_completed
     reason: Master Bible execution-layer bundle completed by PR #191 and is now the canonical reference authority.
+  - issue: 192
+    status: closed_completed
+    reason: Master Bible source-truth closeout completed by PR #193 and the first money-loop issue is now active.
   - issue: 183
     status: closed_completed
     reason: Queue-control closeout completed by PR #183 and is now superseded by the Master Bible source-truth closeout.
@@ -216,7 +223,7 @@ current_pr_closeout:
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - historical roadmap remains reference; active handoff/build-order plus North Star Lock, Product Operating System, Master Bible, and source-truth closeout control current direction
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - issue #192 is the active source-truth closeout seam; the first money-loop issue remains the next future execution move
+  next_seam: named - issue #194 is the active first money-loop seam; the source-truth closeout is complete
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
