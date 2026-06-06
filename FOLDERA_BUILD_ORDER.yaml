@@ -23,10 +23,10 @@ accepted_terminal_states:
   - MERGE READY
   - STOPPED
 active_issue: 194
-priority_class: MASTER_BIBLE_CLOSEOUT
-work_type: SOURCE_TRUTH_CLOSEOUT
-why_this_first: PR #197 completed the root source-truth cleanup, issue #194 is the first money-loop issue that should follow the closeout, and the Master Bible remains the canonical repo plan.
-next_seam: first money-loop issue - reason Master Bible closeout is complete and issue #194 is now the active execution issue
+priority_class: FIRST_MONEY_LOOP
+work_type: VERDICT_LOOP_IMPLEMENTATION
+why_this_first: PR #198 restored issue #194 as the active first money-loop implementation seam, PR #197 completed the root source-truth cleanup, and the Master Bible remains the canonical repo plan.
+next_seam: issue #194 implementation proof - reason prove evidence -> signals -> context -> one verdict, safe silence when justified, and durable receipt required
 required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
   - 101
@@ -66,6 +66,10 @@ completed:
     pr: 197
     merge_sha: 2612ec05c6ba4efead00fde4825eee11d3a6d0fe
     result: Root source-truth cleanup landed on main and the first money-loop issue is now the next active seam.
+  - issue: 198
+    pr: 198
+    merge_sha: e2fb1eff5f21e8233416e272abca978518d4c6b3
+    result: Restored issue #194 as the active first money-loop implementation seam after the closeout sweep.
   - issue: 175
     pr: 177
     merge_sha: 17e0699238cd11e80b4891f236be860abe32eb72
@@ -159,14 +163,12 @@ closed_issues_do_not_reopen:
     status: closed_completed
     reason: Queue-control closeout completed by PR #183 and is now superseded by the Master Bible source-truth closeout.
 forbidden_current_work:
-  - product implementation
-  - runtime provider work
   - live Slack rail work
   - PR #142 changes
   - schema implementation
   - Supabase migrations
   - data mutation
-  - Vercel changes
+  - Vercel settings
   - Stripe changes
   - auth changes
   - landing files
@@ -177,10 +179,12 @@ forbidden_current_work:
   - fake enterprise claims
   - fake compliance claims
   - broad cleanup
+  - queue activation
+  - Dependabot
 allowed_current_work:
   - update ACTIVE_HANDOFF.md
   - update FOLDERA_BUILD_ORDER.yaml
-  - update FOLDERA_EXECUTION_QUEUE.yaml
+  - update FOLDERA_GITHUB_ISSUE_PR_PLAN.md
   - update .foldera-contract.json
   - update docs/SOURCE_OF_TRUTH_MAP.md
   - update scripts/source-truth-check.ts
@@ -189,9 +193,9 @@ allowed_current_work:
   - update focused continuity gate tests
   - update tests/fixtures/work-packets/source-signals.ts
   - update lib/work-packets/**
-  - update lib/slack-test-mode/work-packet-review.ts
-  - update lib/slack-test-mode/__tests__/work-packet-review.test.ts
-  - update lib/workday-presence/__tests__/work-packet-state-update.test.ts
+  - update lib/workday-presence/**
+  - update lib/work-packets/__tests__/**
+  - update lib/workday-presence/__tests__/**
 required_local_proof:
   - npm run health
   - npx tsx scripts/source-truth-check.ts
@@ -230,7 +234,7 @@ current_pr_closeout:
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - reason historical roadmap is now shimmed and no longer controls the active seam
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - issue #194 is the next authorized move after the cleanup sweep closes
+  next_seam: named - issue #194 implementation proof is the next authorized move after the control-text PR lands
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason

@@ -138,9 +138,9 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
-  if (priority !== 'MASTER_BIBLE_CLOSEOUT') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be MASTER_BIBLE_CLOSEOUT; found ${priority ?? 'none'}.`);
-  if (workType !== 'SOURCE_TRUTH_CLOSEOUT') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_CLOSEOUT; found ${workType ?? 'none'}.`);
-  if (nextSeam !== 'first money-loop issue - reason Master Bible closeout is complete and issue #194 is now the active execution issue') {
+  if (priority !== 'FIRST_MONEY_LOOP') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be FIRST_MONEY_LOOP; found ${priority ?? 'none'}.`);
+  if (workType !== 'VERDICT_LOOP_IMPLEMENTATION') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be VERDICT_LOOP_IMPLEMENTATION; found ${workType ?? 'none'}.`);
+  if (nextSeam !== 'issue #194 implementation proof - reason prove evidence -> signals -> context -> one verdict, safe silence when justified, and durable receipt required') {
     failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must preserve the first money-loop activation boundary; found ${nextSeam ?? 'none'}.`);
   }
 
@@ -196,7 +196,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'GitHub issue #181 / PR #191 is the single promotion path for that master-bible execution-layer bundle.',
     'GitHub issue #192 is the completed source-truth closeout issue that aligned the handoff and build-order files around the merged Master Bible.',
     'GitHub issue #196 is the completed source-truth cleanup issue retained for receipt history.',
-    'GitHub issue #194 is the current control issue for the first money-loop verdict loop.',
+    'GitHub issue #198 / PR #198 restored issue #194 as active control after the cleanup sweep.',
+    'GitHub issue #194 is the current control issue for the first money-loop implementation seam.',
   ]) {
     if (!sourceMap.includes(marker)) failures.push(`docs/SOURCE_OF_TRUTH_MAP.md is missing required marker: ${marker}`);
   }

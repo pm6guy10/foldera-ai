@@ -3,7 +3,7 @@
   "active": true,
   "active_issue": 194,
   "backlog_id": "FOLDERA_MASTER_BIBLE_FIRST_MONEY_LOOP",
-  "base_commit": "2612ec05c6ba4efead00fde4825eee11d3a6d0fe",
+  "base_commit": "e2fb1eff5f21e8233416e272abca978518d4c6b3",
   "money_loop_rung": "first_money_loop_verdict_loop",
   "user_system_path": "The Master Bible is reference authority and issue #194 is the active first money-loop seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must point at the same issue and the queue file must remain inactive/reference-only.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
@@ -18,6 +18,11 @@
     "scripts/source-truth-check.ts",
     "scripts/continuity-gate.ts",
     "tests/config/__tests__/**",
+    "lib/workday-presence/**",
+    "lib/workday-presence/__tests__/**",
+    "lib/work-packets/**",
+    "lib/work-packets/__tests__/**",
+    "tests/fixtures/work-packets/**",
     "FOLDERA_OPERATING_SYSTEM.md",
     "FOLDERA_LAUNCH_ROADMAP.md",
     "FOLDERA_OPERATING_DOCTRINE.md",
@@ -25,9 +30,7 @@
     "FOLDERA_PRODUCTION_BACKLOG.md",
     "FOLDERA_MASTER_AUDIT.md",
     "FOLDERA_SHIP_SPEC.md",
-    "WHATS_NEXT.md",
-    "FOLDERA_GITHUB_ISSUE_PR_PLAN.md",
-    "FOLDERA_MASTER_BIBLE.md"
+    "WHATS_NEXT.md"
   ],
   "forbidden_file_patterns": [
     "app/**",
@@ -37,8 +40,6 @@
     "next.config.mjs",
     "app/api/slack/**",
     "lib/slack/**",
-    "lib/workday-presence/source-backed-state.ts",
-    "lib/workday-presence/__tests__/source-backed-state.test.ts",
     "supabase/**",
     "app/dashboard/**",
     "components/dashboard/**",
@@ -67,10 +68,11 @@
     "customer data mutation",
     "fake enterprise claims",
     "fake compliance claims",
-    "broad cleanup"
+    "broad cleanup",
+    "queue activation"
   ],
-  "allowed_files_raw": "Current seam is source-truth closeout only: keep the Master Bible reference-only, point the repo at issue #194, and align source-truth, gate/test files, and root guidance shims without starting product implementation.",
-  "forbidden_files_raw": "No product/runtime/provider/schema/Supabase/Vercel/live Slack/PR #142/Stripe/auth/landing/dashboard work, no package/dependency changes, no data mutation, no migrations, no live connector fetch, no paid/model call, no fake claims, and no broad cleanup outside the closeout sweep.",
+  "allowed_files_raw": "Current seam is the first money-loop implementation seam: keep the Master Bible reference-only, point the repo at issue #194, and align source-truth, gate/test files, runtime brain modules, and fixtures without widening to product breadth.",
+  "forbidden_files_raw": "No live Slack, no Supabase migrations or data mutation, no Vercel settings, no Stripe/auth/dashboard work, no package/dependency changes, no queue activation, no Dependabot, no live connector fetch, no paid/model call, no fake claims, and no broad cleanup outside the verdict loop.",
   "required_local_proof": [
     "npm run health",
     "npx tsx scripts/source-truth-check.ts",
@@ -81,7 +83,7 @@
     "git diff --check"
   ],
   "required_browser_proof": "Not applicable; deterministic TEST_MODE fixture proof only.",
-  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, and the shimmed root guidance files all agree that issue #194 is the active first money-loop seam, the Master Bible remains reference authority, and the queue file remains inactive/reference-only. No product/runtime implementation starts in this change.",
+  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, and the shimmed root guidance files all agree that issue #194 is the active first money-loop implementation seam, the Master Bible remains reference authority, and the queue file remains inactive/reference-only. No product/runtime implementation starts in this change.",
   "stop_condition": "Stop when the source-truth closeout and gate/test layer both accept issue #194 as active with no queue activation.",
   "is_user_facing": false,
   "browser_proof_command": "not applicable - deterministic TEST_MODE fixture proof only",
@@ -93,5 +95,5 @@
     "The first money-loop seam is the only active seam",
     "No product/runtime implementation starts in the source-truth closeout change"
   ],
-  "next_command": "Continue the first money-loop branch and keep issue #194 as the only active seam until the PR merges."
+  "next_command": "Continue the first money-loop branch and keep issue #194 as the only active implementation seam until the PR merges."
 }
