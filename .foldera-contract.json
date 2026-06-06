@@ -1,30 +1,27 @@
 {
-  "authority_status": "DETERMINISTIC_EXECUTION_QUEUE_ACTIVE",
+  "authority_status": "MASTER_BIBLE_FIRST_MONEY_LOOP_ACTIVE",
   "active": true,
-  "active_issue": null,
-  "backlog_id": "FOLDERA_EXECUTION_QUEUE",
-  "base_commit": "b1e932e63c2fd261a2fc0c57edf99b0e4f8d5b80",
-  "money_loop_rung": "holy_crap_mvp_loop",
-  "user_system_path": "Deterministic execution is controlled by FOLDERA_EXECUTION_QUEUE.yaml. Tasks 001-005 are completed, Task 006 remains queued, and no queue item is currently active in PR #183.",
-  "supreme_authority_file": "FOLDERA_EXECUTION_QUEUE.yaml",
-  "no_routing_contract": "The Agent is forbidden from asking 'What is next?' or 'Should we audit this?'. The Agent must read FOLDERA_EXECUTION_QUEUE.yaml and follow its ordered state exactly. If a queue PR intentionally stops with no ACTIVE task, the Agent must not promote the next QUEUED task without explicit source-truth closeout. The Agent may not deviate from the queue without a signed-off QUEUE_UPDATE commit from Brandon.",
+  "active_issue": 194,
+  "backlog_id": "FOLDERA_MASTER_BIBLE_FIRST_MONEY_LOOP",
+  "base_commit": "61636bc62e9b3c31af6f7d8baa9ab84eebe3ec5e",
+  "money_loop_rung": "first_money_loop_verdict_loop",
+  "user_system_path": "The Master Bible is reference authority and issue #194 is the active first money-loop seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must point at the same issue and the queue file must remain inactive/reference-only.",
+  "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
+  "no_routing_contract": "The Agent is forbidden from asking 'What is next?' or 'Should we audit this?'. The Agent must read ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, and the source-truth map and follow the active issue exactly. The Agent may not deviate from the source-truth activation without a signed-off source-truth closeout commit from Brandon.",
   "allowed_file_patterns": [
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "FOLDERA_EXECUTION_QUEUE.yaml",
+    "FOLDERA_MASTER_BIBLE.md",
+    "FOLDERA_GITHUB_ISSUE_PR_PLAN.md",
     ".foldera-contract.json",
     "docs/SOURCE_OF_TRUTH_MAP.md",
     "scripts/source-truth-check.ts",
     "scripts/continuity-gate.ts",
     "tests/config/__tests__/**",
-    "tests/fixtures/work-packets/source-signals.ts",
-    "lib/work-packets/**",
-    "lib/slack-test-mode/work-packet-review.ts",
-    "lib/slack-test-mode/__tests__/work-packet-review.test.ts",
-    "lib/workday-presence/__tests__/work-packet-state-update.test.ts"
+    "FOLDERA_GITHUB_ISSUE_PR_PLAN.md",
+    "FOLDERA_MASTER_BIBLE.md"
   ],
   "forbidden_file_patterns": [
-    "FOLDERA_MASTER_SYNTHESIS_DRAFT.md",
     "app/**",
     "components/**",
     "components/foldera/LandingPage.tsx",
@@ -64,7 +61,7 @@
     "fake compliance claims",
     "broad cleanup"
   ],
-  "allowed_files_raw": "Current seam is queue-control closeout only: keep Tasks 001-005 completed, keep Task 006 queued, and align source-truth plus gate/test files without starting Task 006.",
+  "allowed_files_raw": "Current seam is source-truth activation only: keep the Master Bible reference-only, point the repo at issue #194, and align source-truth plus gate/test files without starting product implementation.",
   "forbidden_files_raw": "No product/runtime/provider/schema/Supabase/Vercel/live Slack/PR #142/Stripe/auth/landing/dashboard work, no package/dependency changes, no data mutation, no migrations, no live connector fetch, no paid/model call, no fake claims, and no broad cleanup.",
   "required_local_proof": [
     "npm run health",
@@ -76,19 +73,17 @@
     "git diff --check"
   ],
   "required_browser_proof": "Not applicable; deterministic TEST_MODE fixture proof only.",
-  "acceptance_condition": "FOLDERA_EXECUTION_QUEUE.yaml remains the routing authority, Tasks 001-005 are COMPLETED, Task 006 remains QUEUED, active task count is 0, and the source-truth and gate/test layer accept that no Task 006 work has started. No product/runtime implementation starts in this change.",
-  "stop_condition": "Stop when the queue-controlled source truth and gate/test layer both accept Tasks 001-005 as completed and Task 006 as queued with no active task.",
+  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, and docs/SOURCE_OF_TRUTH_MAP.md all agree that issue #194 is the active first money-loop seam, the Master Bible remains reference authority, and the queue file remains inactive/reference-only. No product/runtime implementation starts in this change.",
+  "stop_condition": "Stop when the source-truth activation and gate/test layer both accept issue #194 as active with no queue activation.",
   "is_user_facing": false,
   "browser_proof_command": "not applicable - deterministic TEST_MODE fixture proof only",
   "anti_regression_checks": [
-    "FOLDERA_EXECUTION_QUEUE.yaml exists",
-    "Tasks 001 through 005 are COMPLETED",
-    "Task 006 is QUEUED",
-    "No queue item is ACTIVE",
+    "FOLDERA_MASTER_BIBLE.md is reference authority",
+    "issue #194 is the active first money-loop seam",
+    "FOLDERA_EXECUTION_QUEUE.yaml remains inactive/reference-only",
     ".foldera-contract.json contains no_routing_contract",
-    "The queue contains no audit or hygiene tasks",
-    "The first five queue items are Mock Evidence, State Inference, Card Generation, State Mutation, and Receipt Generation",
-    "No product/runtime implementation starts in the queue-control closeout change"
+    "The first money-loop seam is the only active seam",
+    "No product/runtime implementation starts in the source-truth activation change"
   ],
-  "next_command": "Wait for PR #183 merge, then start Task 006 in a separate run. Do not ask what is next and do not start Task 006 in this PR."
+  "next_command": "Continue the source-truth activation branch and keep issue #194 as the only active seam until the PR merges."
 }

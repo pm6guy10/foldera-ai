@@ -300,8 +300,11 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('| `FOLDERA_EXECUTION_QUEUE.yaml` | `REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_EXECUTION_QUEUE.yaml as reference-only when the queue is inactive.');
   }
-  if (!sourceTruthMap.includes('| GitHub issue #192 | `CURRENT_CONTROL` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #192 as CURRENT_CONTROL for the source-truth closeout seam.');
+  if (!sourceTruthMap.includes('| GitHub issue #192 | `REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #192 as reference-only after the source-truth closeout completes.');
+  }
+  if (!sourceTruthMap.includes('| GitHub issue #194 | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #194 as CURRENT_CONTROL for the first money-loop seam.');
   }
   if (!sourceTruthMap.includes('| `docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md` | `PROOF_GATE` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FIRST_10_ICP_EVIDENCE_TRACKER.md as proof doctrine/reference.');

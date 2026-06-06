@@ -1,7 +1,7 @@
 # Foldera Master Bible
 
 Authority status: `REFERENCE_AUTHORITY_AFTER_MERGE`
-Controlling issue: #181
+Historical promotion issue: #181 / PR #191
 
 ## Purpose
 

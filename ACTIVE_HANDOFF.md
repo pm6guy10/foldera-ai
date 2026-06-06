@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-06-06 PT
-Current `origin/main` SHA after PR #191 merge: `90146a976d9a3c0496876bd539ae3e8cee26060c`.
+Current `origin/main` SHA after PR #193 merge: `61636bc62e9b3c31af6f7d8baa9ab84eebe3ec5e`.
 
 ## Canonical Boot Sequence
 1. Read `ACTIVE_HANDOFF.md`.
@@ -14,8 +14,9 @@ Current `origin/main` SHA after PR #191 merge: `90146a976d9a3c0496876bd539ae3e8c
 
 ## Active command gate
 Issue #181 is completed by merged PR #191.
-Active implementation seam is issue #192.
-The active seam is the source-truth closeout for the Master Bible promotion.
+Issue #192 is completed by merged PR #193.
+Active implementation seam is issue #194.
+The active seam is the first money-loop issue: `Prove sources become signals, signals become context, and context becomes one next move`.
 `FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.
 `FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.
 PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.
@@ -23,20 +24,20 @@ Issue #175 is complete via PR #177: the read-only audit selected the determinist
 Issue #173 is complete/superseded by PR #174.
 Issue #170 is complete/superseded by PR #172.
 Issue #165 Open Threads remains capture-only and cannot authorize implementation.
-Issue #140 / PR #142 remains rail-only and parked outside this source-truth closeout seam.
+Issue #140 / PR #142 remains rail-only and parked outside this first money-loop seam.
 Issue #136 remains open as the standing Codex Run Ledger only.
 GitHub writeback is mandatory.
 One active seam only.
 
 ## Current slice:
-- PR #191 landed the Master Bible bundle and issue #181 is now closed by merge.
-- Issue #192 is the active source-truth closeout seam.
+- PR #193 landed the Master Bible closeout and issue #192 is now closed by merge.
+- Issue #194 is the active first money-loop seam.
 - `FOLDERA_MASTER_BIBLE.md` is the human-readable company plan; supporting docs remain subordinate.
 - `FOLDERA_EXECUTION_QUEUE.yaml` stays inactive/reference-only until a future explicit activation issue reopens it.
-- The current lane is docs and source-truth only: no product/runtime/provider/schema/Supabase/Vercel/live Slack/Stripe/auth/landing/dashboard work is authorized in this closeout seam.
+- The current lane is docs and source-truth only: no product/runtime/provider/schema/Supabase/Vercel/live Slack/Stripe/auth/landing/dashboard work is authorized in this activation seam.
 - `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` remains `REFERENCE_DRAFT`: source material only, not implementation authority.
 - Issue #140 / PR #142 is parked for this seam; do not touch live Slack/provider surfaces.
-- Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, and #183 are closed/completed/superseded. Do not reopen them here.
+- Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, #183, and #192 are closed/completed/superseded. Do not reopen them here.
 
 ## Product doctrine
 Foldera is a Workday Presence Layer / context conduit:
@@ -48,9 +49,9 @@ Issue #48 remains the product contract.
 
 ## Source-truth boundary
 Allowed files for this seam are the source-truth files and the gate/test files needed to prove the Master Bible closeout is coherent.
-Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #192 is active, and the queue file remains inactive/reference-only.
-Forbidden in this closeout seam: product/runtime/provider/schema/Supabase/Vercel/live Slack/PR #142/Stripe/auth/landing/dashboard work, package/dependency changes, data mutation, migrations, live connector fetch, paid/model calls, fake claims, queue activation, or queue drift outside the source-truth closeout.
-Stop condition: stop when the source-truth docs and gate/test layer agree that the Master Bible is the current repo authority, the queue remains inactive, and issue #192 is the single active seam.
+Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #194 is active, and the queue file remains inactive/reference-only.
+Forbidden in this activation seam: product/runtime/provider/schema/Supabase/Vercel/live Slack/PR #142/Stripe/auth/landing/dashboard work, package/dependency changes, data mutation, migrations, live connector fetch, paid/model calls, fake claims, queue activation, or queue drift outside the source-truth activation.
+Stop condition: stop when the source-truth docs and gate/test layer agree that the Master Bible is the current repo authority, the queue remains inactive, and issue #194 is the single active seam.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
@@ -64,4 +65,4 @@ Stop condition: stop when the source-truth docs and gate/test layer agree that t
 
 ## Next exact move
 Fix the source-truth closeout gate/test blocker only.
-Next authorized move after this PR merges: start the first money-loop issue in a separate run; do not start it in this PR.
+Next authorized move after this PR merges: implement issue #194 in a separate run; do not start it in this PR.

@@ -46,7 +46,7 @@ afterEach(() => {
 });
 
 describe('source truth command gate', () => {
-  it('passes when the Master Bible closeout is active and the queue remains inactive', () => {
+  it('passes when the first money-loop issue is active and the queue remains inactive', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
@@ -55,9 +55,10 @@ describe('source truth command gate', () => {
     const failures = runSourceTruthCheck(fixtureRoot);
 
     expect(handoff).toContain('Issue #181 is completed by merged PR #191.');
-    expect(handoff).toContain('Active implementation seam is issue #192.');
+    expect(handoff).toContain('Issue #192 is completed by merged PR #193.');
+    expect(handoff).toContain('Active implementation seam is issue #194.');
     expect(handoff).toContain('`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.');
-    expect(buildOrder).toContain('active_issue: 192');
+    expect(buildOrder).toContain('active_issue: 194');
     expect(buildOrder).toContain('priority_class: MASTER_BIBLE_CLOSEOUT');
     expect(buildOrder).toContain('work_type: SOURCE_TRUTH_CLOSEOUT');
     expect(queue).toContain('- id: "005"');
@@ -75,7 +76,7 @@ describe('source truth command gate', () => {
     const failures = runSourceTruthCheck(fixtureRoot);
 
     expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml task 006 must remain QUEUED.');
-    expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml must have zero ACTIVE tasks in PR #192; found 1.');
+    expect(failures).toContain('FOLDERA_EXECUTION_QUEUE.yaml must have zero ACTIVE tasks in PR #194; found 1.');
   });
 
   it('fails when ACTIVE_HANDOFF.md still claims queue control', () => {
@@ -85,16 +86,16 @@ describe('source truth command gate', () => {
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
       original
-        .replace('Active implementation seam is issue #192.', 'Active implementation seam is `EXECUTION_QUEUE`.')
+        .replace('Active implementation seam is issue #194.', 'Active implementation seam is `EXECUTION_QUEUE`.')
         .replace('`FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.', 'The active seam is now controlled entirely by `FOLDERA_EXECUTION_QUEUE.yaml`.')
         .replace('`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.', 'Task `006` remains queued.')
         .replace('PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.', 'No Task `006` work has started in this PR.')
-        .replace('Issue #140 / PR #142 remains rail-only and parked outside this source-truth closeout seam.', 'PR #183 is a source-truth and gate-alignment seam only.'),
+        .replace('Issue #140 / PR #142 remains rail-only and parked outside this first money-loop seam.', 'PR #183 is a source-truth and gate-alignment seam only.'),
     );
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Active implementation seam is issue #192.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Active implementation seam is issue #194.');
     expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: `FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.');
     expect(failures).toContain('ACTIVE_HANDOFF.md still contains stale queue-progress marker: Active implementation seam is `EXECUTION_QUEUE`.');
   });

@@ -132,7 +132,7 @@ Stop condition:
 
 Branch:
 
-`codex/issue-184-verdict-loop`
+`codex/issue-194-verdict-loop`
 
 Issue body:
 
