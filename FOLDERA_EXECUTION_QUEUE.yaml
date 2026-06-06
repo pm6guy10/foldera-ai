@@ -160,16 +160,16 @@ items:
     proof_gate: "npm run test -- run lib/workday-presence/__tests__/source-backed-state.test.ts --reporter=verbose"
   - id: "017"
     task: "Add privacy rail proof for source-backed state."
-    status: ACTIVE
+    status: COMPLETED
     allowed_files:
       - lib/workday-presence/source-backed-state.ts
       - lib/workday-presence/__tests__/source-backed-state.test.ts
       - scripts/privacy-rail-check.ts
     stop_condition: "a) no secret/token fields are persisted; b) no raw message body is required for proof; c) privacy rail command fails on forbidden fields."
-    proof_gate: "npm run gate:privacy-rail"
+      proof_gate: "npx tsx scripts/privacy-rail-check.ts"
   - id: "018"
     task: "Add trust copy to the journey shell without enterprise claims."
-    status: QUEUED
+    status: ACTIVE
     allowed_files:
       - app/foldera-loop/page.tsx
       - components/foldera-loop/**
