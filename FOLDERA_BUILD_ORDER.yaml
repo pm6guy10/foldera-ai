@@ -9,6 +9,9 @@ source_of_truth_order:
   - FOLDERA_BUILD_ORDER.yaml
   - active GitHub issue
   - issue #48
+  - GitHub issue #165
+  - GitHub issue #182
+  - GitHub issue #168
   - FOLDERA_MASTER_BIBLE.md
   - FOLDERA_NORTH_STAR_LOCK.md
   - FOLDERA_PRODUCT_OPERATING_SYSTEM.md
@@ -23,16 +26,15 @@ source_of_truth_order:
   - docs/SOURCE_OF_TRUTH_MAP.md
   - FOLDERA_LAUNCH_ROADMAP.md
 accepted_terminal_states:
-  - BLOCKED
-  - PROOF
-  - PR OPENED
-  - MERGE READY
-  - STOPPED
-active_issue: null
-priority_class: NEXT_AUTHORIZED_RUNG
-work_type: SOURCE_TRUTH_CLOSEOUT
-why_this_first: PR #201 completed issue #194 and the repo now advances to the durable response/state/receipt loop rung without a new active issue.
-next_seam: durable response/state/receipt loop - reason PR #201 completed issue #194 and the next authorized rung is now durable response/state/receipt loop
+  - MERGED_AND_CLOSED
+  - BLOCKED_WITH_EXACT_RECEIPT
+  - HUMAN_REVIEW_REQUIRED_WITH_REASON
+  - STOPPED_WITH_AUTHORIZED_REASON
+active_issue: 182
+priority_class: GLOBAL_RULE_ENFORCEMENT
+work_type: GOVERNANCE_ENFORCEMENT
+why_this_first: PR #202 completed the source-truth closeout and the repo now needs the GitHub Operating System enforcement seam to lock recurring Foldera rules into repo law before the future ChatGPT-to-GitHub switchboard seam.
+next_seam: issue #168 automatic Open Threads capture + lessons-learned recurrence enforcement - reason future ChatGPT-to-GitHub switchboard seam after governance enforcement
 required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
   - 101
@@ -244,7 +246,7 @@ current_pr_closeout:
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - reason historical roadmap remains shimmed and no longer controls the active seam
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - durable response/state/receipt loop is the next authorized move
+  next_seam: named - issue #168 future automatic ChatGPT-to-GitHub switchboard seam is the next authorized move
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason

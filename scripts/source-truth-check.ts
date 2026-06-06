@@ -7,17 +7,20 @@ type QueueItem = {
   status: string;
 };
 
-const CLOSEOUT_PR = 201;
 const COMPLETED_RUNG_2_ISSUE = 175;
 const COMPLETED_RUNG_3_ISSUE = 179;
 const MASTER_BIBLE_ISSUE = 181;
 const COMPLETED_VERDICT_LOOP_ISSUE = 194;
+const GLOBAL_RULE_ENFORCEMENT_ISSUE = 182;
+const FUTURE_SWITCHBOARD_ISSUE = 168;
+const OPEN_THREADS_ISSUE = 165;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
 const COMPLETED_FIRST_RUNG_ISSUE = 173;
-const NEXT_AUTHORIZED_RUNG = 'durable response/state/receipt loop';
+const NEXT_AUTHORIZED_RUNG = 'issue #168 automatic Open Threads capture + lessons-learned recurrence enforcement';
 const NEXT_TASK_ID = '006';
 const COMPLETED_TASK_IDS = ['001', '002', '003', '004', '005'];
+const REQUIRED_TERMINAL_STATES = ['MERGED_AND_CLOSED', 'BLOCKED_WITH_EXACT_RECEIPT', 'HUMAN_REVIEW_REQUIRED_WITH_REASON', 'STOPPED_WITH_AUTHORIZED_REASON'];
 
 const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE, MASTER_BIBLE_ISSUE, 183, COMPLETED_VERDICT_LOOP_ISSUE];
 
@@ -37,8 +40,22 @@ function extractYamlScalar(raw: string, key: string): string | null {
   return match ? match[1].trim().replace(/^['"]|['"]$/g, '') : null;
 }
 
+function extractYamlList(raw: string, key: string): string[] {
+  const lines = raw.split(/\r?\n/);
+  const startIndex = lines.findIndex((line) => line.trim() === `${key}:`);
+  if (startIndex === -1) return [];
+  const values: string[] = [];
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (!line.startsWith('  - ')) break;
+    values.push(line.slice(4).trim());
+  }
+  return values;
+}
+
 function extractActiveHandoffIssue(raw: string): number | null {
-  const match = raw.match(/^Active implementation seam is issue #(\d+).*$/m);
+  const match = raw.match(/^Issue #(\d+) is the active .* seam\.$/m)
+    ?? raw.match(/^Active implementation seam is issue #(\d+).*$/m);
   return match ? Number(match[1]) : null;
 }
 
@@ -65,7 +82,7 @@ function checkQueueState(failures: string[], queueRaw: string): void {
     if (byId.get(id) !== 'COMPLETED') failures.push(`FOLDERA_EXECUTION_QUEUE.yaml task ${id} must be COMPLETED.`);
   }
   if (byId.get(NEXT_TASK_ID) !== 'QUEUED') failures.push(`FOLDERA_EXECUTION_QUEUE.yaml task ${NEXT_TASK_ID} must remain QUEUED.`);
-  if (activeCount !== 0) failures.push(`FOLDERA_EXECUTION_QUEUE.yaml must have zero ACTIVE tasks in PR #${CLOSEOUT_PR}; found ${activeCount}.`);
+  if (activeCount !== 0) failures.push(`FOLDERA_EXECUTION_QUEUE.yaml must have zero ACTIVE tasks while the governance patch is active; found ${activeCount}.`);
 }
 
 function requireClosedIssueDoNotReopen(failures: string[], handoff: string, buildOrder: string): void {
@@ -141,14 +158,14 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
   const buildIssue = extractYamlNumber(buildOrder, 'active_issue');
   const handoffIssue = extractActiveHandoffIssue(handoff);
 
-  if (buildIssue !== null) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be null after PR #${CLOSEOUT_PR} closeout; found ${buildIssue ?? 'none'}.`);
+  if (buildIssue !== GLOBAL_RULE_ENFORCEMENT_ISSUE) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${GLOBAL_RULE_ENFORCEMENT_ISSUE}; found ${buildIssue ?? 'none'}.`);
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
-  if (priority !== 'NEXT_AUTHORIZED_RUNG') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be NEXT_AUTHORIZED_RUNG; found ${priority ?? 'none'}.`);
-  if (workType !== 'SOURCE_TRUTH_CLOSEOUT') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_CLOSEOUT; found ${workType ?? 'none'}.`);
-  if (nextSeam !== `${NEXT_AUTHORIZED_RUNG} - reason PR #${CLOSEOUT_PR} completed issue #${COMPLETED_VERDICT_LOOP_ISSUE} and the next authorized rung is now durable response/state/receipt loop`) {
-    failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must name the next authorized rung; found ${nextSeam ?? 'none'}.`);
+  if (priority !== 'GLOBAL_RULE_ENFORCEMENT') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be GLOBAL_RULE_ENFORCEMENT; found ${priority ?? 'none'}.`);
+  if (workType !== 'GOVERNANCE_ENFORCEMENT') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be GOVERNANCE_ENFORCEMENT; found ${workType ?? 'none'}.`);
+  if (nextSeam !== `${NEXT_AUTHORIZED_RUNG} - reason future ChatGPT-to-GitHub switchboard seam after governance enforcement`) {
+    failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must name the next authorized governance seam; found ${nextSeam ?? 'none'}.`);
   }
 
   for (const marker of [
@@ -156,8 +173,11 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'Issue #192 is completed by merged PR #193.',
     'Issue #196 is completed by merged PR #197.',
     'Issue #194 is completed by merged PR #201.',
-    'No active implementation seam remains after PR #201.',
-    'The next authorized move is durable response/state/receipt loop.',
+    'Issue #182 is the active global execution-rule enforcement seam.',
+    'The active seam is the GitHub Operating System rule-enforcement patch:',
+    `Issue #${OPEN_THREADS_ISSUE} Open Threads remains capture-only and cannot authorize implementation.`,
+    `Issue #${FUTURE_SWITCHBOARD_ISSUE} is the future automatic ChatGPT-to-GitHub switchboard seam.`,
+    'The next authorized move after this closeout is issue #168 in a separate run.',
     '`FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.',
     '`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.',
     'PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.',
@@ -168,7 +188,9 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     if (!handoff.includes(marker)) failures.push(`ACTIVE_HANDOFF.md is missing required marker: ${marker}`);
   }
   if (handoffIssue !== null) {
-    failures.push(`ACTIVE_HANDOFF.md must not name an active seam issue after PR #${CLOSEOUT_PR} closeout.`);
+    if (handoffIssue !== GLOBAL_RULE_ENFORCEMENT_ISSUE) {
+      failures.push(`ACTIVE_HANDOFF.md active seam issue must be #${GLOBAL_RULE_ENFORCEMENT_ISSUE}; found #${handoffIssue}.`);
+    }
   }
   for (const staleMarker of [
     'Active implementation seam is `EXECUTION_QUEUE`.',
@@ -179,7 +201,7 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'Issue #196 is the active source-truth cleanup seam.',
     'The active seam is the root source-truth archive/delete sweep: `Root source-truth archive/delete sweep`.',
     'Issue #196 is the active source-truth cleanup seam.',
-    'Issue #194 is the active first money-loop implementation seam.',
+    'No active implementation seam remains after PR #201.',
   ]) {
     if (handoff.includes(staleMarker)) failures.push(`ACTIVE_HANDOFF.md still contains stale queue-progress marker: ${staleMarker}`);
   }
@@ -194,6 +216,27 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
   ]) {
     if (!buildOrder.includes(marker)) failures.push(`FOLDERA_BUILD_ORDER.yaml is missing required queue-control marker: ${marker}`);
   }
+  const sourceOfTruthOrder = extractYamlList(buildOrder, 'source_of_truth_order');
+  for (const entry of [
+    'ACTIVE_HANDOFF.md',
+    'FOLDERA_BUILD_ORDER.yaml',
+    'active GitHub issue',
+    'issue #48',
+    'GitHub issue #165',
+    'GitHub issue #182',
+    'GitHub issue #168',
+    'FOLDERA_MASTER_BIBLE.md',
+    'FOLDERA_NORTH_STAR_LOCK.md',
+    'FOLDERA_PRODUCT_OPERATING_SYSTEM.md',
+    'docs/growth/FIRST_10_ICP_EVIDENCE_TRACKER.md',
+    'FOLDERA_LAUNCH_ROADMAP.md',
+  ]) {
+    if (!sourceOfTruthOrder.includes(entry)) failures.push(`FOLDERA_BUILD_ORDER.yaml is missing source_of_truth_order entry: ${entry}`);
+  }
+  const acceptedTerminalStates = extractYamlList(buildOrder, 'accepted_terminal_states');
+  for (const state of ['MERGED_AND_CLOSED', 'BLOCKED_WITH_EXACT_RECEIPT', 'HUMAN_REVIEW_REQUIRED_WITH_REASON', 'STOPPED_WITH_AUTHORIZED_REASON']) {
+    if (!acceptedTerminalStates.includes(state)) failures.push(`FOLDERA_BUILD_ORDER.yaml is missing accepted terminal state: ${state}`);
+  }
   requireClosedIssueDoNotReopen(failures, handoff, buildOrder);
   checkQueueState(failures, queueRaw);
 
@@ -202,6 +245,9 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     '| `FOLDERA_MASTER_BIBLE.md` | `KEEP_REFERENCE_ONLY` |',
     '| `FOLDERA_EXECUTION_QUEUE.yaml` | `KEEP_REFERENCE_ONLY` |',
     '| GitHub issue #196 | `REFERENCE_ONLY` |',
+    '| GitHub issue #182 | `CURRENT_CONTROL` |',
+    '| GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` | `CURRENT_CONTROL` |',
+    '| GitHub issue #168 | `REFERENCE_ONLY` |',
     '| GitHub issue #194 | `REFERENCE_ONLY` |',
     '| `FOLDERA_OPERATING_SYSTEM.md` | `SHIM_TO_CANONICAL` |',
     '| `FOLDERA_LAUNCH_ROADMAP.md` | `SHIM_TO_CANONICAL` |',
@@ -210,6 +256,9 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'GitHub issue #196 is the completed source-truth cleanup issue retained for receipt history.',
     'GitHub issue #198 / PR #198 restored issue #194 as active control after the cleanup sweep.',
     'GitHub issue #194 / PR #201 completed the first money-loop verdict-loop seam and returned the repo to a no-active-seam state.',
+    'GitHub issue #182 is the current control issue for the global execution-rule enforcement patch.',
+    'GitHub issue #168 is the future automatic ChatGPT-to-GitHub switchboard seam and remains reference-only until it is explicitly authorized.',
+    '| `.foldera-contract.json` | `CURRENT_CONTROL` |',
   ]) {
     if (!sourceMap.includes(marker)) failures.push(`docs/SOURCE_OF_TRUTH_MAP.md is missing required marker: ${marker}`);
   }
@@ -218,6 +267,7 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'authority: REFERENCE_ONLY',
     'routing_mode: REFERENCE_ONLY',
     'queue_update_law: Future queue activation requires an explicit activation issue; this file does not control current execution.',
+    'Historical queue artifact; issue #194 now controls the first money-loop implementation seam.',
   ];
   for (const marker of queueAuthorityMarkers) {
     if (!queueRaw.includes(marker)) failures.push(`FOLDERA_EXECUTION_QUEUE.yaml is missing required reference-only marker: ${marker}`);
@@ -232,6 +282,26 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'Do not start audits, hygiene passes, or source-truth reconciliation.',
   ]) {
     if (queueRaw.includes(staleMarker)) failures.push(`FOLDERA_EXECUTION_QUEUE.yaml still contains stale queue-authority marker: ${staleMarker}`);
+  }
+
+  const contract = JSON.parse(readRepoFile(root, '.foldera-contract.json')) as {
+    active?: boolean;
+    authority_status?: string;
+    backlog_id?: string;
+    terminal_state_authority?: { allowed?: unknown; merge_through_rule?: unknown };
+  };
+  if (contract.active !== true) failures.push('.foldera-contract.json must remain active while it governs the global execution-rule patch.');
+  if (contract.authority_status !== 'GLOBAL_RULE_ENFORCEMENT_ACTIVE') failures.push('.foldera-contract.json must expose GLOBAL_RULE_ENFORCEMENT_ACTIVE authority status.');
+  if (contract.backlog_id !== 'FOLDERA_GLOBAL_RULE_ENFORCEMENT') failures.push('.foldera-contract.json must point at FOLDERA_GLOBAL_RULE_ENFORCEMENT backlog_id.');
+  const terminalAuthority = contract.terminal_state_authority;
+  if (!terminalAuthority || !Array.isArray(terminalAuthority.allowed)) failures.push('.foldera-contract.json must expose terminal_state_authority.allowed.');
+  else {
+    for (const state of REQUIRED_TERMINAL_STATES) {
+      if (!terminalAuthority.allowed.includes(state)) failures.push(`.foldera-contract.json is missing terminal state authority for ${state}.`);
+    }
+  }
+  if (typeof terminalAuthority?.merge_through_rule !== 'string' || !terminalAuthority.merge_through_rule.includes('local proof') || !terminalAuthority.merge_through_rule.includes('GitHub checks green')) {
+    failures.push('.foldera-contract.json must expose a machine-readable merge-through rule.');
   }
 
   const productSpecNext = readRepoFile(root, 'FOLDERA_PRODUCT_SPEC_NEXT.md');

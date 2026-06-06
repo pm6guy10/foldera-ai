@@ -107,6 +107,9 @@ const requiredSourceOfTruthOrder = [
   'FOLDERA_BUILD_ORDER.yaml',
   'active GitHub issue',
   'issue #48',
+  'GitHub issue #165',
+  'GitHub issue #182',
+  'GitHub issue #168',
   'FOLDERA_MASTER_BIBLE.md',
   'FOLDERA_NORTH_STAR_LOCK.md',
   'FOLDERA_PRODUCT_OPERATING_SYSTEM.md',
@@ -114,7 +117,7 @@ const requiredSourceOfTruthOrder = [
   'FOLDERA_LAUNCH_ROADMAP.md',
 ];
 
-const requiredTerminalStates = ['BLOCKED', 'PROOF', 'PR OPENED', 'MERGE READY', 'STOPPED'];
+const requiredTerminalStates = ['MERGED_AND_CLOSED', 'BLOCKED_WITH_EXACT_RECEIPT', 'HUMAN_REVIEW_REQUIRED_WITH_REASON', 'STOPPED_WITH_AUTHORIZED_REASON'];
 const requiredCloseoutFiles = ['ACTIVE_HANDOFF.md', 'FOLDERA_BUILD_ORDER.yaml', 'FOLDERA_LAUNCH_ROADMAP.md', 'docs/SOURCE_OF_TRUTH_MAP.md'];
 const requiredCloseoutValues = ['updated', 'unchanged - reason', 'not applicable - reason'];
 const requiredReceiptSummaryMarkers: Array<{ marker: string; failure: string }> = [
@@ -123,8 +126,36 @@ const requiredReceiptSummaryMarkers: Array<{ marker: string; failure: string }> 
   { marker: '- Next authorized move:', failure: '.github/pull_request_template.md must declare the next authorized move in the receipt summary.' },
   { marker: '- Forbidden work touched: YES/NO', failure: '.github/pull_request_template.md must declare forbidden work touched in the receipt summary.' },
   { marker: '- Proof run:', failure: '.github/pull_request_template.md must declare the proof run in the receipt summary.' },
+  { marker: '- Checks passed: YES/NO', failure: '.github/pull_request_template.md must declare whether checks passed in the receipt summary.' },
+  { marker: '- Merge-through status:', failure: '.github/pull_request_template.md must declare merge-through status in the receipt summary.' },
+  {
+    marker: '- Terminal state: MERGED_AND_CLOSED / BLOCKED_WITH_EXACT_RECEIPT / HUMAN_REVIEW_REQUIRED_WITH_REASON / STOPPED_WITH_AUTHORIZED_REASON',
+    failure: '.github/pull_request_template.md must declare the allowed terminal state set in the receipt summary.',
+  },
+  { marker: '- Local hook status:', failure: '.github/pull_request_template.md must declare the local hook status in the receipt summary.' },
+  {
+    marker: '- If bypassed, exact unrelated-route explanation:',
+    failure: '.github/pull_request_template.md must require an exact unrelated-route explanation when a local hook is bypassed.',
+  },
   { marker: '- Source-truth closeout status:', failure: '.github/pull_request_template.md must declare the source-truth closeout status in the receipt summary.' },
   { marker: '- Stop condition:', failure: '.github/pull_request_template.md must declare the stop condition in the receipt summary.' },
+  {
+    marker: '- Merge/closeout completed or why not:',
+    failure: '.github/pull_request_template.md must declare whether merge/closeout completed or why not in the receipt summary.',
+  },
+];
+const requiredGlobalRuleMarkers: Array<{ marker: string; failure: string }> = [
+  { marker: '## Global rule enforcement', failure: '.github/pull_request_template.md must include a global rule enforcement section.' },
+  { marker: '- Source truth first:', failure: '.github/pull_request_template.md must require source truth first.' },
+  { marker: '- One active seam only:', failure: '.github/pull_request_template.md must require one active seam only.' },
+  { marker: '- No chat-only law:', failure: '.github/pull_request_template.md must require the no chat-only law.' },
+  { marker: '- First occurrence / second occurrence law:', failure: '.github/pull_request_template.md must require the first occurrence / second occurrence law.' },
+  { marker: '- Proof parity law:', failure: '.github/pull_request_template.md must require the proof parity law.' },
+  { marker: '- Merge-through completion law:', failure: '.github/pull_request_template.md must require the merge-through completion law.' },
+  { marker: '- No owner-as-router law:', failure: '.github/pull_request_template.md must require the no owner-as-router law.' },
+  { marker: '- Open thread routing law:', failure: '.github/pull_request_template.md must require the open thread routing law.' },
+  { marker: '- Forbidden surface law:', failure: '.github/pull_request_template.md must require the forbidden surface law.' },
+  { marker: '- Closeout law:', failure: '.github/pull_request_template.md must require the closeout law.' },
 ];
 
 function readRepoFile(root: string, file: string): string {
@@ -160,7 +191,8 @@ function detectQueueControlledHandoff(raw: string): boolean {
 }
 
 function extractActiveHandoffIssue(raw: string): number | null {
-  const match = raw.match(/^Active implementation seam is issue #(\d+).*$/m);
+  const match = raw.match(/^Issue #(\d+) is the active .* seam\.$/m)
+    ?? raw.match(/^Active implementation seam is issue #(\d+).*$/m);
   return match ? Number(match[1]) : null;
 }
 
@@ -213,8 +245,10 @@ export function runContinuityGate(root: string): string[] {
 
   const activeHandoff = readRepoFile(root, 'ACTIVE_HANDOFF.md');
   const queueControlled = detectQueueControlledHandoff(activeHandoff);
-  const activeSeamLines = activeHandoff.match(/^Active implementation seam is issue #\d+.*$|^No active implementation seam remains after PR #201\.$/gm) ?? [];
-  const hasNoActiveSeam = activeHandoff.includes('No active implementation seam remains after PR #201.');
+  const activeSeamLines =
+    activeHandoff.match(/^Issue #\d+ is the active .* seam\.$/gm)
+    ?? activeHandoff.match(/^Active implementation seam is issue #\d+.*$/gm)
+    ?? [];
   if (!activeHandoff.includes('FOLDERA_BUILD_ORDER.yaml')) failures.push('ACTIVE_HANDOFF.md must reference FOLDERA_BUILD_ORDER.yaml.');
   if (!activeHandoff.includes('Issue #48 remains the product contract.')) failures.push('ACTIVE_HANDOFF.md must reference issue #48 as the product contract.');
   for (const rule of requiredWritebackRules) {
@@ -234,12 +268,9 @@ export function runContinuityGate(root: string): string[] {
   const buildOrderIssue = extractYamlNumber(buildOrder, 'active_issue');
   const buildOrderIssueScalar = extractYamlScalar(buildOrder, 'active_issue');
   if (activeSeamLines.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam line; found ${activeSeamLines.length}.`);
-  if (!queueControlled && handoffIssue === null && !hasNoActiveSeam) failures.push('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
-  if (!queueControlled && handoffIssue !== null && buildOrderIssue === null) {
-    failures.push(`ACTIVE_HANDOFF.md must not name an active issue after PR #201 closeout; found issue #${handoffIssue}.`);
-  }
+  if (!queueControlled && handoffIssue === null) failures.push('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
   if (buildOrderIssue === null && buildOrderIssueScalar !== 'null') failures.push('FOLDERA_BUILD_ORDER.yaml active_issue could not be parsed.');
-  if (!queueControlled && buildOrderIssue !== null) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be null after PR #201 closeout; found #${buildOrderIssue}.`);
+  if (!queueControlled && buildOrderIssue === null) failures.push('FOLDERA_BUILD_ORDER.yaml active_issue must name the active governance seam.');
   if (!queueControlled && handoffIssue !== null && buildOrderIssue !== null && handoffIssue !== buildOrderIssue) {
     failures.push(`ACTIVE_HANDOFF.md active seam issue #${handoffIssue} must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
   }
@@ -273,9 +304,21 @@ export function runContinuityGate(root: string): string[] {
   }
 
   const contract = JSON.parse(readRepoFile(root, '.foldera-contract.json')) as { active?: boolean; authority_status?: string; backlog_id?: string; superseded_by_issue?: number };
-  if (contract.backlog_id?.startsWith('ISSUE_62') && contract.active !== false) failures.push('.foldera-contract.json points at old issue #62 but is not marked active=false.');
-  if (contract.backlog_id?.startsWith('ISSUE_62') && contract.authority_status !== 'STALE_REMOVE_OR_ARCHIVE') failures.push('.foldera-contract.json points at old issue #62 but lacks STALE_REMOVE_OR_ARCHIVE status.');
-  if (contract.backlog_id?.startsWith('ISSUE_62') && contract.superseded_by_issue !== 80) failures.push('.foldera-contract.json stale status must cite issue #80 as the cleanup authority.');
+  if (contract.active !== true) failures.push('.foldera-contract.json must remain active while it governs the global execution-rule patch.');
+  if (contract.authority_status !== 'GLOBAL_RULE_ENFORCEMENT_ACTIVE') failures.push('.foldera-contract.json must expose GLOBAL_RULE_ENFORCEMENT_ACTIVE authority status.');
+  if (contract.backlog_id !== 'FOLDERA_GLOBAL_RULE_ENFORCEMENT') failures.push('.foldera-contract.json must point at FOLDERA_GLOBAL_RULE_ENFORCEMENT backlog_id.');
+  if (contract.superseded_by_issue !== undefined) failures.push('.foldera-contract.json must not report a superseded_by_issue for the active global-rule patch.');
+  const contractAny = contract as Record<string, unknown> & { terminal_state_authority?: { allowed?: unknown; merge_through_rule?: unknown } };
+  const terminalAuthority = contractAny.terminal_state_authority;
+  if (!terminalAuthority || !Array.isArray(terminalAuthority.allowed)) failures.push('.foldera-contract.json must expose terminal_state_authority.allowed.');
+  else {
+    for (const state of requiredTerminalStates) {
+      if (!terminalAuthority.allowed.includes(state)) failures.push(`.foldera-contract.json is missing terminal state authority for ${state}.`);
+    }
+  }
+  if (typeof terminalAuthority?.merge_through_rule !== 'string' || !terminalAuthority.merge_through_rule.includes('local proof') || !terminalAuthority.merge_through_rule.includes('GitHub checks green')) {
+    failures.push('.foldera-contract.json must expose a machine-readable merge-through rule.');
+  }
 
   const readme = readRepoFile(root, 'README.md');
   for (const marker of ['create-next-app', 'Learn More', 'Deploy on Vercel']) {
@@ -292,6 +335,9 @@ export function runContinuityGate(root: string): string[] {
   }
   for (const value of requiredCloseoutValues) {
     if (!prTemplate.includes(value)) failures.push(`.github/pull_request_template.md is missing closeout value: ${value}`);
+  }
+  for (const { marker, failure } of requiredGlobalRuleMarkers) {
+    if (!prTemplate.includes(marker)) failures.push(failure);
   }
   if (!prTemplate.includes('## Next seam')) failures.push('.github/pull_request_template.md must require a Next seam section.');
   if (!prTemplate.includes('No PR is complete until this section explains why the scoreboard changed or why it did not need to change.')) {
@@ -320,11 +366,23 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('| `FOLDERA_EXECUTION_QUEUE.yaml` | `KEEP_REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_EXECUTION_QUEUE.yaml as KEEP_REFERENCE_ONLY when the queue is inactive.');
   }
-  if (!sourceTruthMap.includes('| GitHub issue #196 | `REFERENCE_ONLY` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #196 as REFERENCE_ONLY after the cleanup closeout completes.');
+  if (!sourceTruthMap.includes('| `FOLDERA_EXECUTION_QUEUE.yaml` | `KEEP_REFERENCE_ONLY` | Inactive queue retained for archaeology; supreme-authority language is neutralized in-file and a future activation issue is required to re-authorize queue control.')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must keep FOLDERA_EXECUTION_QUEUE.yaml as the historical shim row.');
+  }
+  if (!sourceTruthMap.includes('| GitHub issue #182 | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #182 as CURRENT_CONTROL for the global execution-rule patch.');
+  }
+  if (!sourceTruthMap.includes('| GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #165 as CURRENT_CONTROL for the raw-input inbox.');
+  }
+  if (!sourceTruthMap.includes('| GitHub issue #168 | `REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #168 as REFERENCE_ONLY until it is explicitly authorized.');
   }
   if (!sourceTruthMap.includes('| GitHub issue #194 | `REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #194 as REFERENCE_ONLY after PR #201 closes the verdict loop.');
+  }
+  if (!sourceTruthMap.includes('| `.foldera-contract.json` | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify .foldera-contract.json as CURRENT_CONTROL for the global execution-rule patch.');
   }
   if (!sourceTruthMap.includes('| `FOLDERA_OPERATING_SYSTEM.md` | `SHIM_TO_CANONICAL` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_OPERATING_SYSTEM.md as SHIM_TO_CANONICAL.');
@@ -332,8 +390,11 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('| `FOLDERA_LAUNCH_ROADMAP.md` | `SHIM_TO_CANONICAL` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_LAUNCH_ROADMAP.md as SHIM_TO_CANONICAL.');
   }
-  if (!sourceTruthMap.includes('GitHub issue #194 / PR #201 completed the first money-loop verdict-loop seam and returned the repo to a no-active-seam state.')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #194 / PR #201 as completed and no longer current control.');
+  if (!sourceTruthMap.includes('GitHub issue #182 is the current control issue for the global execution-rule enforcement patch.')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #182 as the current control issue.');
+  }
+  if (!sourceTruthMap.includes('GitHub issue #168 is the future automatic ChatGPT-to-GitHub switchboard seam and remains reference-only until it is explicitly authorized.')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #168 as the future automatic switchboard seam.');
   }
 
   const sentinel = readRepoFile(root, '.github/workflows/pr-sentinel.yml');
