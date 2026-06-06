@@ -68,17 +68,17 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
-  it('passes when the handoff points at the first money-loop seam', () => {
+  it('passes when the handoff points at the cleanup seam', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(handoff).toContain('Active implementation seam is issue #194.');
-    expect(handoff).toContain('The active seam is the first money-loop issue:');
-    expect(buildOrder).toContain('active_issue: 194');
-    expect(buildOrder).toContain('priority_class: MASTER_BIBLE_CLOSEOUT');
+    expect(handoff).toContain('Active implementation seam is issue #196.');
+    expect(handoff).toContain('The active seam is the root source-truth archive/delete sweep:');
+    expect(buildOrder).toContain('active_issue: 196');
+    expect(buildOrder).toContain('priority_class: ROOT_SOURCE_TRUTH_SWEEP');
     expect(failures).toEqual([]);
   });
 
@@ -88,7 +88,7 @@ describe('continuity gate writeback enforcement', () => {
     writeFixtureFile(
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
-      original.replace('Active implementation seam is issue #194.', 'Queue control is implied but unnamed.'),
+      original.replace('Active implementation seam is issue #196.', 'Queue control is implied but unnamed.'),
     );
 
     const failures = runContinuityGate(fixtureRoot);
