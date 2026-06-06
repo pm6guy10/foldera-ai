@@ -68,27 +68,27 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
-  it('passes when the handoff is queue-controlled', () => {
+  it('passes when the handoff is source-truth closeout controlled', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(handoff).toContain('Active implementation seam is `EXECUTION_QUEUE`.');
-    expect(handoff).toContain('The active seam is now controlled entirely by `FOLDERA_EXECUTION_QUEUE.yaml`.');
-    expect(buildOrder).toContain('active_issue: 183');
-    expect(buildOrder).toContain('priority_class: DETERMINISTIC_EXECUTION_QUEUE');
+    expect(handoff).toContain('Active implementation seam is issue #192.');
+    expect(handoff).toContain('The active seam is the source-truth closeout for the Master Bible promotion.');
+    expect(buildOrder).toContain('active_issue: 192');
+    expect(buildOrder).toContain('priority_class: MASTER_BIBLE_CLOSEOUT');
     expect(failures).toEqual([]);
   });
 
-  it('fails when the queue-controlled handoff line is removed', () => {
+  it('fails when the active seam line is removed', () => {
     const fixtureRoot = createFixtureRoot();
     const original = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     writeFixtureFile(
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
-      original.replace('Active implementation seam is `EXECUTION_QUEUE`.', 'Queue control is implied but unnamed.'),
+      original.replace('Active implementation seam is issue #192.', 'Queue control is implied but unnamed.'),
     );
 
     const failures = runContinuityGate(fixtureRoot);
