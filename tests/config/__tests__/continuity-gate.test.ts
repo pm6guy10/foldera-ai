@@ -69,7 +69,7 @@ afterEach(() => {
 });
 
 describe('continuity gate writeback enforcement', () => {
-  it('passes when the handoff points at the closeout state', () => {
+  it('passes when the handoff points at the global-rule seam', () => {
     const fixtureRoot = createFixtureRoot();
     const handoff = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');
@@ -77,19 +77,36 @@ describe('continuity gate writeback enforcement', () => {
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(handoff).toContain('Issue #194 is completed by merged PR #201.');
-    expect(handoff).toContain('No active implementation seam remains after PR #201.');
-    expect(handoff).toContain('The next authorized move is durable response/state/receipt loop.');
-    expect(buildOrder).toContain('active_issue: null');
-    expect(buildOrder).toContain('priority_class: NEXT_AUTHORIZED_RUNG');
-    expect(buildOrder).toContain('work_type: SOURCE_TRUTH_CLOSEOUT');
+    expect(handoff).toContain('Issue #182 is the active global execution-rule enforcement seam.');
+    expect(handoff).toContain('The active seam is the GitHub Operating System rule-enforcement patch:');
+    expect(handoff).toContain('Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
+    expect(handoff).toContain('Issue #168 is the future automatic ChatGPT-to-GitHub switchboard seam.');
+    expect(handoff).toContain('The next authorized move after this closeout is issue #168 in a separate run.');
+    expect(buildOrder).toContain('active_issue: 182');
+    expect(buildOrder).toContain('priority_class: GLOBAL_RULE_ENFORCEMENT');
+    expect(buildOrder).toContain('work_type: GOVERNANCE_ENFORCEMENT');
+    expect(buildOrder).toContain('next_seam: issue #168 automatic Open Threads capture + lessons-learned recurrence enforcement - reason future ChatGPT-to-GitHub switchboard seam after governance enforcement');
+    expect(buildOrder).toContain('MERGED_AND_CLOSED');
+    expect(buildOrder).toContain('BLOCKED_WITH_EXACT_RECEIPT');
     expect(prTemplate).toContain('## Receipt summary');
     expect(prTemplate).toContain('Active issue:');
     expect(prTemplate).toContain('Next authorized move:');
     expect(prTemplate).toContain('Forbidden work touched: YES/NO');
     expect(prTemplate).toContain('Proof run:');
+    expect(prTemplate).toContain('Checks passed: YES/NO');
+    expect(prTemplate).toContain('Merge-through status:');
+    expect(prTemplate).toContain('Terminal state: MERGED_AND_CLOSED / BLOCKED_WITH_EXACT_RECEIPT / HUMAN_REVIEW_REQUIRED_WITH_REASON / STOPPED_WITH_AUTHORIZED_REASON');
+    expect(prTemplate).toContain('Local hook status:');
+    expect(prTemplate).toContain('If bypassed, exact unrelated-route explanation:');
     expect(prTemplate).toContain('Source-truth closeout status:');
     expect(prTemplate).toContain('Stop condition:');
+    expect(prTemplate).toContain('Merge/closeout completed or why not:');
+    expect(prTemplate).toContain('## Global rule enforcement');
+    expect(prTemplate).toContain('Source truth first:');
+    expect(prTemplate).toContain('One active seam only:');
+    expect(prTemplate).toContain('No chat-only law:');
+    expect(prTemplate).toContain('Merge-through completion law:');
+    expect(prTemplate).toContain('Forbidden surface law:');
     expect(failures).toEqual([]);
   });
 
@@ -99,13 +116,12 @@ describe('continuity gate writeback enforcement', () => {
     writeFixtureFile(
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
-      original
-        .replace('No active implementation seam remains after PR #201.', 'Active implementation seam is issue #194.'),
+      original.replace('Issue #182 is the active global execution-rule enforcement seam.', 'Issue #194 is the active first money-loop implementation seam.'),
     );
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md must not name an active issue after PR #201 closeout; found issue #194.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md active seam issue #194 must match FOLDERA_BUILD_ORDER.yaml active_issue #182.');
   });
 
   it('fails when the mandatory writeback rule is removed from ACTIVE_HANDOFF.md', () => {
@@ -130,13 +146,43 @@ describe('continuity gate writeback enforcement', () => {
     writeFixtureFile(
       fixtureRoot,
       '.github/pull_request_template.md',
-      original.replace('Active issue:', 'Issue routed:'),
+      original.replace('Terminal state: MERGED_AND_CLOSED / BLOCKED_WITH_EXACT_RECEIPT / HUMAN_REVIEW_REQUIRED_WITH_REASON / STOPPED_WITH_AUTHORIZED_REASON', 'Terminal state:'),
     );
 
     const failures = runContinuityGate(fixtureRoot);
 
     expect(failures).toContain(
-      '.github/pull_request_template.md must declare the active issue in the receipt summary.',
+      '.github/pull_request_template.md must declare the allowed terminal state set in the receipt summary.',
+    );
+  });
+
+  it('fails when the global rule enforcement section is removed', () => {
+    const fixtureRoot = createFixtureRoot();
+    const original = readFixtureFile(fixtureRoot, '.github/pull_request_template.md');
+    writeFixtureFile(
+      fixtureRoot,
+      '.github/pull_request_template.md',
+      original.replace('## Global rule enforcement', '## Global rule capture'),
+    );
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(failures).toContain('.github/pull_request_template.md must include a global rule enforcement section.');
+  });
+
+  it('fails when the bypass explanation is removed from the receipt summary', () => {
+    const fixtureRoot = createFixtureRoot();
+    const original = readFixtureFile(fixtureRoot, '.github/pull_request_template.md');
+    writeFixtureFile(
+      fixtureRoot,
+      '.github/pull_request_template.md',
+      original.replace('- If bypassed, exact unrelated-route explanation:', '- If bypassed, explanation:'),
+    );
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(failures).toContain(
+      '.github/pull_request_template.md must require an exact unrelated-route explanation when a local hook is bypassed.',
     );
   });
 });

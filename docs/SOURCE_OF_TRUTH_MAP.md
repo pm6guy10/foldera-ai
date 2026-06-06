@@ -25,6 +25,8 @@ Current product-direction split:
 - GitHub issue #196 is the completed source-truth cleanup issue retained for receipt history.
 - GitHub issue #198 / PR #198 restored issue #194 as active control after the cleanup sweep.
 - GitHub issue #194 / PR #201 completed the first money-loop verdict-loop seam and returned the repo to a no-active-seam state.
+- GitHub issue #182 is the current control issue for the global execution-rule enforcement patch.
+- GitHub issue #168 is the future automatic ChatGPT-to-GitHub switchboard seam and remains reference-only until it is explicitly authorized.
 - GitHub issue #181 / PR #190 is superseded by PR #191 and must not be treated as a competing authority.
 - GitHub issue #179 `Rung 3: prove deterministic work-packet fixture loop` is completed by PR #180.
 - GitHub issue #175 `Rung 2: audit current schema and choose first evidence lane` is completed by PR #177.
@@ -45,7 +47,7 @@ This ledger is the final cleanup view for old guidance files. It is the authorit
 | --- | --- | --- |
 | `ACTIVE_HANDOFF.md` | `KEEP_CURRENT_CONTROL` | Current seam and next move. |
 | `FOLDERA_BUILD_ORDER.yaml` | `KEEP_CURRENT_CONTROL` | Machine-readable active issue and closeout requirements. |
-| `.foldera-contract.json` | `KEEP_CURRENT_CONTROL` | Cleanup contract and allowed-file boundary. |
+| `.foldera-contract.json` | `KEEP_CURRENT_CONTROL` | Global execution-rule contract and allowed-file boundary. |
 | `FOLDERA_MASTER_BIBLE.md` | `KEEP_REFERENCE_ONLY` | Canonical master bible reference authority. |
 | `FOLDERA_NORTH_STAR_LOCK.md` | `KEEP_CURRENT_CONTROL` | Product doctrine. |
 | `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` | `KEEP_CURRENT_CONTROL` | Roadmap, phase order, backlog lanes, and next-seam recommendation. |
@@ -133,6 +135,8 @@ When sources disagree, use this order:
 | GitHub issue #192 | `REFERENCE_ONLY` | Completed source-truth closeout seam retained for receipt history and future routing context. | Agents and reviewers tracing PR #193 or validating why the Master Bible closeout finished. | Active seam selection, queue activation, or product/runtime implementation. | FOLDERA_BUILD_ORDER.yaml marks issue #192 closed/completed by PR #193. |
 | GitHub issue #196 | `REFERENCE_ONLY` | Completed source-truth cleanup issue retained for receipt history. | Agents and reviewers tracing PR #197 or validating why the cleanup finished. | Active seam selection, queue activation, or product/runtime implementation. | FOLDERA_BUILD_ORDER.yaml marks issue #196 closed/completed by PR #197. |
 | GitHub issue #198 | `REFERENCE_ONLY` | The closeout PR that restored issue #194 as the active first money-loop implementation seam. | Agents and reviewers tracing PR #198 or validating why issue #194 became active again. | Active seam selection, queue activation, or product/runtime implementation by itself. | FOLDERA_BUILD_ORDER.yaml marks issue #198 closed/completed by PR #198. |
+| GitHub issue #182 | `CURRENT_CONTROL` | Global execution-rule enforcement seam that turns recurring Foldera operating law into enforceable repo law. | Agents and reviewers checking the GitHub Operating System control patch. | Product/runtime implementation, queue activation, or no-owner-router drift by itself. | FOLDERA_BUILD_ORDER.yaml marks issue #182 as the active governance seam. |
+| GitHub issue #168 | `REFERENCE_ONLY` | Future automatic ChatGPT-to-GitHub switchboard seam that should remain inactive until explicitly authorized. | Agents and reviewers tracing the planned capture/router seam. | Active seam selection, product/runtime implementation, or queue activation by itself. | FOLDERA_BUILD_ORDER.yaml marks issue #168 as the next authorized rung only after issue #182 closes. |
 | GitHub issue #194 | `REFERENCE_ONLY` | Completed first money-loop verdict-loop seam retained for receipt history. | Agents and reviewers tracing PR #201 or validating why the verdict loop closed. | Active seam selection, queue activation, or product/runtime implementation. | FOLDERA_BUILD_ORDER.yaml marks issue #194 closed/completed by PR #201. |
 | GitHub issue #48 | `CURRENT_CONTROL` | Holds the Workday Presence Layer product contract. | Product reviewers, agents, and humans checking launch doctrine. | Historical Brandon-command-center behavior or dashboard/task-list drift. | Boot sequence plus explicit issue reference across control docs. |
 | `FOLDERA_OPERATING_SYSTEM.md` | `SHIM_TO_CANONICAL` | Compatibility shim to the canonical control chain. | Humans and agents checking old links. | Repo execution order by itself, or stale issue selection. | `npm run gate:continuity` verifies boot-sequence alignment; issue #48 remains the doctrine anchor. |
@@ -175,7 +179,7 @@ When sources disagree, use this order:
 | `FOLDERA_MASTER_AUDIT.md` | `SHIM_TO_CANONICAL` | Legacy audit shim. | Humans checking old links. | Current execution or scope selection. | Top authority marker checked by `npm run gate:continuity`. |
 | `FOLDERA_SHIP_SPEC.md` | `SHIM_TO_CANONICAL` | Legacy ship spec shim. | Archaeology only. | Present-day launch direction, product doctrine, or implementation scope. | Top authority marker checked by `npm run gate:continuity`. |
 | `WHATS_NEXT.md` | `SHIM_TO_CANONICAL` | Legacy status log shim. | Archaeology only. | Current next move, active seam, or handoff logic. | Top authority marker checked by `npm run gate:continuity`. |
-| `.foldera-contract.json` | `STALE_REMOVE_OR_ARCHIVE` | Preserves a stale generated contract until a current controller regenerates it safely. | Reference-only debugging for old issue history. | Any current issue scope, file allowlist, proof requirement, or stop condition. | `npm run gate:continuity` fails if the old issue #62 contract is still treated as active. |
+| `.foldera-contract.json` | `CURRENT_CONTROL` | Machine-readable global execution-rule contract that mirrors the active seam, allowed files, forbidden files, terminal states, and merge-through rule. | Agents, reviewers, and gates checking the current global-rule patch. | Product/runtime implementation, queue activation, or stale issue claims by itself. | `npm run gate:continuity` requires the contract to match the active seam and expose terminal-state / merge-through authority. |
 
 ## Reviewer Checklist
 
@@ -227,7 +231,7 @@ Passing prose is not proof. The PR receipt must report the changed-file list, co
 - agent governance docs do not contain known direct-main or auto-continuation drift phrases
 - `ACTIVE_HANDOFF.md` still references `FOLDERA_LAUNCH_ROADMAP.md` and issue #48
 - stale active-looking docs keep their top authority markers
-- `.foldera-contract.json` cannot keep the old issue #62 contract active
+- `.foldera-contract.json` must expose the active global execution-rule contract and cannot keep the old issue #62 contract active
 - `README.md` cannot regress to default Next.js boilerplate
 - PR Sentinel must run the continuity gate
 

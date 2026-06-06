@@ -1,39 +1,32 @@
 {
-  "authority_status": "MASTER_BIBLE_FIRST_MONEY_LOOP_ACTIVE",
+  "authority_status": "GLOBAL_RULE_ENFORCEMENT_ACTIVE",
   "active": true,
-  "active_issue": 194,
-  "backlog_id": "FOLDERA_MASTER_BIBLE_FIRST_MONEY_LOOP",
-  "base_commit": "e2fb1eff5f21e8233416e272abca978518d4c6b3",
-  "money_loop_rung": "first_money_loop_verdict_loop",
-  "user_system_path": "The Master Bible is reference authority and issue #194 is the active first money-loop seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must point at the same issue and the queue file must remain inactive/reference-only.",
+  "active_issue": 182,
+  "backlog_id": "FOLDERA_GLOBAL_RULE_ENFORCEMENT",
+  "base_commit": "6e1085faf2cad375bdce4a2d422a3255493cf078",
+  "money_loop_rung": "global_execution_rule_enforcement",
+  "user_system_path": "Issue #182 is the active global execution-rule enforcement seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must point at the same issue and the queue file must remain inactive/reference-only.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
-  "no_routing_contract": "The Agent is forbidden from asking 'What is next?' or 'Should we audit this?'. The Agent must read ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, and the source-truth map and follow the active issue exactly. The Agent may not deviate from the source-truth closeout without a signed-off source-truth closeout commit from Brandon.",
+  "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and docs/SOURCE_OF_TRUTH_MAP.md before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate the queue.",
+  "terminal_state_authority": {
+    "allowed": [
+      "MERGED_AND_CLOSED",
+      "BLOCKED_WITH_EXACT_RECEIPT",
+      "HUMAN_REVIEW_REQUIRED_WITH_REASON",
+      "STOPPED_WITH_AUTHORIZED_REASON"
+    ],
+    "merge_through_rule": "Merge-through is allowed only after local proof, GitHub checks green, forbidden work touched is NO, and the PR receipt records the source-truth closeout and terminal state."
+  },
   "allowed_file_patterns": [
     ".github/pull_request_template.md",
+    ".github/workflows/pr-sentinel.yml",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "FOLDERA_EXECUTION_QUEUE.yaml",
-    "FOLDERA_MASTER_BIBLE.md",
-    "FOLDERA_PRODUCT_SPEC_NEXT.md",
-    "FOLDERA_GITHUB_ISSUE_PR_PLAN.md",
     ".foldera-contract.json",
     "docs/SOURCE_OF_TRUTH_MAP.md",
     "scripts/source-truth-check.ts",
     "scripts/continuity-gate.ts",
-    "tests/config/__tests__/**",
-    "lib/workday-presence/**",
-    "lib/workday-presence/__tests__/**",
-    "lib/work-packets/**",
-    "lib/work-packets/__tests__/**",
-    "tests/fixtures/work-packets/**",
-    "FOLDERA_OPERATING_SYSTEM.md",
-    "FOLDERA_LAUNCH_ROADMAP.md",
-    "FOLDERA_OPERATING_DOCTRINE.md",
-    "FOLDERA_PRODUCT_SPEC.md",
-    "FOLDERA_PRODUCTION_BACKLOG.md",
-    "FOLDERA_MASTER_AUDIT.md",
-    "FOLDERA_SHIP_SPEC.md",
-    "WHATS_NEXT.md"
+    "tests/config/__tests__/**"
   ],
   "forbidden_file_patterns": [
     "app/**",
@@ -74,29 +67,29 @@
     "broad cleanup",
     "queue activation"
   ],
-  "allowed_files_raw": "Current seam is the first money-loop implementation seam: keep the Master Bible reference-only, point the repo at issue #194, and align source-truth, gate/test files, runtime brain modules, and fixtures without widening to product breadth.",
-  "forbidden_files_raw": "No live Slack, no Supabase migrations or data mutation, no Vercel settings, no Stripe/auth/dashboard work, no package/dependency changes, no queue activation, no Dependabot, no live connector fetch, no paid/model call, no fake claims, and no broad cleanup outside the verdict loop.",
+  "allowed_files_raw": "Current seam is the global execution-rule enforcement patch: keep the Master Bible reference-only, point the repo at issue #182, and align source-truth, gate/test files, and PR template law without widening to product breadth.",
+  "forbidden_files_raw": "No live Slack, no Supabase migrations or data mutation, no Vercel settings, no Stripe/auth/dashboard work, no package/dependency changes, no queue activation, no Dependabot, no live connector fetch, no paid/model call, no fake claims, and no broad cleanup outside the governance patch.",
   "required_local_proof": [
     "npm run health",
     "npx tsx scripts/source-truth-check.ts",
     "npm run gate:continuity",
     "npm run lint",
     "npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose",
-    "npx vitest run lib/work-packets/__tests__/work-packet-brain.test.ts lib/slack-test-mode/__tests__/work-packet-review.test.ts lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose",
     "git diff --check"
   ],
-  "required_browser_proof": "Not applicable; deterministic TEST_MODE fixture proof only.",
-  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, and the shimmed root guidance files all agree that issue #194 is the active first money-loop implementation seam, the Master Bible remains reference authority, and the queue file remains inactive/reference-only. No product/runtime implementation starts in this change.",
-  "stop_condition": "Stop when the source-truth closeout and gate/test layer both accept issue #194 as active with no queue activation.",
+  "required_browser_proof": "Not applicable; deterministic governance proof only.",
+  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, .foldera-contract.json, and the gate/test layer all agree that issue #182 is the active global execution-rule enforcement seam, issue #165 is capture-only, issue #168 is future-only, and the queue file remains inactive/reference-only. No product/runtime implementation starts in this change.",
+  "stop_condition": "Stop when the source-truth closeout and gate/test layer both accept issue #182 as active with issue #168 remaining future-only and no queue activation.",
   "is_user_facing": false,
-  "browser_proof_command": "not applicable - deterministic TEST_MODE fixture proof only",
+  "browser_proof_command": "not applicable - deterministic governance proof only",
   "anti_regression_checks": [
-    "FOLDERA_MASTER_BIBLE.md is reference authority",
-    "issue #194 is the active first money-loop seam",
+    "issue #182 is the active global execution-rule enforcement seam",
+    "issue #165 remains capture-only",
+    "issue #168 remains future-only",
     "FOLDERA_EXECUTION_QUEUE.yaml remains inactive/reference-only",
-    ".foldera-contract.json contains no_routing_contract",
-    "The first money-loop seam is the only active seam",
-    "No product/runtime implementation starts in the source-truth closeout change"
+    ".foldera-contract.json contains terminal_state_authority",
+    ".foldera-contract.json contains merge-through rule authority",
+    "No product/runtime implementation starts in the governance patch"
   ],
-  "next_command": "Continue the first money-loop branch and keep issue #194 as the only active implementation seam until the PR merges."
+  "next_command": "Continue the issue #182 global execution-rule enforcement branch and keep issue #168 future-only until the PR merges."
 }
