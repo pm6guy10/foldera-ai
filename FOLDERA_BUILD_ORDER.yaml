@@ -209,7 +209,6 @@ forbidden_current_work:
   - Stripe changes
   - auth changes
   - landing files
-  - dashboard files
   - package or dependency changes
   - live connector fetch
   - paid model call
