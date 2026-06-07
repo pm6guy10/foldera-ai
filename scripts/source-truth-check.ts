@@ -11,18 +11,19 @@ const COMPLETED_RUNG_2_ISSUE = 175;
 const COMPLETED_RUNG_3_ISSUE = 179;
 const MASTER_BIBLE_ISSUE = 181;
 const COMPLETED_VERDICT_LOOP_ISSUE = 194;
-const ACTIVE_SWITCHBOARD_ISSUE = 168;
+const ACTIVE_SWITCHBOARD_ISSUE = 140;
 const COMPLETED_GLOBAL_RULE_ENFORCEMENT_ISSUE = 182;
 const OPEN_THREADS_ISSUE = 165;
+const COMPLETED_OPEN_THREADS_ISSUE = 168;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
 const COMPLETED_FIRST_RUNG_ISSUE = 173;
-const NEXT_AUTHORIZED_RUNG = 'issue #168 automatic Open Threads capture + lessons-learned recurrence enforcement';
+const NEXT_AUTHORIZED_RUNG = 'issue #140 Real Slack Self-Loop implementation';
 const NEXT_TASK_ID = '006';
 const COMPLETED_TASK_IDS = ['001', '002', '003', '004', '005'];
 const REQUIRED_TERMINAL_STATES = ['MERGED_AND_CLOSED', 'BLOCKED_WITH_EXACT_RECEIPT', 'HUMAN_REVIEW_REQUIRED_WITH_REASON', 'STOPPED_WITH_AUTHORIZED_REASON'];
 
-const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE, MASTER_BIBLE_ISSUE, COMPLETED_GLOBAL_RULE_ENFORCEMENT_ISSUE, 183, COMPLETED_VERDICT_LOOP_ISSUE];
+const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE, MASTER_BIBLE_ISSUE, COMPLETED_GLOBAL_RULE_ENFORCEMENT_ISSUE, 183, COMPLETED_VERDICT_LOOP_ISSUE, COMPLETED_OPEN_THREADS_ISSUE];
 
 function readRepoFile(root: string, file: string): string {
   const path = join(root, file);
@@ -174,14 +175,14 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'Issue #196 is completed by merged PR #197.',
     'Issue #194 is completed by merged PR #201.',
     'Issue #182 is completed/superseded by PR #203.',
-    'Issue #168 is the active automatic ChatGPT-to-GitHub switchboard seam.',
-    'The active seam is the GitHub Operating System switchboard patch:',
+    'Issue #168 is completed/superseded by PR #205.',
+    'Issue #140 is the active Real Slack Self-Loop implementation seam.',
+    'The active seam is the Real Slack Self-Loop implementation patch:',
     `Issue #${OPEN_THREADS_ISSUE} Open Threads remains capture-only and cannot authorize implementation.`,
-    'The next authorized move after this closeout is to continue issue #168 in the active seam.',
+    'The next authorized move after this closeout is to continue issue #140 in the active seam.',
     '`FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.',
     '`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.',
     'PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.',
-    'Issue #140 / PR #142 remains rail-only and parked outside this sweep.',
     'GitHub writeback is mandatory.',
     'One active seam only.',
   ]) {
@@ -203,7 +204,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'Issue #196 is the active source-truth cleanup seam.',
     'No active implementation seam remains after PR #201.',
     'Issue #182 is the active global execution-rule enforcement seam.',
-    'Issue #168 is the future automatic ChatGPT-to-GitHub switchboard seam and remains reference-only until it is explicitly authorized.',
+    'Issue #168 is the active automatic Open Threads capture seam.',
+    'Issue #168 is the active automatic ChatGPT-to-GitHub switchboard seam.',
     'The next authorized move after this closeout is issue #168 in a separate run.',
   ]) {
     if (handoff.includes(staleMarker)) failures.push(`ACTIVE_HANDOFF.md still contains stale queue-progress marker: ${staleMarker}`);
@@ -227,6 +229,7 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'issue #48',
     'GitHub issue #165',
     'GitHub issue #182',
+    'GitHub issue #140',
     'GitHub issue #168',
     'FOLDERA_MASTER_BIBLE.md',
     'FOLDERA_NORTH_STAR_LOCK.md',
@@ -250,7 +253,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     '| GitHub issue #196 | `REFERENCE_ONLY` |',
     '| GitHub issue #182 | `REFERENCE_ONLY` |',
     '| GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` | `CURRENT_CONTROL` |',
-    '| GitHub issue #168 | `CURRENT_CONTROL` |',
+    '| GitHub issue #140 | `CURRENT_CONTROL` |',
+    '| GitHub issue #168 | `REFERENCE_ONLY` |',
     '| GitHub issue #194 | `REFERENCE_ONLY` |',
     '| `FOLDERA_OPERATING_SYSTEM.md` | `SHIM_TO_CANONICAL` |',
     '| `FOLDERA_LAUNCH_ROADMAP.md` | `SHIM_TO_CANONICAL` |',
@@ -260,7 +264,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'GitHub issue #198 / PR #198 restored issue #194 as active control after the cleanup sweep.',
     'GitHub issue #194 / PR #201 completed the first money-loop verdict-loop seam and returned the repo to a no-active-seam state.',
     'GitHub issue #182 is the completed global execution-rule enforcement patch retained for receipt history after PR #203.',
-    'GitHub issue #168 is the current control issue for the automatic Open Threads capture and lessons-learned recurrence enforcement seam.',
+    'GitHub issue #140 is the current control issue for the Real Slack Self-Loop implementation seam.',
+    'GitHub issue #168 is the completed automatic Open Threads capture seam retained for receipt history after PR #205.',
     '| `.foldera-contract.json` | `CURRENT_CONTROL` |',
   ]) {
     if (!sourceMap.includes(marker)) failures.push(`docs/SOURCE_OF_TRUTH_MAP.md is missing required marker: ${marker}`);
@@ -364,5 +369,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. The Master Bible remains reference authority, the queue remains inactive, and issue #168 is the active switchboard seam.');
+  console.log('Source truth check passed. The Master Bible remains reference authority, the queue remains inactive, and issue #140 is the active product seam.');
 }
