@@ -11,6 +11,7 @@ source_of_truth_order:
   - issue #48
   - GitHub issue #165
   - GitHub issue #182
+  - GitHub issue #208
   - GitHub issue #178
   - GitHub issue #140
   - GitHub issue #168
@@ -32,11 +33,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 178
-priority_class: GLOBAL_RULE_ENFORCEMENT
-work_type: GOVERNANCE_ENFORCEMENT
-why_this_first: PR #206 completed the Real Slack Self-Loop closeout, and the repo now needs the next highest-priority open governance/infrastructure seam locked into source truth.
-next_seam: issue #178 Command OS Merge Clerk v0 governance seam - reason highest-priority open product/infrastructure issue after issue #140 closeout
+active_issue: 208
+priority_class: PRODUCT_MVP_PIVOT
+work_type: SOURCE_TRUTH_PIVOT
+why_this_first: PR #207 completed the governance pivot, and the repo now needs the next product seam locked into source truth.
+next_seam: issue #208 Build the first user journey shell - reason first Product MVP seam after governance pivot and issue #178 suspension
 required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
   - 101
@@ -64,6 +65,10 @@ predecessor_issues:
   - 173
   - 175
   - 178
+paused_issues:
+  - issue: 178
+    state: SUSPENDED
+    reason: Governance merge clerk paused while the Product MVP becomes the active seam.
 completed:
   - issue: 181
     pr: 191
@@ -256,7 +261,7 @@ current_pr_closeout:
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - reason historical roadmap remains shimmed and no longer controls the active seam
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - issue #178 Command OS Merge Clerk v0 governance seam is the active seam after the closeout
+  next_seam: named - issue #208 Build the first user journey shell is the active seam after the closeout
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
