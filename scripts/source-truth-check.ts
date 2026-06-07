@@ -11,8 +11,8 @@ const COMPLETED_RUNG_2_ISSUE = 175;
 const COMPLETED_RUNG_3_ISSUE = 179;
 const MASTER_BIBLE_ISSUE = 181;
 const COMPLETED_VERDICT_LOOP_ISSUE = 194;
-const GLOBAL_RULE_ENFORCEMENT_ISSUE = 182;
-const FUTURE_SWITCHBOARD_ISSUE = 168;
+const ACTIVE_SWITCHBOARD_ISSUE = 168;
+const COMPLETED_GLOBAL_RULE_ENFORCEMENT_ISSUE = 182;
 const OPEN_THREADS_ISSUE = 165;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
@@ -22,7 +22,7 @@ const NEXT_TASK_ID = '006';
 const COMPLETED_TASK_IDS = ['001', '002', '003', '004', '005'];
 const REQUIRED_TERMINAL_STATES = ['MERGED_AND_CLOSED', 'BLOCKED_WITH_EXACT_RECEIPT', 'HUMAN_REVIEW_REQUIRED_WITH_REASON', 'STOPPED_WITH_AUTHORIZED_REASON'];
 
-const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE, MASTER_BIBLE_ISSUE, 183, COMPLETED_VERDICT_LOOP_ISSUE];
+const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE, MASTER_BIBLE_ISSUE, COMPLETED_GLOBAL_RULE_ENFORCEMENT_ISSUE, 183, COMPLETED_VERDICT_LOOP_ISSUE];
 
 function readRepoFile(root: string, file: string): string {
   const path = join(root, file);
@@ -99,8 +99,8 @@ function requireClosedIssueDoNotReopen(failures: string[], handoff: string, buil
       failures.push(`FOLDERA_BUILD_ORDER.yaml must classify issue #${issue} as closed/completed/superseded.`);
     }
   }
-  if (!handoff.includes('Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, #183, #192, #194, and #196 are closed/completed/superseded. Do not reopen them here.')) {
-    failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #181, #183, #192, #194, and #196, out of scope.');
+  if (!handoff.includes('Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, #182, #183, #192, #194, and #196 are closed/completed/superseded. Do not reopen them here.')) {
+    failures.push('ACTIVE_HANDOFF.md must keep closed/completed/superseded issues, including #181, #182, #183, #192, #194, and #196, out of scope.');
   }
 }
 
@@ -158,13 +158,13 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
   const buildIssue = extractYamlNumber(buildOrder, 'active_issue');
   const handoffIssue = extractActiveHandoffIssue(handoff);
 
-  if (buildIssue !== GLOBAL_RULE_ENFORCEMENT_ISSUE) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${GLOBAL_RULE_ENFORCEMENT_ISSUE}; found ${buildIssue ?? 'none'}.`);
+  if (buildIssue !== ACTIVE_SWITCHBOARD_ISSUE) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${ACTIVE_SWITCHBOARD_ISSUE}; found ${buildIssue ?? 'none'}.`);
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
   if (priority !== 'GLOBAL_RULE_ENFORCEMENT') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be GLOBAL_RULE_ENFORCEMENT; found ${priority ?? 'none'}.`);
   if (workType !== 'GOVERNANCE_ENFORCEMENT') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be GOVERNANCE_ENFORCEMENT; found ${workType ?? 'none'}.`);
-  if (nextSeam !== `${NEXT_AUTHORIZED_RUNG} - reason future ChatGPT-to-GitHub switchboard seam after governance enforcement`) {
+  if (nextSeam !== `${NEXT_AUTHORIZED_RUNG} - reason active seam after governance closeout`) {
     failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must name the next authorized governance seam; found ${nextSeam ?? 'none'}.`);
   }
 
@@ -173,11 +173,11 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'Issue #192 is completed by merged PR #193.',
     'Issue #196 is completed by merged PR #197.',
     'Issue #194 is completed by merged PR #201.',
-    'Issue #182 is the active global execution-rule enforcement seam.',
-    'The active seam is the GitHub Operating System rule-enforcement patch:',
+    'Issue #182 is completed/superseded by PR #203.',
+    'Issue #168 is the active automatic ChatGPT-to-GitHub switchboard seam.',
+    'The active seam is the GitHub Operating System switchboard patch:',
     `Issue #${OPEN_THREADS_ISSUE} Open Threads remains capture-only and cannot authorize implementation.`,
-    `Issue #${FUTURE_SWITCHBOARD_ISSUE} is the future automatic ChatGPT-to-GitHub switchboard seam.`,
-    'The next authorized move after this closeout is issue #168 in a separate run.',
+    'The next authorized move after this closeout is to continue issue #168 in the active seam.',
     '`FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.',
     '`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.',
     'PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.',
@@ -188,8 +188,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     if (!handoff.includes(marker)) failures.push(`ACTIVE_HANDOFF.md is missing required marker: ${marker}`);
   }
   if (handoffIssue !== null) {
-    if (handoffIssue !== GLOBAL_RULE_ENFORCEMENT_ISSUE) {
-      failures.push(`ACTIVE_HANDOFF.md active seam issue must be #${GLOBAL_RULE_ENFORCEMENT_ISSUE}; found #${handoffIssue}.`);
+    if (handoffIssue !== ACTIVE_SWITCHBOARD_ISSUE) {
+      failures.push(`ACTIVE_HANDOFF.md active seam issue must be #${ACTIVE_SWITCHBOARD_ISSUE}; found #${handoffIssue}.`);
     }
   }
   for (const staleMarker of [
@@ -202,6 +202,9 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'The active seam is the root source-truth archive/delete sweep: `Root source-truth archive/delete sweep`.',
     'Issue #196 is the active source-truth cleanup seam.',
     'No active implementation seam remains after PR #201.',
+    'Issue #182 is the active global execution-rule enforcement seam.',
+    'Issue #168 is the future automatic ChatGPT-to-GitHub switchboard seam and remains reference-only until it is explicitly authorized.',
+    'The next authorized move after this closeout is issue #168 in a separate run.',
   ]) {
     if (handoff.includes(staleMarker)) failures.push(`ACTIVE_HANDOFF.md still contains stale queue-progress marker: ${staleMarker}`);
   }
@@ -245,9 +248,9 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     '| `FOLDERA_MASTER_BIBLE.md` | `KEEP_REFERENCE_ONLY` |',
     '| `FOLDERA_EXECUTION_QUEUE.yaml` | `KEEP_REFERENCE_ONLY` |',
     '| GitHub issue #196 | `REFERENCE_ONLY` |',
-    '| GitHub issue #182 | `CURRENT_CONTROL` |',
+    '| GitHub issue #182 | `REFERENCE_ONLY` |',
     '| GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` | `CURRENT_CONTROL` |',
-    '| GitHub issue #168 | `REFERENCE_ONLY` |',
+    '| GitHub issue #168 | `CURRENT_CONTROL` |',
     '| GitHub issue #194 | `REFERENCE_ONLY` |',
     '| `FOLDERA_OPERATING_SYSTEM.md` | `SHIM_TO_CANONICAL` |',
     '| `FOLDERA_LAUNCH_ROADMAP.md` | `SHIM_TO_CANONICAL` |',
@@ -256,8 +259,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'GitHub issue #196 is the completed source-truth cleanup issue retained for receipt history.',
     'GitHub issue #198 / PR #198 restored issue #194 as active control after the cleanup sweep.',
     'GitHub issue #194 / PR #201 completed the first money-loop verdict-loop seam and returned the repo to a no-active-seam state.',
-    'GitHub issue #182 is the current control issue for the global execution-rule enforcement patch.',
-    'GitHub issue #168 is the future automatic ChatGPT-to-GitHub switchboard seam and remains reference-only until it is explicitly authorized.',
+    'GitHub issue #182 is the completed global execution-rule enforcement patch retained for receipt history after PR #203.',
+    'GitHub issue #168 is the current control issue for the automatic Open Threads capture and lessons-learned recurrence enforcement seam.',
     '| `.foldera-contract.json` | `CURRENT_CONTROL` |',
   ]) {
     if (!sourceMap.includes(marker)) failures.push(`docs/SOURCE_OF_TRUTH_MAP.md is missing required marker: ${marker}`);
@@ -289,10 +292,12 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     authority_status?: string;
     backlog_id?: string;
     terminal_state_authority?: { allowed?: unknown; merge_through_rule?: unknown };
+    active_issue?: number;
   };
   if (contract.active !== true) failures.push('.foldera-contract.json must remain active while it governs the global execution-rule patch.');
   if (contract.authority_status !== 'GLOBAL_RULE_ENFORCEMENT_ACTIVE') failures.push('.foldera-contract.json must expose GLOBAL_RULE_ENFORCEMENT_ACTIVE authority status.');
   if (contract.backlog_id !== 'FOLDERA_GLOBAL_RULE_ENFORCEMENT') failures.push('.foldera-contract.json must point at FOLDERA_GLOBAL_RULE_ENFORCEMENT backlog_id.');
+  if (contract.active_issue !== ACTIVE_SWITCHBOARD_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_SWITCHBOARD_ISSUE}; found ${contract.active_issue ?? 'none'}.`);
   const terminalAuthority = contract.terminal_state_authority;
   if (!terminalAuthority || !Array.isArray(terminalAuthority.allowed)) failures.push('.foldera-contract.json must expose terminal_state_authority.allowed.');
   else {
@@ -359,5 +364,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. The Master Bible remains reference authority, the queue remains inactive, and the next authorized rung is durable response/state/receipt loop.');
+  console.log('Source truth check passed. The Master Bible remains reference authority, the queue remains inactive, and issue #168 is the active switchboard seam.');
 }

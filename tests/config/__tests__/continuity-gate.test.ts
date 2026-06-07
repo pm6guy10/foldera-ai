@@ -77,15 +77,16 @@ describe('continuity gate writeback enforcement', () => {
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(handoff).toContain('Issue #182 is the active global execution-rule enforcement seam.');
-    expect(handoff).toContain('The active seam is the GitHub Operating System rule-enforcement patch:');
+    expect(handoff).toContain('Issue #168 is the active automatic Open Threads capture seam.');
+    expect(handoff).toContain('The active seam is the GitHub Operating System switchboard patch:');
     expect(handoff).toContain('Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
-    expect(handoff).toContain('Issue #168 is the future automatic ChatGPT-to-GitHub switchboard seam.');
-    expect(handoff).toContain('The next authorized move after this closeout is issue #168 in a separate run.');
-    expect(buildOrder).toContain('active_issue: 182');
+    expect(handoff).toContain('Issue #182 is completed/superseded by PR #203.');
+    expect(handoff).toContain('Issue #168 is the active automatic ChatGPT-to-GitHub switchboard seam.');
+    expect(handoff).toContain('The next authorized move after this closeout is to continue issue #168 in the active seam.');
+    expect(buildOrder).toContain('active_issue: 168');
     expect(buildOrder).toContain('priority_class: GLOBAL_RULE_ENFORCEMENT');
     expect(buildOrder).toContain('work_type: GOVERNANCE_ENFORCEMENT');
-    expect(buildOrder).toContain('next_seam: issue #168 automatic Open Threads capture + lessons-learned recurrence enforcement - reason future ChatGPT-to-GitHub switchboard seam after governance enforcement');
+    expect(buildOrder).toContain('next_seam: issue #168 automatic Open Threads capture + lessons-learned recurrence enforcement - reason active seam after governance closeout');
     expect(buildOrder).toContain('MERGED_AND_CLOSED');
     expect(buildOrder).toContain('BLOCKED_WITH_EXACT_RECEIPT');
     expect(prTemplate).toContain('## Receipt summary');
@@ -116,12 +117,12 @@ describe('continuity gate writeback enforcement', () => {
     writeFixtureFile(
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
-      original.replace('Issue #182 is the active global execution-rule enforcement seam.', 'Issue #194 is the active first money-loop implementation seam.'),
+      original.replace('Issue #168 is the active automatic Open Threads capture seam.', 'Issue #194 is the active first money-loop implementation seam.'),
     );
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md active seam issue #194 must match FOLDERA_BUILD_ORDER.yaml active_issue #182.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md active seam issue #194 must match FOLDERA_BUILD_ORDER.yaml active_issue #168.');
   });
 
   it('fails when the mandatory writeback rule is removed from ACTIVE_HANDOFF.md', () => {

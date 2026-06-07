@@ -307,6 +307,9 @@ export function runContinuityGate(root: string): string[] {
   if (contract.active !== true) failures.push('.foldera-contract.json must remain active while it governs the global execution-rule patch.');
   if (contract.authority_status !== 'GLOBAL_RULE_ENFORCEMENT_ACTIVE') failures.push('.foldera-contract.json must expose GLOBAL_RULE_ENFORCEMENT_ACTIVE authority status.');
   if (contract.backlog_id !== 'FOLDERA_GLOBAL_RULE_ENFORCEMENT') failures.push('.foldera-contract.json must point at FOLDERA_GLOBAL_RULE_ENFORCEMENT backlog_id.');
+  if (buildOrderIssue !== null && (contract as { active_issue?: number }).active_issue !== buildOrderIssue) {
+    failures.push(`.foldera-contract.json active_issue must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
+  }
   if (contract.superseded_by_issue !== undefined) failures.push('.foldera-contract.json must not report a superseded_by_issue for the active global-rule patch.');
   const contractAny = contract as Record<string, unknown> & { terminal_state_authority?: { allowed?: unknown; merge_through_rule?: unknown } };
   const terminalAuthority = contractAny.terminal_state_authority;
@@ -369,14 +372,14 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('| `FOLDERA_EXECUTION_QUEUE.yaml` | `KEEP_REFERENCE_ONLY` | Inactive queue retained for archaeology; supreme-authority language is neutralized in-file and a future activation issue is required to re-authorize queue control.')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must keep FOLDERA_EXECUTION_QUEUE.yaml as the historical shim row.');
   }
-  if (!sourceTruthMap.includes('| GitHub issue #182 | `CURRENT_CONTROL` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #182 as CURRENT_CONTROL for the global execution-rule patch.');
+  if (!sourceTruthMap.includes('| GitHub issue #182 | `REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #182 as REFERENCE_ONLY after the closeout.');
   }
   if (!sourceTruthMap.includes('| GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` | `CURRENT_CONTROL` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #165 as CURRENT_CONTROL for the raw-input inbox.');
   }
-  if (!sourceTruthMap.includes('| GitHub issue #168 | `REFERENCE_ONLY` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #168 as REFERENCE_ONLY until it is explicitly authorized.');
+  if (!sourceTruthMap.includes('| GitHub issue #168 | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #168 as CURRENT_CONTROL for the active switchboard seam.');
   }
   if (!sourceTruthMap.includes('| GitHub issue #194 | `REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #194 as REFERENCE_ONLY after PR #201 closes the verdict loop.');
@@ -390,11 +393,11 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('| `FOLDERA_LAUNCH_ROADMAP.md` | `SHIM_TO_CANONICAL` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_LAUNCH_ROADMAP.md as SHIM_TO_CANONICAL.');
   }
-  if (!sourceTruthMap.includes('GitHub issue #182 is the current control issue for the global execution-rule enforcement patch.')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #182 as the current control issue.');
+  if (!sourceTruthMap.includes('GitHub issue #182 is the completed global execution-rule enforcement patch retained for receipt history after PR #203.')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #182 as the completed global execution-rule enforcement patch.');
   }
-  if (!sourceTruthMap.includes('GitHub issue #168 is the future automatic ChatGPT-to-GitHub switchboard seam and remains reference-only until it is explicitly authorized.')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #168 as the future automatic switchboard seam.');
+  if (!sourceTruthMap.includes('GitHub issue #168 is the current control issue for the automatic Open Threads capture and lessons-learned recurrence enforcement seam.')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #168 as the current control issue.');
   }
 
   const sentinel = readRepoFile(root, '.github/workflows/pr-sentinel.yml');

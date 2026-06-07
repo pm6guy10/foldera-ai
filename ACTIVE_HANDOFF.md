@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-06-06 PT
-Current `origin/main` SHA after PR #202 merge: `6e1085faf2cad375bdce4a2d422a3255493cf078`.
+Current `origin/main` SHA after PR #203 merge: `74fc38f47f62300edc6f79c5b340e747bca8cb34`.
 ## Canonical Boot Sequence
 1. Read `ACTIVE_HANDOFF.md`.
 2. Read `FOLDERA_BUILD_ORDER.yaml`.
@@ -18,8 +18,8 @@ Issue #196 is completed by merged PR #197.
 Issue #198 is completed by merged PR #198 and restored issue #194 as active control.
 Issue #199 finished the control-text bridge for issue #194 without starting product implementation.
 Issue #194 is completed by merged PR #201.
-Issue #182 is the active global execution-rule enforcement seam.
-The active seam is the GitHub Operating System rule-enforcement patch: lock the recurring Foldera global rules into enforceable repo law so Brandon is no longer the merge clerk, router, QA cop, historian, or rule repeater.
+Issue #168 is the active automatic Open Threads capture seam.
+The active seam is the GitHub Operating System switchboard patch: lock the recurring Foldera routing rules into enforceable repo law so Brandon is no longer the merge clerk, router, QA cop, historian, or rule repeater.
 `FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.
 `FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.
 PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.
@@ -27,7 +27,7 @@ Issue #175 is complete via PR #177: the read-only audit selected the determinist
 Issue #173 is complete/superseded by PR #174.
 Issue #170 is complete/superseded by PR #172.
 Issue #165 Open Threads remains capture-only and cannot authorize implementation.
-Issue #168 is the future automatic ChatGPT-to-GitHub switchboard seam.
+Issue #182 is completed/superseded by PR #203.
 Issue #140 / PR #142 remains rail-only and parked outside this sweep.
 Issue #136 remains open as the standing Codex Run Ledger only.
 GitHub writeback is mandatory.
@@ -39,16 +39,16 @@ One active seam only.
 - PR #198 restored issue #194 as the active seam after the closeout sweep.
 - PR #199 finished the control-text bridge for issue #194 and kept the seam limited to repo authority.
 - PR #201 completed the verdict-loop closeout and issue #194 is now closed by merge.
-- PR #202 merged the source-truth closeout and made issue #182 the active governance seam.
-- The current lane is global execution-rule enforcement: source truth first, one active seam only, no chat-only law, first-occurrence capture, second-occurrence enforcement, proof parity, merge-through completion, no owner-as-router, open-thread routing, forbidden surface, and closeout law.
+- PR #203 merged the source-truth closeout and completed issue #182.
+- The current lane is automatic Open Threads capture and lessons-learned recurrence enforcement: source truth first, one active seam only, no chat-only law, capture routing, proof parity, merge-through completion, no owner-as-router, open-thread routing, forbidden surface, and closeout law.
 - Issue #165 remains the raw-input inbox and capture-only.
-- Issue #168 is the future automatic ChatGPT-to-GitHub switchboard seam and remains reference-only until issue #182 closes.
-- The next authorized move after this closeout is issue #168 in a separate run.
+- Issue #168 is the active automatic ChatGPT-to-GitHub switchboard seam.
+- The next authorized move after this closeout is to continue issue #168 in the active seam.
 - `FOLDERA_MASTER_BIBLE.md` is the human-readable company plan; supporting docs remain subordinate.
 - `FOLDERA_EXECUTION_QUEUE.yaml` stays inactive/reference-only until a future explicit activation issue reopens it.
 - `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` remains `REFERENCE_DRAFT`: source material only, not implementation authority.
 - Issue #140 / PR #142 is parked for this seam; do not touch live Slack/provider surfaces.
-- Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, #183, #192, #194, and #196 are closed/completed/superseded. Do not reopen them here.
+- Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, #182, #183, #192, #194, and #196 are closed/completed/superseded. Do not reopen them here.
 
 ## Product doctrine
 Foldera is a Workday Presence Layer / context conduit:
@@ -60,9 +60,9 @@ Issue #48 remains the product contract.
 
 ## Source-truth boundary
 Allowed files for this seam are the governance-control files, gate/test files, and source-truth files needed to prove the global execution-rule enforcement patch.
-Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #182 is the active global execution-rule enforcement seam, issue #165 is capture-only, issue #168 is the future automatic switchboard seam, and the queue file remains inactive/reference-only.
+Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #168 is the active automatic switchboard seam, issue #165 is capture-only, issue #182 is completed/superseded, and the queue file remains inactive/reference-only.
 Forbidden in this seam: live Slack, Supabase migrations or data mutation, Vercel settings, Stripe/auth/dashboard work, package/dependency changes, queue activation, Dependabot, live connector fetch, paid model call, fake claims, or broad cleanup.
-Stop condition: stop when the source-truth docs and gate/test layer agree that issue #182 is the active global execution-rule enforcement seam, issue #168 remains future-only, and the queue remains inactive/reference-only.
+Stop condition: stop when the source-truth docs and gate/test layer agree that issue #168 is the active automatic switchboard seam, issue #182 is closed/completed, and the queue remains inactive/reference-only.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
@@ -76,4 +76,4 @@ Stop condition: stop when the source-truth docs and gate/test layer agree that i
 
 ## Next exact move
 This PR only updates repo control text and must not start product code.
-Next authorized move after this closeout: issue #168 in a separate run.
+Next authorized move after this closeout: continue issue #168 in the active seam.
