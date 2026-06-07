@@ -26,7 +26,8 @@
     "docs/SOURCE_OF_TRUTH_MAP.md",
     "scripts/source-truth-check.ts",
     "scripts/continuity-gate.ts",
-    "tests/config/__tests__/**"
+    "tests/config/__tests__/**",
+    "tests/work-packets/__tests__/**"
   ],
   "forbidden_file_patterns": [
     "app/**",
