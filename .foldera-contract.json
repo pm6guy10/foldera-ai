@@ -26,6 +26,7 @@
     "docs/SOURCE_OF_TRUTH_MAP.md",
     "scripts/source-truth-check.ts",
     "scripts/continuity-gate.ts",
+    "lib/repo-intake-governor/**",
     "tests/config/__tests__/**",
     "tests/work-packets/__tests__/**"
   ],

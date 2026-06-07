@@ -43,7 +43,7 @@ export function classifyInput(rawInput: string): ClassificationResult {
     classification = 'PRODUCT_PROOF';
   } else if (includesAny(input, ['audit finding', 'repo contradiction', 'stale docs', 'source truth', 'active_handoff', 'foldera_build_order'])) {
     classification = 'AUDIT_FINDING';
-  } else if (includesAny(input, ['duplicate', 'reference only', 'already represented', 'repeats the'])) {
+  } else if (includesAny(input, ['duplicate', 'reference-only', 'reference only', 'already represented', 'repeats the'])) {
     classification = 'REFERENCE_ONLY';
   } else if (includesAny(input, ['vision', 'should become', 'should feel', 'product direction', 're-entry point'])) {
     classification = 'VISION';
