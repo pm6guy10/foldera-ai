@@ -28,6 +28,7 @@
     "scripts/continuity-gate.ts",
     "app/api/command-os/**",
     "lib/repo-intake-governor/**",
+    "lib/work-packets/slack-self-loop.ts",
     "tests/config/__tests__/**",
     "tests/work-packets/__tests__/**"
   ],
