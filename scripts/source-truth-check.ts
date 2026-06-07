@@ -11,19 +11,19 @@ const COMPLETED_RUNG_2_ISSUE = 175;
 const COMPLETED_RUNG_3_ISSUE = 179;
 const MASTER_BIBLE_ISSUE = 181;
 const COMPLETED_VERDICT_LOOP_ISSUE = 194;
-const ACTIVE_SWITCHBOARD_ISSUE = 140;
+const ACTIVE_SWITCHBOARD_ISSUE = 178;
 const COMPLETED_GLOBAL_RULE_ENFORCEMENT_ISSUE = 182;
 const OPEN_THREADS_ISSUE = 165;
 const COMPLETED_OPEN_THREADS_ISSUE = 168;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
 const COMPLETED_FIRST_RUNG_ISSUE = 173;
-const NEXT_AUTHORIZED_RUNG = 'issue #140 Real Slack Self-Loop implementation';
+const NEXT_AUTHORIZED_RUNG = 'issue #178 Command OS Merge Clerk v0 governance seam';
 const NEXT_TASK_ID = '006';
 const COMPLETED_TASK_IDS = ['001', '002', '003', '004', '005'];
 const REQUIRED_TERMINAL_STATES = ['MERGED_AND_CLOSED', 'BLOCKED_WITH_EXACT_RECEIPT', 'HUMAN_REVIEW_REQUIRED_WITH_REASON', 'STOPPED_WITH_AUTHORIZED_REASON'];
 
-const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE, MASTER_BIBLE_ISSUE, COMPLETED_GLOBAL_RULE_ENFORCEMENT_ISSUE, 183, COMPLETED_VERDICT_LOOP_ISSUE, COMPLETED_OPEN_THREADS_ISSUE];
+const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 140, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE, MASTER_BIBLE_ISSUE, COMPLETED_GLOBAL_RULE_ENFORCEMENT_ISSUE, 183, COMPLETED_VERDICT_LOOP_ISSUE, COMPLETED_OPEN_THREADS_ISSUE];
 
 function readRepoFile(root: string, file: string): string {
   const path = join(root, file);
@@ -165,7 +165,7 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
   if (priority !== 'GLOBAL_RULE_ENFORCEMENT') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be GLOBAL_RULE_ENFORCEMENT; found ${priority ?? 'none'}.`);
   if (workType !== 'GOVERNANCE_ENFORCEMENT') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be GOVERNANCE_ENFORCEMENT; found ${workType ?? 'none'}.`);
-  if (nextSeam !== `${NEXT_AUTHORIZED_RUNG} - reason active seam after governance closeout`) {
+  if (nextSeam !== `${NEXT_AUTHORIZED_RUNG} - reason highest-priority open product/infrastructure issue after issue #140 closeout`) {
     failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must name the next authorized governance seam; found ${nextSeam ?? 'none'}.`);
   }
 
@@ -176,10 +176,10 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'Issue #194 is completed by merged PR #201.',
     'Issue #182 is completed/superseded by PR #203.',
     'Issue #168 is completed/superseded by PR #205.',
-    'Issue #140 is the active Real Slack Self-Loop implementation seam.',
-    'The active seam is the Real Slack Self-Loop implementation patch:',
+    'Issue #178 is the active Command OS Merge Clerk v0 governance seam.',
+    'The active seam is the Command OS Merge Clerk v0 governance seam:',
     `Issue #${OPEN_THREADS_ISSUE} Open Threads remains capture-only and cannot authorize implementation.`,
-    'The next authorized move after this closeout is to continue issue #140 in the active seam.',
+    'The next authorized move after this closeout is to continue issue #178 in the active seam.',
     '`FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.',
     '`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.',
     'PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.',
@@ -229,7 +229,7 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'issue #48',
     'GitHub issue #165',
     'GitHub issue #182',
-    'GitHub issue #140',
+    'GitHub issue #178',
     'GitHub issue #168',
     'FOLDERA_MASTER_BIBLE.md',
     'FOLDERA_NORTH_STAR_LOCK.md',
@@ -253,7 +253,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     '| GitHub issue #196 | `REFERENCE_ONLY` |',
     '| GitHub issue #182 | `REFERENCE_ONLY` |',
     '| GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` | `CURRENT_CONTROL` |',
-    '| GitHub issue #140 | `CURRENT_CONTROL` |',
+    '| GitHub issue #178 | `CURRENT_CONTROL` |',
+    '| GitHub issue #140 | `REFERENCE_ONLY` |',
     '| GitHub issue #168 | `REFERENCE_ONLY` |',
     '| GitHub issue #194 | `REFERENCE_ONLY` |',
     '| `FOLDERA_OPERATING_SYSTEM.md` | `SHIM_TO_CANONICAL` |',
@@ -264,7 +265,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'GitHub issue #198 / PR #198 restored issue #194 as active control after the cleanup sweep.',
     'GitHub issue #194 / PR #201 completed the first money-loop verdict-loop seam and returned the repo to a no-active-seam state.',
     'GitHub issue #182 is the completed global execution-rule enforcement patch retained for receipt history after PR #203.',
-    'GitHub issue #140 is the current control issue for the Real Slack Self-Loop implementation seam.',
+    'GitHub issue #178 is the current control issue for the Command OS Merge Clerk v0 governance seam.',
+    'GitHub issue #140 is completed/closed by PR #206 and is now reference-only.',
     'GitHub issue #168 is the completed automatic Open Threads capture seam retained for receipt history after PR #205.',
     '| `.foldera-contract.json` | `CURRENT_CONTROL` |',
   ]) {
@@ -369,5 +371,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. The Master Bible remains reference authority, the queue remains inactive, and issue #140 is the active product seam.');
+  console.log('Source truth check passed. The Master Bible remains reference authority, the queue remains inactive, and issue #178 is the active governance seam.');
 }

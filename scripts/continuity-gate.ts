@@ -109,6 +109,7 @@ const requiredSourceOfTruthOrder = [
   'issue #48',
   'GitHub issue #165',
   'GitHub issue #182',
+  'GitHub issue #178',
   'GitHub issue #168',
   'FOLDERA_MASTER_BIBLE.md',
   'FOLDERA_NORTH_STAR_LOCK.md',
@@ -378,8 +379,11 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('| GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` | `CURRENT_CONTROL` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #165 as CURRENT_CONTROL for the raw-input inbox.');
   }
-  if (!sourceTruthMap.includes('| GitHub issue #140 | `CURRENT_CONTROL` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #140 as CURRENT_CONTROL for the active Slack self-loop seam.');
+  if (!sourceTruthMap.includes('| GitHub issue #178 | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #178 as CURRENT_CONTROL for the active governance seam.');
+  }
+  if (!sourceTruthMap.includes('| GitHub issue #140 | `REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #140 as REFERENCE_ONLY after the closeout.');
   }
   if (!sourceTruthMap.includes('| GitHub issue #168 | `REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #168 as REFERENCE_ONLY after the command-os closeout.');
@@ -399,8 +403,11 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('GitHub issue #182 is the completed global execution-rule enforcement patch retained for receipt history after PR #203.')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #182 as the completed global execution-rule enforcement patch.');
   }
-  if (!sourceTruthMap.includes('GitHub issue #140 is the current control issue for the Real Slack Self-Loop implementation seam.')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #140 as the current control issue.');
+  if (!sourceTruthMap.includes('GitHub issue #178 is the current control issue for the Command OS Merge Clerk v0 governance seam.')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #178 as the current control issue.');
+  }
+  if (!sourceTruthMap.includes('GitHub issue #140 is completed/closed by PR #206 and is now reference-only.')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #140 as completed reference history.');
   }
   if (!sourceTruthMap.includes('GitHub issue #168 is the completed automatic Open Threads capture seam retained for receipt history after PR #205.')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #168 as completed reference history.');
