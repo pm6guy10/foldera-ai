@@ -11,6 +11,7 @@ source_of_truth_order:
   - issue #48
   - GitHub issue #165
   - GitHub issue #182
+  - GitHub issue #140
   - GitHub issue #168
   - FOLDERA_MASTER_BIBLE.md
   - FOLDERA_NORTH_STAR_LOCK.md
@@ -30,11 +31,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 168
+active_issue: 140
 priority_class: GLOBAL_RULE_ENFORCEMENT
 work_type: GOVERNANCE_ENFORCEMENT
 why_this_first: PR #203 completed the source-truth closeout and the repo now needs the ChatGPT-to-GitHub switchboard seam to lock recurring Foldera capture rules into repo law after the governance enforcement sweep.
-next_seam: issue #168 automatic Open Threads capture + lessons-learned recurrence enforcement - reason active seam after governance closeout
+next_seam: issue #140 Real Slack Self-Loop implementation - reason first Core Product MVP seam after issue #168 closeout
 required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
   - 101
@@ -85,7 +86,11 @@ completed:
   - issue: 182
     pr: 203
     merge_sha: 74fc38f47f62300edc6f79c5b340e747bca8cb34
-    result: Global execution-rule enforcement closeout completed and issue #168 is now the active seam.
+    result: Global execution-rule enforcement closeout completed and issue #140 is now the active seam.
+  - issue: 168
+    pr: 205
+    merge_sha: pending_merge
+    result: Command OS GitHub write-back closeout completed in branch and issue #140 is now the active seam.
   - issue: 175
     pr: 177
     merge_sha: 17e0699238cd11e80b4891f236be860abe32eb72
@@ -253,7 +258,7 @@ current_pr_closeout:
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - reason historical roadmap remains shimmed and no longer controls the active seam
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - issue #168 automatic Open Threads capture + lessons-learned recurrence enforcement is the active seam after the closeout
+  next_seam: named - issue #140 Real Slack Self-Loop implementation is the active seam after the closeout
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason

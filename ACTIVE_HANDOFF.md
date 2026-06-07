@@ -17,9 +17,9 @@ Issue #192 is completed by merged PR #193.
 Issue #196 is completed by merged PR #197.
 Issue #198 is completed by merged PR #198 and restored issue #194 as active control.
 Issue #194 is completed by merged PR #201.
-Issue #168 is the active automatic Open Threads capture seam.
-Current Phase: Issue #168 domain logic Green. Ready for GitHub API mock integration / PR formulation.
-The active seam is the GitHub Operating System switchboard patch: lock the recurring Foldera routing rules into enforceable repo law so Brandon is no longer the merge clerk, router, QA cop, historian, or rule repeater.
+Issue #140 is the active Real Slack Self-Loop implementation seam.
+Current Phase: Issue #140 Real Slack Self-Loop implementation. Ready for bounded Slack proof.
+The active seam is the Real Slack Self-Loop implementation patch: keep the Workday Presence Layer doctrine intact while proving one safe Slack intervention and no connector expansion.
 `FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.
 `FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.
 PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.
@@ -28,7 +28,7 @@ Issue #173 is complete/superseded by PR #174.
 Issue #170 is complete/superseded by PR #172.
 Issue #165 Open Threads remains capture-only and cannot authorize implementation.
 Issue #182 is completed/superseded by PR #203.
-Issue #140 / PR #142 remains rail-only and parked outside this sweep.
+Issue #168 is completed/superseded by PR #205.
 Issue #136 remains open as the standing Codex Run Ledger only.
 GitHub writeback is mandatory.
 One active seam only.
@@ -40,14 +40,14 @@ One active seam only.
 - PR #199 finished the control-text bridge for issue #194 and kept the seam limited to repo authority.
 - PR #201 completed the verdict-loop closeout and issue #194 is now closed by merge.
 - PR #203 merged the source-truth closeout and completed issue #182.
-- The current lane is automatic Open Threads capture and lessons-learned recurrence enforcement: source truth first, one active seam only, no chat-only law, capture routing, proof parity, merge-through completion, no owner-as-router, open-thread routing, forbidden surface, and closeout law.
+- The current lane is the bounded Real Slack Self-Loop implementation: one real Slack self-loop only, one send path, one interaction/update path, deterministic token-redaction tests, and no connector expansion.
 - Issue #165 remains the raw-input inbox and capture-only.
-- Issue #168 is the active automatic ChatGPT-to-GitHub switchboard seam.
-- The next authorized move after this closeout is to continue issue #168 in the active seam.
+- Issue #140 is the active Real Slack Self-Loop implementation seam.
+- The next authorized move after this closeout is to continue issue #140 in the active seam.
 - `FOLDERA_MASTER_BIBLE.md` is the human-readable company plan; supporting docs remain subordinate.
 - `FOLDERA_EXECUTION_QUEUE.yaml` stays inactive/reference-only until a future explicit activation issue reopens it.
 - `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` remains `REFERENCE_DRAFT`: source material only, not implementation authority.
-- Issue #140 / PR #142 is parked for this seam; do not touch live Slack/provider surfaces.
+- Issue #168 / PR #205 is completed/superseded by this closeout.
 - Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, #182, #183, #192, #194, and #196 are closed/completed/superseded. Do not reopen them here.
 
 ## Product doctrine
@@ -60,9 +60,9 @@ Issue #48 remains the product contract.
 
 ## Source-truth boundary
 Allowed files for this seam are the governance-control files, gate/test files, and source-truth files needed to prove the global execution-rule enforcement patch.
-Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #168 is the active automatic switchboard seam, issue #165 is capture-only, issue #182 is completed/superseded, and the queue file remains inactive/reference-only.
+Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #140 is the active Real Slack Self-Loop implementation seam, issue #168 is completed/superseded, issue #165 is capture-only, issue #182 is completed/superseded, and the queue file remains inactive/reference-only.
 Forbidden in this seam: live Slack, Supabase migrations or data mutation, Vercel settings, Stripe/auth/dashboard work, package/dependency changes, queue activation, Dependabot, live connector fetch, paid model call, fake claims, or broad cleanup.
-Stop condition: stop when the source-truth docs and gate/test layer agree that issue #168 is the active automatic switchboard seam, issue #182 is closed/completed, and the queue remains inactive/reference-only.
+Stop condition: stop when the source-truth docs and gate/test layer agree that issue #140 is the active Real Slack Self-Loop implementation seam, issue #168 is completed/superseded, issue #182 is closed/completed, and the queue remains inactive/reference-only.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
@@ -75,5 +75,5 @@ Stop condition: stop when the source-truth docs and gate/test layer agree that i
 - If a source-truth file is not updated, the PR receipt must say `unchanged - reason` or `not applicable - reason`.
 
 ## Next exact move
-This PR only updates repo control text and must not start product code.
-Next authorized move after this closeout: continue issue #168 in the active seam.
+This PR adds the command-os write-back route and the source-truth rollover toward issue #140.
+Next authorized move after this closeout: continue issue #140 in the active seam.

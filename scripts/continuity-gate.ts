@@ -378,8 +378,11 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('| GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` | `CURRENT_CONTROL` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #165 as CURRENT_CONTROL for the raw-input inbox.');
   }
-  if (!sourceTruthMap.includes('| GitHub issue #168 | `CURRENT_CONTROL` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #168 as CURRENT_CONTROL for the active switchboard seam.');
+  if (!sourceTruthMap.includes('| GitHub issue #140 | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #140 as CURRENT_CONTROL for the active Slack self-loop seam.');
+  }
+  if (!sourceTruthMap.includes('| GitHub issue #168 | `REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #168 as REFERENCE_ONLY after the command-os closeout.');
   }
   if (!sourceTruthMap.includes('| GitHub issue #194 | `REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #194 as REFERENCE_ONLY after PR #201 closes the verdict loop.');
@@ -396,8 +399,11 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('GitHub issue #182 is the completed global execution-rule enforcement patch retained for receipt history after PR #203.')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #182 as the completed global execution-rule enforcement patch.');
   }
-  if (!sourceTruthMap.includes('GitHub issue #168 is the current control issue for the automatic Open Threads capture and lessons-learned recurrence enforcement seam.')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #168 as the current control issue.');
+  if (!sourceTruthMap.includes('GitHub issue #140 is the current control issue for the Real Slack Self-Loop implementation seam.')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #140 as the current control issue.');
+  }
+  if (!sourceTruthMap.includes('GitHub issue #168 is the completed automatic Open Threads capture seam retained for receipt history after PR #205.')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #168 as completed reference history.');
   }
 
   const sentinel = readRepoFile(root, '.github/workflows/pr-sentinel.yml');
