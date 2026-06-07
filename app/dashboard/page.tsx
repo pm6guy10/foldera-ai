@@ -1,10 +1,21 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+
+async function load(cacheMode: RequestCache = 'default'): Promise<void> {
+  void cacheMode;
+}
 
 export default function DashboardPage() {
   const { status } = useSession();
   const isReady = status === 'authenticated';
+
+  useEffect(() => {
+    void (async () => {
+      await load('reload');
+    })();
+  }, []);
 
   return (
     <main className="min-h-screen bg-[#030305] text-white">
