@@ -30,11 +30,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 182
+active_issue: 168
 priority_class: GLOBAL_RULE_ENFORCEMENT
 work_type: GOVERNANCE_ENFORCEMENT
-why_this_first: PR #202 completed the source-truth closeout and the repo now needs the GitHub Operating System enforcement seam to lock recurring Foldera rules into repo law before the future ChatGPT-to-GitHub switchboard seam.
-next_seam: issue #168 automatic Open Threads capture + lessons-learned recurrence enforcement - reason future ChatGPT-to-GitHub switchboard seam after governance enforcement
+why_this_first: PR #203 completed the source-truth closeout and the repo now needs the ChatGPT-to-GitHub switchboard seam to lock recurring Foldera capture rules into repo law after the governance enforcement sweep.
+next_seam: issue #168 automatic Open Threads capture + lessons-learned recurrence enforcement - reason active seam after governance closeout
 required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
   - 101
@@ -82,6 +82,10 @@ completed:
     pr: 201
     merge_sha: 689d05f0ff1e2cac3130945b33befc83cb270daa
     result: First money-loop verdict loop completed and the next authorized rung is durable response/state/receipt loop.
+  - issue: 182
+    pr: 203
+    merge_sha: 74fc38f47f62300edc6f79c5b340e747bca8cb34
+    result: Global execution-rule enforcement closeout completed and issue #168 is now the active seam.
   - issue: 175
     pr: 177
     merge_sha: 17e0699238cd11e80b4891f236be860abe32eb72
@@ -165,6 +169,9 @@ closed_issues_do_not_reopen:
   - issue: 181
     status: closed_completed
     reason: Master Bible execution-layer bundle completed by PR #191 and is now the canonical reference authority.
+  - issue: 182
+    status: closed_completed
+    reason: Global execution-rule enforcement seam completed by PR #203 and is now superseded by issue #168.
   - issue: 192
     status: closed_completed
     reason: Master Bible source-truth closeout completed by PR #193 and the first money-loop issue is now active.
@@ -246,7 +253,7 @@ current_pr_closeout:
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - reason historical roadmap remains shimmed and no longer controls the active seam
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - issue #168 future automatic ChatGPT-to-GitHub switchboard seam is the next authorized move
+  next_seam: named - issue #168 automatic Open Threads capture + lessons-learned recurrence enforcement is the active seam after the closeout
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
