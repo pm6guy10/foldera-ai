@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-06 PT
+Last updated: 2026-06-07 PT
 
 Issue #80 owns this authority ledger. Issue #113 extends enforcement for source-truth closeout and agent governance drift.
 
@@ -27,7 +27,8 @@ Current product-direction split:
 - GitHub issue #194 / PR #201 completed the first money-loop verdict-loop seam and returned the repo to a no-active-seam state.
 - GitHub issue #182 is the completed global execution-rule enforcement patch retained for receipt history after PR #203.
 - GitHub issue #140 is completed/closed by PR #206 and is now reference-only.
-- GitHub issue #178 is the current control issue for the Command OS Merge Clerk v0 governance seam.
+- GitHub issue #208 is the current control issue for the first user journey shell Product MVP seam.
+- GitHub issue #178 is suspended/queued reference history from the governance pivot.
 - GitHub issue #168 is the completed automatic Open Threads capture seam retained for receipt history after PR #205.
 - GitHub issue #181 / PR #190 is superseded by PR #191 and must not be treated as a competing authority.
 - GitHub issue #179 `Rung 3: prove deterministic work-packet fixture loop` is completed by PR #180.
@@ -137,9 +138,10 @@ When sources disagree, use this order:
 | GitHub issue #192 | `REFERENCE_ONLY` | Completed source-truth closeout seam retained for receipt history and future routing context. | Agents and reviewers tracing PR #193 or validating why the Master Bible closeout finished. | Active seam selection, queue activation, or product/runtime implementation. | FOLDERA_BUILD_ORDER.yaml marks issue #192 closed/completed by PR #193. |
 | GitHub issue #196 | `REFERENCE_ONLY` | Completed source-truth cleanup issue retained for receipt history. | Agents and reviewers tracing PR #197 or validating why the cleanup finished. | Active seam selection, queue activation, or product/runtime implementation. | FOLDERA_BUILD_ORDER.yaml marks issue #196 closed/completed by PR #197. |
 | GitHub issue #198 | `REFERENCE_ONLY` | The closeout PR that restored issue #194 as the active first money-loop implementation seam. | Agents and reviewers tracing PR #198 or validating why issue #194 became active again. | Active seam selection, queue activation, or product/runtime implementation by itself. | FOLDERA_BUILD_ORDER.yaml marks issue #198 closed/completed by PR #198. |
-| GitHub issue #182 | `REFERENCE_ONLY` | Completed global execution-rule enforcement seam retained for receipt history after PR #203. | Agents and reviewers tracing the governance closeout. | Active seam selection, product/runtime implementation, or queue activation by itself. | FOLDERA_BUILD_ORDER.yaml marks issue #182 as closed/completed and the repo later rolled forward to issue #178. |
-| GitHub issue #168 | `REFERENCE_ONLY` | Completed automatic Open Threads capture seam retained for receipt history after PR #205. | Agents and reviewers tracing the command-os closeout. | Active seam selection, product/runtime implementation, or queue activation by itself. | FOLDERA_BUILD_ORDER.yaml marks issue #168 as closed/completed and the repo later rolled forward to issue #178. |
-| GitHub issue #178 | `CURRENT_CONTROL` | Command OS Merge Clerk v0 governance seam that now carries the bounded merge-readiness proof. | Agents and reviewers checking the current governance seam. | Product/runtime implementation, merge bypass, or queue activation by itself. | FOLDERA_BUILD_ORDER.yaml marks issue #178 as the active governance seam. |
+| GitHub issue #182 | `REFERENCE_ONLY` | Completed global execution-rule enforcement seam retained for receipt history after PR #203. | Agents and reviewers tracing the governance closeout. | Active seam selection, product/runtime implementation, or queue activation by itself. | FOLDERA_BUILD_ORDER.yaml marks issue #182 as closed/completed and the repo later rolled forward to issue #208. |
+| GitHub issue #208 | `CURRENT_CONTROL` | Build the first user journey shell Product MVP seam that now carries the bounded product pivot. | Agents and reviewers checking the current product seam. | Product/runtime implementation, queue activation, or unrelated product widening by itself. | FOLDERA_BUILD_ORDER.yaml marks issue #208 as the active Product MVP seam. |
+| GitHub issue #178 | `REFERENCE_ONLY` | Suspended/queued Command OS Merge Clerk v0 governance seam retained for receipt history after the pivot. | Agents and reviewers tracing the governance closeout. | Active seam selection, product/runtime implementation, or queue activation by itself. | FOLDERA_BUILD_ORDER.yaml marks issue #178 as suspended/queued and no longer active. |
+| GitHub issue #168 | `REFERENCE_ONLY` | Completed automatic Open Threads capture seam retained for receipt history after PR #205. | Agents and reviewers tracing the command-os closeout. | Active seam selection, product/runtime implementation, or queue activation by itself. | FOLDERA_BUILD_ORDER.yaml marks issue #168 as closed/completed and the repo later rolled forward to issue #208. |
 | GitHub issue #140 | `REFERENCE_ONLY` | Completed Real Slack Self-Loop implementation seam retained for receipt history after PR #206. | Agents and reviewers tracing the Real Slack Self-Loop closeout. | Active seam selection, queue activation, or product/runtime implementation by itself. | FOLDERA_BUILD_ORDER.yaml marks issue #140 closed/completed by PR #206. |
 | GitHub issue #194 | `REFERENCE_ONLY` | Completed first money-loop verdict-loop seam retained for receipt history. | Agents and reviewers tracing PR #201 or validating why the verdict loop closed. | Active seam selection, queue activation, or product/runtime implementation. | FOLDERA_BUILD_ORDER.yaml marks issue #194 closed/completed by PR #201. |
 | GitHub issue #48 | `CURRENT_CONTROL` | Holds the Workday Presence Layer product contract. | Product reviewers, agents, and humans checking launch doctrine. | Historical Brandon-command-center behavior or dashboard/task-list drift. | Boot sequence plus explicit issue reference across control docs. |

@@ -1,7 +1,8 @@
 # ACTIVE HANDOFF - FOLDERA
 
 Last updated: 2026-06-07 PT
-Current `origin/main` SHA after PR #206 merge: `6bbe424b20d05f64068ecc116eea79765b82f72e`.
+Current `origin/main` SHA after PR #207 merge: `9685e2d633dad375a8480109b6c15e55c1a45b26`.
+
 ## Canonical Boot Sequence
 1. Read `ACTIVE_HANDOFF.md`.
 2. Read `FOLDERA_BUILD_ORDER.yaml`.
@@ -18,9 +19,11 @@ Issue #196 is completed by merged PR #197.
 Issue #198 is completed by merged PR #198 and restored issue #194 as active control.
 Issue #194 is completed by merged PR #201.
 Issue #140 is completed by merged PR #206.
-Issue #178 is the active Command OS Merge Clerk v0 governance seam.
-Current Phase: Governance rollover complete. Ready for the issue #178 command-clerk governance seam.
-The active seam is the Command OS Merge Clerk v0 governance seam: keep repo governance bounded, prove safe merge-readiness decisions, and do not widen into product/runtime scope.
+Issue #207 completed the governance pivot and moved repo control to issue #208.
+Issue #208 is the active Product MVP seam.
+Issue #178 is suspended/queued and no longer active.
+Current Phase: Product MVP pivot complete. Ready for the issue #208 first user journey shell seam.
+The active seam is the Product MVP seam: keep the repo pointed at the first user journey shell, keep the pivot bounded, and do not widen into product/runtime implementation yet.
 `FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.
 `FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.
 PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.
@@ -36,18 +39,14 @@ One active seam only.
 
 ## Current slice:
 - PR #198 restored issue #194 as the active seam after the closeout sweep.
-- PR #199 finished the control-text bridge for issue #194 and kept the seam limited to repo authority.
-- PR #201 completed the verdict-loop closeout and issue #194 is now closed by merge.
-- PR #203 merged the source-truth closeout and completed issue #182.
-- PR #206 completed issue #140 and moved repo control to issue #178.
-- The current lane is the bounded Command OS Merge Clerk v0 governance rollout: one scoped-PR readiness decision, one merge/no-merge outcome, and no product/runtime expansion.
+- PR #207 completed the governance pivot and moved repo control from issue #178 to issue #208.
+- The current lane is the Product MVP pivot: one scoped source-truth move, one active product seam, and no product/runtime implementation yet.
 - Issue #165 remains the raw-input inbox and capture-only.
 - Issue #140 is complete and no longer the active seam.
-- Issue #178 is the sole active seam.
-- The next authorized move after this closeout is to continue issue #178 in the active seam.
-- `FOLDERA_MASTER_BIBLE.md` is the human-readable company plan; supporting docs remain subordinate.
+- Issue #178 is suspended/queued and no longer the active seam.
+- Issue #208 is the sole active seam.
+- The next authorized move after this closeout is to continue issue #208 in the active seam.
 - `FOLDERA_EXECUTION_QUEUE.yaml` stays inactive/reference-only until a future explicit activation issue reopens it.
-- `FOLDERA_MASTER_SYNTHESIS_DRAFT.md` remains `REFERENCE_DRAFT`: source material only, not implementation authority.
 - Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, #182, #183, #192, #194, and #196 are closed/completed/superseded. Do not reopen them here.
 
 ## Product doctrine
@@ -59,10 +58,10 @@ Issue #48 remains the product contract.
 `FOLDERA_NORTH_STAR_LOCK.md` controls product doctrine; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap, phase order, backlog lanes, and enterprise path.
 
 ## Source-truth boundary
-Allowed files for this seam are the governance-control files, gate/test files, and source-truth files needed to prove the global execution-rule enforcement patch.
-Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #178 is the active Command OS Merge Clerk v0 governance seam, issue #140 is completed/closed, issue #168 is completed/superseded, issue #165 is capture-only, issue #182 is completed/superseded, and the queue file remains inactive/reference-only.
+Allowed files for this seam are the governance-control files, gate/test files, product-doctrine docs, and source-truth files needed to prove the Product MVP pivot.
+Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #208 is the active Product MVP seam, issue #178 is suspended/queued, issue #140 is completed/closed, issue #168 is completed/superseded, issue #165 is capture-only, issue #182 is completed/superseded, and the queue file remains inactive/reference-only.
 Forbidden in this seam: live Slack, Supabase migrations or data mutation, Vercel settings, Stripe/auth/dashboard work, product/runtime code, package/dependency changes, queue activation, Dependabot, live connector fetch, paid model call, fake claims, or broad cleanup.
-Stop condition: stop when the source-truth docs and gate/test layer agree that issue #178 is the active governance seam, issue #140 is complete/closed, issue #168 is completed/superseded, issue #182 is closed/completed, and the queue remains inactive/reference-only.
+Stop condition: stop when the source-truth docs and gate/test layer agree that issue #208 is the active Product MVP seam, issue #178 is suspended/queued, issue #140 is complete/closed, issue #168 is completed/superseded, issue #182 is closed/completed, and the queue remains inactive/reference-only.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
@@ -75,5 +74,5 @@ Stop condition: stop when the source-truth docs and gate/test layer agree that i
 - If a source-truth file is not updated, the PR receipt must say `unchanged - reason` or `not applicable - reason`.
 
 ## Next exact move
-This PR adds the command-os write-back route and the source-truth rollover toward issue #178.
-Next authorized move after this closeout: continue issue #178 in the active seam.
+This PR completes the governance pivot to issue #208 and suspends issue #178.
+Next authorized move after this closeout: continue issue #208 in the active seam.

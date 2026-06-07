@@ -109,6 +109,7 @@ const requiredSourceOfTruthOrder = [
   'issue #48',
   'GitHub issue #165',
   'GitHub issue #182',
+  'GitHub issue #208',
   'GitHub issue #178',
   'GitHub issue #168',
   'FOLDERA_MASTER_BIBLE.md',
@@ -271,7 +272,7 @@ export function runContinuityGate(root: string): string[] {
   if (activeSeamLines.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam line; found ${activeSeamLines.length}.`);
   if (!queueControlled && handoffIssue === null) failures.push('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
   if (buildOrderIssue === null && buildOrderIssueScalar !== 'null') failures.push('FOLDERA_BUILD_ORDER.yaml active_issue could not be parsed.');
-  if (!queueControlled && buildOrderIssue === null) failures.push('FOLDERA_BUILD_ORDER.yaml active_issue must name the active governance seam.');
+  if (!queueControlled && buildOrderIssue === null) failures.push('FOLDERA_BUILD_ORDER.yaml active_issue must name the active product seam.');
   if (!queueControlled && handoffIssue !== null && buildOrderIssue !== null && handoffIssue !== buildOrderIssue) {
     failures.push(`ACTIVE_HANDOFF.md active seam issue #${handoffIssue} must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
   }
@@ -280,6 +281,14 @@ export function runContinuityGate(root: string): string[] {
   if (sourceOfTruthOrder.length === 0) failures.push('FOLDERA_BUILD_ORDER.yaml is missing source_of_truth_order.');
   for (const entry of requiredSourceOfTruthOrder) {
     if (!sourceOfTruthOrder.includes(entry)) failures.push(`FOLDERA_BUILD_ORDER.yaml is missing source_of_truth_order entry: ${entry}`);
+  }
+  for (const marker of [
+    'paused_issues:',
+    '- issue: 178',
+    'state: SUSPENDED',
+    'reason: Governance merge clerk paused while the Product MVP becomes the active seam.',
+  ]) {
+    if (!buildOrder.includes(marker)) failures.push(`FOLDERA_BUILD_ORDER.yaml is missing paused issue marker: ${marker}`);
   }
 
   const acceptedTerminalStates = extractYamlList(buildOrder, 'accepted_terminal_states');
@@ -305,13 +314,13 @@ export function runContinuityGate(root: string): string[] {
   }
 
   const contract = JSON.parse(readRepoFile(root, '.foldera-contract.json')) as { active?: boolean; authority_status?: string; backlog_id?: string; superseded_by_issue?: number };
-  if (contract.active !== true) failures.push('.foldera-contract.json must remain active while it governs the global execution-rule patch.');
-  if (contract.authority_status !== 'GLOBAL_RULE_ENFORCEMENT_ACTIVE') failures.push('.foldera-contract.json must expose GLOBAL_RULE_ENFORCEMENT_ACTIVE authority status.');
-  if (contract.backlog_id !== 'FOLDERA_GLOBAL_RULE_ENFORCEMENT') failures.push('.foldera-contract.json must point at FOLDERA_GLOBAL_RULE_ENFORCEMENT backlog_id.');
+  if (contract.active !== true) failures.push('.foldera-contract.json must remain active while it governs the Product MVP pivot.');
+  if (contract.authority_status !== 'PRODUCT_MVP_PIVOT_ACTIVE') failures.push('.foldera-contract.json must expose PRODUCT_MVP_PIVOT_ACTIVE authority status.');
+  if (contract.backlog_id !== 'FOLDERA_PRODUCT_MVP_PIVOT') failures.push('.foldera-contract.json must point at FOLDERA_PRODUCT_MVP_PIVOT backlog_id.');
   if (buildOrderIssue !== null && (contract as { active_issue?: number }).active_issue !== buildOrderIssue) {
     failures.push(`.foldera-contract.json active_issue must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
   }
-  if (contract.superseded_by_issue !== undefined) failures.push('.foldera-contract.json must not report a superseded_by_issue for the active global-rule patch.');
+  if (contract.superseded_by_issue !== undefined) failures.push('.foldera-contract.json must not report a superseded_by_issue for the Product MVP pivot.');
   const contractAny = contract as Record<string, unknown> & { terminal_state_authority?: { allowed?: unknown; merge_through_rule?: unknown } };
   const terminalAuthority = contractAny.terminal_state_authority;
   if (!terminalAuthority || !Array.isArray(terminalAuthority.allowed)) failures.push('.foldera-contract.json must expose terminal_state_authority.allowed.');
@@ -379,8 +388,11 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('| GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` | `CURRENT_CONTROL` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #165 as CURRENT_CONTROL for the raw-input inbox.');
   }
-  if (!sourceTruthMap.includes('| GitHub issue #178 | `CURRENT_CONTROL` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #178 as CURRENT_CONTROL for the active governance seam.');
+  if (!sourceTruthMap.includes('| GitHub issue #208 | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #208 as CURRENT_CONTROL for the active Product MVP seam.');
+  }
+  if (!sourceTruthMap.includes('| GitHub issue #178 | `REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #178 as REFERENCE_ONLY after the pivot.');
   }
   if (!sourceTruthMap.includes('| GitHub issue #140 | `REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #140 as REFERENCE_ONLY after the closeout.');
@@ -392,7 +404,7 @@ export function runContinuityGate(root: string): string[] {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #194 as REFERENCE_ONLY after PR #201 closes the verdict loop.');
   }
   if (!sourceTruthMap.includes('| `.foldera-contract.json` | `CURRENT_CONTROL` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify .foldera-contract.json as CURRENT_CONTROL for the global execution-rule patch.');
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify .foldera-contract.json as CURRENT_CONTROL for the Product MVP pivot.');
   }
   if (!sourceTruthMap.includes('| `FOLDERA_OPERATING_SYSTEM.md` | `SHIM_TO_CANONICAL` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify FOLDERA_OPERATING_SYSTEM.md as SHIM_TO_CANONICAL.');
@@ -403,8 +415,11 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('GitHub issue #182 is the completed global execution-rule enforcement patch retained for receipt history after PR #203.')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #182 as the completed global execution-rule enforcement patch.');
   }
-  if (!sourceTruthMap.includes('GitHub issue #178 is the current control issue for the Command OS Merge Clerk v0 governance seam.')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #178 as the current control issue.');
+  if (!sourceTruthMap.includes('GitHub issue #208 is the current control issue for the first user journey shell Product MVP seam.')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #208 as the current control issue.');
+  }
+  if (!sourceTruthMap.includes('GitHub issue #178 is suspended/queued reference history from the governance pivot.')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #178 as suspended reference history.');
   }
   if (!sourceTruthMap.includes('GitHub issue #140 is completed/closed by PR #206 and is now reference-only.')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #140 as completed reference history.');
