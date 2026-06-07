@@ -77,16 +77,16 @@ describe('continuity gate writeback enforcement', () => {
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(handoff).toContain('Issue #140 is the active Real Slack Self-Loop implementation seam.');
-    expect(handoff).toContain('The active seam is the Real Slack Self-Loop implementation patch:');
+    expect(handoff).toContain('Issue #178 is the active Command OS Merge Clerk v0 governance seam.');
+    expect(handoff).toContain('The active seam is the Command OS Merge Clerk v0 governance seam:');
     expect(handoff).toContain('Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
     expect(handoff).toContain('Issue #182 is completed/superseded by PR #203.');
     expect(handoff).toContain('Issue #168 is completed/superseded by PR #205.');
-    expect(handoff).toContain('The next authorized move after this closeout is to continue issue #140 in the active seam.');
-    expect(buildOrder).toContain('active_issue: 140');
+    expect(handoff).toContain('The next authorized move after this closeout is to continue issue #178 in the active seam.');
+    expect(buildOrder).toContain('active_issue: 178');
     expect(buildOrder).toContain('priority_class: GLOBAL_RULE_ENFORCEMENT');
     expect(buildOrder).toContain('work_type: GOVERNANCE_ENFORCEMENT');
-    expect(buildOrder).toContain('next_seam: issue #140 Real Slack Self-Loop implementation - reason active seam after governance closeout');
+    expect(buildOrder).toContain('next_seam: issue #178 Command OS Merge Clerk v0 governance seam - reason highest-priority open product/infrastructure issue after issue #140 closeout');
     expect(buildOrder).toContain('MERGED_AND_CLOSED');
     expect(buildOrder).toContain('BLOCKED_WITH_EXACT_RECEIPT');
     expect(prTemplate).toContain('## Receipt summary');
@@ -117,12 +117,12 @@ describe('continuity gate writeback enforcement', () => {
     writeFixtureFile(
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
-      original.replace('Issue #140 is the active Real Slack Self-Loop implementation seam.', 'Issue #194 is the active first money-loop implementation seam.'),
+      original.replace('Issue #178 is the active Command OS Merge Clerk v0 governance seam.', 'Issue #194 is the active first money-loop implementation seam.'),
     );
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md active seam issue #194 must match FOLDERA_BUILD_ORDER.yaml active_issue #140.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md active seam issue #194 must match FOLDERA_BUILD_ORDER.yaml active_issue #178.');
   });
 
   it('fails when the mandatory writeback rule is removed from ACTIVE_HANDOFF.md', () => {

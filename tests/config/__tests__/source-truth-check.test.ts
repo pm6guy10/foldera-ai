@@ -64,17 +64,17 @@ describe('source truth command gate', () => {
     expect(handoff).toContain('Issue #196 is completed by merged PR #197.');
     expect(handoff).toContain('Issue #198 is completed by merged PR #198 and restored issue #194 as active control.');
     expect(handoff).toContain('Issue #194 is completed by merged PR #201.');
-    expect(handoff).toContain('Issue #140 is the active Real Slack Self-Loop implementation seam.');
-    expect(handoff).toContain('The active seam is the Real Slack Self-Loop implementation patch:');
+    expect(handoff).toContain('Issue #178 is the active Command OS Merge Clerk v0 governance seam.');
+    expect(handoff).toContain('The active seam is the Command OS Merge Clerk v0 governance seam:');
     expect(handoff).toContain('Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
     expect(handoff).toContain('Issue #182 is completed/superseded by PR #203.');
     expect(handoff).toContain('Issue #168 is completed/superseded by PR #205.');
-    expect(handoff).toContain('The next authorized move after this closeout is to continue issue #140 in the active seam.');
+    expect(handoff).toContain('The next authorized move after this closeout is to continue issue #178 in the active seam.');
     expect(handoff).toContain('`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.');
-    expect(buildOrder).toContain('active_issue: 140');
+    expect(buildOrder).toContain('active_issue: 178');
     expect(buildOrder).toContain('priority_class: GLOBAL_RULE_ENFORCEMENT');
     expect(buildOrder).toContain('work_type: GOVERNANCE_ENFORCEMENT');
-    expect(buildOrder).toContain('next_seam: issue #140 Real Slack Self-Loop implementation - reason active seam after governance closeout');
+    expect(buildOrder).toContain('next_seam: issue #178 Command OS Merge Clerk v0 governance seam - reason highest-priority open product/infrastructure issue after issue #140 closeout');
     expect(buildOrder).toContain('MERGED_AND_CLOSED');
     expect(buildOrder).toContain('BLOCKED_WITH_EXACT_RECEIPT');
     expect(queue).toContain('- id: "005"');
@@ -159,14 +159,14 @@ describe('source truth command gate', () => {
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
       original
-        .replace('Issue #140 is the active Real Slack Self-Loop implementation seam.', 'Issue #194 is the active first money-loop implementation seam.')
+        .replace('Issue #178 is the active Command OS Merge Clerk v0 governance seam.', 'Issue #194 is the active first money-loop implementation seam.')
         .replace('Issue #168 is completed/superseded by PR #205.', 'Issue #194 is the active first money-loop implementation seam.'),
     );
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
     expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Issue #168 is completed/superseded by PR #205.');
-    expect(failures).toContain('ACTIVE_HANDOFF.md active seam issue must be #140; found #194.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md active seam issue must be #178; found #194.');
   });
 
   it('fails when .foldera-contract.json no longer reflects the global-rule contract', () => {
@@ -184,7 +184,7 @@ describe('source truth command gate', () => {
     expect(failures).toContain('.foldera-contract.json must remain active while it governs the global execution-rule patch.');
     expect(failures).toContain('.foldera-contract.json must expose GLOBAL_RULE_ENFORCEMENT_ACTIVE authority status.');
     expect(failures).toContain('.foldera-contract.json must point at FOLDERA_GLOBAL_RULE_ENFORCEMENT backlog_id.');
-    expect(failures).toContain('.foldera-contract.json active_issue must be 140; found 194.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be 178; found 194.');
     expect(failures).toContain('.foldera-contract.json is missing terminal state authority for MERGED_AND_CLOSED.');
     expect(failures).toContain('.foldera-contract.json must expose a machine-readable merge-through rule.');
   });

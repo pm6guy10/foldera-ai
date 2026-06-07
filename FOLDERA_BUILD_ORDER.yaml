@@ -11,6 +11,7 @@ source_of_truth_order:
   - issue #48
   - GitHub issue #165
   - GitHub issue #182
+  - GitHub issue #178
   - GitHub issue #140
   - GitHub issue #168
   - FOLDERA_MASTER_BIBLE.md
@@ -31,11 +32,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 140
+active_issue: 178
 priority_class: GLOBAL_RULE_ENFORCEMENT
 work_type: GOVERNANCE_ENFORCEMENT
-why_this_first: PR #203 completed the source-truth closeout and the repo now needs the ChatGPT-to-GitHub switchboard seam to lock recurring Foldera capture rules into repo law after the governance enforcement sweep.
-next_seam: issue #140 Real Slack Self-Loop implementation - reason active seam after governance closeout
+why_this_first: PR #206 completed the Real Slack Self-Loop closeout, and the repo now needs the next highest-priority open governance/infrastructure seam locked into source truth.
+next_seam: issue #178 Command OS Merge Clerk v0 governance seam - reason highest-priority open product/infrastructure issue after issue #140 closeout
 required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
   - 101
@@ -62,6 +63,7 @@ predecessor_issues:
   - 170
   - 173
   - 175
+  - 178
 completed:
   - issue: 181
     pr: 191
@@ -86,11 +88,11 @@ completed:
   - issue: 182
     pr: 203
     merge_sha: 74fc38f47f62300edc6f79c5b340e747bca8cb34
-    result: Global execution-rule enforcement closeout completed and issue #140 is now the active seam.
+    result: Global execution-rule enforcement closeout completed and the repo later rolled forward to the next active seam.
   - issue: 168
     pr: 205
     merge_sha: pending_merge
-    result: Command OS GitHub write-back closeout completed in branch and issue #140 is now the active seam.
+    result: Command OS GitHub write-back closeout completed in branch and the repo later rolled forward to the next active seam.
   - issue: 175
     pr: 177
     merge_sha: 17e0699238cd11e80b4891f236be860abe32eb72
@@ -124,9 +126,9 @@ completed:
     merge_sha: 84c476316a31901378d9627462d4fab155e40105
     result: First 10 ICP Evidence Tracker landed on main.
   - issue: 140
-    pr: 142
-    merge_sha: not_merged_external_blocker_accepted
-    result: PR #142 remains rail-only and parked; do not widen PR #142 here.
+    pr: 206
+    merge_sha: 6bbe424b20d05f64068ecc116eea79765b82f72e
+    result: Real Slack Self-Loop implementation completed on main and repo control is now assigned to issue #178.
   - issue: 136
     pr: 137
     merge_sha: 46ff9ee99d8f920fc423b6de4d114022d6a8a521
@@ -183,6 +185,9 @@ closed_issues_do_not_reopen:
   - issue: 194
     status: closed_completed
     reason: First money-loop verdict loop completed by PR #201 and is now superseded by the durable response/state/receipt loop rung.
+  - issue: 140
+    status: closed_completed
+    reason: Real Slack Self-Loop implementation completed by PR #206 and is now superseded by issue #178.
   - issue: 196
     status: closed_completed
     reason: Root source-truth cleanup completed by PR #197 and issue #194 is now complete.
@@ -211,25 +216,18 @@ forbidden_current_work:
 allowed_current_work:
   - update ACTIVE_HANDOFF.md
   - update FOLDERA_BUILD_ORDER.yaml
-  - update FOLDERA_GITHUB_ISSUE_PR_PLAN.md
   - update .foldera-contract.json
   - update docs/SOURCE_OF_TRUTH_MAP.md
   - update scripts/source-truth-check.ts
   - update scripts/continuity-gate.ts
   - update focused source-truth gate tests
   - update focused continuity gate tests
-  - update tests/fixtures/work-packets/source-signals.ts
-  - update lib/work-packets/**
-  - update lib/workday-presence/**
-  - update lib/work-packets/__tests__/**
-  - update lib/workday-presence/__tests__/**
+  - update .github/pull_request_template.md
 required_local_proof:
   - npm run health
   - npx tsx scripts/source-truth-check.ts
   - npm run gate:continuity
   - npm run lint
-  - npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose
-  - npx vitest run lib/work-packets/__tests__/work-packet-brain.test.ts lib/slack-test-mode/__tests__/work-packet-review.test.ts lib/workday-presence/__tests__/work-packet-state-update.test.ts --reporter=verbose
   - git diff --check
 required_master_bible_closeout:
   controlling_pr: 191
@@ -258,7 +256,7 @@ current_pr_closeout:
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - reason historical roadmap remains shimmed and no longer controls the active seam
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - issue #140 Real Slack Self-Loop implementation is the active seam after the closeout
+  next_seam: named - issue #178 Command OS Merge Clerk v0 governance seam is the active seam after the closeout
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason

@@ -1,11 +1,11 @@
 {
   "authority_status": "GLOBAL_RULE_ENFORCEMENT_ACTIVE",
   "active": true,
-  "active_issue": 140,
+  "active_issue": 178,
   "backlog_id": "FOLDERA_GLOBAL_RULE_ENFORCEMENT",
   "base_commit": "6e1085faf2cad375bdce4a2d422a3255493cf078",
   "money_loop_rung": "global_execution_rule_enforcement",
-  "user_system_path": "Issue #140 is the active Real Slack Self-Loop implementation seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must point at the same issue and the queue file must remain inactive/reference-only.",
+  "user_system_path": "Issue #178 is the active Command OS Merge Clerk v0 governance seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must point at the same issue and the queue file must remain inactive/reference-only.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and docs/SOURCE_OF_TRUTH_MAP.md before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate the queue.",
   "terminal_state_authority": {
@@ -26,12 +26,7 @@
     "docs/SOURCE_OF_TRUTH_MAP.md",
     "scripts/source-truth-check.ts",
     "scripts/continuity-gate.ts",
-    "app/api/command-os/**",
-    "app/api/slack/interaction/route.ts",
-    "lib/repo-intake-governor/**",
-    "lib/work-packets/slack-self-loop.ts",
-    "tests/config/__tests__/**",
-    "tests/work-packets/__tests__/**"
+    "tests/config/__tests__/**"
   ],
   "forbidden_file_patterns": [
     "components/**",
@@ -73,8 +68,8 @@
     "broad cleanup",
     "queue activation"
   ],
-  "allowed_files_raw": "Current seam is the automatic Open Threads capture and lessons-learned recurrence enforcement patch: keep the Master Bible reference-only, point the repo at issue #168, and align source-truth, gate/test files, and PR template law without widening to product breadth.",
-  "forbidden_files_raw": "No live Slack, no Supabase migrations or data mutation, no Vercel settings, no Stripe/auth/dashboard work, no package/dependency changes, no queue activation, no Dependabot, no live connector fetch, no paid/model call, no fake claims, and no broad cleanup outside the governance patch.",
+  "allowed_files_raw": "Current seam is the governance rollover patch: keep the Master Bible reference-only, point the repo at issue #178, and align source-truth, gate/test files, and PR template law without widening to product breadth.",
+  "forbidden_files_raw": "No live Slack, no Supabase migrations or data mutation, no Vercel settings, no Stripe/auth/dashboard work, no product/runtime code, no package/dependency changes, no queue activation, no Dependabot, no live connector fetch, no paid/model call, no fake claims, and no broad cleanup outside the governance rollout.",
   "required_local_proof": [
     "npm run health",
     "npx tsx scripts/source-truth-check.ts",
@@ -84,12 +79,13 @@
     "git diff --check"
   ],
   "required_browser_proof": "Not applicable; deterministic governance proof only.",
-  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, .foldera-contract.json, and the gate/test layer all agree that issue #140 is the active Real Slack Self-Loop implementation seam, issue #168 is completed/superseded, issue #182 is completed and closed, issue #165 is capture-only, and the queue file remains inactive/reference-only. No product/runtime implementation starts in this change.",
-  "stop_condition": "Stop when the source-truth closeout and gate/test layer both accept issue #140 as active with issue #168 closed/completed and no queue activation.",
+  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, .foldera-contract.json, and the gate/test layer all agree that issue #178 is the active governance seam, issue #140 is closed by PR #206, issue #168 is completed/superseded, issue #182 is completed and closed, issue #165 is capture-only, and the queue file remains inactive/reference-only. No product/runtime implementation starts in this change.",
+  "stop_condition": "Stop when the source-truth closeout and gate/test layer both accept issue #178 as active with issue #140 closed/completed, issue #168 closed/completed, and no queue activation.",
   "is_user_facing": false,
   "browser_proof_command": "not applicable - deterministic governance proof only",
   "anti_regression_checks": [
-    "issue #140 is the active Real Slack Self-Loop implementation seam",
+    "issue #178 is the active Command OS Merge Clerk v0 governance seam",
+    "issue #140 is closed by PR #206",
     "issue #168 is completed and closed",
     "issue #182 is completed and closed",
     "issue #165 remains capture-only",
@@ -98,5 +94,5 @@
     ".foldera-contract.json contains merge-through rule authority",
     "No product/runtime implementation starts in the governance patch"
   ],
-  "next_command": "Continue the issue #140 Real Slack Self-Loop branch and keep issue #168 closed/completed until any future activation."
+  "next_command": "Continue the issue #178 Command OS Merge Clerk v0 governance seam and keep issue #140 closed/completed until any future activation."
 }
