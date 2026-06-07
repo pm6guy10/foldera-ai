@@ -26,12 +26,12 @@
     "docs/SOURCE_OF_TRUTH_MAP.md",
     "scripts/source-truth-check.ts",
     "scripts/continuity-gate.ts",
+    "app/api/command-os/**",
     "lib/repo-intake-governor/**",
     "tests/config/__tests__/**",
     "tests/work-packets/__tests__/**"
   ],
   "forbidden_file_patterns": [
-    "app/**",
     "components/**",
     "components/foldera/LandingPage.tsx",
     "app/page.tsx",
