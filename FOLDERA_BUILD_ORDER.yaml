@@ -35,7 +35,7 @@ active_issue: 140
 priority_class: GLOBAL_RULE_ENFORCEMENT
 work_type: GOVERNANCE_ENFORCEMENT
 why_this_first: PR #203 completed the source-truth closeout and the repo now needs the ChatGPT-to-GitHub switchboard seam to lock recurring Foldera capture rules into repo law after the governance enforcement sweep.
-next_seam: issue #140 Real Slack Self-Loop implementation - reason first Core Product MVP seam after issue #168 closeout
+next_seam: issue #140 Real Slack Self-Loop implementation - reason active seam after governance closeout
 required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
   - 101
