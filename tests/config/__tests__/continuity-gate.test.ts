@@ -86,7 +86,7 @@ describe('continuity gate writeback enforcement', () => {
     expect(buildOrder).toContain('active_issue: 140');
     expect(buildOrder).toContain('priority_class: GLOBAL_RULE_ENFORCEMENT');
     expect(buildOrder).toContain('work_type: GOVERNANCE_ENFORCEMENT');
-    expect(buildOrder).toContain('next_seam: issue #140 Real Slack Self-Loop implementation - reason first Core Product MVP seam after issue #168 closeout');
+    expect(buildOrder).toContain('next_seam: issue #140 Real Slack Self-Loop implementation - reason active seam after governance closeout');
     expect(buildOrder).toContain('MERGED_AND_CLOSED');
     expect(buildOrder).toContain('BLOCKED_WITH_EXACT_RECEIPT');
     expect(prTemplate).toContain('## Receipt summary');

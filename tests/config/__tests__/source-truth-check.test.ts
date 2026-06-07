@@ -74,7 +74,7 @@ describe('source truth command gate', () => {
     expect(buildOrder).toContain('active_issue: 140');
     expect(buildOrder).toContain('priority_class: GLOBAL_RULE_ENFORCEMENT');
     expect(buildOrder).toContain('work_type: GOVERNANCE_ENFORCEMENT');
-    expect(buildOrder).toContain('next_seam: issue #140 Real Slack Self-Loop implementation - reason first Core Product MVP seam after issue #168 closeout');
+    expect(buildOrder).toContain('next_seam: issue #140 Real Slack Self-Loop implementation - reason active seam after governance closeout');
     expect(buildOrder).toContain('MERGED_AND_CLOSED');
     expect(buildOrder).toContain('BLOCKED_WITH_EXACT_RECEIPT');
     expect(queue).toContain('- id: "005"');
@@ -165,7 +165,7 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Issue #140 is the active Real Slack Self-Loop implementation seam.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Issue #168 is completed/superseded by PR #205.');
     expect(failures).toContain('ACTIVE_HANDOFF.md active seam issue must be #140; found #194.');
   });
 
