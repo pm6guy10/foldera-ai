@@ -3,7 +3,7 @@
   "active": true,
   "active_issue": 208,
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
-  "base_commit": "9685e2d633dad375a8480109b6c15e55c1a45b26",
+  "base_commit": "8d66c79a8aa91d2ab5cc61673f829efafa849b35",
   "money_loop_rung": "first_user_journey_shell",
   "user_system_path": "Issue #208 is the active Product MVP seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must point at the same issue, and issue #178 must be suspended/queued while the queue file remains inactive/reference-only.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
@@ -23,13 +23,15 @@
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
     ".foldera-contract.json",
+    "app/dashboard/page.tsx",
     "docs/SOURCE_OF_TRUTH_MAP.md",
     "FOLDERA_NORTH_STAR_LOCK.md",
     "FOLDERA_PRODUCT_OPERATING_SYSTEM.md",
     "FOLDERA_MASTER_SYNTHESIS_DRAFT.md",
     "scripts/source-truth-check.ts",
     "scripts/continuity-gate.ts",
-    "tests/config/__tests__/**"
+    "tests/config/__tests__/**",
+    "tests/e2e/authenticated-routes.spec.ts"
   ],
   "forbidden_file_patterns": [
     "components/**",
@@ -41,7 +43,6 @@
     "app/api/slack/__tests__/**",
     "lib/slack/**",
     "supabase/**",
-    "app/dashboard/**",
     "components/dashboard/**",
     "lib/auth/**",
     "app/api/auth/**",
@@ -71,8 +72,8 @@
     "broad cleanup",
     "queue activation"
   ],
-  "allowed_files_raw": "Current seam is the Product MVP pivot patch: keep issue #178 suspended/queued, point the repo at issue #208, and align source-truth, gate/test files, and product-doctrine docs without widening to product code.",
-  "forbidden_files_raw": "No live Slack, no Supabase migrations or data mutation, no Vercel settings, no Stripe/auth/dashboard work, no product/runtime code, no package/dependency changes, no queue activation, no Dependabot, no live connector fetch, no paid/model call, no fake claims, and no broad cleanup outside the governance rollout.",
+  "allowed_files_raw": "Issue #208 now authorizes the first user journey shell at app/dashboard/page.tsx while the repo stays pointed at the active Product MVP seam.",
+  "forbidden_files_raw": "No live Slack, no Supabase migrations or data mutation, no Vercel settings, no Stripe/auth work, no package/dependency changes, no queue activation, no Dependabot, no live connector fetch, no paid/model call, no fake claims, and no broad cleanup outside the dashboard shell seam.",
   "required_local_proof": [
     "npm run health",
     "npx tsx scripts/source-truth-check.ts",
@@ -81,11 +82,11 @@
     "npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose",
     "git diff --check"
   ],
-  "required_browser_proof": "Not applicable; deterministic governance proof only.",
+  "required_browser_proof": "Authenticated browser render of /dashboard at desktop and mobile.",
   "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, .foldera-contract.json, and the gate/test layer all agree that issue #208 is the active Product MVP seam, issue #178 is suspended/queued, issue #140 is closed by PR #206, issue #168 is completed/superseded, issue #182 is completed and closed, issue #165 is capture-only, and the queue file remains inactive/reference-only. No product/runtime implementation starts in this change.",
   "stop_condition": "Stop when the source-truth closeout and gate/test layer both accept issue #208 as active with issue #178 suspended/queued, issue #140 closed/completed, issue #168 closed/completed, and no queue activation.",
-  "is_user_facing": false,
-  "browser_proof_command": "not applicable - deterministic governance proof only",
+  "is_user_facing": true,
+  "browser_proof_command": "npx playwright test tests/e2e/dashboard-money-shot-regression.spec.ts --reporter=list",
   "anti_regression_checks": [
     "issue #208 is the active Product MVP seam",
     "issue #178 is suspended/queued",

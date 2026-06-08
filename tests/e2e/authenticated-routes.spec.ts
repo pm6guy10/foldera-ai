@@ -770,520 +770,72 @@ async function setupSignalsPageMocks(page: Page) {
 
 // ── Dashboard tests ─────────────────────────────────────────────────────────
 
+/** Minimal mocks for the void dashboard shell — only session/auth needed. */
+async function setupVoidDashboardMocks(page: Page) {
+  await seedAuthenticatedSession(page);
+  await attachCheckoutGuards(page);
+  await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
+  await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
+  await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+}
+
 describeAuthMocked('Dashboard /dashboard — authenticated', () => {
-  const followUpHeading = /Send a follow-up email to Keri Nopens about the MAS3 timeline\./i;
-
-  test('loads and shows directive card — desktop', async ({ page }) => {
+  test('loads void shell heading — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await setupDashboardMocks(page);
+    await setupVoidDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: /One next move\./i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: /Open next move/i })).toBeVisible();
   });
 
-  test('approve button is clickable', async ({ page }) => {
-    await setupDashboardMocks(page);
-    await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
-    const approveBtn = page.getByRole('button', { name: /approve/i });
-    await expect(approveBtn).toBeVisible();
-    await approveBtn.click();
-    await expectDashboardStatus(page, 'approve_recorded');
-    await expect(page.getByText(/approved|outbound email is disabled/i).first()).toBeVisible({ timeout: 5000 });
-  });
-
-  test('skip button is clickable', async ({ page }) => {
-    await setupDashboardMocks(page);
-    await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('dashboard-primary-action')).toHaveText(/^Approve$/i);
-    await expect(page.getByRole('button', { name: /approve & send/i })).toHaveCount(0);
-    const skipBtn = page.getByRole('button', { name: /^skip$/i });
-    await expect(skipBtn).toBeVisible();
-    await expect(page.getByRole('button', { name: /snooze 24h/i })).toHaveCount(0);
-    await skipBtn.click();
-    await expectDashboardStatus(page, 'skip_snoozed');
-    await expect(page.getByText(/skipped|adjust/i).first()).toBeVisible({ timeout: 5000 });
-  });
-
-  test('loads dashboard contract card when no directive — desktop', async ({ page }) => {
+  test('Open next move button is enabled when authenticated', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await setupEmptyDashboardMocks(page);
-    let runBriefCalls = 0;
-    await page.route(matchApiPath('/api/settings/run-brief'), async (route) => {
-      runBriefCalls += 1;
-      await route.fulfill({
-        status: 500,
-        contentType: 'application/json',
-        body: json({ error: 'run_brief_must_not_be_called_from_empty_dashboard' }),
-      });
-    });
+    await setupVoidDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByTestId('dashboard-empty-state')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('heading', { name: 'Foldera checked today.' })).toBeVisible({ timeout: 15000 });
-    await expect(
-      page.getByText(/No finished artifact cleared the trust check, but Foldera is still watching source status and recent decisions/i),
-    ).toBeVisible();
-    await expect(page.getByText('What changed')).toBeVisible();
-    await expect(page.getByText('What Foldera protected')).toBeVisible();
-    await expect(page.getByText('Smallest unlock')).toBeVisible();
-    await expect(page.getByText(/No safe finished work today/i)).toHaveCount(0);
-    await expect(page.getByText(/Foldera did not find a piece of finished work it can stand behind today/i)).toHaveCount(0);
-    await expect(page.getByText(/You're set until tomorrow morning/i)).toHaveCount(0);
-    await expect(page.getByText(/next read still lands in email/i)).toHaveCount(0);
-    await expect(page.getByText(/No directive cleared the bar/i)).toHaveCount(0);
-    await expect(page.getByText(/No live brief is queued right now/i)).toHaveCount(0);
-    await expect(page.getByText(/Your Microsoft connection needs a quick refresh/i)).toHaveCount(0);
-    await expect(page.getByText(/Foldera will post your next source-backed brief here/i)).toHaveCount(0);
-    await expect(page.getByText(/first read/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Run command-center scan/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Check command center/i })).toHaveCount(0);
-    await expect(page.getByTestId('dashboard-run-first-read')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Reconnect Microsoft/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Save$/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Approve$/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Approve & send/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Skip$/i })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: /One next move\./i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: /Open next move/i })).toBeEnabled({ timeout: 10000 });
+  });
+
+  test('no legacy rich-dashboard components present — desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await setupVoidDashboardMocks(page);
+    await page.goto('/dashboard');
+    await expect(page.getByRole('heading', { name: /One next move\./i })).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId('dashboard-primary-action')).toHaveCount(0);
-    await page.waitForLoadState('networkidle');
-    expect(runBriefCalls).toBe(0);
-  });
-
-  test('renders daily utility slate when no finished artifact survives', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await setupDashboardMocks(page, { latestResponse: DAILY_UTILITY_SLATE_RESPONSE });
-    await page.goto('/dashboard');
-
-    const slate = page.getByTestId('dashboard-daily-utility-slate');
-    await expect(slate).toBeVisible({ timeout: 15000 });
-    await expect(slate.getByText(/today's answer/i)).toBeVisible();
-    await expect(slate.getByText('Foldera already checked your connected sources')).toBeVisible();
-    await expect(slate.getByText('Source trail')).toBeVisible();
-    await expect(slate.getByText('Nothing was sent. This is the visible proof behind the answer.')).toBeVisible();
-    await expect(page.getByText(/positive_winner_contract/i)).toHaveCount(0);
-    await expect(page.getByText(/missing_schedule_resolution_context/i)).toHaveCount(0);
-    await expect(page.getByText(/Candidate family/i)).toHaveCount(0);
-    await expect(page.getByText(/calendar block/i)).toHaveCount(0);
+    await expect(page.getByTestId('dashboard-degraded-state')).toHaveCount(0);
+    await expect(page.getByTestId('dashboard-daily-utility-slate')).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Approve$/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Save$/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Skip$/i })).toHaveCount(0);
-  });
-
-  test('shows a degraded dashboard state when critical mount fetches fail', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await setupDashboardMocks(page);
-    const failureResponse = { status: 500, contentType: 'application/json', body: json({ error: 'forced_failure' }) };
-    await page.route(matchApiPath('/api/conviction/latest'), (route) => route.fulfill(failureResponse));
-    await page.route(matchApiPath('/api/integrations/status'), (route) => route.fulfill(failureResponse));
-    await page.route(matchApiPath('/api/graph/stats'), (route) => route.fulfill(failureResponse));
-    await page.route(matchApiPath('/api/conviction/history'), (route) => route.fulfill(failureResponse));
-
-    await page.goto('/dashboard');
-
-    await expect(page.getByTestId('dashboard-degraded-state')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('dashboard-briefing-unavailable')).toBeVisible();
-    await expect(page.getByRole('heading', { name: /Latest work unavailable/i })).toBeVisible();
-    const degradedState = page.getByTestId('dashboard-degraded-state');
-    await expect(degradedState.getByText(/Connected source status unavailable/i)).toBeVisible();
-    await expect(degradedState.getByText(/Signal summary unavailable/i)).toBeVisible();
-    await expect(degradedState.getByText(/Recent history unavailable/i)).toBeVisible();
-    await expect(page.getByTestId('dashboard-empty-state')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Approve & send/i })).toHaveCount(0);
   });
 
   test('no actionable console errors — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const errors = collectConsoleErrors(page);
-    await setupDashboardMocks(page);
+    await setupVoidDashboardMocks(page);
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
     expect(errors).toHaveLength(0);
   });
 
-  test('loads directive card — mobile 390px', async ({ page }) => {
+  test('loads void shell heading — mobile 390px', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await setupDashboardMocks(page);
+    await setupVoidDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('dashboard-truth-stats')).toHaveCount(0);
-    await expect(page.getByText('open threads')).toHaveCount(0);
-    await expect(page.getByText('need attention')).toHaveCount(0);
-    await expect(page.getByText('ready to move')).toHaveCount(0);
-    await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
-    await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);
-    await expect(page.getByRole('status', { name: /notifications unavailable/i })).toBeVisible();
-    await expect(page.getByText(/^Upgrade to Pro$/i)).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: /One next move\./i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: /Open next move/i })).toBeVisible();
     await expect.poll(async () =>
       page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
     ).toBeLessThanOrEqual(1);
   });
 
-  test('live email artifact shows title + body in draft section — mobile', async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await setupDashboardMocks(page);
-    await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
-    const documentBody = page.getByTestId('dashboard-document-body');
-    await expectDiscrepancyFrame(page, {
-      risk: DIRECTIVE_RESPONSE.discrepancy_card.risk,
-      evidence: DIRECTIVE_RESPONSE.discrepancy_card.evidence,
-      nextAction: DIRECTIVE_RESPONSE.discrepancy_card.next_action,
-    });
-    await expect(documentBody.getByText(/Hi Keri,/i)).toBeVisible();
-    await expect(page.getByText(/Hi Alex -/i)).toHaveCount(0);
-  });
-
   test('no actionable console errors — mobile 390px', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const errors = collectConsoleErrors(page);
-    await setupDashboardMocks(page);
+    await setupVoidDashboardMocks(page);
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
     expect(errors).toHaveLength(0);
-  });
-
-  test('non-Pro users still see the first 3 approved or pending artifacts @payments', async ({ page }) => {
-    await setupDashboardMocks(page, {
-      latestResponse: {
-        ...DIRECTIVE_RESPONSE,
-        approved_count: 2,
-        is_subscribed: false,
-      },
-      subscriptionResponse: FREE_SUBSCRIPTION_RESPONSE,
-    });
-    await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('dashboard-document-body').getByText(/Hi Keri,/i)).toBeVisible();
-    await expect(page.getByTestId('dashboard-pro-blur')).toHaveCount(0);
-  });
-
-  test('non-Pro users see the blur starting with artifact 4 @payments', async ({ page }) => {
-    await setupDashboardMocks(page, {
-      latestResponse: {
-        ...DIRECTIVE_RESPONSE,
-        approved_count: 3,
-        is_subscribed: false,
-        artifact_paywall_locked: true,
-      },
-      subscriptionResponse: FREE_SUBSCRIPTION_RESPONSE,
-    });
-    await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('dashboard-pro-blur')).toBeVisible();
-    await expect(
-      page.getByText('Upgrade to Pro to keep receiving finished work.'),
-    ).toBeVisible();
-    await expect(page.getByRole('button', { name: /upgrade to pro/i })).toBeVisible();
-  });
-
-  test('outcome feedback stays retryable when the outcome API rejects the write', async ({ page }) => {
-    await setupDashboardMocks(page);
-    await page.route(matchApiPath('/api/conviction/outcome'), async (route) => {
-      if (route.request().method() !== 'POST') return route.continue();
-      await route.fulfill({
-        status: 500,
-        contentType: 'application/json',
-        body: json({ error: 'Could not record feedback right now.' }),
-      });
-    });
-
-    await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
-    await page.getByTestId('dashboard-primary-action').click();
-    await expectDashboardStatus(page, 'approve_recorded');
-
-    await page.getByRole('button', { name: /it worked/i }).click();
-
-    await expectDashboardStatus(page, 'outcome_record_failed');
-    await expect(page.getByText(/Could not record feedback right now\./i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /it worked/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /didn't work/i })).toBeVisible();
-  });
-
-  test('missing profile data shows neutral dashboard shell copy for non-owner sessions', async ({ page }) => {
-    await setupDashboardMocks(page, {
-      sessionResponse: {
-        user: { id: MOCK_USER_ID, email: 'test@foldera.ai', name: '' },
-        expires: future,
-      },
-    });
-
-    await page.goto('/dashboard');
-
-    await expect(page.getByText(/Workspace Owner/i)).toHaveCount(0);
-    await expect(page.getByText(/Brandon Kapp/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /open dashboard menu/i })).toBeVisible();
-    await expect(page.getByRole('heading', { name: /Good (morning|afternoon|evening)\.$/i })).toBeVisible();
-  });
-
-  test('resumes pending Pro checkout after authenticated dashboard handoff', async ({ page }) => {
-    await seedPendingCheckoutIntent(page);
-    let checkoutCalls = 0;
-    await setupDashboardMocks(page, {
-      checkoutGuardOptions: {
-        clearPendingCheckout: false,
-        checkoutResponse: { url: 'https://checkout.stripe.com/c/pay/cs_test_resume_dashboard' },
-      },
-    });
-    await page.route(matchApiPath('/api/stripe/checkout'), (route) => {
-      if (route.request().method() !== 'POST') return route.continue();
-      checkoutCalls += 1;
-      return route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: json({ url: 'https://checkout.stripe.com/c/pay/cs_test_resume_dashboard' }),
-      });
-    });
-    await page.route('https://checkout.stripe.com/**', (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'text/html',
-        body: '<html><body>Mock Stripe checkout</body></html>',
-      }),
-    );
-
-    await page.goto('/dashboard');
-    await expect.poll(() => checkoutCalls).toBe(1);
-    await expect(page).toHaveURL(/https:\/\/checkout\.stripe\.com\/c\/pay\/cs_test_resume_dashboard/);
-  });
-
-  test('write_document journey: document preview, save action, saved status', async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.addInitScript(() => {
-      const writes: string[] = [];
-      Object.defineProperty(window, '__dashboardClipboardWrites', {
-        configurable: true,
-        value: writes,
-      });
-      Object.defineProperty(navigator, 'clipboard', {
-        configurable: true,
-        value: {
-          writeText: async (value: string) => {
-            writes.push(value);
-          },
-        },
-      });
-    });
-    await seedAuthenticatedSession(page);
-    await attachCheckoutGuards(page);
-    await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
-    await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
-    await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
-    await page.route(
-      matchApiPath('/api/subscription/status'),
-      fulfillJson({ plan: 'pro', status: 'active', current_period_end: null, can_manage_billing: true }),
-    );
-    await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
-    await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
-    await page.route(matchApiPath('/api/graph/stats'), fulfillJson(GRAPH_STATS_RESPONSE));
-    await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(DOCUMENT_DIRECTIVE_RESPONSE));
-    await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
-      if (route.request().method() !== 'POST') return route.continue();
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: json({
-          status: 'executed',
-          action_id: DOCUMENT_DIRECTIVE_RESPONSE.id,
-          action_type: 'write_document',
-          result: { saved: true },
-        }),
-      });
-    });
-    await page.goto('/dashboard');
-    const documentBody = page.getByTestId('dashboard-document-body');
-    await expect(
-      page.getByRole('heading', { name: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
-    ).toBeVisible({ timeout: 15000 });
-    await expectRenderedDocumentMarkdown(documentBody, {
-      headings: ['Situation', 'Blocking risk', 'Recommendation / decision'],
-      bodyLines: [DOCUMENT_DIRECTIVE_ASK, DOCUMENT_DIRECTIVE_CONSEQUENCE],
-    });
-    await expectDiscrepancyFrame(page, {
-      risk: DOCUMENT_DIRECTIVE_RESPONSE.discrepancy_card.risk,
-      evidence: DOCUMENT_DIRECTIVE_RESPONSE.discrepancy_card.evidence,
-      nextAction: DOCUMENT_DIRECTIVE_RESPONSE.discrepancy_card.next_action,
-    });
-    await expect(page.getByTestId('dashboard-truth-stats')).toHaveCount(0);
-    await expect(page.getByText('open threads')).toHaveCount(0);
-    await expect(page.getByText('need attention')).toHaveCount(0);
-    await expect(page.getByText('ready to move')).toHaveCount(0);
-    await expect(page.getByText(/Uploads coming later/i)).toBeVisible();
-    await expect(page.getByText(/Drop a folder or document/i)).toHaveCount(0);
-    await expect(page.getByText(/Search Foldera/i)).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /notifications/i })).toHaveCount(0);
-    await expect(page.getByRole('status', { name: /notifications unavailable/i })).toBeVisible();
-    await expect(page.getByText(/^Upgrade to Pro$/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /^save$/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /approve & send/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^skip$/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /snooze 24h/i })).toHaveCount(0);
-    await expect(page.getByTestId('dashboard-primary-action')).toHaveText(/^Save$/i);
-    await expect(page.getByRole('button', { name: /^skip$/i })).toHaveText(/^Skip$/i);
-    const accountMenuButton = page.getByRole('button', { name: /account menu/i });
-    await accountMenuButton.click();
-    await expect(page.getByRole('menuitem', { name: /^Account$/i })).toBeVisible();
-    await expect(page.getByRole('menuitem', { name: /^Sign out$/i })).toBeVisible();
-    await accountMenuButton.click();
-    await page.getByRole('button', { name: /copy draft/i }).click();
-    await expectDashboardStatus(page, 'copy_succeeded');
-    const copiedText = await page.evaluate(() => {
-      const writes = (window as Window & { __dashboardClipboardWrites?: string[] })
-        .__dashboardClipboardWrites ?? [];
-      return writes[writes.length - 1] ?? '';
-    });
-    expect(copiedText).toContain(DOCUMENT_ARTIFACT_TITLE);
-    expect(copiedText).toContain(DOCUMENT_DIRECTIVE_ASK);
-    const screenshotPath = path.join(process.cwd(), '.screenshots', 'write-document-journey-1280.png');
-    fs.mkdirSync(path.dirname(screenshotPath), { recursive: true });
-    await page.screenshot({
-      path: screenshotPath,
-      fullPage: true,
-    });
-
-    await page.getByTestId('dashboard-primary-action').click();
-    await expectDashboardStatus(page, 'approve_saved_document');
-    await expect(page.getByText(/Saved\. Your document is in Foldera Signals/i)).toBeVisible({ timeout: 8000 });
-    await expect(page.getByText(/It worked/i)).toBeVisible();
-  });
-
-  test('write_document journey: skip sends reason and empty state does not expose paid scan', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await seedAuthenticatedSession(page);
-    await attachCheckoutGuards(page);
-    await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
-    await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
-    await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
-    await page.route(
-      matchApiPath('/api/subscription/status'),
-      fulfillJson({ plan: 'pro', status: 'active', current_period_end: null, can_manage_billing: true }),
-    );
-    await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
-    await page.route(matchApiPath('/api/integrations/status'), fulfillJson(INTEGRATIONS_RESPONSE));
-    await page.route(matchApiPath('/api/graph/stats'), fulfillJson(GRAPH_STATS_RESPONSE));
-    await page.route(matchApiPath('/api/conviction/latest'), fulfillJson(DOCUMENT_DIRECTIVE_RESPONSE));
-    let executeBody: { decision?: string; skip_reason?: string } | null = null;
-    await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
-      if (route.request().method() !== 'POST') return route.continue();
-      executeBody = route.request().postDataJSON() as { decision?: string; skip_reason?: string };
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: json({
-          status: 'skipped',
-          action_id: DOCUMENT_DIRECTIVE_RESPONSE.id,
-          action_type: 'write_document',
-        }),
-      });
-    });
-    let runBriefCalls = 0;
-    await page.route(matchApiPath('/api/settings/run-brief'), async (route) => {
-      runBriefCalls += 1;
-      await route.fulfill({
-        status: 500,
-        contentType: 'application/json',
-        body: json({ error: 'run_brief_must_not_be_called_from_empty_dashboard' }),
-      });
-    });
-
-    await page.goto('/dashboard');
-    await expect(
-      page.getByRole('heading', { name: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
-    ).toBeVisible({ timeout: 15000 });
-
-    await page.getByRole('button', { name: /^skip$/i }).click();
-    await expectDashboardStatus(page, 'skip_snoozed');
-    expect(executeBody).toEqual(
-      expect.objectContaining({
-        decision: 'skip',
-        skip_reason: 'not_relevant',
-      }),
-    );
-    await expect(page.getByTestId('dashboard-empty-state')).toBeVisible();
-    await expect(page.getByTestId('dashboard-run-first-read')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Run command-center scan/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /Check command center/i })).toHaveCount(0);
-    await expect(page.getByText(DOCUMENT_DIRECTIVE_ASK)).toHaveCount(0);
-    expect(runBriefCalls).toBe(0);
-  });
-
-  test('stale skip action reconciles after execute 404', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await seedAuthenticatedSession(page);
-    await attachCheckoutGuards(page);
-    await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
-    await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
-    await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
-    await page.route(
-      matchApiPath('/api/subscription/status'),
-      fulfillJson({ plan: 'pro', status: 'active', current_period_end: null, can_manage_billing: true }),
-    );
-    await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
-    let latestCalls = 0;
-    await page.route(matchApiPath('/api/conviction/latest'), async (route) => {
-      latestCalls += 1;
-      await route.fulfill({ status: 200, contentType: 'application/json', body: json(DOCUMENT_DIRECTIVE_RESPONSE) });
-    });
-    await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
-      await route.fulfill({
-        status: 404,
-        contentType: 'application/json',
-        body: json({ error: 'Action already claimed by another request or not found' }),
-      });
-    });
-    await page.goto('/dashboard');
-    const documentBody = page.getByTestId('dashboard-document-body');
-    await page.getByRole('button', { name: /^skip$/i }).click();
-    await expectDashboardStatus(page, 'reconciled_stale_action');
-    await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 15000 });
-    await expect.poll(() => latestCalls).toBe(2);
-    await expect(
-      page.getByRole('heading', { name: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
-    ).toBeVisible();
-    await expectRenderedDocumentMarkdown(documentBody, {
-      headings: ['Situation', 'Blocking risk', 'Recommendation / decision'],
-      bodyLines: [DOCUMENT_DIRECTIVE_ASK, DOCUMENT_DIRECTIVE_CONSEQUENCE],
-    });
-  });
-
-  test('skip on stale client action id reloads latest directive', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await seedAuthenticatedSession(page);
-    await attachCheckoutGuards(page);
-    await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
-    await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
-    await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
-    await page.route(
-      matchApiPath('/api/subscription/status'),
-      fulfillJson({ plan: 'pro', status: 'active', current_period_end: null, can_manage_billing: true }),
-    );
-    await page.route(matchApiPath('/api/onboard/check'), fulfillJson({ hasOnboarded: true }));
-    let latestCalls = 0;
-    await page.route(matchApiPath('/api/conviction/latest'), (route) => {
-      latestCalls += 1;
-      const payload = latestCalls === 1 ? STALE_EMAIL_DIRECTIVE : DOCUMENT_DIRECTIVE_RESPONSE;
-      route.fulfill({ status: 200, contentType: 'application/json', body: json(payload) });
-    });
-    await page.route(matchApiPath('/api/conviction/execute'), async (route) => {
-      await route.fulfill({
-        status: 404,
-        contentType: 'application/json',
-        body: json({ error: 'Action already claimed by another request or not found' }),
-      });
-    });
-    await page.goto('/dashboard');
-    const documentBody = page.getByTestId('dashboard-document-body');
-    await expect(page.getByRole('heading', { name: followUpHeading })).toBeVisible({ timeout: 15000 });
-    await page.getByRole('button', { name: /^skip$/i }).click();
-    await expectDashboardStatus(page, 'reconciled_stale_action');
-    await expect(page.getByText(/already handled or replaced/i)).toBeVisible({ timeout: 10000 });
-    await expect.poll(() => latestCalls).toBe(2);
-    await expect(
-      page.getByRole('heading', { name: new RegExp(DOCUMENT_DIRECTIVE_TITLE, 'i') }),
-    ).toBeVisible();
-    await expectRenderedDocumentMarkdown(documentBody, {
-      headings: ['Situation', 'Blocking risk', 'Recommendation / decision'],
-      bodyLines: [DOCUMENT_DIRECTIVE_ASK, DOCUMENT_DIRECTIVE_CONSEQUENCE],
-    });
   });
 });
 
