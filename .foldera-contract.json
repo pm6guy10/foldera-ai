@@ -1,11 +1,11 @@
 {
   "authority_status": "PRODUCT_MVP_PIVOT_ACTIVE",
   "active": true,
-  "active_issue": 208,
+  "active_issue": 216,
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
-  "base_commit": "8d66c79a8aa91d2ab5cc61673f829efafa849b35",
-  "money_loop_rung": "first_user_journey_shell",
-  "user_system_path": "Issue #208 is the active Product MVP seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must point at the same issue, and issue #178 must be suspended/queued while the queue file remains inactive/reference-only.",
+  "base_commit": "460e1d589507f62e4e45d67b8413cbdae25c8ce0",
+  "money_loop_rung": "trust_privacy_no_send_rail",
+  "user_system_path": "Issue #216 is the active Product MVP seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must point at the same issue, and issue #178 must be suspended/queued while the queue file remains inactive/reference-only.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and docs/SOURCE_OF_TRUTH_MAP.md before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate the queue.",
   "terminal_state_authority": {
