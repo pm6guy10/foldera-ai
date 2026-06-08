@@ -60,9 +60,9 @@ Issue #48 remains the product contract.
 
 ## Source-truth boundary
 Allowed files for this seam are the governance-control files, gate/test files, product-doctrine docs, and source-truth files needed to prove the Product MVP pivot.
-Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #208 is the active Product MVP seam, issue #178 is suspended/queued, issue #140 is completed/closed, issue #168 is completed/superseded, issue #165 is capture-only, issue #182 is completed/superseded, and the queue file remains inactive/reference-only.
+Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #216 is the active Product MVP seam (rung 4 IN_PROGRESS), issue #208 is completed by PR #215 (rung 3 COMPLETE), issue #178 is suspended/queued, issue #140 is completed/closed, issue #168 is completed/superseded, issue #165 is capture-only, issue #182 is completed/superseded, and the queue file remains inactive/reference-only.
 Forbidden in this seam: live Slack, Supabase migrations or data mutation, Vercel settings, Stripe/auth work, package/dependency changes, queue activation, Dependabot, live connector fetch, paid model call, fake claims, or broad cleanup.
-Stop condition: stop when the source-truth docs and gate/test layer agree that issue #208 is the active Product MVP seam, issue #178 is suspended/queued, issue #140 is complete/closed, issue #168 is completed/superseded, issue #182 is closed/completed, and the queue remains inactive/reference-only.
+Stop condition: stop when the source-truth docs and gate/test layer agree that issue #216 is the active Product MVP seam (rung 4 IN_PROGRESS), issue #208 is completed/closed (rung 3 COMPLETE), issue #178 is suspended/queued, issue #140 is complete/closed, issue #168 is completed/superseded, issue #182 is closed/completed, and the queue remains inactive/reference-only.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
