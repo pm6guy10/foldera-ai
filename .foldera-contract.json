@@ -3,7 +3,7 @@
   "active": true,
   "active_issue": 208,
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
-  "base_commit": "9685e2d633dad375a8480109b6c15e55c1a45b26",
+  "base_commit": "8d66c79a8aa91d2ab5cc61673f829efafa849b35",
   "money_loop_rung": "first_user_journey_shell",
   "user_system_path": "Issue #208 is the active Product MVP seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must point at the same issue, and issue #178 must be suspended/queued while the queue file remains inactive/reference-only.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
