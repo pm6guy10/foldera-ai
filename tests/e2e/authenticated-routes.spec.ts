@@ -837,6 +837,18 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await page.waitForLoadState('networkidle');
     expect(errors).toHaveLength(0);
   });
+
+  test('trust-rail panel renders with no-send promise and manage-sources link', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await setupVoidDashboardMocks(page);
+    await page.goto('/dashboard');
+    await expect(page.getByRole('heading', { name: /One next move\./i })).toBeVisible({ timeout: 15000 });
+    const rail = page.getByTestId('trust-rail');
+    await expect(rail).toBeVisible();
+    await expect(rail).toContainText('Nothing sends without your explicit approval.');
+    await expect(rail).toContainText('Foldera reads your connected sources. Nothing is stored raw.');
+    await expect(rail.getByRole('link', { name: /Manage sources/i })).toHaveAttribute('href', '/dashboard/settings');
+  });
 });
 
 // ── Settings tests ──────────────────────────────────────────────────────────
