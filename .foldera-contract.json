@@ -30,7 +30,8 @@
     "FOLDERA_MASTER_SYNTHESIS_DRAFT.md",
     "scripts/source-truth-check.ts",
     "scripts/continuity-gate.ts",
-    "tests/config/__tests__/**"
+    "tests/config/__tests__/**",
+    "tests/e2e/authenticated-routes.spec.ts"
   ],
   "forbidden_file_patterns": [
     "components/**",
