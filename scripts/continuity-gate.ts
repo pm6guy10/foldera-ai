@@ -400,8 +400,11 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('| GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` | `CURRENT_CONTROL` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #165 as CURRENT_CONTROL for the raw-input inbox.');
   }
-  if (!sourceTruthMap.includes('| GitHub issue #208 | `CURRENT_CONTROL` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #208 as CURRENT_CONTROL for the active Product MVP seam.');
+  if (!sourceTruthMap.includes('| GitHub issue #208 | `REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #208 as REFERENCE_ONLY after rung 3 closeout.');
+  }
+  if (!sourceTruthMap.includes('| GitHub issue #216 | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #216 as CURRENT_CONTROL for the active Product MVP seam.');
   }
   if (!sourceTruthMap.includes('| GitHub issue #178 | `REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #178 as REFERENCE_ONLY after the pivot.');
@@ -427,8 +430,11 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('GitHub issue #182 is the completed global execution-rule enforcement patch retained for receipt history after PR #203.')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #182 as the completed global execution-rule enforcement patch.');
   }
-  if (!sourceTruthMap.includes('GitHub issue #208 is the current control issue for the first user journey shell Product MVP seam.')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #208 as the current control issue.');
+  if (!sourceTruthMap.includes('GitHub issue #208 is completed by PR #215 (first user journey shell — rung 3 COMPLETE).')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #208 as completed by PR #215.');
+  }
+  if (!sourceTruthMap.includes('GitHub issue #216 is the current control issue for the trust/privacy/no-send rail Product MVP seam (rung 4 IN_PROGRESS).')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #216 as the current control issue.');
   }
   if (!sourceTruthMap.includes('GitHub issue #178 is suspended/queued reference history from the governance pivot.')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #178 as suspended reference history.');
