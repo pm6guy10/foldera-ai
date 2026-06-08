@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 
 async function load(cacheMode: RequestCache = 'default'): Promise<void> {
@@ -10,12 +10,19 @@ async function load(cacheMode: RequestCache = 'default'): Promise<void> {
 export default function DashboardPage() {
   const { status } = useSession();
   const isReady = status === 'authenticated';
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     void (async () => {
       await load('reload');
     })();
   }, []);
+
+  async function handleOpen() {
+    setLoading(true);
+    await load('reload');
+    setLoading(false);
+  }
 
   return (
     <main className="min-h-screen bg-[#030305] text-white">
@@ -33,10 +40,11 @@ export default function DashboardPage() {
             <div className="flex justify-center">
               <button
                 type="button"
-                disabled={!isReady}
+                disabled={!isReady || loading}
+                onClick={() => void handleOpen()}
                 className="inline-flex items-center justify-center rounded-full border border-[#46F4FF] bg-[#030305] px-6 py-3 text-sm font-medium text-[#46F4FF] transition-colors hover:bg-[#46F4FF]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#46F4FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#030305] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-[#030305]"
               >
-                Open next move
+                {loading ? 'Loading…' : 'Open next move'}
               </button>
             </div>
           </div>
