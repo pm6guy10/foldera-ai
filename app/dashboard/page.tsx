@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 
@@ -46,6 +47,23 @@ export default function DashboardPage() {
               >
                 {loading ? 'Loading…' : 'Open next move'}
               </button>
+            </div>
+            <div
+              data-testid="trust-rail"
+              className="mt-6 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-left"
+            >
+              <p className="text-xs leading-5 text-white/50">
+                Foldera reads your connected sources. Nothing is stored raw.
+              </p>
+              <p className="mt-1 text-xs leading-5 text-white/50">
+                Nothing sends without your explicit approval.
+              </p>
+              <Link
+                href="/dashboard/settings"
+                className="mt-3 inline-block text-xs text-[#46F4FF]/70 underline-offset-2 hover:text-[#46F4FF] hover:underline"
+              >
+                Manage sources →
+              </Link>
             </div>
           </div>
         </div>

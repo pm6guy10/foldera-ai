@@ -72,7 +72,7 @@
     "broad cleanup",
     "queue activation"
   ],
-  "allowed_files_raw": "Issue #208 now authorizes the first user journey shell at app/dashboard/page.tsx while the repo stays pointed at the active Product MVP seam.",
+  "allowed_files_raw": "Issue #216 now authorizes the Rung 4 trust-rail panel at app/dashboard/page.tsx while the repo stays pointed at the active Product MVP seam.",
   "forbidden_files_raw": "No live Slack, no Supabase migrations or data mutation, no Vercel settings, no Stripe/auth work, no package/dependency changes, no queue activation, no Dependabot, no live connector fetch, no paid/model call, no fake claims, and no broad cleanup outside the dashboard shell seam.",
   "required_local_proof": [
     "npm run health",
@@ -83,12 +83,12 @@
     "git diff --check"
   ],
   "required_browser_proof": "Authenticated browser render of /dashboard at desktop and mobile.",
-  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, .foldera-contract.json, and the gate/test layer all agree that issue #208 is the active Product MVP seam, issue #178 is suspended/queued, issue #140 is closed by PR #206, issue #168 is completed/superseded, issue #182 is completed and closed, issue #165 is capture-only, and the queue file remains inactive/reference-only. No product/runtime implementation starts in this change.",
-  "stop_condition": "Stop when the source-truth closeout and gate/test layer both accept issue #208 as active with issue #178 suspended/queued, issue #140 closed/completed, issue #168 closed/completed, and no queue activation.",
+  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, .foldera-contract.json, and the gate/test layer all agree that issue #216 is the active Product MVP seam, issue #178 is suspended/queued, issue #140 is closed by PR #206, issue #168 is completed/superseded, issue #182 is completed and closed, issue #165 is capture-only, and the queue file remains inactive/reference-only. No product/runtime implementation starts beyond the trust-rail panel.",
+  "stop_condition": "Stop when the trust-rail panel renders on /dashboard, all gate commands pass, and the PR receipt records the source-truth closeout with issue #216 as active.",
   "is_user_facing": true,
   "browser_proof_command": "npx playwright test tests/e2e/dashboard-money-shot-regression.spec.ts --reporter=list",
   "anti_regression_checks": [
-    "issue #208 is the active Product MVP seam",
+    "issue #216 is the active Product MVP seam",
     "issue #178 is suspended/queued",
     "issue #140 is closed by PR #206",
     "issue #168 is completed and closed",
@@ -97,7 +97,7 @@
     "FOLDERA_EXECUTION_QUEUE.yaml remains inactive/reference-only",
     ".foldera-contract.json contains terminal_state_authority",
     ".foldera-contract.json contains merge-through rule authority",
-    "No product/runtime implementation starts in the governance patch"
+    "No product/runtime implementation beyond the trust-rail panel"
   ],
-  "next_command": "Continue issue #208 Build the first user journey shell and keep issue #178 suspended/queued until any future activation."
+  "next_command": "Continue issue #216 Prove trust/privacy/no-send rail and keep issue #178 suspended/queued until any future activation."
 }
