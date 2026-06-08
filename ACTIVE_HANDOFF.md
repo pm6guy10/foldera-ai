@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-07 PT
-Current `origin/main` SHA after PR #207 merge: `9685e2d633dad375a8480109b6c15e55c1a45b26`.
+Last updated: 2026-06-08 PT
+Current `origin/main` SHA after PR #210 merge: see GitHub for latest.
 
 ## Canonical Boot Sequence
 1. Read `ACTIVE_HANDOFF.md`.
@@ -21,15 +21,15 @@ Issue #194 is completed by merged PR #201.
 Issue #140 is completed by merged PR #206.
 Issue #207 completed the governance pivot and moved repo control to issue #208.
 Issue #208 is the active Product MVP seam.
+Issue #213 is the active Launch Ladder Lock v1 governance seam running alongside #208 (source-truth and gate only; does not widen the product seam).
 Issue #178 is suspended/queued and no longer active.
 Current Phase: Product MVP pivot complete. Ready for the issue #208 first user journey shell seam.
 The active seam is the Product MVP seam: keep the repo pointed at the first user journey shell, keep the pivot bounded, and do not widen into product/runtime implementation yet.
+The launch_ladder in FOLDERA_BUILD_ORDER.yaml is the ordering authority for the Foldera build sequence. Rung 3 (issue #208) is IN_PROGRESS. Rungs 4-7 are PENDING with needs_issue markers.
 `FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.
 `FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.
 PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.
-Issue #175 is complete via PR #177: the read-only audit selected the deterministic work-packet fixture lane.
-Issue #173 is complete/superseded by PR #174.
-Issue #170 is complete/superseded by PR #172.
+Issues #175 (PR #177), #173 (PR #174), #170 (PR #172) are complete/superseded.
 Issue #165 Open Threads remains capture-only and cannot authorize implementation.
 Issue #182 is completed/superseded by PR #203.
 Issue #168 is completed/superseded by PR #205.
@@ -74,5 +74,5 @@ Stop condition: stop when the source-truth docs and gate/test layer agree that i
 - If a source-truth file is not updated, the PR receipt must say `unchanged - reason` or `not applicable - reason`.
 
 ## Next exact move
-This PR completes the governance pivot to issue #208 and suspends issue #178.
-Next authorized move after this closeout: continue issue #208 in the active seam.
+The next authorized move after this closeout is to continue issue #208 in the active seam.
+Issue #213 (Launch Ladder Lock v1) governance seam: structured launch_ladder in FOLDERA_BUILD_ORDER.yaml + gate enforcement in continuity-gate.ts. After #213 merges: complete issue #208 user journey shell.

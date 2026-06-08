@@ -248,14 +248,43 @@ required_master_bible_closeout:
   stripe_changes: forbidden
   auth_changes: forbidden
   landing_dashboard_changes: forbidden
-build_sequence_from_master_synthesis:
-  - Prove sources become signals, signals become context, and context becomes one next move
-  - Prove one durable response/state/receipt loop
-  - Build the first user journey shell
-  - Prove trust/privacy/no-send rail
-  - Add bounded self-serve $29 early-access/payment path
-  - Prove money-ready MVP end to end
-  - Prove first non-owner validation
+launch_ladder:
+  - rung: 1
+    name: Prove sources become signals, signals become context, and context becomes one next move
+    status: COMPLETE
+    issue: 194
+    pr: 201
+    evidence: verdict-loop.ts + fixture + vitest proof; all gate commands passed
+  - rung: 2
+    name: Prove one durable response/state/receipt loop
+    status: ABSORBED_BY_RUNG_1
+    absorbed_by_pr: 201
+    reason: PR #201 proved evidence to receipt end-to-end; rung 2 was superseded by Product MVP pivot (PR #207) before a separate issue was created
+  - rung: 3
+    name: Build the first user journey shell
+    status: IN_PROGRESS
+    issue: 208
+    completion_criteria: authenticated user sees state + one intervention on first load; one click executes and state updates
+  - rung: 4
+    name: Prove trust/privacy/no-send rail
+    status: PENDING
+    issue: needs_issue
+    completion_criteria: user can see what Foldera knows, revoke access, and confirm nothing sends without explicit approval
+  - rung: 5
+    name: Add bounded self-serve early-access payment path
+    status: PENDING
+    issue: needs_issue
+    completion_criteria: user can pay and access; no fake enterprise or compliance claims
+  - rung: 6
+    name: Prove money-ready MVP end to end
+    status: PENDING
+    issue: needs_issue
+    completion_criteria: non-owner user completes full loop from onboard to one paid action with durable receipt
+  - rung: 7
+    name: Prove first non-owner validation
+    status: PENDING
+    issue: needs_issue
+    completion_criteria: one person who is not Brandon completes the loop and names one concrete value
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated

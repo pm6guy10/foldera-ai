@@ -49,7 +49,7 @@ This ledger is the final cleanup view for old guidance files. It is the authorit
 | File | Final classification | Canonical pointer / note |
 | --- | --- | --- |
 | `ACTIVE_HANDOFF.md` | `KEEP_CURRENT_CONTROL` | Current seam and next move. |
-| `FOLDERA_BUILD_ORDER.yaml` | `KEEP_CURRENT_CONTROL` | Machine-readable active issue and closeout requirements. |
+| `FOLDERA_BUILD_ORDER.yaml` | `KEEP_CURRENT_CONTROL` | Machine-readable active issue, closeout requirements, and launch_ladder. |
 | `.foldera-contract.json` | `KEEP_CURRENT_CONTROL` | Global execution-rule contract and allowed-file boundary. |
 | `FOLDERA_MASTER_BIBLE.md` | `KEEP_REFERENCE_ONLY` | Canonical master bible reference authority. |
 | `FOLDERA_NORTH_STAR_LOCK.md` | `KEEP_CURRENT_CONTROL` | Product doctrine. |
@@ -130,7 +130,7 @@ When sources disagree, use this order:
 | File / Source | Status | Why It Exists | Who Or What May Rely On It | What It Must Never Control | Enforcement Mechanism |
 | --- | --- | --- | --- | --- | --- |
 | `ACTIVE_HANDOFF.md` | `CURRENT_CONTROL` | Names the single active seam, current truth, and next exact move. | Every Foldera session, reviewer, and agent boot. | Old roadmap order, unrelated issues, or broad cleanup outside the named seam. | `npm run gate:continuity` requires exactly one active seam line and roadmap/product references. |
-| `FOLDERA_BUILD_ORDER.yaml` | `CURRENT_CONTROL` | Machine-readable active issue, paused issues, source-truth order, terminal states, and closeout requirements. | Agents, reviewers, and gates checking current issue order. | Product doctrine or feature scope by itself. | `npm run gate:continuity` checks active issue parity, closeout values, and next-seam closeout. |
+| `FOLDERA_BUILD_ORDER.yaml` | `CURRENT_CONTROL` | Machine-readable active issue, paused issues, source-truth order, terminal states, closeout requirements, and structured launch_ladder. | Agents, reviewers, and gates checking current issue order and launch rung. | Product doctrine or feature scope by itself. | `npm run gate:continuity` checks active issue parity, closeout values, next-seam closeout, and launch_ladder consistency. |
 | `FOLDERA_MASTER_BIBLE.md` | `REFERENCE_ONLY` | Canonical master bible for Foldera's product, money path, build order, forbidden work, proof rules, and Codex loop. | Future source-truth/build-definition issues when explicitly assigned. | Active seam selection, product/runtime implementation, queue activation, or unsupported customer claims. | Source-truth gates and PR receipts must treat it as reference authority, not live control. |
 | `FOLDERA_EXECUTION_QUEUE.yaml` | `REFERENCE_ONLY` | Inactive deterministic queue artifact retained for archaeology; its historical supreme-authority language is neutralized in-file and future activation requires an explicit issue. | Agents and reviewers tracing prior Holy Crap MVP queue state. | Current seam selection, active task routing, or queue activation by implication. | Queue state is reviewed only when a future issue explicitly reactivates it. |
 | `FOLDERA_LAUNCH_ROADMAP.md` | `SHIM_TO_CANONICAL` | Preserves historical launch order as a shim to the canonical control chain. | Operators and agents checking old links. | Current active seam, product doctrine, roadmap phase order, or next-seam selection. | Authority classification here plus active handoff/build-order; `npm run gate:continuity` still checks roadmap presence and boot-sequence alignment. |
@@ -239,6 +239,8 @@ Passing prose is not proof. The PR receipt must report the changed-file list, co
 - stale active-looking docs keep their top authority markers
 - `.foldera-contract.json` must expose the active global execution-rule contract and cannot keep the old issue #62 contract active
 - `README.md` cannot regress to default Next.js boilerplate
+- `FOLDERA_BUILD_ORDER.yaml` must contain a `launch_ladder` block
+- `launch_ladder` IN_PROGRESS rung issue must match `active_issue`
 - PR Sentinel must run the continuity gate
 
 Use this file to decide authority. Use issue #48, `FOLDERA_NORTH_STAR_LOCK.md`, and `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` to decide what Foldera is. Use `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` to decide roadmap phase, backlog lane, business path, enterprise path, and next-seam recommendation. Use the active issue to decide what to change now.

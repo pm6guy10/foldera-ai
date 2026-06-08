@@ -333,6 +333,18 @@ export function runContinuityGate(root: string): string[] {
     failures.push('.foldera-contract.json must expose a machine-readable merge-through rule.');
   }
 
+  if (!buildOrder.includes('launch_ladder:')) {
+    failures.push('FOLDERA_BUILD_ORDER.yaml is missing launch_ladder block.');
+  } else {
+    const ladderInProgressMatch = buildOrder.match(/status:\s*IN_PROGRESS[\s\S]*?issue:\s*(\d+)/);
+    if (ladderInProgressMatch) {
+      const ladderActiveIssue = Number(ladderInProgressMatch[1]);
+      if (!queueControlled && buildOrderIssue !== null && ladderActiveIssue !== buildOrderIssue) {
+        failures.push(`launch_ladder IN_PROGRESS rung issue #${ladderActiveIssue} must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
+      }
+    }
+  }
+
   const readme = readRepoFile(root, 'README.md');
   for (const marker of ['create-next-app', 'Learn More', 'Deploy on Vercel']) {
     if (readme.includes(marker)) failures.push(`README.md still contains default boilerplate marker: ${marker}`);
