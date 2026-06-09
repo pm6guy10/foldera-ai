@@ -87,7 +87,7 @@ describe('continuity gate writeback enforcement', () => {
     expect(handoff).toContain('The next authorized move after this closeout is to begin issue #220 in the active seam.');
     expect(buildOrder).toContain('active_issue: 220');
     expect(buildOrder).toContain('priority_class: PRODUCT_MVP_PIVOT');
-    expect(buildOrder).toContain('work_type: SOURCE_TRUTH_PIVOT');
+    expect(buildOrder).toMatch(/work_type: (SOURCE_TRUTH_PIVOT|PROVE_CLOSEOUT)/);
     expect(buildOrder).toContain('next_seam: issue #220 Add bounded self-serve early-access payment path - reason rung 5 activated after rung 4 trust/privacy/no-send rail closeout via PR #218');
     expect(buildOrder).toContain('paused_issues:');
     expect(buildOrder).toContain('- issue: 178');

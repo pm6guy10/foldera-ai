@@ -72,8 +72,8 @@
     "broad cleanup",
     "queue activation"
   ],
-  "allowed_files_raw": "Issue #220 now authorizes source-truth-only files for the rung 5 advance. No product/runtime files are allowed.",
-  "forbidden_files_raw": "No live Slack, no Supabase migrations or data mutation, no Vercel settings, no Stripe/auth work, no package/dependency changes, no queue activation, no Dependabot, no live connector fetch, no paid/model call, no fake claims, no runtime/product code changes, and no broad cleanup.",
+  "allowed_files_raw": "Issue #220 is a prove/closeout seam. Source-truth files may be updated for closeout. No product/runtime file changes needed — implementation already exists on main. Live proof requires Vercel env vars, production Supabase, and Stripe test mode.",
+  "forbidden_files_raw": "No live Slack, no Supabase migrations or data mutation, no Stripe/auth code changes, no package/dependency changes, no queue activation, no Dependabot, no live connector fetch, no fake claims, no runtime/product code changes, and no broad cleanup. Existing Stripe implementation must not be rebuilt.",
   "required_local_proof": [
     "npm run health",
     "npx tsx scripts/source-truth-check.ts",
@@ -82,11 +82,11 @@
     "npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose",
     "git diff --check"
   ],
-  "required_browser_proof": "Not required for source-truth-only seam.",
+  "required_browser_proof": "Stripe test-mode checkout completes, user_subscriptions row persists with status=active, dashboard reads subscription status correctly. Requires Vercel env vars (STRIPE_SECRET_KEY, STRIPE_PRO_PRICE_ID, STRIPE_WEBHOOK_SECRET) and production Supabase migration applied.",
   "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, .foldera-contract.json, and the gate/test layer all agree that issue #220 is the active Product MVP seam, issue #178 is suspended/queued, issue #140 is closed by PR #206, issue #168 is completed/superseded, issue #182 is completed and closed, issue #165 is capture-only, and the queue file remains inactive/reference-only. Stripe/payment implementation already exists on main (checkout, webhook, portal, subscription-db, migrations); rung 5 proves the existing path end-to-end and must not rebuild it.",
-  "stop_condition": "Stop when all gate commands pass and the PR receipt records the source-truth closeout with issue #220 as active.",
-  "is_user_facing": false,
-  "browser_proof_command": "not required for this seam",
+  "stop_condition": "Stop when all gate commands pass, the contract parity PR is merged, and live proof is either completed or blocked with an exact receipt naming the missing infrastructure.",
+  "is_user_facing": true,
+  "browser_proof_command": "test-mode Stripe checkout + user_subscriptions row persistence + post-checkout access gate",
   "anti_regression_checks": [
     "issue #220 is the active Product MVP seam",
     "issue #216 is completed by PR #218",
@@ -101,5 +101,5 @@
     ".foldera-contract.json contains merge-through rule authority",
     "Stripe/payment implementation on main must not be rebuilt; rung 5 proves the existing checkout/webhook/portal path"
   ],
-  "next_command": "Begin issue #220 Add bounded self-serve early-access payment path and keep issue #178 suspended/queued until any future activation."
+  "next_command": "Prove issue #220 end-to-end: verify Vercel env vars, confirm production Supabase migration, run test-mode Stripe checkout, confirm user_subscriptions row, confirm post-checkout access gate. Keep issue #178 suspended/queued until any future activation."
 }

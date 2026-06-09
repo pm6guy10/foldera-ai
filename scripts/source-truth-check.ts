@@ -166,7 +166,7 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
   const workType = extractYamlScalar(buildOrder, 'work_type');
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
   if (priority !== 'PRODUCT_MVP_PIVOT') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be PRODUCT_MVP_PIVOT; found ${priority ?? 'none'}.`);
-  if (workType !== 'SOURCE_TRUTH_PIVOT') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_PIVOT; found ${workType ?? 'none'}.`);
+  if (workType !== 'SOURCE_TRUTH_PIVOT' && workType !== 'PROVE_CLOSEOUT') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_PIVOT or PROVE_CLOSEOUT; found ${workType ?? 'none'}.`);
   if (nextSeam !== `${NEXT_AUTHORIZED_RUNG} - reason rung 5 activated after rung 4 trust/privacy/no-send rail closeout via PR #218`) {
     failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must name the next authorized product seam; found ${nextSeam ?? 'none'}.`);
   }
