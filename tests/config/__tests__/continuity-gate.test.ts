@@ -87,7 +87,7 @@ describe('continuity gate writeback enforcement', () => {
     expect(buildOrder).toContain('active_issue: none');
     expect(buildOrder).toContain('priority_class: BETWEEN_RUNGS');
     expect(buildOrder).toContain('work_type: AWAITING_NEXT_ISSUE');
-    expect(buildOrder).toContain('next_seam: rung 6 Prove money-ready MVP end to end');
+    expect(buildOrder).toContain('next_seam: rung 6 Prove owner-path readiness');
     expect(buildOrder).toContain('paused_issues:');
     expect(buildOrder).toContain('- issue: 178');
     expect(buildOrder).toContain('state: SUSPENDED');
