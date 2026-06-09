@@ -11,6 +11,24 @@ import {
 
 const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60;
 const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
+const TOKEN_PERSIST_RETRY_DELAY_MS = 250;
+
+/**
+ * Persist OAuth tokens with one retry so a transient Supabase write blip does
+ * not abort the owner's sign-in. Throws only after both attempts fail.
+ */
+async function saveUserTokenWithRetry(
+  ...args: Parameters<typeof import('@/lib/auth/user-tokens').saveUserToken>
+): Promise<void> {
+  const { saveUserToken } = await import('@/lib/auth/user-tokens');
+  try {
+    await saveUserToken(...args);
+  } catch (firstErr: any) {
+    console.warn(`[auth][jwt] token persist attempt 1 failed, retrying once: ${firstErr.message}`);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, TOKEN_PERSIST_RETRY_DELAY_MS));
+    await saveUserToken(...args);
+  }
+}
 
 async function setOnboardingClaim(token: JWT): Promise<JWT> {
   // Once onboarded, the claim is permanent. Skip DB query.
@@ -274,11 +292,10 @@ export function getAuthOptions(): NextAuthOptions {
             // Persist OAuth tokens to user_tokens so background
             // cron jobs (sync-email, etc.) can retrieve them without a session.
             try {
-              const { saveUserToken } = await import('@/lib/auth/user-tokens');
               if (resolvedUserId && account.access_token) {
                 if (account.provider === 'google') {
                   console.log(`[auth][jwt][google] persisting to user_tokens — userId: ${resolvedUserId}, has_refresh: ${!!account.refresh_token}`);
-                  await saveUserToken(resolvedUserId, 'google', {
+                  await saveUserTokenWithRetry(resolvedUserId, 'google', {
                     access_token: account.access_token,
                     refresh_token: account.refresh_token ?? '',
                     expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
@@ -296,7 +313,7 @@ export function getAuthOptions(): NextAuthOptions {
                   console.log(`[auth][jwt][microsoft] persisting to user_tokens — userId: ${resolvedUserId}, has_refresh: ${!!account.refresh_token}`);
                   // saveUserToken performs an upsert, so soft-disconnected rows are restored
                   // in-place by writing fresh encrypted access/refresh tokens.
-                  await saveUserToken(resolvedUserId, 'microsoft', {
+                  await saveUserTokenWithRetry(resolvedUserId, 'microsoft', {
                     access_token: account.access_token,
                     refresh_token: microsoftRefreshToken,
                     expires_at: account.expires_at ?? Math.floor(Date.now() / 1000) + 3600,
@@ -310,10 +327,13 @@ export function getAuthOptions(): NextAuthOptions {
                 console.warn(`[auth][jwt] SKIPPED token persist — missing: userId=${!!resolvedUserId} access=${!!account.access_token}`);
               }
             } catch (err: any) {
-              // FATAL during initial sign-in: if tokens don't persist,
-              // background sync will silently fail. Block the session.
-              console.error(`[auth][jwt] FATAL — token persist failed, blocking sign-in: ${err.message}`, err.stack ?? '');
-              throw new Error(`Token persistence failed for ${account.provider}: ${err.message}`);
+              // Both persist attempts failed. Do NOT block sign-in: a transient
+              // Supabase write must not lock the owner out of the product. The
+              // failure stays visible — settings reads user_tokens directly, so a
+              // missing/stale row shows as disconnected, and token.error marks the
+              // session as degraded for any surface that wants to prompt reconnect.
+              console.error(`[auth][jwt] token persist failed after retry — allowing sign-in with degraded persistence: ${err.message}`, err.stack ?? '');
+              token.error = 'TokenPersistError';
             }
           } else if (token.expiresAt && token.refreshToken) {
             // --- Subsequent request: check if access token needs refresh ---

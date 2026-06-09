@@ -116,6 +116,53 @@ describe('auth session refresh', () => {
     expect(saveUserToken).not.toHaveBeenCalled();
   });
 
+  it('retries token persist once during initial sign-in and succeeds without a degraded flag', async () => {
+    saveUserToken
+      .mockRejectedValueOnce(new Error('transient upsert failure'))
+      .mockResolvedValueOnce(undefined);
+
+    const { getAuthOptions } = await import('../auth-options');
+    const jwt = getAuthOptions().callbacks?.jwt;
+    if (!jwt) throw new Error('missing jwt callback');
+
+    const token = await jwt({
+      token: {},
+      account: {
+        provider: 'google',
+        access_token: 'fresh-access',
+        refresh_token: 'fresh-refresh',
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+      },
+      user: { email: 'owner@gmail.com', name: 'Owner' },
+    } as any);
+
+    expect(saveUserToken).toHaveBeenCalledTimes(2);
+    expect(token).toMatchObject({ userId: 'user-1' });
+    expect((token as any).error).toBeUndefined();
+  });
+
+  it('allows initial sign-in with a degraded flag when token persist fails after retry', async () => {
+    saveUserToken.mockRejectedValue(new Error('user_tokens upsert down'));
+
+    const { getAuthOptions } = await import('../auth-options');
+    const jwt = getAuthOptions().callbacks?.jwt;
+    if (!jwt) throw new Error('missing jwt callback');
+
+    const token = await jwt({
+      token: {},
+      account: {
+        provider: 'google',
+        access_token: 'fresh-access',
+        refresh_token: 'fresh-refresh',
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+      },
+      user: { email: 'owner@gmail.com', name: 'Owner' },
+    } as any);
+
+    expect(saveUserToken).toHaveBeenCalledTimes(2);
+    expect(token).toMatchObject({ userId: 'user-1', error: 'TokenPersistError' });
+  });
+
   it('asks Google sign-in to show account choice while preserving consent', async () => {
     const { getAuthOptions } = await import('../auth-options');
     const provider = getAuthOptions().providers.find((candidate) => candidate.id === 'google') as any;

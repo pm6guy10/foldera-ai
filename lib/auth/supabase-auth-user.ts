@@ -1,24 +1,19 @@
 import { createServerClient } from '@/lib/db/client';
+import type { SupabaseClient } from '@/lib/db/client';
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-/**
- * Resolve or create a Supabase auth user by email.
- *
- * Primary: calls get_auth_user_id_by_email RPC (direct SQL on auth.users).
- * Fallback: admin.listUsers pagination (fragile — GoTrue NULL column scan bug).
- * Create: admin.createUser if no match found.
- */
-export async function resolveSupabaseAuthUserId(
-  email: string,
-  name?: string | null,
-): Promise<string> {
-  const normalizedEmail = normalizeEmail(email);
-  console.log(`[supabase-auth] resolving user for email: ${normalizedEmail}`);
-  const supabase = createServerClient();
+function isAlreadyRegisteredError(error: { message?: string; code?: string; status?: number }): boolean {
+  if (error.code === 'email_exists') return true;
+  return /already (?:been )?registered|already exists/i.test(error.message ?? '');
+}
 
+async function lookupAuthUserIdByEmail(
+  supabase: SupabaseClient,
+  normalizedEmail: string,
+): Promise<string | null> {
   // Primary: RPC function avoids GoTrue listUsers NULL column scan bug
   try {
     const { data, error } = await supabase.rpc('get_auth_user_id_by_email', {
@@ -59,6 +54,29 @@ export async function resolveSupabaseAuthUserId(
     console.warn(`[supabase-auth] listUsers threw: ${listErr.message}`);
   }
 
+  return null;
+}
+
+/**
+ * Resolve or create a Supabase auth user by email.
+ *
+ * Primary: calls get_auth_user_id_by_email RPC (direct SQL on auth.users).
+ * Fallback: admin.listUsers pagination (fragile — GoTrue NULL column scan bug).
+ * Create: admin.createUser if no match found.
+ * Recovery: if createUser reports the email is already registered, the earlier
+ * lookups failed transiently — re-run the lookup instead of failing sign-in.
+ */
+export async function resolveSupabaseAuthUserId(
+  email: string,
+  name?: string | null,
+): Promise<string> {
+  const normalizedEmail = normalizeEmail(email);
+  console.log(`[supabase-auth] resolving user for email: ${normalizedEmail}`);
+  const supabase = createServerClient();
+
+  const existingId = await lookupAuthUserIdByEmail(supabase, normalizedEmail);
+  if (existingId) return existingId;
+
   // No existing user — create one
   console.log(`[supabase-auth] no existing user found for ${normalizedEmail}, creating...`);
 
@@ -69,6 +87,13 @@ export async function resolveSupabaseAuthUserId(
   });
 
   if (error) {
+    if (isAlreadyRegisteredError(error)) {
+      // The user exists but both lookups failed transiently. One more lookup
+      // keeps an existing owner signed in instead of hard-failing the session.
+      console.warn(`[supabase-auth] createUser says ${normalizedEmail} already registered; retrying lookup`);
+      const recoveredId = await lookupAuthUserIdByEmail(supabase, normalizedEmail);
+      if (recoveredId) return recoveredId;
+    }
     console.error(`[supabase-auth] createUser failed for ${normalizedEmail}:`, error.message);
     throw error;
   }
