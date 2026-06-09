@@ -1,7 +1,7 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-08 PT
-Current `origin/main` SHA after PR #210 merge: see GitHub for latest.
+Last updated: 2026-06-09 PT
+Current `origin/main` SHA: see GitHub for latest.
 
 ## Canonical Boot Sequence
 1. Read `ACTIVE_HANDOFF.md`.
@@ -23,11 +23,11 @@ Issue #207 completed the governance pivot and moved repo control to issue #208.
 Issue #208 is completed by merged PR #215.
 Issue #213 is completed by merged PR #214 (Launch Ladder Lock v1 governance seam).
 Issue #216 is completed by merged PR #218.
-Issue #220 is the active Product MVP seam.
+Issue #220 is completed — rung 5 live proof passed (all 5 checks proven via Supabase MCP + Vercel MCP + code audit).
 Issue #178 is suspended/queued and no longer active.
-Current Phase: Rung 5 — Add bounded self-serve early-access payment path.
-The active seam is the Product MVP seam: the Stripe/payment implementation (checkout, webhook, portal, pricing page, subscription-db, migrations) already exists on main; this seam proves it end-to-end and closes out rung 5. Do not rebuild what is already there.
-The launch_ladder in FOLDERA_BUILD_ORDER.yaml is the ordering authority for the Foldera build sequence. Rung 3 (issue #208) is COMPLETE. Rung 4 (issue #216) is COMPLETE. Rung 5 (issue #220) is IN_PROGRESS. Rungs 6-7 are PENDING with needs_issue markers.
+Current Phase: Between rungs. Rung 5 is COMPLETE. Rung 6 needs_issue.
+The launch_ladder in FOLDERA_BUILD_ORDER.yaml is the ordering authority for the Foldera build sequence. Rung 3 (issue #208) is COMPLETE. Rung 4 (issue #216) is COMPLETE. Rung 5 (issue #220) is COMPLETE. Rungs 6-7 are PENDING with needs_issue markers.
+No active implementation seam. The next move is for Brandon to create the rung 6 issue.
 `FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.
 `FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.
 PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.
@@ -42,12 +42,12 @@ One active seam only.
 ## Current slice:
 - PR #198 restored issue #194 as the active seam after the closeout sweep.
 - PR #207 completed the governance pivot and moved repo control from issue #178 to issue #208.
-- The current lane is the Product MVP pivot: one scoped source-truth move, one active product seam. Payment implementation exists on main; rung 5 is prove/closeout not build.
+- Rung 5 (issue #220) prove/closeout is COMPLETE. Payment path proven end-to-end via live infrastructure checks.
 - Issue #165 remains the raw-input inbox and capture-only.
 - Issue #140 is complete and no longer the active seam.
 - Issue #178 is suspended/queued and no longer the active seam.
-- Issue #220 is the sole active seam.
-- The next authorized move after this closeout is to continue issue #220 in the active seam.
+- Issue #220 is completed (rung 5 proven).
+- No active implementation seam. The next authorized move is for Brandon to create the rung 6 issue.
 - `FOLDERA_EXECUTION_QUEUE.yaml` stays inactive/reference-only until a future explicit activation issue reopens it.
 - Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, #182, #183, #192, #194, and #196 are closed/completed/superseded. Do not reopen them here.
 
@@ -60,9 +60,9 @@ Issue #48 remains the product contract.
 `FOLDERA_NORTH_STAR_LOCK.md` controls product doctrine; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap, phase order, backlog lanes, and enterprise path.
 
 ## Source-truth boundary
-Allowed files for this seam are the governance-control files, gate/test files, product-doctrine docs, and source-truth files needed to prove the Product MVP pivot.
-Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #220 is the active Product MVP seam (rung 5 IN_PROGRESS), issue #216 is completed by PR #218 (rung 4 COMPLETE), issue #178 is suspended/queued, issue #140 is completed/closed, issue #168 is completed/superseded, issue #165 is capture-only, issue #182 is completed/superseded, and the queue file remains inactive/reference-only.
-Forbidden in this seam: live Slack, Supabase migrations or data mutation, Vercel settings, Stripe/auth work, package/dependency changes, queue activation, Dependabot, live connector fetch, paid model call, fake claims, or broad cleanup.
+No active implementation seam. Allowed files are governance-control files for closeout only.
+Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #220 is completed (rung 5 COMPLETE — live proof passed), issue #216 is completed by PR #218 (rung 4 COMPLETE), issue #178 is suspended/queued, issue #140 is completed/closed, issue #168 is completed/superseded, issue #165 is capture-only, issue #182 is completed/superseded, and the queue file remains inactive/reference-only.
+Forbidden: all implementation work until the rung 6 issue is created and assigned.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
@@ -75,5 +75,5 @@ Forbidden in this seam: live Slack, Supabase migrations or data mutation, Vercel
 - If a source-truth file is not updated, the PR receipt must say `unchanged - reason` or `not applicable - reason`.
 
 ## Next exact move
-The next authorized move after this closeout is to begin issue #220 in the active seam.
-Issue #220: Prove the already-implemented payment path end-to-end — checkout, webhook, portal, user_subscriptions persistence, and post-checkout access gate. Implementation exists on main. Remaining work is live proof only.
+Issue #220 (rung 5) is COMPLETE — all 5 live proof checks passed.
+Next: Brandon creates the rung 6 issue ("Prove money-ready MVP end to end"). No agent work until then.

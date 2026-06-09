@@ -11,7 +11,7 @@ const COMPLETED_RUNG_2_ISSUE = 175;
 const COMPLETED_RUNG_3_ISSUE = 179;
 const MASTER_BIBLE_ISSUE = 181;
 const COMPLETED_VERDICT_LOOP_ISSUE = 194;
-const ACTIVE_SWITCHBOARD_ISSUE = 220;
+const COMPLETED_PAYMENT_PATH_ISSUE = 220;
 const COMPLETED_USER_JOURNEY_SHELL_ISSUE = 208;
 const COMPLETED_TRUST_RAIL_ISSUE = 216;
 const COMPLETED_GLOBAL_RULE_ENFORCEMENT_ISSUE = 182;
@@ -20,12 +20,12 @@ const COMPLETED_OPEN_THREADS_ISSUE = 168;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
 const COMPLETED_FIRST_RUNG_ISSUE = 173;
-const NEXT_AUTHORIZED_RUNG = 'issue #220 Add bounded self-serve early-access payment path';
+const NEXT_AUTHORIZED_RUNG = 'rung 6 Prove money-ready MVP end to end';
 const NEXT_TASK_ID = '006';
 const COMPLETED_TASK_IDS = ['001', '002', '003', '004', '005'];
 const REQUIRED_TERMINAL_STATES = ['MERGED_AND_CLOSED', 'BLOCKED_WITH_EXACT_RECEIPT', 'HUMAN_REVIEW_REQUIRED_WITH_REASON', 'STOPPED_WITH_AUTHORIZED_REASON'];
 
-const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 140, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE, MASTER_BIBLE_ISSUE, COMPLETED_GLOBAL_RULE_ENFORCEMENT_ISSUE, 183, COMPLETED_VERDICT_LOOP_ISSUE, COMPLETED_OPEN_THREADS_ISSUE, COMPLETED_USER_JOURNEY_SHELL_ISSUE, COMPLETED_TRUST_RAIL_ISSUE];
+const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 140, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE, MASTER_BIBLE_ISSUE, COMPLETED_GLOBAL_RULE_ENFORCEMENT_ISSUE, 183, COMPLETED_VERDICT_LOOP_ISSUE, COMPLETED_OPEN_THREADS_ISSUE, COMPLETED_USER_JOURNEY_SHELL_ISSUE, COMPLETED_TRUST_RAIL_ISSUE, COMPLETED_PAYMENT_PATH_ISSUE];
 
 function readRepoFile(root: string, file: string): string {
   const path = join(root, file);
@@ -158,17 +158,17 @@ function checkMasterBible(root: string): string[] {
 
 function checkSourceTruth(root: string, handoff: string, buildOrder: string, queueRaw: string): string[] {
   const failures: string[] = [];
-  const buildIssue = extractYamlNumber(buildOrder, 'active_issue');
+  const buildIssueRaw = extractYamlScalar(buildOrder, 'active_issue');
   const handoffIssue = extractActiveHandoffIssue(handoff);
 
-  if (buildIssue !== ACTIVE_SWITCHBOARD_ISSUE) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${ACTIVE_SWITCHBOARD_ISSUE}; found ${buildIssue ?? 'none'}.`);
+  if (buildIssueRaw !== 'none') failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be none (between rungs); found ${buildIssueRaw ?? 'missing'}.`);
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
-  if (priority !== 'PRODUCT_MVP_PIVOT') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be PRODUCT_MVP_PIVOT; found ${priority ?? 'none'}.`);
-  if (workType !== 'SOURCE_TRUTH_PIVOT' && workType !== 'PROVE_CLOSEOUT') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_PIVOT or PROVE_CLOSEOUT; found ${workType ?? 'none'}.`);
-  if (nextSeam !== `${NEXT_AUTHORIZED_RUNG} - reason rung 5 activated after rung 4 trust/privacy/no-send rail closeout via PR #218`) {
-    failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must name the next authorized product seam; found ${nextSeam ?? 'none'}.`);
+  if (priority !== 'BETWEEN_RUNGS') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be BETWEEN_RUNGS; found ${priority ?? 'none'}.`);
+  if (workType !== 'AWAITING_NEXT_ISSUE') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be AWAITING_NEXT_ISSUE; found ${workType ?? 'none'}.`);
+  if (!nextSeam || !nextSeam.includes(NEXT_AUTHORIZED_RUNG)) {
+    failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must name rung 6; found ${nextSeam ?? 'none'}.`);
   }
 
   for (const marker of [
@@ -180,11 +180,10 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'Issue #168 is completed/superseded by PR #205.',
     'Issue #208 is completed by merged PR #215.',
     'Issue #216 is completed by merged PR #218.',
-    'Issue #220 is the active Product MVP seam.',
-    'The active seam is the Product MVP seam:',
+    'Issue #220 is completed',
     'Issue #178 is suspended/queued and no longer active.',
     `Issue #${OPEN_THREADS_ISSUE} Open Threads remains capture-only and cannot authorize implementation.`,
-    'The next authorized move after this closeout is to begin issue #220 in the active seam.',
+    'No agent work until then.',
     '`FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.',
     '`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.',
     'PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.',
@@ -194,9 +193,7 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     if (!handoff.includes(marker)) failures.push(`ACTIVE_HANDOFF.md is missing required marker: ${marker}`);
   }
   if (handoffIssue !== null) {
-    if (handoffIssue !== ACTIVE_SWITCHBOARD_ISSUE) {
-      failures.push(`ACTIVE_HANDOFF.md active seam issue must be #${ACTIVE_SWITCHBOARD_ISSUE}; found #${handoffIssue}.`);
-    }
+    failures.push(`ACTIVE_HANDOFF.md must not declare an active seam (between rungs); found #${handoffIssue}.`);
   }
   for (const staleMarker of [
     'Active implementation seam is `EXECUTION_QUEUE`.',
@@ -269,7 +266,7 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     '| GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` | `CURRENT_CONTROL` |',
     '| GitHub issue #208 | `REFERENCE_ONLY` |',
     '| GitHub issue #216 | `REFERENCE_ONLY` |',
-    '| GitHub issue #220 | `CURRENT_CONTROL` |',
+    '| GitHub issue #220 | `REFERENCE_ONLY` |',
     '| GitHub issue #178 | `REFERENCE_ONLY` |',
     '| GitHub issue #140 | `REFERENCE_ONLY` |',
     '| GitHub issue #168 | `REFERENCE_ONLY` |',
@@ -284,7 +281,7 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'GitHub issue #182 is the completed global execution-rule enforcement patch retained for receipt history after PR #203.',
     'GitHub issue #208 is completed by PR #215 (first user journey shell — rung 3 COMPLETE).',
     'GitHub issue #216 is completed by PR #218 (trust/privacy/no-send rail — rung 4 COMPLETE).',
-    'GitHub issue #220 is the current control issue for the self-serve early-access payment path (rung 5 IN_PROGRESS).',
+    'GitHub issue #220 is completed',
     'GitHub issue #178 is suspended/queued reference history from the governance pivot.',
     'GitHub issue #140 is completed/closed by PR #206 and is now reference-only.',
     'GitHub issue #168 is the completed automatic Open Threads capture seam retained for receipt history after PR #205.',
@@ -319,12 +316,12 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     authority_status?: string;
     backlog_id?: string;
     terminal_state_authority?: { allowed?: unknown; merge_through_rule?: unknown };
-    active_issue?: number;
+    active_issue?: string | number;
   };
-  if (contract.active !== true) failures.push('.foldera-contract.json must remain active while it governs the Product MVP pivot.');
-  if (contract.authority_status !== 'PRODUCT_MVP_PIVOT_ACTIVE') failures.push('.foldera-contract.json must expose PRODUCT_MVP_PIVOT_ACTIVE authority status.');
+  if (contract.active !== false) failures.push('.foldera-contract.json must be inactive (between rungs).');
+  if (contract.authority_status !== 'BETWEEN_RUNGS') failures.push('.foldera-contract.json must expose BETWEEN_RUNGS authority status.');
   if (contract.backlog_id !== 'FOLDERA_PRODUCT_MVP_PIVOT') failures.push('.foldera-contract.json must point at FOLDERA_PRODUCT_MVP_PIVOT backlog_id.');
-  if (contract.active_issue !== ACTIVE_SWITCHBOARD_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_SWITCHBOARD_ISSUE}; found ${contract.active_issue ?? 'none'}.`);
+  if (contract.active_issue !== 'none') failures.push(`.foldera-contract.json active_issue must be "none" (between rungs); found ${contract.active_issue ?? 'missing'}.`);
   const terminalAuthority = contract.terminal_state_authority;
   if (!terminalAuthority || !Array.isArray(terminalAuthority.allowed)) failures.push('.foldera-contract.json must expose terminal_state_authority.allowed.');
   else {
@@ -391,5 +388,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. The Master Bible remains reference authority, the queue remains inactive, and issue #220 is the active Product MVP seam.');
+  console.log('Source truth check passed. Rung 5 (issue #220) is COMPLETE. No active seam — rung 6 needs_issue from Brandon.');
 }

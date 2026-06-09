@@ -78,17 +78,16 @@ describe('continuity gate writeback enforcement', () => {
     const failures = runContinuityGate(fixtureRoot);
 
     expect(handoff).toContain('Issue #216 is completed by merged PR #218.');
-    expect(handoff).toContain('Issue #220 is the active Product MVP seam.');
-    expect(handoff).toContain('The active seam is the Product MVP seam:');
+    expect(handoff).toContain('Issue #220 is completed');
     expect(handoff).toContain('Issue #178 is suspended/queued and no longer active.');
     expect(handoff).toContain('Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
     expect(handoff).toContain('Issue #182 is completed/superseded by PR #203.');
     expect(handoff).toContain('Issue #168 is completed/superseded by PR #205.');
-    expect(handoff).toContain('The next authorized move after this closeout is to begin issue #220 in the active seam.');
-    expect(buildOrder).toContain('active_issue: 220');
-    expect(buildOrder).toContain('priority_class: PRODUCT_MVP_PIVOT');
-    expect(buildOrder).toMatch(/work_type: (SOURCE_TRUTH_PIVOT|PROVE_CLOSEOUT)/);
-    expect(buildOrder).toContain('next_seam: issue #220 Add bounded self-serve early-access payment path - reason rung 5 activated after rung 4 trust/privacy/no-send rail closeout via PR #218');
+    expect(handoff).toContain('No agent work until then.');
+    expect(buildOrder).toContain('active_issue: none');
+    expect(buildOrder).toContain('priority_class: BETWEEN_RUNGS');
+    expect(buildOrder).toContain('work_type: AWAITING_NEXT_ISSUE');
+    expect(buildOrder).toContain('next_seam: rung 6 Prove money-ready MVP end to end');
     expect(buildOrder).toContain('paused_issues:');
     expect(buildOrder).toContain('- issue: 178');
     expect(buildOrder).toContain('state: SUSPENDED');
@@ -116,18 +115,18 @@ describe('continuity gate writeback enforcement', () => {
     expect(failures).toEqual([]);
   });
 
-  it('fails when the active seam line is removed', () => {
+  it('fails when an active seam is declared during between-rungs', () => {
     const fixtureRoot = createFixtureRoot();
     const original = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     writeFixtureFile(
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
-      original.replace('Issue #220 is the active Product MVP seam.', 'Issue #194 is the active first money-loop implementation seam.'),
+      `${original}\nIssue #194 is the active first money-loop implementation seam.`,
     );
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md active seam issue #194 must match FOLDERA_BUILD_ORDER.yaml active_issue #220.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md must not declare an active seam in between-rungs state; found 1.');
   });
 
   it('fails when the mandatory writeback rule is removed from ACTIVE_HANDOFF.md', () => {
