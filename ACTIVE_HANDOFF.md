@@ -26,7 +26,7 @@ Issue #216 is completed by merged PR #218.
 Issue #220 is the active Product MVP seam.
 Issue #178 is suspended/queued and no longer active.
 Current Phase: Rung 5 — Add bounded self-serve early-access payment path.
-The active seam is the Product MVP seam: keep the repo pointed at the bounded self-serve payment path, keep the pivot bounded, and do not widen into live Stripe/runtime implementation yet.
+The active seam is the Product MVP seam: the Stripe/payment implementation (checkout, webhook, portal, pricing page, subscription-db, migrations) already exists on main; this seam proves it end-to-end and closes out rung 5. Do not rebuild what is already there.
 The launch_ladder in FOLDERA_BUILD_ORDER.yaml is the ordering authority for the Foldera build sequence. Rung 3 (issue #208) is COMPLETE. Rung 4 (issue #216) is COMPLETE. Rung 5 (issue #220) is IN_PROGRESS. Rungs 6-7 are PENDING with needs_issue markers.
 `FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.
 `FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.
@@ -42,7 +42,7 @@ One active seam only.
 ## Current slice:
 - PR #198 restored issue #194 as the active seam after the closeout sweep.
 - PR #207 completed the governance pivot and moved repo control from issue #178 to issue #208.
-- The current lane is the Product MVP pivot: one scoped source-truth move, one active product seam, and no product/runtime implementation yet.
+- The current lane is the Product MVP pivot: one scoped source-truth move, one active product seam. Payment implementation exists on main; rung 5 is prove/closeout not build.
 - Issue #165 remains the raw-input inbox and capture-only.
 - Issue #140 is complete and no longer the active seam.
 - Issue #178 is suspended/queued and no longer the active seam.
@@ -76,4 +76,4 @@ Forbidden in this seam: live Slack, Supabase migrations or data mutation, Vercel
 
 ## Next exact move
 The next authorized move after this closeout is to begin issue #220 in the active seam.
-Issue #220: Add bounded self-serve early-access payment path — user can pay and access; no fake enterprise or compliance claims.
+Issue #220: Prove the already-implemented payment path end-to-end — checkout, webhook, portal, user_subscriptions persistence, and post-checkout access gate. Implementation exists on main. Remaining work is live proof only.
