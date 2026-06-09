@@ -74,7 +74,17 @@ describe('POST /api/command-os/intake', () => {
     expect(payload.body).not.toContain('ghp_mock_command_os_token');
   });
 
-  it('rejects non-reference-only input without calling GitHub', async () => {
+  it('writes ACTIVE_SEAM_COMMAND input to Issue #165 (all classifications are captured)', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({
+        id: 4243,
+        html_url: 'https://github.com/pm6guy10/foldera-ai/issues/165#issuecomment-4243',
+      }),
+      text: async () => '',
+    });
+
     const { POST } = await import('@/app/api/command-os/intake/route');
     const response = await POST(
       new NextRequest('http://localhost/api/command-os/intake', {
@@ -87,13 +97,15 @@ describe('POST /api/command-os/intake', () => {
 
     const body = await response.json();
 
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(200);
     expect(body).toMatchObject({
-      ok: false,
+      ok: true,
       classification: 'ACTIVE_SEAM_COMMAND',
       executionLoopTriggered: false,
       existingGithubTarget: '#168',
     });
-    expect(mockFetch).not.toHaveBeenCalled();
+    expect(mockFetch).toHaveBeenCalledOnce();
+    const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain('/issues/165/comments');
   });
 });

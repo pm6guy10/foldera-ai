@@ -36,7 +36,8 @@
     "app/api/cron/nightly-ops/**",
     "GPT.md",
     "app/api/command-os/intake/route.ts",
-    "tests/repo-intake-governor/__tests__/**"
+    "tests/repo-intake-governor/__tests__/**",
+    "tests/work-packets/__tests__/command-os-intake-route.test.ts"
   ],
   "forbidden_file_patterns": [
     "components/**",
