@@ -32,20 +32,8 @@ export async function POST(request: NextRequest) {
 
     const packet = buildIntakePacket(rawText, COMMAND_OS_CONTEXT);
 
-    if (packet.classification !== 'REFERENCE_ONLY') {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: 'Only REFERENCE_ONLY input may be written back to Issue #165',
-          classification: packet.classification,
-          routingOutcome: packet.routingOutcome,
-          existingGithubTarget: packet.existingGithubTarget,
-          executionLoopTriggered: false,
-        },
-        { status: 409 },
-      );
-    }
-
+    // All classifications write to Issue #165 as the capture inbox.
+    // The routing packet inside the comment tells future sessions where to escalate.
     const writeBack = await appendOpenThreadsComment(rawText, packet);
 
     return NextResponse.json({

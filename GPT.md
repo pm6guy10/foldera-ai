@@ -35,19 +35,30 @@ When Brandon gives messy Foldera input, broad concern, audit anxiety, vision, bu
 
 Do not create a new issue, update files, start Codex, write an agent prompt, or recommend a new seam until the input is classified and routed.
 
+### Auto-capture rule
+
+When Brandon gives a Foldera thought (any input that is not a direct active-seam execution command), POST it to the intake API to classify and capture it automatically:
+
+```
+POST /api/command-os/intake
+Content-Type: application/json
+{ "rawText": "<Brandon's exact words>" }
+```
+
+The API classifies the input, writes a durable receipt to Issue #165, and returns the routing packet. Read the returned `routingOutcome` and `existingGithubTarget` to decide what, if any, follow-up action is needed.
+
+If the API is unreachable, append directly to Issue #165 using the Open Thread Entry template from that issue's body.
+
+Do not treat the #165 comment as implementation authority. It is capture only. A later Codex/Claude Code session reads the comment, sees the routing packet, and executes only if authorized by source truth.
+
 Required intake read order:
 
 1. `ACTIVE_HANDOFF.md`
 2. `FOLDERA_BUILD_ORDER.yaml`
-3. issue #119 owner intake router
-4. issue #117 institutional audit ledger
-5. issue #118 command-review cadence
-6. active issue / active PR
-7. issue #48 product doctrine
-8. issue #99 if active or next
-9. issue #116 if product-proof alignment is implicated
+3. active issue / active PR
+4. issue #48 product doctrine
 
-Required intake output:
+Required intake output (returned by the API, or assembled manually if API is unreachable):
 
 ```text
 Classification:
@@ -64,12 +75,6 @@ Stop condition:
 
 Routing rules:
 
-- Use the active PR/issue only when Brandon's input affects the active seam.
-- Use #117 for audit findings and unresolved institutional findings.
-- Use #118 for recurring weekly/biweekly command-review process.
-- Use #119 for intake/router doctrine.
-- Use #99 for architecture doctrine after governance closes.
-- Use #116 for product proof-gate alignment.
 - Prefer updating an existing issue over creating a new issue.
 - Create a new issue only when no existing target fits and the finding is actionable.
 - If the input is reference-only, classify it as `REFERENCE_ONLY`, name where it is stored, and stop.
@@ -116,7 +121,8 @@ When Brandon asks "what's next," "now what," "is this fine," or shows Codex/Curs
 
 1. Follow the canonical boot sequence above.
 2. **Check Issue #136 for the most recent INTERRUPT receipt for the current active issue. If one exists, read it and surface the named next step before advising.**
-3. Read `CURRENT_STATE.md`, `SYSTEM_RUNBOOK.md`, `FOLDERA_MASTER_AUDIT.md`, or `BRANDON.md` only when the active seam needs them.
+3. **Read the last 5 comments on Issue #165 to recover any recent auto-captures. If a capture exists for the current active issue, surface it before advising.**
+4. Read `CURRENT_STATE.md`, `SYSTEM_RUNBOOK.md`, `FOLDERA_MASTER_AUDIT.md`, or `BRANDON.md` only when the active seam needs them.
 4. Compare that source truth against pasted Codex/Cursor logs.
 5. Return a short owner snapshot:
    - current truth
