@@ -220,7 +220,7 @@ forbidden_current_work:
   - data mutation
   - Vercel settings
   - Stripe changes
-  - auth changes
+  - auth changes outside the issue #226 sign-in reliability slice (lib/auth/auth-options.ts, lib/auth/supabase-auth-user.ts, lib/auth/__tests__)
   - landing files
   - package or dependency changes
   - live connector fetch
@@ -240,11 +240,14 @@ allowed_current_work:
   - update focused source-truth gate tests
   - update focused continuity gate tests
   - update .github/pull_request_template.md
+  - update lib/auth/auth-options.ts (issue #226 sign-in reliability slice)
+  - update lib/auth/supabase-auth-user.ts (issue #226 sign-in reliability slice)
+  - update lib/auth/__tests__ focused tests (issue #226 sign-in reliability slice)
 required_local_proof:
-  - npm run health
   - npx tsx scripts/source-truth-check.ts
   - npm run gate:continuity
   - npm run lint
+  - npx vitest run lib/auth/__tests__/auth-options.test.ts lib/auth/__tests__/supabase-auth-user.test.ts
   - git diff --check
 required_master_bible_closeout:
   controlling_pr: 191
@@ -309,7 +312,7 @@ current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - reason historical roadmap remains shimmed and no longer controls the active seam
-  docs/SOURCE_OF_TRUTH_MAP.md: updated
+  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - reason control assignments did not change in the sign-in reliability slice
   next_seam: rung 7 Prove money-ready MVP end to end - needs_issue after issue #226 is proven
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason

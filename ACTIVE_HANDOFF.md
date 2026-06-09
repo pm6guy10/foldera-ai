@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-09 PT (issue #226 activation)
+Last updated: 2026-06-09 PT (issue #226 slice 2: sign-in reliability)
 Current `origin/main` SHA: see GitHub for latest.
 
 ## Canonical Boot Sequence
@@ -59,9 +59,9 @@ Issue #48 remains the product contract.
 `FOLDERA_NORTH_STAR_LOCK.md` controls product doctrine; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap, phase order, backlog lanes, and enterprise path.
 
 ## Source-truth boundary
-Active seam: issue #226 — owner-path readiness (sign-in + Slack self-loop). This slice authorizes source-truth files (`ACTIVE_HANDOFF.md`, `FOLDERA_BUILD_ORDER.yaml`, `.foldera-contract.json`, `docs/SOURCE_OF_TRUTH_MAP.md`, `scripts/source-truth-check.ts`, continuity gate, focused gate tests) PLUS exactly one owner-landing honesty file: `app/dashboard/page.tsx`.
+Active seam: issue #226 — owner-path readiness (sign-in + Slack self-loop). Slice 1 (owner-landing honesty) merged via PR #229. Slice 2 authorizes source-truth files (`ACTIVE_HANDOFF.md`, `FOLDERA_BUILD_ORDER.yaml`, `.foldera-contract.json`, `docs/SOURCE_OF_TRUTH_MAP.md`, `scripts/source-truth-check.ts`, continuity gate, focused gate tests) PLUS the sign-in reliability files: `lib/auth/auth-options.ts`, `lib/auth/supabase-auth-user.ts`, `lib/auth/__tests__/**`.
 Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #220 is completed (rung 5 COMPLETE — live proof passed), issue #216 is completed by PR #218 (rung 4 COMPLETE), issue #226 is the active rung 6 seam, issue #178 is suspended/queued, issue #140 is completed/closed, issue #168 is completed/superseded, issue #165 is capture-only, issue #182 is completed/superseded, and the queue file remains inactive/reference-only.
-Forbidden: all implementation beyond `app/dashboard/page.tsx` — no Slack, auth, Stripe, schema, components/**, app/api/**, nav architecture, winner/brain wiring, non-owner loop, rung 7, or broad cleanup until issue #226 is proven.
+Forbidden: all implementation beyond the slice 2 sign-in reliability files — no live Slack rails, auth route handlers (app/api/auth/**), Stripe, schema, components/**, dashboard files, nav architecture, winner/brain wiring, non-owner loop, rung 7, or broad cleanup until issue #226 is proven.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
@@ -74,6 +74,6 @@ Forbidden: all implementation beyond `app/dashboard/page.tsx` — no Slack, auth
 - If a source-truth file is not updated, the PR receipt must say `unchanged - reason` or `not applicable - reason`.
 
 ## Next exact move
-Issue #226 (rung 6) is the active seam. Work: diagnose owner sign-in reliability, then prove one successful Slack self-loop end-to-end with durable receipt.
-Proof required: Brandon can reliably sign in + one successful Slack self-loop + durable receipt in repo/GitHub.
-Non-owner proof (rung 7) is forbidden until #226 is proven. Open the implementation PR against this branch after diagnostics are done.
+Issue #226 (rung 6) is the active seam. Slice 2 ships the sign-in reliability repair: initial sign-in no longer hard-fails on transient `user_tokens` persist errors (retry once, then degraded `TokenPersistError` session), and `resolveSupabaseAuthUserId` recovers existing users when `createUser` reports already-registered after transient lookup failures.
+Proof required: Brandon can reliably sign in + one successful Slack self-loop + durable receipt in repo/GitHub. Deterministic proof for the two sign-in hard-fail classes is in `lib/auth/__tests__`; live owner sign-in + the Slack self-loop receipt remain open on issue #226.
+Non-owner proof (rung 7) is forbidden until #226 is proven. Next slice after merge: Slack self-loop with durable receipt.
