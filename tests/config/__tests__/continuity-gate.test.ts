@@ -83,11 +83,11 @@ describe('continuity gate writeback enforcement', () => {
     expect(handoff).toContain('Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
     expect(handoff).toContain('Issue #182 is completed/superseded by PR #203.');
     expect(handoff).toContain('Issue #168 is completed/superseded by PR #205.');
-    expect(handoff).toContain('No agent work until then.');
-    expect(buildOrder).toContain('active_issue: none');
-    expect(buildOrder).toContain('priority_class: BETWEEN_RUNGS');
-    expect(buildOrder).toContain('work_type: AWAITING_NEXT_ISSUE');
-    expect(buildOrder).toContain('next_seam: rung 6 Prove owner-path readiness');
+    expect(handoff).toContain('Issue #226 is the active rung 6 seam.');
+    expect(buildOrder).toContain('active_issue: 226');
+    expect(buildOrder).toContain('priority_class: OWNER_PATH_READINESS');
+    expect(buildOrder).toContain('work_type: OWNER_PATH_DIAGNOSTICS');
+    expect(buildOrder).toContain('next_seam: rung 7 Prove money-ready MVP end to end');
     expect(buildOrder).toContain('paused_issues:');
     expect(buildOrder).toContain('- issue: 178');
     expect(buildOrder).toContain('state: SUSPENDED');
@@ -115,7 +115,7 @@ describe('continuity gate writeback enforcement', () => {
     expect(failures).toEqual([]);
   });
 
-  it('fails when an active seam is declared during between-rungs', () => {
+  it('fails when a second active seam is declared alongside issue #226', () => {
     const fixtureRoot = createFixtureRoot();
     const original = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     writeFixtureFile(
@@ -126,7 +126,7 @@ describe('continuity gate writeback enforcement', () => {
 
     const failures = runContinuityGate(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md must not declare an active seam in between-rungs state; found 1.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md must name exactly one active seam line; found 2.');
   });
 
   it('fails when the mandatory writeback rule is removed from ACTIVE_HANDOFF.md', () => {

@@ -70,12 +70,12 @@ describe('source truth command gate', () => {
     expect(handoff).toContain('Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
     expect(handoff).toContain('Issue #182 is completed/superseded by PR #203.');
     expect(handoff).toContain('Issue #168 is completed/superseded by PR #205.');
-    expect(handoff).toContain('No agent work until then.');
+    expect(handoff).toContain('Issue #226 is the active rung 6 seam.');
     expect(handoff).toContain('`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.');
-    expect(buildOrder).toContain('active_issue: none');
-    expect(buildOrder).toContain('priority_class: BETWEEN_RUNGS');
-    expect(buildOrder).toContain('work_type: AWAITING_NEXT_ISSUE');
-    expect(buildOrder).toContain('next_seam: rung 6 Prove owner-path readiness');
+    expect(buildOrder).toContain('active_issue: 226');
+    expect(buildOrder).toContain('priority_class: OWNER_PATH_READINESS');
+    expect(buildOrder).toContain('work_type: OWNER_PATH_DIAGNOSTICS');
+    expect(buildOrder).toContain('next_seam: rung 7 Prove money-ready MVP end to end');
     expect(buildOrder).toContain('paused_issues:');
     expect(buildOrder).toContain('- issue: 178');
     expect(buildOrder).toContain('state: SUSPENDED');
@@ -156,39 +156,38 @@ describe('source truth command gate', () => {
     );
   });
 
-  it('fails when ACTIVE_HANDOFF.md claims an active seam during between-rungs', () => {
+  it('fails when ACTIVE_HANDOFF.md claims the wrong active seam', () => {
     const fixtureRoot = createFixtureRoot();
     const original = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     writeFixtureFile(
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
       original
-        .replace('Issue #220 is completed', 'Issue #194 is the active first money-loop implementation seam.')
-        .replace('Issue #168 is completed/superseded by PR #205.', 'Issue #194 is the active first money-loop implementation seam.'),
+        .replace('Issue #226 is the active rung 6 seam.', 'Issue #194 is the active first money-loop implementation seam.'),
     );
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Issue #168 is completed/superseded by PR #205.');
-    expect(failures).toContain('ACTIVE_HANDOFF.md must not declare an active seam (between rungs); found #194.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Issue #226 is the active rung 6 seam.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md must declare issue #226 as the active seam; found 194.');
   });
 
-  it('fails when .foldera-contract.json no longer reflects the between-rungs state', () => {
+  it('fails when .foldera-contract.json no longer reflects the active issue #226 state', () => {
     const fixtureRoot = createFixtureRoot();
     const contract = JSON.parse(readFixtureFile(fixtureRoot, '.foldera-contract.json')) as Record<string, unknown>;
-    contract.active = true;
+    contract.active = false;
     contract.active_issue = 194;
     contract.backlog_id = 'FOLDERA_MASTER_BIBLE_FIRST_MONEY_LOOP';
-    contract.authority_status = 'MASTER_BIBLE_FIRST_MONEY_LOOP_ACTIVE';
+    contract.authority_status = 'BETWEEN_RUNGS';
     contract.terminal_state_authority = { allowed: ['BLOCKED', 'PROOF'], merge_through_rule: 'Merge when it feels right.' };
     writeFixtureFile(fixtureRoot, '.foldera-contract.json', `${JSON.stringify(contract, null, 2)}\n`);
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('.foldera-contract.json must be inactive (between rungs).');
-    expect(failures).toContain('.foldera-contract.json must expose BETWEEN_RUNGS authority status.');
+    expect(failures).toContain('.foldera-contract.json must be active for issue #226 owner-path readiness seam.');
+    expect(failures).toContain('.foldera-contract.json must expose PRODUCT_MVP_PIVOT_ACTIVE authority status.');
     expect(failures).toContain('.foldera-contract.json must point at FOLDERA_PRODUCT_MVP_PIVOT backlog_id.');
-    expect(failures).toContain('.foldera-contract.json active_issue must be "none" (between rungs); found 194.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be 226; found 194.');
     expect(failures).toContain('.foldera-contract.json is missing terminal state authority for MERGED_AND_CLOSED.');
     expect(failures).toContain('.foldera-contract.json must expose a machine-readable merge-through rule.');
   });
