@@ -33,6 +33,8 @@ For any Foldera task, use this order:
 
 After the canonical boot sequence, read additional execution or proof docs only when the active seam requires them.
 
+**Recovery step:** After reading `ACTIVE_HANDOFF.md`, check Issue #136 for the most recent INTERRUPT receipt for the current active issue. If one exists, read it and resume from the named next step before reading other source-truth files.
+
 ## Prime Directive
 
 Define done before editing.
@@ -146,6 +148,8 @@ No final report may call work done while the handoff/build-order are stale.
 ## Codex Run Ledger
 
 `AGENTS.md` contains the authoritative `MANDATORY CODEX RUN LEDGER CLOSEOUT` rule. Before any final report, post the primary GitHub receipt, post the standing `[OPS] Codex Run Ledger` entry, and return only the required receipt URLs.
+
+`AGENTS.md` also contains the `## Session Receipts` rule defining START, INTERRUPT, and CLOSEOUT templates. Post a START receipt to Issue #136 before the first file edit. Post an INTERRUPT receipt to Issue #136 if stopping without a terminal state.
 
 ## GitHub CI Final Gate
 
