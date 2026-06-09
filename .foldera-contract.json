@@ -3,9 +3,9 @@
   "active": true,
   "active_issue": 226,
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
-  "base_commit": "c96c29d68d1b7f09e13dbcc4145495c91a857f35",
+  "base_commit": "29ba663eee6961c7f315c138e777c065396b0445",
   "money_loop_rung": "rung_6_in_progress_owner_path",
-  "user_system_path": "Issue #226 is the active rung 6 seam — owner-path readiness: sign-in + Slack self-loop. Rung 5 (issue #220) is COMPLETE. Rung 7 (non-owner paid loop) is forbidden until #226 is proven. Issue #178 remains suspended/queued.",
+  "user_system_path": "Issue #226 is the active rung 6 seam — owner-path readiness: sign-in + Slack self-loop. This slice authorizes ONE owner-landing honesty fix: app/dashboard/page.tsx, so the signed-in Gmail owner lands on a truthful surface with no dead-end primary CTA. Rung 5 (issue #220) is COMPLETE. Rung 7 (non-owner paid loop) is forbidden until #226 is proven. Issue #178 remains suspended/queued.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and docs/SOURCE_OF_TRUTH_MAP.md before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate the queue.",
   "terminal_state_authority": {
@@ -29,13 +29,14 @@
     "FOLDERA_MASTER_SYNTHESIS_DRAFT.md",
     "scripts/source-truth-check.ts",
     "scripts/continuity-gate.ts",
-    "tests/config/__tests__/**"
+    "tests/config/__tests__/**",
+    "app/dashboard/page.tsx",
+    "tests/e2e/authenticated-routes.spec.ts"
   ],
   "forbidden_file_patterns": [
     "components/**",
     "components/foldera/LandingPage.tsx",
     "app/page.tsx",
-    "app/dashboard/page.tsx",
     "next.config.mjs",
     "app/api/slack/right-now/**",
     "app/api/slack/test-mode/**",
@@ -52,7 +53,6 @@
     "lib/billing/**",
     "package.json",
     "package-lock.json",
-    "tests/e2e/authenticated-routes.spec.ts",
     "Dependabot",
     "Vercel settings",
     "Slack app settings",
@@ -74,8 +74,8 @@
     "broad cleanup",
     "queue activation"
   ],
-  "allowed_files_raw": "Active seam: issue #226 owner-path readiness. Governance-control files only: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, docs/SOURCE_OF_TRUTH_MAP.md, scripts/source-truth-check.ts, and focused gate tests. No implementation work.",
-  "forbidden_files_raw": "All implementation work forbidden until #226 is proven. No live Slack, no auth fixes, no Supabase mutations, no Stripe changes, no package changes, no queue activation, no non-owner loop work, no broad cleanup.",
+  "allowed_files_raw": "Active seam: issue #226 owner-path readiness. Source-truth/governance files: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, docs/SOURCE_OF_TRUTH_MAP.md, scripts/source-truth-check.ts, scripts/continuity-gate.ts, focused gate tests. PLUS one owner-landing honesty implementation file (app/dashboard/page.tsx) and its pinned e2e spec (tests/e2e/authenticated-routes.spec.ts), updated only to match the truthful landing. No other implementation files.",
+  "forbidden_files_raw": "Only app/dashboard/page.tsx (plus its pinned spec tests/e2e/authenticated-routes.spec.ts) is authorized in this slice. Still forbidden: live Slack, auth fixes (lib/auth, app/api/auth), Supabase, Stripe/billing, package changes, components/**, app/api/**, nav architecture, winner/brain wiring, queue activation, non-owner loop / rung 7, and broad cleanup.",
   "required_local_proof": [
     "npm run health",
     "npx tsx scripts/source-truth-check.ts",
@@ -84,11 +84,11 @@
     "npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose",
     "git diff --check"
   ],
-  "required_browser_proof": "Not required for source-truth activation only.",
-  "acceptance_condition": "All source-truth files agree that issue #226 is the active rung 6 seam (owner-path readiness: sign-in + Slack self-loop), rung 7 non-owner loop remains forbidden until #226 is proven, and all gate commands pass.",
-  "stop_condition": "Stop when activation PR is merged and GitHub receipt is posted to issue #226. No further implementation until #226 is proven.",
-  "is_user_facing": false,
-  "browser_proof_command": "not required — source-truth activation only",
+  "required_browser_proof": "Signed-in Gmail owner lands on /dashboard, sees no no-op primary CTA, and the primary CTA navigates to a real working surface (/dashboard/settings).",
+  "acceptance_condition": "Source-truth files agree issue #226 is the active rung 6 seam; the /dashboard landing has no dead-end primary CTA; its primary CTA links to /dashboard/settings; copy honestly states the Right Now / Slack buddy path is not yet exposed from this landing; all gate commands pass.",
+  "stop_condition": "Stop when this one owner-landing honesty PR is merged and a GitHub receipt is posted to issue #226. No further implementation until the next authorized slice.",
+  "is_user_facing": true,
+  "browser_proof_command": "npm run build && manual/preview: sign in with Gmail -> /dashboard -> click primary CTA -> lands on /dashboard/settings",
   "anti_regression_checks": [
     "issue #226 is the active rung 6 seam — owner-path readiness",
     "issue #220 is completed — rung 5 live proof passed",
@@ -105,5 +105,5 @@
     "Stripe/payment implementation on main must not be rebuilt; rung 5 is now COMPLETE",
     "rung 7 non-owner paid loop is forbidden until issue #226 is proven"
   ],
-  "next_command": "Issue #226 is the active rung 6 seam. Start owner-path diagnostics: investigate sign-in reliability, then prove one successful Slack self-loop end-to-end. Rung 7 non-owner loop is forbidden until #226 is proven."
+  "next_command": "Issue #226 is the active rung 6 seam. This slice ships ONE owner-landing honesty fix in app/dashboard/page.tsx: remove the no-op 'Open next move' button, point the primary CTA at /dashboard/settings, and add truthful copy that the Right Now / Slack buddy path is not yet exposed from this landing. After merge, resume sign-in reliability + Slack self-loop diagnostics. Rung 7 non-owner loop is forbidden until #226 is proven."
 }

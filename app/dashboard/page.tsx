@@ -1,30 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
-
-async function load(cacheMode: RequestCache = 'default'): Promise<void> {
-  void cacheMode;
-}
 
 export default function DashboardPage() {
-  const { status } = useSession();
-  const isReady = status === 'authenticated';
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    void (async () => {
-      await load('reload');
-    })();
-  }, []);
-
-  async function handleOpen() {
-    setLoading(true);
-    await load('reload');
-    setLoading(false);
-  }
-
   return (
     <main className="min-h-screen bg-[#030305] text-white">
       <section className="flex min-h-screen items-center justify-center px-6 py-16">
@@ -35,18 +13,16 @@ export default function DashboardPage() {
                 One next move.
               </h1>
               <p className="mx-auto max-w-md text-sm leading-6 text-white/68 sm:text-base">
-                A quiet dashboard shell for the first product journey.
+                You&apos;re signed in. Start by connecting and checking your sources — that&apos;s where Foldera works today.
               </p>
             </div>
             <div className="flex justify-center">
-              <button
-                type="button"
-                disabled={!isReady || loading}
-                onClick={() => void handleOpen()}
-                className="inline-flex items-center justify-center rounded-full border border-[#46F4FF] bg-[#030305] px-6 py-3 text-sm font-medium text-[#46F4FF] transition-colors hover:bg-[#46F4FF]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#46F4FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#030305] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-[#030305]"
+              <Link
+                href="/dashboard/settings"
+                className="inline-flex items-center justify-center rounded-full border border-[#46F4FF] bg-[#030305] px-6 py-3 text-sm font-medium text-[#46F4FF] transition-colors hover:bg-[#46F4FF]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#46F4FF] focus-visible:ring-offset-2 focus-visible:ring-offset-[#030305]"
               >
-                {loading ? 'Loading…' : 'Open next move'}
-              </button>
+                Go to your sources
+              </Link>
             </div>
             <div
               data-testid="trust-rail"
@@ -65,6 +41,9 @@ export default function DashboardPage() {
                 Manage sources →
               </Link>
             </div>
+            <p className="text-[11px] leading-5 text-white/40">
+              The Right Now / Slack buddy path isn&apos;t wired to this landing yet — it&apos;s the next step on the owner path.
+            </p>
           </div>
         </div>
       </section>

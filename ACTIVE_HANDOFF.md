@@ -59,9 +59,9 @@ Issue #48 remains the product contract.
 `FOLDERA_NORTH_STAR_LOCK.md` controls product doctrine; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap, phase order, backlog lanes, and enterprise path.
 
 ## Source-truth boundary
-Active seam: issue #226 — owner-path readiness diagnostics (sign-in + Slack self-loop). Allowed files: `ACTIVE_HANDOFF.md`, `FOLDERA_BUILD_ORDER.yaml`, `.foldera-contract.json`, `docs/SOURCE_OF_TRUTH_MAP.md`, `scripts/source-truth-check.ts`, continuity gate, and focused gate tests only.
+Active seam: issue #226 — owner-path readiness (sign-in + Slack self-loop). This slice authorizes source-truth files (`ACTIVE_HANDOFF.md`, `FOLDERA_BUILD_ORDER.yaml`, `.foldera-contract.json`, `docs/SOURCE_OF_TRUTH_MAP.md`, `scripts/source-truth-check.ts`, continuity gate, focused gate tests) PLUS exactly one owner-landing honesty file: `app/dashboard/page.tsx`.
 Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #220 is completed (rung 5 COMPLETE — live proof passed), issue #216 is completed by PR #218 (rung 4 COMPLETE), issue #226 is the active rung 6 seam, issue #178 is suspended/queued, issue #140 is completed/closed, issue #168 is completed/superseded, issue #165 is capture-only, issue #182 is completed/superseded, and the queue file remains inactive/reference-only.
-Forbidden: all implementation, Slack, auth, Stripe, schema, non-owner loop, rung 7, and broad cleanup work until issue #226 is proven.
+Forbidden: all implementation beyond `app/dashboard/page.tsx` — no Slack, auth, Stripe, schema, components/**, app/api/**, nav architecture, winner/brain wiring, non-owner loop, rung 7, or broad cleanup until issue #226 is proven.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
