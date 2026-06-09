@@ -115,9 +115,10 @@ If not, say so plainly and name the next gate or proof gap.
 When Brandon asks "what's next," "now what," "is this fine," or shows Codex/Cursor logs, run this sequence before advising:
 
 1. Follow the canonical boot sequence above.
-2. Read `CURRENT_STATE.md`, `SYSTEM_RUNBOOK.md`, `FOLDERA_MASTER_AUDIT.md`, or `BRANDON.md` only when the active seam needs them.
-3. Compare that source truth against pasted Codex/Cursor logs.
-4. Return a short owner snapshot:
+2. **Check Issue #136 for the most recent INTERRUPT receipt for the current active issue. If one exists, read it and surface the named next step before advising.**
+3. Read `CURRENT_STATE.md`, `SYSTEM_RUNBOOK.md`, `FOLDERA_MASTER_AUDIT.md`, or `BRANDON.md` only when the active seam needs them.
+4. Compare that source truth against pasted Codex/Cursor logs.
+5. Return a short owner snapshot:
    - current truth
    - what is wrong
    - exact next move
@@ -126,6 +127,49 @@ When Brandon asks "what's next," "now what," "is this fine," or shows Codex/Curs
    - stop condition
 
 Do not answer from memory alone when live repo/deploy truth is available.
+
+## Session Receipts
+
+These receipts apply to all tools: ChatGPT, Claude Code, Codex, Cursor, and manual sessions. All receipts post to Issue #136.
+
+### START receipt — post to Issue #136 before advising or editing
+
+```
+SESSION START
+Tool: [Claude Code / Codex / Cursor / ChatGPT / Manual]
+Date: YYYY-MM-DD UTC
+Issue: #XXX
+PR: #XXX or NONE
+Branch: <branch>
+SHA: <short-sha> or NONE
+Prior interrupt: NONE / see #136 comment <id>
+First step: <one sentence>
+```
+
+### INTERRUPT receipt — post to Issue #136 when ending a chat without a terminal state
+
+```
+SESSION INTERRUPT
+Tool: [Claude Code / Codex / Cursor / ChatGPT / Manual]
+Date: YYYY-MM-DD UTC
+Issue: #XXX
+PR: #XXX or NONE
+Branch: <branch>
+SHA: <short-sha>
+Uncommitted files: <list> or NONE
+Committed not pushed: <list> or NONE
+Stopped at: <one sentence>
+Next step: <one sentence>
+Blocker: NONE / <exact>
+```
+
+### Receipt routing
+
+| Receipt | Destination | When |
+|---|---|---|
+| START | Issue #136 only | Before first advice or file edit |
+| INTERRUPT | Issue #136 only | Ending chat without PROOF / BLOCKED / MERGE READY / STOPPED |
+| CLOSEOUT | PR or active issue + Issue #136 | Terminal state reached |
 
 ## GitHub Wrapper Rule
 

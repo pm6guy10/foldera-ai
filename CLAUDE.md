@@ -40,12 +40,63 @@ For any Foldera task, use this order:
 
 1. Follow the canonical boot sequence.
 2. Read additional execution/proof docs only when directly relevant to the active seam.
-3. Run `npm run health`.
-4. Inspect the full output.
-5. If health shows `FAIL`, prioritize the first relevant failure unless the assigned issue explicitly targets another proven seam.
-6. If health is green or warnings-only, continue within the single active seam.
+3. **Check Issue #136 for a recent INTERRUPT receipt for the active issue. If one exists, read it and resume from the named next step.**
+4. Run `npm run health`.
+5. Inspect the full output.
+6. If health shows `FAIL`, prioritize the first relevant failure unless the assigned issue explicitly targets another proven seam.
+7. If health is green or warnings-only, continue within the single active seam.
 
 Health is orientation, not completion. A green health check does not mean the mission is done.
+
+## Session Receipts
+
+Three receipt types cover the full session lifecycle. All receipts post to Issue #136 (the standing `[OPS] Run Ledger`).
+
+### START receipt — post to Issue #136 before the first file edit
+
+```
+SESSION START
+Tool: [Claude Code / Codex / Cursor / ChatGPT / Manual]
+Date: YYYY-MM-DD UTC
+Issue: #XXX
+PR: #XXX or NONE
+Branch: <branch>
+SHA: <short-sha> or NONE
+Prior interrupt: NONE / see #136 comment <id>
+First step: <one sentence>
+```
+
+### INTERRUPT receipt — post to Issue #136 when stopping without a terminal state
+
+```
+SESSION INTERRUPT
+Tool: [Claude Code / Codex / Cursor / ChatGPT / Manual]
+Date: YYYY-MM-DD UTC
+Issue: #XXX
+PR: #XXX or NONE
+Branch: <branch>
+SHA: <short-sha>
+Uncommitted files: <list> or NONE
+Committed not pushed: <list> or NONE
+Stopped at: <one sentence>
+Next step: <one sentence>
+Blocker: NONE / <exact>
+```
+
+### CLOSEOUT receipt — post when reaching a terminal state
+
+See `AGENTS.md` `MANDATORY CODEX RUN LEDGER CLOSEOUT` for the full template.
+Post to: primary surface (PR or active issue) + Issue #136.
+
+### Receipt routing
+
+| Receipt | Destination | When |
+|---|---|---|
+| START | Issue #136 only | Before first file edit in any session |
+| INTERRUPT | Issue #136 only | Stopping without PROOF / BLOCKED / MERGE READY / STOPPED |
+| CLOSEOUT | PR or active issue + Issue #136 | Terminal state reached |
+
+If a session produces a CLOSEOUT, a prior INTERRUPT receipt for the same issue is superseded. Do not retroactively clean it up — the CLOSEOUT is sufficient.
 
 ## Core Execution Doctrine
 

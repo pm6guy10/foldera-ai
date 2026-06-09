@@ -330,13 +330,65 @@ Before doing anything else:
 
 1. Follow the canonical boot sequence above.
 2. Read only relevant execution/proof docs for the active seam.
-3. Run `npm run health`.
-4. Inspect the output.
-5. If there is a relevant `FAIL`, prioritize it unless the user has already pinned another active seam with stronger proof.
-6. If health is green or warnings-only, continue within the single active seam.
-7. Include the health summary in the final receipt.
+3. **Check Issue #136 for a recent INTERRUPT receipt for the active issue. If one exists, read it and resume from the named next step.**
+4. Run `npm run health`.
+5. Inspect the output.
+6. If there is a relevant `FAIL`, prioritize it unless the user has already pinned another active seam with stronger proof.
+7. If health is green or warnings-only, continue within the single active seam.
+8. Include the health summary in the final receipt.
 
 Do not stop to ask for permission after health.
+
+## Session Receipts
+
+Three receipt types cover the full session lifecycle. All receipts post to Issue #136 (`[OPS] Run Ledger`). These rules apply to Claude Code, Codex, Cursor, ChatGPT, and manual work sessions equally.
+
+### START receipt — post to Issue #136 before the first file edit
+
+```
+SESSION START
+Tool: [Claude Code / Codex / Cursor / ChatGPT / Manual]
+Date: YYYY-MM-DD UTC
+Issue: #XXX
+PR: #XXX or NONE
+Branch: <branch>
+SHA: <short-sha> or NONE
+Prior interrupt: NONE / see #136 comment <id>
+First step: <one sentence>
+```
+
+### INTERRUPT receipt — post to Issue #136 when stopping without a terminal state
+
+Use this when a session stops mid-work before reaching PROOF / BLOCKED / MERGE READY / STOPPED.
+
+```
+SESSION INTERRUPT
+Tool: [Claude Code / Codex / Cursor / ChatGPT / Manual]
+Date: YYYY-MM-DD UTC
+Issue: #XXX
+PR: #XXX or NONE
+Branch: <branch>
+SHA: <short-sha>
+Uncommitted files: <list> or NONE
+Committed not pushed: <list> or NONE
+Stopped at: <one sentence>
+Next step: <one sentence>
+Blocker: NONE / <exact>
+```
+
+### CLOSEOUT receipt — post when reaching a terminal state
+
+The MANDATORY CODEX RUN LEDGER CLOSEOUT template below is the CLOSEOUT receipt. It is the terminal form of the START/INTERRUPT chain. When a CLOSEOUT is posted, any prior INTERRUPT receipt for the same issue is superseded.
+
+Post to: primary surface (PR or active issue) first, then Issue #136.
+
+### Receipt routing
+
+| Receipt | Destination | When |
+|---|---|---|
+| START | Issue #136 only | Before first file edit in any session |
+| INTERRUPT | Issue #136 only | Stopping without a terminal state |
+| CLOSEOUT | PR or active issue + Issue #136 | PROOF / BLOCKED / MERGE READY / STOPPED |
 
 ## Execution Doctrine
 
