@@ -33,11 +33,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 220
-priority_class: PRODUCT_MVP_PIVOT
-work_type: PROVE_CLOSEOUT
-why_this_first: PR #218 closed rung 4 (issue #216), and the repo now advances to the bounded self-serve payment path as rung 5.
-next_seam: issue #220 Add bounded self-serve early-access payment path - reason rung 5 activated after rung 4 trust/privacy/no-send rail closeout via PR #218
+active_issue: none
+priority_class: BETWEEN_RUNGS
+work_type: AWAITING_NEXT_ISSUE
+why_this_first: Rung 5 (issue #220) live proof passed — all 5 checks proven. Rung 6 needs_issue from Brandon.
+next_seam: rung 6 Prove money-ready MVP end to end - needs_issue from Brandon
 required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
   - 101
@@ -138,6 +138,10 @@ completed:
     pr: 137
     merge_sha: 46ff9ee99d8f920fc423b6de4d114022d6a8a521
     result: Codex Run Ledger closeout discipline landed on main; issue #136 remains open only as the standing ledger.
+  - issue: 220
+    pr: pending_this_pr
+    merge_sha: pending_merge
+    result: Rung 5 live proof passed — all 5 checks proven via Supabase MCP + Vercel MCP. Payment path works end-to-end in production.
 closed_issues_do_not_reopen:
   - issue: 121
     status: closed_superseded
@@ -205,6 +209,9 @@ closed_issues_do_not_reopen:
   - issue: 216
     status: closed_completed
     reason: Trust/privacy/no-send rail (rung 4) completed by PR #218; launch_ladder rung 4 is now COMPLETE.
+  - issue: 220
+    status: closed_completed
+    reason: Bounded self-serve payment path (rung 5) live proof passed; all 5 checks proven via Supabase MCP + Vercel MCP.
 forbidden_current_work:
   - live Slack rail work
   - PR #142 changes
@@ -279,9 +286,9 @@ launch_ladder:
     evidence: no-send receipt panel on /dashboard; all gate commands passed
   - rung: 5
     name: Add bounded self-serve early-access payment path
-    status: IN_PROGRESS
+    status: COMPLETE
     issue: 220
-    implementation_note: checkout/webhook/portal/pricing-page/subscription-db/migrations already on main; seam is prove/closeout not build
+    evidence: live proof via Supabase MCP + Vercel MCP — user_subscriptions table exists with RLS, row persists (plan=pro, status=active, real stripe_customer_id + stripe_subscription_id), all 3 Stripe routes deployed and responding, access gate code reads subscription correctly
     completion_criteria: live proof that user can pay and access; user_subscriptions row persists; no fake enterprise or compliance claims
   - rung: 6
     name: Prove money-ready MVP end to end
@@ -298,7 +305,7 @@ current_pr_closeout:
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - reason historical roadmap remains shimmed and no longer controls the active seam
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - issue #220 Add bounded self-serve early-access payment path is the active seam after rung 4 closeout
+  next_seam: rung 6 Prove money-ready MVP end to end - needs_issue from Brandon
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason

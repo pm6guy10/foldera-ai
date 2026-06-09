@@ -269,12 +269,18 @@ export function runContinuityGate(root: string): string[] {
   const handoffIssue = extractActiveHandoffIssue(activeHandoff);
   const buildOrderIssue = extractYamlNumber(buildOrder, 'active_issue');
   const buildOrderIssueScalar = extractYamlScalar(buildOrder, 'active_issue');
-  if (activeSeamLines.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam line; found ${activeSeamLines.length}.`);
-  if (!queueControlled && handoffIssue === null) failures.push('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
-  if (buildOrderIssue === null && buildOrderIssueScalar !== 'null') failures.push('FOLDERA_BUILD_ORDER.yaml active_issue could not be parsed.');
-  if (!queueControlled && buildOrderIssue === null) failures.push('FOLDERA_BUILD_ORDER.yaml active_issue must name the active product seam.');
-  if (!queueControlled && handoffIssue !== null && buildOrderIssue !== null && handoffIssue !== buildOrderIssue) {
-    failures.push(`ACTIVE_HANDOFF.md active seam issue #${handoffIssue} must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
+  const betweenRungs = buildOrderIssueScalar === 'none';
+  if (betweenRungs) {
+    if (activeSeamLines.length !== 0) failures.push(`ACTIVE_HANDOFF.md must not declare an active seam in between-rungs state; found ${activeSeamLines.length}.`);
+    if (handoffIssue !== null) failures.push(`ACTIVE_HANDOFF.md must not declare an active seam issue in between-rungs state; found #${handoffIssue}.`);
+  } else {
+    if (activeSeamLines.length !== 1) failures.push(`ACTIVE_HANDOFF.md must name exactly one active seam line; found ${activeSeamLines.length}.`);
+    if (!queueControlled && handoffIssue === null) failures.push('ACTIVE_HANDOFF.md active seam issue number could not be parsed.');
+    if (buildOrderIssue === null && buildOrderIssueScalar !== 'null') failures.push('FOLDERA_BUILD_ORDER.yaml active_issue could not be parsed.');
+    if (!queueControlled && buildOrderIssue === null) failures.push('FOLDERA_BUILD_ORDER.yaml active_issue must name the active product seam.');
+    if (!queueControlled && handoffIssue !== null && buildOrderIssue !== null && handoffIssue !== buildOrderIssue) {
+      failures.push(`ACTIVE_HANDOFF.md active seam issue #${handoffIssue} must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
+    }
   }
 
   const sourceOfTruthOrder = extractYamlList(buildOrder, 'source_of_truth_order');
@@ -313,13 +319,19 @@ export function runContinuityGate(root: string): string[] {
     }
   }
 
-  const contract = JSON.parse(readRepoFile(root, '.foldera-contract.json')) as { active?: boolean; authority_status?: string; backlog_id?: string; superseded_by_issue?: number };
-  if (contract.active !== true) failures.push('.foldera-contract.json must remain active while it governs the Product MVP pivot.');
-  if (contract.authority_status !== 'PRODUCT_MVP_PIVOT_ACTIVE') failures.push('.foldera-contract.json must expose PRODUCT_MVP_PIVOT_ACTIVE authority status.');
-  if (contract.backlog_id !== 'FOLDERA_PRODUCT_MVP_PIVOT') failures.push('.foldera-contract.json must point at FOLDERA_PRODUCT_MVP_PIVOT backlog_id.');
-  if (buildOrderIssue !== null && (contract as { active_issue?: number }).active_issue !== buildOrderIssue) {
-    failures.push(`.foldera-contract.json active_issue must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
+  const contract = JSON.parse(readRepoFile(root, '.foldera-contract.json')) as { active?: boolean; authority_status?: string; backlog_id?: string; superseded_by_issue?: number; active_issue?: string | number };
+  if (betweenRungs) {
+    if (contract.active !== false) failures.push('.foldera-contract.json must be inactive in between-rungs state.');
+    if (contract.authority_status !== 'BETWEEN_RUNGS') failures.push('.foldera-contract.json must expose BETWEEN_RUNGS authority status.');
+    if (contract.active_issue !== 'none') failures.push(`.foldera-contract.json active_issue must be "none" in between-rungs state; found ${contract.active_issue ?? 'missing'}.`);
+  } else {
+    if (contract.active !== true) failures.push('.foldera-contract.json must remain active while it governs the Product MVP pivot.');
+    if (contract.authority_status !== 'PRODUCT_MVP_PIVOT_ACTIVE') failures.push('.foldera-contract.json must expose PRODUCT_MVP_PIVOT_ACTIVE authority status.');
+    if (buildOrderIssue !== null && contract.active_issue !== buildOrderIssue) {
+      failures.push(`.foldera-contract.json active_issue must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
+    }
   }
+  if (contract.backlog_id !== 'FOLDERA_PRODUCT_MVP_PIVOT') failures.push('.foldera-contract.json must point at FOLDERA_PRODUCT_MVP_PIVOT backlog_id.');
   if (contract.superseded_by_issue !== undefined) failures.push('.foldera-contract.json must not report a superseded_by_issue for the Product MVP pivot.');
   const contractAny = contract as Record<string, unknown> & { terminal_state_authority?: { allowed?: unknown; merge_through_rule?: unknown } };
   const terminalAuthority = contractAny.terminal_state_authority;
@@ -337,7 +349,11 @@ export function runContinuityGate(root: string): string[] {
     failures.push('FOLDERA_BUILD_ORDER.yaml is missing launch_ladder block.');
   } else {
     const ladderInProgressMatch = buildOrder.match(/status:\s*IN_PROGRESS[\s\S]*?issue:\s*(\d+)/);
-    if (ladderInProgressMatch) {
+    if (betweenRungs) {
+      if (ladderInProgressMatch) {
+        failures.push(`launch_ladder must have no IN_PROGRESS rung in between-rungs state; found issue #${Number(ladderInProgressMatch[1])}.`);
+      }
+    } else if (ladderInProgressMatch) {
       const ladderActiveIssue = Number(ladderInProgressMatch[1]);
       if (!queueControlled && buildOrderIssue !== null && ladderActiveIssue !== buildOrderIssue) {
         failures.push(`launch_ladder IN_PROGRESS rung issue #${ladderActiveIssue} must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
@@ -406,8 +422,8 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('| GitHub issue #216 | `REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #216 as REFERENCE_ONLY after rung 4 closeout.');
   }
-  if (!sourceTruthMap.includes('| GitHub issue #220 | `CURRENT_CONTROL` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #220 as CURRENT_CONTROL for the active Product MVP seam.');
+  if (!sourceTruthMap.includes('| GitHub issue #220 | `REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #220 as REFERENCE_ONLY after rung 5 closeout.');
   }
   if (!sourceTruthMap.includes('| GitHub issue #178 | `REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #178 as REFERENCE_ONLY after the pivot.');
@@ -439,8 +455,8 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('GitHub issue #216 is completed by PR #218 (trust/privacy/no-send rail — rung 4 COMPLETE).')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #216 as completed by PR #218.');
   }
-  if (!sourceTruthMap.includes('GitHub issue #220 is the current control issue for the self-serve early-access payment path (rung 5 IN_PROGRESS).')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #220 as the current control issue.');
+  if (!sourceTruthMap.includes('GitHub issue #220 is completed')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #220 as completed.');
   }
   if (!sourceTruthMap.includes('GitHub issue #178 is suspended/queued reference history from the governance pivot.')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #178 as suspended reference history.');

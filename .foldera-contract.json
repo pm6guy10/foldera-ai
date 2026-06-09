@@ -1,11 +1,11 @@
 {
-  "authority_status": "PRODUCT_MVP_PIVOT_ACTIVE",
-  "active": true,
-  "active_issue": 220,
+  "authority_status": "BETWEEN_RUNGS",
+  "active": false,
+  "active_issue": "none",
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
-  "base_commit": "612f0b6332d93f1c530023ef9b98084011fe5d00",
-  "money_loop_rung": "bounded_self_serve_early_access_payment",
-  "user_system_path": "Issue #220 is the active Product MVP seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must point at the same issue, and issue #178 must be suspended/queued while the queue file remains inactive/reference-only.",
+  "base_commit": "c96c29d68d1b7f09e13dbcc4145495c91a857f35",
+  "money_loop_rung": "rung_5_complete_awaiting_rung_6",
+  "user_system_path": "Rung 5 (issue #220) is COMPLETE. No active implementation seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml both reflect between-rungs state. Issue #178 remains suspended/queued. Rung 6 needs_issue from Brandon.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and docs/SOURCE_OF_TRUTH_MAP.md before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate the queue.",
   "terminal_state_authority": {
@@ -72,8 +72,8 @@
     "broad cleanup",
     "queue activation"
   ],
-  "allowed_files_raw": "Issue #220 is a prove/closeout seam. Source-truth files may be updated for closeout. No product/runtime file changes needed — implementation already exists on main. Live proof requires Vercel env vars, production Supabase, and Stripe test mode.",
-  "forbidden_files_raw": "No live Slack, no Supabase migrations or data mutation, no Stripe/auth code changes, no package/dependency changes, no queue activation, no Dependabot, no live connector fetch, no fake claims, no runtime/product code changes, and no broad cleanup. Existing Stripe implementation must not be rebuilt.",
+  "allowed_files_raw": "No active seam. Source-truth closeout files only for this PR. No implementation work until rung 6 issue is created.",
+  "forbidden_files_raw": "All implementation work forbidden until rung 6 issue exists. No live Slack, no Supabase mutations, no Stripe code changes, no package changes, no queue activation, no broad cleanup.",
   "required_local_proof": [
     "npm run health",
     "npx tsx scripts/source-truth-check.ts",
@@ -82,11 +82,11 @@
     "npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose",
     "git diff --check"
   ],
-  "required_browser_proof": "Stripe test-mode checkout completes, user_subscriptions row persists with status=active, dashboard reads subscription status correctly. Requires Vercel env vars (STRIPE_SECRET_KEY, STRIPE_PRO_PRICE_ID, STRIPE_WEBHOOK_SECRET) and production Supabase migration applied.",
-  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, .foldera-contract.json, and the gate/test layer all agree that issue #220 is the active Product MVP seam, issue #178 is suspended/queued, issue #140 is closed by PR #206, issue #168 is completed/superseded, issue #182 is completed and closed, issue #165 is capture-only, and the queue file remains inactive/reference-only. Stripe/payment implementation already exists on main (checkout, webhook, portal, subscription-db, migrations); rung 5 proves the existing path end-to-end and must not rebuild it.",
-  "stop_condition": "Stop when all gate commands pass, the contract parity PR is merged, and live proof is either completed or blocked with an exact receipt naming the missing infrastructure.",
-  "is_user_facing": true,
-  "browser_proof_command": "test-mode Stripe checkout + user_subscriptions row persistence + post-checkout access gate",
+  "required_browser_proof": "Not required — rung 5 live proof already passed via Supabase MCP + Vercel MCP.",
+  "acceptance_condition": "All source-truth files agree that rung 5 (issue #220) is COMPLETE, rung 6 needs_issue, no active implementation seam exists, and the gate/test layer passes.",
+  "stop_condition": "Stop when all gate commands pass and this closeout PR is merged. No further work until rung 6 issue is created.",
+  "is_user_facing": false,
+  "browser_proof_command": "not required — rung 5 already proven",
   "anti_regression_checks": [
     "issue #220 is the active Product MVP seam",
     "issue #216 is completed by PR #218",
@@ -99,7 +99,8 @@
     "FOLDERA_EXECUTION_QUEUE.yaml remains inactive/reference-only",
     ".foldera-contract.json contains terminal_state_authority",
     ".foldera-contract.json contains merge-through rule authority",
-    "Stripe/payment implementation on main must not be rebuilt; rung 5 proves the existing checkout/webhook/portal path"
+    "Stripe/payment implementation on main must not be rebuilt; rung 5 is now COMPLETE",
+    "issue #220 is completed — rung 5 live proof passed"
   ],
-  "next_command": "Prove issue #220 end-to-end: verify Vercel env vars, confirm production Supabase migration, run test-mode Stripe checkout, confirm user_subscriptions row, confirm post-checkout access gate. Keep issue #178 suspended/queued until any future activation."
+  "next_command": "No active seam. Brandon must create the rung 6 issue before any agent work is authorized."
 }
