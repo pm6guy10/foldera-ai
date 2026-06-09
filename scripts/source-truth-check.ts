@@ -20,7 +20,7 @@ const COMPLETED_OPEN_THREADS_ISSUE = 168;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
 const COMPLETED_FIRST_RUNG_ISSUE = 173;
-const NEXT_AUTHORIZED_RUNG = 'rung 6 Prove money-ready MVP end to end';
+const NEXT_AUTHORIZED_RUNG = 'rung 6 Prove owner-path readiness';
 const NEXT_TASK_ID = '006';
 const COMPLETED_TASK_IDS = ['001', '002', '003', '004', '005'];
 const REQUIRED_TERMINAL_STATES = ['MERGED_AND_CLOSED', 'BLOCKED_WITH_EXACT_RECEIPT', 'HUMAN_REVIEW_REQUIRED_WITH_REASON', 'STOPPED_WITH_AUTHORIZED_REASON'];
@@ -388,5 +388,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Rung 5 (issue #220) is COMPLETE. No active seam — rung 6 needs_issue from Brandon.');
+  console.log('Source truth check passed. Rung 5 (issue #220) is COMPLETE. No active seam — rung 6 (issue #226) exists with corrected scope (owner-path readiness), pending activation.');
 }

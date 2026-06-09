@@ -5,7 +5,7 @@
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
   "base_commit": "c96c29d68d1b7f09e13dbcc4145495c91a857f35",
   "money_loop_rung": "rung_5_complete_awaiting_rung_6",
-  "user_system_path": "Rung 5 (issue #220) is COMPLETE. No active implementation seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml both reflect between-rungs state. Issue #178 remains suspended/queued. Rung 6 needs_issue from Brandon.",
+  "user_system_path": "Rung 5 (issue #220) is COMPLETE. No active implementation seam. Rung 6 (issue #226) exists with corrected scope: owner-path readiness — Brandon must reliably sign in and complete one Slack self-loop before non-owner paid loop proof is authorized. Do not activate issue #226 with the old non-owner scope. Issue #178 remains suspended/queued.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and docs/SOURCE_OF_TRUTH_MAP.md before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate the queue.",
   "terminal_state_authority": {
@@ -83,12 +83,12 @@
     "git diff --check"
   ],
   "required_browser_proof": "Not required — rung 5 live proof already passed via Supabase MCP + Vercel MCP.",
-  "acceptance_condition": "All source-truth files agree that rung 5 (issue #220) is COMPLETE, rung 6 needs_issue, no active implementation seam exists, and the gate/test layer passes.",
+  "acceptance_condition": "All source-truth files agree that rung 5 (issue #220) is COMPLETE, rung 6 (issue #226) has corrected scope (owner-path readiness — sign-in + Slack self-loop), no active implementation seam exists, and the gate/test layer passes. Issue #226 must not be activated with the original non-owner paid loop scope.",
   "stop_condition": "Stop when all gate commands pass and this closeout PR is merged. No further work until rung 6 issue is created.",
   "is_user_facing": false,
   "browser_proof_command": "not required — rung 5 already proven",
   "anti_regression_checks": [
-    "issue #220 is the active Product MVP seam",
+    "issue #220 is completed — rung 5 live proof passed",
     "issue #216 is completed by PR #218",
     "issue #208 is completed by PR #215",
     "issue #178 is suspended/queued",
@@ -102,5 +102,5 @@
     "Stripe/payment implementation on main must not be rebuilt; rung 5 is now COMPLETE",
     "issue #220 is completed — rung 5 live proof passed"
   ],
-  "next_command": "No active seam. Brandon must create the rung 6 issue before any agent work is authorized."
+  "next_command": "No active seam. Issue #226 (rung 6) exists with corrected scope — owner-path readiness (sign-in + Slack self-loop). Activate issue #226 in a source-truth advance PR. Do not activate with the original non-owner paid loop scope."
 }

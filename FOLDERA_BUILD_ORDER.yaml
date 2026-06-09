@@ -37,7 +37,7 @@ active_issue: none
 priority_class: BETWEEN_RUNGS
 work_type: AWAITING_NEXT_ISSUE
 why_this_first: Rung 5 (issue #220) live proof passed — all 5 checks proven. Rung 6 needs_issue from Brandon.
-next_seam: rung 6 Prove money-ready MVP end to end - needs_issue from Brandon
+next_seam: rung 6 Prove owner-path readiness — sign-in + Slack self-loop - issue #226 exists with corrected scope, pending activation
 required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
   - 101
@@ -291,21 +291,22 @@ launch_ladder:
     evidence: live proof via Supabase MCP + Vercel MCP — user_subscriptions table exists with RLS, row persists (plan=pro, status=active, real stripe_customer_id + stripe_subscription_id), all 3 Stripe routes deployed and responding, access gate code reads subscription correctly
     completion_criteria: live proof that user can pay and access; user_subscriptions row persists; no fake enterprise or compliance claims
   - rung: 6
-    name: Prove money-ready MVP end to end
+    name: Prove owner-path readiness — sign-in + Slack self-loop
     status: PENDING
-    issue: needs_issue
-    completion_criteria: non-owner user completes full loop from onboard to one paid action with durable receipt
+    issue: 226
+    implementation_note: Owner path not yet reliable — Brandon cannot reliably sign in and has never completed one successful Slack self-loop. This seam proves owner-path readiness before advancing to non-owner paid loop (rung 7). Activating rung 7 before this seam is complete would repeat the skip-ahead mistake.
+    completion_criteria: Brandon can reliably sign in; one successful Slack self-loop end-to-end with one real next move surfaced; durable receipt in repo/GitHub truth
   - rung: 7
-    name: Prove first non-owner validation
+    name: Prove money-ready MVP end to end — non-owner paid loop
     status: PENDING
     issue: needs_issue
-    completion_criteria: one person who is not Brandon completes the loop and names one concrete value
+    completion_criteria: non-owner user completes full loop from onboard to one paid action with durable receipt; one person who is not Brandon completes the loop and names one concrete value
 current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - reason historical roadmap remains shimmed and no longer controls the active seam
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: rung 6 Prove money-ready MVP end to end - needs_issue from Brandon
+  next_seam: rung 6 Prove owner-path readiness — sign-in + Slack self-loop - issue #226 exists with corrected scope, pending activation
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason

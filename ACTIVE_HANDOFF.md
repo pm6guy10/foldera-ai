@@ -25,7 +25,7 @@ Issue #213 is completed by merged PR #214 (Launch Ladder Lock v1 governance seam
 Issue #216 is completed by merged PR #218.
 Issue #220 is completed — rung 5 live proof passed (all 5 checks proven via Supabase MCP + Vercel MCP + code audit).
 Issue #178 is suspended/queued and no longer active.
-Current Phase: Between rungs. Rung 5 is COMPLETE. Rung 6 needs_issue.
+Current Phase: Between rungs. Rung 5 is COMPLETE. Rung 6 (issue #226) scoped to owner-path readiness — sign-in + Slack self-loop — pending activation. Do not activate issue #226 unchanged with the old non-owner scope.
 The launch_ladder in FOLDERA_BUILD_ORDER.yaml is the ordering authority for the Foldera build sequence. Rung 3 (issue #208) is COMPLETE. Rung 4 (issue #216) is COMPLETE. Rung 5 (issue #220) is COMPLETE. Rungs 6-7 are PENDING with needs_issue markers.
 No active implementation seam. The next move is for Brandon to create the rung 6 issue.
 `FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.
@@ -76,4 +76,4 @@ Forbidden: all implementation work until the rung 6 issue is created and assigne
 
 ## Next exact move
 Issue #220 (rung 5) is COMPLETE — all 5 live proof checks passed.
-Next: Brandon creates the rung 6 issue ("Prove money-ready MVP end to end"). No agent work until then.
+Issue #226 (rung 6) exists but was scoped incorrectly to non-owner paid loop proof. Corrected scope: owner-path readiness — Brandon must be able to reliably sign in and complete one successful Slack self-loop end-to-end before non-owner proof is authorized. No agent work until then.
