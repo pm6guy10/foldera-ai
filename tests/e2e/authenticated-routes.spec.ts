@@ -785,15 +785,15 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupVoidDashboardMocks(page);
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: /One next move\./i })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('button', { name: /Open next move/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Go to your sources/i })).toBeVisible();
   });
 
-  test('Open next move button is enabled when authenticated', async ({ page }) => {
+  test('primary CTA links to the real sources surface when authenticated', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupVoidDashboardMocks(page);
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: /One next move\./i })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('button', { name: /Open next move/i })).toBeEnabled({ timeout: 10000 });
+    await expect(page.getByRole('link', { name: /Go to your sources/i })).toHaveAttribute('href', '/dashboard/settings');
   });
 
   test('no legacy rich-dashboard components present — desktop', async ({ page }) => {
@@ -823,7 +823,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await setupVoidDashboardMocks(page);
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: /One next move\./i })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('button', { name: /Open next move/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Go to your sources/i })).toBeVisible();
     await expect.poll(async () =>
       page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
     ).toBeLessThanOrEqual(1);
