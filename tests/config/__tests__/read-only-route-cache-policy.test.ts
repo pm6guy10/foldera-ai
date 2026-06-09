@@ -14,8 +14,9 @@ describe('read-only route cache policy', () => {
       readWorkspaceFile('app/onboard/page.tsx'),
     ]);
 
+    // The dashboard landing performs no client data fetch (it links to /dashboard/settings),
+    // so it only needs to stay off no-store; the read-cache assertions cover surfaces that fetch.
     expect(dashboardSource).not.toContain("cache: 'no-store'");
-    expect(dashboardSource).toContain("await load('reload')");
     expect(settingsSource).not.toContain("cache: 'no-store'");
     expect(settingsSource).toContain("cache: 'reload'");
     expect(onboardSource).toContain("cache: 'reload'");
