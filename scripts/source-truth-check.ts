@@ -11,20 +11,21 @@ const COMPLETED_RUNG_2_ISSUE = 175;
 const COMPLETED_RUNG_3_ISSUE = 179;
 const MASTER_BIBLE_ISSUE = 181;
 const COMPLETED_VERDICT_LOOP_ISSUE = 194;
-const ACTIVE_SWITCHBOARD_ISSUE = 216;
+const ACTIVE_SWITCHBOARD_ISSUE = 220;
 const COMPLETED_USER_JOURNEY_SHELL_ISSUE = 208;
+const COMPLETED_TRUST_RAIL_ISSUE = 216;
 const COMPLETED_GLOBAL_RULE_ENFORCEMENT_ISSUE = 182;
 const OPEN_THREADS_ISSUE = 165;
 const COMPLETED_OPEN_THREADS_ISSUE = 168;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
 const COMPLETED_FIRST_RUNG_ISSUE = 173;
-const NEXT_AUTHORIZED_RUNG = 'issue #216 Prove trust/privacy/no-send rail';
+const NEXT_AUTHORIZED_RUNG = 'issue #220 Add bounded self-serve early-access payment path';
 const NEXT_TASK_ID = '006';
 const COMPLETED_TASK_IDS = ['001', '002', '003', '004', '005'];
 const REQUIRED_TERMINAL_STATES = ['MERGED_AND_CLOSED', 'BLOCKED_WITH_EXACT_RECEIPT', 'HUMAN_REVIEW_REQUIRED_WITH_REASON', 'STOPPED_WITH_AUTHORIZED_REASON'];
 
-const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 140, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE, MASTER_BIBLE_ISSUE, COMPLETED_GLOBAL_RULE_ENFORCEMENT_ISSUE, 183, COMPLETED_VERDICT_LOOP_ISSUE, COMPLETED_OPEN_THREADS_ISSUE, COMPLETED_USER_JOURNEY_SHELL_ISSUE];
+const REQUIRED_CLOSED_ISSUES = [121, 131, 99, 48, 140, 147, 151, 154, 159, 163, COMPLETED_COMMAND_OS_ISSUE, COMPLETED_MASTER_SYNTHESIS_ISSUE, COMPLETED_FIRST_RUNG_ISSUE, COMPLETED_RUNG_2_ISSUE, MASTER_BIBLE_ISSUE, COMPLETED_GLOBAL_RULE_ENFORCEMENT_ISSUE, 183, COMPLETED_VERDICT_LOOP_ISSUE, COMPLETED_OPEN_THREADS_ISSUE, COMPLETED_USER_JOURNEY_SHELL_ISSUE, COMPLETED_TRUST_RAIL_ISSUE];
 
 function readRepoFile(root: string, file: string): string {
   const path = join(root, file);
@@ -166,7 +167,7 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
   if (priority !== 'PRODUCT_MVP_PIVOT') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be PRODUCT_MVP_PIVOT; found ${priority ?? 'none'}.`);
   if (workType !== 'SOURCE_TRUTH_PIVOT') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be SOURCE_TRUTH_PIVOT; found ${workType ?? 'none'}.`);
-  if (nextSeam !== `${NEXT_AUTHORIZED_RUNG} - reason rung 4 activated after rung 3 shell closeout via PR #215`) {
+  if (nextSeam !== `${NEXT_AUTHORIZED_RUNG} - reason rung 5 activated after rung 4 trust/privacy/no-send rail closeout via PR #218`) {
     failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must name the next authorized product seam; found ${nextSeam ?? 'none'}.`);
   }
 
@@ -178,11 +179,12 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'Issue #182 is completed/superseded by PR #203.',
     'Issue #168 is completed/superseded by PR #205.',
     'Issue #208 is completed by merged PR #215.',
-    'Issue #216 is the active Product MVP seam.',
+    'Issue #216 is completed by merged PR #218.',
+    'Issue #220 is the active Product MVP seam.',
     'The active seam is the Product MVP seam:',
     'Issue #178 is suspended/queued and no longer active.',
     `Issue #${OPEN_THREADS_ISSUE} Open Threads remains capture-only and cannot authorize implementation.`,
-    'The next authorized move after this closeout is to continue issue #216 in the active seam.',
+    'The next authorized move after this closeout is to begin issue #220 in the active seam.',
     '`FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.',
     '`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.',
     'PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.',
@@ -266,7 +268,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     '| GitHub issue #182 | `REFERENCE_ONLY` |',
     '| GitHub issue #165 `Open Threads - Foldera Owner Whiteboard` | `CURRENT_CONTROL` |',
     '| GitHub issue #208 | `REFERENCE_ONLY` |',
-    '| GitHub issue #216 | `CURRENT_CONTROL` |',
+    '| GitHub issue #216 | `REFERENCE_ONLY` |',
+    '| GitHub issue #220 | `CURRENT_CONTROL` |',
     '| GitHub issue #178 | `REFERENCE_ONLY` |',
     '| GitHub issue #140 | `REFERENCE_ONLY` |',
     '| GitHub issue #168 | `REFERENCE_ONLY` |',
@@ -280,7 +283,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'GitHub issue #194 / PR #201 completed the first money-loop verdict-loop seam and returned the repo to a no-active-seam state.',
     'GitHub issue #182 is the completed global execution-rule enforcement patch retained for receipt history after PR #203.',
     'GitHub issue #208 is completed by PR #215 (first user journey shell — rung 3 COMPLETE).',
-    'GitHub issue #216 is the current control issue for the trust/privacy/no-send rail Product MVP seam (rung 4 IN_PROGRESS).',
+    'GitHub issue #216 is completed by PR #218 (trust/privacy/no-send rail — rung 4 COMPLETE).',
+    'GitHub issue #220 is the current control issue for the self-serve early-access payment path (rung 5 IN_PROGRESS).',
     'GitHub issue #178 is suspended/queued reference history from the governance pivot.',
     'GitHub issue #140 is completed/closed by PR #206 and is now reference-only.',
     'GitHub issue #168 is the completed automatic Open Threads capture seam retained for receipt history after PR #205.',
@@ -387,5 +391,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. The Master Bible remains reference authority, the queue remains inactive, and issue #216 is the active Product MVP seam.');
+  console.log('Source truth check passed. The Master Bible remains reference authority, the queue remains inactive, and issue #220 is the active Product MVP seam.');
 }

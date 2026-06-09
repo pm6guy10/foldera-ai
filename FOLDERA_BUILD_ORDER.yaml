@@ -33,11 +33,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 216
+active_issue: 220
 priority_class: PRODUCT_MVP_PIVOT
 work_type: SOURCE_TRUTH_PIVOT
-why_this_first: PR #215 closed rung 3, and the repo now advances to the trust/privacy/no-send rail as rung 4.
-next_seam: issue #216 Prove trust/privacy/no-send rail - reason rung 4 activated after rung 3 shell closeout via PR #215
+why_this_first: PR #218 closed rung 4 (issue #216), and the repo now advances to the bounded self-serve payment path as rung 5.
+next_seam: issue #220 Add bounded self-serve early-access payment path - reason rung 5 activated after rung 4 trust/privacy/no-send rail closeout via PR #218
 required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
   - 101
@@ -202,6 +202,9 @@ closed_issues_do_not_reopen:
   - issue: 208
     status: closed_completed
     reason: First user journey shell (rung 3) completed by PR #215; launch_ladder rung 3 is now COMPLETE.
+  - issue: 216
+    status: closed_completed
+    reason: Trust/privacy/no-send rail (rung 4) completed by PR #218; launch_ladder rung 4 is now COMPLETE.
 forbidden_current_work:
   - live Slack rail work
   - PR #142 changes
@@ -270,13 +273,14 @@ launch_ladder:
     evidence: app/dashboard/page.tsx onClick + loading state; all gate commands passed
   - rung: 4
     name: Prove trust/privacy/no-send rail
-    status: IN_PROGRESS
+    status: COMPLETE
     issue: 216
-    completion_criteria: user can see what Foldera knows, revoke access, and confirm nothing sends without explicit approval
+    pr: 218
+    evidence: no-send receipt panel on /dashboard; all gate commands passed
   - rung: 5
     name: Add bounded self-serve early-access payment path
-    status: PENDING
-    issue: needs_issue
+    status: IN_PROGRESS
+    issue: 220
     completion_criteria: user can pay and access; no fake enterprise or compliance claims
   - rung: 6
     name: Prove money-ready MVP end to end
@@ -293,7 +297,7 @@ current_pr_closeout:
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - reason historical roadmap remains shimmed and no longer controls the active seam
   docs/SOURCE_OF_TRUTH_MAP.md: updated
-  next_seam: named - issue #208 Build the first user journey shell is the active seam after the closeout
+  next_seam: named - issue #220 Add bounded self-serve early-access payment path is the active seam after rung 4 closeout
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason

@@ -22,11 +22,12 @@ Issue #140 is completed by merged PR #206.
 Issue #207 completed the governance pivot and moved repo control to issue #208.
 Issue #208 is completed by merged PR #215.
 Issue #213 is completed by merged PR #214 (Launch Ladder Lock v1 governance seam).
-Issue #216 is the active Product MVP seam.
+Issue #216 is completed by merged PR #218.
+Issue #220 is the active Product MVP seam.
 Issue #178 is suspended/queued and no longer active.
-Current Phase: Rung 4 — Prove trust/privacy/no-send rail.
-The active seam is the Product MVP seam: keep the repo pointed at the trust/privacy/no-send rail, keep the pivot bounded, and do not widen into product/runtime implementation yet.
-The launch_ladder in FOLDERA_BUILD_ORDER.yaml is the ordering authority for the Foldera build sequence. Rung 3 (issue #208) is COMPLETE. Rung 4 (issue #216) is IN_PROGRESS. Rungs 5-7 are PENDING with needs_issue markers.
+Current Phase: Rung 5 — Add bounded self-serve early-access payment path.
+The active seam is the Product MVP seam: keep the repo pointed at the bounded self-serve payment path, keep the pivot bounded, and do not widen into live Stripe/runtime implementation yet.
+The launch_ladder in FOLDERA_BUILD_ORDER.yaml is the ordering authority for the Foldera build sequence. Rung 3 (issue #208) is COMPLETE. Rung 4 (issue #216) is COMPLETE. Rung 5 (issue #220) is IN_PROGRESS. Rungs 6-7 are PENDING with needs_issue markers.
 `FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.
 `FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.
 PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.
@@ -45,8 +46,8 @@ One active seam only.
 - Issue #165 remains the raw-input inbox and capture-only.
 - Issue #140 is complete and no longer the active seam.
 - Issue #178 is suspended/queued and no longer the active seam.
-- Issue #216 is the sole active seam.
-- The next authorized move after this closeout is to continue issue #216 in the active seam.
+- Issue #220 is the sole active seam.
+- The next authorized move after this closeout is to continue issue #220 in the active seam.
 - `FOLDERA_EXECUTION_QUEUE.yaml` stays inactive/reference-only until a future explicit activation issue reopens it.
 - Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, #182, #183, #192, #194, and #196 are closed/completed/superseded. Do not reopen them here.
 
@@ -60,9 +61,8 @@ Issue #48 remains the product contract.
 
 ## Source-truth boundary
 Allowed files for this seam are the governance-control files, gate/test files, product-doctrine docs, and source-truth files needed to prove the Product MVP pivot.
-Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #216 is the active Product MVP seam (rung 4 IN_PROGRESS), issue #208 is completed by PR #215 (rung 3 COMPLETE), issue #178 is suspended/queued, issue #140 is completed/closed, issue #168 is completed/superseded, issue #165 is capture-only, issue #182 is completed/superseded, and the queue file remains inactive/reference-only.
+Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #220 is the active Product MVP seam (rung 5 IN_PROGRESS), issue #216 is completed by PR #218 (rung 4 COMPLETE), issue #178 is suspended/queued, issue #140 is completed/closed, issue #168 is completed/superseded, issue #165 is capture-only, issue #182 is completed/superseded, and the queue file remains inactive/reference-only.
 Forbidden in this seam: live Slack, Supabase migrations or data mutation, Vercel settings, Stripe/auth work, package/dependency changes, queue activation, Dependabot, live connector fetch, paid model call, fake claims, or broad cleanup.
-Stop condition: stop when the source-truth docs and gate/test layer agree that issue #216 is the active Product MVP seam (rung 4 IN_PROGRESS), issue #208 is completed/closed (rung 3 COMPLETE), issue #178 is suspended/queued, issue #140 is complete/closed, issue #168 is completed/superseded, issue #182 is closed/completed, and the queue remains inactive/reference-only.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
@@ -75,5 +75,5 @@ Stop condition: stop when the source-truth docs and gate/test layer agree that i
 - If a source-truth file is not updated, the PR receipt must say `unchanged - reason` or `not applicable - reason`.
 
 ## Next exact move
-The next authorized move after this closeout is to continue issue #216 in the active seam.
-Issue #216: Prove trust/privacy/no-send rail — user can see what Foldera knows, revoke access, and confirm nothing sends without explicit approval.
+The next authorized move after this closeout is to begin issue #220 in the active seam.
+Issue #220: Add bounded self-serve early-access payment path — user can pay and access; no fake enterprise or compliance claims.

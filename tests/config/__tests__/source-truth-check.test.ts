@@ -64,18 +64,19 @@ describe('source truth command gate', () => {
     expect(handoff).toContain('Issue #196 is completed by merged PR #197.');
     expect(handoff).toContain('Issue #198 is completed by merged PR #198 and restored issue #194 as active control.');
     expect(handoff).toContain('Issue #194 is completed by merged PR #201.');
-    expect(handoff).toContain('Issue #216 is the active Product MVP seam.');
+    expect(handoff).toContain('Issue #216 is completed by merged PR #218.');
+    expect(handoff).toContain('Issue #220 is the active Product MVP seam.');
     expect(handoff).toContain('The active seam is the Product MVP seam:');
     expect(handoff).toContain('Issue #178 is suspended/queued and no longer active.');
     expect(handoff).toContain('Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
     expect(handoff).toContain('Issue #182 is completed/superseded by PR #203.');
     expect(handoff).toContain('Issue #168 is completed/superseded by PR #205.');
-    expect(handoff).toContain('The next authorized move after this closeout is to continue issue #216 in the active seam.');
+    expect(handoff).toContain('The next authorized move after this closeout is to begin issue #220 in the active seam.');
     expect(handoff).toContain('`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.');
-    expect(buildOrder).toContain('active_issue: 216');
+    expect(buildOrder).toContain('active_issue: 220');
     expect(buildOrder).toContain('priority_class: PRODUCT_MVP_PIVOT');
     expect(buildOrder).toContain('work_type: SOURCE_TRUTH_PIVOT');
-    expect(buildOrder).toContain('next_seam: issue #216 Prove trust/privacy/no-send rail - reason rung 4 activated after rung 3 shell closeout via PR #215');
+    expect(buildOrder).toContain('next_seam: issue #220 Add bounded self-serve early-access payment path - reason rung 5 activated after rung 4 trust/privacy/no-send rail closeout via PR #218');
     expect(buildOrder).toContain('paused_issues:');
     expect(buildOrder).toContain('- issue: 178');
     expect(buildOrder).toContain('state: SUSPENDED');
@@ -163,14 +164,14 @@ describe('source truth command gate', () => {
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
       original
-        .replace('Issue #216 is the active Product MVP seam.', 'Issue #194 is the active first money-loop implementation seam.')
+        .replace('Issue #220 is the active Product MVP seam.', 'Issue #194 is the active first money-loop implementation seam.')
         .replace('Issue #168 is completed/superseded by PR #205.', 'Issue #194 is the active first money-loop implementation seam.'),
     );
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
     expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Issue #168 is completed/superseded by PR #205.');
-    expect(failures).toContain('ACTIVE_HANDOFF.md active seam issue must be #216; found #194.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md active seam issue must be #220; found #194.');
   });
 
   it('fails when .foldera-contract.json no longer reflects the Product MVP contract', () => {
@@ -188,7 +189,7 @@ describe('source truth command gate', () => {
     expect(failures).toContain('.foldera-contract.json must remain active while it governs the Product MVP pivot.');
     expect(failures).toContain('.foldera-contract.json must expose PRODUCT_MVP_PIVOT_ACTIVE authority status.');
     expect(failures).toContain('.foldera-contract.json must point at FOLDERA_PRODUCT_MVP_PIVOT backlog_id.');
-    expect(failures).toContain('.foldera-contract.json active_issue must be 216; found 194.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be 220; found 194.');
     expect(failures).toContain('.foldera-contract.json is missing terminal state authority for MERGED_AND_CLOSED.');
     expect(failures).toContain('.foldera-contract.json must expose a machine-readable merge-through rule.');
   });
