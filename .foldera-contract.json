@@ -1,11 +1,11 @@
 {
   "authority_status": "PRODUCT_MVP_PIVOT_ACTIVE",
   "active": true,
-  "active_issue": 226,
+  "active_issue": 231,
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
-  "base_commit": "cf8211ced782b2abd054cf3f3c9743f81bdb0b0e",
-  "money_loop_rung": "rung_6_in_progress_owner_path",
-  "user_system_path": "Issue #226 is the active rung 6 seam — owner-path readiness: sign-in + Slack self-loop. Slice 1 (owner-landing honesty, app/dashboard/page.tsx) merged via PR #229. This slice (slice 2) authorizes the sign-in reliability repair named by the issue and the PR #229 receipt: lib/auth/auth-options.ts + lib/auth/supabase-auth-user.ts + their focused tests, so a transient Supabase blip can no longer hard-fail the owner's sign-in. Rung 5 (issue #220) is COMPLETE. Rung 7 (non-owner paid loop) is forbidden until #226 is proven. Issue #178 remains suspended/queued.",
+  "base_commit": "04fac38cb0f93f0935d58abbb7f1d8e4293e1a04",
+  "money_loop_rung": "rung_6_in_progress_work_state_purity",
+  "user_system_path": "Issue #231 is the active work-state purity seam (owner directive): earned entity trust (outbound evidence, LLM relationship labels, personal salience cap), nightly demotion sweep for the contaminated graph, and acquisition-agent quarantine (default off, health watchdog exempt). Issue #226 (owner-path readiness) is PAUSED and resumes as the next seam after #231 is proven. Rung 5 (issue #220) is COMPLETE. Rung 7 (non-owner paid loop) remains forbidden until #226 is proven.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and docs/SOURCE_OF_TRUTH_MAP.md before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate the queue.",
   "terminal_state_authority": {
@@ -30,9 +30,10 @@
     "scripts/source-truth-check.ts",
     "scripts/continuity-gate.ts",
     "tests/config/__tests__/**",
-    "lib/auth/auth-options.ts",
-    "lib/auth/supabase-auth-user.ts",
-    "lib/auth/__tests__/**"
+    "lib/signals/**",
+    "lib/agents/agents-enabled.ts",
+    "lib/agents/run-agent.ts",
+    "app/api/cron/nightly-ops/**"
   ],
   "forbidden_file_patterns": [
     "components/**",
@@ -45,9 +46,7 @@
     "lib/slack/**",
     "supabase/**",
     "components/dashboard/**",
-    "app/dashboard/**",
-    "lib/auth/token-store.ts",
-    "lib/auth/subscription.ts",
+    "lib/auth/**",
     "app/api/auth/**",
     "app/api/google/**",
     "app/api/microsoft/**",
@@ -77,24 +76,24 @@
     "broad cleanup",
     "queue activation"
   ],
-  "allowed_files_raw": "Active seam: issue #226 owner-path readiness, slice 2 (sign-in reliability). Source-truth/governance files: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, docs/SOURCE_OF_TRUTH_MAP.md, scripts/source-truth-check.ts, scripts/continuity-gate.ts, focused gate tests. PLUS the sign-in reliability files named by issue #226 diagnostics: lib/auth/auth-options.ts, lib/auth/supabase-auth-user.ts, lib/auth/__tests__/**. No other implementation files.",
-  "forbidden_files_raw": "Only the sign-in reliability files (lib/auth/auth-options.ts, lib/auth/supabase-auth-user.ts, lib/auth/__tests__/**) are authorized in this slice. Still forbidden: live Slack rails, auth route handlers (app/api/auth/**), token-store/subscription rewrites, Supabase schema, Stripe/billing, package changes, components/**, dashboard files, nav architecture, winner/brain wiring, queue activation, non-owner loop / rung 7, and broad cleanup.",
+  "allowed_files_raw": "Active seam: issue #231 work-state purity repair. Source-truth/governance files plus the entity-trust pipeline (lib/signals/**), the agent kill-switch surface (lib/agents/agents-enabled.ts, lib/agents/run-agent.ts), and the nightly-ops repair stage (app/api/cron/nightly-ops/**) with their focused tests. No other implementation files.",
+  "forbidden_files_raw": "Still forbidden: live Slack, auth fixes (lib/auth, app/api/auth), Supabase migrations, Stripe/billing, package changes, components/**, landing/dashboard UI, nav architecture, queue activation, non-owner loop / rung 7, new connectors, new agents, and broad cleanup.",
   "required_local_proof": [
+    "npx vitest run lib/signals lib/agents app/api/cron/nightly-ops --reporter=dot",
     "npx tsx scripts/source-truth-check.ts",
     "npm run gate:continuity",
     "npm run lint",
-    "npx vitest run lib/auth/__tests__/auth-options.test.ts lib/auth/__tests__/supabase-auth-user.test.ts --reporter=verbose",
-    "npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose",
     "git diff --check"
   ],
-  "required_browser_proof": "Owner (Brandon) signs in with Gmail and lands on /dashboard with a session that has a real user id. Deterministic unit proof covers the two hard-fail classes (token persist throw, duplicate-user create dead-end); live owner sign-in confirmation remains the rung 6 completion criterion.",
-  "acceptance_condition": "Source-truth files agree issue #226 is the active rung 6 seam; initial sign-in no longer hard-fails when user_tokens persist throws transiently (one retry, then degraded TokenPersistError session instead of lockout); resolveSupabaseAuthUserId recovers an existing user when createUser reports already-registered after transient lookup failures; focused auth tests prove both behaviors; all gate commands pass.",
-  "stop_condition": "Stop when this sign-in reliability PR is open with a GitHub receipt on issue #226. Live owner sign-in proof and the Slack self-loop receipt remain on issue #226 for the next authorized slice.",
-  "is_user_facing": true,
-  "browser_proof_command": "manual/live: owner signs in with Gmail at https://foldera.ai/login -> lands on /dashboard with session.user.id set; Vercel runtime logs show no [auth][jwt] FATAL during the sign-in",
+  "required_browser_proof": "not applicable - backend pipeline seam; live proof is the nightly entity_trust_repair stage receipt (demoted/confirmed counts) after deploy",
+  "acceptance_condition": "Source-truth files agree issue #231 is the active seam and #226 is paused; trust is earned (no default-trusted fallback); focused suites pass; gates green; nightly demotion sweep wired into nightly-ops.",
+  "stop_condition": "Stop when this purity PR is merged and a GitHub receipt is posted to issue #231. Next seam: resume issue #226 owner-path readiness.",
+  "is_user_facing": false,
+  "browser_proof_command": "not applicable - backend pipeline seam",
   "anti_regression_checks": [
-    "issue #226 is the active rung 6 seam — owner-path readiness",
-    "issue #220 is completed — rung 5 live proof passed",
+    "issue #231 is the active work-state purity seam",
+    "issue #226 is paused and resumes after issue #231 is proven",
+    "issue #220 is completed \u2014 rung 5 live proof passed",
     "issue #216 is completed by PR #218",
     "issue #208 is completed by PR #215",
     "issue #178 is suspended/queued",
@@ -108,5 +107,5 @@
     "Stripe/payment implementation on main must not be rebuilt; rung 5 is now COMPLETE",
     "rung 7 non-owner paid loop is forbidden until issue #226 is proven"
   ],
-  "next_command": "Issue #226 is the active rung 6 seam. Slice 1 (owner-landing honesty) merged via PR #229. This slice (slice 2) ships the sign-in reliability repair: stop hard-failing initial sign-in on transient user_tokens persist errors (retry once, then degraded TokenPersistError session) and recover existing users when createUser reports already-registered after transient lookup failures. After merge, the next slice is the Slack self-loop with durable receipt. Rung 7 non-owner loop is forbidden until #226 is proven."
+  "next_command": "Issue #231 is the active work-state purity seam. Ship earned trust + agent quarantine + nightly demotion sweep in one PR with focused test proof. After merge, resume issue #226 (owner sign-in + Slack self-loop) as the next seam. Rung 7 non-owner loop remains forbidden until #226 is proven."
 }

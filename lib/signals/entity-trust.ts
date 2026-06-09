@@ -4,6 +4,14 @@ export interface EntityTrustContext {
   displayName?: string | null;
   company?: string | null;
   selfEmails?: Iterable<string> | null;
+  /**
+   * True when the user has written TO this person (email_sent recipient).
+   * Outbound correspondence is the only free signal strong enough to mark a
+   * relationship as a real working one — inbound volume alone is not.
+   */
+  hasOutboundEvidence?: boolean;
+  /** Relationship label from LLM extraction: work | personal | automated. */
+  relationship?: string | null;
 }
 
 const TRANSACTIONAL_EMAIL_PATTERNS = [
@@ -94,28 +102,39 @@ export function classifyEntityTrustClass(
     return 'transactional';
   }
 
-  const domain = normalizedEmail.includes('@') ? normalizedEmail.split('@')[1] ?? '' : normalizedEmail;
-
   if (/noreply|no-reply|donotreply|newsletter|marketing/.test(normalizedEmail)) {
     return 'transactional';
   }
 
-  if (domain.endsWith('.gov') || domain.endsWith('.org')) {
+  if (context.relationship === 'automated') {
+    return 'transactional';
+  }
+
+  if (context.relationship === 'personal') {
+    return 'personal';
+  }
+
+  // Trust is earned by outbound correspondence, never by inbound volume.
+  // Any inbox is full of senders the user never chose; only "the user wrote
+  // to this person" separates a working relationship from noise.
+  if (context.hasOutboundEvidence) {
     return 'trusted';
   }
 
-  if (normalizedEmail && totalInteractions >= 1) return 'trusted';
-  if (!normalizedEmail && totalInteractions >= 2) return 'trusted';
-  if (totalInteractions === 0) return 'junk';
-
+  // No outbound evidence: we simply don't know yet. `junk` is reserved for
+  // positive bulk-sender evidence at the signal level — a zero-interaction
+  // passive mention (Notion, chat ingest) must not be branded junk forever.
   return 'unclassified';
 }
 
+// Lower number wins on merge. `personal` outranks `trusted` so a family
+// member or friend the user replies to (outbound evidence) stays personal —
+// replying to your wife's friend does not make her a work entity.
 const TRUST_CLASS_PRIORITY: Record<TrustClass, number> = {
   transactional: 0,
   junk: 1,
-  trusted: 2,
-  personal: 3,
+  personal: 2,
+  trusted: 3,
   unclassified: 4,
 };
 

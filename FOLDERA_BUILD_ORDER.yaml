@@ -33,11 +33,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 226
-priority_class: OWNER_PATH_READINESS
-work_type: OWNER_PATH_DIAGNOSTICS
-why_this_first: Rung 5 (issue #220) proved the payment path. Owner must reliably sign in and complete one Slack self-loop before non-owner proof is authorized. Issue #226 is rung 6.
-next_seam: rung 7 Prove money-ready MVP end to end - needs_issue after #226 is proven
+active_issue: 231
+priority_class: WORK_STATE_PURITY
+work_type: ENTITY_TRUST_REPAIR
+why_this_first: Owner directive. The memory graph's top entities were personal contacts, a spammer, and Amazon returns because trust was defaulted (one inbound email => trusted). Every downstream surface (confidence, briefing, one next move) rots on a contaminated graph, so work-state purity outranks all other seams. Issue #226 is paused and resumes next.
+next_seam: rung 6b owner-path readiness resumes - issue #226 after #231 is proven
 required_gate_command: npx tsx scripts/source-truth-check.ts
 predecessor_issues:
   - 101
@@ -69,6 +69,9 @@ paused_issues:
   - issue: 178
     state: SUSPENDED
     reason: Governance merge clerk paused while the Product MVP becomes the active seam.
+  - issue: 226
+    state: PAUSED
+    reason: Owner directive prioritized work-state purity (issue #231); owner-path readiness resumes as the next seam after #231 is proven.
 completed:
   - issue: 181
     pr: 191
@@ -240,14 +243,14 @@ allowed_current_work:
   - update focused source-truth gate tests
   - update focused continuity gate tests
   - update .github/pull_request_template.md
-  - update lib/auth/auth-options.ts (issue #226 sign-in reliability slice)
-  - update lib/auth/supabase-auth-user.ts (issue #226 sign-in reliability slice)
-  - update lib/auth/__tests__ focused tests (issue #226 sign-in reliability slice)
+  - entity-trust pipeline repair (lib/signals/**) with focused tests
+  - agent kill-switch default-off (lib/agents/agents-enabled.ts, lib/agents/run-agent.ts)
+  - nightly-ops entity_trust_repair stage (app/api/cron/nightly-ops/**)
 required_local_proof:
+  - npm run health
   - npx tsx scripts/source-truth-check.ts
   - npm run gate:continuity
   - npm run lint
-  - npx vitest run lib/auth/__tests__/auth-options.test.ts lib/auth/__tests__/supabase-auth-user.test.ts
   - git diff --check
 required_master_bible_closeout:
   controlling_pr: 191
@@ -294,8 +297,13 @@ launch_ladder:
     evidence: live proof via Supabase MCP + Vercel MCP — user_subscriptions table exists with RLS, row persists (plan=pro, status=active, real stripe_customer_id + stripe_subscription_id), all 3 Stripe routes deployed and responding, access gate code reads subscription correctly
     completion_criteria: live proof that user can pay and access; user_subscriptions row persists; no fake enterprise or compliance claims
   - rung: 6
-    name: Prove owner-path readiness — sign-in + Slack self-loop
+    name: Prove work-state purity — earned trust, clean graph, agent quarantine
     status: IN_PROGRESS
+    issue: 231
+    completion_criteria: trusted requires outbound evidence; personal/automated senders are classified and salience-capped; nightly demotion sweep cleans legacy contaminated trusted entities; acquisition agents default off with health watchdog exempt; focused suites and gates green
+  - rung: 6b
+    name: Prove owner-path readiness — sign-in + Slack self-loop
+    status: PAUSED
     issue: 226
     completion_criteria: Brandon can reliably sign in; one successful Slack self-loop end-to-end with one real next move surfaced; durable receipt in repo/GitHub truth
   - rung: 7
@@ -312,8 +320,8 @@ current_pr_closeout:
   ACTIVE_HANDOFF.md: updated
   FOLDERA_BUILD_ORDER.yaml: updated
   FOLDERA_LAUNCH_ROADMAP.md: unchanged - reason historical roadmap remains shimmed and no longer controls the active seam
-  docs/SOURCE_OF_TRUTH_MAP.md: unchanged - reason control assignments did not change in the sign-in reliability slice
-  next_seam: rung 7 Prove money-ready MVP end to end - needs_issue after issue #226 is proven
+  docs/SOURCE_OF_TRUTH_MAP.md: updated
+  next_seam: rung 6b owner-path readiness resumes - issue #226 after issue #231 is proven
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason

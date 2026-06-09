@@ -40,7 +40,7 @@ import { computeAndPersistHealthVerdict } from '@/lib/cron/health-verdict';
 import { insertPipelineCronPhase } from '@/lib/observability/pipeline-run';
 import { resolveSelfIdentity } from '@/lib/auth/self-identity';
 import { runBehavioralGraph } from '@/lib/signals/behavioral-graph';
-import { repairPollutedTrustedEntities } from '@/lib/signals/entity-trust-repair';
+import { demoteUnprovenTrustedEntities, repairPollutedTrustedEntities } from '@/lib/signals/entity-trust-repair';
 import { NIGHTLY_OPS_INGEST_STAGE_ORDER } from './contract';
 
 export const dynamic = 'force-dynamic';
@@ -434,6 +434,8 @@ async function handler(request: NextRequest) {
       const retentionUserIds = await listSignalRetentionUserIds(TEST_USER_ID);
       let scanned = 0;
       let repaired = 0;
+      let demoted = 0;
+      let confirmed = 0;
       const pollutedEntities: Array<Record<string, unknown>> = [];
       for (const userId of retentionUserIds) {
         const identity = await resolveSelfIdentity(userId);
@@ -448,11 +450,21 @@ async function handler(request: NextRequest) {
             ...entity,
           })),
         );
+        // Second pass: trusted entities with no outbound evidence (the user
+        // never wrote to them) drop to unclassified so inbound-only senders
+        // cannot dominate the work graph.
+        const demotion = await demoteUnprovenTrustedEntities(userId, {
+          selfEmails: identity.selfEmails,
+        });
+        demoted += demotion.demoted;
+        confirmed += demotion.confirmed;
       }
       stages.entity_trust_repair = {
         ok: true,
         scanned,
         repaired,
+        demoted,
+        confirmed,
         polluted_entities: pollutedEntities.slice(0, 25),
       };
       console.log(JSON.stringify({
@@ -460,6 +472,8 @@ async function handler(request: NextRequest) {
         stage: 'entity_trust_repair',
         scanned,
         repaired,
+        demoted,
+        confirmed,
       }));
     } catch (err: any) {
       Sentry.captureException(err);

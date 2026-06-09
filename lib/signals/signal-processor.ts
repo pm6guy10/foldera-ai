@@ -63,6 +63,8 @@ interface ExtractedPerson {
   email?: string;
   role?: string;
   company?: string;
+  /** work | personal | automated — relationship of this person to the user. */
+  relationship?: string;
 }
 
 interface ExtractedCommitment {
@@ -253,7 +255,7 @@ const EXTRACTION_PROMPT = `You are extracting structured data from raw signals (
 
 For each signal in the batch, extract:
 
-1. **persons** — every person mentioned by name. Include email if visible, role/title if stated, company if stated. For email signals (gmail, outlook, email_sent, email_received), always extract the sender and recipients from the From/To headers when they refer to real people. If a header includes both a name and email, preserve both. Do NOT include the user themselves.
+1. **persons** — every person mentioned by name. Include email if visible, role/title if stated, company if stated. For email signals (gmail, outlook, email_sent, email_received), always extract the sender and recipients from the From/To headers when they refer to real people. If a header includes both a name and email, preserve both. Do NOT include the user themselves. For each person, set "relationship": "work" when the context is professional (colleague, client, vendor, recruiter, deal, project), "personal" when the context is family, friends, kids, school, social plans, or household life, and "automated" when the "person" is actually a service, bot, brand, or system sender (e.g. a returns department, a notification sender). When unsure, use "work".
 2. **commitments** — promises, deadlines, action items. "I'll send the deck by Friday", "Meeting with Sarah at 3pm", "Review the proposal". Include who made the commitment and to whom.
 3. **topics** — key themes or subjects (e.g. "Q2 budget review", "product launch", "hiring"). Keep to 1-3 per signal.
 
@@ -262,7 +264,7 @@ Return JSON matching this schema exactly:
   {
     "signal_id": "the signal ID from input",
     "persons": [
-      { "name": "string", "email": "string|null", "role": "string|null", "company": "string|null" }
+      { "name": "string", "email": "string|null", "role": "string|null", "company": "string|null", "relationship": "work|personal|automated" }
     ],
     "commitments": [
       { "description": "string", "who": "person name", "to_whom": "person name|null", "due": "date string|null", "category": "deliver_document|schedule_meeting|provide_information|make_decision|follow_up|review_approve|payment_financial|attend_participate|other" }
@@ -867,6 +869,13 @@ export function classifySignalTrustClass(
     return 'junk';
   }
 
+  // Mail the user wrote: per-person trust is granted via the To:/Cc:
+  // recipient set (see extractRecipientEmails) — not via the signal class,
+  // which would leak trust to third parties merely mentioned in the body.
+  if (signalType === 'email_sent') {
+    return 'unclassified';
+  }
+
   if (TRANSACTIONAL_SIGNAL_PATTERNS.some((pattern) => pattern.test(safeContent))) {
     return 'transactional';
   }
@@ -875,7 +884,27 @@ export function classifySignalTrustClass(
     return 'personal';
   }
 
-  return 'trusted';
+  // Inbound mail that merely avoided the junk/transactional patterns is NOT
+  // evidence of a working relationship. Trust is earned via outbound
+  // correspondence (email_sent), never defaulted.
+  return 'unclassified';
+}
+
+/**
+ * Pull recipient emails from To:/Cc: header lines of a decrypted sent-mail
+ * signal. Only these addresses earn outbound trust evidence — people merely
+ * mentioned in the body of a sent email did not receive it.
+ */
+export function extractRecipientEmails(content: string): Set<string> {
+  const recipients = new Set<string>();
+  const headerLines = content.match(/^(?:To|Cc):\s*.+$/gim) ?? [];
+  for (const line of headerLines) {
+    const emails = line.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [];
+    for (const email of emails) {
+      recipients.add(email.toLowerCase());
+    }
+  }
+  return recipients;
 }
 
 // ---------------------------------------------------------------------------
@@ -1005,6 +1034,7 @@ async function processBatch(
   const decryptedBatch: RawSignal[] = [];
   const sensitiveSignalMap = new Map<string, string[]>();
   const trustClassBySignalId = new Map<string, TrustClass>();
+  const outboundRecipientsBySignalId = new Map<string, Set<string>>();
   const signalTexts: string[] = [];
   // Track which signal IDs are junk emails — built during decrypt pass so we
   // don't need to re-decrypt in the extraction pass.
@@ -1152,6 +1182,13 @@ async function processBatch(
       classifySignalTrustClass(s.source, s.type, s.author, contentSansAttachments),
     );
 
+    if (s.type === 'email_sent') {
+      const recipients = extractRecipientEmails(contentSansAttachments);
+      if (recipients.size > 0) {
+        outboundRecipientsBySignalId.set(s.id, recipients);
+      }
+    }
+
     decryptedBatch.push(s);
     diagnostics.signals_entered_llm_extraction += 1;
     const trimmed = contentSansAttachments.length > 2000 ? contentSansAttachments.slice(0, 2000) + '...' : contentSansAttachments;
@@ -1277,6 +1314,7 @@ async function processBatch(
         supabase,
         junkSignalIds,
         trustClassBySignalId,
+        outboundRecipientsBySignalId,
         result,
         allTopics,
         diagnostics,
@@ -1342,6 +1380,7 @@ async function processSingleExtractedSignal(args: {
   supabase: ReturnType<typeof createServerClient>;
   junkSignalIds: Set<string>;
   trustClassBySignalId: TrustClassMap;
+  outboundRecipientsBySignalId?: Map<string, Set<string>>;
   result: ProcessResult;
   allTopics: ExtractedTopic[];
   diagnostics: ExtractionDiagnostics;
@@ -1355,6 +1394,7 @@ async function processSingleExtractedSignal(args: {
     supabase,
     junkSignalIds,
     trustClassBySignalId,
+    outboundRecipientsBySignalId,
     result,
     allTopics,
     diagnostics,
@@ -1399,9 +1439,18 @@ async function processSingleExtractedSignal(args: {
           emptyReasons.add('entities_filtered_empty_name');
           continue;
         }
+        const outboundRecipients = outboundRecipientsBySignalId?.get(signal.id);
         const entityId = dryRun
           ? `dry-run-entity-${entityIds.length + 1}`
-          : await upsertEntity(supabase, userId, person, signal.occurred_at, signalTrustClass, signal.source as string | undefined);
+          : await upsertEntity(
+              supabase,
+              userId,
+              person,
+              signal.occurred_at,
+              signalTrustClass,
+              signal.source as string | undefined,
+              outboundRecipients,
+            );
         if (entityId) {
           entityIds.push(entityId);
           result.entities_upserted++;
@@ -1576,11 +1625,17 @@ async function upsertEntity(
   signalOccurredAt: string | null,
   signalTrustClass: TrustClass,
   signalSource?: string,
+  outboundRecipientEmails?: Set<string>,
 ): Promise<string | null> {
   const name = person.name.trim();
   const nameLower = name.toLowerCase();
   const signalInteractionAt = normalizeInteractionTimestamp(signalOccurredAt as unknown);
   const isRealInteraction = REAL_INTERACTION_SOURCES.has(signalSource ?? '');
+  const personEmailLower = (person.email ?? '').trim().toLowerCase();
+  // Outbound evidence: the user wrote TO this person (To:/Cc: of a sent email).
+  const hasOutboundEvidence = Boolean(
+    personEmailLower && outboundRecipientEmails?.has(personEmailLower),
+  );
 
   const existingMatches = await findExistingEntityMatches(supabase, userId, person, nameLower);
   const existing = existingMatches[0] ?? null;
@@ -1610,9 +1665,17 @@ async function upsertEntity(
         const entityTrustClass = classifyEntityTrustClass(resolvedEmail, newInteractions, {
           displayName: person.name,
           company: person.company,
+          hasOutboundEvidence,
+          relationship: person.relationship ?? null,
         });
         const signalMerged = mergeTrustClass((match.trust_class as TrustClass | null | undefined), signalTrustClass);
         updates.trust_class = mergeTrustClass(signalMerged, entityTrustClass);
+        if (hasOutboundEvidence && !(match.patterns as Record<string, unknown> | null | undefined)?.trust_evidence) {
+          updates.patterns = {
+            ...((match.patterns as Record<string, unknown> | null | undefined) ?? {}),
+            trust_evidence: { outbound: true, at: signalInteractionAt ?? new Date().toISOString() },
+          };
+        }
       }
 
       const existingLastInteraction = normalizeInteractionTimestamp(match.last_interaction);
@@ -1641,6 +1704,8 @@ async function upsertEntity(
     {
       displayName: person.name,
       company: person.company,
+      hasOutboundEvidence,
+      relationship: person.relationship ?? null,
     },
   );
   const finalTrustClassOnInsert = mergeTrustClass(signalTrustClass, entityTrustClassOnInsert);
@@ -1656,7 +1721,9 @@ async function upsertEntity(
       primary_email: person.email ?? null,
       role: person.role ?? null,
       company: person.company ?? null,
-      patterns: {},
+      patterns: hasOutboundEvidence
+        ? { trust_evidence: { outbound: true, at: signalInteractionAt ?? new Date().toISOString() } }
+        : {},
       trust_class: finalTrustClassOnInsert,
       total_interactions: newInteractionsOnInsert,
       last_interaction: isRealInteraction ? (signalInteractionAt ?? new Date().toISOString()) : null,
@@ -1697,6 +1764,7 @@ async function findExistingEntityMatches(
   role?: string | null;
   company?: string | null;
   trust_class?: string | null;
+  patterns?: Record<string, unknown> | null;
 }>> {
   const matches = new Map<string, {
     id: string;
@@ -1707,12 +1775,13 @@ async function findExistingEntityMatches(
     last_interaction: string | null;
     role?: string | null;
     company?: string | null;
+    patterns?: Record<string, unknown> | null;
   }>();
 
   if (person.email) {
     const emailMatchesResult = await supabase
       .from('tkg_entities')
-      .select('id, name, emails, primary_email, total_interactions, last_interaction, role, company, trust_class')
+      .select('id, name, emails, primary_email, total_interactions, last_interaction, role, company, trust_class, patterns')
       .eq('user_id', userId)
       .contains('emails', [person.email]);
 
@@ -1727,7 +1796,7 @@ async function findExistingEntityMatches(
 
   const nameMatchResult = await supabase
     .from('tkg_entities')
-    .select('id, name, emails, primary_email, total_interactions, last_interaction, role, company, trust_class')
+    .select('id, name, emails, primary_email, total_interactions, last_interaction, role, company, trust_class, patterns')
     .eq('user_id', userId)
     .ilike('name', normalizedName)
     .maybeSingle();

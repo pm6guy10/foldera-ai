@@ -1,7 +1,11 @@
 /**
  * Kill switch: one tkg_goals row per owner — source=system_config, goal_text=agents_enabled.
  * status 'active' => agents run; 'abandoned' => all agents no-op.
- * Missing row => enabled (default on).
+ * Missing row => DISABLED (default off).
+ *
+ * Default-off is deliberate (issue #231): acquisition/growth agents consume
+ * budget and attention that belong to the core product loop. The owner can
+ * opt in explicitly via /api/settings/agents.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -19,7 +23,7 @@ export async function areAgentsEnabled(supabase: SupabaseClient): Promise<boolea
     .maybeSingle();
 
   if (error || !data) {
-    return true;
+    return false;
   }
 
   return (data.status as string) === 'active';

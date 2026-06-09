@@ -82,9 +82,10 @@ describe('entity-attention', () => {
     expect(wholeUtcDaysBetween('2026-04-01T23:00:00.000Z', '2026-04-01T23:59:00.000Z')).toBe(0);
   });
 
-  it('capSalienceForTrustClass caps transactional and junk', () => {
+  it('capSalienceForTrustClass caps transactional, junk, and personal', () => {
     expect(capSalienceForTrustClass(0.9, 'transactional')).toBe(0.35);
     expect(capSalienceForTrustClass(0.9, 'junk')).toBe(0.35);
+    expect(capSalienceForTrustClass(0.9, 'personal')).toBe(0.35);
     expect(capSalienceForTrustClass(0.9, 'trusted')).toBe(0.9);
   });
 
