@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-09 PT
+Last updated: 2026-06-09 PT (issue #226 activation)
 Current `origin/main` SHA: see GitHub for latest.
 
 ## Canonical Boot Sequence
@@ -25,9 +25,9 @@ Issue #213 is completed by merged PR #214 (Launch Ladder Lock v1 governance seam
 Issue #216 is completed by merged PR #218.
 Issue #220 is completed — rung 5 live proof passed (all 5 checks proven via Supabase MCP + Vercel MCP + code audit).
 Issue #178 is suspended/queued and no longer active.
-Current Phase: Between rungs. Rung 5 is COMPLETE. Rung 6 (issue #226) scoped to owner-path readiness — sign-in + Slack self-loop — pending activation. Do not activate issue #226 unchanged with the old non-owner scope.
-The launch_ladder in FOLDERA_BUILD_ORDER.yaml is the ordering authority for the Foldera build sequence. Rung 3 (issue #208) is COMPLETE. Rung 4 (issue #216) is COMPLETE. Rung 5 (issue #220) is COMPLETE. Rungs 6-7 are PENDING with needs_issue markers.
-No active implementation seam. The next move is for Brandon to create the rung 6 issue.
+Current Phase: Rung 6 ACTIVE. Issue #226 is IN_PROGRESS — owner-path readiness: sign-in + Slack self-loop.
+The launch_ladder in FOLDERA_BUILD_ORDER.yaml is the ordering authority for the Foldera build sequence. Rung 3 (issue #208) is COMPLETE. Rung 4 (issue #216) is COMPLETE. Rung 5 (issue #220) is COMPLETE. Rung 6 (issue #226) is IN_PROGRESS. Rungs 7-8 are PENDING with needs_issue markers.
+Issue #226 is the active rung 6 seam.
 `FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.
 `FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.
 PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.
@@ -40,14 +40,13 @@ GitHub writeback is mandatory.
 One active seam only.
 
 ## Current slice:
-- PR #198 restored issue #194 as the active seam after the closeout sweep.
 - PR #207 completed the governance pivot and moved repo control from issue #178 to issue #208.
 - Rung 5 (issue #220) prove/closeout is COMPLETE. Payment path proven end-to-end via live infrastructure checks.
 - Issue #165 remains the raw-input inbox and capture-only.
 - Issue #140 is complete and no longer the active seam.
 - Issue #178 is suspended/queued and no longer the active seam.
 - Issue #220 is completed (rung 5 proven).
-- No active implementation seam. The next authorized move is for Brandon to create the rung 6 issue.
+- Issue #226 (rung 6) is now the active seam — owner-path readiness: sign-in + Slack self-loop proof. No non-owner or rung 7 work until #226 is proven.
 - `FOLDERA_EXECUTION_QUEUE.yaml` stays inactive/reference-only until a future explicit activation issue reopens it.
 - Issues #48, #121, #99, #131, #147, #151, #154, #159, #163, #166, #170, #173, #175, #179, #181, #182, #183, #192, #194, and #196 are closed/completed/superseded. Do not reopen them here.
 
@@ -60,9 +59,9 @@ Issue #48 remains the product contract.
 `FOLDERA_NORTH_STAR_LOCK.md` controls product doctrine; `FOLDERA_PRODUCT_OPERATING_SYSTEM.md` controls roadmap, phase order, backlog lanes, and enterprise path.
 
 ## Source-truth boundary
-No active implementation seam. Allowed files are governance-control files for closeout only.
-Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #220 is completed (rung 5 COMPLETE — live proof passed), issue #216 is completed by PR #218 (rung 4 COMPLETE), issue #178 is suspended/queued, issue #140 is completed/closed, issue #168 is completed/superseded, issue #165 is capture-only, issue #182 is completed/superseded, and the queue file remains inactive/reference-only.
-Forbidden: all implementation work until the rung 6 issue is created and assigned.
+Active seam: issue #226 — owner-path readiness diagnostics (sign-in + Slack self-loop). Allowed files: `ACTIVE_HANDOFF.md`, `FOLDERA_BUILD_ORDER.yaml`, `.foldera-contract.json`, `docs/SOURCE_OF_TRUTH_MAP.md`, `scripts/source-truth-check.ts`, continuity gate, and focused gate tests only.
+Current source-truth truth is: `FOLDERA_MASTER_BIBLE.md` is the canonical reference authority, issue #220 is completed (rung 5 COMPLETE — live proof passed), issue #216 is completed by PR #218 (rung 4 COMPLETE), issue #226 is the active rung 6 seam, issue #178 is suspended/queued, issue #140 is completed/closed, issue #168 is completed/superseded, issue #165 is capture-only, issue #182 is completed/superseded, and the queue file remains inactive/reference-only.
+Forbidden: all implementation, Slack, auth, Stripe, schema, non-owner loop, rung 7, and broad cleanup work until issue #226 is proven.
 
 ## GitHub writeback contract
 - GitHub writeback before stop is mandatory.
@@ -75,5 +74,6 @@ Forbidden: all implementation work until the rung 6 issue is created and assigne
 - If a source-truth file is not updated, the PR receipt must say `unchanged - reason` or `not applicable - reason`.
 
 ## Next exact move
-Issue #220 (rung 5) is COMPLETE — all 5 live proof checks passed.
-Issue #226 (rung 6) exists but was scoped incorrectly to non-owner paid loop proof. Corrected scope: owner-path readiness — Brandon must be able to reliably sign in and complete one successful Slack self-loop end-to-end before non-owner proof is authorized. No agent work until then.
+Issue #226 (rung 6) is the active seam. Work: diagnose owner sign-in reliability, then prove one successful Slack self-loop end-to-end with durable receipt.
+Proof required: Brandon can reliably sign in + one successful Slack self-loop + durable receipt in repo/GitHub.
+Non-owner proof (rung 7) is forbidden until #226 is proven. Open the implementation PR against this branch after diagnostics are done.

@@ -1,11 +1,11 @@
 {
-  "authority_status": "BETWEEN_RUNGS",
-  "active": false,
-  "active_issue": "none",
+  "authority_status": "PRODUCT_MVP_PIVOT_ACTIVE",
+  "active": true,
+  "active_issue": 226,
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
   "base_commit": "c96c29d68d1b7f09e13dbcc4145495c91a857f35",
-  "money_loop_rung": "rung_5_complete_awaiting_rung_6",
-  "user_system_path": "Rung 5 (issue #220) is COMPLETE. No active implementation seam. Rung 6 (issue #226) exists with corrected scope: owner-path readiness — Brandon must reliably sign in and complete one Slack self-loop before non-owner paid loop proof is authorized. Do not activate issue #226 with the old non-owner scope. Issue #178 remains suspended/queued.",
+  "money_loop_rung": "rung_6_in_progress_owner_path",
+  "user_system_path": "Issue #226 is the active rung 6 seam — owner-path readiness: sign-in + Slack self-loop. Rung 5 (issue #220) is COMPLETE. Rung 7 (non-owner paid loop) is forbidden until #226 is proven. Issue #178 remains suspended/queued.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and docs/SOURCE_OF_TRUTH_MAP.md before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate the queue.",
   "terminal_state_authority": {
@@ -56,6 +56,8 @@
     "Dependabot",
     "Vercel settings",
     "Slack app settings",
+    "non-owner paid loop work",
+    "rung 7 implementation",
     "connector platform expansion",
     "Teams expansion",
     "email expansion",
@@ -72,8 +74,8 @@
     "broad cleanup",
     "queue activation"
   ],
-  "allowed_files_raw": "No active seam. Source-truth closeout files only for this PR. No implementation work until rung 6 issue is created.",
-  "forbidden_files_raw": "All implementation work forbidden until rung 6 issue exists. No live Slack, no Supabase mutations, no Stripe code changes, no package changes, no queue activation, no broad cleanup.",
+  "allowed_files_raw": "Active seam: issue #226 owner-path readiness. Governance-control files only: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, docs/SOURCE_OF_TRUTH_MAP.md, scripts/source-truth-check.ts, and focused gate tests. No implementation work.",
+  "forbidden_files_raw": "All implementation work forbidden until #226 is proven. No live Slack, no auth fixes, no Supabase mutations, no Stripe changes, no package changes, no queue activation, no non-owner loop work, no broad cleanup.",
   "required_local_proof": [
     "npm run health",
     "npx tsx scripts/source-truth-check.ts",
@@ -82,12 +84,13 @@
     "npx vitest run tests/config/__tests__/source-truth-check.test.ts tests/config/__tests__/continuity-gate.test.ts --reporter=verbose",
     "git diff --check"
   ],
-  "required_browser_proof": "Not required — rung 5 live proof already passed via Supabase MCP + Vercel MCP.",
-  "acceptance_condition": "All source-truth files agree that rung 5 (issue #220) is COMPLETE, rung 6 (issue #226) has corrected scope (owner-path readiness — sign-in + Slack self-loop), no active implementation seam exists, and the gate/test layer passes. Issue #226 must not be activated with the original non-owner paid loop scope.",
-  "stop_condition": "Stop when all gate commands pass and this closeout PR is merged. No further work until rung 6 issue is created.",
+  "required_browser_proof": "Not required for source-truth activation only.",
+  "acceptance_condition": "All source-truth files agree that issue #226 is the active rung 6 seam (owner-path readiness: sign-in + Slack self-loop), rung 7 non-owner loop remains forbidden until #226 is proven, and all gate commands pass.",
+  "stop_condition": "Stop when activation PR is merged and GitHub receipt is posted to issue #226. No further implementation until #226 is proven.",
   "is_user_facing": false,
-  "browser_proof_command": "not required — rung 5 already proven",
+  "browser_proof_command": "not required — source-truth activation only",
   "anti_regression_checks": [
+    "issue #226 is the active rung 6 seam — owner-path readiness",
     "issue #220 is completed — rung 5 live proof passed",
     "issue #216 is completed by PR #218",
     "issue #208 is completed by PR #215",
@@ -100,7 +103,7 @@
     ".foldera-contract.json contains terminal_state_authority",
     ".foldera-contract.json contains merge-through rule authority",
     "Stripe/payment implementation on main must not be rebuilt; rung 5 is now COMPLETE",
-    "issue #220 is completed — rung 5 live proof passed"
+    "rung 7 non-owner paid loop is forbidden until issue #226 is proven"
   ],
-  "next_command": "No active seam. Issue #226 (rung 6) exists with corrected scope — owner-path readiness (sign-in + Slack self-loop). Activate issue #226 in a source-truth advance PR. Do not activate with the original non-owner paid loop scope."
+  "next_command": "Issue #226 is the active rung 6 seam. Start owner-path diagnostics: investigate sign-in reliability, then prove one successful Slack self-loop end-to-end. Rung 7 non-owner loop is forbidden until #226 is proven."
 }
