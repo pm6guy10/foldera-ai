@@ -403,8 +403,11 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('| GitHub issue #208 | `REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #208 as REFERENCE_ONLY after rung 3 closeout.');
   }
-  if (!sourceTruthMap.includes('| GitHub issue #216 | `CURRENT_CONTROL` |')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #216 as CURRENT_CONTROL for the active Product MVP seam.');
+  if (!sourceTruthMap.includes('| GitHub issue #216 | `REFERENCE_ONLY` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #216 as REFERENCE_ONLY after rung 4 closeout.');
+  }
+  if (!sourceTruthMap.includes('| GitHub issue #220 | `CURRENT_CONTROL` |')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #220 as CURRENT_CONTROL for the active Product MVP seam.');
   }
   if (!sourceTruthMap.includes('| GitHub issue #178 | `REFERENCE_ONLY` |')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must classify GitHub issue #178 as REFERENCE_ONLY after the pivot.');
@@ -433,8 +436,11 @@ export function runContinuityGate(root: string): string[] {
   if (!sourceTruthMap.includes('GitHub issue #208 is completed by PR #215 (first user journey shell — rung 3 COMPLETE).')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #208 as completed by PR #215.');
   }
-  if (!sourceTruthMap.includes('GitHub issue #216 is the current control issue for the trust/privacy/no-send rail Product MVP seam (rung 4 IN_PROGRESS).')) {
-    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #216 as the current control issue.');
+  if (!sourceTruthMap.includes('GitHub issue #216 is completed by PR #218 (trust/privacy/no-send rail — rung 4 COMPLETE).')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #216 as completed by PR #218.');
+  }
+  if (!sourceTruthMap.includes('GitHub issue #220 is the current control issue for the self-serve early-access payment path (rung 5 IN_PROGRESS).')) {
+    failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #220 as the current control issue.');
   }
   if (!sourceTruthMap.includes('GitHub issue #178 is suspended/queued reference history from the governance pivot.')) {
     failures.push('docs/SOURCE_OF_TRUTH_MAP.md must record issue #178 as suspended reference history.');

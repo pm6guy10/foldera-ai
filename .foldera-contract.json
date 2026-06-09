@@ -1,11 +1,11 @@
 {
   "authority_status": "PRODUCT_MVP_PIVOT_ACTIVE",
   "active": true,
-  "active_issue": 216,
+  "active_issue": 220,
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
   "base_commit": "460e1d589507f62e4e45d67b8413cbdae25c8ce0",
-  "money_loop_rung": "trust_privacy_no_send_rail",
-  "user_system_path": "Issue #216 is the active Product MVP seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must point at the same issue, and issue #178 must be suspended/queued while the queue file remains inactive/reference-only.",
+  "money_loop_rung": "bounded_self_serve_early_access_payment",
+  "user_system_path": "Issue #220 is the active Product MVP seam. ACTIVE_HANDOFF.md and FOLDERA_BUILD_ORDER.yaml must point at the same issue, and issue #178 must be suspended/queued while the queue file remains inactive/reference-only.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, and docs/SOURCE_OF_TRUTH_MAP.md before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate the queue.",
   "terminal_state_authority": {
@@ -72,7 +72,7 @@
     "broad cleanup",
     "queue activation"
   ],
-  "allowed_files_raw": "Issue #216 now authorizes the Rung 4 trust-rail panel at app/dashboard/page.tsx while the repo stays pointed at the active Product MVP seam.",
+  "allowed_files_raw": "Issue #220 now authorizes the Rung 5 bounded self-serve payment path while the repo stays pointed at the active Product MVP seam.",
   "forbidden_files_raw": "No live Slack, no Supabase migrations or data mutation, no Vercel settings, no Stripe/auth work, no package/dependency changes, no queue activation, no Dependabot, no live connector fetch, no paid/model call, no fake claims, and no broad cleanup outside the dashboard shell seam.",
   "required_local_proof": [
     "npm run health",
@@ -83,12 +83,13 @@
     "git diff --check"
   ],
   "required_browser_proof": "Authenticated browser render of /dashboard at desktop and mobile.",
-  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, .foldera-contract.json, and the gate/test layer all agree that issue #216 is the active Product MVP seam, issue #178 is suspended/queued, issue #140 is closed by PR #206, issue #168 is completed/superseded, issue #182 is completed and closed, issue #165 is capture-only, and the queue file remains inactive/reference-only. No product/runtime implementation starts beyond the trust-rail panel.",
-  "stop_condition": "Stop when the trust-rail panel renders on /dashboard, all gate commands pass, and the PR receipt records the source-truth closeout with issue #216 as active.",
+  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, .foldera-contract.json, and the gate/test layer all agree that issue #220 is the active Product MVP seam, issue #178 is suspended/queued, issue #140 is closed by PR #206, issue #168 is completed/superseded, issue #182 is completed and closed, issue #165 is capture-only, and the queue file remains inactive/reference-only. No live Stripe/payment implementation starts until explicitly authorized.",
+  "stop_condition": "Stop when all gate commands pass and the PR receipt records the source-truth closeout with issue #220 as active.",
   "is_user_facing": true,
   "browser_proof_command": "npx playwright test tests/e2e/dashboard-money-shot-regression.spec.ts --reporter=list",
   "anti_regression_checks": [
-    "issue #216 is the active Product MVP seam",
+    "issue #220 is the active Product MVP seam",
+    "issue #216 is completed by PR #218",
     "issue #178 is suspended/queued",
     "issue #140 is closed by PR #206",
     "issue #168 is completed and closed",
@@ -97,7 +98,7 @@
     "FOLDERA_EXECUTION_QUEUE.yaml remains inactive/reference-only",
     ".foldera-contract.json contains terminal_state_authority",
     ".foldera-contract.json contains merge-through rule authority",
-    "No product/runtime implementation beyond the trust-rail panel"
+    "No live Stripe/payment implementation until explicitly authorized by rung 5 sub-issue"
   ],
-  "next_command": "Continue issue #216 Prove trust/privacy/no-send rail and keep issue #178 suspended/queued until any future activation."
+  "next_command": "Begin issue #220 Add bounded self-serve early-access payment path and keep issue #178 suspended/queued until any future activation."
 }
