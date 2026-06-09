@@ -83,11 +83,11 @@ describe('continuity gate writeback enforcement', () => {
     expect(handoff).toContain('Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
     expect(handoff).toContain('Issue #182 is completed/superseded by PR #203.');
     expect(handoff).toContain('Issue #168 is completed/superseded by PR #205.');
-    expect(handoff).toContain('Issue #226 is the active rung 6 seam.');
-    expect(buildOrder).toContain('active_issue: 226');
-    expect(buildOrder).toContain('priority_class: OWNER_PATH_READINESS');
-    expect(buildOrder).toContain('work_type: OWNER_PATH_DIAGNOSTICS');
-    expect(buildOrder).toContain('next_seam: rung 7 Prove money-ready MVP end to end');
+    expect(handoff).toContain('Issue #231 is the active work-state purity seam.');
+    expect(buildOrder).toContain('active_issue: 231');
+    expect(buildOrder).toContain('priority_class: WORK_STATE_PURITY');
+    expect(buildOrder).toContain('work_type: ENTITY_TRUST_REPAIR');
+    expect(buildOrder).toContain('next_seam: rung 6b owner-path readiness resumes - issue #226');
     expect(buildOrder).toContain('paused_issues:');
     expect(buildOrder).toContain('- issue: 178');
     expect(buildOrder).toContain('state: SUSPENDED');
@@ -115,7 +115,7 @@ describe('continuity gate writeback enforcement', () => {
     expect(failures).toEqual([]);
   });
 
-  it('fails when a second active seam is declared alongside issue #226', () => {
+  it('fails when a second active seam is declared alongside issue #231', () => {
     const fixtureRoot = createFixtureRoot();
     const original = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
     writeFixtureFile(

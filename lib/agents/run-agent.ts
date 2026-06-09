@@ -12,9 +12,13 @@ export async function runScheduledAgent(
   supabase: SupabaseClient,
   job: AgentJobId,
 ): Promise<{ ok: boolean; job: AgentJobId; detail: Record<string, unknown> }> {
-  const enabled = await areAgentsEnabled(supabase);
-  if (!enabled) {
-    return { ok: true, job, detail: { skipped: true, reason: 'agents_disabled' } };
+  // health_watchdog is zero-LLM ops monitoring and is exempt from the
+  // acquisition-agent kill switch — observability must not die with growth.
+  if (job !== 'health_watchdog') {
+    const enabled = await areAgentsEnabled(supabase);
+    if (!enabled) {
+      return { ok: true, job, detail: { skipped: true, reason: 'agents_disabled' } };
+    }
   }
 
   const budget = await hasAgentBudget(job);

@@ -78,11 +78,13 @@ export function normalizeEntityNameKey(name: string): string {
 }
 
 /**
- * Cap effective salience used for scoring multiplier (transactional/junk stay weak).
+ * Cap effective salience used for scoring multiplier (transactional/junk/personal stay weak).
+ * `personal` is capped too: family and friends are real people, but they must
+ * never out-rank work entities in a workday brief.
  */
 export function capSalienceForTrustClass(salience: number, trustClass: string | null | undefined): number {
   const t = (trustClass ?? '').toLowerCase();
-  if (t === 'transactional' || t === 'junk') {
+  if (t === 'transactional' || t === 'junk' || t === 'personal') {
     return Math.min(salience, SALIENCE_CAP_TRANSACTIONAL_JUNK);
   }
   return salience;

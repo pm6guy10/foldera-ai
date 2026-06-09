@@ -19,6 +19,7 @@ const listSignalRetentionUserIds = vi.fn();
 const resolveSelfIdentity = vi.fn();
 const runBehavioralGraph = vi.fn();
 const repairPollutedTrustedEntities = vi.fn();
+const demoteUnprovenTrustedEntities = vi.fn();
 const logStructuredEvent = vi.fn();
 const mockSupabase = {
   staleSignalIds: [] as string[],
@@ -227,6 +228,7 @@ vi.mock('@/lib/signals/behavioral-graph', () => ({
 
 vi.mock('@/lib/signals/entity-trust-repair', () => ({
   repairPollutedTrustedEntities,
+  demoteUnprovenTrustedEntities,
 }));
 
 vi.mock('@/lib/cron/brief-engagement-signals', () => ({
@@ -288,6 +290,13 @@ describe('nightly-ops route', () => {
       repaired: 1,
       polluted_entities: [{ id: 'entity-1', name: 'onboarding@resend.dev', primary_email: 'onboarding@resend.dev', trust_class: 'trusted', reason: 'system_sender_email' }],
     });
+    demoteUnprovenTrustedEntities.mockResolvedValue({
+      ok: true,
+      scanned: 4,
+      outbound_recipients: 12,
+      demoted: 2,
+      confirmed: 1,
+    });
     logStructuredEvent.mockReset();
     mockSupabase.staleSignalIds = [];
     mockSupabase.commitmentIds = [];
@@ -333,10 +342,11 @@ describe('nightly-ops route', () => {
     expect(checkConnectorHealth).toHaveBeenCalledTimes(1);
     expect(runBehavioralGraph).toHaveBeenCalledWith(['user-1']);
     expect(repairPollutedTrustedEntities).toHaveBeenCalledTimes(1);
+    expect(demoteUnprovenTrustedEntities).toHaveBeenCalledTimes(1);
     expect(Object.keys(payload.stages)).toEqual([...NIGHTLY_OPS_INGEST_STAGE_ORDER]);
     expect(payload.stages.passive_rejection).toEqual({ ok: true, skipped: 0 });
     expect(payload.stages.behavioral_graph).toMatchObject({ ok: true, users: 1 });
-    expect(payload.stages.entity_trust_repair).toMatchObject({ ok: true, repaired: 1 });
+    expect(payload.stages.entity_trust_repair).toMatchObject({ ok: true, repaired: 1, demoted: 2, confirmed: 1 });
     expect(payload.stages.self_heal).toBeUndefined();
     expect(payload.stages.acceptance_gate).toBeUndefined();
   });

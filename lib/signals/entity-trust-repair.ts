@@ -1,8 +1,10 @@
 import { createServerClient } from '@/lib/db/client';
+import { decryptWithStatus } from '@/lib/encryption';
 import {
   detectSystemSenderReason,
   type TrustClass,
 } from '@/lib/signals/entity-trust';
+import { extractRecipientEmails } from '@/lib/signals/signal-processor';
 
 export interface PollutedEntityFinding {
   id: string;
@@ -148,5 +150,131 @@ export async function repairPollutedTrustedEntities(
     scanned: data?.length ?? 0,
     polluted_entities: pollutedEntities,
     repaired,
+  };
+}
+
+export interface TrustDemotionResult {
+  ok: boolean;
+  scanned: number;
+  outbound_recipients: number;
+  demoted: number;
+  confirmed: number;
+}
+
+/**
+ * Demote legacy `trusted` entities that never earned it.
+ *
+ * Historical classification granted `trusted` to any sender after one inbound
+ * email, which is how personal contacts, spammers, and transactional senders
+ * became top "work" entities. Under current doctrine trust requires outbound
+ * evidence (the user wrote TO the person). This sweep rebuilds that evidence
+ * from sent-mail signals and demotes trusted entities that have none to
+ * `unclassified` — they re-earn `trusted` the moment the user actually
+ * writes to them.
+ */
+export async function demoteUnprovenTrustedEntities(
+  userId: string,
+  options: { selfEmails?: Set<string>; entityLimit?: number; sentSignalLimit?: number } = {},
+): Promise<TrustDemotionResult> {
+  const supabase = createServerClient();
+
+  const sentSignals = await supabase
+    .from('tkg_signals')
+    .select('content')
+    .eq('user_id', userId)
+    .eq('type', 'email_sent')
+    .order('occurred_at', { ascending: false })
+    .limit(options.sentSignalLimit ?? 2000);
+
+  if (sentSignals.error) {
+    throw new Error(`trust_demotion_sent_scan: ${sentSignals.error.message}`);
+  }
+
+  const outboundRecipients = new Set<string>();
+  for (const row of sentSignals.data ?? []) {
+    const { plaintext, usedFallback } = decryptWithStatus(row.content as string);
+    if (usedFallback) continue;
+    for (const email of extractRecipientEmails(plaintext)) {
+      outboundRecipients.add(email);
+    }
+  }
+
+  const entities = await supabase
+    .from('tkg_entities')
+    .select('id, name, display_name, trust_class, primary_email, emails, patterns')
+    .eq('user_id', userId)
+    .eq('type', 'person')
+    .eq('trust_class', 'trusted')
+    .neq('name', 'self')
+    .limit(options.entityLimit ?? 400);
+
+  if (entities.error) {
+    throw new Error(`trust_demotion_entity_scan: ${entities.error.message}`);
+  }
+
+  let demoted = 0;
+  let confirmed = 0;
+  const now = new Date().toISOString();
+
+  for (const row of (entities.data ?? []) as unknown as EntityRow[]) {
+    const patterns = (row.patterns ?? {}) as Record<string, unknown>;
+    const evidence = patterns.trust_evidence as { outbound?: boolean } | undefined;
+    if (evidence?.outbound === true) {
+      confirmed++;
+      continue;
+    }
+
+    const entityEmails = [row.primary_email, ...(row.emails ?? [])]
+      .map((e) => (e ?? '').trim().toLowerCase())
+      .filter(Boolean);
+    const selfEmails = options.selfEmails ?? new Set<string>();
+    const hasOutbound = entityEmails.some(
+      (email) => outboundRecipients.has(email) && !selfEmails.has(email),
+    );
+
+    if (hasOutbound) {
+      // Stamp the evidence so future sweeps skip this entity.
+      const { error: stampError } = await supabase
+        .from('tkg_entities')
+        .update({
+          patterns: { ...patterns, trust_evidence: { outbound: true, at: now } },
+          patterns_updated_at: now,
+        })
+        .eq('id', row.id);
+      if (stampError) {
+        throw new Error(`trust_demotion_stamp:${row.id}:${stampError.message}`);
+      }
+      confirmed++;
+      continue;
+    }
+
+    const { error: demoteError } = await supabase
+      .from('tkg_entities')
+      .update({
+        trust_class: 'unclassified',
+        patterns: {
+          ...patterns,
+          trust_repair: {
+            repaired_at: now,
+            previous_trust_class: row.trust_class ?? 'trusted',
+            reason: 'no_outbound_evidence',
+          },
+        },
+        patterns_updated_at: now,
+      })
+      .eq('id', row.id);
+
+    if (demoteError) {
+      throw new Error(`trust_demotion_update:${row.id}:${demoteError.message}`);
+    }
+    demoted++;
+  }
+
+  return {
+    ok: true,
+    scanned: entities.data?.length ?? 0,
+    outbound_recipients: outboundRecipients.size,
+    demoted,
+    confirmed,
   };
 }

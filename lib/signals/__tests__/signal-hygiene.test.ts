@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { isNonCommitment, isJunkEmailSignal, isEligibleCommitment, isUserTheActor, classifySignalTrustClass } from '../signal-processor';
+import { isNonCommitment, isJunkEmailSignal, isEligibleCommitment, isUserTheActor, classifySignalTrustClass, extractRecipientEmails } from '../signal-processor';
 
 // ---------------------------------------------------------------------------
 // 1. Junk signal gate — promo/spam/newsletter
@@ -134,14 +134,45 @@ describe('classifySignalTrustClass', () => {
     expect(trust).toBe('transactional');
   });
 
-  it('defaults business coordination signals to trusted', () => {
+  it('does NOT default inbound business mail to trusted — trust is earned via outbound', () => {
     const trust = classifySignalTrustClass(
       'outlook',
       'email_received',
       'sarah@partnerco.com',
       'Subject: Q2 proposal review\nCan you send your feedback by Friday?',
     );
-    expect(trust).toBe('trusted');
+    expect(trust).toBe('unclassified');
+  });
+
+  it('keeps sent mail neutral at the signal level (recipient set grants trust per person)', () => {
+    const trust = classifySignalTrustClass(
+      'gmail',
+      'email_sent',
+      'user@example.com',
+      'Subject: Re: contract\nTo: client@example.com\nHere is the redline.',
+    );
+    expect(trust).toBe('unclassified');
+  });
+});
+
+describe('extractRecipientEmails', () => {
+  it('pulls To and Cc addresses from sent-mail headers', () => {
+    const content = [
+      '[Sent email: Re: contract redline]',
+      'To: Sam Walker <sam@client.com>, ops@client.com',
+      'Cc: legal@client.com',
+      '',
+      'Body mentions third.party@elsewhere.com but they did not receive it.',
+    ].join('\n');
+    const recipients = extractRecipientEmails(content);
+    expect(recipients.has('sam@client.com')).toBe(true);
+    expect(recipients.has('ops@client.com')).toBe(true);
+    expect(recipients.has('legal@client.com')).toBe(true);
+    expect(recipients.has('third.party@elsewhere.com')).toBe(false);
+  });
+
+  it('returns empty set when no headers are present', () => {
+    expect(extractRecipientEmails('no headers here').size).toBe(0);
   });
 });
 

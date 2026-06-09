@@ -70,12 +70,12 @@ describe('source truth command gate', () => {
     expect(handoff).toContain('Issue #165 Open Threads remains capture-only and cannot authorize implementation.');
     expect(handoff).toContain('Issue #182 is completed/superseded by PR #203.');
     expect(handoff).toContain('Issue #168 is completed/superseded by PR #205.');
-    expect(handoff).toContain('Issue #226 is the active rung 6 seam.');
+    expect(handoff).toContain('Issue #231 is the active work-state purity seam.');
     expect(handoff).toContain('`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.');
-    expect(buildOrder).toContain('active_issue: 226');
-    expect(buildOrder).toContain('priority_class: OWNER_PATH_READINESS');
-    expect(buildOrder).toContain('work_type: OWNER_PATH_DIAGNOSTICS');
-    expect(buildOrder).toContain('next_seam: rung 7 Prove money-ready MVP end to end');
+    expect(buildOrder).toContain('active_issue: 231');
+    expect(buildOrder).toContain('priority_class: WORK_STATE_PURITY');
+    expect(buildOrder).toContain('work_type: ENTITY_TRUST_REPAIR');
+    expect(buildOrder).toContain('next_seam: rung 6b owner-path readiness resumes - issue #226');
     expect(buildOrder).toContain('paused_issues:');
     expect(buildOrder).toContain('- issue: 178');
     expect(buildOrder).toContain('state: SUSPENDED');
@@ -163,16 +163,16 @@ describe('source truth command gate', () => {
       fixtureRoot,
       'ACTIVE_HANDOFF.md',
       original
-        .replace('Issue #226 is the active rung 6 seam.', 'Issue #194 is the active first money-loop implementation seam.'),
+        .replace('Issue #231 is the active work-state purity seam.', 'Issue #194 is the active first money-loop implementation seam.'),
     );
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Issue #226 is the active rung 6 seam.');
-    expect(failures).toContain('ACTIVE_HANDOFF.md must declare issue #226 as the active seam; found 194.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: Issue #231 is the active work-state purity seam.');
+    expect(failures).toContain('ACTIVE_HANDOFF.md must declare issue #231 as the active seam; found 194.');
   });
 
-  it('fails when .foldera-contract.json no longer reflects the active issue #226 state', () => {
+  it('fails when .foldera-contract.json no longer reflects the active issue #231 state', () => {
     const fixtureRoot = createFixtureRoot();
     const contract = JSON.parse(readFixtureFile(fixtureRoot, '.foldera-contract.json')) as Record<string, unknown>;
     contract.active = false;
@@ -184,10 +184,10 @@ describe('source truth command gate', () => {
 
     const failures = runSourceTruthCheck(fixtureRoot);
 
-    expect(failures).toContain('.foldera-contract.json must be active for issue #226 owner-path readiness seam.');
+    expect(failures).toContain('.foldera-contract.json must be active for the issue #231 work-state purity seam.');
     expect(failures).toContain('.foldera-contract.json must expose PRODUCT_MVP_PIVOT_ACTIVE authority status.');
     expect(failures).toContain('.foldera-contract.json must point at FOLDERA_PRODUCT_MVP_PIVOT backlog_id.');
-    expect(failures).toContain('.foldera-contract.json active_issue must be 226; found 194.');
+    expect(failures).toContain('.foldera-contract.json active_issue must be 231; found 194.');
     expect(failures).toContain('.foldera-contract.json is missing terminal state authority for MERGED_AND_CLOSED.');
     expect(failures).toContain('.foldera-contract.json must expose a machine-readable merge-through rule.');
   });

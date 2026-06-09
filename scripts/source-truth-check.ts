@@ -20,8 +20,9 @@ const COMPLETED_OPEN_THREADS_ISSUE = 168;
 const COMPLETED_COMMAND_OS_ISSUE = 166;
 const COMPLETED_MASTER_SYNTHESIS_ISSUE = 170;
 const COMPLETED_FIRST_RUNG_ISSUE = 173;
-const ACTIVE_OWNER_PATH_ISSUE = 226;
-const NEXT_AUTHORIZED_RUNG = 'rung 7 Prove money-ready MVP end to end';
+const ACTIVE_PURITY_ISSUE = 231;
+const PAUSED_OWNER_PATH_ISSUE = 226;
+const NEXT_AUTHORIZED_RUNG = 'rung 6b owner-path readiness resumes - issue #226';
 const NEXT_TASK_ID = '006';
 const COMPLETED_TASK_IDS = ['001', '002', '003', '004', '005'];
 const REQUIRED_TERMINAL_STATES = ['MERGED_AND_CLOSED', 'BLOCKED_WITH_EXACT_RECEIPT', 'HUMAN_REVIEW_REQUIRED_WITH_REASON', 'STOPPED_WITH_AUTHORIZED_REASON'];
@@ -162,14 +163,14 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
   const buildIssueRaw = extractYamlScalar(buildOrder, 'active_issue');
   const handoffIssue = extractActiveHandoffIssue(handoff);
 
-  if (buildIssueRaw !== String(ACTIVE_OWNER_PATH_ISSUE)) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${ACTIVE_OWNER_PATH_ISSUE} (owner-path readiness); found ${buildIssueRaw ?? 'missing'}.`);
+  if (buildIssueRaw !== String(ACTIVE_PURITY_ISSUE)) failures.push(`FOLDERA_BUILD_ORDER.yaml active_issue must be ${ACTIVE_PURITY_ISSUE} (work-state purity); found ${buildIssueRaw ?? 'missing'}.`);
   const priority = extractYamlScalar(buildOrder, 'priority_class');
   const workType = extractYamlScalar(buildOrder, 'work_type');
   const nextSeam = extractYamlScalar(buildOrder, 'next_seam');
-  if (priority !== 'OWNER_PATH_READINESS') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be OWNER_PATH_READINESS; found ${priority ?? 'none'}.`);
-  if (workType !== 'OWNER_PATH_DIAGNOSTICS') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be OWNER_PATH_DIAGNOSTICS; found ${workType ?? 'none'}.`);
+  if (priority !== 'WORK_STATE_PURITY') failures.push(`FOLDERA_BUILD_ORDER.yaml priority_class must be WORK_STATE_PURITY; found ${priority ?? 'none'}.`);
+  if (workType !== 'ENTITY_TRUST_REPAIR') failures.push(`FOLDERA_BUILD_ORDER.yaml work_type must be ENTITY_TRUST_REPAIR; found ${workType ?? 'none'}.`);
   if (!nextSeam || !nextSeam.includes(NEXT_AUTHORIZED_RUNG)) {
-    failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must name rung 7; found ${nextSeam ?? 'none'}.`);
+    failures.push(`FOLDERA_BUILD_ORDER.yaml next_seam must name the resumed issue #${PAUSED_OWNER_PATH_ISSUE} owner-path seam; found ${nextSeam ?? 'none'}.`);
   }
 
   for (const marker of [
@@ -184,7 +185,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     'Issue #220 is completed',
     'Issue #178 is suspended/queued and no longer active.',
     `Issue #${OPEN_THREADS_ISSUE} Open Threads remains capture-only and cannot authorize implementation.`,
-    'Issue #226 is the active rung 6 seam.',
+    'Issue #231 is the active work-state purity seam.',
+    'Issue #226 is paused and resumes after issue #231 is proven.',
     '`FOLDERA_MASTER_BIBLE.md` is the canonical master bible reference authority.',
     '`FOLDERA_EXECUTION_QUEUE.yaml` remains inactive and does not control the next move.',
     'PR #189 remains `UNMERGED_DRAFT_CONTEXT_ONLY`.',
@@ -193,8 +195,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
   ]) {
     if (!handoff.includes(marker)) failures.push(`ACTIVE_HANDOFF.md is missing required marker: ${marker}`);
   }
-  if (handoffIssue !== ACTIVE_OWNER_PATH_ISSUE) {
-    failures.push(`ACTIVE_HANDOFF.md must declare issue #${ACTIVE_OWNER_PATH_ISSUE} as the active seam; found ${handoffIssue ?? 'none'}.`);
+  if (handoffIssue !== ACTIVE_PURITY_ISSUE) {
+    failures.push(`ACTIVE_HANDOFF.md must declare issue #${ACTIVE_PURITY_ISSUE} as the active seam; found ${handoffIssue ?? 'none'}.`);
   }
   for (const staleMarker of [
     'Active implementation seam is `EXECUTION_QUEUE`.',
@@ -272,7 +274,8 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     '| GitHub issue #140 | `REFERENCE_ONLY` |',
     '| GitHub issue #168 | `REFERENCE_ONLY` |',
     '| GitHub issue #194 | `REFERENCE_ONLY` |',
-    '| GitHub issue #226 | `CURRENT_CONTROL` |',
+    '| GitHub issue #231 | `CURRENT_CONTROL` |',
+    '| GitHub issue #226 | `REFERENCE_ONLY` |',
     '| `FOLDERA_OPERATING_SYSTEM.md` | `SHIM_TO_CANONICAL` |',
     '| `FOLDERA_LAUNCH_ROADMAP.md` | `SHIM_TO_CANONICAL` |',
     'GitHub issue #181 / PR #191 is the single promotion path for that master-bible execution-layer bundle.',
@@ -320,10 +323,10 @@ function checkSourceTruth(root: string, handoff: string, buildOrder: string, que
     terminal_state_authority?: { allowed?: unknown; merge_through_rule?: unknown };
     active_issue?: string | number;
   };
-  if (contract.active !== true) failures.push('.foldera-contract.json must be active for issue #226 owner-path readiness seam.');
+  if (contract.active !== true) failures.push('.foldera-contract.json must be active for the issue #231 work-state purity seam.');
   if (contract.authority_status !== 'PRODUCT_MVP_PIVOT_ACTIVE') failures.push('.foldera-contract.json must expose PRODUCT_MVP_PIVOT_ACTIVE authority status.');
   if (contract.backlog_id !== 'FOLDERA_PRODUCT_MVP_PIVOT') failures.push('.foldera-contract.json must point at FOLDERA_PRODUCT_MVP_PIVOT backlog_id.');
-  if (contract.active_issue !== ACTIVE_OWNER_PATH_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_OWNER_PATH_ISSUE}; found ${contract.active_issue ?? 'missing'}.`);
+  if (contract.active_issue !== ACTIVE_PURITY_ISSUE) failures.push(`.foldera-contract.json active_issue must be ${ACTIVE_PURITY_ISSUE}; found ${contract.active_issue ?? 'missing'}.`);
   const terminalAuthority = contract.terminal_state_authority;
   if (!terminalAuthority || !Array.isArray(terminalAuthority.allowed)) failures.push('.foldera-contract.json must expose terminal_state_authority.allowed.');
   else {
@@ -390,5 +393,5 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     process.exit(1);
   }
 
-  console.log('Source truth check passed. Issue #226 is the active rung 6 seam — owner-path readiness: sign-in + Slack self-loop. Rung 7 (money-ready MVP) is pending until #226 is proven.');
+  console.log('Source truth check passed. Issue #231 is the active work-state purity seam — earned trust + clean graph + agent quarantine. Issue #226 (owner-path readiness) resumes after #231 is proven.');
 }
