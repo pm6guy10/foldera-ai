@@ -281,7 +281,8 @@ launch_ladder:
     name: Add bounded self-serve early-access payment path
     status: IN_PROGRESS
     issue: 220
-    completion_criteria: user can pay and access; no fake enterprise or compliance claims
+    implementation_note: checkout/webhook/portal/pricing-page/subscription-db/migrations already on main; seam is prove/closeout not build
+    completion_criteria: live proof that user can pay and access; user_subscriptions row persists; no fake enterprise or compliance claims
   - rung: 6
     name: Prove money-ready MVP end to end
     status: PENDING

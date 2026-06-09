@@ -83,7 +83,7 @@
     "git diff --check"
   ],
   "required_browser_proof": "Not required for source-truth-only seam.",
-  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, .foldera-contract.json, and the gate/test layer all agree that issue #220 is the active Product MVP seam, issue #178 is suspended/queued, issue #140 is closed by PR #206, issue #168 is completed/superseded, issue #182 is completed and closed, issue #165 is capture-only, and the queue file remains inactive/reference-only. No live Stripe/payment implementation starts until explicitly authorized.",
+  "acceptance_condition": "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, docs/SOURCE_OF_TRUTH_MAP.md, .foldera-contract.json, and the gate/test layer all agree that issue #220 is the active Product MVP seam, issue #178 is suspended/queued, issue #140 is closed by PR #206, issue #168 is completed/superseded, issue #182 is completed and closed, issue #165 is capture-only, and the queue file remains inactive/reference-only. Stripe/payment implementation already exists on main (checkout, webhook, portal, subscription-db, migrations); rung 5 proves the existing path end-to-end and must not rebuild it.",
   "stop_condition": "Stop when all gate commands pass and the PR receipt records the source-truth closeout with issue #220 as active.",
   "is_user_facing": false,
   "browser_proof_command": "not required for this seam",
@@ -99,7 +99,7 @@
     "FOLDERA_EXECUTION_QUEUE.yaml remains inactive/reference-only",
     ".foldera-contract.json contains terminal_state_authority",
     ".foldera-contract.json contains merge-through rule authority",
-    "No live Stripe/payment implementation until explicitly authorized by rung 5 sub-issue"
+    "Stripe/payment implementation on main must not be rebuilt; rung 5 proves the existing checkout/webhook/portal path"
   ],
   "next_command": "Begin issue #220 Add bounded self-serve early-access payment path and keep issue #178 suspended/queued until any future activation."
 }
