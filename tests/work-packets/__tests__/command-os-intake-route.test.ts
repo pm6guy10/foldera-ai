@@ -74,6 +74,46 @@ describe('POST /api/command-os/intake', () => {
     expect(payload.body).not.toContain('ghp_mock_command_os_token');
   });
 
+  it('returns 500 with failureStage when GITHUB_TOKEN is absent', async () => {
+    delete process.env.GITHUB_TOKEN;
+
+    const { POST } = await import('@/app/api/command-os/intake/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/command-os/intake', {
+        method: 'POST',
+        body: JSON.stringify({ rawText: 'some thought' }),
+      }),
+    );
+
+    const body = await response.json();
+    expect(response.status).toBe(500);
+    expect(body).toMatchObject({ ok: false, failureStage: 'github_writeback' });
+    expect(JSON.stringify(body)).not.toContain('ghp_');
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('returns 500 with failureStage when GitHub API rejects the write-back', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 401,
+      text: async () => 'Bad credentials',
+    });
+
+    const { POST } = await import('@/app/api/command-os/intake/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/command-os/intake', {
+        method: 'POST',
+        body: JSON.stringify({ rawText: 'some thought' }),
+      }),
+    );
+
+    const body = await response.json();
+    expect(response.status).toBe(500);
+    expect(body).toMatchObject({ ok: false, failureStage: 'github_writeback' });
+    expect(JSON.stringify(body)).not.toContain('ghp_mock_command_os_token');
+    expect(mockFetch).toHaveBeenCalledOnce();
+  });
+
   it('writes ACTIVE_SEAM_COMMAND input to Issue #165 (all classifications are captured)', async () => {
     mockFetch.mockResolvedValue({
       ok: true,

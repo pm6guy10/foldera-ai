@@ -51,8 +51,11 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Command OS intake failed';
+    const sanitized = message.replace(/ghp_[A-Za-z0-9]+/g, '[REDACTED]').replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]');
+    console.error('[command-os/intake] write-back failure:', sanitized);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Command OS intake failed' },
+      { ok: false, error: 'Command OS intake failed', failureStage: 'github_writeback', detail: sanitized },
       { status: 500 },
     );
   }
