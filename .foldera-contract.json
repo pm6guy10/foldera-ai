@@ -33,7 +33,11 @@
     "lib/signals/**",
     "lib/agents/agents-enabled.ts",
     "lib/agents/run-agent.ts",
-    "app/api/cron/nightly-ops/**"
+    "app/api/cron/nightly-ops/**",
+    "GPT.md",
+    "app/api/command-os/intake/route.ts",
+    "tests/repo-intake-governor/__tests__/**",
+    "tests/work-packets/__tests__/command-os-intake-route.test.ts"
   ],
   "forbidden_file_patterns": [
     "components/**",
@@ -76,7 +80,7 @@
     "broad cleanup",
     "queue activation"
   ],
-  "allowed_files_raw": "Active seam: issue #231 work-state purity repair. Source-truth/governance files plus the entity-trust pipeline (lib/signals/**), the agent kill-switch surface (lib/agents/agents-enabled.ts, lib/agents/run-agent.ts), and the nightly-ops repair stage (app/api/cron/nightly-ops/**) with their focused tests. No other implementation files.",
+  "allowed_files_raw": "Active seam: issue #231 work-state purity repair. Source-truth/governance files plus the entity-trust pipeline (lib/signals/**), the agent kill-switch surface (lib/agents/agents-enabled.ts, lib/agents/run-agent.ts), and the nightly-ops repair stage (app/api/cron/nightly-ops/**) with their focused tests. Also authorized for issue #233 (intake loop repair): GPT.md (auto-capture + boot retrieval), app/api/command-os/intake/route.ts (inverted gate removed), tests/repo-intake-governor/__tests__/** (all-classifications writeback proof). No other implementation files.",
   "forbidden_files_raw": "Still forbidden: live Slack, auth fixes (lib/auth, app/api/auth), Supabase migrations, Stripe/billing, package changes, components/**, landing/dashboard UI, nav architecture, queue activation, non-owner loop / rung 7, new connectors, new agents, and broad cleanup.",
   "required_local_proof": [
     "npx vitest run lib/signals lib/agents app/api/cron/nightly-ops --reporter=dot",
