@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -56,7 +57,26 @@ function extractActiveHandoffIssue(raw: string): number | null {
   return match ? Number(match[1]) : null;
 }
 
-export function runContinuityGate(root: string): string[] {
+export type IssueStateFetcher = (issueNumber: number) => 'open' | 'closed' | 'skip';
+
+export function defaultIssueStateFetcher(issueNumber: number): 'open' | 'closed' | 'skip' {
+  const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
+  if (!token) return 'skip';
+  try {
+    const repo = process.env.GITHUB_REPOSITORY ?? 'pm6guy10/foldera-ai';
+    const result = execSync(`gh api repos/${repo}/issues/${issueNumber} --jq .state`, {
+      encoding: 'utf8',
+      timeout: 10000,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    return result === 'open' ? 'open' : 'closed';
+  } catch {
+    return 'skip';
+  }
+}
+
+export function runContinuityGate(root: string, options?: { issueStateFetcher?: IssueStateFetcher }): string[] {
+  const fetchIssueState = options?.issueStateFetcher ?? defaultIssueStateFetcher;
   const failures: string[] = [];
 
   for (const file of requiredFiles) {
@@ -111,6 +131,14 @@ export function runContinuityGate(root: string): string[] {
     if (buildOrderIssue === null) failures.push('FOLDERA_BUILD_ORDER.yaml active_issue must name the active seam.');
     if (handoffIssue !== null && buildOrderIssue !== null && handoffIssue !== buildOrderIssue) {
       failures.push(`ACTIVE_HANDOFF.md active seam issue #${handoffIssue} must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`);
+    }
+    // Live state check: verify the agreed-upon active issue is still OPEN on GitHub.
+    // Skipped when GITHUB_TOKEN / GH_TOKEN is absent (local runs without auth).
+    if (buildOrderIssue !== null) {
+      const issueState = fetchIssueState(buildOrderIssue);
+      if (issueState === 'closed') {
+        failures.push(`active_issue #${buildOrderIssue} is CLOSED on GitHub — command state is stale; repair ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, and .foldera-contract.json before continuing.`);
+      }
     }
   }
 
