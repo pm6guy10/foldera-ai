@@ -118,4 +118,20 @@ describe('continuity gate', () => {
 
     expect(failures).toContain('.github/pull_request_template.md must include Source-truth closeout section.');
   });
+
+  it('fails when the live issue-state fetcher reports the active issue is CLOSED', () => {
+    const fixtureRoot = createFixtureRoot();
+
+    const failures = runContinuityGate(fixtureRoot, { issueStateFetcher: () => 'closed' });
+
+    expect(failures.some((f) => f.includes('is CLOSED on GitHub'))).toBe(true);
+  });
+
+  it('passes when the live issue-state fetcher is skipped (no auth token)', () => {
+    const fixtureRoot = createFixtureRoot();
+
+    const failures = runContinuityGate(fixtureRoot, { issueStateFetcher: () => 'skip' });
+
+    expect(failures).toEqual([]);
+  });
 });
