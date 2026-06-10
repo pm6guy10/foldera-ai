@@ -1,102 +1,15 @@
 ---
-description: 
+description:
 alwaysApply: true
 ---
 
 # CURSOR RULES — FOLDERA
 
-## Canonical Boot Sequence
+`AGENTS.md` is the single agent execution contract for this repo. Read it and follow it exactly.
 
-For any Foldera task, use this order:
+Boot sequence:
 
 1. Read `ACTIVE_HANDOFF.md`.
-2. Read `FOLDERA_LAUNCH_ROADMAP.md`.
-3. Read the active issue named by `ACTIVE_HANDOFF.md`.
-4. Read issue #48 for product doctrine.
-5. Read relevant execution/proof docs only for the active seam.
-6. Check latest open PRs and recent merged PRs when repo/deploy truth matters.
-7. Use Vercel/Supabase only when the seam requires live/runtime truth.
+2. Read the active issue it names.
 
-## Operating Law
-
-- GitHub source truth beats chat memory.
-- One active seam only.
-- One clean branch/worktree per issue.
-- PR-based workflow only.
-- No direct edits to `main`.
-- No automatic continuation into another seam.
-- Source-truth closeout is required before stop.
-- GitHub issue receipt is required before stop.
-- Proof is required before calling work done.
-- Brandon must not be the relay, tester, merger, stale-truth repair person, or project manager for agent drift.
-
-## Session Start
-
-1. Follow the canonical boot sequence.
-2. Run `npm run health`.
-3. Inspect the full output.
-4. If health shows `FAIL`, prioritize the first relevant failure unless the assigned task explicitly targets another proven seam.
-5. If health is green or warnings-only, continue within the single active seam.
-
-Health is orientation, not completion.
-
-## Execution Doctrine
-
-- Fix the proven seam first.
-- Broaden only when the same failure class is clearly shared and still inside the same seam.
-- Free tests first.
-- Paid/model-backed proof only after the exact blocker is named and Brandon explicitly approves.
-- Never reopen closed seams without fresh evidence.
-- Never stop at “improved.”
-- Stop only on `PROOF`, `BLOCKED`, `MERGE READY`, or `STOPPED` with a GitHub receipt.
-
-## Git / Verification
-
-- Use PR workflow for meaningful repo changes.
-- Do not change product code unless the active issue explicitly authorizes it.
-- Run the proof commands required by the active issue.
-- If CI is red, fix only the exact failing check.
-- For live-path or user-facing changes, require production-like/browser/runtime proof before calling the work complete.
-- For deterministic harness/test/doc governance changes, local or CI proof may be enough when the active issue says so.
-
-## Source-Truth Closeout
-
-Every final receipt must include:
-
-- `ACTIVE_HANDOFF.md`: updated / unchanged - reason / not applicable - reason
-- `FOLDERA_BUILD_ORDER.yaml`: updated / unchanged - reason / not applicable - reason
-- `FOLDERA_LAUNCH_ROADMAP.md`: updated / unchanged - reason / not applicable - reason
-- `docs/SOURCE_OF_TRUTH_MAP.md`: updated / unchanged - reason / not applicable - reason
-- GitHub issue receipt: posted
-- next seam: named / blocked - reason
-
-If command state changed, update `ACTIVE_HANDOFF.md` and `FOLDERA_BUILD_ORDER.yaml` in the PR.
-
-## Architecture Constraints
-
-- Never initialize Supabase or read env vars at top level. Always inside functions or safe config boundaries.
-- `useSession`, `useState`, and `useEffect` require `'use client'`.
-- Server components use `getServerSession(authOptions)`.
-- Frontend uses `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-- Backend uses `SUPABASE_SERVICE_ROLE_KEY`. Never mix frontend and backend Supabase credentials.
-
-## Tool Routing
-
-Use the best available truth tool when the seam crosses that boundary:
-
-- Playwright for browser/frontend regression proof.
-- Vercel for deploy/build/runtime truth.
-- Supabase for production DB/schema/state truth.
-- Sentry for production runtime errors.
-- Browserstack for real-device/mobile/browser-specific proof.
-
-Do not call work complete with local-only reasoning when the relevant truth tool is available and required by the seam.
-
-## Forbidden Unless Explicitly Assigned
-
-- No #99 implementation while source-truth governance is active.
-- No landing work.
-- No Slack/OAuth/API/send work.
-- No backend/auth/Supabase/schema/Stripe/dashboard/scoring/conviction changes.
-- No Dependabot work.
-- No broad cleanup.
+One active seam only. PR-based workflow only. No direct edits to `main`. Source-truth closeout and a GitHub receipt are required before stop.
