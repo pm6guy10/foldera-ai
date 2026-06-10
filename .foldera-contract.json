@@ -1,11 +1,11 @@
 {
   "authority_status": "PRODUCT_MVP_PIVOT_ACTIVE",
   "active": true,
-  "active_issue": 231,
+  "active_issue": 226,
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
-  "base_commit": "229a2c9",
-  "money_loop_rung": "rung_6_paused_for_work_state_purity",
-  "user_system_path": "Issue #231 is the active work-state-purity seam. Issue #226 (rung 6 owner-path readiness) resumes after #231 is proven. Rung 7 remains forbidden until #226 is proven.",
+  "base_commit": "70bd054",
+  "money_loop_rung": "rung_6_owner_path_readiness_active",
+  "user_system_path": "Issue #226 (rung 6 owner-path readiness: sign-in + Slack self-loop) is the active seam. Issue #231 (work-state purity) is COMPLETE via PR #232. Rung 7 remains forbidden until #226 is proven.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md and the active issue before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate.",
   "terminal_state_authority": {
@@ -31,42 +31,39 @@
     ".github/**",
     "package.json",
     "package-lock.json",
-    "lib/signals/**",
-    "lib/agents/**",
-    "lib/briefing/**",
-    "app/api/cron/**",
-    "supabase/migrations/**"
+    "lib/auth/**",
+    "app/api/auth/**",
+    "app/login/**",
+    "lib/integrations/outlook-client.ts",
+    "app/api/slack/**",
+    "lib/briefing/**"
   ],
   "forbidden_file_patterns": [
     "app/dashboard/**",
     "app/start/**",
     "app/try/**",
     "app/pricing/**",
-    "app/login/**",
     "components/**",
-    "lib/integrations/**",
     "lib/acquisition/**",
     "lib/stripe/**",
-    "middleware.ts",
+    "supabase/migrations/**",
     "next.config.mjs"
   ],
-  "allowed_files_raw": "Active seam: issue #231 work-state purity. lib/signals/entity-trust.ts, lib/agents quarantine kill-switch, cron blocked-brief receipts, governance amendments, vitest suites for trust/demotion/salience. No UI, no auth, no payments, no marketing.",
-  "forbidden_files_raw": "No dashboard UI, no start/try/pricing/login pages, no integrations, no acquisition agents, no Stripe, no middleware, no next.config changes.",
+  "allowed_files_raw": "Active seam: issue #226 owner-path readiness. Auth/session/sign-in path (Gmail proven working, Microsoft broken — Azure OAuth/redirect/token persistence), Slack self-loop surfaces, governance amendments. Diagnosis-first: capture one failed Microsoft sign-in with exact evidence before patching.",
+  "forbidden_files_raw": "No dashboard UI, no start/try/pricing pages, no acquisition agents, no Stripe, no schema migrations, no next.config changes, no new connectors, no non-owner proof.",
   "required_local_proof": [
     "npm run gate:continuity",
     "npm run lint",
-    "npm run build",
-    "npx vitest run tests/config/__tests__/continuity-gate.test.ts scripts/__tests__/brandon-doctrine.test.ts --reporter=verbose",
-    "npx vitest run <trust-classification-test> <demotion-sweep-test> --reporter=verbose"
+    "npm run build"
   ],
-  "required_browser_proof": "Not required — core logic change, no UI path changed.",
-  "acceptance_condition": "entity-trust.ts requires outbound evidence for trusted; personal class is sticky and salience-capped; nightly demotion sweep cleans legacy contaminated trusted; acquisition/growth agents default OFF; blocked brief emits a visible reason receipt; gate:continuity/lint/build green.",
-  "stop_condition": "Stop when the #231 PR is merged and the GitHub receipt is posted to issue #231. Next seam: reactivate issue #226.",
-  "is_user_facing": false,
-  "browser_proof_command": "not required — backend logic only",
+  "required_browser_proof": "Required — one successful Brandon sign-in via Microsoft on production or preview (screenshot/log evidence), plus one Slack self-loop end-to-end with one real next move surfaced.",
+  "acceptance_condition": "Brandon signs in reliably via Gmail AND Microsoft; one Slack self-loop completes end-to-end surfacing one real next move; durable receipt posted to issue #226; gate:continuity/lint/build green.",
+  "stop_condition": "Stop when #226 has a durable proof receipt (or a BLOCKED receipt naming the exact external blocker, e.g. Azure app config approval). Next seams after proof: rung 7 issue (non-owner paid loop) and the 'right now cards' product issue.",
+  "is_user_facing": true,
+  "browser_proof_command": "manual sign-in proof on production/preview + Slack self-loop receipt; Playwright auth specs where applicable",
   "anti_regression_checks": [
-    "issue #231 is the active work-state-purity seam",
-    "issue #226 is paused and resumes after #231 proves",
+    "issue #226 is the active owner-path-readiness seam",
+    "issue #231 is COMPLETE — work-state purity merged via PR #232",
     "issue #220 is completed — rung 5 live proof passed",
     "rung 7 non-owner paid loop is forbidden until issue #226 is proven",
     "root markdown file count is bounded by gate:continuity (MAX 8)",
@@ -75,5 +72,5 @@
     "personal class is sticky and salience-capped",
     "acquisition/growth agents are quarantined (default OFF) until owner re-enables"
   ],
-  "next_command": "Work issue #231: fix entity-trust.ts, add demotion sweep, quarantine acquisition agents, add blocked-brief receipts. Then reactivate issue #226."
+  "next_command": "Work issue #226: diagnose Microsoft sign-in failure with exact evidence, fix narrowest seam, prove both providers, run one Slack self-loop, post receipts. Then open rung 7 + 'right now cards' issues."
 }
