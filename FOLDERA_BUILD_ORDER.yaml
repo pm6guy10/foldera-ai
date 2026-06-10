@@ -21,16 +21,13 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 240
-priority_class: GOVERNANCE_COLLAPSE
-work_type: REPO_GOVERNANCE
-why_this_first: Governance sprawl was taxing every agent session. Issue #240 collapses the doc surface and gates so rung 6 (issue #226) and every later rung move faster. No product behavior changes.
-next_seam: reactivate issue #231 (work-state purity, owner directive) immediately after #240 merges; issue #226 resumes after #231 is proven
+active_issue: 231
+priority_class: WORK_STATE_PURITY
+work_type: PRODUCT_CORE
+why_this_first: Work-state contamination (personal contacts and spam as top entities) collapses confidence and silently blocks briefings. Owner directive to repair the core organ before any further rung progress.
+next_seam: reactivate issue #226 (rung 6 — owner-path readiness: sign-in + Slack self-loop) after #231 is proven
 required_gate_command: npm run gate:continuity
 paused_issues:
-  - issue: 231
-    state: PAUSED
-    reason: Work-state purity (owner directive) resumes as the active seam immediately after the #240 governance collapse merges.
   - issue: 226
     state: PAUSED
     reason: Rung 6 owner-path readiness resumes after issue #231 is proven.

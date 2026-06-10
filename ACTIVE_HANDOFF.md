@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-10 PT (issue #240 governance collapse)
+Last updated: 2026-06-10 PT (issue #231 work-state purity — #240 MERGED)
 
 ## Boot
 
@@ -9,18 +9,17 @@ Last updated: 2026-06-10 PT (issue #240 governance collapse)
 
 ## Active command gate
 
-Issue #240 is the active governance-collapse seam.
-Issue #231 (work-state purity — earned entity trust, graph demotion sweep, agent quarantine; owner directive) is PAUSED while #240 lands; it resumes as the active seam immediately after #240 merges.
+Issue #231 is the active work-state-purity seam.
 Issue #226 (rung 6 — owner-path readiness: sign-in + Slack self-loop) is PAUSED behind #231.
 Rung 5 (issue #220) is COMPLETE — payment path proven live. Rung 7 (non-owner paid loop) remains forbidden until #226 is proven.
-`FOLDERA_MASTER_BIBLE.md` is the single doctrine file (north star + product operating system merged in by #240).
+`FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
 One active seam only.
 
 ## Current slice:
 
-- Issue #240 collapses governance: root markdown reduced to the keep-list, shims deleted, doctrine merged into the Master Bible, agent contracts merged into `AGENTS.md`, and `gate:continuity` rewritten as the single structural gate with a root-markdown-count cap.
-- Git history is the archive. Deleted files are not authority.
-- A new governance rule may only be added by editing an existing keep-list file, never by creating a new file (enforced by `npm run gate:continuity`).
+- Issue #231 repairs work-state contamination: earned trust (outbound evidence required), personal salience cap, nightly demotion sweep, acquisition/growth agent quarantine (default OFF), and blocked-brief receipts (visible reason when confidence gate fires).
+- Scope: `lib/signals/entity-trust.ts`, `lib/agents/` quarantine kill-switch, cron blocked-brief receipt, governance amendments.
+- Issue #240 governance collapse is MERGED — root markdown bounded to 7, single gate, single contract.
 
 ## Product doctrine
 
@@ -37,4 +36,4 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-Land the #240 governance-collapse PR: proof is `npm run gate:continuity`, `npm run lint`, `npm run build`, focused vitest lanes, and root markdown count <= 8. After merge, reactivate issue #231 (work-state purity, owner directive); issue #226 resumes after #231 is proven.
+Work issue #231: fix `lib/signals/entity-trust.ts` (earned trust — outbound evidence required, personal salience cap), add nightly demotion sweep, quarantine acquisition/growth agents (default OFF), add blocked-brief receipts. Proof: focused vitest on trust classification + demotion + salience cap, `npm run gate:continuity`, lint, build green. PR, merge, then reactivate #226.
