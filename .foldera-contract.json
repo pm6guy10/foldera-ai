@@ -37,7 +37,9 @@
     "GPT.md",
     "app/api/command-os/intake/route.ts",
     "tests/repo-intake-governor/__tests__/**",
-    "tests/work-packets/__tests__/command-os-intake-route.test.ts"
+    "tests/work-packets/__tests__/command-os-intake-route.test.ts",
+    ".husky/post-commit",
+    "scripts/capture-draft.ts"
   ],
   "forbidden_file_patterns": [
     "components/**",
