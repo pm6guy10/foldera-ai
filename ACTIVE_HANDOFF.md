@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-10 PT (issue #231 work-state purity — #240 MERGED)
+Last updated: 2026-06-10 PT (truth repair — #231 is COMPLETE via PR #232; #226 reactivated)
 
 ## Boot
 
@@ -9,21 +9,24 @@ Last updated: 2026-06-10 PT (issue #231 work-state purity — #240 MERGED)
 
 ## Active command gate
 
-Issue #231 is the active work-state-purity seam.
-Issue #226 (rung 6 — owner-path readiness: sign-in + Slack self-loop) is PAUSED behind #231.
+Issue #226 is the active rung-6 owner-path-readiness seam.
+Rung 6 scope: sign-in reliability + one Slack self-loop end-to-end.
+Issue #231 (work-state purity) is COMPLETE — full scope merged in PR #232 (2026-06-09): earned trust (outbound evidence required), work/personal/automated relationship labels, nightly demotion sweep, acquisition agents default OFF.
 Rung 5 (issue #220) is COMPLETE — payment path proven live. Rung 7 (non-owner paid loop) remains forbidden until #226 is proven.
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
 One active seam only.
 
 ## Current slice:
 
-- Issue #231 repairs work-state contamination: earned trust (outbound evidence required), personal salience cap, nightly demotion sweep, acquisition/growth agent quarantine (default OFF), and blocked-brief receipts (visible reason when confidence gate fires).
-- Scope: `lib/signals/entity-trust.ts`, `lib/agents/` quarantine kill-switch, cron blocked-brief receipt, governance amendments.
-- Issue #240 governance collapse is MERGED — root markdown bounded to 7, single gate, single contract.
+- Issue #226 proves owner-path readiness. Known facts: Gmail sign-in WORKS for Brandon; Microsoft sign-in is BROKEN. The Microsoft OAuth path is an explicit sub-proof of this seam (likely Azure app redirect URI / tenant config / token persistence — see PR #230's transient-persist hypothesis).
+- Required proof: (1) Brandon signs in reliably via Gmail AND Microsoft, (2) one Slack self-loop end-to-end surfacing one real next move, (3) durable receipt in GitHub truth.
+- Forbidden in this seam: non-owner proof, Stripe changes, schema migrations, new connectors, broad cleanup.
 
 ## Product doctrine
 
 Foldera is a Workday Presence Layer: state + connectors + triggers + one intervention; remembers where the user was, decides when to interrupt, gives one next move, lets the user respond with one click, updates state, stays quiet otherwise. No dashboard/task-manager/inbox-summary/chatbot/surveillance drift. Issue #48 and `FOLDERA_MASTER_BIBLE.md` carry product doctrine.
+
+Owner verbiage directive (2026-06-10): cards are "right now" cards, not "morning" cards — interruption is state-change-triggered and as-needed, not once-daily. Verbiage + trigger decoupling is a queued post-#226 seam (needs its own issue), not part of #226.
 
 ## GitHub writeback contract
 
@@ -36,4 +39,4 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-Work issue #231: fix `lib/signals/entity-trust.ts` (earned trust — outbound evidence required, personal salience cap), add nightly demotion sweep, quarantine acquisition/growth agents (default OFF), add blocked-brief receipts. Proof: focused vitest on trust classification + demotion + salience cap, `npm run gate:continuity`, lint, build green. PR, merge, then reactivate #226.
+Work issue #226: diagnose the Microsoft sign-in failure (capture one failed sign-in with exact evidence: browser symptom + auth trace), fix the narrowest seam, prove Gmail + Microsoft sign-in, then run one Slack self-loop end-to-end. Post receipts to #226. After #226 is proven: open rung 7 issue (non-owner paid loop) and the "right now cards" product issue.

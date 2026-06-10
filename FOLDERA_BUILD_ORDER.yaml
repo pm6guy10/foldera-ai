@@ -21,16 +21,13 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 231
-priority_class: WORK_STATE_PURITY
+active_issue: 226
+priority_class: OWNER_PATH_READINESS
 work_type: PRODUCT_CORE
-why_this_first: Work-state contamination (personal contacts and spam as top entities) collapses confidence and silently blocks briefings. Owner directive to repair the core organ before any further rung progress.
-next_seam: reactivate issue #226 (rung 6 — owner-path readiness: sign-in + Slack self-loop) after #231 is proven
+why_this_first: Issue #231 (work-state purity) is COMPLETE — merged via PR #232 on 2026-06-09. Rung 6 resumes. Known sub-blocker — Gmail sign-in works, Microsoft sign-in is broken; the Microsoft OAuth fix is an explicit sub-proof of #226.
+next_seam: after #226 is proven — open rung 7 issue (non-owner paid loop) and the "right now cards" product issue (state-change triggers, not clock-only)
 required_gate_command: npm run gate:continuity
 paused_issues:
-  - issue: 226
-    state: PAUSED
-    reason: Rung 6 owner-path readiness resumes after issue #231 is proven.
   - issue: 178
     state: SUSPENDED
     reason: Governance merge clerk paused while the Product MVP is the priority.
@@ -61,9 +58,10 @@ launch_ladder:
     evidence: live proof via Supabase MCP + Vercel MCP; user_subscriptions row persists; Stripe routes deployed
   - rung: 6
     name: Prove owner-path readiness — sign-in + Slack self-loop
-    status: PAUSED_FOR_GOVERNANCE_COLLAPSE
+    status: ACTIVE
     issue: 226
-    completion_criteria: Brandon can reliably sign in; one successful Slack self-loop end-to-end with one real next move surfaced; durable receipt in repo/GitHub truth
+    completion_criteria: Brandon can reliably sign in via Gmail AND Microsoft (Microsoft OAuth currently broken — explicit sub-proof); one successful Slack self-loop end-to-end with one real next move surfaced; durable receipt in repo/GitHub truth
+    predecessor_note: issue #231 work-state purity COMPLETE via PR #232 (2026-06-09)
   - rung: 7
     name: Prove money-ready MVP end to end — non-owner paid loop
     status: PENDING
