@@ -1,0 +1,28 @@
+#!/bin/sh
+# Foldera intake capture — fire-and-forget after every commit.
+# Posts commit summary to https://www.foldera.ai/api/command-os/intake
+# which writes a durable receipt to GitHub Issue #165.
+# Never blocks or fails the commit — exits 0 regardless.
+
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+COMMIT_MSG=$(git log -1 --pretty=%B 2>/dev/null | head -3 | tr '\n' ' ')
+FILES=$(git diff-tree --no-commit-id -r --name-only HEAD 2>/dev/null | head -15 | tr '\n' ', ')
+
+export FOLDERA_BRANCH="$BRANCH"
+export FOLDERA_SHA="$SHA"
+export FOLDERA_COMMIT="$COMMIT_MSG"
+export FOLDERA_FILES="$FILES"
+
+BODY=$(node -e "
+const raw = 'COMMIT CAPTURE [' + process.env.FOLDERA_BRANCH + '] ' + process.env.FOLDERA_SHA + ': ' + (process.env.FOLDERA_COMMIT || '').trim() + ' | Files: ' + (process.env.FOLDERA_FILES || '');
+process.stdout.write(JSON.stringify({ rawText: raw }));
+" 2>/dev/null)
+
+[ -z "$BODY" ] && exit 0
+
+curl -s -f -X POST "https://www.foldera.ai/api/command-os/intake" \
+  -H "Content-Type: application/json" \
+  -d "$BODY" > /dev/null 2>&1 &
+
+exit 0
