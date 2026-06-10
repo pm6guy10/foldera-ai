@@ -152,7 +152,7 @@ results.push(
   ),
 );
 
-const doctrineFiles = ['CODEX_START.md', 'GPT.md', 'docs/QUALITY_GATES.md', docPath];
+const doctrineFiles = ['docs/QUALITY_GATES.md', docPath];
 for (const doctrineFile of doctrineFiles) {
   const text = fileExists(doctrineFile) ? readText(doctrineFile) : '';
   results.push(

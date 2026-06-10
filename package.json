@@ -30,7 +30,6 @@
     "gate:frontend": "npx playwright test tests/e2e/dashboard-money-shot-regression.spec.ts --reporter=list && npx vitest run tests/config/__tests__/frontend-product-truth-gate.test.ts --reporter=verbose && npx tsx scripts/frontend-product-truth-gate.ts",
     "gate:decision-trace": "npx tsx scripts/decision-trace-gate-status.ts",
     "preflight": "node scripts/run-local-tsx.cjs scripts/preflight.ts",
-    "controller:autopilot": "npx tsx scripts/controller-autopilot.ts",
     "proof:golden-artifact": "npx tsx scripts/force-golden-artifact.ts",
     "beta:readiness": "npx tsx scripts/beta-readiness.ts",
     "scoreboard": "npx tsx scripts/scoreboard.ts",

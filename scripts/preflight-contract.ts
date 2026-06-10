@@ -538,7 +538,7 @@ export function validateContractForStage(
     return {
       ok: false,
       code: 'missing_contract',
-      message: 'Missing .foldera-contract.json. Run npm run controller:autopilot.',
+      message: 'Missing .foldera-contract.json. Restore it from main or write one for the active issue.',
       touchedFiles: [],
       violations: [],
     };

@@ -2,17 +2,12 @@
 
 Foldera is a Workday Presence Layer: state + connectors + triggers + one intervention, quiet otherwise.
 
-## Source Truth
+## Start Here
 
-Start every repo task from the current control chain:
+1. Read `ACTIVE_HANDOFF.md` — current command state and next exact move.
+2. Read the active GitHub issue it names.
 
-1. `ACTIVE_HANDOFF.md`
-2. `FOLDERA_LAUNCH_ROADMAP.md`
-3. the active GitHub issue named by `ACTIVE_HANDOFF.md`
-4. issue #48 for product doctrine
-5. relevant execution/proof docs only for the active seam
-
-`docs/SOURCE_OF_TRUTH_MAP.md` classifies the root doctrine, execution, proof, reference, archive, and stale files.
+`AGENTS.md` is the single agent execution contract. `FOLDERA_MASTER_BIBLE.md` carries product doctrine. `docs/SOURCE_OF_TRUTH_MAP.md` is the keep-list ledger — everything not on it is reference or archive.
 
 ## Local Commands
 
@@ -23,14 +18,8 @@ npm run lint
 npm run build
 ```
 
-Run only the proof that matches the active issue. Do not use paid/model-backed routes, outbound sends, schema changes, or live provider actions unless the active issue explicitly requires them and Brandon approves the step.
+Run only the proof that matches the active issue. No paid/model-backed routes, outbound sends, schema changes, or live provider actions unless the active issue requires them and Brandon approves.
 
 ## Delivery Contract
 
-- One assigned GitHub issue.
-- One clean branch or worktree.
-- One pull request.
-- Required proof in the PR.
-- Stop after proof is reported unless the active issue explicitly requires merge/deploy follow-through.
-
-Do not broaden into Slack/OAuth/API/send work, backend/auth/Supabase/schema/Stripe changes, landing/dashboard work, or stale-doc cleanup unless the active issue says so.
+One assigned GitHub issue. One clean branch or worktree. One pull request with the required proof. Source-truth closeout and a GitHub receipt before stop.
