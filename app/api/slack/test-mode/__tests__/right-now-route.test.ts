@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextResponse } from 'next/server';
 
-const mockResolveUser = vi.fn();
+const mockResolveAnyUser = vi.fn();
 const mockApiErrorForRoute = vi.fn();
 
 const mockSupabase = {
@@ -13,7 +13,7 @@ const mockSupabase = {
   },
 };
 
-vi.mock('@/lib/auth/resolve-user', () => ({ resolveUser: mockResolveUser }));
+vi.mock('@/lib/auth/resolve-user', () => ({ resolveAnyUser: mockResolveAnyUser }));
 vi.mock('@/lib/db/client', () => ({ createServerClient: () => mockSupabase }));
 vi.mock('@/lib/utils/api-error', () => ({
   apiErrorForRoute: mockApiErrorForRoute,
@@ -24,7 +24,7 @@ describe('Slack test-mode Right Now loop', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    mockResolveUser.mockResolvedValue({ userId: 'u-52' });
+    mockResolveAnyUser.mockResolvedValue({ userId: 'u-52' });
     mockApiErrorForRoute.mockImplementation((error: unknown) =>
       NextResponse.json(
         { error: error instanceof Error ? error.message : String(error) },

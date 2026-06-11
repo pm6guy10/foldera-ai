@@ -96,6 +96,25 @@ export function resolveCronUser(
 }
 
 /**
+ * Resolves the user by trying cron auth first (CRON_SECRET → INGEST_USER_ID),
+ * then falling back to the NextAuth session. Used by test-mode routes that need
+ * to be drivable from scripts (for proof runs) as well as from a browser session.
+ */
+export async function resolveAnyUser(
+  request: Request,
+): Promise<{ userId: string } | NextResponse> {
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  if (cronSecret && hasValidCronSecret(request, cronSecret)) {
+    const userId = process.env.INGEST_USER_ID;
+    if (!userId) {
+      return NextResponse.json({ error: 'INGEST_USER_ID not configured' }, { status: 500 });
+    }
+    return { userId };
+  }
+  return resolveUser(request);
+}
+
+/**
  * Validates Bearer CRON_SECRET for cron routes that don't resolve a specific user
  * (e.g., cleanup jobs that operate across all users).
  *
