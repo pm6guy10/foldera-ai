@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { resolveUser } from '@/lib/auth/resolve-user';
+import { resolveAnyUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import { normalizeWorkdayPresenceState } from '@/lib/workday-presence/model';
 import { buildRightNowMessagePayload } from '@/lib/workday-presence/message';
@@ -9,7 +9,7 @@ import { apiErrorForRoute } from '@/lib/utils/api-error';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
-  const auth = await resolveUser(request);
+  const auth = await resolveAnyUser(request);
   if (auth instanceof NextResponse) return auth;
 
   try {

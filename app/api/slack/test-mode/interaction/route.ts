@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { resolveUser } from '@/lib/auth/resolve-user';
+import { resolveAnyUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import { normalizeWorkdayPresenceState, type WorkdayPresenceState } from '@/lib/workday-presence/model';
 import { buildRightNowMessagePayload, type RightNowMessageActionId } from '@/lib/workday-presence/message';
@@ -48,7 +48,7 @@ async function persistState(
 }
 
 export async function POST(request: Request) {
-  const auth = await resolveUser(request);
+  const auth = await resolveAnyUser(request);
   if (auth instanceof NextResponse) return auth;
 
   try {
