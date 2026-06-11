@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextResponse } from 'next/server';
 
-const mockResolveUser = vi.fn();
+const mockResolveCronUser = vi.fn();
 const mockScoreOpenLoops = vi.fn();
 const mockGetUserById = vi.fn();
 const mockUpdateUserById = vi.fn();
 
 vi.mock('@/lib/auth/resolve-user', () => ({
-  resolveUser: mockResolveUser,
+  resolveCronUser: mockResolveCronUser,
 }));
 
 vi.mock('@/lib/briefing/scorer', () => ({
@@ -26,7 +26,6 @@ vi.mock('@/lib/db/client', () => ({
 }));
 
 const OWNER_ID = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
-const OTHER_ID = '11111111-1111-1111-1111-111111111111';
 
 const MOCK_WINNER = {
   id: 'commitment-abc',
@@ -53,23 +52,15 @@ describe('POST /api/workday-presence/seed-from-scorer', () => {
     mockUpdateUserById.mockResolvedValue({ error: null });
   });
 
-  it('returns 401 when resolveUser rejects the session', async () => {
-    mockResolveUser.mockResolvedValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
+  it('returns 401 when cron secret is missing/invalid', async () => {
+    mockResolveCronUser.mockReturnValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     const { POST } = await import('../route');
     const response = await POST(new Request('http://localhost/api/workday-presence/seed-from-scorer', { method: 'POST' }));
     expect(response.status).toBe(401);
   });
 
-  it('returns 403 for non-owner user', async () => {
-    mockResolveUser.mockResolvedValue({ userId: OTHER_ID });
-    const { POST } = await import('../route');
-    const response = await POST(new Request('http://localhost/api/workday-presence/seed-from-scorer', { method: 'POST' }));
-    expect(response.status).toBe(403);
-    expect(await response.json()).toEqual({ error: 'Forbidden' });
-  });
-
   it('returns seeded=false when scorer finds no winner', async () => {
-    mockResolveUser.mockResolvedValue({ userId: OWNER_ID });
+    mockResolveCronUser.mockReturnValue({ userId: OWNER_ID });
     mockScoreOpenLoops.mockResolvedValue({
       outcome: 'no_valid_action',
       winner: null,
@@ -86,7 +77,7 @@ describe('POST /api/workday-presence/seed-from-scorer', () => {
   });
 
   it('seeds state from winner and returns seeded=true', async () => {
-    mockResolveUser.mockResolvedValue({ userId: OWNER_ID });
+    mockResolveCronUser.mockReturnValue({ userId: OWNER_ID });
     mockScoreOpenLoops.mockResolvedValue({
       outcome: 'winner_selected',
       winner: MOCK_WINNER,
@@ -107,7 +98,7 @@ describe('POST /api/workday-presence/seed-from-scorer', () => {
   });
 
   it('calls scoreOpenLoops with pipelineDryRun=true', async () => {
-    mockResolveUser.mockResolvedValue({ userId: OWNER_ID });
+    mockResolveCronUser.mockReturnValue({ userId: OWNER_ID });
     mockScoreOpenLoops.mockResolvedValue({
       outcome: 'no_valid_action',
       winner: null,

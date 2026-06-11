@@ -1,9 +1,9 @@
 // Owner-only diagnostic endpoint — seeds workday_presence_state from the scored winner.
-// Used once per session to prove the #226 self-loop uses scoreOpenLoops output, not recency.
+// Uses resolveCronUser (CRON_SECRET + INGEST_USER_ID) so it can be called from scripts
+// to prove the #226 self-loop surfaces the scoreOpenLoops winner without a live browser session.
 // Full automation (cron-driven updates, risk_score/due_confidence computation) is issue #249.
 import { NextResponse } from 'next/server';
-import { OWNER_USER_ID } from '@/lib/auth/constants';
-import { resolveUser } from '@/lib/auth/resolve-user';
+import { resolveCronUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import { scoreOpenLoops } from '@/lib/briefing/scorer';
 import type { ScoredLoop } from '@/lib/briefing/scorer';
@@ -45,11 +45,8 @@ function winnerToPresenceState(winner: ScoredLoop, nowIso: string): WorkdayPrese
 }
 
 export async function POST(request: Request) {
-  const auth = await resolveUser(request);
+  const auth = resolveCronUser(request);
   if (auth instanceof NextResponse) return auth;
-  if (auth.userId !== OWNER_USER_ID) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
 
   try {
     const scored = await scoreOpenLoops(auth.userId, { pipelineDryRun: true });
