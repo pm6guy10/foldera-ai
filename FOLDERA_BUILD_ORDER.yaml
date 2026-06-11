@@ -25,7 +25,7 @@ active_issue: 226
 priority_class: OWNER_PATH_READINESS
 work_type: PRODUCT_CORE
 why_this_first: Issue #231 (work-state purity) is COMPLETE — merged via PR #232 on 2026-06-09. Rung 6 resumes. Known sub-blocker — Gmail sign-in works, Microsoft sign-in is broken; the Microsoft OAuth fix is an explicit sub-proof of #226.
-next_seam: after #226 is proven — open rung 7 issue (non-owner paid loop) and the "right now cards" product issue (state-change triggers, not clock-only)
+next_seam: after #226 is proven — work issue #249 (right-now card winner selection via scoreOpenLoops; risk_score + due_confidence computation; backfill), then open rung 7 issue (non-owner paid loop)
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178

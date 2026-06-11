@@ -4,6 +4,20 @@
 
 Operating doctrine pointer: see [FOLDERA_OPERATING_DOCTRINE.md](/C:/Users/b-kap/foldera-ai/FOLDERA_OPERATING_DOCTRINE.md) for the durable owner/operator seam order and current stop condition.
 
+## 2026-06-10 — Live data audit + diagnosis alignment; #249 scoped and queued
+
+- MODE: Diagnosis cross-check + live Supabase audit. No code written, no PRs opened, no seam changed. One issue created (#249, queued). Source docs updated.
+- Files changed: `ACTIVE_HANDOFF.md`, `FOLDERA_BUILD_ORDER.yaml`, `SESSION_HISTORY.md`.
+- What changed:
+  - Corrected stale session memory: #231 (entity contamination) was already COMPLETE via PR #232 (2026-06-09), not active. #226 (owner-path readiness) confirmed as the single active seam.
+  - Audited `lib/signals/entity-trust.ts`, `lib/work-packets/slack-self-loop.ts`, `lib/workday-presence/source-backed-state.ts`, `lib/briefing/scorer.ts`, `lib/signals/signal-processor.ts`, `lib/auth/auth-options.ts` against live production Supabase data.
+  - **Key finding (live data, project `neydszeamsflpghtrhue`):** tkg_commitments has 1,651 rows. `risk_score=0` and `due_confidence=0.5` across all 1,651 — uniform hardcoded defaults, never computed. `source-backed-state.ts` picks newest row. Live right-now card would surface "Claude Pro subscription payment of $21.66" over "Project update to be sent by end of day Tuesday" and "Inform Jacob Santoyo of job offer acceptance." Selection layer ("trustworthy state selection") is unbuilt; extraction is real and good (1,651 reasoned commitments).
+  - **Key finding (code):** `lib/briefing/scorer.ts` already contains a real winner engine (`scoreOpenLoops` → `{outcome:'winner_selected', winner: ScoredLoop}`, goal-primacy, decay, noise guards). Used by daily-brief path. The right-now card pivot bypassed it. Root defect: `signal-processor.ts:1903` inserts `risk_score: 0` and never sets `due_confidence`.
+  - **#249 created (queued):** Route right-now selection through `scoreOpenLoops` + compute `risk_score`/`due_confidence` at `signal-processor.ts:1903` + one-time backfill of 144 active commitments and 597 trust-contaminated rows. Not from scratch — reuse existing scorer.
+  - Tightened #226 proof bar in `ACTIVE_HANDOFF.md`: self-loop must surface scored winner, not recency pick.
+- Verification: No code changed; no gate run required. GitHub issue #249 created at https://github.com/pm6guy10/foldera-ai/issues/249.
+- Unresolved: #226 Microsoft OAuth sign-in still broken (config, not code — `auth-options.ts` is sound). #226 remains the active seam; #249 waits behind it.
+
 ## 2026-05-26 - PR #74 merge and production truth verification
 - MODE: PR #74 merge + production truth verification only; no new product code, no real Slack OAuth/send, no landing/dashboard redesign, no Stripe/schema/scoring/conviction work.
 - Files changed: `ACTIVE_HANDOFF.md`, `SESSION_HISTORY.md`.

@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-10 PT (truth repair — #231 is COMPLETE via PR #232; #226 reactivated)
+Last updated: 2026-06-10 PT (session closeout — live data audit; #249 queued; #226 active)
 
 ## Boot
 
@@ -39,4 +39,8 @@ Owner verbiage directive (2026-06-10): cards are "right now" cards, not "morning
 
 ## Next exact move
 
-Work issue #226: diagnose the Microsoft sign-in failure (capture one failed sign-in with exact evidence: browser symptom + auth trace), fix the narrowest seam, prove Gmail + Microsoft sign-in, then run one Slack self-loop end-to-end. Post receipts to #226. After #226 is proven: open rung 7 issue (non-owner paid loop) and the "right now cards" product issue.
+Work issue #226: diagnose the Microsoft sign-in failure (capture one failed sign-in with exact evidence: browser symptom + auth trace), fix the narrowest seam, prove Gmail + Microsoft sign-in, then run one Slack self-loop end-to-end. Post receipts to #226.
+
+**Proof bar for the Slack self-loop (tightened 2026-06-10):** the surfaced move must be the scored winner from `scoreOpenLoops`, not the recency-picked newest row. Live data shows `risk_score=0` and `due_confidence=0.5` on all 1,651 commitments; selection currently picks "$21.66 receipt" over "Project update due EOD Tuesday." A self-loop that surfaces the recency pick is plumbing proof, not product proof. Issue #249 (queued) fixes this; do not merge #249 until #226 sign-in is proven.
+
+After #226 is proven: work issue #249 (right-now card winner selection), then open rung 7 (non-owner paid loop).
