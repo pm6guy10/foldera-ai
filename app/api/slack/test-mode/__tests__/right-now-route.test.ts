@@ -33,6 +33,58 @@ describe('Slack test-mode Right Now loop', () => {
     );
   });
 
+  // #249 route invariant: when persisted state has state_source='scored_winner', the
+  // Right Now render path must surface the scored winner, not fall back to recency.
+  it('#249 INVARIANT: GET /api/slack/test-mode/right-now surfaces scored_winner state — not recency metadata', async () => {
+    mockSupabase.auth.admin.getUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            workday_presence_state: {
+              current_focus: 'Project update to be sent by end of day Tuesday',
+              next_move: 'Review and take the smallest next step: Project update to be sent by end of day Tuesday',
+              why_it_matters: 'Matched goal: "Close open commitments before end of week". Score: 2.86.',
+              blocker: null,
+              do_not_touch: 'Do not auto-send or mutate source systems.',
+              waiting_on: null,
+              last_completed_step: null,
+              state_source: 'scored_winner',
+              source_trail: [
+                {
+                  table: 'tkg_signals',
+                  source: 'calendar',
+                  type: 'commitment',
+                  row_id: 'sig-commitment-1',
+                  occurred_at: '2026-06-10T09:00:00Z',
+                  redacted_summary: 'Project update due EOD Tuesday',
+                  selection_reason: 'source signal for scored winner',
+                },
+              ],
+              snoozed_until: null,
+              interaction_history: [],
+              created_at: '2026-06-11T16:00:00.000Z',
+              updated_at: '2026-06-11T16:00:00.000Z',
+            },
+          },
+        },
+      },
+      error: null,
+    });
+
+    const { GET } = await import('../right-now/route');
+    const response = await GET(new Request('http://localhost/api/slack/test-mode/right-now'));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.payload.kind).toBe('right_now');
+    // Must show the scored winner, not any recency-derived content
+    expect(body.payload.text).toContain('Project update to be sent by end of day Tuesday');
+    expect(body.payload.text).toContain('Source trail: tkg_signals/calendar/commitment');
+    expect(body.payload.text).not.toContain('$21.66');
+    expect(body.payload.text).not.toContain('manual_anchor');
+    expect(body.slack_test_mode.channel).toBe('test_dm');
+  });
+
   it('GET /api/slack/test-mode/right-now returns a Slack-style message payload', async () => {
     mockSupabase.auth.admin.getUserById.mockResolvedValue({
       data: {

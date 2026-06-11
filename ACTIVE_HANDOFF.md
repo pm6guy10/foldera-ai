@@ -9,7 +9,7 @@ Last updated: 2026-06-11 PT (#226 COMPLETE — all 3 sub-proofs done, PR #256 me
 
 ## Active command gate
 
-Issue **#249** is the active seam — right-now winner selection via `scoreOpenLoops`; compute `risk_score` + `due_confidence`.
+Issue #249 is the active right-now scorer-backed selection seam.
 Issue #226 (rung-6 owner-path readiness) is **COMPLETE** — all 3 sub-proofs done, PR #256 merged 2026-06-11. Proof receipt: https://github.com/pm6guy10/foldera-ai/issues/226#issuecomment-4685107461
 Issue #231 (work-state purity) is COMPLETE — merged PR #232 (2026-06-09).
 Rung 5 (issue #220) is COMPLETE — payment path proven live.

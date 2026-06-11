@@ -6,6 +6,81 @@ import { selectSourceBackedRightNowState } from '../source-backed-state';
 const nowIso = '2026-06-02T20:00:00.000Z';
 
 describe('source-backed Right Now state selector', () => {
+  // INVARIANT (#249): scored winner must beat any newer recency row.
+  // A Right Now card may not be selected by recency when a scored open-loop winner exists.
+  it('INVARIANT: scored winner beats newer low-value row — recency must not override a scored winner', () => {
+    const newerLowValueRow = {
+      id: 'sig_receipt_1',
+      source: 'gmail',
+      type: 'receipt',
+      source_id: 'gmail-thread-receipt',
+      occurred_at: '2026-06-11T20:00:00.000Z', // newer than the scored winner's signals
+      redacted_summary: 'Claude Pro subscription payment of $21.66',
+    };
+
+    const scoredWinner = {
+      title: 'Project update to be sent by end of day Tuesday',
+      score: 2.86,
+      matchedGoal: { text: 'Close open commitments before end of week' },
+      sourceSignals: [
+        {
+          id: 'sig-commitment-1',
+          source: 'calendar',
+          kind: 'commitment',
+          summary: 'Project update due EOD Tuesday',
+          occurredAt: '2026-06-10T09:00:00Z',
+        },
+      ],
+    };
+
+    const state = selectSourceBackedRightNowState({
+      nowIso,
+      signals: [newerLowValueRow],
+      scoredWinner,
+    });
+
+    expect(state).not.toBeNull();
+    expect(state?.state_source).toBe('scored_winner');
+    expect(state?.current_focus).toBe('Project update to be sent by end of day Tuesday');
+    expect(state?.why_it_matters).toContain('Matched goal');
+    expect(state?.why_it_matters).toContain('2.86');
+    // Must NOT surface the newer low-value receipt row
+    expect(state?.current_focus).not.toContain('$21.66');
+    expect(state?.source_trail[0]).toMatchObject({
+      table: 'tkg_signals',
+      source: 'calendar',
+      selection_reason: 'source signal for scored winner',
+    });
+  });
+
+  it('INVARIANT: scored winner beats newer commitment row — recency must not override a scored winner', () => {
+    const newerTransactionalCommitment = {
+      id: 'commitment_receipt',
+      source: 'gmail',
+      type: 'receipt',
+      status: 'open',
+      created_at: '2026-06-11T21:00:00.000Z', // newest row
+      commitment_text: 'Book hotel using $35.16 OneKeyCash balance',
+    };
+
+    const scoredWinner = {
+      title: 'Inform Jacob Santoyo of job offer acceptance',
+      score: 4.2,
+      matchedGoal: null,
+      sourceSignals: [],
+    };
+
+    const state = selectSourceBackedRightNowState({
+      nowIso,
+      commitments: [newerTransactionalCommitment],
+      scoredWinner,
+    });
+
+    expect(state?.state_source).toBe('scored_winner');
+    expect(state?.current_focus).toBe('Inform Jacob Santoyo of job offer acceptance');
+    expect(state?.current_focus).not.toContain('OneKeyCash');
+  });
+
   it('selects one source-backed state from tkg_signals-shaped rows', () => {
     const state = selectSourceBackedRightNowState({
       nowIso,
