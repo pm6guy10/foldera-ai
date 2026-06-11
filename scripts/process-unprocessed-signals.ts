@@ -14,9 +14,31 @@ const BATCH_SIZE = 5;
 const BATCH_DELAY_MS = 1000;
 const LOOKBACK_MS = 60 * 60 * 1000;
 const MICROSOFT_SOURCES = new Set(['outlook', 'outlook_calendar']);
+
+/**
+ * Resolves the canonical (non-redirecting) base URL for cron POSTs.
+ *
+ * The bare apex `foldera.ai` issues a 307 redirect to `www.foldera.ai`. Node's
+ * fetch (undici) strips the `Authorization` header on that cross-host hop, so a
+ * Bearer-authenticated POST to the apex arrives unauthenticated and 401s.
+ * Targeting `www` directly keeps the header intact.
+ */
+function resolveCronBaseUrl(): string {
+  const base = process.env.NEXTAUTH_URL ?? 'https://foldera.ai';
+  try {
+    const url = new URL(base);
+    if (url.hostname === 'foldera.ai') {
+      url.hostname = 'www.foldera.ai';
+    }
+    return url.toString();
+  } catch {
+    return base;
+  }
+}
+
 const PROCESS_ROUTE_URL = new URL(
   '/api/cron/process-unprocessed-signals',
-  process.env.NEXTAUTH_URL ?? 'https://foldera.ai',
+  resolveCronBaseUrl(),
 );
 
 interface VerificationSummary {
