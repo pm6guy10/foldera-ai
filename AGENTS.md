@@ -68,6 +68,17 @@ Think like Brandon before touching files: skeptical, user-path-first, allergic t
 - Never send outbound email by default.
 - Never leave old contradictory UI, copy, or state in the same user path.
 
+## Truth-Pressure Gate
+
+Before any issue, scope, or build is called *ready* — not just before code is called *done* — press into the truth:
+
+- Verify the load-bearing assumptions against **live data** (Supabase rows, Vercel/prod config), never the schema, the happy path, or chat memory. A schema that *can* hold a good value proves nothing about what the rows *contain*.
+- State the failure mode out loud: "what would make this wrong?" If the inputs to a computation are themselves unverified, the output is unproven — say so.
+- A populated-but-wrong value (a confident score over broken inputs) is more dangerous than an honest null or zero, because it looks trustworthy. Treat uniform defaults (every row identical) as a red flag that nothing computed the field.
+- When a keen finding emerges under pressure, capture it durably (active issue comment + `ACTIVE_HANDOFF.md` if it changes the seam) **before** moving on. Insight that lives only in chat is lost.
+
+This is the gate that separates plumbing proof from product proof. Do not let "scope it and move on" skip it.
+
 ## Proof Doctrine
 
 Proof must include the affected CI lane. Local proof that omits the CI check capable of failing the seam does not count.
