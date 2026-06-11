@@ -1,11 +1,11 @@
 {
   "authority_status": "PRODUCT_MVP_PIVOT_ACTIVE",
   "active": true,
-  "active_issue": 226,
+  "active_issue": 249,
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
-  "base_commit": "70bd054",
-  "money_loop_rung": "rung_6_owner_path_readiness_active",
-  "user_system_path": "Issue #226 (rung 6 owner-path readiness: sign-in + Slack self-loop) is the active seam. Issue #231 (work-state purity) is COMPLETE via PR #232. Rung 7 remains forbidden until #226 is proven.",
+  "base_commit": "59dbe4d",
+  "money_loop_rung": "rung_6_complete_rung_7_unblocked",
+  "user_system_path": "Issue #249 (right-now winner selection via scoreOpenLoops; risk_score + due_confidence computation) is the active seam. Issue #226 (rung-6 owner-path readiness) is COMPLETE via PR #256 (2026-06-11). Rung 7 (non-owner paid loop) is now unblocked.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md and the active issue before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate.",
   "terminal_state_authority": {
@@ -31,12 +31,11 @@
     ".github/**",
     "package.json",
     "package-lock.json",
-    "lib/auth/**",
-    "app/api/auth/**",
-    "app/login/**",
-    "lib/integrations/outlook-client.ts",
-    "app/api/slack/**",
-    "lib/briefing/**"
+    "lib/briefing/**",
+    "lib/work-packets/**",
+    "lib/workday-presence/**",
+    "app/api/workday-presence/**",
+    "app/api/slack/**"
   ],
   "forbidden_file_patterns": [
     "app/dashboard/**",
@@ -49,28 +48,29 @@
     "supabase/migrations/**",
     "next.config.mjs"
   ],
-  "allowed_files_raw": "Active seam: issue #226 owner-path readiness. Auth/session/sign-in path (Gmail proven working, Microsoft broken — Azure OAuth/redirect/token persistence), Slack self-loop surfaces, governance amendments. Diagnosis-first: capture one failed Microsoft sign-in with exact evidence before patching.",
+  "allowed_files_raw": "Active seam: issue #249 winner selection. scoreOpenLoops wired as permanent right-now source; risk_score and due_confidence computed from signals in rows; briefing scorer, workday-presence model, work-packets. Pool: 99 scorable rows, future=1.",
   "forbidden_files_raw": "No dashboard UI, no start/try/pricing pages, no acquisition agents, no Stripe, no schema migrations, no next.config changes, no new connectors, no non-owner proof.",
   "required_local_proof": [
     "npm run gate:continuity",
     "npm run lint",
     "npm run build"
   ],
-  "required_browser_proof": "Required — one successful Brandon sign-in via Microsoft on production or preview (screenshot/log evidence), plus one Slack self-loop end-to-end with one real next move surfaced.",
-  "acceptance_condition": "Brandon signs in reliably via Gmail AND Microsoft; one Slack self-loop completes end-to-end surfacing one real next move; durable receipt posted to issue #226; gate:continuity/lint/build green.",
-  "stop_condition": "Stop when #226 has a durable proof receipt (or a BLOCKED receipt naming the exact external blocker, e.g. Azure app config approval). Next seams after proof: rung 7 issue (non-owner paid loop) and the 'right now cards' product issue.",
+  "required_browser_proof": "Required — run scripts/verify-self-loop.mjs against production after wiring scoreOpenLoops as permanent path. Winner must be state_source='scored_winner', not recency fallback.",
+  "acceptance_condition": "scoreOpenLoops is the permanent right-now winner source (no recency fallback); risk_score and due_confidence are computed (not flat 0/0.5); verify-self-loop.mjs PASS against production; gate:continuity/lint/build green.",
+  "stop_condition": "Stop when #249 has a durable proof receipt showing scorer-path winner with non-flat risk_score/due_confidence. Next seam: rung 7 issue (non-owner paid loop).",
   "is_user_facing": true,
-  "browser_proof_command": "manual sign-in proof on production/preview + Slack self-loop receipt; Playwright auth specs where applicable",
+  "browser_proof_command": "CRON_SECRET=<secret> node scripts/verify-self-loop.mjs https://www.foldera.ai",
   "anti_regression_checks": [
-    "issue #226 is the active owner-path-readiness seam",
+    "issue #249 is the active right-now winner selection seam",
+    "issue #226 is COMPLETE — rung-6 owner-path readiness proven via PR #256",
     "issue #231 is COMPLETE — work-state purity merged via PR #232",
-    "issue #220 is completed — rung 5 live proof passed",
-    "rung 7 non-owner paid loop is forbidden until issue #226 is proven",
+    "issue #220 is COMPLETE — rung 5 live proof passed",
+    "rung 7 non-owner paid loop is unblocked — may proceed after #249",
     "root markdown file count is bounded by gate:continuity (MAX 8)",
     "a new governance rule may only be added by editing an existing keep-list file",
     "trusted class requires outbound evidence — inbound volume alone yields unclassified",
     "personal class is sticky and salience-capped",
     "acquisition/growth agents are quarantined (default OFF) until owner re-enables"
   ],
-  "next_command": "Work issue #226: diagnose Microsoft sign-in failure with exact evidence, fix narrowest seam, prove both providers, run one Slack self-loop, post receipts. Then open rung 7 + 'right now cards' issues."
+  "next_command": "Work issue #249: wire scoreOpenLoops as permanent path for right-now card; compute risk_score and due_confidence from signals in each row; re-run audit after 2AM MS backfill. Post proof receipt."
 }
