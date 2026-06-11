@@ -18,7 +18,7 @@ One active seam only.
 
 ## Current slice:
 
-- Issue #226 proves owner-path readiness. Known facts: Gmail sign-in WORKS for Brandon; Microsoft sign-in is BROKEN. The Microsoft OAuth path is an explicit sub-proof of this seam (likely Azure app redirect URI / tenant config / token persistence — see PR #230's transient-persist hypothesis).
+- Issue #226 proves owner-path readiness. Known facts: Gmail sign-in WORKS for Brandon; Microsoft sign-in FIXED 2026-06-11 (Azure client secret expired + ENCRYPTION_KEY malformed in Vercel — both resolved, receipts in #226 comments). Sign-in sub-proofs 1+2 closed.
 - Required proof: (1) Brandon signs in reliably via Gmail AND Microsoft, (2) one Slack self-loop end-to-end surfacing one real next move, (3) durable receipt in GitHub truth.
 - Forbidden in this seam: non-owner proof, Stripe changes, schema migrations, new connectors, broad cleanup.
 
@@ -39,7 +39,7 @@ Owner verbiage directive (2026-06-10): cards are "right now" cards, not "morning
 
 ## Next exact move
 
-Work issue #226: diagnose the Microsoft sign-in failure (capture one failed sign-in with exact evidence: browser symptom + auth trace), fix the narrowest seam, prove Gmail + Microsoft sign-in, then run one Slack self-loop end-to-end. Post receipts to #226.
+Work issue #226: sign-in sub-proofs done (Gmail + Microsoft both working as of 2026-06-11). Next: re-run `node scripts/audit-selection-pool.mjs` after tonight's 2AM Microsoft backfill to settle the pool-freshness fork (see live audit below), then run one Slack self-loop end-to-end at `/slack/test-mode` surfacing the scored winner. Post receipt to #226.
 
 **Proof bar for the Slack self-loop (tightened 2026-06-10):** the surfaced move must be the scored winner from `scoreOpenLoops`, not the recency-picked newest row. A self-loop that surfaces the recency pick is plumbing proof, not product proof.
 
