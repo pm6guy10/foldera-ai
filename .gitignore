@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+gitlab-handbook/
 node_modules
 .next
 .vercel/.env*

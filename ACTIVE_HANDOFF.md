@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-10 PT (session closeout — live data audit; #249 queued; #226 active)
+Last updated: 2026-06-11 PT (MS sign-in fixed; live selection-pool audit — pool stale, scoring unbuilt; #226 active)
 
 ## Boot
 
@@ -41,6 +41,19 @@ Owner verbiage directive (2026-06-10): cards are "right now" cards, not "morning
 
 Work issue #226: diagnose the Microsoft sign-in failure (capture one failed sign-in with exact evidence: browser symptom + auth trace), fix the narrowest seam, prove Gmail + Microsoft sign-in, then run one Slack self-loop end-to-end. Post receipts to #226.
 
-**Proof bar for the Slack self-loop (tightened 2026-06-10):** the surfaced move must be the scored winner from `scoreOpenLoops`, not the recency-picked newest row. Live data shows `risk_score=0` and `due_confidence=0.5` on all 1,651 commitments; selection currently picks "$21.66 receipt" over "Project update due EOD Tuesday." A self-loop that surfaces the recency pick is plumbing proof, not product proof. Issue #249 (queued) fixes this; do not merge #249 until #226 sign-in is proven.
+**Proof bar for the Slack self-loop (tightened 2026-06-10):** the surfaced move must be the scored winner from `scoreOpenLoops`, not the recency-picked newest row. A self-loop that surfaces the recency pick is plumbing proof, not product proof.
 
-After #226 is proven: work issue #249 (right-now card winner selection), then open rung 7 (non-owner paid loop).
+**LIVE AUDIT 2026-06-11 (truth-pressure gate — supersedes the stale framing above).** Verified against prod, owner pool (active/at_risk, trusted, unsuppressed = 108 rows; the "1,651" was the whole table):
+- `risk_score` = 0 on all 108 (1 distinct value) — ranking spine is dead.
+- `due_confidence` = 0.5 on all 108 (1 distinct value) — never computed.
+- `due_at`: 51/108 have a date, **all 51 in the past** (Dec 22 2025 → Jun 11 2026). **Zero future-dated. Zero due in next 7 days.**
+- Recency winner that fires right now: *"Book hotel using $15 OneKeyCash gift before expiration."*
+- The prior framing ("picks $21.66 receipt over Project update due EOD Tuesday") is itself stale — **there is no future-dated commitment in the pool at all.** Even a perfect scorer has nothing fresh to rank.
+- Likely cause is partly self-healing: Microsoft mail was dark May 21 → Jun 11 (encryption-key bug, fixed 2026-06-11). 3 weeks of Outlook backfills at next 2AM `sync-microsoft` cron.
+
+**Sequencing decision (do NOT skip):** re-run `node scripts/audit-selection-pool.mjs` AFTER tonight's backfill, then fork:
+- If `future_due > 0` → #249 is well-posed: compute `risk_score`/`due_confidence` from signals already in the rows.
+- If `future_due` still 0 → upstream lifecycle bug (commitments never expire/close); that jumps the queue AHEAD of #249.
+Do not tune #249 scoring against the current stale pool — it would prove nothing.
+
+After #226 is proven: re-audit → work #249 (right-now winner selection) or the lifecycle fix the audit points to, then open rung 7 (non-owner paid loop).

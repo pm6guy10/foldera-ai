@@ -25,6 +25,7 @@ That is the whole boot. Read other docs only when the active seam requires them.
 - GitHub issue receipt is required before stop.
 - Proof is required before calling work done.
 - Brandon must not be the relay, tester, merger, stale-truth repair person, or project manager for agent drift.
+- **Session closeout is mandatory regardless of whether Brandon asks for it.** Before ending any session: (1) all local branches are pushed and have an open PR or are merged; (2) all worktrees are removed; (3) untracked files are either committed+pushed or explicitly discarded — nothing is left stranded locally; (4) CI is green on all open PRs; (5) `ACTIVE_HANDOFF.md` reflects current truth. If closeout cannot be completed (e.g. CI needs a fix), name the exact blocker in the handoff and complete it before stopping.
 
 ## Governance Anti-Regrowth Rule
 
