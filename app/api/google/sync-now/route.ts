@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { syncGoogle } from '@/lib/sync/google-sync';
+import { maybeRunWorkdayPresenceTriggerRunnerForUser } from '@/lib/workday-presence/trigger-runner';
 import { rateLimit } from '@/lib/utils/rate-limit';
 import { blockManualSyncDuringEgressEmergency } from '@/lib/utils/egress-emergency';
 
@@ -45,8 +46,12 @@ export async function POST(request: Request) {
     }
 
     const total = result.gmail_signals + result.calendar_signals + result.drive_signals;
+    const triggerRunner =
+      total > 0
+        ? await maybeRunWorkdayPresenceTriggerRunnerForUser(userId)
+        : { started: false, reason: 'no_new_signals' as const };
 
-    return NextResponse.json({ ok: true, total, ...result });
+    return NextResponse.json({ ok: true, total, trigger_runner: triggerRunner, ...result });
   } catch (err: any) {
     console.error('[google/sync-now] error:', err instanceof Error ? err.message : err);
     return NextResponse.json(

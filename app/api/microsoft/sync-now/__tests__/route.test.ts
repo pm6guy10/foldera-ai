@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const getServerSession = vi.fn();
 const syncMicrosoft = vi.fn();
 const rateLimit = vi.fn();
+const maybeRunWorkdayPresenceTriggerRunnerForUser = vi.fn();
 
 vi.mock('next-auth', () => ({
   getServerSession,
@@ -14,6 +15,10 @@ vi.mock('@/lib/auth/auth-options', () => ({
 
 vi.mock('@/lib/sync/microsoft-sync', () => ({
   syncMicrosoft,
+}));
+
+vi.mock('@/lib/workday-presence/trigger-runner', () => ({
+  maybeRunWorkdayPresenceTriggerRunnerForUser,
 }));
 
 vi.mock('@/lib/utils/rate-limit', () => ({
@@ -100,6 +105,46 @@ describe('POST /api/microsoft/sync-now', () => {
         maxLookbackMs: 7 * 24 * 60 * 60 * 1000,
       }),
     );
+  });
+
+  it('fires the trigger-runner helper when fresh signals were ingested', async () => {
+    syncMicrosoft.mockResolvedValue({
+      mail_signals: 1,
+      calendar_signals: 1,
+      file_signals: 0,
+      task_signals: 0,
+      mail_total_signals: 1,
+      calendar_total_signals: 1,
+      file_total_signals: 0,
+      task_total_signals: 0,
+      is_first_sync: false,
+    });
+    const { POST } = await import('../route');
+
+    const response = await POST(new Request('http://localhost/api/microsoft/sync-now', { method: 'POST' }));
+
+    expect(response.status).toBe(200);
+    expect(maybeRunWorkdayPresenceTriggerRunnerForUser).toHaveBeenCalledWith('user-1');
+  });
+
+  it('does not fire the trigger-runner helper when sync ingests no new signals', async () => {
+    syncMicrosoft.mockResolvedValue({
+      mail_signals: 0,
+      calendar_signals: 0,
+      file_signals: 0,
+      task_signals: 0,
+      mail_total_signals: 0,
+      calendar_total_signals: 0,
+      file_total_signals: 0,
+      task_total_signals: 0,
+      is_first_sync: false,
+    });
+    const { POST } = await import('../route');
+
+    const response = await POST(new Request('http://localhost/api/microsoft/sync-now', { method: 'POST' }));
+
+    expect(response.status).toBe(200);
+    expect(maybeRunWorkdayPresenceTriggerRunnerForUser).not.toHaveBeenCalled();
   });
 
   it('returns 400 when Microsoft is not connected', async () => {

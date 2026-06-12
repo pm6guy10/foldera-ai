@@ -114,6 +114,7 @@ jobs:
       needs_smoke: ${{ steps.derive.outputs.needs_smoke }}
       needs_authenticated: ${{ steps.derive.outputs.needs_authenticated }}
       needs_payments: ${{ steps.derive.outputs.needs_payments }}
+      needs_build_artifact: ${{ steps.derive.outputs.needs_build_artifact }}
       needs_build: ${{ steps.derive.outputs.needs_build }}
       needs_unit: ${{ steps.derive.outputs.needs_unit }}
     steps:
@@ -224,24 +225,23 @@ jobs:
             runtime=true
           fi
 
-          # Smoke runs when anything public-facing / shell-level changed, or
-          # when CI itself changed (so we verify the workflow still green-lights
-          # a trivial change).
+          # Smoke runs when something public-facing / shell-level changed.
+          # Backend-only app/api churn and workflow-only changes should not pay
+          # the public-route smoke cost.
           needs_smoke=false
-          if is_true "$PUBLIC_ROUTES" || is_true "$APP" || is_true "$DEPS" \
-             || is_true "$CI_CHANGED" || is_true "$E2E_CONFIG"; then
+          if is_true "$PUBLIC_ROUTES" || is_true "$DEPS" \
+             || is_true "$E2E_CONFIG"; then
             needs_smoke=true
           fi
 
           # Authenticated/flow runs when dashboard, deps, tests, or test config
-          # changed — not for marketing-only diffs and NOT for payments-only diffs
-          # (those get the targeted `e2e-payments` lane below). PAYMENTS was
-          # deliberately removed from this gate: stripe-only churn no longer pays
-          # the full 60–90s flow lane cost.
+          # changed — not for marketing-only diffs, workflow-only changes, and
+          # NOT for payments-only diffs (those get the targeted `e2e-payments`
+          # lane below). PAYMENTS was deliberately removed from this gate:
+          # stripe-only churn no longer pays the full 60–90s flow lane cost.
           needs_authenticated=false
           if is_true "$DASHBOARD_ROUTES" \
-             || is_true "$DEPS" || is_true "$TESTS" || is_true "$E2E_CONFIG" \
-             || is_true "$CI_CHANGED"; then
+             || is_true "$DEPS" || is_true "$TESTS" || is_true "$E2E_CONFIG"; then
             needs_authenticated=true
           fi
 
@@ -261,6 +261,15 @@ jobs:
             needs_build=true
           fi
 
+          # Upload the built artifact only when a downstream e2e lane will
+          # actually download it. This avoids failing otherwise-green PRs on
+          # repository artifact quota when no consumer exists.
+          needs_build_artifact=false
+          if [ "$needs_smoke" = "true" ] || [ "$needs_authenticated" = "true" ] \
+             || [ "$needs_payments" = "true" ]; then
+            needs_build_artifact=true
+          fi
+
           # Unit tests run on any code or test change.
           needs_unit=false
           if is_true "$ANY_CODE" || is_true "$CI_CHANGED"; then
@@ -277,12 +286,13 @@ jobs:
             echo "needs_smoke=$needs_smoke"
             echo "needs_authenticated=$needs_authenticated"
             echo "needs_payments=$needs_payments"
+            echo "needs_build_artifact=$needs_build_artifact"
             echo "needs_build=$needs_build"
             echo "needs_unit=$needs_unit"
             echo "docs_only=$docs_only"
           } >> "$GITHUB_OUTPUT"
 
-          echo "::notice::runtime=$runtime needs_smoke=$needs_smoke needs_authenticated=$needs_authenticated needs_payments=$needs_payments needs_build=$needs_build needs_unit=$needs_unit docs_only=$docs_only"
+          echo "::notice::runtime=$runtime needs_smoke=$needs_smoke needs_authenticated=$needs_authenticated needs_payments=$needs_payments needs_build_artifact=$needs_build_artifact needs_build=$needs_build needs_unit=$needs_unit docs_only=$docs_only"
 
   # ───────────────────────────────────────────────────────────────────────────
   # 2. Verify-static: lint + e2e assertion linter. Cheapest truth.
@@ -357,6 +367,7 @@ jobs:
           NODE_OPTIONS: --max_old_space_size=4096
 
       - name: Upload build artifact
+        if: needs.changes.outputs.needs_build_artifact == 'true'
         uses: actions/upload-artifact@v6
         with:
           name: next-build-${{ github.sha }}

@@ -14,6 +14,7 @@ import { NextResponse } from 'next/server';
 import { validateCronAuth } from '@/lib/auth/resolve-user';
 import { getAllUsersWithProvider } from '@/lib/auth/user-tokens';
 import { syncGoogle } from '@/lib/sync/google-sync';
+import { maybeRunWorkdayPresenceTriggerRunnerForUser } from '@/lib/workday-presence/trigger-runner';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 min — first sync can be slow (30 days)
@@ -27,11 +28,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, message: 'No users with Google tokens', users: 0 });
   }
 
-  const results: Array<{ userId: string; ok: boolean; gmail_signals?: number; calendar_signals?: number; drive_signals?: number; error?: string }> = [];
+  const results: Array<{ userId: string; ok: boolean; gmail_signals?: number; calendar_signals?: number; drive_signals?: number; error?: string; trigger_runner?: unknown }> = [];
 
   for (const userId of userIds) {
     try {
       const result = await syncGoogle(userId);
+      const total = result.gmail_signals + result.calendar_signals + result.drive_signals;
+      const triggerRunner =
+        total > 0
+          ? await maybeRunWorkdayPresenceTriggerRunnerForUser(userId)
+          : undefined;
       results.push({
         userId,
         ok: !result.error,
@@ -39,6 +45,7 @@ export async function GET(request: Request) {
         calendar_signals: result.calendar_signals,
         drive_signals: result.drive_signals,
         error: result.error,
+        ...(triggerRunner ? { trigger_runner: triggerRunner } : {}),
       });
     } catch (err: any) {
       console.error(`[sync-google] unexpected error for user ${userId}:`, err.message);
