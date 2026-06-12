@@ -1,26 +1,25 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-11 PT (#251 ACTIVE — rung-7 foundation hardening; audit seam)
+Last updated: 2026-06-11 PT (#251 COMPLETE — PR #258 merged b0de76d; #259 active)
 
 ## Boot
 
 1. Read this file.
-2. Read the active issue it names (issue #251).
+2. Read the active issue it names (issue #259).
 
 ## Active command gate
 
-Issue #251 is the active hardening seam.
-Issue #226 (rung-6 owner-path readiness) is **COMPLETE** — all 3 sub-proofs done, PR #256 merged 2026-06-11.
+Issue #259 is the active rung-7 seam.
+Issue #251 (rung-7 foundation hardening) is COMPLETE — PR #258 merged 2026-06-11.
+Issue #226 (rung-6 owner-path readiness) is COMPLETE — PR #256 merged 2026-06-11.
 Issue #249 (scorer-winner invariant) is COMPLETE — PR #257 merged 2026-06-11.
-Issue #231 (work-state purity) is COMPLETE — merged PR #232 (2026-06-09).
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
 One active seam only.
 
 ## Current slice:
 
-Issue #251: Rung-7 foundation hardening — Vercel env, build-CI reliability, auth posture.
-Audit findings: (1) All Vercel required env vars present in production. (2) Build/CI ENOENT was one-time 80-push race — stale, single-push builds are clean. (3) Supabase auth: 2 WARN advisors (leaked-password, MFA) — requires Dashboard action by Brandon.
-Forbidden: non-owner paid loop, #244, #246, landing/frontend, schema changes.
+Issue #259: Rung 7 — prove non-owner paid loop (onboard → connect source → receive card → one action → durable receipt).
+Forbidden: #244, #246, dashboard/frontend polish, schema migrations beyond loop requirements, governance cleanup.
 
 ## Product doctrine
 
@@ -37,7 +36,7 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-Complete #251 proof: run gate:continuity + lint + build, post GitHub receipt, open PR. After #251 merges: open rung-7 issue (non-owner paid loop) and assign it here before starting work.
+Execute issue #259 (rung-7 non-owner paid loop). Read issue #259 before acting. Do not touch #244, #246, or any governance file until #259 is proven.
 
 ## #249 closeout record
 
