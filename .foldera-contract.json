@@ -21,6 +21,7 @@
     "*.md",
     "*.yaml",
     ".gitignore",
+    "vercel.json",
     ".cursorrules",
     ".cursor/**",
     ".claude/**",
@@ -38,7 +39,8 @@
     "lib/slack/**",
     "lib/slack-test-mode/**",
     "app/api/workday-presence/**",
-    "app/api/slack/**"
+    "app/api/slack/**",
+    "app/api/cron/**"
   ],
   "forbidden_file_patterns": [
     "app/dashboard/**",
@@ -51,16 +53,16 @@
     "supabase/migrations/**",
     "next.config.mjs"
   ],
-  "allowed_files_raw": "Active seam: issue #259 rung-7 non-owner paid loop. lib/auth/** added 2026-06-12 for resolveAnyUser x-as-user-id override (non-owner script proof). lib/workday-presence/**, lib/briefing/**, lib/work-packets/**, lib/slack/**, lib/slack-test-mode/**, app/api/workday-presence/**, app/api/slack/**, scripts/**, tests/**, control files.",
-  "forbidden_files_raw": "No dashboard UI, no start/try/pricing pages, no acquisition agents, no Stripe changes, no schema migrations beyond loop requirements, no next.config changes, no #244, no #246, no governance cleanup.",
+  "allowed_files_raw": "Active seam: issue #262 rung-8 frequent trigger-runner. Reuse lib/workday-presence/**, lib/slack/**, lib/slack-test-mode/**, lib/briefing/**, app/api/workday-presence/**, app/api/slack/**, app/api/cron/**, scripts/**, tests/**, and control files for the smallest live Slack intervention runner.",
+  "forbidden_files_raw": "No dashboard UI, no start/try/pricing pages, no acquisition agents, no Stripe changes, no new connectors, no next.config changes, no #244, no #246, no reopening #259, no broad governance cleanup, no daily-brief reframing.",
   "required_local_proof": [
     "npm run gate:continuity",
     "npm run lint",
     "npm run build"
   ],
-  "required_browser_proof": "Required — non-owner must complete full loop with durable receipt in DB.",
-  "acceptance_condition": "Non-owner user row exists; signal ingested; workday_presence_state seeded via scoreOpenLoops; card delivered; tkg_actions row with approved/dismissed status for non-owner user_id; gate:continuity/lint/build green.",
-  "stop_condition": "Stop when #259 has durable proof receipt of non-owner completing the full loop. Next seam: rung 8 (first non-owner validation).",
+  "required_browser_proof": "Not required for this seam. Live proof is runner-fire plus Slack chat.postMessage evidence on a real intervention, with quiet and dedup staying silent.",
+  "acceptance_condition": "A frequent runner evaluates real fresh signals for issue #262, posts one live Slack ping on intervention, stays quiet on no-op, suppresses unchanged triggers on the next run, and keeps gate:continuity/lint/build green.",
+  "stop_condition": "Stop when #262 has a PR with proof for intervention, quiet no-op, and dedup suppression, plus a receipt posted to issue #262; or stop BLOCKED with the exact missing Vercel envs required for the live Slack loop.",
   "is_user_facing": true,
   "browser_proof_command": "Non-owner account sign-up + connector + card + action — manual proof required",
   "anti_regression_checks": [
@@ -68,12 +70,12 @@
     "issue #226 is COMPLETE — rung-6 owner-path readiness proven via PR #256",
     "issue #231 is COMPLETE — work-state purity merged via PR #232",
     "issue #220 is COMPLETE — rung 5 live proof passed",
-    "rung 7 non-owner paid loop is unblocked — open a rung-7 issue before starting",
+    "issue #262 must stay event-driven — not a daily brief or dashboard summary",
     "root markdown file count is bounded by gate:continuity (MAX 8)",
     "a new governance rule may only be added by editing an existing keep-list file",
     "trusted class requires outbound evidence — inbound volume alone yields unclassified",
     "personal class is sticky and salience-capped",
     "acquisition/growth agents are quarantined (default OFF) until owner re-enables"
   ],
-  "next_command": "Open rung-7 issue (non-owner paid loop — full end-to-end loop from onboard to one paid action with durable receipt). Assign it as active seam in ACTIVE_HANDOFF.md + FOLDERA_BUILD_ORDER.yaml + .foldera-contract.json before starting work."
+  "next_command": "Implement the smallest frequent trigger-runner for issue #262: evaluate real fresh signals, post one live Slack ping on intervention, post nothing on quiet, dedup unchanged triggers, and keep the framing event-driven rather than a daily brief."
 }
