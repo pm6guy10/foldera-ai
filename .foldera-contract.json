@@ -1,11 +1,11 @@
 {
   "authority_status": "PRODUCT_MVP_PIVOT_ACTIVE",
   "active": true,
-  "active_issue": 274,
+  "active_issue": 276,
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
-  "base_commit": "d6b99f2",
-  "money_loop_rung": "post_rung_8_source_truth_274",
-  "user_system_path": "Issue #262 COMPLETE — PR #273 merged d6b99f2 and production deploy dpl_A4XzywTzsTqhc31KRRWyXxdUg6b7 READY. Issue #274 active — Command State Resolver v0 source-truth seam only.",
+  "base_commit": "b6ee882",
+  "money_loop_rung": "command_state_resolver_v0_impl_276",
+  "user_system_path": "Issue #274 COMPLETE — Command State Resolver v0 source-truth contract locked. Issue #276 active — backend-only Command State Resolver v0 implementation seam.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md and the active issue before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate.",
   "terminal_state_authority": {
@@ -24,30 +24,37 @@
     "docs/**",
     "scripts/**",
     "tests/**",
-    ".github/**"
+    ".github/**",
+    "app/api/**",
+    "lib/**"
   ],
   "forbidden_file_patterns": [
-    "app/**",
     "app/dashboard/**",
     "app/start/**",
     "app/try/**",
     "app/pricing/**",
+    "app/api/google/**",
+    "app/api/microsoft/**",
+    "app/api/slack/**",
     "components/**",
-    "lib/**",
     "lib/acquisition/**",
+    "lib/slack/**",
+    "lib/slack-test-mode/**",
     "lib/stripe/**",
     "supabase/migrations/**",
     "next.config.mjs"
   ],
-  "allowed_files_raw": "Active seam: issue #274 Command State Resolver v0 source-truth activation only. Allowed surfaces are `ACTIVE_HANDOFF.md`, `FOLDERA_BUILD_ORDER.yaml`, `.foldera-contract.json`, existing docs/gates/tests, and GitHub receipts needed to close #262 and activate the next seam without implementation.",
-  "forbidden_files_raw": "No implementation before source truth authorizes it. No dashboard UI, no start/try/pricing pages, no product/backend code, no acquisition agents, no Stripe changes, no new connectors, no #244, no #246, no reopening #259, no broad governance cleanup, no daily-brief reframing.",
+  "allowed_files_raw": "Active seam: issue #276 Command State Resolver v0 backend implementation. Allowed surfaces are backend-only `app/api/**`, `lib/**`, focused tests/scripts/docs, and control files needed to implement one verdict object with the four allowed outputs.",
+  "forbidden_files_raw": "No dashboard UI, no start/try/pricing pages, no Google/Microsoft/Slack connector work, no Slack card redesign, no acquisition agents, no Stripe changes, no new connectors, no #244, no #246, no reopening #259, no broad governance cleanup, no daily-brief reframing.",
   "required_local_proof": [
     "npm run gate:continuity",
+    "npm run lint",
+    "npm run build",
     "git diff --check"
   ],
-  "required_browser_proof": "Not required for this seam. Proof is source-truth closeout for merged issue #262 plus activation of issue #274 without implementation edits.",
-  "acceptance_condition": "Issue #262 is closed as MERGED_AND_CLOSED after PR #273 merged to main, source truth names issue #274 as the active Command State Resolver v0 seam, and no implementation files are changed.",
-  "stop_condition": "Stop when #262 is closed completed with a durable receipt, source truth activates issue #274 as Command State Resolver v0 source-truth-only, and no implementation work has started.",
+  "required_browser_proof": "Not required by default for the first backend-only resolver seam unless the implementation issue later adds a live-path requirement.",
+  "acceptance_condition": "Issue #276 implements one backend Command State Resolver v0 verdict object with exactly four allowed outputs (`MERGE_READY`, `FIX_FIRST`, `WAIT`, `CLEAR`) and keeps backend proof green without UI or connector drift.",
+  "stop_condition": "Stop when issue #276 has a PR with backend verdict proof, or stop BLOCKED with the exact implementation blocker.",
   "is_user_facing": false,
   "anti_regression_checks": [
     "issue #249 is COMPLETE — scorer-winner invariant enforced in selectSourceBackedRightNowState; PR #257 merged 2026-06-11",
@@ -55,12 +62,12 @@
     "issue #231 is COMPLETE — work-state purity merged via PR #232",
     "issue #220 is COMPLETE — rung 5 live proof passed",
     "issue #262 must stay event-driven — not a daily brief or dashboard summary",
-    "issue #274 is source-truth-only until a later authorized implementation seam",
+    "issue #274 locked the resolver contract; issue #276 must implement it without UI or connector drift",
     "root markdown file count is bounded by gate:continuity (MAX 8)",
     "a new governance rule may only be added by editing an existing keep-list file",
     "trusted class requires outbound evidence — inbound volume alone yields unclassified",
     "personal class is sticky and salience-capped",
     "acquisition/growth agents are quarantined (default OFF) until owner re-enables"
   ],
-  "next_command": "Read issue #274 and keep the seam source-truth-only: activate the Command State Resolver v0 contract (`MERGE_READY`, `FIX_FIRST`, `WAIT`, `CLEAR`) in control files and receipts, but do not start implementation yet."
+  "next_command": "Read issue #276 and implement the backend-only Command State Resolver v0 verdict object with exactly four allowed outputs: `MERGE_READY`, `FIX_FIRST`, `WAIT`, `CLEAR`."
 }

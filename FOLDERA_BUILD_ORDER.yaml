@@ -21,11 +21,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 274
+active_issue: 276
 priority_class: ACTIVE
-work_type: SOURCE_TRUTH
-why_this_first: Close out merged rung-8 issue #262 cleanly, then activate Command State Resolver v0 as source truth before any further implementation.
-next_seam: rung 9 remains pending after issue #274; organic non-owner validation stays blocked until the resolver seam is authorized and complete
+work_type: PRODUCT_CORE
+why_this_first: Issue #274 locked the Command State Resolver v0 contract in source truth. The next seam is the backend-only implementation issue #276.
+next_seam: rung 9 remains pending after issue #276; organic non-owner validation stays blocked until the resolver verdict seam is implemented and proven
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
@@ -81,6 +81,26 @@ launch_ladder:
     production_deploy: dpl_A4XzywTzsTqhc31KRRWyXxdUg6b7
     completion_criteria: a frequent runner evaluates triggers against fresh signals and posts a live Slack ping on each intervention (N/day as warranted), quiet otherwise, with dedup; prerequisite SLACK_SIGNING_SECRET + FOLDERA_SELF_USER_ID set in Vercel prod so button callback stops 500ing
     evidence: PR #273 merged 2026-06-12; event-driven trigger runner shipped on main; production/main Vercel deploy READY for merge SHA d6b99f2
+command_state_resolver_v0:
+  contract_issue: 274
+  implementation_issue: 276
+  status: IMPLEMENTATION_NEXT
+  allowed_verdicts:
+    - MERGE_READY
+    - FIX_FIRST
+    - WAIT
+    - CLEAR
+  scope: one backend verdict object that collapses connected truth into one answer
+  forbidden:
+    - app/dashboard/**
+    - components/**
+    - dashboard/UI
+    - visual redesign
+    - Slack card redesign
+    - new connectors
+    - Stripe
+    - issue #244
+    - issue #246
   - rung: 9
     name: Prove first non-owner validation
     status: PENDING
