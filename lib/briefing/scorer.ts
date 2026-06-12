@@ -4401,6 +4401,9 @@ export function classifyLifecycle(args: {
   let actionability: Actionability;
   if (forceActionableNow) {
     actionability = 'actionable';
+  } else if (urgency >= 0.95 && stakes >= 1.0) {
+    // Overdue items (urgency near max) are actionable at any stakes level — the deadline has passed.
+    actionability = 'actionable';
   } else if (stakes < 2) {
     actionability = 'archive_only';
   } else if (tractability >= 0.35 && urgency >= 0.25) {
