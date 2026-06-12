@@ -71,6 +71,11 @@ launch_ladder:
     completion_criteria: non-owner user completes full loop from onboard to one paid action with durable receipt; forbidden until rung 6 (issue #226) is proven
     proof_status: PR merged — browser proof pending (verify-non-owner-loop.mjs must pass 5/5)
   - rung: 8
+    name: Frequent trigger-runner → live Slack ping on intervention (event-driven, not a brief)
+    status: PENDING
+    issue: 262
+    completion_criteria: a frequent runner evaluates triggers against fresh signals and posts a live Slack ping on each intervention (N/day as warranted), quiet otherwise, with dedup; prerequisite SLACK_SIGNING_SECRET + FOLDERA_SELF_USER_ID set in Vercel prod so button callback stops 500ing
+  - rung: 9
     name: Prove first non-owner validation
     status: PENDING
     issue: needs_issue
