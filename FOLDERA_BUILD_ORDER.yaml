@@ -21,11 +21,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 274
+active_issue: 276
 priority_class: ACTIVE
-work_type: SOURCE_TRUTH
-why_this_first: Close out merged rung-8 issue #262 cleanly, then activate Command State Resolver v0 as source truth before any further implementation.
-next_seam: rung 9 remains pending after issue #274; organic non-owner validation stays blocked until the resolver seam is authorized and complete
+work_type: PRODUCT_CORE
+why_this_first: Issue #274 locked the Command State Resolver v0 contract in source truth. The next seam is the backend-only implementation issue #276.
+next_seam: rung 9 remains pending after issue #276; organic non-owner validation stays blocked until the resolver verdict seam is implemented and proven
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
@@ -86,6 +86,26 @@ launch_ladder:
     status: PENDING
     issue: needs_issue
     completion_criteria: one person who is not Brandon completes the loop and names one concrete value
+command_state_resolver_v0:
+  contract_issue: 274
+  implementation_issue: 276
+  status: IMPLEMENTATION_NEXT
+  allowed_verdicts:
+    - MERGE_READY
+    - FIX_FIRST
+    - WAIT
+    - CLEAR
+  scope: one backend verdict object that collapses connected truth into one answer
+  forbidden:
+    - app/dashboard/**
+    - components/**
+    - dashboard/UI
+    - visual redesign
+    - Slack card redesign
+    - new connectors
+    - Stripe
+    - issue #244
+    - issue #246
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
