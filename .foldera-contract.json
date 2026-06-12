@@ -1,11 +1,11 @@
 {
   "authority_status": "PRODUCT_MVP_PIVOT_ACTIVE",
   "active": true,
-  "active_issue": "none",
+  "active_issue": 251,
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
   "base_commit": "ac8b15e",
   "money_loop_rung": "rung_6_complete_rung_7_unblocked_249_complete",
-  "user_system_path": "Between rungs. Issue #249 (right-now scorer-backed selection invariant) is COMPLETE — PR #257 merged 2026-06-11. Issue #226 (rung-6 owner-path readiness) is COMPLETE via PR #256 (2026-06-11). Rung 7 (non-owner paid loop) is unblocked — open a rung-7 issue before starting.",
+  "user_system_path": "Issue #251 active — rung-7 foundation hardening (Vercel env, build-CI reliability, auth posture). #249 COMPLETE PR #257 merged 2026-06-11. #226 COMPLETE PR #256 merged 2026-06-11.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md and the active issue before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate.",
   "terminal_state_authority": {
@@ -48,18 +48,18 @@
     "supabase/migrations/**",
     "next.config.mjs"
   ],
-  "allowed_files_raw": "Active seam: issue #249 winner selection. scoreOpenLoops wired as permanent right-now source; risk_score and due_confidence computed from signals in rows; briefing scorer, workday-presence model, work-packets. Pool: 99 scorable rows, future=1.",
-  "forbidden_files_raw": "No dashboard UI, no start/try/pricing pages, no acquisition agents, no Stripe, no schema migrations, no next.config changes, no new connectors, no non-owner proof.",
+  "allowed_files_raw": "Active seam: issue #251 foundation hardening. Vercel env audit, build/CI assessment, Supabase auth advisor documentation. Control files: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, lib/config/required-env.ts.",
+  "forbidden_files_raw": "No dashboard UI, no start/try/pricing pages, no acquisition agents, no Stripe, no schema migrations, no next.config changes, no new connectors, no non-owner proof, no auth-options.ts rewrite, no #244, no #246.",
   "required_local_proof": [
     "npm run gate:continuity",
     "npm run lint",
     "npm run build"
   ],
-  "required_browser_proof": "Required — run scripts/verify-self-loop.mjs against production after wiring scoreOpenLoops as permanent path. Winner must be state_source='scored_winner', not recency fallback.",
-  "acceptance_condition": "scoreOpenLoops is the permanent right-now winner source (no recency fallback); risk_score and due_confidence are computed (not flat 0/0.5); verify-self-loop.mjs PASS against production; gate:continuity/lint/build green.",
-  "stop_condition": "Stop when #249 has a durable proof receipt showing scorer-path winner with non-flat risk_score/due_confidence. Next seam: rung 7 issue (non-owner paid loop).",
-  "is_user_facing": true,
-  "browser_proof_command": "CRON_SECRET=<secret> node scripts/verify-self-loop.mjs https://www.foldera.ai",
+  "required_browser_proof": "Not required for #251 — audit seam, no user-facing behavior change.",
+  "acceptance_condition": "All Vercel required env vars confirmed present; build/CI ENOENT confirmed stale; Supabase auth advisors documented with dashboard action receipt; gate:continuity/lint/build green.",
+  "stop_condition": "Stop when #251 has a durable proof receipt of env/build/auth audit findings and a GitHub PR. Next seam: rung 7 issue (non-owner paid loop).",
+  "is_user_facing": false,
+  "browser_proof_command": "not applicable — audit seam",
   "anti_regression_checks": [
     "issue #249 is COMPLETE — scorer-winner invariant enforced in selectSourceBackedRightNowState; PR #257 merged 2026-06-11",
     "issue #226 is COMPLETE — rung-6 owner-path readiness proven via PR #256",
