@@ -1,11 +1,11 @@
 {
   "authority_status": "PRODUCT_MVP_PIVOT_ACTIVE",
   "active": true,
-  "active_issue": 259,
+  "active_issue": 262,
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
   "base_commit": "b0de76d",
-  "money_loop_rung": "rung_7_active_259",
-  "user_system_path": "Issue #259 active — rung 7 non-owner paid loop. #251 COMPLETE PR #258 merged b0de76d. #249 COMPLETE PR #257. #226 COMPLETE PR #256.",
+  "money_loop_rung": "rung_8_active_262",
+  "user_system_path": "Issue #262 active — rung 8 trigger-runner. #259 COMPLETE 2026-06-12 (mechanical non-owner loop proof). #251 COMPLETE PR #258 merged b0de76d. #249 COMPLETE PR #257. #226 COMPLETE PR #256.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md and the active issue before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate.",
   "terminal_state_authority": {

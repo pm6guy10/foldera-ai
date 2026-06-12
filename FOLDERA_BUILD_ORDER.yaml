@@ -21,11 +21,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 259
+active_issue: 262
 priority_class: ACTIVE
 work_type: PRODUCT_CORE
-why_this_first: Rung-7 — prove non-owner paid loop end-to-end. PR #261 merged 3c401a4. Browser proof pending.
-next_seam: rung 8 — first non-owner validation (one person not Brandon names concrete value)
+why_this_first: Rung-8 — frequent trigger-runner, live Slack ping on intervention. #259 rung-7 COMPLETE 2026-06-12.
+next_seam: rung 9 — organic non-owner validation (one person not Brandon names concrete value)
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
@@ -64,12 +64,14 @@ launch_ladder:
     evidence: all 3 sub-proofs done 2026-06-11; Gmail + Microsoft sign-in both working; Slack self-loop PASS with state_source='scored_winner'; proof receipt https://github.com/pm6guy10/foldera-ai/issues/226#issuecomment-4685107461
   - rung: 7
     name: Prove money-ready MVP end to end — non-owner paid loop
-    status: ACTIVE
+    status: COMPLETE
     issue: 259
-    pr: 261
-    pr_merge_sha: 3c401a4
+    pr: 264
+    pr_merge_sha: 3963b51
     completion_criteria: non-owner user completes full loop from onboard to one paid action with durable receipt; forbidden until rung 6 (issue #226) is proven
-    proof_status: PR merged — browser proof pending (verify-non-owner-loop.mjs must pass 5/5)
+    proof_type: mechanical non-owner pipe proof (per user decision 2026-06-12)
+    proof_receipt: https://github.com/pm6guy10/foldera-ai/issues/259#issuecomment-4692374168
+    evidence: Gmail+Microsoft synced (1275 signals); scorer SAFE_SILENCE on real data; pipe-test card delivered; tkg_actions receipt c48ad06c written; schema fix (presence_action constraint) applied 2026-06-12
   - rung: 8
     name: Frequent trigger-runner → live Slack ping on intervention (event-driven, not a brief)
     status: PENDING
