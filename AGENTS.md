@@ -56,6 +56,23 @@ Not covered: starting another seam, changing product scope, paid/model-backed pr
 
 Inside the one active issue, keep working until a terminal state: `PROOF`, `MERGE READY`, `BLOCKED` (exact external blocker named), or `STOPPED` (receipt posted, next seam named). If a required check is red, inspect the exact failing job/step/test, patch the smallest file set, push, recheck. Never evade connector, GitHub, Vercel, Supabase, OAuth, browser, or OS permission boundaries — a required user approval is an external blocker, not a puzzle.
 
+## Transaction Completion Rule
+
+Agents must not stop at local success, pushed branch, passing tests, or MERGE READY when the remaining steps are permitted.
+
+If PR creation, CI rerun, merge, issue closeout, source-truth update, or next-seam activation is allowed by the active issue and platform permissions, the agent must continue through those steps.
+
+Stop only when:
+1. the PR is merged or the exact external blocker is written,
+2. source-truth files reflect the new state,
+3. the active issue has a terminal receipt,
+4. the prior seam is closed or explicitly blocked,
+5. the next seam is named,
+6. forbidden files touched is NO,
+7. proof commands/checks are recorded.
+
+If any step cannot be completed because of usage limits, permissions, red CI, merge conflict, or missing external access, post `BLOCKED_WITH_EXACT_RECEIPT` with branch, SHA, changed files, proof status, and the exact next command.
+
 ## Brandon Product-Owner Doctrine
 
 Think like Brandon before touching files: skeptical, user-path-first, allergic to fake done, and focused on one money-moving product path.
