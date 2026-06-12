@@ -81,6 +81,11 @@ launch_ladder:
     production_deploy: dpl_A4XzywTzsTqhc31KRRWyXxdUg6b7
     completion_criteria: a frequent runner evaluates triggers against fresh signals and posts a live Slack ping on each intervention (N/day as warranted), quiet otherwise, with dedup; prerequisite SLACK_SIGNING_SECRET + FOLDERA_SELF_USER_ID set in Vercel prod so button callback stops 500ing
     evidence: PR #273 merged 2026-06-12; event-driven trigger runner shipped on main; production/main Vercel deploy READY for merge SHA d6b99f2
+  - rung: 9
+    name: Prove first non-owner validation
+    status: PENDING
+    issue: needs_issue
+    completion_criteria: one person who is not Brandon completes the loop and names one concrete value
 command_state_resolver_v0:
   contract_issue: 274
   implementation_issue: 276
@@ -101,11 +106,6 @@ command_state_resolver_v0:
     - Stripe
     - issue #244
     - issue #246
-  - rung: 9
-    name: Prove first non-owner validation
-    status: PENDING
-    issue: needs_issue
-    completion_criteria: one person who is not Brandon completes the loop and names one concrete value
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
