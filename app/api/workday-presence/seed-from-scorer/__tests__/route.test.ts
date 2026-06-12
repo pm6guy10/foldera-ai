@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextResponse } from 'next/server';
 
-const mockResolveCronUser = vi.fn();
+const mockResolveAnyUser = vi.fn();
 const mockScoreOpenLoops = vi.fn();
 const mockGetUserById = vi.fn();
 const mockUpdateUserById = vi.fn();
 
 vi.mock('@/lib/auth/resolve-user', () => ({
-  resolveCronUser: mockResolveCronUser,
+  resolveAnyUser: mockResolveAnyUser,
 }));
 
 vi.mock('@/lib/briefing/scorer', () => ({
@@ -53,14 +53,14 @@ describe('POST /api/workday-presence/seed-from-scorer', () => {
   });
 
   it('returns 401 when cron secret is missing/invalid', async () => {
-    mockResolveCronUser.mockReturnValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
+    mockResolveAnyUser.mockReturnValue(NextResponse.json({ error: 'Unauthorized' }, { status: 401 }));
     const { POST } = await import('../route');
     const response = await POST(new Request('http://localhost/api/workday-presence/seed-from-scorer', { method: 'POST' }));
     expect(response.status).toBe(401);
   });
 
   it('returns seeded=false when scorer finds no winner', async () => {
-    mockResolveCronUser.mockReturnValue({ userId: OWNER_ID });
+    mockResolveAnyUser.mockReturnValue({ userId: OWNER_ID });
     mockScoreOpenLoops.mockResolvedValue({
       outcome: 'no_valid_action',
       winner: null,
@@ -77,7 +77,7 @@ describe('POST /api/workday-presence/seed-from-scorer', () => {
   });
 
   it('seeds state from winner and returns seeded=true', async () => {
-    mockResolveCronUser.mockReturnValue({ userId: OWNER_ID });
+    mockResolveAnyUser.mockReturnValue({ userId: OWNER_ID });
     mockScoreOpenLoops.mockResolvedValue({
       outcome: 'winner_selected',
       winner: MOCK_WINNER,
@@ -98,7 +98,7 @@ describe('POST /api/workday-presence/seed-from-scorer', () => {
   });
 
   it('calls scoreOpenLoops with pipelineDryRun=true', async () => {
-    mockResolveCronUser.mockReturnValue({ userId: OWNER_ID });
+    mockResolveAnyUser.mockReturnValue({ userId: OWNER_ID });
     mockScoreOpenLoops.mockResolvedValue({
       outcome: 'no_valid_action',
       winner: null,
