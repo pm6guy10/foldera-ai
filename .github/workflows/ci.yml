@@ -225,25 +225,23 @@ jobs:
             runtime=true
           fi
 
-          # Smoke runs when something public-facing / shell-level changed, or
-          # when CI itself changed (so we verify the workflow still green-lights
-          # a trivial change). Backend-only app/api churn should not pay the
-          # public-route smoke cost.
+          # Smoke runs when something public-facing / shell-level changed.
+          # Backend-only app/api churn and workflow-only changes should not pay
+          # the public-route smoke cost.
           needs_smoke=false
           if is_true "$PUBLIC_ROUTES" || is_true "$DEPS" \
-             || is_true "$CI_CHANGED" || is_true "$E2E_CONFIG"; then
+             || is_true "$E2E_CONFIG"; then
             needs_smoke=true
           fi
 
           # Authenticated/flow runs when dashboard, deps, tests, or test config
-          # changed — not for marketing-only diffs and NOT for payments-only diffs
-          # (those get the targeted `e2e-payments` lane below). PAYMENTS was
-          # deliberately removed from this gate: stripe-only churn no longer pays
-          # the full 60–90s flow lane cost.
+          # changed — not for marketing-only diffs, workflow-only changes, and
+          # NOT for payments-only diffs (those get the targeted `e2e-payments`
+          # lane below). PAYMENTS was deliberately removed from this gate:
+          # stripe-only churn no longer pays the full 60–90s flow lane cost.
           needs_authenticated=false
           if is_true "$DASHBOARD_ROUTES" \
-             || is_true "$DEPS" || is_true "$TESTS" || is_true "$E2E_CONFIG" \
-             || is_true "$CI_CHANGED"; then
+             || is_true "$DEPS" || is_true "$TESTS" || is_true "$E2E_CONFIG"; then
             needs_authenticated=true
           fi
 
