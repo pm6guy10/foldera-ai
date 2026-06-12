@@ -22,7 +22,11 @@ export type RightNowMessageAction = {
 
 export type RightNowMessagePayload = {
   kind: 'right_now';
-  mode: RightNowCard['mode'];
+  /**
+   * 'dismissed' exists only on this Slack message layer — the dashboard card
+   * union (RightNowCard) stays setup|active so other surfaces are unaffected.
+   */
+  mode: RightNowCard['mode'] | 'dismissed';
   text: string;
   actions: RightNowMessageAction[];
 };
@@ -41,7 +45,6 @@ function formatSourceTrail(state: WorkdayPresenceState | null): string {
 
 function formatCardText(card: RightNowCard, state: WorkdayPresenceState | null): string {
   if (card.mode === 'setup') return card.prompt;
-  if (card.mode === 'dismissed') return card.text;
 
   const lines: string[] = [
     card.heading,
@@ -74,6 +77,16 @@ function cardActions(
 }
 
 export function buildRightNowMessagePayload(state: WorkdayPresenceState | null): RightNowMessagePayload {
+  const lastInteraction = state?.interaction_history[state.interaction_history.length - 1] ?? null;
+  if (state && lastInteraction?.interaction_type === 'dismiss') {
+    return {
+      kind: 'right_now',
+      mode: 'dismissed',
+      text: 'Dismissed. Staying quiet until something new matters.',
+      actions: [],
+    };
+  }
+
   const card = buildRightNowCard(state);
 
   return {

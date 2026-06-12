@@ -83,10 +83,6 @@ export type RightNowCard =
       prompt: 'What are you trying to move forward today?';
     }
   | {
-      mode: 'dismissed';
-      text: string;
-    }
-  | {
       mode: 'active';
       heading: 'Right now.';
       return_here: string;
@@ -241,13 +237,6 @@ export function buildRightNowCard(state: WorkdayPresenceState | null): RightNowC
   }
 
   const lastInteraction = state.interaction_history[state.interaction_history.length - 1] ?? null;
-  if (lastInteraction?.interaction_type === 'dismiss') {
-    return {
-      mode: 'dismissed',
-      text: 'Dismissed. Staying quiet until something new matters.',
-    };
-  }
-
   const resumedMove = state.last_completed_step
     ? `Resume from: ${state.last_completed_step}. Then ${state.next_move}`
     : state.next_move;
