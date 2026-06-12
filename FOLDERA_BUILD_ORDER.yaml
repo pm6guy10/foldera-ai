@@ -21,11 +21,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
-priority_class: BETWEEN_RUNGS
-work_type: PENDING_ACTIVATION
-why_this_first: Issue #276 is COMPLETE — Command State Resolver v0 merged via PR #279 (e848d01). Rung 9 is next but its GitHub issue does not exist yet; activation is owner-gated.
-next_seam: rung 9 — prove first non-owner validation; create its issue (owner permission required) and activate it in all three control files before any further work
+active_issue: 281
+priority_class: ACTIVE
+work_type: VALIDATION
+why_this_first: Rungs 1-8 and the resolver seams are complete and live. The ladder's next rung is organic non-owner validation — issue #281, created and activated on explicit owner authorization 2026-06-12.
+next_seam: after rung 9, the recorded implementation candidate is wiring Command State Resolver v0 into the live loop (no runtime surface consumes it yet) — owner sequencing call
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
@@ -83,9 +83,10 @@ launch_ladder:
     evidence: PR #273 merged 2026-06-12; event-driven trigger runner shipped on main; production/main Vercel deploy READY for merge SHA d6b99f2
   - rung: 9
     name: Prove first non-owner validation
-    status: PENDING
-    issue: needs_issue
-    completion_criteria: one person who is not Brandon completes the loop and names one concrete value
+    status: ACTIVE
+    issue: 281
+    completion_criteria: one person who is not Brandon completes the loop and names one concrete value; mechanical pipe proofs do not satisfy this rung
+    external_dependency: terminal proof is human-gated — a real non-Brandon validator
 command_state_resolver_v0:
   contract_issue: 274
   implementation_issue: 276
