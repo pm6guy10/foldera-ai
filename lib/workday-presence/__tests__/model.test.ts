@@ -69,14 +69,16 @@ describe('workday presence model', () => {
     }
   });
 
-  it('supports one-prompt setup by deriving next_move and why_it_matters', () => {
+  it('supports one-prompt setup by deriving next_move and the manual-anchor re-entry reason', () => {
     const state = buildStateFromPrompt({
       prompt: 'Ship the renewal decision packet',
     }, '2026-05-19T15:00:00.000Z');
 
     expect(state.current_focus).toBe('Ship the renewal decision packet');
     expect(state.next_move).toContain('Ship the renewal decision packet');
-    expect(state.why_it_matters).toContain('Ship the renewal decision packet');
+    expect(state.why_it_matters).toBe(
+      'Foldera will hold this as your re-entry point until connected work proves a clearer move.',
+    );
     expect(state.created_at).toBe('2026-05-19T15:00:00.000Z');
     expect(state.updated_at).toBe('2026-05-19T15:00:00.000Z');
   });
