@@ -1,11 +1,11 @@
 {
   "authority_status": "PRODUCT_MVP_PIVOT_ACTIVE",
   "active": true,
-  "active_issue": "none",
+  "active_issue": 281,
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
-  "base_commit": "e848d01",
-  "money_loop_rung": "between_rungs_rung_9_pending_activation",
-  "user_system_path": "Issue #276 COMPLETE — Command State Resolver v0 merged via PR #279 (e848d01). Between rungs: rung 9 (first non-owner validation) needs its issue created and activated before any further work.",
+  "base_commit": "13581bf",
+  "money_loop_rung": "rung_9_first_non_owner_validation_281",
+  "user_system_path": "Issue #281 active — rung-9 organic non-owner validation. Agent verifies the non-owner loop is mechanically ready and prepares the validation ask; the terminal named-value proof is human-gated.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md and the active issue before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate.",
   "terminal_state_authority": {
@@ -24,24 +24,33 @@
     "docs/**",
     "scripts/**",
     "tests/**",
-    ".github/**"
+    ".github/**",
+    "app/api/**",
+    "lib/**"
   ],
   "forbidden_file_patterns": [
-    "app/**",
+    "app/dashboard/**",
+    "app/start/**",
+    "app/try/**",
+    "app/pricing/**",
+    "app/api/slack/**",
     "components/**",
-    "lib/**",
+    "lib/acquisition/**",
+    "lib/slack/**",
+    "lib/slack-test-mode/**",
+    "lib/stripe/**",
     "supabase/migrations/**",
     "next.config.mjs"
   ],
-  "allowed_files_raw": "Between rungs: only source-truth control files, docs, gates/tests/scripts, and GitHub receipts may change. No implementation surface is open until rung 9 is activated as the single active seam.",
-  "forbidden_files_raw": "No implementation while between rungs. No dashboard UI, no start/try/pricing pages, no connector work, no Slack changes, no acquisition agents, no Stripe, no migrations, no #244, no #246, no reopening #259 or #276, no broad governance cleanup.",
+  "allowed_files_raw": "Active seam: issue #281 rung-9 non-owner validation. Backend surfaces (app/api/**, lib/**) are open ONLY for smallest-correct repairs when readiness verification proves a break in the already-proven non-owner loop, each repair with proof. Control files, docs, scripts, tests, and GitHub receipts for readiness verification and the validation ask are open.",
+  "forbidden_files_raw": "No new product surface. No dashboard UI, no start/try/pricing pages, no Slack surfaces (owner-only lane is not the rung-9 path), no acquisition agents, no Stripe, no migrations, no new connectors, no #244, no #246, no resolver wiring (recorded post-rung-9 candidate), no broad cleanup. No paid tests without owner approval. No outbound sends by default.",
   "required_local_proof": [
     "npm run gate:continuity",
     "git diff --check"
   ],
-  "required_browser_proof": "Not required. This is a between-rungs source-truth state; proof is the merged #276 closeout plus control-file parity.",
-  "acceptance_condition": "Issue #276 is closed COMPLETED with a durable receipt, all three control files agree on the between-rungs state (active_issue none), and rung 9 is named as the next seam pending owner-gated issue creation.",
-  "stop_condition": "Stop when the #276 closeout is merged with receipts posted. Remain stopped until the owner creates (or explicitly authorizes creating) the rung-9 issue and activates it in all three control files.",
+  "required_browser_proof": "Not required for readiness verification. If a repair touches a live user path, prove that path per AGENTS.md proof doctrine before merge.",
+  "acceptance_condition": "One real non-owner completes the loop with a durable receipt row and names one concrete value, recorded as a proof receipt on issue #281; rung 9 marked COMPLETE in FOLDERA_BUILD_ORDER.yaml with evidence.",
+  "stop_condition": "Stop when the rung-9 readiness receipt and validation ask are posted on issue #281 and the human validator is the only remaining dependency (BLOCKED on external human), or when the named-value proof lands and rung 9 closes MERGED_AND_CLOSED.",
   "is_user_facing": false,
   "anti_regression_checks": [
     "issue #276 is COMPLETE — Command State Resolver v0 merged via PR #279 (e848d01); the verdict surface is closed to exactly MERGE_READY/FIX_FIRST/WAIT/CLEAR and weak truth collapses to CLEAR",
@@ -50,11 +59,12 @@
     "issue #231 is COMPLETE — work-state purity merged via PR #232",
     "issue #220 is COMPLETE — rung 5 live proof passed",
     "issue #262 must stay event-driven — not a daily brief or dashboard summary",
+    "rung 9 requires a human — mechanical pipe proofs were #259 and do not satisfy it",
     "root markdown file count is bounded by gate:continuity (MAX 8)",
     "a new governance rule may only be added by editing an existing keep-list file",
     "trusted class requires outbound evidence — inbound volume alone yields unclassified",
     "personal class is sticky and salience-capped",
     "acquisition/growth agents are quarantined (default OFF) until owner re-enables"
   ],
-  "next_command": "Owner: create the rung-9 issue (Rung 9: prove first non-owner validation — one non-Brandon human completes the loop and names one concrete value), then activate it in ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, and .foldera-contract.json."
+  "next_command": "Verify the non-owner loop is mechanically ready (presence state, signal freshness, receipt path — free truth reads, IDs/counts/booleans only), post the readiness receipt and exact validation ask on issue #281, then hand the ask to the first non-Brandon validator."
 }

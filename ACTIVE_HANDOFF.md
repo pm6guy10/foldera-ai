@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-12 PT (#276 COMPLETE — Command State Resolver v0 merged via PR #279; between rungs, rung 9 needs its issue)
+Last updated: 2026-06-12 PT (rung 9 activated as issue #281 on explicit owner authorization; #276 COMPLETE)
 
 ## Boot
 
@@ -9,30 +9,28 @@ Last updated: 2026-06-12 PT (#276 COMPLETE — Command State Resolver v0 merged 
 
 ## Active command gate
 
-No active seam. Command state is between rungs until rung 9 is activated.
-Issue #276 is COMPLETE — Command State Resolver v0 backend verdict object merged via PR #279 (`e848d01`) on 2026-06-12.
+Issue #281 is the active validation seam.
+Issue #276 is COMPLETE — Command State Resolver v0 merged via PR #279 (`e848d01`); closeout PR #280 (`13581bf`); both production deploys READY on foldera.ai.
 Issue #274 is COMPLETE — resolver contract locked in source truth 2026-06-12 (PR #277, `7c6cc1a`).
-Issue #262 is COMPLETE — PR #273 merged `d6b99f2`; production deploy `dpl_A4XzywTzsTqhc31KRRWyXxdUg6b7` READY.
+Issue #262 is COMPLETE — PR #273 merged `d6b99f2`; event-driven trigger runner live.
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
-One active seam only — the count is zero right now, on purpose.
+One active seam only.
 
-**Next seam: rung 9 — prove first non-owner validation. Its GitHub issue does not exist yet (`issue: needs_issue` in `FOLDERA_BUILD_ORDER.yaml`).**
-Owner action required: create (or explicitly authorize an agent to create) the rung-9 issue, then activate it in all three control files.
+**Active seam: issue #281 — Rung 9: prove first non-owner validation.**
+One person who is not Brandon completes the loop and names one concrete value.
 
 ## Current slice:
 
-Between rungs. No implementation is authorized.
-Rung 9 completion criteria: one person who is not Brandon completes the loop and names one concrete value. Mechanical pipe proofs do not satisfy it (that was #259).
-Forbidden until rung 9 activates: any implementation, dashboard/UI, new connectors, Stripe, #244, #246.
+Issue #281: rung-9 organic non-owner validation.
+- Terminal proof is human-gated: a real non-owner completes the loop (source connected → justified intervention or honest quiet → one-click response → durable receipt) and names one concrete value in their own words.
+- Agent-side scope: verify the non-owner path is mechanically ready (free truth reads — IDs/counts/booleans only), smallest-correct repairs inside the proven loop when verification exposes a break, prepare the exact validation ask.
+- Mechanical pipe proofs do NOT satisfy this rung (that was #259).
+Forbidden: new product surface, dashboard/UI redesign, new connectors, Slack card redesign, Stripe, #244, #246, paid tests without owner approval, outbound sends by default.
 
 ## #276 closeout record
 
-Command State Resolver v0: one pure backend resolver (`lib/workday-presence/command-state-resolver.ts`) collapses saved workday presence state into exactly one of four verdicts: `MERGE_READY`, `FIX_FIRST`, `WAIT`, `CLEAR`.
-- Conservative precedence: snooze > named blocker > prepared draft > external wait > honest CLEAR.
-- Weak truth never produces action verdicts: scored winner without a draft → CLEAR; label-only draft → CLEAR; malformed state → CLEAR. WAIT/CLEAR are real wins.
-- `resolveCommandStateForUser` reads the same auth-metadata state row the trigger-runner uses — connected truth, no parallel store.
-- Proof: 19/19 resolver contract tests · 66/66 workday-presence suite · gate:continuity · lint · build · 53-gate pre-push · CI green.
-- PR #279 merged `e848d01` (2026-06-12). Issue #276 closed COMPLETED.
+Command State Resolver v0: `lib/workday-presence/command-state-resolver.ts` collapses saved presence state into exactly one of four verdicts: `MERGE_READY`, `FIX_FIRST`, `WAIT`, `CLEAR`. Precedence: snooze > named blocker > prepared draft > external wait > honest CLEAR; weak truth never produces action verdicts. Proof: 19/19 contract tests · 66/66 suite · all gates · CI green. Receipt: https://github.com/pm6guy10/foldera-ai/issues/276#issuecomment-4694521189
+Not yet consumed by any runtime surface — wiring it into the live loop is the natural implementation seam after rung 9 (owner sequencing call; recorded in #136).
 
 ## Product doctrine
 
@@ -49,7 +47,7 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-Owner: create the rung-9 issue — "Rung 9: prove first non-owner validation" (one non-Brandon human completes the loop, gets a durable receipt row, and names one concrete value in their own words) — then activate it as the single active seam in `ACTIVE_HANDOFF.md`, `FOLDERA_BUILD_ORDER.yaml`, and `.foldera-contract.json`. Agent issue-creation was permission-denied 2026-06-12, so this step is owner-gated.
+Verify the non-owner loop is mechanically ready for the rung-9 human (presence state, signal freshness, receipt path — free truth reads only), post the readiness receipt plus the exact validation ask on issue #281, then hand the ask to the first non-Brandon validator. Their named-value receipt closes the rung.
 
 ## Prior closeout records (condensed; GitHub receipts + git history are the archive)
 
