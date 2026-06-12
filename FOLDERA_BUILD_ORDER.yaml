@@ -91,7 +91,7 @@ owner_operator_pass:
   issue: 284
   status: ACTIVE
   mandate: full A-to-Z pass on explicit owner authorization 2026-06-12 — close the gap between the Bible's first money-moving journey and the shipped product, multi-PR campaign, merge-through when green
-  current_slice: PR B / G3 — wire Command State Resolver v0 into the live dashboard loop with a trusted verdict line and honest quiet/hold behavior
+  current_slice: PR B / G3 implemented on PR #287 (`3b3721a`) — blocked on GitHub writeback/merge access while the commit still shows `Vercel` pending and Codex GitHub write actions are usage-limit rejected
   completed_prs:
     - pr: 286
       merge_sha: cf8860f

@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-12 PT (PR A / G1+G2 merged under issue #284; PR B / G3 active)
+Last updated: 2026-06-12 PT (PR A / G1+G2 merged under issue #284; PR B / G3 implemented on PR #287 and blocked on GitHub writeback/merge access)
 
 ## Boot
 
@@ -25,11 +25,13 @@ Issue #284 remains the active owner-operator campaign. The audit receipt is post
 - PR A / G1+G2 COMPLETE — PR #286 (`cf8860f`) mounted the presence-first `/dashboard` loop and rewrote the contradictory dashboard browser contracts.
 - External CI note from PR A: the final post-merge Actions run failed only on GitHub artifact-upload storage quota after `Next build` and `unit` both passed. That is platform noise, not an app regression.
 
-PR B / G3 is active:
-- wire Command State Resolver v0 into the live loop
-- return the resolver in `GET /api/workday-presence`
-- render one UI-safe trusted verdict line on the card
-- prevent the dashboard from showing a fake "do this now" move when resolver truth says `WAIT` or `CLEAR`
+PR B / G3 implementation is complete on branch `issue-284-pr-b-resolver-live-loop` and PR #287 (`3b3721a` head):
+- wired Command State Resolver v0 into the live loop
+- returned the resolver in `GET /api/workday-presence`
+- rendered one UI-safe trusted verdict line on the card
+- prevented the dashboard from showing a fake "do this now" move when resolver truth says `WAIT` or `CLEAR`
+- local proof stack passed in full
+- live GitHub blocker: Codex GitHub write actions (`comment`, `auto-merge`) are currently rejected by the platform usage-limit guard, and the only visible commit status is `Vercel` = `pending`
 
 Command State Resolver v0 wiring into the live loop is explicitly authorized (the journey's "one trusted verdict", formerly unconsumed).
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
@@ -53,7 +55,7 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-Finish PR B / G3 on issue #284: resolver-backed `/api/workday-presence` response, trusted verdict line on the dashboard card, honest quiet/hold behavior when resolver truth says `CLEAR` or `WAIT`, full gates, PR, merge-through, receipt, then continue to G4.
+Unblock GitHub writeback for PR #287, post the required `BLOCKED_WITH_EXACT_RECEIPT` / closeout comments on PR #287, issue #284, and issue #136, then either merge PR #287 if checks allow or continue the blocker receipt until `Vercel` settles. After PR #287 is merged, continue to G4.
 
 ## Prior closeout records (condensed; GitHub receipts + git history are the archive)
 
