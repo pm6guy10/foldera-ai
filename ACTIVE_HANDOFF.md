@@ -1,31 +1,30 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-11 PT (#249 COMPLETE — PR #257 merged; between rungs; rung 7 is next)
+Last updated: 2026-06-11 PT (#251 ACTIVE — rung-7 foundation hardening; audit seam)
 
 ## Boot
 
 1. Read this file.
-2. Read the active issue it names (none active — between rungs).
+2. Read the active issue it names (issue #251).
 
 ## Active command gate
 
-No active seam. #249 is COMPLETE — PR #257 merged 2026-06-11.
-Issue #226 (rung-6 owner-path readiness) is **COMPLETE** — all 3 sub-proofs done, PR #256 merged 2026-06-11. Proof receipt: https://github.com/pm6guy10/foldera-ai/issues/226#issuecomment-4685107461
+Issue #251 is the active hardening seam.
+Issue #226 (rung-6 owner-path readiness) is **COMPLETE** — all 3 sub-proofs done, PR #256 merged 2026-06-11.
+Issue #249 (scorer-winner invariant) is COMPLETE — PR #257 merged 2026-06-11.
 Issue #231 (work-state purity) is COMPLETE — merged PR #232 (2026-06-09).
-Rung 5 (issue #220) is COMPLETE — payment path proven live.
-Rung 7 (non-owner paid loop) is **unblocked** — open a rung-7 issue before starting.
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
 One active seam only.
 
 ## Current slice:
 
-Between rungs. No active seam. Next: open rung-7 issue (non-owner paid loop) and assign it here before starting work.
+Issue #251: Rung-7 foundation hardening — Vercel env, build-CI reliability, auth posture.
+Audit findings: (1) All Vercel required env vars present in production. (2) Build/CI ENOENT was one-time 80-push race — stale, single-push builds are clean. (3) Supabase auth: 2 WARN advisors (leaked-password, MFA) — requires Dashboard action by Brandon.
+Forbidden: non-owner paid loop, #244, #246, landing/frontend, schema changes.
 
 ## Product doctrine
 
 Foldera is a Workday Presence Layer: state + connectors + triggers + one intervention; remembers where the user was, decides when to interrupt, gives one next move, lets the user respond with one click, updates state, stays quiet otherwise. No dashboard/task-manager/inbox-summary/chatbot/surveillance drift. Issue #48 and `FOLDERA_MASTER_BIBLE.md` carry product doctrine.
-
-Owner verbiage directive (2026-06-10): cards are "right now" cards, not "morning" cards — interruption is state-change-triggered and as-needed, not once-daily. Verbiage + trigger decoupling is a queued post-#249 seam.
 
 ## GitHub writeback contract
 
@@ -38,7 +37,7 @@ Owner verbiage directive (2026-06-10): cards are "right now" cards, not "morning
 
 ## Next exact move
 
-Open a rung-7 issue (non-owner paid loop — full end-to-end loop from onboard to one paid action with durable receipt). Assign it as the active seam in ACTIVE_HANDOFF.md + FOLDERA_BUILD_ORDER.yaml + .foldera-contract.json before starting work.
+Complete #251 proof: run gate:continuity + lint + build, post GitHub receipt, open PR. After #251 merges: open rung-7 issue (non-owner paid loop) and assign it here before starting work.
 
 ## #249 closeout record
 
