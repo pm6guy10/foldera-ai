@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { resolveAnyUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
+import { resolveCommandState } from '@/lib/workday-presence/command-state-resolver';
+import { buildRightNowCardForLiveLoop } from '@/lib/workday-presence/live-loop-presentation';
 import {
-  buildRightNowCard,
   normalizeWorkdayPresenceState,
   type WorkdayPresenceState,
 } from '@/lib/workday-presence/model';
@@ -38,7 +39,8 @@ export async function GET(request: Request) {
     if (error) throw error;
     const metadata = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
     const state = readStoredState(metadata);
-    return NextResponse.json({ state, card: buildRightNowCard(state) });
+    const resolution = resolveCommandState({ state });
+    return NextResponse.json({ state, resolution, card: buildRightNowCardForLiveLoop(state, resolution) });
   } catch (error: unknown) {
     return apiErrorForRoute(error, 'workday-presence GET');
   }
@@ -86,7 +88,12 @@ export async function PUT(request: Request) {
     });
     if (updateResult.error) throw updateResult.error;
 
-    return NextResponse.json({ state: nextState, card: buildRightNowCard(nextState) });
+    const resolution = resolveCommandState({ state: nextState });
+    return NextResponse.json({
+      state: nextState,
+      resolution,
+      card: buildRightNowCardForLiveLoop(nextState, resolution),
+    });
   } catch (error: unknown) {
     return apiErrorForRoute(error, 'workday-presence PUT');
   }

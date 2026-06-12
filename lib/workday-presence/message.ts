@@ -48,13 +48,16 @@ function formatSourceTrail(state: WorkdayPresenceState | null): string {
 }
 
 function formatCardText(card: RightNowCard, state: WorkdayPresenceState | null): string {
-  if (card.mode === 'setup') return card.prompt;
+  if (card.mode === 'setup') {
+    return [card.prompt, card.verdict_line].filter(Boolean).join('\n');
+  }
 
   const lines: string[] = [
     card.heading,
     card.return_here,
     card.next_move,
     card.why_this_matters,
+    ...(card.verdict_line ? [card.verdict_line] : []),
     formatSourceTrail(state),
   ];
   if (card.draft_expanded) {

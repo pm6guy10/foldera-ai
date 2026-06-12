@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-12 PT (owner authorized the A-to-Z pass as issue #284; #281 demoted to external validation dependency)
+Last updated: 2026-06-12 PT (PR A / G1+G2 merged under issue #284; PR B / G3 active)
 
 ## Boot
 
@@ -21,8 +21,17 @@ Owner mandate (2026-06-12): full-app pass, multi-PR campaign, make the money pat
 
 ## Current slice:
 
-Issue #284: audit the full money path (landing → /try → /start → connect → first-run → Right Now loop → receipt → quiet → trial/payment), post the prioritized gap list on the issue, then fix in money-impact order — one coherent PR per fix, full gates each, merge-through when green.
-Command State Resolver v0 wiring into the live loop is explicitly authorized (the journey's "one trusted verdict", currently unconsumed).
+Issue #284 remains the active owner-operator campaign. The audit receipt is posted and PR A is merged:
+- PR A / G1+G2 COMPLETE — PR #286 (`cf8860f`) mounted the presence-first `/dashboard` loop and rewrote the contradictory dashboard browser contracts.
+- External CI note from PR A: the final post-merge Actions run failed only on GitHub artifact-upload storage quota after `Next build` and `unit` both passed. That is platform noise, not an app regression.
+
+PR B / G3 is active:
+- wire Command State Resolver v0 into the live loop
+- return the resolver in `GET /api/workday-presence`
+- render one UI-safe trusted verdict line on the card
+- prevent the dashboard from showing a fake "do this now" move when resolver truth says `WAIT` or `CLEAR`
+
+Command State Resolver v0 wiring into the live loop is explicitly authorized (the journey's "one trusted verdict", formerly unconsumed).
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
 ## #276 closeout record
@@ -44,7 +53,7 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-Run the #284 audit: walk the money path in code and live (landing, /try, /start, connect, first-run dashboard, Right Now loop, receipts, trial/payment), post the prioritized gap list as a durable receipt on issue #284, then start fixing in money-impact order.
+Finish PR B / G3 on issue #284: resolver-backed `/api/workday-presence` response, trusted verdict line on the dashboard card, honest quiet/hold behavior when resolver truth says `CLEAR` or `WAIT`, full gates, PR, merge-through, receipt, then continue to G4.
 
 ## Prior closeout records (condensed; GitHub receipts + git history are the archive)
 

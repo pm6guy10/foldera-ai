@@ -33,18 +33,27 @@ const SETUP_PROMPT = 'What are you trying to move forward today?';
 
 const SETUP_CARD_PAYLOAD = {
   state: null,
-  card: { mode: 'setup', prompt: SETUP_PROMPT },
+  resolution: { verdict: 'CLEAR', rule: 'no_saved_state' },
+  card: {
+    mode: 'setup',
+    prompt: SETUP_PROMPT,
+    verdict_line:
+      'Trusted verdict: No justified move yet. Save one focus and Foldera will hold the re-entry point.',
+  },
 };
 
 function activeCardPayload(overrides: Record<string, unknown> = {}) {
   return {
     state: { current_focus: 'Close ACME renewal decision' },
+    resolution: { verdict: 'CLEAR', rule: 'no_justified_command' },
     card: {
       mode: 'active',
       heading: 'Right now.',
       return_here: 'Return here: Close ACME renewal decision',
       next_move: 'Next move: Send owner confirmation note',
       why_this_matters: 'Why this matters: The renewal window closes at 4 PM PT.',
+      verdict_line:
+        'Trusted verdict: Anchor saved. Foldera will hold this until connected work proves a clearer move.',
       source_line: 'Source: your saved focus. Foldera will stay quiet until something grounded is ready.',
       do_not_touch: null,
       stop_when_done: 'Stop when this is done: Close ACME renewal decision moved forward.',
@@ -213,6 +222,7 @@ describeAuthMocked('Dashboard Right Now loop', () => {
     await page.goto('/dashboard');
 
     await expect(page.getByRole('heading', { name: SETUP_PROMPT })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Trusted verdict: No justified move yet/i)).toBeVisible();
     await expect(page.getByTestId('trust-rail')).toBeVisible();
     await expect(page.getByTestId('trust-rail')).toContainText(/Nothing sends without your explicit approval/i);
     await expect(page.getByRole('link', { name: /^Sources$/ })).toHaveAttribute(
@@ -286,7 +296,28 @@ describeAuthMocked('Dashboard Right Now loop', () => {
     await expect(page.getByRole('button', { name: /^Done$/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Snooze$/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Dismiss$/ })).toBeVisible();
+    await expect(page.getByText(/Trusted verdict: Anchor saved/i)).toBeVisible();
     await expect(page.getByTestId('right-now-card')).not.toContainText(/write the next|smallest (next|concrete) step/i);
+  });
+
+  test('resolver-backed quiet state stays honest instead of inventing a next move', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await setupRightNowMocks(page, {
+      initialCardPayload: activeCardPayload({
+        next_move: 'Next move: Stay quiet until connected work proves something is ready.',
+        verdict_line:
+          'Trusted verdict: Clear right now. Foldera checked the current state and nothing is ready for action yet.',
+        source_line: 'Source: gmail commitment.',
+      }),
+    });
+    await page.goto('/dashboard');
+
+    await expect(page.getByRole('heading', { name: /^Right now\.$/ })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Trusted verdict: Clear right now/i)).toBeVisible();
+    await expect(page.getByTestId('right-now-card')).toContainText(
+      'Next move: Stay quiet until connected work proves something is ready.',
+    );
+    await expect(page.getByTestId('right-now-card')).not.toContainText('Send owner confirmation note');
   });
 
   test('prepared draft surfaces View Draft and expands the artifact in place', async ({ page }) => {

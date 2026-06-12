@@ -81,6 +81,7 @@ export type RightNowCard =
   | {
       mode: 'setup';
       prompt: 'What are you trying to move forward today?';
+      verdict_line: string | null;
     }
   | {
       mode: 'active';
@@ -88,6 +89,7 @@ export type RightNowCard =
       return_here: string;
       next_move: string;
       why_this_matters: string;
+      verdict_line: string | null;
       source_line: string;
       do_not_touch: string | null;
       stop_when_done: string;
@@ -276,6 +278,7 @@ export function buildRightNowCard(state: WorkdayPresenceState | null): RightNowC
     return {
       mode: 'setup',
       prompt: 'What are you trying to move forward today?',
+      verdict_line: null,
     };
   }
 
@@ -306,6 +309,7 @@ export function buildRightNowCard(state: WorkdayPresenceState | null): RightNowC
     return_here: `Return here: ${state.current_focus}`,
     next_move: `Next move: ${blockedMove}`,
     why_this_matters: `Why this matters: ${state.why_it_matters}`,
+    verdict_line: null,
     source_line: buildSourceLine(state),
     do_not_touch: state.do_not_touch ? `Do not touch: ${state.do_not_touch}` : null,
     stop_when_done: stopWhenDone,
