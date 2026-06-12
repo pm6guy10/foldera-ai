@@ -1,26 +1,41 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-12 PT (#259 ACTIVE — PR #264 merged 3963b51; browser proof pending)
+Last updated: 2026-06-12 PT (#259 COMPLETE — mechanical non-owner loop proven; rung 8 is next seam)
 
 ## Boot
 
 1. Read this file.
-2. Read the active issue it names (issue #259).
+2. Read the active issue it names.
 
 ## Active command gate
 
-Issue #259 is the active rung-7 seam.
-PR #264 merged 3963b51 (2026-06-12); browser proof pending. Right Now card now requires a prepared object (artifact-backed acceptance standard), not a scored winner alone.
+Issue #259 is COMPLETE — rung-7 mechanical non-owner loop proven 2026-06-12. Proof receipt: https://github.com/pm6guy10/foldera-ai/issues/259#issuecomment-4692374168
 Issue #251 (rung-7 foundation hardening) is COMPLETE — PR #258 merged b0de76d (2026-06-11).
 Issue #226 (rung-6 owner-path readiness) is COMPLETE — PR #256 merged 2026-06-11.
 Issue #249 (scorer-winner invariant) is COMPLETE — PR #257 merged 2026-06-11.
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
 One active seam only.
 
+**Next seam: rung 8 — issue #262 (frequent trigger-runner → live Slack ping on intervention).**
+Open issue #262 and assign it as the active seam before starting work.
+
 ## Current slice:
 
-Issue #259: Rung 7 — prove non-owner paid loop (onboard → connect source → receive card → one action → durable receipt).
-Forbidden: #244, #246, dashboard/frontend polish, schema migrations beyond loop requirements, governance cleanup.
+Issue #262: Rung 8 — frequent trigger-runner, live Slack ping on each intervention (event-driven, not a brief).
+Forbidden: #244, #246, dashboard/frontend polish, governance cleanup, reopening #259.
+
+## #259 closeout record
+
+Proof type: mechanical non-owner pipe proof (per user decision 2026-06-12).
+- Non-owner account: b.kapp1010@gmail.com / `2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f`
+- Gmail + Microsoft connected, 1,275 real signals synced (128 pre-key-fix ciphertext signals deleted as corrupted-data cleanup)
+- Scorer exercised on real data → honest SAFE_SILENCE (`no_valid_action`)
+- Pipe-test card delivered via `GET /api/slack/test-mode/right-now`
+- Interaction fired via `POST /api/slack/test-mode/interaction { action_id: "dismiss" }`
+- Durable receipt written: tkg_actions id=`c48ad06c`, action_type=`presence_action`, action_source=`workday_presence`, status=`draft_rejected`
+- Schema fix: `tkg_actions_action_type_check` constraint was missing `presence_action` — fixed via migration 2026-06-12
+- Proof receipt: https://github.com/pm6guy10/foldera-ai/issues/259#issuecomment-4692374168
+- Future organic source-backed pilot validation is a separate product-validation seam. NOT reopen criteria for #259.
 
 ## Product doctrine
 
@@ -37,17 +52,7 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-Browser proof for #259. PR #264 merged (3963b51). Code is in main. Remaining:
-
-1. Sign up with a non-owner Google account on https://www.foldera.ai
-2. Connect Gmail (OAuth)
-3. Trigger `POST /api/cron/sync-google` with CRON_SECRET → tkg_signals rows for non-owner user_id
-4. `POST /api/workday-presence/seed-from-scorer` with non-owner browser session → workday_presence_state seeded
-5. `GET /api/slack/test-mode/right-now` → card appears
-6. `POST /api/slack/test-mode/interaction { action_id: "done" }` → loop closed
-7. Run `SUPABASE_URL=<url> SUPABASE_SERVICE_ROLE_KEY=<key> node scripts/verify-non-owner-loop.mjs <non-owner-user-id>` → 5/5 PASS
-8. Post proof receipt to issue #259
-9. Update ACTIVE_HANDOFF.md + FOLDERA_BUILD_ORDER.yaml + .foldera-contract.json → rung-7 COMPLETE, next seam rung 8
+Rung 8: issue #262 (frequent trigger-runner). Open it and assign as active seam in ACTIVE_HANDOFF.md + FOLDERA_BUILD_ORDER.yaml + .foldera-contract.json before starting work.
 
 ## #249 closeout record
 
