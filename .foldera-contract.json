@@ -31,6 +31,7 @@
     ".github/**",
     "package.json",
     "package-lock.json",
+    "lib/auth/**",
     "lib/briefing/**",
     "lib/work-packets/**",
     "lib/workday-presence/**",
@@ -50,7 +51,7 @@
     "supabase/migrations/**",
     "next.config.mjs"
   ],
-  "allowed_files_raw": "Active seam: issue #259 rung-7 non-owner paid loop. lib/workday-presence/**, lib/briefing/**, lib/work-packets/**, lib/slack/**, lib/slack-test-mode/**, app/api/workday-presence/**, app/api/slack/**, scripts/**, tests/**, control files. lib/slack lanes added 2026-06-12 per owner instruction: card button contract (View Draft/Dismiss) is part of the loop's card delivery.",
+  "allowed_files_raw": "Active seam: issue #259 rung-7 non-owner paid loop. lib/auth/** added 2026-06-12 for resolveAnyUser x-as-user-id override (non-owner script proof). lib/workday-presence/**, lib/briefing/**, lib/work-packets/**, lib/slack/**, lib/slack-test-mode/**, app/api/workday-presence/**, app/api/slack/**, scripts/**, tests/**, control files.",
   "forbidden_files_raw": "No dashboard UI, no start/try/pricing pages, no acquisition agents, no Stripe changes, no schema migrations beyond loop requirements, no next.config changes, no #244, no #246, no governance cleanup.",
   "required_local_proof": [
     "npm run gate:continuity",
