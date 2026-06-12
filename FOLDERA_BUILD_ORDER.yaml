@@ -21,11 +21,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 262
+active_issue: 274
 priority_class: ACTIVE
-work_type: PRODUCT_CORE
-why_this_first: Rung-8 — frequent trigger-runner, live Slack ping on intervention. #259 rung-7 COMPLETE 2026-06-12.
-next_seam: rung 9 — organic non-owner validation (one person not Brandon names concrete value)
+work_type: SOURCE_TRUTH
+why_this_first: Close out merged rung-8 issue #262 cleanly, then activate Command State Resolver v0 as source truth before any further implementation.
+next_seam: rung 9 remains pending after issue #274; organic non-owner validation stays blocked until the resolver seam is authorized and complete
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
@@ -74,9 +74,13 @@ launch_ladder:
     evidence: Gmail+Microsoft synced (1275 signals); scorer SAFE_SILENCE on real data; pipe-test card delivered; tkg_actions receipt c48ad06c written; schema fix (presence_action constraint) applied 2026-06-12
   - rung: 8
     name: Frequent trigger-runner → live Slack ping on intervention (event-driven, not a brief)
-    status: PENDING
+    status: COMPLETE
     issue: 262
+    pr: 273
+    pr_merge_sha: d6b99f2
+    production_deploy: dpl_A4XzywTzsTqhc31KRRWyXxdUg6b7
     completion_criteria: a frequent runner evaluates triggers against fresh signals and posts a live Slack ping on each intervention (N/day as warranted), quiet otherwise, with dedup; prerequisite SLACK_SIGNING_SECRET + FOLDERA_SELF_USER_ID set in Vercel prod so button callback stops 500ing
+    evidence: PR #273 merged 2026-06-12; event-driven trigger runner shipped on main; production/main Vercel deploy READY for merge SHA d6b99f2
   - rung: 9
     name: Prove first non-owner validation
     status: PENDING

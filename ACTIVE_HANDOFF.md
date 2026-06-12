@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-12 PT (#259 COMPLETE — mechanical non-owner loop proven; rung 8 is next seam)
+Last updated: 2026-06-12 PT (#262 COMPLETE — PR #273 merged d6b99f2; Command State Resolver v0 source-truth seam is next)
 
 ## Boot
 
@@ -9,7 +9,8 @@ Last updated: 2026-06-12 PT (#259 COMPLETE — mechanical non-owner loop proven;
 
 ## Active command gate
 
-Issue #262 is the active rung-8 seam.
+Issue #274 is the active source-truth seam.
+Issue #262 is COMPLETE — PR #273 merged d6b99f2 on 2026-06-12. Production/main Vercel deploy `dpl_A4XzywTzsTqhc31KRRWyXxdUg6b7` is READY for merge SHA `d6b99f2`.
 Issue #259 is COMPLETE — rung-7 mechanical non-owner loop proven 2026-06-12. Proof receipt: https://github.com/pm6guy10/foldera-ai/issues/259#issuecomment-4692374168
 Issue #251 (rung-7 foundation hardening) is COMPLETE — PR #258 merged b0de76d (2026-06-11).
 Issue #226 (rung-6 owner-path readiness) is COMPLETE — PR #256 merged 2026-06-11.
@@ -17,13 +18,14 @@ Issue #249 (scorer-winner invariant) is COMPLETE — PR #257 merged 2026-06-11.
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
 One active seam only.
 
-**Next seam: rung 8 — issue #262 (frequent trigger-runner → live Slack ping on intervention).**
-Open issue #262 and assign it as the active seam before starting work.
+**Next seam: issue #274 — Command State Resolver v0 source-truth activation only.**
+Open issue #274 and keep the work source-truth-only before any implementation starts.
 
 ## Current slice:
 
-Issue #262: Rung 8 — frequent trigger-runner, live Slack ping on each intervention (event-driven, not a brief).
-Forbidden: #244, #246, dashboard/frontend polish, governance cleanup, reopening #259.
+Issue #274: Command State Resolver v0 source-truth activation only.
+Verdict object contract: `MERGE_READY`, `FIX_FIRST`, `WAIT`, `CLEAR`.
+Forbidden: implementation before authorization, #244, #246, dashboard/frontend polish, governance cleanup, reopening #259, new connectors, Stripe.
 
 ## #259 closeout record
 
@@ -53,7 +55,7 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-Rung 8: issue #262 (frequent trigger-runner). Open it and assign as active seam in ACTIVE_HANDOFF.md + FOLDERA_BUILD_ORDER.yaml + .foldera-contract.json before starting work.
+Read issue #274 and keep the next seam source-truth-only in `ACTIVE_HANDOFF.md`, `FOLDERA_BUILD_ORDER.yaml`, and `.foldera-contract.json`. Do not start Command State Resolver implementation yet.
 
 ## #249 closeout record
 
