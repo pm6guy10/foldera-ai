@@ -1,11 +1,11 @@
 {
   "authority_status": "PRODUCT_MVP_PIVOT_ACTIVE",
   "active": true,
-  "active_issue": 251,
+  "active_issue": 259,
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
-  "base_commit": "ac8b15e",
-  "money_loop_rung": "rung_6_complete_rung_7_unblocked_249_complete",
-  "user_system_path": "Issue #251 active — rung-7 foundation hardening (Vercel env, build-CI reliability, auth posture). #249 COMPLETE PR #257 merged 2026-06-11. #226 COMPLETE PR #256 merged 2026-06-11.",
+  "base_commit": "b0de76d",
+  "money_loop_rung": "rung_7_active_259",
+  "user_system_path": "Issue #259 active — rung 7 non-owner paid loop. #251 COMPLETE PR #258 merged b0de76d. #249 COMPLETE PR #257. #226 COMPLETE PR #256.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md and the active issue before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate.",
   "terminal_state_authority": {
@@ -48,18 +48,18 @@
     "supabase/migrations/**",
     "next.config.mjs"
   ],
-  "allowed_files_raw": "Active seam: issue #251 foundation hardening. Vercel env audit, build/CI assessment, Supabase auth advisor documentation. Control files: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, lib/config/required-env.ts.",
-  "forbidden_files_raw": "No dashboard UI, no start/try/pricing pages, no acquisition agents, no Stripe, no schema migrations, no next.config changes, no new connectors, no non-owner proof, no auth-options.ts rewrite, no #244, no #246.",
+  "allowed_files_raw": "Active seam: issue #259 rung-7 non-owner paid loop. lib/workday-presence/**, lib/briefing/**, lib/work-packets/**, app/api/workday-presence/**, app/api/slack/**, scripts/**, tests/**, control files.",
+  "forbidden_files_raw": "No dashboard UI, no start/try/pricing pages, no acquisition agents, no Stripe changes, no schema migrations beyond loop requirements, no next.config changes, no #244, no #246, no governance cleanup.",
   "required_local_proof": [
     "npm run gate:continuity",
     "npm run lint",
     "npm run build"
   ],
-  "required_browser_proof": "Not required for #251 — audit seam, no user-facing behavior change.",
-  "acceptance_condition": "All Vercel required env vars confirmed present; build/CI ENOENT confirmed stale; Supabase auth advisors documented with dashboard action receipt; gate:continuity/lint/build green.",
-  "stop_condition": "Stop when #251 has a durable proof receipt of env/build/auth audit findings and a GitHub PR. Next seam: rung 7 issue (non-owner paid loop).",
-  "is_user_facing": false,
-  "browser_proof_command": "not applicable — audit seam",
+  "required_browser_proof": "Required — non-owner must complete full loop with durable receipt in DB.",
+  "acceptance_condition": "Non-owner user row exists; signal ingested; workday_presence_state seeded via scoreOpenLoops; card delivered; tkg_actions row with approved/dismissed status for non-owner user_id; gate:continuity/lint/build green.",
+  "stop_condition": "Stop when #259 has durable proof receipt of non-owner completing the full loop. Next seam: rung 8 (first non-owner validation).",
+  "is_user_facing": true,
+  "browser_proof_command": "Non-owner account sign-up + connector + card + action — manual proof required",
   "anti_regression_checks": [
     "issue #249 is COMPLETE — scorer-winner invariant enforced in selectSourceBackedRightNowState; PR #257 merged 2026-06-11",
     "issue #226 is COMPLETE — rung-6 owner-path readiness proven via PR #256",
