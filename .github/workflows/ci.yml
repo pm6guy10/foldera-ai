@@ -225,11 +225,12 @@ jobs:
             runtime=true
           fi
 
-          # Smoke runs when anything public-facing / shell-level changed, or
+          # Smoke runs when something public-facing / shell-level changed, or
           # when CI itself changed (so we verify the workflow still green-lights
-          # a trivial change).
+          # a trivial change). Backend-only app/api churn should not pay the
+          # public-route smoke cost.
           needs_smoke=false
-          if is_true "$PUBLIC_ROUTES" || is_true "$APP" || is_true "$DEPS" \
+          if is_true "$PUBLIC_ROUTES" || is_true "$DEPS" \
              || is_true "$CI_CHANGED" || is_true "$E2E_CONFIG"; then
             needs_smoke=true
           fi
