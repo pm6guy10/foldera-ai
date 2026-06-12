@@ -1,11 +1,11 @@
 {
   "authority_status": "PRODUCT_MVP_PIVOT_ACTIVE",
   "active": true,
-  "active_issue": 276,
+  "active_issue": "none",
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
-  "base_commit": "b6ee882",
-  "money_loop_rung": "command_state_resolver_v0_impl_276",
-  "user_system_path": "Issue #274 COMPLETE — Command State Resolver v0 source-truth contract locked. Issue #276 active — backend-only Command State Resolver v0 implementation seam.",
+  "base_commit": "e848d01",
+  "money_loop_rung": "between_rungs_rung_9_pending_activation",
+  "user_system_path": "Issue #276 COMPLETE — Command State Resolver v0 merged via PR #279 (e848d01). Between rungs: rung 9 (first non-owner validation) needs its issue created and activated before any further work.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md and the active issue before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate.",
   "terminal_state_authority": {
@@ -24,50 +24,37 @@
     "docs/**",
     "scripts/**",
     "tests/**",
-    ".github/**",
-    "app/api/**",
-    "lib/**"
+    ".github/**"
   ],
   "forbidden_file_patterns": [
-    "app/dashboard/**",
-    "app/start/**",
-    "app/try/**",
-    "app/pricing/**",
-    "app/api/google/**",
-    "app/api/microsoft/**",
-    "app/api/slack/**",
+    "app/**",
     "components/**",
-    "lib/acquisition/**",
-    "lib/slack/**",
-    "lib/slack-test-mode/**",
-    "lib/stripe/**",
+    "lib/**",
     "supabase/migrations/**",
     "next.config.mjs"
   ],
-  "allowed_files_raw": "Active seam: issue #276 Command State Resolver v0 backend implementation. Allowed surfaces are backend-only `app/api/**`, `lib/**`, focused tests/scripts/docs, and control files needed to implement one verdict object with the four allowed outputs.",
-  "forbidden_files_raw": "No dashboard UI, no start/try/pricing pages, no Google/Microsoft/Slack connector work, no Slack card redesign, no acquisition agents, no Stripe changes, no new connectors, no #244, no #246, no reopening #259, no broad governance cleanup, no daily-brief reframing.",
+  "allowed_files_raw": "Between rungs: only source-truth control files, docs, gates/tests/scripts, and GitHub receipts may change. No implementation surface is open until rung 9 is activated as the single active seam.",
+  "forbidden_files_raw": "No implementation while between rungs. No dashboard UI, no start/try/pricing pages, no connector work, no Slack changes, no acquisition agents, no Stripe, no migrations, no #244, no #246, no reopening #259 or #276, no broad governance cleanup.",
   "required_local_proof": [
     "npm run gate:continuity",
-    "npm run lint",
-    "npm run build",
     "git diff --check"
   ],
-  "required_browser_proof": "Not required by default for the first backend-only resolver seam unless the implementation issue later adds a live-path requirement.",
-  "acceptance_condition": "Issue #276 implements one backend Command State Resolver v0 verdict object with exactly four allowed outputs (`MERGE_READY`, `FIX_FIRST`, `WAIT`, `CLEAR`) and keeps backend proof green without UI or connector drift.",
-  "stop_condition": "Stop when issue #276 has a PR with backend verdict proof, or stop BLOCKED with the exact implementation blocker.",
+  "required_browser_proof": "Not required. This is a between-rungs source-truth state; proof is the merged #276 closeout plus control-file parity.",
+  "acceptance_condition": "Issue #276 is closed COMPLETED with a durable receipt, all three control files agree on the between-rungs state (active_issue none), and rung 9 is named as the next seam pending owner-gated issue creation.",
+  "stop_condition": "Stop when the #276 closeout is merged with receipts posted. Remain stopped until the owner creates (or explicitly authorizes creating) the rung-9 issue and activates it in all three control files.",
   "is_user_facing": false,
   "anti_regression_checks": [
+    "issue #276 is COMPLETE — Command State Resolver v0 merged via PR #279 (e848d01); the verdict surface is closed to exactly MERGE_READY/FIX_FIRST/WAIT/CLEAR and weak truth collapses to CLEAR",
     "issue #249 is COMPLETE — scorer-winner invariant enforced in selectSourceBackedRightNowState; PR #257 merged 2026-06-11",
     "issue #226 is COMPLETE — rung-6 owner-path readiness proven via PR #256",
     "issue #231 is COMPLETE — work-state purity merged via PR #232",
     "issue #220 is COMPLETE — rung 5 live proof passed",
     "issue #262 must stay event-driven — not a daily brief or dashboard summary",
-    "issue #274 locked the resolver contract; issue #276 must implement it without UI or connector drift",
     "root markdown file count is bounded by gate:continuity (MAX 8)",
     "a new governance rule may only be added by editing an existing keep-list file",
     "trusted class requires outbound evidence — inbound volume alone yields unclassified",
     "personal class is sticky and salience-capped",
     "acquisition/growth agents are quarantined (default OFF) until owner re-enables"
   ],
-  "next_command": "Read issue #276 and implement the backend-only Command State Resolver v0 verdict object with exactly four allowed outputs: `MERGE_READY`, `FIX_FIRST`, `WAIT`, `CLEAR`."
+  "next_command": "Owner: create the rung-9 issue (Rung 9: prove first non-owner validation — one non-Brandon human completes the loop and names one concrete value), then activate it in ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, and .foldera-contract.json."
 }

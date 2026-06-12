@@ -21,11 +21,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 276
-priority_class: ACTIVE
-work_type: PRODUCT_CORE
-why_this_first: Issue #274 locked the Command State Resolver v0 contract in source truth. The next seam is the backend-only implementation issue #276.
-next_seam: rung 9 remains pending after issue #276; organic non-owner validation stays blocked until the resolver verdict seam is implemented and proven
+active_issue: none
+priority_class: BETWEEN_RUNGS
+work_type: PENDING_ACTIVATION
+why_this_first: Issue #276 is COMPLETE — Command State Resolver v0 merged via PR #279 (e848d01). Rung 9 is next but its GitHub issue does not exist yet; activation is owner-gated.
+next_seam: rung 9 — prove first non-owner validation; create its issue (owner permission required) and activate it in all three control files before any further work
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
@@ -89,7 +89,10 @@ launch_ladder:
 command_state_resolver_v0:
   contract_issue: 274
   implementation_issue: 276
-  status: IMPLEMENTATION_NEXT
+  status: IMPLEMENTED
+  implementation_pr: 279
+  pr_merge_sha: e848d01
+  evidence: pure resolver in lib/workday-presence/command-state-resolver.ts; 19/19 contract tests; weak truth collapses to CLEAR, never to action verdicts; merged 2026-06-12 with CI green
   allowed_verdicts:
     - MERGE_READY
     - FIX_FIRST
