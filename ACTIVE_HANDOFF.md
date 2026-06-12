@@ -9,6 +9,7 @@ Last updated: 2026-06-12 PT (#259 COMPLETE — mechanical non-owner loop proven;
 
 ## Active command gate
 
+Issue #262 is the active rung-8 seam.
 Issue #259 is COMPLETE — rung-7 mechanical non-owner loop proven 2026-06-12. Proof receipt: https://github.com/pm6guy10/foldera-ai/issues/259#issuecomment-4692374168
 Issue #251 (rung-7 foundation hardening) is COMPLETE — PR #258 merged b0de76d (2026-06-11).
 Issue #226 (rung-6 owner-path readiness) is COMPLETE — PR #256 merged 2026-06-11.
