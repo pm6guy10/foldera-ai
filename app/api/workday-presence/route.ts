@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { resolveUser } from '@/lib/auth/resolve-user';
+import { resolveAnyUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import {
   buildRightNowCard,
@@ -29,7 +29,7 @@ function readStoredState(metadata: Record<string, unknown> | null | undefined): 
 }
 
 export async function GET(request: Request) {
-  const auth = await resolveUser(request);
+  const auth = await resolveAnyUser(request);
   if (auth instanceof NextResponse) return auth;
 
   try {
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const auth = await resolveUser(request);
+  const auth = await resolveAnyUser(request);
   if (auth instanceof NextResponse) return auth;
 
   try {
