@@ -31,10 +31,6 @@
     {
       "path": "/api/cron/morning-pipeline",
       "schedule": "0 11 * * *"
-    },
-    {
-      "path": "/api/cron/workday-presence-trigger-runner",
-      "schedule": "*/15 * * * *"
     }
   ]
 }

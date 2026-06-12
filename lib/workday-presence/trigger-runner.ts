@@ -4,9 +4,12 @@ import {
 } from '@/lib/connectors/test-mode/evidence-adapters';
 import {
   buildSlackRightNowMessage,
+  createLiveSlackAdapter,
+  requireSlackChannel,
   type SlackAdapter,
   type SlackSendResult,
 } from '@/lib/slack/right-now';
+import { createServerClient } from '@/lib/db/client';
 import { normalizeWorkdayPresenceState, type WorkdayPresenceState } from './model';
 import {
   evaluateWorkdayPresenceTrigger,
@@ -32,6 +35,10 @@ export type WorkdayPresenceTriggerRunnerResult = {
   slack_result: SlackSendResult | null;
   fresh_event_count: number;
 };
+
+export type MaybeTriggerRunnerResult =
+  | { started: false; reason: string }
+  | ({ started: true; user_id: string } & WorkdayPresenceTriggerRunnerResult);
 
 function clean(value: unknown): string | null {
   if (typeof value !== 'string') return null;
@@ -211,6 +218,76 @@ export function normalizeWorkdayPresenceTriggerRunnerCursor(
     last_trigger_key: clean(row.last_trigger_key),
     last_pinged_at: clean(row.last_pinged_at),
     last_run_at: clean(row.last_run_at),
+  };
+}
+
+function requireTriggerRunnerEnv() {
+  const ownerUserId = process.env.FOLDERA_SELF_USER_ID?.trim();
+  const signingSecret = process.env.SLACK_SIGNING_SECRET?.trim();
+  const slackBotToken = process.env.SLACK_BOT_TOKEN?.trim();
+  const channel = requireSlackChannel();
+
+  if (!ownerUserId) throw new Error('Missing FOLDERA_SELF_USER_ID for workday presence trigger-runner');
+  if (!signingSecret) throw new Error('Missing SLACK_SIGNING_SECRET for workday presence trigger-runner');
+  if (!slackBotToken) throw new Error('Missing SLACK_BOT_TOKEN for workday presence trigger-runner');
+
+  return {
+    ownerUserId,
+    signingSecret,
+    slackBotToken,
+    channel,
+  };
+}
+
+export async function maybeRunWorkdayPresenceTriggerRunnerForUser(
+  userId: string,
+): Promise<MaybeTriggerRunnerResult> {
+  const { ownerUserId, channel, slackBotToken } = requireTriggerRunnerEnv();
+  if (userId !== ownerUserId) {
+    return { started: false, reason: 'non_owner_user' };
+  }
+
+  const supabase = createServerClient();
+  const { data, error } = await supabase.auth.admin.getUserById(userId);
+  if (error) throw error;
+
+  const metadata = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
+  const cursor = normalizeWorkdayPresenceTriggerRunnerCursor(
+    metadata.workday_presence_trigger_runner,
+  );
+  const signalWindowStart =
+    cursor.last_signal_cursor ??
+    new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+
+  const { data: signals, error: signalsError } = await supabase
+    .from('tkg_signals')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('ingested_at', signalWindowStart)
+    .order('ingested_at', { ascending: false })
+    .limit(50);
+  if (signalsError) throw signalsError;
+
+  const result = await runWorkdayPresenceTriggerRunner({
+    channel,
+    cursor,
+    signals: Array.isArray(signals) ? signals : [],
+    slack: createLiveSlackAdapter(slackBotToken),
+    state: metadata.workday_presence_state,
+  });
+
+  const updateResult = await supabase.auth.admin.updateUserById(userId, {
+    user_metadata: {
+      ...metadata,
+      workday_presence_trigger_runner: result.cursor,
+    },
+  });
+  if (updateResult.error) throw updateResult.error;
+
+  return {
+    started: true,
+    user_id: userId,
+    ...result,
   };
 }
 

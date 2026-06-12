@@ -39,6 +39,8 @@
     "lib/slack/**",
     "lib/slack-test-mode/**",
     "app/api/workday-presence/**",
+    "app/api/google/sync-now/**",
+    "app/api/microsoft/sync-now/**",
     "app/api/slack/**",
     "app/api/cron/**"
   ],
@@ -53,7 +55,7 @@
     "supabase/migrations/**",
     "next.config.mjs"
   ],
-  "allowed_files_raw": "Active seam: issue #262 rung-8 frequent trigger-runner. Reuse lib/workday-presence/**, lib/slack/**, lib/slack-test-mode/**, lib/briefing/**, app/api/workday-presence/**, app/api/slack/**, app/api/cron/**, scripts/**, tests/**, and control files for the smallest live Slack intervention runner.",
+  "allowed_files_raw": "Active seam: issue #262 rung-8 event-driven trigger-runner. Reuse lib/workday-presence/**, lib/slack/**, lib/slack-test-mode/**, lib/briefing/**, app/api/workday-presence/**, app/api/google/sync-now/**, app/api/microsoft/sync-now/**, app/api/slack/**, app/api/cron/**, scripts/**, tests/**, and control files for the smallest live Slack intervention runner.",
   "forbidden_files_raw": "No dashboard UI, no start/try/pricing pages, no acquisition agents, no Stripe changes, no new connectors, no next.config changes, no #244, no #246, no reopening #259, no broad governance cleanup, no daily-brief reframing.",
   "required_local_proof": [
     "npm run gate:continuity",
@@ -61,7 +63,7 @@
     "npm run build"
   ],
   "required_browser_proof": "Not required for this seam. Live proof is runner-fire plus Slack chat.postMessage evidence on a real intervention, with quiet and dedup staying silent.",
-  "acceptance_condition": "A frequent runner evaluates real fresh signals for issue #262, posts one live Slack ping on intervention, stays quiet on no-op, suppresses unchanged triggers on the next run, and keeps gate:continuity/lint/build green.",
+  "acceptance_condition": "An event-driven runner evaluates real fresh signals for issue #262, posts one live Slack ping on intervention, stays quiet on no-op, suppresses unchanged triggers on the next run, and keeps gate:continuity/lint/build green.",
   "stop_condition": "Stop when #262 has a PR with proof for intervention, quiet no-op, and dedup suppression, plus a receipt posted to issue #262; or stop BLOCKED with the exact missing Vercel envs required for the live Slack loop.",
   "is_user_facing": true,
   "browser_proof_command": "Non-owner account sign-up + connector + card + action — manual proof required",
@@ -77,5 +79,5 @@
     "personal class is sticky and salience-capped",
     "acquisition/growth agents are quarantined (default OFF) until owner re-enables"
   ],
-  "next_command": "Implement the smallest frequent trigger-runner for issue #262: evaluate real fresh signals, post one live Slack ping on intervention, post nothing on quiet, dedup unchanged triggers, and keep the framing event-driven rather than a daily brief."
+  "next_command": "Implement the smallest event-driven trigger-runner for issue #262: evaluate real fresh signals, post one live Slack ping on intervention, post nothing on quiet, dedup unchanged triggers, and keep the framing event-driven rather than a daily brief."
 }

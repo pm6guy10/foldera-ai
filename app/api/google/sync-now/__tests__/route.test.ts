@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const getServerSession = vi.fn();
 const syncGoogle = vi.fn();
 const rateLimit = vi.fn();
+const maybeRunWorkdayPresenceTriggerRunnerForUser = vi.fn();
 
 vi.mock('next-auth', () => ({
   getServerSession,
@@ -14,6 +15,10 @@ vi.mock('@/lib/auth/auth-options', () => ({
 
 vi.mock('@/lib/sync/google-sync', () => ({
   syncGoogle,
+}));
+
+vi.mock('@/lib/workday-presence/trigger-runner', () => ({
+  maybeRunWorkdayPresenceTriggerRunnerForUser,
 }));
 
 vi.mock('@/lib/utils/rate-limit', () => ({
@@ -99,6 +104,36 @@ describe('POST /api/google/sync-now', () => {
         maxLookbackMs: 7 * 24 * 60 * 60 * 1000,
       }),
     );
+  });
+
+  it('fires the trigger-runner helper when fresh signals were ingested', async () => {
+    syncGoogle.mockResolvedValue({
+      gmail_signals: 1,
+      calendar_signals: 2,
+      drive_signals: 0,
+      is_first_sync: false,
+    });
+    const { POST } = await import('../route');
+
+    const response = await POST(new Request('http://localhost/api/google/sync-now', { method: 'POST' }));
+
+    expect(response.status).toBe(200);
+    expect(maybeRunWorkdayPresenceTriggerRunnerForUser).toHaveBeenCalledWith('user-1');
+  });
+
+  it('does not fire the trigger-runner helper when sync ingests no new signals', async () => {
+    syncGoogle.mockResolvedValue({
+      gmail_signals: 0,
+      calendar_signals: 0,
+      drive_signals: 0,
+      is_first_sync: false,
+    });
+    const { POST } = await import('../route');
+
+    const response = await POST(new Request('http://localhost/api/google/sync-now', { method: 'POST' }));
+
+    expect(response.status).toBe(200);
+    expect(maybeRunWorkdayPresenceTriggerRunnerForUser).not.toHaveBeenCalled();
   });
 
   it('returns 400 when Google is not connected', async () => {
