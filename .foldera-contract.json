@@ -1,11 +1,11 @@
 {
   "authority_status": "PRODUCT_MVP_PIVOT_ACTIVE",
   "active": true,
-  "active_issue": 249,
+  "active_issue": "none",
   "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
-  "base_commit": "59dbe4d",
-  "money_loop_rung": "rung_6_complete_rung_7_unblocked",
-  "user_system_path": "Issue #249 (right-now winner selection via scoreOpenLoops; risk_score + due_confidence computation) is the active seam. Issue #226 (rung-6 owner-path readiness) is COMPLETE via PR #256 (2026-06-11). Rung 7 (non-owner paid loop) is now unblocked.",
+  "base_commit": "ac8b15e",
+  "money_loop_rung": "rung_6_complete_rung_7_unblocked_249_complete",
+  "user_system_path": "Between rungs. Issue #249 (right-now scorer-backed selection invariant) is COMPLETE — PR #257 merged 2026-06-11. Issue #226 (rung-6 owner-path readiness) is COMPLETE via PR #256 (2026-06-11). Rung 7 (non-owner paid loop) is unblocked — open a rung-7 issue before starting.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md and the active issue before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate.",
   "terminal_state_authority": {
@@ -61,16 +61,16 @@
   "is_user_facing": true,
   "browser_proof_command": "CRON_SECRET=<secret> node scripts/verify-self-loop.mjs https://www.foldera.ai",
   "anti_regression_checks": [
-    "issue #249 is the active right-now winner selection seam",
+    "issue #249 is COMPLETE — scorer-winner invariant enforced in selectSourceBackedRightNowState; PR #257 merged 2026-06-11",
     "issue #226 is COMPLETE — rung-6 owner-path readiness proven via PR #256",
     "issue #231 is COMPLETE — work-state purity merged via PR #232",
     "issue #220 is COMPLETE — rung 5 live proof passed",
-    "rung 7 non-owner paid loop is unblocked — may proceed after #249",
+    "rung 7 non-owner paid loop is unblocked — open a rung-7 issue before starting",
     "root markdown file count is bounded by gate:continuity (MAX 8)",
     "a new governance rule may only be added by editing an existing keep-list file",
     "trusted class requires outbound evidence — inbound volume alone yields unclassified",
     "personal class is sticky and salience-capped",
     "acquisition/growth agents are quarantined (default OFF) until owner re-enables"
   ],
-  "next_command": "Work issue #249: wire scoreOpenLoops as permanent path for right-now card; compute risk_score and due_confidence from signals in each row; re-run audit after 2AM MS backfill. Post proof receipt."
+  "next_command": "Open rung-7 issue (non-owner paid loop — full end-to-end loop from onboard to one paid action with durable receipt). Assign it as active seam in ACTIVE_HANDOFF.md + FOLDERA_BUILD_ORDER.yaml + .foldera-contract.json before starting work."
 }

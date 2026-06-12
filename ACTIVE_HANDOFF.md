@@ -1,26 +1,25 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-11 PT (#226 COMPLETE — all 3 sub-proofs done, PR #256 merged; active seam is #249)
+Last updated: 2026-06-11 PT (#249 COMPLETE — PR #257 merged; between rungs; rung 7 is next)
 
 ## Boot
 
 1. Read this file.
-2. Read the active issue below.
+2. Read the active issue it names (none active — between rungs).
 
 ## Active command gate
 
-Issue #249 is the active right-now scorer-backed selection seam.
+No active seam. #249 is COMPLETE — PR #257 merged 2026-06-11.
 Issue #226 (rung-6 owner-path readiness) is **COMPLETE** — all 3 sub-proofs done, PR #256 merged 2026-06-11. Proof receipt: https://github.com/pm6guy10/foldera-ai/issues/226#issuecomment-4685107461
 Issue #231 (work-state purity) is COMPLETE — merged PR #232 (2026-06-09).
 Rung 5 (issue #220) is COMPLETE — payment path proven live.
-Rung 7 (non-owner paid loop) is now **unblocked** — #226 is proven.
+Rung 7 (non-owner paid loop) is **unblocked** — open a rung-7 issue before starting.
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
 One active seam only.
 
 ## Current slice:
 
-- Issue #249: wire `scoreOpenLoops` as the permanent right-now winner source; compute `risk_score` and `due_confidence` from signals in the rows; backfill. Pool state going into #249: scorable=99 rows, future=1, next7d=1 ("Homeschool meeting with Deanne Varnum" due 2026-06-12). `risk_score`=0 and `due_confidence`=0.5 on all rows (both flat — that is #249's job). MS mail 2AM backfill will add ~3 weeks of Outlook signals.
-- Forbidden in this seam: non-owner proof, Stripe changes, schema migrations not related to scoring, new connectors, broad cleanup.
+Between rungs. No active seam. Next: open rung-7 issue (non-owner paid loop) and assign it here before starting work.
 
 ## Product doctrine
 
@@ -39,7 +38,14 @@ Owner verbiage directive (2026-06-10): cards are "right now" cards, not "morning
 
 ## Next exact move
 
-Work issue #249: open the issue, read completion criteria, then wire `scoreOpenLoops` as the permanent path for the right-now card (replacing the current recency fallback). Compute `risk_score` and `due_confidence` from signals already in each row. Re-run `node scripts/audit-selection-pool.mjs` after 2AM MS backfill to verify pool freshness before tuning.
+Open a rung-7 issue (non-owner paid loop — full end-to-end loop from onboard to one paid action with durable receipt). Assign it as the active seam in ACTIVE_HANDOFF.md + FOLDERA_BUILD_ORDER.yaml + .foldera-contract.json before starting work.
+
+## #249 closeout record
+
+Invariant: scored winner beats recency — enforced in `selectSourceBackedRightNowState`.
+PR #257 merged 2026-06-11. Merge SHA: ac8b15e.
+Proof: 20/20 vitest pass · gate:continuity pass · lint clean · build clean · 53-gate pre-push pass · CI green.
+Proof receipt: https://github.com/pm6guy10/foldera-ai/issues/249#issuecomment-4686122101
 
 ## #226 closeout record
 

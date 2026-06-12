@@ -21,11 +21,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 249
-priority_class: SCORING_SPINE
+active_issue: none
+priority_class: BETWEEN_RUNGS
 work_type: PRODUCT_CORE
-why_this_first: Issue #226 (rung-6 owner-path readiness) is COMPLETE — all 3 sub-proofs done, PR #256 merged 2026-06-11. Pool state: scorable=99, future=1 ("Homeschool meeting with Deanne Varnum" due 2026-06-12). risk_score=0 / due_confidence=0.5 on all rows — scoring spine unbuilt; that is #249's job.
-next_seam: after #249 is proven — open rung 7 issue (non-owner paid loop)
+why_this_first: Issue #249 (right-now scorer-backed selection invariant) is COMPLETE — PR #257 merged 2026-06-11. Next: open rung-7 issue (non-owner paid loop) and assign it here.
+next_seam: open rung-7 issue (non-owner paid loop) — assign before starting work
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
