@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildRightNowMessagePayload } from '../message';
 import {
   buildRightNowCard,
+  buildStateFromPrompt,
   normalizeWorkdayPresenceState,
   rightNowHasPreparedObject,
 } from '../model';
@@ -102,5 +103,21 @@ describe('Right Now acceptance standard: artifact-backed, not winner-backed', ()
     const active = buildRightNowMessagePayload(artifactBackedState);
     expect(active.text).not.toMatch(SCORER_JARGON);
     expect(active.text).toContain('Send the project update to the team before end of day Tuesday.');
+  });
+
+  it('PROOF 4: a saved manual anchor never defaults to homework wording', () => {
+    const anchored = buildStateFromPrompt({
+      prompt: 'Close ACME renewal decision',
+    });
+
+    expect(anchored.next_move).not.toMatch(SCORER_JARGON);
+    expect(anchored.why_it_matters).not.toMatch(SCORER_JARGON);
+
+    const card = buildRightNowCard(anchored);
+    expect(card.mode).toBe('active');
+    if (card.mode === 'active') {
+      expect(card.next_move).not.toMatch(SCORER_JARGON);
+      expect(card.why_this_matters).not.toMatch(SCORER_JARGON);
+    }
   });
 });

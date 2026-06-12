@@ -88,6 +88,7 @@ export type RightNowCard =
       return_here: string;
       next_move: string;
       why_this_matters: string;
+      source_line: string;
       do_not_touch: string | null;
       stop_when_done: string;
       last_interaction: string | null;
@@ -166,6 +167,20 @@ function normalizeDraft(input: unknown): WorkdayPresenceDraft | null {
     ...(to ? { to } : {}),
     ...(body ? { body } : {}),
   };
+}
+
+function buildSourceLine(state: WorkdayPresenceState): string {
+  if (!state.source_trail.length) {
+    if (state.state_source === 'manual_anchor') {
+      return 'Source: your saved focus. Foldera will stay quiet until something grounded is ready.';
+    }
+    return `Source: ${state.state_source.replace(/_/g, ' ')}.`;
+  }
+
+  const labels = Array.from(
+    new Set(state.source_trail.map((entry) => `${entry.source} ${entry.type}`.trim())),
+  ).slice(0, 2);
+  return `Source: ${labels.join(' + ')}.`;
 }
 
 export function normalizeWorkdayPresenceState(input: unknown): WorkdayPresenceState | null {
@@ -291,6 +306,7 @@ export function buildRightNowCard(state: WorkdayPresenceState | null): RightNowC
     return_here: `Return here: ${state.current_focus}`,
     next_move: `Next move: ${blockedMove}`,
     why_this_matters: `Why this matters: ${state.why_it_matters}`,
+    source_line: buildSourceLine(state),
     do_not_touch: state.do_not_touch ? `Do not touch: ${state.do_not_touch}` : null,
     stop_when_done: stopWhenDone,
     last_interaction: lastInteraction
@@ -310,10 +326,10 @@ export function buildStateFromPrompt(
   const currentFocus = input.prompt.trim();
   const nextMove =
     clean(input.next_move) ??
-    `Write the smallest concrete step that moves "${currentFocus}" forward in the next 25 minutes.`;
+    `Keep "${currentFocus}" moving with the next real action you already trust.`;
   const whyItMatters =
     clean(input.why_it_matters) ??
-    `Moving "${currentFocus}" forward now prevents drift and keeps your workday outcome on track.`;
+    `Foldera will hold this as your re-entry point until connected work proves a clearer move.`;
 
   return {
     current_focus: currentFocus,

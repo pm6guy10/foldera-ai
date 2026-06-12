@@ -89,6 +89,7 @@ describe('GET /api/workday-presence', () => {
     expect(body.card.mode).toBe('active');
     expect(body.card.heading).toBe('Right now.');
     expect(body.card.next_move).toContain('Resume from: Drafted decision context');
+    expect(body.card.source_line).toContain('Source: your saved focus');
     expect(body.card.last_interaction).toContain('Last interaction: done');
   });
 });

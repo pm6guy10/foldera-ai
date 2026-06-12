@@ -73,6 +73,7 @@ describe('POST /api/workday-presence/message-action', () => {
     expect(mockSupabase.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
     expect(body.state.last_completed_step).toBe('Send owner confirmation note');
     expect(body.state.blocker).toBeNull();
+    expect(body.state.next_move).not.toMatch(/write the next|smallest (next|concrete) step/i);
     expect(body.state.interaction_history.at(-1).interaction_type).toBe('done');
   });
 
@@ -188,6 +189,7 @@ describe('POST /api/workday-presence/message-action', () => {
     expect(response.status).toBe(200);
     expect(mockSupabase.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
     expect(body.state.snoozed_until).toBeTruthy();
+    expect(body.state.waiting_on).toMatch(/snoozed/i);
     expect(body.state.interaction_history.at(-1).interaction_type).toBe('snooze');
   });
 });

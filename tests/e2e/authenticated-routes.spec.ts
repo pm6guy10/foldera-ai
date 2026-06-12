@@ -770,60 +770,94 @@ async function setupSignalsPageMocks(page: Page) {
 
 // ── Dashboard tests ─────────────────────────────────────────────────────────
 
-/** Minimal mocks for the void dashboard shell — only session/auth needed. */
-async function setupVoidDashboardMocks(page: Page) {
+/** Minimal mocks for the mounted presence-first dashboard shell. */
+async function setupMountedDashboardMocks(page: Page) {
   await seedAuthenticatedSession(page);
   await attachCheckoutGuards(page);
   await page.route(matchApiPath('/api/auth/session'), fulfillJson(SESSION_RESPONSE));
   await page.route(matchApiPath('/api/auth/csrf'), fulfillJson({ csrfToken: 'mock-csrf-token' }));
   await page.route(matchApiPath('/api/auth/providers'), fulfillJson({ google: {}, 'azure-ad': {} }));
+  await page.route(
+    matchApiPath('/api/integrations/status'),
+    fulfillJson({
+      integrations: [{ provider: 'google', is_active: true, sync_email: 'test@gmail.com' }],
+    }),
+  );
+  await page.route(
+    matchApiPath('/api/workday-presence'),
+    async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: json({
+          state: null,
+          card: { mode: 'setup', prompt: 'What are you trying to move forward today?' },
+        }),
+      }),
+  );
+  await page.route(
+    matchApiPath('/api/workday-presence/message-action'),
+    async (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: json({ state: {}, payload: { kind: 'right_now' } }),
+      }),
+  );
 }
 
 describeAuthMocked('Dashboard /dashboard — authenticated', () => {
-  test('loads void shell heading — desktop', async ({ page }) => {
+  test('loads the presence-first setup card — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await setupVoidDashboardMocks(page);
+    await setupMountedDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: /One next move\./i })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('link', { name: /Go to your sources/i })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /What are you trying to move forward today\?/i }),
+    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('link', { name: /^Sources$/ })).toBeVisible();
   });
 
-  test('primary CTA links to the real sources surface when authenticated', async ({ page }) => {
+  test('header source link points to the real sources surface when authenticated', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await setupVoidDashboardMocks(page);
+    await setupMountedDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: /One next move\./i })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('link', { name: /Go to your sources/i })).toHaveAttribute('href', '/dashboard/settings');
+    await expect(
+      page.getByRole('heading', { name: /What are you trying to move forward today\?/i }),
+    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('link', { name: /^Sources$/ })).toHaveAttribute('href', '/dashboard/settings');
   });
 
-  test('no legacy rich-dashboard components present — desktop', async ({ page }) => {
+  test('no legacy rich-dashboard components or void-shell copy present — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await setupVoidDashboardMocks(page);
+    await setupMountedDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: /One next move\./i })).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.getByRole('heading', { name: /What are you trying to move forward today\?/i }),
+    ).toBeVisible({ timeout: 15000 });
     await expect(page.getByTestId('dashboard-primary-action')).toHaveCount(0);
     await expect(page.getByTestId('dashboard-degraded-state')).toHaveCount(0);
     await expect(page.getByTestId('dashboard-daily-utility-slate')).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Approve$/i })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: /^Skip$/i })).toHaveCount(0);
     await expect(page.getByRole('button', { name: /Approve & send/i })).toHaveCount(0);
+    await expect(page.getByText(/The Right Now \/ Slack buddy path isn't wired/i)).toHaveCount(0);
   });
 
   test('no actionable console errors — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     const errors = collectConsoleErrors(page);
-    await setupVoidDashboardMocks(page);
+    await setupMountedDashboardMocks(page);
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
     expect(errors).toHaveLength(0);
   });
 
-  test('loads void shell heading — mobile 390px', async ({ page }) => {
+  test('loads the presence-first setup card — mobile 390px', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await setupVoidDashboardMocks(page);
+    await setupMountedDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: /One next move\./i })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('link', { name: /Go to your sources/i })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /What are you trying to move forward today\?/i }),
+    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('link', { name: /^Sources$/ })).toBeVisible();
     await expect.poll(async () =>
       page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
     ).toBeLessThanOrEqual(1);
@@ -832,7 +866,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
   test('no actionable console errors — mobile 390px', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     const errors = collectConsoleErrors(page);
-    await setupVoidDashboardMocks(page);
+    await setupMountedDashboardMocks(page);
     await page.goto('/dashboard');
     await page.waitForLoadState('networkidle');
     expect(errors).toHaveLength(0);
@@ -840,9 +874,11 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
 
   test('trust-rail panel renders with no-send promise and manage-sources link', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
-    await setupVoidDashboardMocks(page);
+    await setupMountedDashboardMocks(page);
     await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: /One next move\./i })).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.getByRole('heading', { name: /What are you trying to move forward today\?/i }),
+    ).toBeVisible({ timeout: 15000 });
     const rail = page.getByTestId('trust-rail');
     await expect(rail).toBeVisible();
     await expect(rail).toContainText('Nothing sends without your explicit approval.');

@@ -21,7 +21,8 @@ function applyDone(state: WorkdayPresenceState, nowIso: string): WorkdayPresence
     blocker: null,
     snoozed_until: null,
     last_completed_step: state.next_move,
-    next_move: `Write the next smallest step to move "${state.current_focus}" forward.`,
+    waiting_on: state.waiting_on ?? 'Waiting for the next real change.',
+    next_move: `Hold here until "${state.current_focus}" changes or a clearer move is ready.`,
     updated_at: nowIso,
   };
 }
