@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-12 PT (#281 readiness VERIFIED — validation ask posted; rung 9 blocked only on the human validator)
+Last updated: 2026-06-12 PT (owner authorized the A-to-Z pass as issue #284; #281 demoted to external validation dependency)
 
 ## Boot
 
@@ -9,28 +9,25 @@ Last updated: 2026-06-12 PT (#281 readiness VERIFIED — validation ask posted; 
 
 ## Active command gate
 
-Issue #281 is the active validation seam.
-Issue #276 is COMPLETE — Command State Resolver v0 merged via PR #279 (`e848d01`); closeout PR #280 (`13581bf`); both production deploys READY on foldera.ai.
-Issue #274 is COMPLETE — resolver contract locked in source truth 2026-06-12 (PR #277, `7c6cc1a`).
-Issue #262 is COMPLETE — PR #273 merged `d6b99f2`; event-driven trigger runner live.
+Issue #284 is the active owner-operator seam.
+Issue #281 (rung 9) is an EXTERNAL VALIDATION DEPENDENCY, not a blocker — it stays open and closes when a non-Brandon human completes the loop and names one concrete value. Readiness receipt + validation ask: https://github.com/pm6guy10/foldera-ai/issues/281#issuecomment-4694707092
+Issue #276 is COMPLETE — Command State Resolver v0 merged via PR #279 (`e848d01`); closeout PR #280 (`13581bf`).
+Issue #262 is COMPLETE — event-driven trigger runner live (PR #273, `d6b99f2`).
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
 One active seam only.
 
-**Active seam: issue #281 — Rung 9: prove first non-owner validation.**
-One person who is not Brandon completes the loop and names one concrete value.
+**Active seam: issue #284 — A-to-Z owner-operator pass: close the gap between vision and product.**
+Owner mandate (2026-06-12): full-app pass, multi-PR campaign, make the money path deliver the holy-crap moment to a cold non-owner user with zero narration.
 
 ## Current slice:
 
-Issue #281: rung-9 organic non-owner validation.
-- Terminal proof is human-gated: a real non-owner completes the loop (source connected → justified intervention or honest quiet → one-click response → durable receipt) and names one concrete value in their own words.
-- Agent-side scope: verify the non-owner path is mechanically ready (free truth reads — IDs/counts/booleans only), smallest-correct repairs inside the proven loop when verification exposes a break, prepare the exact validation ask.
-- Mechanical pipe proofs do NOT satisfy this rung (that was #259).
-Forbidden: new product surface, dashboard/UI redesign, new connectors, Slack card redesign, Stripe, #244, #246, paid tests without owner approval, outbound sends by default.
+Issue #284: audit the full money path (landing → /try → /start → connect → first-run → Right Now loop → receipt → quiet → trial/payment), post the prioritized gap list on the issue, then fix in money-impact order — one coherent PR per fix, full gates each, merge-through when green.
+Command State Resolver v0 wiring into the live loop is explicitly authorized (the journey's "one trusted verdict", currently unconsumed).
+Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
 ## #276 closeout record
 
-Command State Resolver v0: `lib/workday-presence/command-state-resolver.ts` collapses saved presence state into exactly one of four verdicts: `MERGE_READY`, `FIX_FIRST`, `WAIT`, `CLEAR`. Precedence: snooze > named blocker > prepared draft > external wait > honest CLEAR; weak truth never produces action verdicts. Proof: 19/19 contract tests · 66/66 suite · all gates · CI green. Receipt: https://github.com/pm6guy10/foldera-ai/issues/276#issuecomment-4694521189
-Not yet consumed by any runtime surface — wiring it into the live loop is the natural implementation seam after rung 9 (owner sequencing call; recorded in #136).
+Command State Resolver v0: `lib/workday-presence/command-state-resolver.ts` — four verdicts (`MERGE_READY`, `FIX_FIRST`, `WAIT`, `CLEAR`), conservative precedence, weak truth collapses to CLEAR. Proof: 19/19 contract tests · 66/66 suite · all gates · CI green. Receipt: https://github.com/pm6guy10/foldera-ai/issues/276#issuecomment-4694521189
 
 ## Product doctrine
 
@@ -47,7 +44,7 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-Readiness is VERIFIED and the validation ask is posted: https://github.com/pm6guy10/foldera-ai/issues/281#issuecomment-4694707092 (non-owner pipeline live — 1,277 signals, freshest 2026-06-12 14:58 UTC; receipt path proven; surface = dashboard Right Now card via resolveAnyUser). The one remaining dependency is human: hand the ask to the first non-Brandon validator. Their one-click receipt row + named value closes the rung. Note: agent reads of `auth.users` are permission-blocked (denied 3×, 2026-06-12); app-table counts are readable.
+Run the #284 audit: walk the money path in code and live (landing, /try, /start, connect, first-run dashboard, Right Now loop, receipts, trial/payment), post the prioritized gap list as a durable receipt on issue #284, then start fixing in money-impact order.
 
 ## Prior closeout records (condensed; GitHub receipts + git history are the archive)
 

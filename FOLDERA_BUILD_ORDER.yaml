@@ -21,11 +21,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 281
+active_issue: 284
 priority_class: ACTIVE
-work_type: VALIDATION
-why_this_first: Rungs 1-8 and the resolver seams are complete and live. The ladder's next rung is organic non-owner validation — issue #281, created and activated on explicit owner authorization 2026-06-12.
-next_seam: after rung 9, the recorded implementation candidate is wiring Command State Resolver v0 into the live loop (no runtime surface consumes it yet) — owner sequencing call
+work_type: OWNER_OPERATOR_PASS
+why_this_first: Owner mandate 2026-06-12 — full A-to-Z product pass so a cold non-owner reaches the holy-crap moment with zero narration. Issue #281 (rung 9) is demoted to an external validation dependency and closes when the human validator lands.
+next_seam: rung 9 (#281) closes on the human validator's named-value receipt; the #284 campaign fixes the product they will meet
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
@@ -83,10 +83,17 @@ launch_ladder:
     evidence: PR #273 merged 2026-06-12; event-driven trigger runner shipped on main; production/main Vercel deploy READY for merge SHA d6b99f2
   - rung: 9
     name: Prove first non-owner validation
-    status: ACTIVE
+    status: EXTERNAL_DEPENDENCY
     issue: 281
     completion_criteria: one person who is not Brandon completes the loop and names one concrete value; mechanical pipe proofs do not satisfy this rung
-    external_dependency: terminal proof is human-gated — a real non-Brandon validator
+    external_dependency: terminal proof is human-gated — a real non-Brandon validator; demoted from active blocker per owner instruction 2026-06-12
+owner_operator_pass:
+  issue: 284
+  status: ACTIVE
+  mandate: full A-to-Z pass on explicit owner authorization 2026-06-12 — close the gap between the Bible's first money-moving journey and the shipped product, multi-PR campaign, merge-through when green
+  authorized_extras:
+    - wiring Command State Resolver v0 into the live loop (the journey's one trusted verdict; currently unconsumed)
+  safety_rails: no outbound sends by default; no paid tests without naming exact cost; acquisition quarantined OFF; no fake claims; one intervention max; safe silence is a win; schema only via committed+applied+verified migrations
 command_state_resolver_v0:
   contract_issue: 274
   implementation_issue: 276
