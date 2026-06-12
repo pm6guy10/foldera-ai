@@ -21,12 +21,14 @@ function actionButtons(actions: RightNowMessageAction[]): SlackTestModeBlock {
 }
 
 export function buildSlackTestModeRightNowMessage(payload: RightNowMessagePayload): SlackTestModeMessage {
+  const blocks: SlackTestModeBlock[] = [
+    { type: 'section', text: { type: 'mrkdwn', text: payload.text } },
+  ];
+  // Mirror live Slack: no actions block when the card takes no button input.
+  if (payload.actions.length > 0) blocks.push(actionButtons(payload.actions));
   return {
     channel: 'test_dm',
-    blocks: [
-      { type: 'section', text: { type: 'mrkdwn', text: payload.text } },
-      actionButtons(payload.actions),
-    ],
+    blocks,
   };
 }
 

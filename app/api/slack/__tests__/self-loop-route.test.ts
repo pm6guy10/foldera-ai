@@ -8,6 +8,7 @@ const mockBadRequest = vi.fn((message: string) =>
   NextResponse.json({ error: message }, { status: 400 }),
 );
 
+const mockInsert = vi.fn();
 const mockSupabase = {
   auth: {
     admin: {
@@ -15,6 +16,7 @@ const mockSupabase = {
       updateUserById: vi.fn(),
     },
   },
+  from: vi.fn().mockReturnValue({ insert: mockInsert }),
 };
 
 const beforeState = {
@@ -75,6 +77,8 @@ describe('real Slack self-loop routes', () => {
       error: null,
     });
     mockSupabase.auth.admin.updateUserById.mockResolvedValue({ data: {}, error: null });
+    mockInsert.mockResolvedValue({ error: null });
+    mockSupabase.from.mockReturnValue({ insert: mockInsert });
   });
 
   it('POST /api/slack/right-now sends one Right Now card through the test-safe adapter when no bot token is present', async () => {
@@ -86,12 +90,8 @@ describe('real Slack self-loop routes', () => {
     expect(body.acknowledged).toBe(true);
     expect(body.live_slack_ready).toBe(false);
     expect(body.slack.mode).toBe('test_safe');
-    expect(body.payload.actions.map((action: { id: string }) => action.id)).toEqual([
-      'done',
-      'stuck',
-      'break_smaller',
-      'snooze',
-    ]);
+    // No draft on this state — only Dismiss renders.
+    expect(body.payload.actions.map((action: { id: string }) => action.id)).toEqual(['dismiss']);
     expect(body.receipt.before_state.next_move).toBe('Send owner confirmation note');
     expect(body.receipt.paid_model_call_required).toBe(false);
     expect(body.receipt.inline_full_state_recompute).toBe(false);
@@ -124,6 +124,49 @@ describe('real Slack self-loop routes', () => {
     expect(serialized).toContain(expected);
     expect(serialized).not.toContain('test-signing-secret');
     expect(mockSupabase.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
+  });
+
+  it('POST /api/slack/interaction dismiss quiets the card and writes a draft_rejected receipt', async () => {
+    const { POST } = await import('../interaction/route');
+    const response = await POST(
+      slackSignedRequest({
+        type: 'block_actions',
+        channel: { id: 'CSELF' },
+        message: { ts: '177.4' },
+        actions: [{ action_id: 'dismiss' }],
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.action_id).toBe('dismiss');
+    expect(body.payload.mode).toBe('dismissed');
+    expect(body.payload.text).toContain('Staying quiet');
+    expect(body.payload.actions).toEqual([]);
+    expect(mockSupabase.from).toHaveBeenCalledWith('tkg_actions');
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(mockInsert.mock.calls[0][0]).toMatchObject({
+      status: 'draft_rejected',
+      action_source: 'workday_presence',
+    });
+  });
+
+  it('POST /api/slack/interaction view_draft re-renders without closing the loop (no terminal receipt)', async () => {
+    const { POST } = await import('../interaction/route');
+    const response = await POST(
+      slackSignedRequest({
+        type: 'block_actions',
+        channel: { id: 'CSELF' },
+        message: { ts: '177.5' },
+        actions: [{ action_id: 'view_draft' }],
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.action_id).toBe('view_draft');
+    expect(body.payload.mode).toBe('active');
+    expect(mockInsert).not.toHaveBeenCalled();
   });
 
   it('blocks Slack interactions when the signing secret is missing', async () => {

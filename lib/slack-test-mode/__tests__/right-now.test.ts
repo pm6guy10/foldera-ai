@@ -9,10 +9,8 @@ describe('slack test-mode right-now message', () => {
       mode: 'active',
       text: 'Right now.\nNext move: Do the thing.',
       actions: [
-        { id: 'done', label: 'Done' },
-        { id: 'stuck', label: 'Stuck' },
-        { id: 'break_smaller', label: 'Break smaller' },
-        { id: 'snooze', label: 'Snooze' },
+        { id: 'view_draft', label: 'View Draft' },
+        { id: 'dismiss', label: 'Dismiss' },
       ],
     };
 
@@ -27,12 +25,21 @@ describe('slack test-mode right-now message', () => {
     expect(actionsBlock.type).toBe('actions');
     if (actionsBlock.type === 'actions') {
       expect(actionsBlock.elements.map((e) => e.action_id)).toEqual([
-        'done',
-        'stuck',
-        'break_smaller',
-        'snooze',
+        'view_draft',
+        'dismiss',
       ]);
     }
+  });
+
+  it('omits the actions block when the payload has no actions', () => {
+    const message = buildSlackTestModeRightNowMessage({
+      kind: 'right_now',
+      mode: 'dismissed',
+      text: 'Dismissed. Staying quiet until something new matters.',
+      actions: [],
+    });
+    expect(message.blocks).toHaveLength(1);
+    expect(message.blocks[0].type).toBe('section');
   });
 });
 

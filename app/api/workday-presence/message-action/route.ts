@@ -7,6 +7,7 @@ import {
 } from '@/lib/workday-presence/model';
 import {
   buildRightNowMessagePayload,
+  RIGHT_NOW_ACTION_IDS,
   type RightNowMessageActionId,
 } from '@/lib/workday-presence/message';
 import {
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
     const payload = (await request.json().catch(() => ({}))) as ActionPayload;
     const actionId = payload.action_id;
     if (!actionId) return badRequest('action_id is required');
-    if (!['done', 'stuck', 'break_smaller', 'snooze'].includes(actionId)) {
+    if (!(RIGHT_NOW_ACTION_IDS as readonly string[]).includes(actionId)) {
       return badRequest('Invalid action_id');
     }
 

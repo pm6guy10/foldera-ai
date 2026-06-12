@@ -14,6 +14,7 @@ import {
 } from '@/lib/workday-presence/actions';
 import { buildRightNowMessagePayload, type RightNowMessageActionId } from '@/lib/workday-presence/message';
 import { normalizeWorkdayPresenceState, type WorkdayPresenceState } from '@/lib/workday-presence/model';
+import { insertPresenceReceipt } from '@/lib/workday-presence/presence-action-receipt';
 import { buildPresenceLoopReceipt } from '@/lib/workday-presence/presence-loop-receipt';
 import { apiErrorForRoute, badRequest } from '@/lib/utils/api-error';
 
@@ -101,6 +102,7 @@ export async function POST(request: Request) {
       nowIso,
     });
     const persistedState = await persistState(userId, metadata, receipt.after_state, interaction.actionId);
+    await insertPresenceReceipt(supabase, userId, interaction.actionId, persistedState);
     const nextPayload = buildRightNowMessagePayload(persistedState);
 
     let updateResult = null;
