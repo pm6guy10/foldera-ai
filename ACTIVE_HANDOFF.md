@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-12 PT (rung 9 activated as issue #281 on explicit owner authorization; #276 COMPLETE)
+Last updated: 2026-06-12 PT (#281 readiness VERIFIED — validation ask posted; rung 9 blocked only on the human validator)
 
 ## Boot
 
@@ -47,7 +47,7 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-Verify the non-owner loop is mechanically ready for the rung-9 human (presence state, signal freshness, receipt path — free truth reads only), post the readiness receipt plus the exact validation ask on issue #281, then hand the ask to the first non-Brandon validator. Their named-value receipt closes the rung.
+Readiness is VERIFIED and the validation ask is posted: https://github.com/pm6guy10/foldera-ai/issues/281#issuecomment-4694707092 (non-owner pipeline live — 1,277 signals, freshest 2026-06-12 14:58 UTC; receipt path proven; surface = dashboard Right Now card via resolveAnyUser). The one remaining dependency is human: hand the ask to the first non-Brandon validator. Their one-click receipt row + named value closes the rung. Note: agent reads of `auth.users` are permission-blocked (denied 3×, 2026-06-12); app-table counts are readable.
 
 ## Prior closeout records (condensed; GitHub receipts + git history are the archive)
 
