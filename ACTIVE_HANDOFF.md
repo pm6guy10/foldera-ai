@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-11 PT (#251 COMPLETE — PR #258 merged b0de76d; #259 active)
+Last updated: 2026-06-12 PT (#259 ACTIVE — PR #261 merged 3c401a4; browser proof pending)
 
 ## Boot
 
@@ -9,8 +9,8 @@ Last updated: 2026-06-11 PT (#251 COMPLETE — PR #258 merged b0de76d; #259 acti
 
 ## Active command gate
 
-Issue #259 is the active rung-7 seam.
-Issue #251 (rung-7 foundation hardening) is COMPLETE — PR #258 merged 2026-06-11.
+Issue #259 is the active rung-7 seam — PR #261 merged 3c401a4 (2026-06-12). Browser proof pending.
+Issue #251 (rung-7 foundation hardening) is COMPLETE — PR #258 merged b0de76d (2026-06-11).
 Issue #226 (rung-6 owner-path readiness) is COMPLETE — PR #256 merged 2026-06-11.
 Issue #249 (scorer-winner invariant) is COMPLETE — PR #257 merged 2026-06-11.
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
@@ -36,7 +36,17 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-Execute issue #259 (rung-7 non-owner paid loop). Read issue #259 before acting. Do not touch #244, #246, or any governance file until #259 is proven.
+Browser proof for #259. PR #261 merged (3c401a4). Code is in main. Remaining:
+
+1. Sign up with a non-owner Google account on https://www.foldera.ai
+2. Connect Gmail (OAuth)
+3. Trigger `POST /api/cron/sync-google` with CRON_SECRET → tkg_signals rows for non-owner user_id
+4. `POST /api/workday-presence/seed-from-scorer` with non-owner browser session → workday_presence_state seeded
+5. `GET /api/slack/test-mode/right-now` → card appears
+6. `POST /api/slack/test-mode/interaction { action_id: "done" }` → loop closed
+7. Run `SUPABASE_URL=<url> SUPABASE_SERVICE_ROLE_KEY=<key> node scripts/verify-non-owner-loop.mjs <non-owner-user-id>` → 5/5 PASS
+8. Post proof receipt to issue #259
+9. Update ACTIVE_HANDOFF.md + FOLDERA_BUILD_ORDER.yaml + .foldera-contract.json → rung-7 COMPLETE, next seam rung 8
 
 ## #249 closeout record
 

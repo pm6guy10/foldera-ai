@@ -24,7 +24,7 @@ accepted_terminal_states:
 active_issue: 259
 priority_class: ACTIVE
 work_type: PRODUCT_CORE
-why_this_first: Rung-7 — prove non-owner paid loop end-to-end. #251 (foundation hardening) COMPLETE PR #258 merged b0de76d.
+why_this_first: Rung-7 — prove non-owner paid loop end-to-end. PR #261 merged 3c401a4. Browser proof pending.
 next_seam: rung 8 — first non-owner validation (one person not Brandon names concrete value)
 required_gate_command: npm run gate:continuity
 paused_issues:
@@ -66,7 +66,10 @@ launch_ladder:
     name: Prove money-ready MVP end to end — non-owner paid loop
     status: ACTIVE
     issue: 259
+    pr: 261
+    pr_merge_sha: 3c401a4
     completion_criteria: non-owner user completes full loop from onboard to one paid action with durable receipt; forbidden until rung 6 (issue #226) is proven
+    proof_status: PR merged — browser proof pending (verify-non-owner-loop.mjs must pass 5/5)
   - rung: 8
     name: Prove first non-owner validation
     status: PENDING
