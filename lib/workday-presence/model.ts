@@ -10,6 +10,20 @@ export type WorkdayPresenceSourceTrailEntry = {
   selection_reason: string;
 };
 
+/**
+ * The finished work product the brain drafted for this move. Present when the
+ * state was seeded from a real generated directive (state_source='scored_winner')
+ * and the generator produced a reviewable artifact. This is what "View Draft" opens.
+ */
+export type WorkdayPresenceDraft = {
+  /** send_message | write_document | make_decision | ... */
+  action_type: string;
+  /** Email subject, document title, or decision frame headline. */
+  title: string;
+  /** Short snippet of the artifact body/content — enough to recognize the draft. */
+  preview: string;
+};
+
 export type WorkdayPresenceState = {
   current_focus: string;
   next_move: string;
@@ -20,6 +34,8 @@ export type WorkdayPresenceState = {
   last_completed_step: string | null;
   state_source: string;
   source_trail: WorkdayPresenceSourceTrailEntry[];
+  /** The drafted artifact behind this move, if the brain produced one. */
+  draft?: WorkdayPresenceDraft | null;
   snoozed_until: string | null;
   interaction_history: Array<{
     interaction_type: 'done' | 'stuck' | 'break_smaller' | 'snooze';
@@ -49,6 +65,8 @@ export type RightNowCard =
       do_not_touch: string | null;
       stop_when_done: string;
       last_interaction: string | null;
+      /** Rendered when the brain drafted a reviewable artifact for this move. */
+      draft_ready: string | null;
     };
 
 export type WorkdayPresenceDraftInput = {
@@ -104,6 +122,20 @@ function normalizeSourceTrail(input: unknown): WorkdayPresenceSourceTrailEntry[]
   return normalized;
 }
 
+function normalizeDraft(input: unknown): WorkdayPresenceDraft | null {
+  if (!input || typeof input !== 'object') return null;
+  const row = input as Record<string, unknown>;
+  const actionType = clean(row.action_type);
+  const title = clean(row.title);
+  const preview = clean(row.preview);
+  if (!actionType && !title && !preview) return null;
+  return {
+    action_type: actionType ?? 'unknown',
+    title: title ?? 'Draft',
+    preview: preview ?? '',
+  };
+}
+
 export function normalizeWorkdayPresenceState(input: unknown): WorkdayPresenceState | null {
   if (!input || typeof input !== 'object') return null;
   const row = input as Record<string, unknown>;
@@ -111,6 +143,7 @@ export function normalizeWorkdayPresenceState(input: unknown): WorkdayPresenceSt
   const nextMove = clean(row.next_move);
   const whyItMatters = clean(row.why_it_matters);
   if (!currentFocus || !nextMove || !whyItMatters) return null;
+  const draft = normalizeDraft(row.draft);
 
   const nowIso = new Date().toISOString();
   return {
@@ -123,6 +156,7 @@ export function normalizeWorkdayPresenceState(input: unknown): WorkdayPresenceSt
     last_completed_step: clean(row.last_completed_step),
     state_source: clean(row.state_source) ?? 'manual_anchor',
     source_trail: normalizeSourceTrail(row.source_trail),
+    ...(draft ? { draft } : {}),
     snoozed_until: clean(row.snoozed_until),
     interaction_history: Array.isArray(row.interaction_history)
       ? row.interaction_history
@@ -192,6 +226,9 @@ export function buildRightNowCard(state: WorkdayPresenceState | null): RightNowC
     last_interaction: lastInteraction
       ? `Last interaction: ${lastInteraction.interaction_type} at ${lastInteraction.timestamp}`
       : null,
+    draft_ready: state.draft
+      ? `Draft ready (${state.draft.action_type}): ${state.draft.title}`
+      : null,
   };
 }
 
@@ -217,6 +254,7 @@ export function buildStateFromPrompt(
     last_completed_step: clean(input.last_completed_step),
     state_source: 'manual_anchor',
     source_trail: [],
+    draft: null,
     snoozed_until: null,
     interaction_history: [],
     created_at: nowIso,

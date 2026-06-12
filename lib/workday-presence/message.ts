@@ -36,6 +36,7 @@ function formatCardText(card: RightNowCard, state: WorkdayPresenceState | null):
     card.why_this_matters,
     formatSourceTrail(state),
   ];
+  if (card.draft_ready) lines.push(card.draft_ready);
   if (card.last_interaction) lines.push(card.last_interaction);
   if (card.do_not_touch) lines.push(card.do_not_touch);
   lines.push(card.stop_when_done);
