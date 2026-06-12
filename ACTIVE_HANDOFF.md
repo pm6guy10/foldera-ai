@@ -9,7 +9,8 @@ Last updated: 2026-06-12 PT (#259 ACTIVE — PR #261 merged 3c401a4; browser pro
 
 ## Active command gate
 
-Issue #259 is the active rung-7 seam — PR #261 merged 3c401a4 (2026-06-12). Browser proof pending.
+Issue #259 is the active rung-7 seam.
+PR #261 merged 3c401a4 (2026-06-12); browser proof pending. Right Now card now requires a prepared object (artifact-backed acceptance standard), not a scored winner alone.
 Issue #251 (rung-7 foundation hardening) is COMPLETE — PR #258 merged b0de76d (2026-06-11).
 Issue #226 (rung-6 owner-path readiness) is COMPLETE — PR #256 merged 2026-06-11.
 Issue #249 (scorer-winner invariant) is COMPLETE — PR #257 merged 2026-06-11.

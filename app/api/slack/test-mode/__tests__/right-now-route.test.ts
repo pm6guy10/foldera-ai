@@ -37,17 +37,20 @@ describe('Slack test-mode Right Now loop', () => {
     );
   });
 
-  // #249 route invariant: when persisted state has state_source='scored_winner', the
-  // Right Now render path must surface the scored winner, not fall back to recency.
-  it('#249 INVARIANT: GET /api/slack/test-mode/right-now surfaces scored_winner state — not recency metadata', async () => {
+  // #249 route invariant (under the artifact-backed acceptance standard): when an
+  // ARTIFACT-BACKED scored winner is persisted, the Right Now render path must surface
+  // that winner, not fall back to recency. The winner-beats-recency *selection*
+  // invariant is proven at the selector level in source-backed-state.test.ts; here we
+  // prove the render surfaces it — and only because it carries a prepared draft.
+  it('#249 INVARIANT: GET /api/slack/test-mode/right-now surfaces an artifact-backed scored_winner — not recency metadata', async () => {
     mockSupabase.auth.admin.getUserById.mockResolvedValue({
       data: {
         user: {
           user_metadata: {
             workday_presence_state: {
               current_focus: 'Project update to be sent by end of day Tuesday',
-              next_move: 'Review and take the smallest next step: Project update to be sent by end of day Tuesday',
-              why_it_matters: 'Matched goal: "Close open commitments before end of week". Score: 2.86.',
+              next_move: 'Send the project update to the team before end of day Tuesday.',
+              why_it_matters: 'You promised this update for end of day Tuesday and the window closes today.',
               blocker: null,
               do_not_touch: 'Do not auto-send or mutate source systems.',
               waiting_on: null,
@@ -61,9 +64,18 @@ describe('Slack test-mode Right Now loop', () => {
                   row_id: 'sig-commitment-1',
                   occurred_at: '2026-06-10T09:00:00Z',
                   redacted_summary: 'Project update due EOD Tuesday',
-                  selection_reason: 'source signal for scored winner',
+                  selection_reason: 'evidence grounding the generated move',
                 },
               ],
+              // Prepared object: the drafted artifact behind the move. Without this the
+              // acceptance standard keeps the card SAFE_SILENT (winner-backed homework).
+              draft: {
+                action_type: 'send_message',
+                title: 'Project update — EOD Tuesday',
+                preview: 'Here is the project update I committed to by end of day Tuesday.',
+                to: 'team@example.com',
+                body: 'Here is the project update I committed to by end of day Tuesday. Summary attached.',
+              },
               snoozed_until: null,
               interaction_history: [],
               created_at: '2026-06-11T16:00:00.000Z',
@@ -86,6 +98,9 @@ describe('Slack test-mode Right Now loop', () => {
     expect(body.payload.text).toContain('Source trail: tkg_signals/calendar/commitment');
     expect(body.payload.text).not.toContain('$21.66');
     expect(body.payload.text).not.toContain('manual_anchor');
+    // Artifact-backed: the card offers View Draft + Dismiss, never homework jargon.
+    expect(body.payload.actions.map((a: { id: string }) => a.id)).toEqual(['view_draft', 'dismiss']);
+    expect(body.payload.text).not.toMatch(/matched goal|score:\s*\d|smallest (next|concrete) step/i);
     expect(body.slack_test_mode.channel).toBe('test_dm');
   });
 

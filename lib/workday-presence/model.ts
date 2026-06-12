@@ -228,8 +228,36 @@ export function normalizeWorkdayPresenceState(input: unknown): WorkdayPresenceSt
   };
 }
 
+/**
+ * The Right Now acceptance standard. A card may render only when the selected
+ * opportunity has produced a reviewable prepared object — never from a scored
+ * winner alone. A prepared object is one of:
+ *   - a drafted artifact: draft / prep note / decision packet (`state.draft`)
+ *   - a user-anchored intention the user prepared themselves (manual_anchor)
+ *   - a source-review action backed by clear evidence (e.g. source_backed,
+ *     work_packet_*), which is itself the reviewable object
+ *
+ * A `scored_winner` with no drafted artifact is winner-backed homework: it stays
+ * in SAFE_SILENCE until the brain produces a reviewable object behind the move.
+ * Without this gate, scoring a winner alone would render a "write the next step"
+ * card — the exact homework drift this standard forbids.
+ */
+export function rightNowHasPreparedObject(state: WorkdayPresenceState | null): boolean {
+  if (!state) return false;
+  // A drafted artifact is always a reviewable prepared object.
+  if (state.draft) return true;
+  // The one case the standard forbids: a scored winner with nothing prepared behind it.
+  if (state.state_source === 'scored_winner') return false;
+  // Every other selection context (manual anchor, source-backed evidence, reviewed
+  // work packet) is itself the prepared/reviewable object the user acts on.
+  return true;
+}
+
 export function buildRightNowCard(state: WorkdayPresenceState | null): RightNowCard {
-  if (!state) {
+  // Acceptance gate: no prepared object behind the move means not-ready. Fall back
+  // to the setup prompt (SAFE_SILENCE proxy on the card union) rather than render a
+  // winner-backed homework card. See rightNowHasPreparedObject.
+  if (!state || !rightNowHasPreparedObject(state)) {
     return {
       mode: 'setup',
       prompt: 'What are you trying to move forward today?',
