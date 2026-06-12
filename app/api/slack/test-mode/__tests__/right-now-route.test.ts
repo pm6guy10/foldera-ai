@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 const mockResolveAnyUser = vi.fn();
 const mockApiErrorForRoute = vi.fn();
 
+const mockInsert = vi.fn().mockResolvedValue({ error: null });
 const mockSupabase = {
   auth: {
     admin: {
@@ -11,6 +12,7 @@ const mockSupabase = {
       updateUserById: vi.fn(),
     },
   },
+  from: vi.fn().mockReturnValue({ insert: mockInsert }),
 };
 
 vi.mock('@/lib/auth/resolve-user', () => ({ resolveAnyUser: mockResolveAnyUser }));
@@ -25,6 +27,8 @@ describe('Slack test-mode Right Now loop', () => {
     vi.resetModules();
     vi.clearAllMocks();
     mockResolveAnyUser.mockResolvedValue({ userId: 'u-52' });
+    mockInsert.mockResolvedValue({ error: null });
+    mockSupabase.from.mockReturnValue({ insert: mockInsert });
     mockApiErrorForRoute.mockImplementation((error: unknown) =>
       NextResponse.json(
         { error: error instanceof Error ? error.message : String(error) },
