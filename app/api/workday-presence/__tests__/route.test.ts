@@ -16,7 +16,7 @@ const mockSupabase = {
   },
 };
 
-vi.mock('@/lib/auth/resolve-user', () => ({ resolveUser: mockResolveUser }));
+vi.mock('@/lib/auth/resolve-user', () => ({ resolveUser: mockResolveUser, resolveAnyUser: mockResolveUser }));
 vi.mock('@/lib/db/client', () => ({ createServerClient: () => mockSupabase }));
 vi.mock('@/lib/utils/api-error', () => ({
   apiErrorForRoute: mockApiErrorForRoute,
