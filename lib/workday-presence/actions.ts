@@ -1,4 +1,8 @@
-import { normalizeWorkdayPresenceState, type WorkdayPresenceState } from './model';
+import {
+  normalizeWorkdayPresenceState,
+  WORKDAY_PRESENCE_INTERACTION_TYPES,
+  type WorkdayPresenceState,
+} from './model';
 import type { RightNowMessageActionId } from './message';
 
 export type WorkdayPresenceActionResult =
@@ -50,6 +54,26 @@ function applySnooze(state: WorkdayPresenceState, nowIso: string): WorkdayPresen
   };
 }
 
+/** Expanding the draft changes nothing about the work — only the render. */
+function applyViewDraft(state: WorkdayPresenceState, nowIso: string): WorkdayPresenceState {
+  return {
+    ...state,
+    updated_at: nowIso,
+  };
+}
+
+/**
+ * Dismiss closes this loop without acting on it: hold quiet for 4 hours so the
+ * trigger-runner can re-seed a fresh winner instead of re-pinging this one.
+ */
+function applyDismiss(state: WorkdayPresenceState, nowIso: string): WorkdayPresenceState {
+  return {
+    ...state,
+    snoozed_until: new Date(Date.parse(nowIso) + 4 * 60 * 60 * 1000).toISOString(),
+    updated_at: nowIso,
+  };
+}
+
 export function applyWorkdayPresenceAction(
   stateInput: unknown,
   actionId: RightNowMessageActionId,
@@ -58,16 +82,24 @@ export function applyWorkdayPresenceAction(
   const currentState = normalizeWorkdayPresenceState(stateInput);
   if (!currentState) return { ok: false, error: 'No active workday presence state' };
 
-  if (!['done', 'stuck', 'break_smaller', 'snooze'].includes(actionId)) {
+  if (!(WORKDAY_PRESENCE_INTERACTION_TYPES as readonly string[]).includes(actionId)) {
     return { ok: false, error: 'Invalid action_id' };
   }
 
+  const nowIso = options.nowIso ?? new Date().toISOString();
+
+  if (actionId === 'view_draft') {
+    return { ok: true, nextState: applyViewDraft(currentState, nowIso) };
+  }
+
+  if (actionId === 'dismiss') {
+    return { ok: true, nextState: applyDismiss(currentState, nowIso) };
+  }
+
   if (actionId === 'snooze') {
-    const nowIso = options.nowIso ?? new Date().toISOString();
     return { ok: true, nextState: applySnooze(currentState, nowIso) };
   }
 
-  const nowIso = options.nowIso ?? new Date().toISOString();
   if (actionId === 'done') {
     return { ok: true, nextState: applyDone(currentState, nowIso) };
   }

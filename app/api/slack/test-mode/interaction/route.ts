@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import { resolveAnyUser } from '@/lib/auth/resolve-user';
-import { createServerClient, type SupabaseClient } from '@/lib/db/client';
+import { createServerClient } from '@/lib/db/client';
 import { normalizeWorkdayPresenceState, type WorkdayPresenceState } from '@/lib/workday-presence/model';
-import { buildRightNowMessagePayload, type RightNowMessageActionId } from '@/lib/workday-presence/message';
+import { insertPresenceReceipt } from '@/lib/workday-presence/presence-action-receipt';
+import {
+  buildRightNowMessagePayload,
+  RIGHT_NOW_ACTION_IDS,
+  type RightNowMessageActionId,
+} from '@/lib/workday-presence/message';
 import {
   applyInteractionHistoryToState,
   appendWorkdayPresenceInteractionHistory,
@@ -20,31 +25,6 @@ type InteractionBody = {
   action_id?: RightNowMessageActionId;
   blocker?: string;
 };
-
-async function insertPresenceReceipt(
-  supabase: SupabaseClient,
-  userId: string,
-  actionId: RightNowMessageActionId,
-  state: WorkdayPresenceState,
-): Promise<void> {
-  const status = actionId === 'done' || actionId === 'break_smaller' ? 'approved' : 'draft_rejected';
-  await supabase.from('tkg_actions').insert({
-    user_id: userId,
-    directive_text: `${actionId}: ${state.current_focus ?? 'workday presence action'}`,
-    action_type: 'presence_action',
-    confidence: 100,
-    reason: `Workday presence loop closed — action_id=${actionId}`,
-    evidence: [],
-    status,
-    action_source: 'workday_presence',
-    execution_result: {
-      action_id: actionId,
-      current_focus: state.current_focus,
-      next_move: state.next_move,
-      state_source: state.state_source,
-    },
-  });
-}
 
 async function persistState(
   userId: string,
@@ -80,7 +60,7 @@ export async function POST(request: Request) {
     const payload = (await request.json().catch(() => ({}))) as InteractionBody;
     const actionId = payload.action_id;
     if (!actionId) return badRequest('action_id is required');
-    if (!['done', 'stuck', 'break_smaller', 'snooze'].includes(actionId)) {
+    if (!(RIGHT_NOW_ACTION_IDS as readonly string[]).includes(actionId)) {
       return badRequest('Invalid action_id');
     }
 

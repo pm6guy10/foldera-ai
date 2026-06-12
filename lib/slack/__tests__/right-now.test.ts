@@ -11,17 +11,15 @@ import { redactSlackSecret } from '../redaction';
 const payload = {
   kind: 'right_now' as const,
   mode: 'active' as const,
-  text: 'Right now.\nResume from: Send owner confirmation note',
+  text: 'Right now.\nNext move: Reply to confirm the 2 PM slot.',
   actions: [
-    { id: 'done' as const, label: 'Done' as const },
-    { id: 'stuck' as const, label: 'Stuck' as const },
-    { id: 'break_smaller' as const, label: 'Break smaller' as const },
-    { id: 'snooze' as const, label: 'Snooze' as const },
+    { id: 'view_draft' as const, label: 'View Draft' },
+    { id: 'dismiss' as const, label: 'Dismiss' },
   ],
 };
 
 describe('real Slack self-loop boundary', () => {
-  it('builds one bounded Right Now Slack message with the four allowed actions', () => {
+  it('builds one bounded Right Now Slack message with View Draft + Dismiss', () => {
     const message = buildSlackRightNowMessage(payload, 'CSELF');
 
     expect(message.channel).toBe('CSELF');
@@ -31,11 +29,15 @@ describe('real Slack self-loop boundary', () => {
       block_id: 'foldera_right_now_actions',
     });
     expect(message.blocks[1].type === 'actions' ? message.blocks[1].elements.map((item) => item.action_id) : []).toEqual([
-      'done',
-      'stuck',
-      'break_smaller',
-      'snooze',
+      'view_draft',
+      'dismiss',
     ]);
+  });
+
+  it('omits the actions block entirely when the card takes no button input', () => {
+    const message = buildSlackRightNowMessage({ ...payload, mode: 'dismissed', actions: [] }, 'CSELF');
+    expect(message.blocks).toHaveLength(1);
+    expect(message.blocks[0].type).toBe('section');
   });
 
   it('verifies Slack signatures without logging or returning the signing secret', () => {
@@ -59,6 +61,23 @@ describe('real Slack self-loop boundary', () => {
   });
 
   it('parses only the bounded Foldera button actions', () => {
+    expect(
+      parseSlackInteractionAction({
+        actions: [{ action_id: 'view_draft' }],
+        channel: { id: 'CSELF' },
+        message: { ts: '177.2' },
+      }),
+    ).toMatchObject({ actionId: 'view_draft', channel: 'CSELF', messageTs: '177.2' });
+
+    expect(
+      parseSlackInteractionAction({
+        actions: [{ action_id: 'dismiss' }],
+        channel: { id: 'CSELF' },
+        message: { ts: '177.3' },
+      }),
+    ).toMatchObject({ actionId: 'dismiss' });
+
+    // Legacy ids on previously posted cards still resolve.
     expect(
       parseSlackInteractionAction({
         actions: [{ action_id: 'stuck' }],

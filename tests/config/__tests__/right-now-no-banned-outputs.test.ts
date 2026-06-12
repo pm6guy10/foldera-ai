@@ -19,7 +19,8 @@ describe('Right Now surfaces: ban fake/quiet artifacts', () => {
   it('never emits banned artifacts in Right Now payload text', () => {
     const payload = buildRightNowMessagePayload(null);
     assertNoBannedText('right_now.payload.text', payload.text);
-    expect(payload.actions.map((a) => a.id)).toEqual(['done', 'stuck', 'break_smaller', 'snooze']);
+    // Setup prompt takes typed input, not buttons.
+    expect(payload.actions).toEqual([]);
   });
 
   it('never emits banned artifacts in Slack test-mode message blocks', () => {

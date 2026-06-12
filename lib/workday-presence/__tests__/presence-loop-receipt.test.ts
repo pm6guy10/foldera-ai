@@ -32,12 +32,8 @@ describe('MVP presence loop receipt', () => {
 
     expect(receipt.before_state).toEqual(beforeState);
     expect(receipt.card_payload.kind).toBe('right_now');
-    expect(receipt.card_payload.actions.map((action) => action.id)).toEqual([
-      'done',
-      'stuck',
-      'break_smaller',
-      'snooze',
-    ]);
+    // No draft on this state — only Dismiss renders; legacy action ids still apply.
+    expect(receipt.card_payload.actions.map((action) => action.id)).toEqual(['dismiss']);
     expect(receipt.slack_test_mode.channel).toBe('test_dm');
     expect(receipt.button_action.action_id).toBe(actionId);
     expect(receipt.after_state.updated_at).toBe('2026-05-20T12:30:00.000Z');

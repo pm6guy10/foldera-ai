@@ -16,6 +16,7 @@ import {
   generateDirective,
 } from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
+import { evaluateBottomGate } from '@/lib/cron/daily-brief-generate';
 import { getLastScorerDiagnostics } from '@/lib/briefing/scorer';
 import type { ConvictionArtifact, ConvictionDirective } from '@/lib/briefing/types';
 import type {
@@ -59,12 +60,39 @@ function draftFromArtifact(
     str(record.findings) ||
     str(record.recommendation) ||
     str(record.context);
+  const to = str(record.to);
 
   return {
     action_type: directive.action_type,
     title: title.slice(0, 160),
     preview: body.replace(/\s+/g, ' ').slice(0, 240),
+    ...(to ? { to } : {}),
+    ...(body ? { body: body.slice(0, 2000) } : {}),
   };
+}
+
+/**
+ * Anti-fabrication gate for email drafts. A send_message draft may only ship
+ * when it is grounded in reality: it replies in a real inbound thread
+ * (gmail_thread_id / in_reply_to), or the recipient verifiably appears in the
+ * evidence the generator cited. A drafted reply to an email that never
+ * happened must never reach the card — quiet beats fabricated.
+ */
+function sendDraftIsGrounded(
+  directive: ConvictionDirective,
+  artifact: ConvictionArtifact | null,
+): boolean {
+  if (!artifact) return false;
+  const record = artifact as unknown as Record<string, unknown>;
+  const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+
+  if (str(record.gmail_thread_id) || str(record.in_reply_to)) return true;
+
+  const to = str(record.to).toLowerCase();
+  if (!to.includes('@')) return false;
+  return (directive.evidence ?? []).some((ev) =>
+    (ev.description ?? '').toLowerCase().includes(to),
+  );
 }
 
 /** Evidence the generator grounded the move in — surfaced as the card's source trail. */
@@ -133,6 +161,34 @@ export async function POST(request: Request) {
       artifact = await generateArtifact(auth.userId, directive);
     } catch (artifactError) {
       console.warn('[seed-from-scorer] artifact generation failed:', artifactError);
+    }
+
+    // Anti-fabrication: an email draft not grounded in a real inbound thread or
+    // cited evidence never reaches the card. Stay quiet instead of lying.
+    if (directive.action_type === 'send_message' && !sendDraftIsGrounded(directive, artifact)) {
+      return NextResponse.json({
+        seeded: false,
+        scorer_outcome: diagnostics?.finalOutcome ?? 'winner_selected',
+        blocker_reason:
+          'ungrounded_send_draft: drafted email has no real inbound thread and the recipient is not in cited evidence — refusing to present fabricated correspondence.',
+        action_type: directive.action_type,
+        winner_title: winnerTitle,
+      });
+    }
+
+    // Importance bar: reuse the pipeline's bottom gate. A winner with no external
+    // target, no concrete ask, or no real pressure is not important enough to ping.
+    if (artifact) {
+      const gate = evaluateBottomGate(directive, artifact);
+      if (!gate.pass) {
+        return NextResponse.json({
+          seeded: false,
+          scorer_outcome: diagnostics?.finalOutcome ?? 'winner_selected',
+          blocker_reason: `bottom_gate: ${gate.blocked_reasons.join(', ')} — winner not important enough to interrupt.`,
+          action_type: directive.action_type,
+          winner_title: winnerTitle,
+        });
+      }
     }
 
     const nowIso = new Date().toISOString();

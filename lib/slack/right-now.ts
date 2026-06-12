@@ -1,5 +1,10 @@
 import { createHmac, timingSafeEqual } from 'crypto';
-import type { RightNowMessageAction, RightNowMessageActionId, RightNowMessagePayload } from '@/lib/workday-presence/message';
+import {
+  RIGHT_NOW_ACTION_IDS,
+  type RightNowMessageAction,
+  type RightNowMessageActionId,
+  type RightNowMessagePayload,
+} from '@/lib/workday-presence/message';
 import { redactSlackSecret } from './redaction';
 
 export type SlackRightNowBlock =
@@ -45,6 +50,7 @@ export type SlackInteractionPayload = {
 };
 
 function buttonStyle(action: RightNowMessageAction): 'primary' | 'danger' | undefined {
+  if (action.id === 'view_draft') return 'primary';
   if (action.id === 'done') return 'primary';
   if (action.id === 'stuck') return 'danger';
   return undefined;
@@ -54,23 +60,27 @@ export function buildSlackRightNowMessage(
   payload: RightNowMessagePayload,
   channel: string,
 ): SlackRightNowMessage {
+  const blocks: SlackRightNowBlock[] = [
+    { type: 'section', text: { type: 'mrkdwn', text: payload.text } },
+  ];
+  // Slack rejects an actions block with zero elements (setup/dismissed cards).
+  if (payload.actions.length > 0) {
+    blocks.push({
+      type: 'actions',
+      block_id: 'foldera_right_now_actions',
+      elements: payload.actions.map((action) => ({
+        type: 'button',
+        text: { type: 'plain_text', text: action.label },
+        action_id: action.id,
+        value: action.id,
+        style: buttonStyle(action),
+      })),
+    });
+  }
   return {
     channel,
     text: 'Foldera Right Now',
-    blocks: [
-      { type: 'section', text: { type: 'mrkdwn', text: payload.text } },
-      {
-        type: 'actions',
-        block_id: 'foldera_right_now_actions',
-        elements: payload.actions.map((action) => ({
-          type: 'button',
-          text: { type: 'plain_text', text: action.label },
-          action_id: action.id,
-          value: action.id,
-          style: buttonStyle(action),
-        })),
-      },
-    ],
+    blocks,
   };
 }
 
@@ -179,7 +189,7 @@ export function parseSlackInteractionAction(payload: SlackInteractionPayload): {
   messageTs?: string;
 } | null {
   const rawAction = payload.actions?.[0]?.action_id ?? payload.actions?.[0]?.value;
-  if (!rawAction || !['done', 'stuck', 'break_smaller', 'snooze'].includes(rawAction)) return null;
+  if (!rawAction || !(RIGHT_NOW_ACTION_IDS as readonly string[]).includes(rawAction)) return null;
   const blocker = Object.values(payload.state?.values ?? {})
     .flatMap((group) => Object.values(group))
     .map((field) => field.value?.trim())
