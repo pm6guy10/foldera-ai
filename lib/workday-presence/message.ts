@@ -1,5 +1,6 @@
 import {
   buildRightNowCard,
+  rightNowHasPreparedObject,
   WORKDAY_PRESENCE_INTERACTION_TYPES,
   type RightNowCard,
   type WorkdayPresenceInteractionType,
@@ -23,10 +24,13 @@ export type RightNowMessageAction = {
 export type RightNowMessagePayload = {
   kind: 'right_now';
   /**
-   * 'dismissed' exists only on this Slack message layer — the dashboard card
-   * union (RightNowCard) stays setup|active so other surfaces are unaffected.
+   * 'dismissed' and 'silent' exist only on this Slack message layer — the
+   * dashboard card union (RightNowCard) stays setup|active so other surfaces are
+   * unaffected. 'silent' is SAFE_SILENCE: a selected move with no prepared object
+   * behind it (e.g. a scored winner with no draft) stays quiet instead of
+   * rendering a winner-backed homework card.
    */
-  mode: RightNowCard['mode'] | 'dismissed';
+  mode: RightNowCard['mode'] | 'dismissed' | 'silent';
   text: string;
   actions: RightNowMessageAction[];
 };
@@ -83,6 +87,18 @@ export function buildRightNowMessagePayload(state: WorkdayPresenceState | null):
       kind: 'right_now',
       mode: 'dismissed',
       text: 'Dismissed. Staying quiet until something new matters.',
+      actions: [],
+    };
+  }
+
+  // Acceptance standard: a selected move with no prepared object behind it (a
+  // scored winner with no draft) is winner-backed homework. Stay SAFE_SILENT —
+  // no card, no buttons — until the brain produces a reviewable object.
+  if (state && !rightNowHasPreparedObject(state)) {
+    return {
+      kind: 'right_now',
+      mode: 'silent',
+      text: 'Nothing prepared to act on yet — staying quiet until there is a reviewable move.',
       actions: [],
     };
   }
