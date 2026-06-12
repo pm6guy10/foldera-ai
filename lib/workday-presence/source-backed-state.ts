@@ -5,11 +5,30 @@ import type {
 
 type SourceBackedRow = Record<string, unknown>;
 
+export type ScoredWinnerInput = {
+  title: string;
+  score: number;
+  matchedGoal?: { text: string } | null;
+  sourceSignals?: Array<{
+    id?: unknown;
+    source?: unknown;
+    kind?: unknown;
+    summary?: unknown;
+    occurredAt?: unknown;
+  }>;
+};
+
 export type SourceBackedStateInput = {
   signals?: SourceBackedRow[];
   commitments?: SourceBackedRow[];
   actions?: SourceBackedRow[];
   nowIso?: string;
+  /**
+   * When provided, the scored winner is always used instead of recency-based
+   * row selection. This enforces the #249 invariant: a Right Now card may not
+   * be selected by recency when a scored open-loop winner exists.
+   */
+  scoredWinner?: ScoredWinnerInput;
 };
 
 function clean(value: unknown): string | null {
@@ -168,6 +187,37 @@ function stateFromSignal(row: SourceBackedRow, nowIso: string): WorkdayPresenceS
   });
 }
 
+function stateFromScoredWinner(winner: ScoredWinnerInput, nowIso: string): WorkdayPresenceState {
+  const title = winner.title.trim() || 'Scored winner';
+  const goal = winner.matchedGoal?.text?.trim() ?? null;
+
+  return {
+    current_focus: title,
+    next_move: `Review and take the smallest next step: ${title}`,
+    why_it_matters: goal
+      ? `Matched goal: "${goal}". Score: ${winner.score.toFixed(2)}.`
+      : `Top-scored open loop (score: ${winner.score.toFixed(2)}). No matched goal.`,
+    blocker: null,
+    do_not_touch: 'Do not auto-send or mutate source systems.',
+    waiting_on: null,
+    last_completed_step: null,
+    state_source: 'scored_winner',
+    source_trail: (winner.sourceSignals ?? []).slice(0, 2).map((sig) => ({
+      table: 'tkg_signals' as const,
+      source: String(sig.source ?? 'unknown'),
+      type: String(sig.kind ?? 'signal'),
+      row_id: sig.id ? String(sig.id) : undefined,
+      occurred_at: sig.occurredAt ? String(sig.occurredAt) : undefined,
+      redacted_summary: String(sig.summary ?? sig.id ?? 'signal'),
+      selection_reason: 'source signal for scored winner',
+    })),
+    snoozed_until: null,
+    interaction_history: [],
+    created_at: nowIso,
+    updated_at: nowIso,
+  };
+}
+
 function actionEvidenceTrails(actions: SourceBackedRow[]): WorkdayPresenceSourceTrailEntry[] {
   return actions
     .map((row) => {
@@ -188,6 +238,12 @@ export function selectSourceBackedRightNowState(
   input: SourceBackedStateInput,
 ): WorkdayPresenceState | null {
   const nowIso = input.nowIso ?? new Date().toISOString();
+
+  // #249 invariant: scored winner always beats recency-ordered rows.
+  if (input.scoredWinner) {
+    return stateFromScoredWinner(input.scoredWinner, nowIso);
+  }
+
   const commitments = [...(input.commitments ?? [])].sort(byNewest);
   const signals = [...(input.signals ?? [])].sort(byNewest);
   const actionTrail = actionEvidenceTrails(input.actions ?? []);
