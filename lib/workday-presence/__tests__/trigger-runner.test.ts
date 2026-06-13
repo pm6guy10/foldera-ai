@@ -74,6 +74,69 @@ describe('runWorkdayPresenceTriggerRunner', () => {
     expect(result.cursor.last_trigger_key).toBeNull();
   });
 
+  it('fires a hidden-op Slack ping when a buried high-consequence signal is found and normal path is quiet', async () => {
+    const postMessage = vi.fn().mockResolvedValue({
+      ok: true,
+      mode: 'live',
+      channel: 'C123',
+      message_ts: '1718200000.456',
+      response: { ok: true },
+    });
+
+    const result = await runWorkdayPresenceTriggerRunner({
+      channel: 'C123',
+      state: null, // no workday state — hidden-op fires without it
+      cursor: null,
+      nowIso: '2026-06-16T10:00:00.000Z',
+      signals: [
+        {
+          id: 'sig-firstday',
+          source: 'outlook_calendar',
+          type: 'calendar_event',
+          title: 'First day of work at CWU',
+          starts_at_iso: '2026-06-19T08:00:00.000Z',
+          ingested_at: '2026-06-15T09:00:00.000Z',
+        },
+      ],
+      slack: { postMessage },
+    });
+
+    expect(result.outcome).toBe('intervention');
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(result.reason).toContain('hidden_op');
+    expect(result.cursor.last_trigger_key).toMatch(/^hidden_op:/);
+  });
+
+  it('suppresses a hidden-op ping when the same signal was already surfaced this cursor window', async () => {
+    const postMessage = vi.fn();
+
+    const result = await runWorkdayPresenceTriggerRunner({
+      channel: 'C123',
+      state: null,
+      cursor: {
+        last_signal_cursor: '2026-06-15T09:00:00.000Z',
+        last_trigger_key: 'hidden_op:sig-firstday',
+        last_pinged_at: '2026-06-16T10:00:00.000Z',
+        last_run_at: '2026-06-16T10:00:00.000Z',
+      },
+      nowIso: '2026-06-16T10:05:00.000Z',
+      signals: [
+        {
+          id: 'sig-firstday',
+          source: 'outlook_calendar',
+          type: 'calendar_event',
+          title: 'First day of work at CWU',
+          starts_at_iso: '2026-06-19T08:00:00.000Z',
+          ingested_at: '2026-06-15T09:00:00.000Z',
+        },
+      ],
+      slack: { postMessage },
+    });
+
+    expect(result.outcome).toBe('quiet');
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
   it('suppresses an unchanged trigger so the next run does not re-ping', async () => {
     const postMessage = vi.fn();
 

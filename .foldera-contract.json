@@ -1,58 +1,41 @@
 {
-  "authority_status": "CONTROL_PLANE_TRUTH_LEDGER_ACTIVE",
-  "active": true,
+  "backlog_id": "hidden-op-slack-wire",
   "active_issue": 301,
-  "backlog_id": "FOLDERA_CONTROL_PLANE_TRUTH_LEDGER",
-  "base_commit": "cbacc4da1a94bb5d25d7286f0347eb33b997d362",
-  "money_loop_rung": "control_plane_truth_ledger",
-  "user_system_path": "Issue #301 active — one machine-readable source of truth for active issue, branch, PR, deployed SHA, runtime env, and DB-state version.",
-  "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
-  "no_routing_contract": "The agent must read ACTIVE_HANDOFF.md, ACTIVE_SEAM_STATE.json, and the active issue before acting. Brandon should not have to reconcile drift.",
+  "base_commit": "23ec261ba8ec559efd34c8ccac518484ea097005",
+  "money_loop_rung": "rung-9-guardian-moment",
+  "user_system_path": "Wire detectHiddenOps into the Slack trigger loop so buried high-consequence signals fire a ping without user asking.",
+  "allowed_file_patterns": [
+    ".foldera-contract.json",
+    "ACTIVE_SEAM_STATE.json",
+    "lib/workday-presence/trigger-runner.ts",
+    "lib/workday-presence/__tests__/trigger-runner.test.ts",
+    "tests/config/__tests__/continuity-gate.test.ts"
+  ],
+  "forbidden_file_patterns": [
+    "app/**",
+    "components/**",
+    "supabase/migrations/**"
+  ],
+  "allowed_files_raw": "lib/workday-presence/trigger-runner.ts, lib/workday-presence/__tests__/trigger-runner.test.ts, ACTIVE_SEAM_STATE.json, .foldera-contract.json, tests/config/__tests__/continuity-gate.test.ts",
+  "forbidden_files_raw": "No schema changes, no app/UI/component changes, no new scoring modules without runtime consumer.",
+  "required_local_proof": "./node_modules/.bin/vitest run lib/workday-presence/__tests__/trigger-runner.test.ts --reporter=verbose && npm run lint && npm run build && npm run gate:continuity",
+  "required_browser_proof": "Not required. This is a backend trigger-loop change.",
+  "browser_proof_command": "",
+  "acceptance_condition": "hidden-op guardian fires a Slack ping when detectHiddenOps scores a signal >= 50 and the normal trigger path is quiet.",
+  "stop_condition": "Stop when PR is open, CI green, and the trigger-runner test suite proves the wiring end-to-end.",
+  "is_user_facing": false,
+  "anti_regression_checks": [
+    "existing trigger-runner tests still pass",
+    "hidden-op does not fire when normal path fires (no double-ping)",
+    "hidden-op dedup suppresses same signal same cursor"
+  ],
+  "next_command": "git push -u origin claude/hidden-op-slack-wire-f37g10",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
       "BLOCKED_WITH_EXACT_RECEIPT",
       "HUMAN_REVIEW_REQUIRED_WITH_REASON",
       "STOPPED_WITH_AUTHORIZED_REASON"
-    ],
-    "merge_through_rule": "Merge-through is allowed only after local proof, GitHub checks green, forbidden work touched is NO, and the PR receipt records the source-truth closeout and terminal state."
-  },
-  "allowed_file_patterns": [
-    "ACTIVE_HANDOFF.md",
-    "ACTIVE_SEAM_STATE.json",
-    "AGENTS.md",
-    "FOLDERA_BUILD_ORDER.yaml",
-    ".foldera-contract.json",
-    "docs/**",
-    "scripts/**",
-    "tests/**",
-    ".github/**"
-  ],
-  "forbidden_file_patterns": [
-    "app/**",
-    "components/**",
-    "lib/**",
-    "supabase/migrations/**"
-  ],
-  "allowed_files_raw": "Issue #301 control-plane ledger and gate enforcement only.",
-  "forbidden_files_raw": "No product work, no Slack/OAuth/API/send, no backend/auth/schema/dashboard/scoring/conviction changes until the control-plane seam closes.",
-  "required_local_proof": [
-    "npm run gate:continuity",
-    "npm run lint",
-    "npm run build",
-    "git diff --check"
-  ],
-  "required_browser_proof": "Not required. This is a control-plane seam.",
-  "browser_proof_command": "",
-  "acceptance_condition": "ACTIVE_SEAM_STATE.json is the single machine-readable control plane and the continuity gate passes against live GitHub/release truth.",
-  "stop_condition": "Stop when the control-plane ledger and gates are aligned, or BLOCKED_WITH_EXACT_RECEIPT if live GitHub/deploy truth cannot be verified.",
-  "is_user_facing": false,
-  "anti_regression_checks": [
-    "ACTIVE_SEAM_STATE.json stays present and parseable",
-    "ACTIVE_HANDOFF.md stays within the line cap and names exactly one active seam",
-    "root markdown file count is bounded by gate:continuity (MAX 8)",
-    "a new governance rule may only be added by editing an existing keep-list file",
-    "no product work starts inside the control-plane seam"
-  ],
-  "next_command": "Write ACTIVE_SEAM_STATE.json and enforce it in scripts/continuity-gate.ts."
+    ]
+  }
 }
