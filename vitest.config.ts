@@ -16,6 +16,10 @@ for (const [key, value] of Object.entries(VITEST_ENV_DEFAULTS)) {
 }
 
 export default defineConfig({
+  oxc: false,
+  esbuild: {
+    jsx: 'automatic',
+  },
   test: {
     globals: true,
     environment: 'node',

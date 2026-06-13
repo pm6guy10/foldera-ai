@@ -23,7 +23,7 @@ vi.mock('next/headers', () => ({
 vi.mock('googleapis', () => ({
   google: {
     auth: {
-      OAuth2: vi.fn().mockImplementation((clientId, clientSecret, redirectUri) => {
+      OAuth2: vi.fn().mockImplementation(function (clientId, clientSecret, redirectUri) {
         oauth2Constructor(clientId, clientSecret, redirectUri);
         return {
           getToken,

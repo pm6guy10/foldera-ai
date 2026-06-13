@@ -161,9 +161,11 @@ vi.mock('@/lib/utils/api-tracker', () => ({
 }));
 
 vi.mock('@anthropic-ai/sdk', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    messages: { create: mockAnthropicCreate },
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return {
+      messages: { create: mockAnthropicCreate },
+    };
+  }),
 }));
 
 import { refreshGoalContext, signalReinforcesGoalKeywords } from '../goal-refresh';

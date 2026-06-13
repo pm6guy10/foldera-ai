@@ -91,11 +91,13 @@ vi.mock('@/lib/signals/signal-processor', () => ({
 }));
 
 vi.mock('@anthropic-ai/sdk', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    messages: {
-      create: (...args: unknown[]) => mockAnthropicCreate(...args),
-    },
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return {
+      messages: {
+        create: (...args: unknown[]) => mockAnthropicCreate(...args),
+      },
+    };
+  }),
 }));
 
 describe('extractFromConversation budget governor', () => {

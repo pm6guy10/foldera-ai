@@ -11,19 +11,21 @@ class MockAnthropicBudgetExceededError extends Error {
   }
 }
 
-const createMock = vi.fn().mockImplementation(() => ({
-  messages: {
-    create: vi.fn().mockResolvedValue({
-      content: [
-        {
-          type: 'text',
-          text: '[]',
-        },
-      ],
-      usage: { input_tokens: 500, output_tokens: 200 },
-    }),
-  },
-}));
+const createMock = vi.fn().mockImplementation(function () {
+  return {
+    messages: {
+      create: vi.fn().mockResolvedValue({
+        content: [
+          {
+            type: 'text',
+            text: '[]',
+          },
+        ],
+        usage: { input_tokens: 500, output_tokens: 200 },
+      }),
+    },
+  };
+});
 
 vi.mock('@anthropic-ai/sdk', () => ({
   default: createMock,
@@ -62,19 +64,21 @@ describe('runInsightScan', () => {
       allowed: true,
       raw: { bypassed: 'test' },
     });
-    createMock.mockImplementation(() => ({
-      messages: {
-        create: vi.fn().mockResolvedValue({
-          content: [
-            {
-              type: 'text',
-              text: '[]',
-            },
-          ],
-          usage: { input_tokens: 500, output_tokens: 200 },
-        }),
-      },
-    }));
+    createMock.mockImplementation(function () {
+      return {
+        messages: {
+          create: vi.fn().mockResolvedValue({
+            content: [
+              {
+                type: 'text',
+                text: '[]',
+              },
+            ],
+            usage: { input_tokens: 500, output_tokens: 200 },
+          }),
+        },
+      };
+    });
   });
 
   afterEach(() => {
@@ -87,32 +91,34 @@ describe('runInsightScan', () => {
     const d1 = new Date(base - 86400000).toISOString().split('T')[0];
     const d2 = new Date(base - 2 * 86400000).toISOString().split('T')[0];
 
-    createMock.mockImplementation(() => ({
-      messages: {
-        create: vi.fn().mockResolvedValue({
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify([
-                {
-                  title: 'You start strong then go silent',
-                  pattern_type: 'behavioral',
-                  confidence: 75,
-                  evidence: `Signals on ${d0}, ${d1}, ${d2} show burst then drop-off`,
-                  insight:
-                    'Three threads in the window follow the same arc: intense activity then silence.',
-                  suggested_action: 'write_document',
-                  suggested_entity: 'Test Person',
-                  suggested_entity_email: 'test@example.com',
-                  grounding: `${d0} email_sent; ${d1} email_sent; ${d2} outlook_calendar`,
-                },
-              ]),
-            },
-          ],
-          usage: { input_tokens: 500, output_tokens: 200 },
-        }),
-      },
-    }));
+    createMock.mockImplementation(function () {
+      return {
+        messages: {
+          create: vi.fn().mockResolvedValue({
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify([
+                  {
+                    title: 'You start strong then go silent',
+                    pattern_type: 'behavioral',
+                    confidence: 75,
+                    evidence: `Signals on ${d0}, ${d1}, ${d2} show burst then drop-off`,
+                    insight:
+                      'Three threads in the window follow the same arc: intense activity then silence.',
+                    suggested_action: 'write_document',
+                    suggested_entity: 'Test Person',
+                    suggested_entity_email: 'test@example.com',
+                    grounding: `${d0} email_sent; ${d1} email_sent; ${d2} outlook_calendar`,
+                  },
+                ]),
+              },
+            ],
+            usage: { input_tokens: 500, output_tokens: 200 },
+          }),
+        },
+      };
+    });
 
     const { runInsightScan } = await import('../insight-scan');
 
