@@ -122,8 +122,71 @@ describe('POST /api/workday-presence/seed-from-scorer', () => {
     const body = await response.json();
     expect(body.seeded).toBe(false);
     expect(body.scorer_outcome).toBe('no_valid_action');
-    expect(mockUpdateUserById).not.toHaveBeenCalled();
+    expect(body.suppression_trace.trace_type).toBe('safe_silence');
+    expect(body.suppression_trace.gate).toBe('safe_silence');
+    expect(body.suppression_trace.candidate_count).toBeNull();
+    expect(body.suppression_trace.evidence_empty).toBe(true);
+    expect(mockUpdateUserById).toHaveBeenCalledOnce();
     expect(mockGenerateArtifact).not.toHaveBeenCalled();
+  });
+
+  it('returns a generation_failed suppression trace when directive generation collapses after winner selection', async () => {
+    mockResolveAnyUser.mockResolvedValue({ userId: OWNER_ID });
+    mockGenerateDirective.mockResolvedValue({
+      directive: '__GENERATION_FAILED__',
+      action_type: 'do_nothing',
+      confidence: 0,
+      reason: 'Generation failed internally.',
+      evidence: [],
+      generationLog: {
+        outcome: 'no_send',
+        stage: 'system',
+        reason: 'Generation failed internally.',
+        candidateFailureReasons: ['Generation failed internally.'],
+        candidateDiscovery: {
+          candidateCount: 4,
+          suppressedCandidateCount: 0,
+          selectionMargin: 0.7,
+          selectionReason: 'Winner selected before generation failed.',
+          failureReason: 'Generation failed internally.',
+          topCandidates: [
+            {
+              id: 'winner-1',
+              rank: 1,
+              candidateType: 'signal',
+              actionType: 'send_message',
+              score: 999,
+              scoreBreakdown: {
+                stakes: 1,
+                urgency: 1,
+                tractability: 1,
+                freshness: 1,
+                fit: 1,
+                confidence: 1,
+                final_score: 999,
+              },
+              targetGoal: null,
+              sourceSignals: [],
+              decision: 'selected',
+              decisionReason: 'Selected winner',
+            },
+          ],
+        },
+      },
+    });
+    mockGetLastScorerDiagnostics.mockReturnValue(DIAGNOSTICS_WINNER);
+
+    const { POST } = await import('../route');
+    const response = await POST(new Request('http://localhost/api/workday-presence/seed-from-scorer', { method: 'POST' }));
+    const body = await response.json();
+
+    expect(body.seeded).toBe(false);
+    expect(body.suppression_trace.trace_type).toBe('generation_failed');
+    expect(body.suppression_trace.generation_failed).toBe(true);
+    expect(body.suppression_trace.gate).toBe('generation_failed');
+    expect(body.suppression_trace.selected_candidate.score).toBe(72.5);
+    expect(body.suppression_trace.candidate_count).toBe(4);
+    expect(mockUpdateUserById).toHaveBeenCalledOnce();
   });
 
   it('seeds the REAL generated move (not a title echo) and its draft', async () => {
@@ -203,7 +266,12 @@ describe('POST /api/workday-presence/seed-from-scorer', () => {
     expect(response.status).toBe(200);
     expect(body.seeded).toBe(false);
     expect(body.blocker_reason).toContain('ungrounded_send_draft');
-    expect(mockUpdateUserById).not.toHaveBeenCalled();
+    expect(body.suppression_trace.trace_type).toBe('suppressed_winner');
+    expect(body.suppression_trace.gate).toBe('ungrounded_send_draft');
+    expect(body.suppression_trace.ungrounded_send_draft).toBe(true);
+    expect(body.suppression_trace.selected_candidate.score).toBe(72.5);
+    expect(body.suppression_trace.no_send).toBe(true);
+    expect(mockUpdateUserById).toHaveBeenCalledOnce();
   });
 
   it('refuses to seed a send move whose artifact generation produced nothing', async () => {
@@ -217,7 +285,10 @@ describe('POST /api/workday-presence/seed-from-scorer', () => {
 
     expect(body.seeded).toBe(false);
     expect(body.blocker_reason).toContain('ungrounded_send_draft');
-    expect(mockUpdateUserById).not.toHaveBeenCalled();
+    expect(body.suppression_trace.trace_type).toBe('suppressed_winner');
+    expect(body.suppression_trace.artifact_exists).toBe(false);
+    expect(body.suppression_trace.ungrounded_send_draft).toBe(true);
+    expect(mockUpdateUserById).toHaveBeenCalledOnce();
   });
 
   it('IMPORTANCE BAR: refuses to seed when the bottom gate blocks the winner', async () => {
@@ -235,6 +306,9 @@ describe('POST /api/workday-presence/seed-from-scorer', () => {
     expect(body.seeded).toBe(false);
     expect(body.blocker_reason).toContain('bottom_gate');
     expect(body.blocker_reason).toContain('NO_REAL_PRESSURE');
-    expect(mockUpdateUserById).not.toHaveBeenCalled();
+    expect(body.suppression_trace.trace_type).toBe('suppressed_winner');
+    expect(body.suppression_trace.gate).toBe('bottom_gate');
+    expect(body.suppression_trace.bottom_gate).toBe(true);
+    expect(mockUpdateUserById).toHaveBeenCalledOnce();
   });
 });

@@ -5,6 +5,8 @@ import { resolveCommandState } from '@/lib/workday-presence/command-state-resolv
 import { buildRightNowCardForLiveLoop } from '@/lib/workday-presence/live-loop-presentation';
 import {
   normalizeWorkdayPresenceState,
+  normalizeWorkdayPresenceSuppressionTrace,
+  rightNowHasPreparedObject,
   type WorkdayPresenceState,
 } from '@/lib/workday-presence/model';
 import { apiErrorForRoute, badRequest } from '@/lib/utils/api-error';
@@ -29,6 +31,10 @@ function readStoredState(metadata: Record<string, unknown> | null | undefined): 
   return normalizeWorkdayPresenceState(metadata?.workday_presence_state);
 }
 
+function readStoredSuppressionTrace(metadata: Record<string, unknown> | null | undefined) {
+  return normalizeWorkdayPresenceSuppressionTrace(metadata?.workday_presence_suppression_trace);
+}
+
 export async function GET(request: Request) {
   const auth = await resolveAnyUser(request);
   if (auth instanceof NextResponse) return auth;
@@ -39,8 +45,23 @@ export async function GET(request: Request) {
     if (error) throw error;
     const metadata = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
     const state = readStoredState(metadata);
+    const suppressionTrace = readStoredSuppressionTrace(metadata);
     const resolution = resolveCommandState({ state });
-    return NextResponse.json({ state, resolution, card: buildRightNowCardForLiveLoop(state, resolution) });
+    const surfaceState =
+      state && rightNowHasPreparedObject(state)
+        ? 'active_move'
+        : suppressionTrace?.trace_type === 'safe_silence'
+          ? 'clear'
+          : suppressionTrace
+            ? 'suppressed_winner'
+            : 'setup_needed';
+    return NextResponse.json({
+      surface_state: surfaceState,
+      state,
+      suppression_trace: suppressionTrace,
+      resolution,
+      card: buildRightNowCardForLiveLoop(state, resolution),
+    });
   } catch (error: unknown) {
     return apiErrorForRoute(error, 'workday-presence GET');
   }
@@ -84,13 +105,16 @@ export async function PUT(request: Request) {
         ...metadata,
         // This is MVP Auth metadata storage. Before production Slack/cron use, migrate to a first-class workday_presence_state table with RLS/history.
         workday_presence_state: nextState,
+        workday_presence_suppression_trace: null,
       },
     });
     if (updateResult.error) throw updateResult.error;
 
     const resolution = resolveCommandState({ state: nextState });
     return NextResponse.json({
+      surface_state: 'active_move',
       state: nextState,
+      suppression_trace: null,
       resolution,
       card: buildRightNowCardForLiveLoop(nextState, resolution),
     });

@@ -28,6 +28,27 @@ export type WorkdayPresenceDraft = {
   body?: string;
 };
 
+export type WorkdayPresenceSuppressionTrace = {
+  trace_type: 'safe_silence' | 'suppressed_winner' | 'generation_failed';
+  gate: string;
+  blocker_reason: string;
+  scorer_outcome: string | null;
+  action_type: string | null;
+  selected_candidate: {
+    title: string | null;
+    type: string | null;
+    score: number | null;
+  };
+  candidate_count: number | null;
+  evidence_empty: boolean;
+  artifact_exists: boolean;
+  draft_exists: boolean;
+  no_send: boolean;
+  generation_failed: boolean;
+  ungrounded_send_draft: boolean;
+  bottom_gate: boolean;
+};
+
 /**
  * Card interaction vocabulary. `view_draft` and `dismiss` are the current
  * two-button contract; the other four are legacy ids kept so taps on old
@@ -110,6 +131,11 @@ export type WorkdayPresenceDraftInput = {
   last_completed_step?: string;
 };
 
+function cleanNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  return null;
+}
+
 function clean(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
@@ -168,6 +194,50 @@ function normalizeDraft(input: unknown): WorkdayPresenceDraft | null {
     preview: preview ?? '',
     ...(to ? { to } : {}),
     ...(body ? { body } : {}),
+  };
+}
+
+export function normalizeWorkdayPresenceSuppressionTrace(
+  input: unknown,
+): WorkdayPresenceSuppressionTrace | null {
+  if (!input || typeof input !== 'object') return null;
+  const row = input as Record<string, unknown>;
+  const traceType = clean(row.trace_type);
+  const gate = clean(row.gate);
+  const blockerReason = clean(row.blocker_reason);
+  const selectedCandidate =
+    row.selected_candidate && typeof row.selected_candidate === 'object'
+      ? (row.selected_candidate as Record<string, unknown>)
+      : null;
+
+  if (
+    !traceType ||
+    !['safe_silence', 'suppressed_winner', 'generation_failed'].includes(traceType) ||
+    !gate ||
+    !blockerReason
+  ) {
+    return null;
+  }
+
+  return {
+    trace_type: traceType as WorkdayPresenceSuppressionTrace['trace_type'],
+    gate,
+    blocker_reason: blockerReason,
+    scorer_outcome: clean(row.scorer_outcome),
+    action_type: clean(row.action_type),
+    selected_candidate: {
+      title: clean(selectedCandidate?.title),
+      type: clean(selectedCandidate?.type),
+      score: cleanNumber(selectedCandidate?.score),
+    },
+    candidate_count: cleanNumber(row.candidate_count),
+    evidence_empty: row.evidence_empty === true,
+    artifact_exists: row.artifact_exists === true,
+    draft_exists: row.draft_exists === true,
+    no_send: row.no_send === true,
+    generation_failed: row.generation_failed === true,
+    ungrounded_send_draft: row.ungrounded_send_draft === true,
+    bottom_gate: row.bottom_gate === true,
   };
 }
 
