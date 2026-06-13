@@ -6,6 +6,7 @@ import { runContinuityGate, MAX_ROOT_MARKDOWN_FILES } from '@/scripts/continuity
 
 const requiredFixtureFiles = [
   'ACTIVE_HANDOFF.md',
+  'ACTIVE_SEAM_STATE.json',
   'AGENTS.md',
   'CLAUDE.md',
   'FOLDERA_MASTER_BIBLE.md',
@@ -67,6 +68,23 @@ describe('continuity gate', () => {
     const failures = runContinuityGate(fixtureRoot);
 
     expect(failures).toContain('ACTIVE_HANDOFF.md must name exactly one active seam line; found 2.');
+  });
+
+  it('fails when the active seam ledger disagrees with the active issue', () => {
+    const fixtureRoot = createFixtureRoot();
+    const ledger = JSON.parse(readFixtureFile(fixtureRoot, 'ACTIVE_SEAM_STATE.json')) as {
+      active_issue?: number;
+    };
+    ledger.active_issue = 9999;
+    writeFixtureFile(fixtureRoot, 'ACTIVE_SEAM_STATE.json', `${JSON.stringify(ledger, null, 2)}\n`);
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(
+      failures.some((failure) =>
+        failure.includes('ACTIVE_SEAM_STATE.json active_issue #9999 must match FOLDERA_BUILD_ORDER.yaml active_issue #301'),
+      ),
+    ).toBe(true);
   });
 
   it('fails when handoff and build order disagree on the active issue', () => {

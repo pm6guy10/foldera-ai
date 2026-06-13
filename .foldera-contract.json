@@ -1,13 +1,13 @@
 {
-  "authority_status": "M1_BACKEND_LOCK_ACTIVE",
+  "authority_status": "CONTROL_PLANE_TRUTH_LEDGER_ACTIVE",
   "active": true,
-  "active_issue": 296,
-  "backlog_id": "FOLDERA_M1_MILESTONE",
-  "base_commit": "96fa9a2",
-  "money_loop_rung": "m1_backend_lock",
-  "user_system_path": "Issue #296 active — M1 milestone: loop closes for Brandon ≥3 days/week, 2 consecutive weeks. Make workday_presence_state always-present so Brandon always sees a real action card, never a dead setup form.",
+  "active_issue": 301,
+  "backlog_id": "FOLDERA_CONTROL_PLANE_TRUTH_LEDGER",
+  "base_commit": "cbacc4da1a94bb5d25d7286f0347eb33b997d362",
+  "money_loop_rung": "control_plane_truth_ledger",
+  "user_system_path": "Issue #301 active — one machine-readable source of truth for active issue, branch, PR, deployed SHA, runtime env, and DB-state version.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
-  "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md and the active issue before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate.",
+  "no_routing_contract": "The agent must read ACTIVE_HANDOFF.md, ACTIVE_SEAM_STATE.json, and the active issue before acting. Brandon should not have to reconcile drift.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
@@ -18,47 +18,41 @@
     "merge_through_rule": "Merge-through is allowed only after local proof, GitHub checks green, forbidden work touched is NO, and the PR receipt records the source-truth closeout and terminal state."
   },
   "allowed_file_patterns": [
-    "*.md",
-    "*.yaml",
+    "ACTIVE_HANDOFF.md",
+    "ACTIVE_SEAM_STATE.json",
+    "AGENTS.md",
+    "FOLDERA_BUILD_ORDER.yaml",
     ".foldera-contract.json",
     "docs/**",
     "scripts/**",
     "tests/**",
-    ".github/**",
-    ".husky/**",
+    ".github/**"
+  ],
+  "forbidden_file_patterns": [
     "app/**",
     "components/**",
     "lib/**",
     "supabase/migrations/**"
   ],
-  "forbidden_file_patterns": [
-    "lib/acquisition/**"
-  ],
-  "allowed_files_raw": "Active seam: issue #296 M1 milestone. Backend state contract (workday_presence_state always-present) and scripts/workflows for loop-health monitoring. Migrations allowed only with AGENTS.md schema discipline: committed + applied to production + verified, or exact blocker stated.",
-  "forbidden_files_raw": "Acquisition/growth agents stay quarantined OFF (lib/acquisition/**). Behavioral rails regardless of file: no outbound email/sends by default, no paid tests without naming exact cost first, no fake claims (enterprise/compliance/connector breadth), no dashboard/task-list/inbox-summary drift, no raw private content in receipts, one intervention max, safe silence is a win.",
+  "allowed_files_raw": "Issue #301 control-plane ledger and gate enforcement only.",
+  "forbidden_files_raw": "No product work, no Slack/OAuth/API/send, no backend/auth/schema/dashboard/scoring/conviction changes until the control-plane seam closes.",
   "required_local_proof": [
     "npm run gate:continuity",
     "npm run lint",
     "npm run build",
     "git diff --check"
   ],
-  "required_browser_proof": "Required for user-facing money-path changes: walk the affected path live (preview or e2e) and capture proof. Backend-only fixes use focused vitest + gates per AGENTS.md.",
-  "browser_proof_command": "npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts tests/e2e/public-routes.spec.ts --reporter=list",
-  "acceptance_condition": "Brandon closes the loop ≥3 days/week for 2 consecutive weeks (tkg_actions.approved_at stamps from real human action). workday_presence_state is always-present; loop-health guardian stays green. Receipt on issue #296.",
-  "stop_condition": "Stop when M1 done-means is met with receipts on #296, or BLOCKED_WITH_EXACT_RECEIPT on a real permission/CI/safety blocker, or session limits force an exact resume receipt.",
-  "is_user_facing": true,
+  "required_browser_proof": "Not required. This is a control-plane seam.",
+  "browser_proof_command": "",
+  "acceptance_condition": "ACTIVE_SEAM_STATE.json is the single machine-readable control plane and the continuity gate passes against live GitHub/release truth.",
+  "stop_condition": "Stop when the control-plane ledger and gates are aligned, or BLOCKED_WITH_EXACT_RECEIPT if live GitHub/deploy truth cannot be verified.",
+  "is_user_facing": false,
   "anti_regression_checks": [
-    "issue #281 stays open as the external human-validation dependency — do not reopen as a code blocker, do not fake its proof",
-    "issue #276 is COMPLETE — the resolver verdict surface stays closed to exactly MERGE_READY/FIX_FIRST/WAIT/CLEAR",
-    "issue #249 is COMPLETE — scorer-winner invariant enforced in selectSourceBackedRightNowState",
-    "issue #226 is COMPLETE — rung-6 owner-path readiness proven via PR #256",
-    "issue #262 must stay event-driven — not a daily brief or dashboard summary",
-    "the Right Now acceptance standard holds: no prepared object means no interrupting card (rightNowHasPreparedObject)",
+    "ACTIVE_SEAM_STATE.json stays present and parseable",
+    "ACTIVE_HANDOFF.md stays within the line cap and names exactly one active seam",
     "root markdown file count is bounded by gate:continuity (MAX 8)",
     "a new governance rule may only be added by editing an existing keep-list file",
-    "trusted class requires outbound evidence — inbound volume alone yields unclassified",
-    "personal class is sticky and salience-capped",
-    "acquisition/growth agents are quarantined (default OFF) until owner re-enables"
+    "no product work starts inside the control-plane seam"
   ],
-  "next_command": "M1 backend-lock: make workday_presence_state always-present on every dashboard load. Read ACTIVE_HANDOFF.md and issue #296 before acting."
+  "next_command": "Write ACTIVE_SEAM_STATE.json and enforce it in scripts/continuity-gate.ts."
 }

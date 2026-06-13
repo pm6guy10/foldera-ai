@@ -37,6 +37,7 @@ That is the whole boot. Read other docs only when the active seam requires them.
 A new governance rule may only be added by editing an existing keep-list file, never by creating a new file. The keep-list is enforced mechanically by `npm run gate:continuity` (root markdown count is bounded). The keep-list:
 
 - `ACTIVE_HANDOFF.md` — current command state and next exact move
+- `ACTIVE_SEAM_STATE.json` — machine-readable active seam state and control plane
 - `FOLDERA_BUILD_ORDER.yaml` — machine-readable active issue and closeout requirements
 - `FOLDERA_MASTER_BIBLE.md` — product doctrine, north star, roadmap (reference authority)
 - `AGENTS.md` — this contract
@@ -160,6 +161,7 @@ Fix the proven seam first. Broaden from instance to class only when the failure 
 Before any final report, complete source-truth closeout:
 
 - `ACTIVE_HANDOFF.md`: updated / unchanged - reason / not applicable - reason
+- `ACTIVE_SEAM_STATE.json`: updated / unchanged - reason / not applicable - reason
 - `FOLDERA_BUILD_ORDER.yaml`: updated / unchanged - reason / not applicable - reason
 - `docs/SOURCE_OF_TRUTH_MAP.md`: updated / unchanged - reason / not applicable - reason
 - GitHub issue receipt: posted

@@ -33,5 +33,7 @@ If product/business/UX/runtime direction is implicated, cite `FOLDERA_MASTER_BIB
 Each line must be filled with exactly one of: `updated`, `unchanged - reason`, `not applicable - reason`.
 
 - `ACTIVE_HANDOFF.md`:
+- `ACTIVE_SEAM_STATE.json`:
 - `FOLDERA_BUILD_ORDER.yaml`:
+- `.foldera-contract.json`:
 - `docs/SOURCE_OF_TRUTH_MAP.md`:

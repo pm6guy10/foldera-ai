@@ -9,6 +9,7 @@ This is the keep-list ledger. Everything not listed here is reference, archive, 
 | File | Role |
 | --- | --- |
 | `ACTIVE_HANDOFF.md` | Current command state and next exact move. The first thing every session reads. |
+| `ACTIVE_SEAM_STATE.json` | Machine-readable active seam state: active issue, branch, PR, deployed SHA, runtime env, and DB-state expectation. |
 | Active GitHub issue | The one implementation seam. Named by `ACTIVE_HANDOFF.md`. |
 | `FOLDERA_BUILD_ORDER.yaml` | Machine-readable active issue, launch ladder, closeout requirements. |
 | `.foldera-contract.json` | Machine-readable allowed/forbidden file boundary for the active seam. |
@@ -28,4 +29,4 @@ A new governance rule may only be added by editing an existing keep-list file, n
 
 ## Enforcement
 
-`npm run gate:continuity` (also run by PR Sentinel in CI) checks: keep-list files exist, root markdown count is bounded, `ACTIVE_HANDOFF.md` names exactly one seam and stays <= 80 lines, handoff/build-order/contract agree on the active issue, and the PR template keeps the source-truth closeout section.
+`npm run gate:continuity` (also run by PR Sentinel in CI) checks: keep-list files exist, root markdown count is bounded, `ACTIVE_HANDOFF.md` names exactly one seam and stays <= 80 lines, `ACTIVE_SEAM_STATE.json` agrees with handoff/build-order/contract/current branch, and the PR template keeps the source-truth closeout section.
