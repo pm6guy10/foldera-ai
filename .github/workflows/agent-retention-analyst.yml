@@ -1,8 +1,5 @@
-# Wednesdays 15:00 UTC — re-engagement drafts.
 name: Agent — Retention Analyst
 on:
-  schedule:
-    - cron: '0 15 * * 3'
   workflow_dispatch:
 
 jobs:

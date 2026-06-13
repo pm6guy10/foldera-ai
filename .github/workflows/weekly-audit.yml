@@ -1,9 +1,7 @@
 name: Weekly Production Audit
 
 on:
-  schedule:
-    - cron: '0 12 * * 1'  # Every Monday 12:00 UTC / 5am PT
-  workflow_dispatch:  # Allow manual trigger from GitHub Actions UI
+  workflow_dispatch:
 
 jobs:
   audit:

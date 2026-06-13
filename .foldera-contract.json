@@ -14,7 +14,18 @@
     "lib/workday-presence/trigger-runner.ts",
     "lib/workday-presence/__tests__/trigger-runner.test.ts",
     "tests/config/__tests__/continuity-gate.test.ts",
-    "tests/e2e/hidden-op-outcome.spec.ts"
+    "tests/e2e/hidden-op-outcome.spec.ts",
+    ".github/workflows/production-e2e.yml",
+    ".github/workflows/agent-distribution-finder.yml",
+    ".github/workflows/agent-gtm-strategist.yml",
+    ".github/workflows/agent-health-watchdog.yml",
+    ".github/workflows/agent-retention-analyst.yml",
+    ".github/workflows/agent-self-optimizer.yml",
+    ".github/workflows/agent-ui-critic.yml",
+    ".github/workflows/loop-health-guardian.yml",
+    ".github/workflows/signal-drain.yml",
+    ".github/workflows/pipeline-cron-heartbeat.yml",
+    ".github/workflows/weekly-audit.yml"
   ],
   "forbidden_file_patterns": [
     "components/**",

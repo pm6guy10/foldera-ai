@@ -4,8 +4,6 @@
 name: Loop-Health Guardian
 
 on:
-  schedule:
-    - cron: '0 13 * * *'  # Daily 13:00 UTC / 6am PT — after the morning cron window
   workflow_dispatch:
 
 jobs:

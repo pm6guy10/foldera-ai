@@ -2,8 +2,6 @@ name: Production E2E
 
 on:
   deployment_status:
-  schedule:
-    - cron: "15 11 * * *" # 15 min after nightly-ops (11:00 UTC)
   workflow_dispatch:
     inputs:
       include_live_brief_proof:

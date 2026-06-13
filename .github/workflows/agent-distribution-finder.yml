@@ -1,8 +1,5 @@
-# Mondays 15:00 UTC — outreach pitch drafts.
 name: Agent — Distribution Finder
 on:
-  schedule:
-    - cron: '0 15 * * 1'
   workflow_dispatch:
 
 jobs:

@@ -1,8 +1,5 @@
-# Fridays 15:00 UTC — weekly product intelligence.
 name: Agent — Self Optimizer
 on:
-  schedule:
-    - cron: '0 15 * * 5'
   workflow_dispatch:
 
 jobs:
