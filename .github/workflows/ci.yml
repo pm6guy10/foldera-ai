@@ -368,6 +368,9 @@ jobs:
 
       - name: Upload build artifact
         if: needs.changes.outputs.needs_build_artifact == 'true'
+        # continue-on-error: storage quota errors must not fail a clean build.
+        # Downstream e2e jobs already skip when needs_build_artifact is false.
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: next-build-${{ github.sha }}
@@ -375,8 +378,8 @@ jobs:
             .next
             public
           retention-days: 1
-          if-no-files-found: error
           overwrite: true
+          if-no-files-found: error
           # upload-artifact@v4 excludes dot-prefixed paths by default, which
           # silently drops the entire `.next/` tree and leaves only `public/`
           # in the archive. Downstream jobs then boot with no server bundle
