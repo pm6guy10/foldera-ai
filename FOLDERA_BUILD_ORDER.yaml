@@ -21,11 +21,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 284
+active_issue: 296
 priority_class: ACTIVE
-work_type: OWNER_OPERATOR_PASS
-why_this_first: Owner mandate 2026-06-12 — full A-to-Z product pass so a cold non-owner reaches the holy-crap moment with zero narration.
-next_seam: #284 campaign is ACTIVE; all rungs 1-9 complete; next seam is whatever Brandon names next
+work_type: M1_BACKEND_LOCK
+why_this_first: M1 definition — loop closes for Brandon ≥3 days/week, 2 consecutive weeks. workday_presence_state must be always-present before the loop can reliably close.
+next_seam: M1 backend-lock — seed workday_presence_state on every dashboard load so Brandon always sees a real action card
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
@@ -136,6 +136,34 @@ command_state_resolver_v0:
     - Stripe
     - issue #244
     - issue #246
+m1_milestone_board:
+  issue: 296
+  status: OPEN
+  definition: loop closes for Brandon ≥3 days/week, 2 consecutive weeks
+  ladder:
+    - M1: Brandon closes loop (backend state contract locked)
+    - M2: stranger closes loop (non-owner, zero narration)
+    - M3: frontend rebuilt once on locked M1 contract
+    - M4: runs itself (self-heal/learn/optimize)
+
+loop_health_guardian:
+  pr: 297
+  merge_sha: 96fa9a2
+  status: MERGED
+  merged_at: 2026-06-13
+  script: scripts/loop-health-guardian.ts
+  workflow: .github/workflows/loop-health-guardian.yml
+  schedule: "0 13 * * *"
+  alarm: Slack DM via SLACK_BOT_TOKEN + FOLDERA_SLACK_SELF_CHANNEL_ID on COLD/NEVER
+  metric: tkg_actions.approved_at (last human closed the loop)
+  cold_threshold_days: 4
+
+auto_label_workflow:
+  pr: 295
+  status: MERGED
+  workflow: .github/workflows/issue-auto-label.yml
+  labels: [ops, intake, frontend, handoff, product]
+
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason

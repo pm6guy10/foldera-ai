@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-13 PT (G1-G7 all done, PRs #286-#289 merged. Rung 9 gate permanently removed by owner instruction.)
+Last updated: 2026-06-13 PT (M1 loop-health guardian merged PR #297 96fa9a2; Slack DM alarm live; milestone board #296 open; auto-label workflow #295 merged.)
 
 ## Boot
 
@@ -9,30 +9,26 @@ Last updated: 2026-06-13 PT (G1-G7 all done, PRs #286-#289 merged. Rung 9 gate p
 
 ## Active command gate
 
-Issue #284 is the active owner-operator seam.
+Issue #296 is the active milestone seam.
 Issue #281 (rung 9) is OWNER_CLOSED — external human-validation gate permanently removed by owner instruction 2026-06-13. This rung will never be a stop condition again.
 Issue #276 is COMPLETE — Command State Resolver v0 merged via PR #279 (`e848d01`); closeout PR #280 (`13581bf`).
 Issue #262 is COMPLETE — event-driven trigger runner live (PR #273, `d6b99f2`).
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
 One active seam only.
 
-**Active seam: issue #284 — A-to-Z owner-operator pass: close the gap between vision and product.**
-Owner mandate (2026-06-12): full-app pass, multi-PR campaign, make the money path deliver the holy-crap moment to a cold non-owner user with zero narration.
+**Active seam: M1 — Loop closes for Brandon (≥3 days/week, 2 consecutive weeks).**
+Milestone board: issue #296. M1 definition: the one metric that means Foldera works is `tkg_actions.approved_at` being stamped by a human, not just the brain generating moves.
 
 ## Current slice:
 
-Issue #284 remains the active owner-operator campaign. PRs A and B are merged:
-- PR A / G1+G2 COMPLETE — PR #286 (`cf8860f`) mounted the presence-first `/dashboard` loop and rewrote contradictory dashboard browser contracts.
-- PR B / G3 COMPLETE — PR #287 (`f42ad9d`) wired Command State Resolver v0 into the live loop: resolver verdict returned in GET /api/workday-presence, UI-safe trusted verdict line on the card, no fake "do this now" when WAIT/CLEAR, 40/40 e2e green.
+**#284 campaign COMPLETE** (G1-G7 all done, PRs #286-#289 merged). Rung 9 permanently removed.
 
-G3+G4+G5+G6 are all COMPLETE:
-- G3 — resolver verdict in live loop (PR #287 `f42ad9d`)
-- G4 — background sync fires on first OAuth connect (PR #288 `088ccdd`)
-- G5 — orphaned HomePageClient, DashboardPreview, ProductPreviewPanel deleted (PR #288)
-- G6 — "Executive Briefing" vocab scrubbed from /demo surface (PR #288)
+**M1 foundation laid:**
+- PR #295 MERGED — auto-label workflow: every new issue tagged on open (ops/intake/frontend/handoff/product)
+- PR #297 MERGED (`96fa9a2`) — loop-health guardian: daily scheduled check on `tkg_actions.approved_at`; exits non-zero and fires a Slack DM (SLACK_BOT_TOKEN + FOLDERA_SLACK_SELF_CHANNEL_ID) when COLD/NEVER. The loop has been dead since 2026-04-22 — first scheduled run will correctly go red and ping Slack.
+- Issue #296 OPEN — Milestone board M1→M4 (M1: Brandon closes loop; M2: stranger closes loop; M3: frontend on locked contract; M4: runs itself)
 
-**All G1-G7 gaps closed. #284 campaign complete.**
-All money-path-critical gaps are closed. Rung 9 external validation gate permanently removed by owner instruction 2026-06-13. Product is ready for real users — no governance gate blocks forward motion.
+**M1 blocker identified:** `workday_presence_state` is not always-present. When it's null/missing, the dashboard renders a dead setup form with no action buttons — no loop possible. Backend state contract must be locked before the loop can reliably close.
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
@@ -65,9 +61,9 @@ Owner mandate written into `FOLDERA_MASTER_BIBLE.md` PART II-B and II-C. Any ses
 
 ## Next exact move
 
-#284 campaign is complete (G1-G7 all done, PRs #286-#289 merged). Rung 9 gate permanently removed. Guardian Vision Lock + Brain-Without-Hands Law written into FOLDERA_MASTER_BIBLE.md + AGENTS.md (PR #294, pending merge).
+Loop-health guardian is live (PR #297 merged). Alarm will DM Brandon in Slack when the loop is cold.
 
-**Next seam:** Wire the hidden-op detector to the live owner Slack loop — one complete act: detect → surface → Slack ping → one-click receipt. No new scoring, no new classifiers. One loop, end to end, for real.
+**Next seam (M1 backend-lock):** Make `workday_presence_state` always-present — seed a real state object on every dashboard load so Brandon always sees an action button, never a dead setup form. One backend fix, locked contract, no frontend redesign. Issue #284 or a new M1 issue.
 
 ## Prior closeout records (condensed; GitHub receipts + git history are the archive)
 

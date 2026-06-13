@@ -1,11 +1,11 @@
 {
-  "authority_status": "PRODUCT_MVP_PIVOT_ACTIVE",
+  "authority_status": "M1_BACKEND_LOCK_ACTIVE",
   "active": true,
-  "active_issue": 284,
-  "backlog_id": "FOLDERA_PRODUCT_MVP_PIVOT",
-  "base_commit": "b8203bc",
-  "money_loop_rung": "owner_operator_pass_284",
-  "user_system_path": "Issue #284 active — owner-authorized A-to-Z pass. Audit the full money path, post the gap list on the issue, fix in money-impact order, one coherent PR per fix, merge-through when green. Issue #281 (rung 9) is an external validation dependency, not a blocker.",
+  "active_issue": 296,
+  "backlog_id": "FOLDERA_M1_MILESTONE",
+  "base_commit": "96fa9a2",
+  "money_loop_rung": "m1_backend_lock",
+  "user_system_path": "Issue #296 active — M1 milestone: loop closes for Brandon ≥3 days/week, 2 consecutive weeks. Make workday_presence_state always-present so Brandon always sees a real action card, never a dead setup form.",
   "supreme_authority_file": "FOLDERA_MASTER_BIBLE.md",
   "no_routing_contract": "The Agent must read ACTIVE_HANDOFF.md and the active issue before acting, and must follow the active issue exactly. The Agent may not ask Brandon to route, repeat, or arbitrate.",
   "terminal_state_authority": {
@@ -33,7 +33,7 @@
   "forbidden_file_patterns": [
     "lib/acquisition/**"
   ],
-  "allowed_files_raw": "Active seam: issue #284 owner-authorized A-to-Z pass. The full app surface is open for money-path fixes judged against the Bible's first money-moving journey. Migrations are allowed only with the AGENTS.md schema discipline: committed + applied to production + verified, or the exact blocker stated.",
+  "allowed_files_raw": "Active seam: issue #296 M1 milestone. Backend state contract (workday_presence_state always-present) and scripts/workflows for loop-health monitoring. Migrations allowed only with AGENTS.md schema discipline: committed + applied to production + verified, or exact blocker stated.",
   "forbidden_files_raw": "Acquisition/growth agents stay quarantined OFF (lib/acquisition/**). Behavioral rails regardless of file: no outbound email/sends by default, no paid tests without naming exact cost first, no fake claims (enterprise/compliance/connector breadth), no dashboard/task-list/inbox-summary drift, no raw private content in receipts, one intervention max, safe silence is a win.",
   "required_local_proof": [
     "npm run gate:continuity",
@@ -43,8 +43,8 @@
   ],
   "required_browser_proof": "Required for user-facing money-path changes: walk the affected path live (preview or e2e) and capture proof. Backend-only fixes use focused vitest + gates per AGENTS.md.",
   "browser_proof_command": "npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts tests/e2e/public-routes.spec.ts --reporter=list",
-  "acceptance_condition": "The major gaps between the Bible's first money-moving journey and the shipped product are fixed with merged PRs and receipts on issue #284; remaining gaps are explicitly listed as future seams with reasons; a cold non-owner can reach grounded value or honest quiet with zero narration.",
-  "stop_condition": "Stop when the #284 campaign reaches its done-means state with receipts, or BLOCKED_WITH_EXACT_RECEIPT on a real permission/CI/safety blocker, or session limits force an exact resume receipt.",
+  "acceptance_condition": "Brandon closes the loop ≥3 days/week for 2 consecutive weeks (tkg_actions.approved_at stamps from real human action). workday_presence_state is always-present; loop-health guardian stays green. Receipt on issue #296.",
+  "stop_condition": "Stop when M1 done-means is met with receipts on #296, or BLOCKED_WITH_EXACT_RECEIPT on a real permission/CI/safety blocker, or session limits force an exact resume receipt.",
   "is_user_facing": true,
   "anti_regression_checks": [
     "issue #281 stays open as the external human-validation dependency — do not reopen as a code blocker, do not fake its proof",
@@ -59,5 +59,5 @@
     "personal class is sticky and salience-capped",
     "acquisition/growth agents are quarantined (default OFF) until owner re-enables"
   ],
-  "next_command": "Run the #284 audit: walk the money path in code and live, post the prioritized gap list as a durable receipt on issue #284, then fix in money-impact order."
+  "next_command": "M1 backend-lock: make workday_presence_state always-present on every dashboard load. Read ACTIVE_HANDOFF.md and issue #296 before acting."
 }
