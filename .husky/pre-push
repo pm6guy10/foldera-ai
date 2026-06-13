@@ -17,8 +17,7 @@
 #
 # If a push is blocked here, the failing lane names the exact next move.
 # ─────────────────────────────────────────────────────────────────────────────
-
-set -o pipefail
+# Note: husky runs this via `sh -e`, so only POSIX sh syntax is valid here.
 
 npm run preflight -- --stage=pre-push
 if [ $? -ne 0 ]; then
@@ -34,13 +33,8 @@ if [ $? -ne 0 ]; then
 fi
 
 echo "Running build (Next.js full typecheck)..."
-# Stream to the terminal; use pipefail + PIPESTATUS so a failing `next build`
-# rejects the push even though `tee` would otherwise mask the exit code.
-TMPFILE=$(mktemp)
-npm run build 2>&1 | tee "$TMPFILE"
-build_status=${PIPESTATUS[0]}
-rm -f "$TMPFILE"
-if [ "$build_status" -ne 0 ]; then
+npm run build
+if [ $? -ne 0 ]; then
   echo "BUILD FAILED. Push rejected."
   exit 1
 fi

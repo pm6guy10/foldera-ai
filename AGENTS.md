@@ -11,6 +11,8 @@ This is the only agent execution contract in this repo. `CLAUDE.md`, `.cursorrul
 
 1. Read `ACTIVE_HANDOFF.md`.
 2. Read the active issue it names.
+3. Check Issue #136 for a recent INTERRUPT receipt on the active issue; if one exists, resume from its named next step.
+4. Post a SESSION START receipt to Issue #136 before the first file edit.
 
 That is the whole boot. Read other docs only when the active seam requires them. Check open/merged PRs when repo/deploy truth matters. Use Vercel/Supabase MCP only when the seam requires live/runtime truth.
 
@@ -26,6 +28,9 @@ That is the whole boot. Read other docs only when the active seam requires them.
 - Proof is required before calling work done.
 - Brandon must not be the relay, tester, merger, stale-truth repair person, or project manager for agent drift.
 - **Session closeout is mandatory regardless of whether Brandon asks for it.** Before ending any session: (1) all local branches are pushed and have an open PR or are merged; (2) all worktrees are removed; (3) untracked files are either committed+pushed or explicitly discarded — nothing is left stranded locally; (4) CI is green on all open PRs; (5) `ACTIVE_HANDOFF.md` reflects current truth. If closeout cannot be completed (e.g. CI needs a fix), name the exact blocker in the handoff and complete it before stopping.
+- **Auto-merge on green**: When CI passes and the PR is not a draft, immediately mark it ready for review and merge via GitHub MCP. Do not wait for Brandon to merge. Every PR opened in any session must reach MERGED or BLOCKED — never left sitting green.
+- **Branch hygiene**: After every PR merge, delete the head branch via GitHub MCP. On boot, if more than 5 non-dependabot, non-main remote branches exist, delete all fully-merged ones before starting work. Note: `git push origin --delete` is blocked by the remote proxy in this environment — use GitHub MCP tools or document as a known limitation with a follow-up.
+- **Ledger posting**: Post to Issue #136 (`[OPS] Run Ledger`) whenever a significant decision, direction change, idea, or half-baked seam surfaces in conversation — not only at closeout. If something was said in chat that would change what the next session does, it goes to Issue #136 immediately. Chat memory is not source of truth; the ledger is.
 
 ## Governance Anti-Regrowth Rule
 
