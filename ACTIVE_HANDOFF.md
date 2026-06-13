@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-13 PT (PR B / G3 merged as #287 `f42ad9d`; starting G4 — post-connect auto-sync momentum)
+Last updated: 2026-06-13 PT (PRs B+C merged; G3+G4+G5+G6 done. Starting G7 audit scan.)
 
 ## Boot
 
@@ -25,8 +25,14 @@ Issue #284 remains the active owner-operator campaign. PRs A and B are merged:
 - PR A / G1+G2 COMPLETE — PR #286 (`cf8860f`) mounted the presence-first `/dashboard` loop and rewrote contradictory dashboard browser contracts.
 - PR B / G3 COMPLETE — PR #287 (`f42ad9d`) wired Command State Resolver v0 into the live loop: resolver verdict returned in GET /api/workday-presence, UI-safe trusted verdict line on the card, no fake "do this now" when WAIT/CLEAR, 40/40 e2e green.
 
-**Next slice: G4 — post-connect auto-sync momentum.**
-When a user connects their first source (Google/Microsoft OAuth callback), Foldera does not kick off a background sync automatically. The first-run user hits the setup card and has nothing to resolve. Fix: trigger a background sync from the OAuth callback so the first-run card can show real state as quickly as possible. This is the G4 gap from the #284 audit.
+G3+G4+G5+G6 are all COMPLETE:
+- G3 — resolver verdict in live loop (PR #287 `f42ad9d`)
+- G4 — background sync fires on first OAuth connect (PR #288 `088ccdd`)
+- G5 — orphaned HomePageClient, DashboardPreview, ProductPreviewPanel deleted (PR #288)
+- G6 — "Executive Briefing" vocab scrubbed from /demo surface (PR #288)
+
+**Next slice: G7 — audit remaining product gaps.**
+All money-path-critical gaps are now closed. The next pass is a deeper product audit to find any remaining gaps that affect the cold non-owner first impression. Candidate areas: landing page conversion copy, /start experience, pricing page, trust language.
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
@@ -49,7 +55,11 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-G4: trigger background sync on OAuth callback. Read the Google and Microsoft callback routes, confirm where the sync kicks off (or doesn't), add a non-blocking background fetch to `/api/cron/sync-email` or equivalent immediately after the user's tokens are stored. This must not block the OAuth redirect. Gate: the first-run user can reach /dashboard after connecting a source and see real state (or SAFE_SILENCE) without waiting for the next cron window.
+G7: audit the cold-start experience end to end. Specifically:
+1. Read the `/start` page and landing page (`/`) — check conversion copy against the Right Now product doctrine.
+2. Check the `/pricing` page for any copy that still describes the old "Executive Briefing" product.
+3. If gaps found, fix in a single PR C2.
+4. If no gaps found, post a clean STOP receipt on #284 with "Money path is now solid — ready for human validation."
 
 ## Prior closeout records (condensed; GitHub receipts + git history are the archive)
 
