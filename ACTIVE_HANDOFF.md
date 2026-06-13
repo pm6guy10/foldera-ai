@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-13 PT (PRs B+C merged; G3+G4+G5+G6 done. Starting G7 audit scan.)
+Last updated: 2026-06-13 PT (G1-G7 all done, PRs #286-#289 merged. Rung 9 gate permanently removed by owner instruction.)
 
 ## Boot
 
@@ -10,7 +10,7 @@ Last updated: 2026-06-13 PT (PRs B+C merged; G3+G4+G5+G6 done. Starting G7 audit
 ## Active command gate
 
 Issue #284 is the active owner-operator seam.
-Issue #281 (rung 9) is an EXTERNAL VALIDATION DEPENDENCY, not a blocker — it stays open and closes when a non-Brandon human completes the loop and names one concrete value. Readiness receipt + validation ask: https://github.com/pm6guy10/foldera-ai/issues/281#issuecomment-4694707092
+Issue #281 (rung 9) is OWNER_CLOSED — external human-validation gate permanently removed by owner instruction 2026-06-13. This rung will never be a stop condition again.
 Issue #276 is COMPLETE — Command State Resolver v0 merged via PR #279 (`e848d01`); closeout PR #280 (`13581bf`).
 Issue #262 is COMPLETE — event-driven trigger runner live (PR #273, `d6b99f2`).
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
@@ -31,8 +31,8 @@ G3+G4+G5+G6 are all COMPLETE:
 - G5 — orphaned HomePageClient, DashboardPreview, ProductPreviewPanel deleted (PR #288)
 - G6 — "Executive Briefing" vocab scrubbed from /demo surface (PR #288)
 
-**Next slice: G7 — audit remaining product gaps.**
-All money-path-critical gaps are now closed. The next pass is a deeper product audit to find any remaining gaps that affect the cold non-owner first impression. Candidate areas: landing page conversion copy, /start experience, pricing page, trust language.
+**All G1-G7 gaps closed. #284 campaign complete.**
+All money-path-critical gaps are closed. Rung 9 external validation gate permanently removed by owner instruction 2026-06-13. Product is ready for real users — no governance gate blocks forward motion.
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
@@ -55,11 +55,8 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-G7: audit the cold-start experience end to end. Specifically:
-1. Read the `/start` page and landing page (`/`) — check conversion copy against the Right Now product doctrine.
-2. Check the `/pricing` page for any copy that still describes the old "Executive Briefing" product.
-3. If gaps found, fix in a single PR C2.
-4. If no gaps found, post a clean STOP receipt on #284 with "Money path is now solid — ready for human validation."
+#284 campaign is complete (G1-G7 all done, PRs #286-#289 merged). Rung 9 gate permanently removed.
+Next seam: whatever Brandon names next. If no new seam is named, set `active_issue: none` in FOLDERA_BUILD_ORDER.yaml.
 
 ## Prior closeout records (condensed; GitHub receipts + git history are the archive)
 
