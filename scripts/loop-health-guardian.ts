@@ -97,6 +97,28 @@ export function evaluateLoopHealth(input: LoopHealthInput): LoopHealthResult {
   };
 }
 
+async function postSlackAlert(text: string): Promise<void> {
+  const token = process.env.SLACK_BOT_TOKEN;
+  const channel = process.env.FOLDERA_SLACK_SELF_CHANNEL_ID;
+  if (!token || !channel) return;
+  try {
+    const res = await fetch('https://slack.com/api/chat.postMessage', {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json; charset=utf-8',
+      },
+      body: JSON.stringify({ channel, text }),
+    });
+    const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+    if (json.ok !== true) {
+      console.warn(`loop-health Slack alert failed: ${json.error ?? res.status}`);
+    }
+  } catch (e) {
+    console.warn('loop-health Slack alert error:', e);
+  }
+}
+
 async function main() {
   config({ path: resolve(process.cwd(), '.env.local') });
 
@@ -170,6 +192,7 @@ async function main() {
   }
 
   if (result.status !== 'OK') {
+    await postSlackAlert(`🚨 *LOOP HEALTH: ${result.status}* — ${result.message}`);
     process.exit(1);
   }
 }
