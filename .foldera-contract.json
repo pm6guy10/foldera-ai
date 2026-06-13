@@ -10,9 +10,11 @@
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
     "app/api/slack/interaction/route.ts",
+    "app/api/slack/interaction/__tests__/hidden-op-outcome.test.ts",
     "lib/workday-presence/trigger-runner.ts",
     "lib/workday-presence/__tests__/trigger-runner.test.ts",
-    "tests/config/__tests__/continuity-gate.test.ts"
+    "tests/config/__tests__/continuity-gate.test.ts",
+    "tests/e2e/hidden-op-outcome.spec.ts"
   ],
   "forbidden_file_patterns": [
     "components/**",
