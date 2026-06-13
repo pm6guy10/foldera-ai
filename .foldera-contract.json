@@ -7,6 +7,7 @@
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
+    "ACTIVE_HANDOFF.md",
     "lib/workday-presence/trigger-runner.ts",
     "lib/workday-presence/__tests__/trigger-runner.test.ts",
     "tests/config/__tests__/continuity-gate.test.ts"

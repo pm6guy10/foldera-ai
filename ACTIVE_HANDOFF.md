@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-13 PT (issue #301 control-plane ledger active; production SHA cbacc4da1a94bb5d25d7286f0347eb33b997d362; old M1 notes retained below as archive.)
+Last updated: 2026-06-13 PT (issue #301 control-plane + hidden-op wiring COMPLETE; active seam: NONE — data moat initialization pending; production SHA f29cd80a89cc45deca3ef2d03d1dcc22c8c27a8d.)
 
 ## Boot
 
@@ -9,22 +9,22 @@ Last updated: 2026-06-13 PT (issue #301 control-plane ledger active; production 
 
 ## Active command gate
 
-Issue #301 is the active control-plane seam.
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
+Issue #301 is COMPLETE — control-plane truth ledger + hidden-op Slack wiring merged PR #305 (f29cd80).
 Issue #281 (rung 9) is OWNER_CLOSED — external human-validation gate permanently removed by owner instruction 2026-06-13. This rung will never be a stop condition again.
 Issue #276 is COMPLETE — Command State Resolver v0 merged via PR #279 (`e848d01`); closeout PR #280 (`13581bf`).
 Issue #262 is COMPLETE — event-driven trigger runner live (PR #273, `d6b99f2`).
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
 One active seam only.
 
-**Active seam: issue #301 — control-plane truth ledger.**
-Milestone board: issue #301. The one metric that matters here is whether active issue, branch, PR, deployed SHA, and DB-state expectation all resolve to the same truth without Brandon translating between files.
+**Active seam: NONE (pending next priority).**
+Data moat initialization ready. Guardian moment live: hidden-op detector fires Slack pings on buried high-consequence signals. Next: one-click receipt wiring (signal → act → outcome tuple logging).
 
 ## Current slice:
 
-Add the single control-plane truth ledger and wire the gate that enforces it. No product work.
+Data moat initialization: wire the `Got it` button on the hidden-op Slack card to log signal → act → outcome tuples to Supabase. No active seam declared yet — pending owner priority.
 
-Current production truth: `Last known production SHA: cbacc4da1a94bb5d25d7286f0347eb33b997d362`
+Current production truth: `Last known production SHA: f29cd80a89cc45deca3ef2d03d1dcc22c8c27a8d`
 
 Archive: the M1 loop-health notes below remain as historical context only.
 
@@ -59,7 +59,11 @@ Owner mandate written into `FOLDERA_MASTER_BIBLE.md` PART II-B and II-C. Any ses
 
 ## Next exact move
 
-Close issue #301 by shipping the control-plane ledger and gate, then stop. No product work, no broad cleanup, no new runtime surface.
+Wire the `Got it` button on the hidden-op Slack card to log signal → act → outcome tuples to Supabase (data moat initialization). No active seam declared until owner priority issued.
+
+## #301 closeout record
+
+Control-plane truth ledger + hidden-op Slack wiring: `ACTIVE_SEAM_STATE.json` machine-readable ledger + `.foldera-contract.json` governance gate + `detectHiddenOps` wired into `runWorkdayPresenceTriggerRunner`. Guardian moment live: buried high-consequence signals (score ≥ 50) fire Slack pings when normal path is quiet. Proof: PR #305 (f29cd80) merged; 5/5 unit tests · `npm run gate:continuity` pass · all CI ✓. Receipt: https://github.com/pm6guy10/foldera-ai/pull/305#issuecomment-4699691553
 
 ## Prior closeout records (condensed; GitHub receipts + git history are the archive)
 
