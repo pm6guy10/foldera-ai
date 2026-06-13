@@ -179,7 +179,13 @@ export default function DashboardPage() {
           </div>
         ) : (
           <MorningAnchorCard
-            card={card ?? { mode: 'setup', prompt: 'What are you trying to move forward today?' }}
+            card={
+              card ?? {
+                mode: 'setup',
+                prompt: 'What are you trying to move forward today?',
+                verdict_line: null,
+              }
+            }
             onSave={saveAnchor}
             onAction={respond}
             actionPending={actionPending}

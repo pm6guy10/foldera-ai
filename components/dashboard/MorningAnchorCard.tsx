@@ -51,6 +51,9 @@ export function MorningAnchorCard({
           <h2 className="text-[34px] font-semibold leading-[1.05] tracking-[-0.02em] text-text-primary sm:text-[42px]">
             {card.prompt}
           </h2>
+          {card.verdict_line ? (
+            <p className="mt-3 text-sm text-cyan-100/80">{card.verdict_line}</p>
+          ) : null}
           <div className="mt-5 grid gap-3">
             <input
               className="foldera-input"
@@ -125,6 +128,9 @@ export function MorningAnchorCard({
         <p className="mt-3 text-sm text-text-secondary">{card.return_here}</p>
         <p className="mt-3 text-base text-text-primary">{card.next_move}</p>
         <p className="mt-3 text-sm text-text-secondary">{card.why_this_matters}</p>
+        {card.verdict_line ? (
+          <p className="mt-3 text-sm font-semibold text-cyan-100/90">{card.verdict_line}</p>
+        ) : null}
         <p className="mt-3 text-sm text-cyan-100/80">{card.source_line}</p>
         {card.last_interaction ? (
           <p className="mt-3 text-sm text-cyan-200">{card.last_interaction}</p>

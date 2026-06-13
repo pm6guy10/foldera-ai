@@ -791,7 +791,13 @@ async function setupMountedDashboardMocks(page: Page) {
         contentType: 'application/json',
         body: json({
           state: null,
-          card: { mode: 'setup', prompt: 'What are you trying to move forward today?' },
+          resolution: { verdict: 'CLEAR', rule: 'no_saved_state' },
+          card: {
+            mode: 'setup',
+            prompt: 'What are you trying to move forward today?',
+            verdict_line:
+              'Trusted verdict: No justified move yet. Save one focus and Foldera will hold the re-entry point.',
+          },
         }),
       }),
   );
@@ -814,6 +820,7 @@ describeAuthMocked('Dashboard /dashboard — authenticated', () => {
     await expect(
       page.getByRole('heading', { name: /What are you trying to move forward today\?/i }),
     ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Trusted verdict: No justified move yet/i)).toBeVisible();
     await expect(page.getByRole('link', { name: /^Sources$/ })).toBeVisible();
   });
 

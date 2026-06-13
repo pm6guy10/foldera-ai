@@ -43,7 +43,10 @@ describe('GET /api/workday-presence', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
+    expect(body.resolution.verdict).toBe('CLEAR');
+    expect(body.resolution.rule).toBe('no_saved_state');
     expect(body.card.mode).toBe('setup');
+    expect(body.card.verdict_line).toContain('No justified move yet');
     expect(Object.keys(body)).toEqual(expect.arrayContaining(['state', 'card']));
   });
 
@@ -86,10 +89,57 @@ describe('GET /api/workday-presence', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
+    expect(body.resolution.verdict).toBe('WAIT');
+    expect(body.resolution.rule).toBe('external_wait');
     expect(body.card.mode).toBe('active');
     expect(body.card.heading).toBe('Right now.');
-    expect(body.card.next_move).toContain('Resume from: Drafted decision context');
+    expect(body.card.next_move).toContain('Hold here until Owner confirmation sent');
+    expect(body.card.verdict_line).toContain('Trusted verdict: Hold.');
     expect(body.card.source_line).toContain('Source: your saved focus');
     expect(body.card.last_interaction).toContain('Last interaction: done');
+  });
+
+  it('turns source-backed CLEAR into honest quiet instead of a fake next move', async () => {
+    mockSupabase.auth.admin.getUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            workday_presence_state: {
+              current_focus: 'Close ACME renewal decision',
+              next_move: 'Send owner confirmation note',
+              why_it_matters: 'The renewal window closes at 4 PM PT.',
+              blocker: null,
+              do_not_touch: null,
+              waiting_on: null,
+              last_completed_step: null,
+              state_source: 'source_backed',
+              source_trail: [
+                {
+                  table: 'tkg_commitments',
+                  source: 'gmail',
+                  type: 'commitment',
+                  redacted_summary: 'Renewal confirmation owed to ACME',
+                  selection_reason: 'active commitment row is the safest source-backed next move',
+                },
+              ],
+              interaction_history: [],
+              created_at: '2026-05-19T12:00:00.000Z',
+              updated_at: '2026-05-19T12:10:00.000Z',
+            },
+          },
+        },
+      },
+      error: null,
+    });
+    const { GET } = await import('../route');
+    const response = await GET(new Request('http://localhost/api/workday-presence'));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.resolution.verdict).toBe('CLEAR');
+    expect(body.resolution.rule).toBe('no_justified_command');
+    expect(body.card.mode).toBe('active');
+    expect(body.card.next_move).toBe('Next move: Stay quiet until connected work proves something is ready.');
+    expect(body.card.verdict_line).toContain('Clear right now');
   });
 });
