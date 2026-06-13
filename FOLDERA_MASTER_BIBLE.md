@@ -666,6 +666,87 @@ Stop when:
 
 ---
 
+# PART II-B — GUARDIAN VISION LOCK (added 2026-06-13 by owner mandate — DO NOT REGRESS)
+
+## The Guardian, Not the Chatbot
+
+This section exists so no future session has to hear Brandon re-explain the product soul. If you are reading this and the session has drifted toward building another scoring module, another classifier, another dashboard, or another chatbox — **stop. Read this. Then ask: am I wiring one real act, or building another brain?**
+
+### The Facebook Pixel, Inverted
+
+The Facebook pixel is the world's most proven total-context machine. It ingests everything about a person from their digital exhaust — every signal, every site, every behavior — builds a model, and hits them at exactly the right moment with exactly the right thing. It works. At planetary scale. Every second.
+
+Foldera is the same machine with the direction of the arrow flipped.
+
+The pixel uses total-context → **sell you something**.
+Foldera uses total-context → **look out for you**.
+
+That is not a harder problem. It is the same problem with the sign changed. The technology is proven. The guardian is not science fiction.
+
+Brandon's words: *"I just want a guy that's like watching out for you."*
+
+### Why It Always Feels Like "Reads My Calendar and Pretends to Be Smart"
+
+Because we keep building the **brain** — scoring, detection, classification — and stubbing the **hands** (real action across the user's actual accounts). A brain with no hands can only read the data it was given and describe what it found. That is exactly what it feels like: a summary engine with a thesaurus.
+
+The failure mode, concrete: `relatedEmails: [], relatedDocuments: []` — the easy shell ships, the one valuable part is stubbed, we call it progress. We do this because the brain part is safe (compiles, tests pass, green checkmarks) and the hands part touches the real world and can fail in front of you.
+
+**The law: never ship a detection or scoring component without wiring it to one real runtime consumer in the same PR.** A module with no downstream caller is invisible work. The proof bar is not "tests green." It is: **did it do something the user didn't have to do?**
+
+### The Signal That Makes It "Can't Live Without It"
+
+Brandon named the bar precisely: *"3 days of a week even be like this thing's awesome, I can't live without it."*
+
+That bar is not earned by breadth. It is not earned by a better score. It is earned by **acting for him once**, in a way that he would have had to do himself, at the exact right moment, without him asking.
+
+The Slack loop already fired end-to-end for real. That is the seed. It is one quiet act that landed. Everything from here is widening that one thread — one real act at a time — not adding another detector.
+
+### The Drift to Fight
+
+The product started as an "executive CEO assistant" — a guardian with agency that does things for you. It keeps sliding toward a chatbox in Slack or a summarizer in a browser tab.
+
+That slide happens because a chat interface is easy and acting is hard. Resist it every time. The way to resist it is the law above: **one real act before any new brain component.**
+
+---
+
+# PART II-C — DATA MOAT AND CROWD PREDICTION (added 2026-06-13)
+
+## How Foldera Gets Smarter and Builds a Moat
+
+Foldera starts with one user. But every signal → act → outcome tuple it records is a training row. At scale, those rows become something no competitor can easily replicate: **a crowd-sourced map of what buried signals actually matter to what kind of person, and when, and how.**
+
+### Average Person vs. Professional Signals
+
+A knowledge worker's signal stream looks different from an average person's:
+- A knowledge worker has GitHub noise, Slack loops, project-management artifacts, calendar density — 95%+ automated noise by volume.
+- An average person has more family/household signals, financial triggers, health events, community obligations.
+
+The hidden-op detector's domain weights (work_transition, medical, money, family_baby, legal_gov…) are the same math for both. But the **calibration** of what actually lands as a "holy-crap moment" is different for each persona.
+
+The crowd data teaches Foldera when the weights are wrong for a specific user class. Example: for a parent of a newborn, `family_baby` events are even higher-consequence than the default weights give them. For a freelancer, `legal_gov` (contracts, tax deadlines) fires more often. For a college-town professional (like CWU), `work_transition` events are frequent *and* pivotal.
+
+### The Prediction Moat
+
+As users accumulate, Foldera can answer questions no one can answer from a single user's data:
+- **When** does the buried signal become urgent for this persona? (timing calibration)
+- **What** is the best next act to surface? (act ranking over outcomes)
+- **How** should it land? (channel + timing + framing)
+- **What does "handled" look like?** — when do users close the loop vs. ignore it?
+
+The crowd makes every individual user's experience better. The moat is not the connector count. It is not the scoring formula. It is the outcome data — the feedback loop between "Foldera surfaced X" and "user acted / ignored / came back later." That feedback loop, at scale, is what makes the prediction magical.
+
+### What "Magical" Means
+
+*"How did it know?"*
+
+That is the moment. Not "here are your top 5 items." The moment is: Foldera surfaced the one thing the user had half-forgotten, at the exact moment they needed it, in the place they already were, and they did not have to ask.
+
+That requires: (1) the right signal, (2) at the right time, (3) delivered in the right channel, (4) with one clear act. All four. Not three.
+
+The scoring is (1). The imminence multiplier is (2). The Slack loop is (3). The "one click = done" response is (4). We have all four components. The job is to wire them end-to-end for real users, not keep tuning them in isolation.
+
+---
+
 # PART III — PRODUCT OPERATING SYSTEM (merged verbatim from FOLDERA_PRODUCT_OPERATING_SYSTEM.md on 2026-06-10, issue #240)
 
 # Foldera Product Operating System

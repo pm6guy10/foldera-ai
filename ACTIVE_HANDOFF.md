@@ -53,10 +53,21 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 - `ACTIVE_HANDOFF.md` must be updated when the active seam, proof status, next seam, or blocker changes.
 - `FOLDERA_BUILD_ORDER.yaml` must be updated when the active issue changes.
 
+## Guardian Vision Lock (2026-06-13 — DO NOT REGRESS)
+
+Owner mandate written into `FOLDERA_MASTER_BIBLE.md` PART II-B and II-C. Any session that drifts back to "build another scoring module" or "add a new classifier" without a runtime consumer is violating the Brain-Without-Hands Law (AGENTS.md). Snap back here.
+
+**The vision in one sentence:** Foldera is the Facebook pixel inverted — total-context care, not total-context extraction. The magic moment is "how did it know?" not "here are your top 5 items."
+
+**The data moat:** signal→act→outcome tuples at scale teach Foldera what buried signals matter to what persona, when, and how to deliver them. Average-person signals (family, health, money, community) vs. professional signals (GitHub noise, Slack loops, project artifacts) calibrate differently. The crowd makes every user's experience better. That feedback loop is the moat — not the connector count, not the scoring formula.
+
+**The next move law:** Wire one real act onto something already surfaced. The Slack loop is live and proven (owner-only). Widen that thread — don't start a new brain.
+
 ## Next exact move
 
-#284 campaign is complete (G1-G7 all done, PRs #286-#289 merged). Rung 9 gate permanently removed.
-Next seam: whatever Brandon names next. If no new seam is named, set `active_issue: none` in FOLDERA_BUILD_ORDER.yaml.
+#284 campaign is complete (G1-G7 all done, PRs #286-#289 merged). Rung 9 gate permanently removed. Guardian Vision Lock + Brain-Without-Hands Law written into FOLDERA_MASTER_BIBLE.md + AGENTS.md (PR #294, pending merge).
+
+**Next seam:** Wire the hidden-op detector to the live owner Slack loop — one complete act: detect → surface → Slack ping → one-click receipt. No new scoring, no new classifiers. One loop, end to end, for real.
 
 ## Prior closeout records (condensed; GitHub receipts + git history are the archive)
 

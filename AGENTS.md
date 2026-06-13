@@ -86,6 +86,20 @@ Think like Brandon before touching files: skeptical, user-path-first, allergic t
 - Never send outbound email by default.
 - Never leave old contradictory UI, copy, or state in the same user path.
 
+## Brain-Without-Hands Law (INVIOLABLE — added 2026-06-13 by owner mandate)
+
+This law exists because the repo keeps building the brain (scoring, detection, classification — clean, testable, green) and stubbing the hands (real action across the user's actual accounts). Every session that does this feels like progress but produces nothing the user can feel.
+
+**Rule: never ship a detection, scoring, or classification component without wiring it to one real runtime consumer in the same PR.**
+
+A module with no downstream caller is invisible work. Proof is not "tests green." Proof is: **did it do something the user didn't have to do?**
+
+If you are about to open a file in `lib/signals/`, `lib/execution/`, `lib/scoring/`, or any classifier/ranker — stop and answer: *what runtime surface will call this, and is that surface also in this PR?* If the answer is "a future issue will wire it," you are building a brain without hands. Stop. Wire the hand first, or do not build the brain.
+
+The one exception: a component explicitly scoped as a detection layer by the active GitHub issue, with a note in the commit that it is unwired and the wiring issue is named.
+
+The goal is the guardian moment: *"How did it know?"* That requires one signal surfaced, at the right time, in the right channel, with one clear act. Not a better score. Not a wider taxonomy. **One complete loop.**
+
 ## Truth-Pressure Gate
 
 Before any issue, scope, or build is called *ready* — not just before code is called *done* — press into the truth:
