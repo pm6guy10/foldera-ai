@@ -368,7 +368,7 @@ jobs:
 
       - name: Upload build artifact
         if: needs.changes.outputs.needs_build_artifact == 'true'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: next-build-${{ github.sha }}
           path: |
@@ -401,7 +401,7 @@ jobs:
       - run: npm ci
 
       - name: Download prebuilt app
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: next-build-${{ github.sha }}
           path: .
@@ -432,7 +432,7 @@ jobs:
 
       - name: Upload smoke artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-smoke-artifacts-${{ github.sha }}
           path: |
@@ -464,7 +464,7 @@ jobs:
       - run: npm ci
 
       - name: Download prebuilt app
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: next-build-${{ github.sha }}
           path: .
@@ -488,7 +488,7 @@ jobs:
 
       - name: Upload flow artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-flow-artifacts-${{ github.sha }}
           path: |
@@ -524,7 +524,7 @@ jobs:
       - run: npm ci
 
       - name: Download prebuilt app
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: next-build-${{ github.sha }}
           path: .
@@ -548,7 +548,7 @@ jobs:
 
       - name: Upload payments artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-payments-artifacts-${{ github.sha }}
           path: |
@@ -582,7 +582,7 @@ jobs:
       - run: npm ci
 
       - name: Download prebuilt app
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: next-build-${{ github.sha }}
           path: .
@@ -606,7 +606,7 @@ jobs:
 
       - name: Upload quarantine artifacts
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-quarantine-artifacts-${{ github.sha }}
           path: |
