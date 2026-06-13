@@ -1,7 +1,7 @@
 {
   "active_issue": 296,
   "active_branch": "codex/issue-296-reactivate-m1",
-  "active_pr": null,
+  "active_pr": 306,
   "deployed_commit_sha": "370cc7a20bf6835e3eb7ea22e19a152d4cc79454",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
