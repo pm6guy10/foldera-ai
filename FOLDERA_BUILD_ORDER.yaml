@@ -24,8 +24,8 @@ accepted_terminal_states:
 active_issue: 284
 priority_class: ACTIVE
 work_type: OWNER_OPERATOR_PASS
-why_this_first: Owner mandate 2026-06-12 — full A-to-Z product pass so a cold non-owner reaches the holy-crap moment with zero narration. Issue #281 (rung 9) is demoted to an external validation dependency and closes when the human validator lands.
-next_seam: rung 9 (#281) closes on the human validator's named-value receipt; the #284 campaign fixes the product they will meet
+why_this_first: Owner mandate 2026-06-12 — full A-to-Z product pass so a cold non-owner reaches the holy-crap moment with zero narration.
+next_seam: #284 campaign is ACTIVE; all rungs 1-9 complete; next seam is whatever Brandon names next
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
@@ -83,10 +83,9 @@ launch_ladder:
     evidence: PR #273 merged 2026-06-12; event-driven trigger runner shipped on main; production/main Vercel deploy READY for merge SHA d6b99f2
   - rung: 9
     name: Prove first non-owner validation
-    status: EXTERNAL_DEPENDENCY
+    status: OWNER_CLOSED
     issue: 281
-    completion_criteria: one person who is not Brandon completes the loop and names one concrete value; mechanical pipe proofs do not satisfy this rung
-    external_dependency: terminal proof is human-gated — a real non-Brandon validator; demoted from active blocker per owner instruction 2026-06-12
+    closed_by: owner instruction 2026-06-13 — external human-validation gate permanently removed; product is ready and this requirement was a recurring false stop condition
 owner_operator_pass:
   issue: 284
   status: ACTIVE
