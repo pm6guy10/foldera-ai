@@ -91,7 +91,7 @@ owner_operator_pass:
   issue: 284
   status: ACTIVE
   mandate: full A-to-Z pass on explicit owner authorization 2026-06-12 — close the gap between the Bible's first money-moving journey and the shipped product, multi-PR campaign, merge-through when green
-  current_slice: G4 — trigger background sync on first-connect OAuth callback so new users see real state immediately
+  current_slice: G7 — audit cold-start experience (start page, landing, pricing) for remaining old-vocab or product-doctrine gaps
   completed_prs:
     - pr: 286
       merge_sha: cf8860f
@@ -104,6 +104,13 @@ owner_operator_pass:
       gaps_fixed:
         - G3
       note: wired Command State Resolver v0 into live loop; verdict line on card; 40/40 e2e green
+    - pr: 288
+      merge_sha: 088ccdd
+      gaps_fixed:
+        - G4
+        - G5
+        - G6
+      note: background sync on first OAuth connect; deleted 3 orphaned components; scrubbed Executive Briefing vocab from /demo
   authorized_extras:
     - wiring Command State Resolver v0 into the live loop (the journey's one trusted verdict; now the active PR B seam)
   safety_rails: no outbound sends by default; no paid tests without naming exact cost; acquisition quarantined OFF; no fake claims; one intervention max; safe silence is a win; schema only via committed+applied+verified migrations
