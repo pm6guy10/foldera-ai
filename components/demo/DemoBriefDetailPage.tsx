@@ -20,7 +20,7 @@ export function DemoBriefDetailPage({ briefId }: { briefId: string }) {
           href="/demo"
           className="inline-flex items-center gap-1.5 text-xs text-demo-muted-foreground hover:text-demo-foreground"
         >
-          <ArrowLeft className="h-3.5 w-3.5" /> Back to Executive Briefing
+          <ArrowLeft className="h-3.5 w-3.5" /> Back
         </Link>
         <div className="mt-6">
           <DailyBriefCard brief={brief} expanded />

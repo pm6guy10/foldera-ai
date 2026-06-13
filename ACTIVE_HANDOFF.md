@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-12 PT (PR A / G1+G2 merged under issue #284; PR B / G3 implemented on PR #287 and blocked on GitHub writeback/merge access)
+Last updated: 2026-06-13 PT (PR B / G3 merged as #287 `f42ad9d`; starting G4 — post-connect auto-sync momentum)
 
 ## Boot
 
@@ -21,19 +21,13 @@ Owner mandate (2026-06-12): full-app pass, multi-PR campaign, make the money pat
 
 ## Current slice:
 
-Issue #284 remains the active owner-operator campaign. The audit receipt is posted and PR A is merged:
-- PR A / G1+G2 COMPLETE — PR #286 (`cf8860f`) mounted the presence-first `/dashboard` loop and rewrote the contradictory dashboard browser contracts.
-- External CI note from PR A: the final post-merge Actions run failed only on GitHub artifact-upload storage quota after `Next build` and `unit` both passed. That is platform noise, not an app regression.
+Issue #284 remains the active owner-operator campaign. PRs A and B are merged:
+- PR A / G1+G2 COMPLETE — PR #286 (`cf8860f`) mounted the presence-first `/dashboard` loop and rewrote contradictory dashboard browser contracts.
+- PR B / G3 COMPLETE — PR #287 (`f42ad9d`) wired Command State Resolver v0 into the live loop: resolver verdict returned in GET /api/workday-presence, UI-safe trusted verdict line on the card, no fake "do this now" when WAIT/CLEAR, 40/40 e2e green.
 
-PR B / G3 implementation is complete on branch `issue-284-pr-b-resolver-live-loop` and PR #287 (`3b3721a` head):
-- wired Command State Resolver v0 into the live loop
-- returned the resolver in `GET /api/workday-presence`
-- rendered one UI-safe trusted verdict line on the card
-- prevented the dashboard from showing a fake "do this now" move when resolver truth says `WAIT` or `CLEAR`
-- local proof stack passed in full
-- live GitHub blocker: Codex GitHub write actions (`comment`, `auto-merge`) are currently rejected by the platform usage-limit guard, and the only visible commit status is `Vercel` = `pending`
+**Next slice: G4 — post-connect auto-sync momentum.**
+When a user connects their first source (Google/Microsoft OAuth callback), Foldera does not kick off a background sync automatically. The first-run user hits the setup card and has nothing to resolve. Fix: trigger a background sync from the OAuth callback so the first-run card can show real state as quickly as possible. This is the G4 gap from the #284 audit.
 
-Command State Resolver v0 wiring into the live loop is explicitly authorized (the journey's "one trusted verdict", formerly unconsumed).
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
 ## #276 closeout record
@@ -55,7 +49,7 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-Unblock GitHub writeback for PR #287, post the required `BLOCKED_WITH_EXACT_RECEIPT` / closeout comments on PR #287, issue #284, and issue #136, then either merge PR #287 if checks allow or continue the blocker receipt until `Vercel` settles. After PR #287 is merged, continue to G4.
+G4: trigger background sync on OAuth callback. Read the Google and Microsoft callback routes, confirm where the sync kicks off (or doesn't), add a non-blocking background fetch to `/api/cron/sync-email` or equivalent immediately after the user's tokens are stored. This must not block the OAuth redirect. Gate: the first-run user can reach /dashboard after connecting a source and see real state (or SAFE_SILENCE) without waiting for the next cron window.
 
 ## Prior closeout records (condensed; GitHub receipts + git history are the archive)
 
