@@ -2,6 +2,7 @@ import {
   selectSingleInterventionFromConnectorEvidence,
   type SimulatedConnectorEvidenceEvent,
 } from '@/lib/connectors/test-mode/evidence-adapters';
+import { detectHiddenOps, type HiddenOp, type HiddenOpInput } from '@/lib/signals/hidden-op-detector';
 import {
   buildSlackRightNowMessage,
   createLiveSlackAdapter,
@@ -10,6 +11,7 @@ import {
   type SlackSendResult,
 } from '@/lib/slack/right-now';
 import { createServerClient } from '@/lib/db/client';
+import { type RightNowMessagePayload } from './message';
 import { normalizeWorkdayPresenceState, type WorkdayPresenceState } from './model';
 import {
   evaluateWorkdayPresenceTrigger,
@@ -291,6 +293,49 @@ export async function maybeRunWorkdayPresenceTriggerRunnerForUser(
   };
 }
 
+const HIDDEN_OP_MIN_SCORE = 50;
+
+function adaptSignalToHiddenOpInput(signal: FreshSignalRow): HiddenOpInput {
+  const metadata = signalMetadata(signal);
+  const source = clean(signal.source)?.toLowerCase() ?? null;
+  const isCalendar = (source ?? '').includes('calendar');
+  const extractedDates = Array.isArray(metadata.extracted_dates)
+    ? (metadata.extracted_dates as Array<{ due?: unknown; description?: unknown }>)
+    : [];
+  const firstEntry = extractedDates[0];
+  const dueIso =
+    (typeof firstEntry?.due === 'string' ? firstEntry.due : null) ??
+    (isCalendar ? signalStartsAtIso(signal) : null);
+  const extractedDesc = typeof firstEntry?.description === 'string' ? firstEntry.description : null;
+  return {
+    id: clean(signal.id) ?? `signal-${Date.now()}`,
+    source,
+    author: clean(signal.author) ?? clean(signal.sender) ?? null,
+    occurredAtIso:
+      clean(signal.ingested_at) ??
+      clean(signal.occurred_at) ??
+      clean(signal.created_at) ??
+      null,
+    type: clean(signal.type) ?? null,
+    dueIso,
+    description:
+      extractedDesc ??
+      clean(signal.title) ??
+      clean(signal.subject) ??
+      normalizeSummary(signal) ??
+      undefined,
+  };
+}
+
+function buildHiddenOpPayload(op: HiddenOp): RightNowMessagePayload {
+  return {
+    kind: 'right_now',
+    mode: 'active',
+    text: `*Buried signal surfaced.*\n\n${op.why}\n\n_Consequence score: ${op.score}/100 · ${op.domain}_`,
+    actions: [{ id: 'dismiss', label: 'Got it' }],
+  };
+}
+
 export async function runWorkdayPresenceTriggerRunner(input: {
   channel: string;
   cursor: unknown;
@@ -307,22 +352,8 @@ export async function runWorkdayPresenceTriggerRunner(input: {
     .map(adaptSignalToFreshEvent)
     .filter((event): event is SimulatedConnectorEvidenceEvent => Boolean(event));
 
-  if (!state) {
-    return {
-      outcome: 'quiet',
-      reason: 'quiet: no saved workday presence state to interrupt from',
-      cursor: nextCursor(cursor, nowIso, {
-        last_signal_cursor: signalCursor ?? cursor.last_signal_cursor,
-        last_trigger_key: null,
-      }),
-      selected_context: null,
-      trigger_result: null,
-      slack_result: null,
-      fresh_event_count: freshEvents.length,
-    };
-  }
-
-  if (state.snoozed_until && Date.parse(state.snoozed_until) > Date.parse(nowIso)) {
+  // Snoozed: unconditional quiet — user explicitly asked not to be interrupted.
+  if (state?.snoozed_until && Date.parse(state.snoozed_until) > Date.parse(nowIso)) {
     return {
       outcome: 'quiet',
       reason: 'quiet: state is snoozed, so runner stays silent',
@@ -337,69 +368,124 @@ export async function runWorkdayPresenceTriggerRunner(input: {
     };
   }
 
-  const selection = selectSingleInterventionFromConnectorEvidence(freshEvents);
-  if (!selection.selected) {
-    return {
-      outcome: 'quiet',
-      reason: selection.reason,
-      cursor: nextCursor(cursor, nowIso, {
-        last_signal_cursor: signalCursor ?? cursor.last_signal_cursor,
-        last_trigger_key: null,
-      }),
-      selected_context: null,
-      trigger_result: null,
-      slack_result: null,
-      fresh_event_count: freshEvents.length,
-    };
+  // Normal trigger path (requires state).
+  // Returns immediately on intervention; otherwise accumulates a quiet/dedup result.
+  let normalOutcome: WorkdayPresenceTriggerRunnerResult | null = null;
+
+  if (state) {
+    const selection = selectSingleInterventionFromConnectorEvidence(freshEvents);
+
+    if (!selection.selected) {
+      normalOutcome = {
+        outcome: 'quiet',
+        reason: selection.reason,
+        cursor: nextCursor(cursor, nowIso, {
+          last_signal_cursor: signalCursor ?? cursor.last_signal_cursor,
+          last_trigger_key: null,
+        }),
+        selected_context: null,
+        trigger_result: null,
+        slack_result: null,
+        fresh_event_count: freshEvents.length,
+      };
+    } else {
+      const triggerResult = evaluateWorkdayPresenceTrigger(selection.selected, state);
+
+      if (triggerResult.outcome !== 'intervention') {
+        normalOutcome = {
+          outcome: 'quiet',
+          reason: triggerResult.reason,
+          cursor: nextCursor(cursor, nowIso, {
+            last_signal_cursor: signalCursor ?? cursor.last_signal_cursor,
+            last_trigger_key: null,
+          }),
+          selected_context: selection.selected,
+          trigger_result: triggerResult,
+          slack_result: null,
+          fresh_event_count: freshEvents.length,
+        };
+      } else {
+        const triggerKey = buildTriggerKey(selection.selected, state);
+
+        if (
+          cursor.last_trigger_key === triggerKey &&
+          cursor.last_signal_cursor === (signalCursor ?? cursor.last_signal_cursor)
+        ) {
+          normalOutcome = {
+            outcome: 'dedup_suppressed',
+            reason: 'dedup: unchanged trigger already pinged for this signal cursor',
+            cursor: nextCursor(cursor, nowIso),
+            selected_context: selection.selected,
+            trigger_result: triggerResult,
+            slack_result: null,
+            fresh_event_count: freshEvents.length,
+          };
+        } else {
+          const slackResult = await input.slack.postMessage(
+            buildSlackRightNowMessage(triggerResult.payload, input.channel),
+          );
+          return {
+            outcome: 'intervention',
+            reason: triggerResult.reason,
+            cursor: nextCursor(cursor, nowIso, {
+              last_signal_cursor: signalCursor ?? cursor.last_signal_cursor,
+              last_trigger_key: triggerKey,
+              last_pinged_at: nowIso,
+            }),
+            selected_context: selection.selected,
+            trigger_result: triggerResult,
+            slack_result: slackResult,
+            fresh_event_count: freshEvents.length,
+          };
+        }
+      }
+    }
   }
 
-  const triggerResult = evaluateWorkdayPresenceTrigger(selection.selected, state);
-  if (triggerResult.outcome !== 'intervention') {
-    return {
-      outcome: 'quiet',
-      reason: triggerResult.reason,
-      cursor: nextCursor(cursor, nowIso, {
-        last_signal_cursor: signalCursor ?? cursor.last_signal_cursor,
-        last_trigger_key: null,
-      }),
-      selected_context: selection.selected,
-      trigger_result: triggerResult,
-      slack_result: null,
-      fresh_event_count: freshEvents.length,
-    };
+  // Hidden-op fallback: fires when the normal path is quiet (or there is no state).
+  // Skipped when dedup_suppressed — a recent ping already went out this cycle.
+  if (!normalOutcome || normalOutcome.outcome === 'quiet') {
+    const hiddenOpInputs = input.signals.map(adaptSignalToHiddenOpInput);
+    const [topOp] = detectHiddenOps(hiddenOpInputs, { nowIso, limit: 1 });
+
+    if (topOp && topOp.score >= HIDDEN_OP_MIN_SCORE) {
+      const hiddenOpKey = `hidden_op:${topOp.id}`;
+      const alreadyPinged =
+        cursor.last_trigger_key === hiddenOpKey &&
+        cursor.last_signal_cursor === (signalCursor ?? cursor.last_signal_cursor);
+
+      if (!alreadyPinged) {
+        const payload = buildHiddenOpPayload(topOp);
+        const slackResult = await input.slack.postMessage(
+          buildSlackRightNowMessage(payload, input.channel),
+        );
+        return {
+          outcome: 'intervention',
+          reason: `hidden_op: score=${topOp.score} domain=${topOp.domain} — ${topOp.description.slice(0, 80)}`,
+          cursor: nextCursor(cursor, nowIso, {
+            last_signal_cursor: signalCursor ?? cursor.last_signal_cursor,
+            last_trigger_key: hiddenOpKey,
+            last_pinged_at: nowIso,
+          }),
+          selected_context: null,
+          trigger_result: null,
+          slack_result: slackResult,
+          fresh_event_count: freshEvents.length,
+        };
+      }
+    }
   }
 
-  const triggerKey = buildTriggerKey(selection.selected, state);
-  if (
-    cursor.last_trigger_key === triggerKey &&
-    cursor.last_signal_cursor === (signalCursor ?? cursor.last_signal_cursor)
-  ) {
-    return {
-      outcome: 'dedup_suppressed',
-      reason: 'dedup: unchanged trigger already pinged for this signal cursor',
-      cursor: nextCursor(cursor, nowIso),
-      selected_context: selection.selected,
-      trigger_result: triggerResult,
-      slack_result: null,
-      fresh_event_count: freshEvents.length,
-    };
-  }
-
-  const slackResult = await input.slack.postMessage(
-    buildSlackRightNowMessage(triggerResult.payload, input.channel),
-  );
-
-  return {
-    outcome: 'intervention',
-    reason: triggerResult.reason,
+  return normalOutcome ?? {
+    outcome: 'quiet',
+    reason: 'quiet: no saved workday presence state to interrupt from',
     cursor: nextCursor(cursor, nowIso, {
       last_signal_cursor: signalCursor ?? cursor.last_signal_cursor,
-      last_trigger_key: triggerKey,
-      last_pinged_at: nowIso,
+      last_trigger_key: null,
     }),
-    selected_context: selection.selected,
-    trigger_result: triggerResult,
-    slack_result: slackResult,
+    selected_context: null,
+    trigger_result: null,
+    slack_result: null,
     fresh_event_count: freshEvents.length,
   };
 }

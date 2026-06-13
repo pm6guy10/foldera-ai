@@ -1,6 +1,6 @@
 {
   "active_issue": 301,
-  "active_branch": "main",
+  "active_branch": "claude/hidden-op-slack-wire-f37g10",
   "active_pr": null,
   "deployed_commit_sha": "3d033d1863d122e7df6717056de7a0b774a36766",
   "runtime_env": "production",
