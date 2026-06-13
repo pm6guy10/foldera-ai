@@ -76,11 +76,8 @@ interface ActiveSeamState {
 
 function readCurrentBranch(root: string): string | null {
   if (!existsSync(join(root, '.git'))) return null;
-  const envBranch =
-    process.env.GITHUB_HEAD_REF?.trim() ||
-    process.env.GITHUB_REF_NAME?.trim() ||
-    process.env.BRANCH_NAME?.trim();
-  if (envBranch) return envBranch;
+  const prHeadBranch = process.env.GITHUB_HEAD_REF?.trim();
+  if (prHeadBranch) return prHeadBranch;
   try {
     const branch = execSync('git branch --show-current', {
       cwd: root,
@@ -88,7 +85,8 @@ function readCurrentBranch(root: string): string | null {
       timeout: 10000,
       stdio: ['pipe', 'pipe', 'pipe'],
     }).trim();
-    return branch || null;
+    if (!branch || branch === 'main') return null;
+    return branch;
   } catch {
     return null;
   }
