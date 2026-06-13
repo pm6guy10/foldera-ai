@@ -24,6 +24,7 @@ export const ROOT_KEEP_MARKDOWN = [
 
 const requiredFiles = [
   ...ROOT_KEEP_MARKDOWN,
+  'ACTIVE_SEAM_STATE.json',
   'FOLDERA_BUILD_ORDER.yaml',
   '.foldera-contract.json',
   'docs/SOURCE_OF_TRUTH_MAP.md',
@@ -34,7 +35,13 @@ const requiredFiles = [
 const ACTIVE_HANDOFF_MAX_LINES = 80;
 
 const requiredCloseoutValues = ['updated', 'unchanged - reason', 'not applicable - reason'];
-const requiredCloseoutFiles = ['ACTIVE_HANDOFF.md', 'FOLDERA_BUILD_ORDER.yaml', 'docs/SOURCE_OF_TRUTH_MAP.md'];
+const requiredCloseoutFiles = [
+  'ACTIVE_HANDOFF.md',
+  'ACTIVE_SEAM_STATE.json',
+  'FOLDERA_BUILD_ORDER.yaml',
+  '.foldera-contract.json',
+  'docs/SOURCE_OF_TRUTH_MAP.md',
+];
 const requiredTerminalStates = ['MERGED_AND_CLOSED', 'BLOCKED_WITH_EXACT_RECEIPT', 'HUMAN_REVIEW_REQUIRED_WITH_REASON', 'STOPPED_WITH_AUTHORIZED_REASON'];
 
 function readRepoFile(root: string, file: string): string {
@@ -55,6 +62,62 @@ function extractActiveHandoffIssue(raw: string): number | null {
   const match = raw.match(/^Issue #(\d+) is the active .* seam\.$/m)
     ?? raw.match(/^Active implementation seam is issue #(\d+).*$/m);
   return match ? Number(match[1]) : null;
+}
+
+interface ActiveSeamState {
+  active_issue?: number | null;
+  active_branch?: string | null;
+  active_pr?: number | null;
+  deployed_commit_sha?: string | null;
+  runtime_env?: string | null;
+  db_state_version?: string | null;
+  last_verified_at?: string | null;
+}
+
+function readCurrentBranch(root: string): string | null {
+  if (!existsSync(join(root, '.git'))) return null;
+  const prHeadBranch = process.env.GITHUB_HEAD_REF?.trim();
+  if (prHeadBranch) return prHeadBranch;
+  try {
+    const branch = execSync('git branch --show-current', {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 10000,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    }).trim();
+    if (!branch || branch === 'main') return null;
+    return branch;
+  } catch {
+    return null;
+  }
+}
+
+function readGitHubEventPullRequestNumber(): number | null {
+  const eventPath = process.env.GITHUB_EVENT_PATH?.trim();
+  if (!eventPath || !existsSync(eventPath)) return null;
+  try {
+    const payload = JSON.parse(readFileSync(eventPath, 'utf8')) as {
+      pull_request?: { number?: unknown };
+      issue?: { number?: unknown };
+    };
+    const number = payload.pull_request?.number ?? payload.issue?.number;
+    return typeof number === 'number' && Number.isFinite(number) ? number : null;
+  } catch {
+    return null;
+  }
+}
+
+function readActiveSeamState(root: string): ActiveSeamState | null {
+  try {
+    return JSON.parse(readRepoFile(root, 'ACTIVE_SEAM_STATE.json')) as ActiveSeamState;
+  } catch {
+    return null;
+  }
+}
+
+function isIsoTimestamp(value: string | null | undefined): boolean {
+  if (!value) return false;
+  return !Number.isNaN(Date.parse(value));
 }
 
 export type IssueStateFetcher = (issueNumber: number) => 'open' | 'closed' | 'skip';
@@ -155,6 +218,85 @@ export function runContinuityGate(root: string, options?: { issueStateFetcher?: 
   const terminalAuthority = contract.terminal_state_authority;
   if (!terminalAuthority || !Array.isArray(terminalAuthority.allowed)) {
     failures.push('.foldera-contract.json must expose terminal_state_authority.allowed.');
+  }
+
+  const activeSeamState = readActiveSeamState(root);
+  if (!activeSeamState) {
+    failures.push('ACTIVE_SEAM_STATE.json is missing or unreadable.');
+  } else {
+    const activeIssue = typeof activeSeamState.active_issue === 'number' ? activeSeamState.active_issue : null;
+    const activeBranch = typeof activeSeamState.active_branch === 'string' ? activeSeamState.active_branch.trim() : '';
+    const activePr =
+      typeof activeSeamState.active_pr === 'number' && Number.isFinite(activeSeamState.active_pr)
+        ? activeSeamState.active_pr
+        : activeSeamState.active_pr === null
+          ? null
+          : undefined;
+    const deployedSha =
+      typeof activeSeamState.deployed_commit_sha === 'string' ? activeSeamState.deployed_commit_sha.trim() : '';
+    const runtimeEnv =
+      typeof activeSeamState.runtime_env === 'string' ? activeSeamState.runtime_env.trim() : '';
+    const dbStateVersion =
+      typeof activeSeamState.db_state_version === 'string' ? activeSeamState.db_state_version.trim() : '';
+    const lastVerifiedAt =
+      typeof activeSeamState.last_verified_at === 'string' ? activeSeamState.last_verified_at.trim() : '';
+
+    if (activeIssue === null) {
+      failures.push('ACTIVE_SEAM_STATE.json must set active_issue.');
+    } else if (buildOrderIssue !== null && activeIssue !== buildOrderIssue) {
+      failures.push(
+        `ACTIVE_SEAM_STATE.json active_issue #${activeIssue} must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}.`,
+      );
+    }
+
+    const currentBranch = readCurrentBranch(root);
+    if (!activeBranch) {
+      failures.push('ACTIVE_SEAM_STATE.json must set active_branch.');
+    } else if (currentBranch && activeBranch !== currentBranch) {
+      failures.push(
+        `ACTIVE_SEAM_STATE.json active_branch "${activeBranch}" must match current branch "${currentBranch}".`,
+      );
+    }
+
+    const currentPrNumber = readGitHubEventPullRequestNumber();
+    if (activePr === undefined) {
+      failures.push('ACTIVE_SEAM_STATE.json active_pr must be a number or null.');
+    } else if (currentPrNumber !== null && activePr !== currentPrNumber) {
+      failures.push(
+        `ACTIVE_SEAM_STATE.json active_pr ${activePr ?? 'null'} must match GitHub event PR #${currentPrNumber}.`,
+      );
+    }
+
+    const deployedShaEnv =
+      process.env.VERCEL_GIT_COMMIT_SHA?.trim() ||
+      process.env.DEPLOYED_COMMIT_SHA?.trim() ||
+      null;
+    if (!deployedSha) {
+      failures.push('ACTIVE_SEAM_STATE.json must set deployed_commit_sha.');
+    } else if (deployedShaEnv && deployedSha !== deployedShaEnv) {
+      failures.push(
+        `ACTIVE_SEAM_STATE.json deployed_commit_sha ${deployedSha} must match deployed SHA ${deployedShaEnv}.`,
+      );
+    }
+
+    const expectedDbStateVersion = process.env.FOLDERA_DB_STATE_VERSION?.trim() || null;
+    if (!runtimeEnv) {
+      failures.push('ACTIVE_SEAM_STATE.json must set runtime_env.');
+    }
+
+    if (!dbStateVersion) {
+      failures.push('ACTIVE_SEAM_STATE.json must set db_state_version.');
+    } else if (expectedDbStateVersion && dbStateVersion !== expectedDbStateVersion) {
+      failures.push(
+        `ACTIVE_SEAM_STATE.json db_state_version ${dbStateVersion} must match FOLDERA_DB_STATE_VERSION ${expectedDbStateVersion}.`,
+      );
+    }
+
+    if (!lastVerifiedAt) {
+      failures.push('ACTIVE_SEAM_STATE.json must set last_verified_at.');
+    } else if (!isIsoTimestamp(lastVerifiedAt)) {
+      failures.push('ACTIVE_SEAM_STATE.json last_verified_at must be a valid ISO timestamp.');
+    }
   }
 
   // PR template closeout.

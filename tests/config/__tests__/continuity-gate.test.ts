@@ -6,6 +6,7 @@ import { runContinuityGate, MAX_ROOT_MARKDOWN_FILES } from '@/scripts/continuity
 
 const requiredFixtureFiles = [
   'ACTIVE_HANDOFF.md',
+  'ACTIVE_SEAM_STATE.json',
   'AGENTS.md',
   'CLAUDE.md',
   'FOLDERA_MASTER_BIBLE.md',
@@ -43,6 +44,8 @@ function writeFixtureFile(root: string, file: string, body: string): void {
 }
 
 afterEach(() => {
+  delete process.env.GITHUB_HEAD_REF;
+  delete process.env.GITHUB_EVENT_PATH;
   while (tempRoots.length > 0) {
     const root = tempRoots.pop();
     if (root) fs.rmSync(root, { recursive: true, force: true });
@@ -67,6 +70,44 @@ describe('continuity gate', () => {
     const failures = runContinuityGate(fixtureRoot);
 
     expect(failures).toContain('ACTIVE_HANDOFF.md must name exactly one active seam line; found 2.');
+  });
+
+  it('fails when the active seam ledger disagrees with the active issue', () => {
+    const fixtureRoot = createFixtureRoot();
+    const ledger = JSON.parse(readFixtureFile(fixtureRoot, 'ACTIVE_SEAM_STATE.json')) as {
+      active_issue?: number;
+    };
+    ledger.active_issue = 9999;
+    writeFixtureFile(fixtureRoot, 'ACTIVE_SEAM_STATE.json', `${JSON.stringify(ledger, null, 2)}\n`);
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(
+      failures.some((failure) =>
+        failure.includes('ACTIVE_SEAM_STATE.json active_issue #9999 must match FOLDERA_BUILD_ORDER.yaml active_issue #301'),
+      ),
+    ).toBe(true);
+  });
+
+  it('fails when the active seam ledger disagrees with the pull request head branch', () => {
+    const fixtureRoot = createFixtureRoot();
+    fs.mkdirSync(path.join(fixtureRoot, '.git'));
+    process.env.GITHUB_HEAD_REF = 'other-branch';
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(failures).toContain(
+      'ACTIVE_SEAM_STATE.json active_branch "codex/issue-301-control-plane-ledger" must match current branch "other-branch".',
+    );
+  });
+
+  it('does not require active_branch to match main or merge queue refs', () => {
+    const fixtureRoot = createFixtureRoot();
+    fs.mkdirSync(path.join(fixtureRoot, '.git'));
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(failures).toEqual([]);
   });
 
   it('fails when handoff and build order disagree on the active issue', () => {

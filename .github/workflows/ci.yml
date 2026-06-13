@@ -351,6 +351,7 @@ jobs:
     timeout-minutes: 15
     outputs:
       artifact: next-build-${{ github.sha }}
+      artifact_uploaded: ${{ steps.upload.outcome == 'success' && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v5
 
@@ -367,14 +368,19 @@ jobs:
           NODE_OPTIONS: --max_old_space_size=4096
 
       - name: Upload build artifact
+        id: upload
         if: needs.changes.outputs.needs_build_artifact == 'true'
-        uses: actions/upload-artifact@v6
+        # continue-on-error: storage quota errors must not fail a clean build.
+        # Downstream e2e jobs gate on artifact_uploaded output to skip safely.
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
         with:
           name: next-build-${{ github.sha }}
           path: |
             .next
             public
-          retention-days: 3
+          retention-days: 1
+          overwrite: true
           if-no-files-found: error
           # upload-artifact@v4 excludes dot-prefixed paths by default, which
           # silently drops the entire `.next/` tree and leaves only `public/`
@@ -387,7 +393,9 @@ jobs:
   # ───────────────────────────────────────────────────────────────────────────
   e2e-smoke:
     needs: [changes, build]
-    if: needs.changes.outputs.needs_smoke == 'true'
+    if: |
+      needs.changes.outputs.needs_smoke == 'true' &&
+      needs.build.outputs.artifact_uploaded == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -401,7 +409,7 @@ jobs:
       - run: npm ci
 
       - name: Download prebuilt app
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: next-build-${{ github.sha }}
           path: .
@@ -432,13 +440,13 @@ jobs:
 
       - name: Upload smoke artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-smoke-artifacts-${{ github.sha }}
           path: |
             playwright-report/
             test-results/
-          retention-days: 7
+          retention-days: 1
 
   # ───────────────────────────────────────────────────────────────────────────
   # 5b. E2E authenticated + flow — dashboard, payments, settings.
@@ -450,6 +458,7 @@ jobs:
       always() &&
       needs.changes.outputs.needs_authenticated == 'true' &&
       needs.build.result == 'success' &&
+      needs.build.outputs.artifact_uploaded == 'true' &&
       (needs.e2e-smoke.result == 'success' || needs.e2e-smoke.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -464,7 +473,7 @@ jobs:
       - run: npm ci
 
       - name: Download prebuilt app
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: next-build-${{ github.sha }}
           path: .
@@ -488,14 +497,14 @@ jobs:
 
       - name: Upload flow artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-flow-artifacts-${{ github.sha }}
           path: |
             playwright-report/
             test-results/
             .screenshots/
-          retention-days: 7
+          retention-days: 1
 
   # ───────────────────────────────────────────────────────────────────────────
   # 5c. E2E payments — targeted subset for stripe-only PRs. Runs ONLY tests
@@ -510,6 +519,7 @@ jobs:
       always() &&
       needs.changes.outputs.needs_payments == 'true' &&
       needs.build.result == 'success' &&
+      needs.build.outputs.artifact_uploaded == 'true' &&
       (needs.e2e-smoke.result == 'success' || needs.e2e-smoke.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -524,7 +534,7 @@ jobs:
       - run: npm ci
 
       - name: Download prebuilt app
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: next-build-${{ github.sha }}
           path: .
@@ -548,13 +558,13 @@ jobs:
 
       - name: Upload payments artifacts on failure
         if: failure()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-payments-artifacts-${{ github.sha }}
           path: |
             playwright-report/
             test-results/
-          retention-days: 7
+          retention-days: 1
 
   # ───────────────────────────────────────────────────────────────────────────
   # 5d. E2E quarantine — flaky tests tagged `@quarantine`. NON-BLOCKING.
@@ -567,7 +577,8 @@ jobs:
     if: |
       always() &&
       needs.changes.outputs.needs_authenticated == 'true' &&
-      needs.build.result == 'success'
+      needs.build.result == 'success' &&
+      needs.build.outputs.artifact_uploaded == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     continue-on-error: true
@@ -582,7 +593,7 @@ jobs:
       - run: npm ci
 
       - name: Download prebuilt app
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: next-build-${{ github.sha }}
           path: .
@@ -606,13 +617,13 @@ jobs:
 
       - name: Upload quarantine artifacts
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-quarantine-artifacts-${{ github.sha }}
           path: |
             playwright-report/
             test-results/
-          retention-days: 7
+          retention-days: 1
           if-no-files-found: ignore
 
   # ───────────────────────────────────────────────────────────────────────────

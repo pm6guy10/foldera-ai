@@ -10,6 +10,7 @@ source_truth_closeout_values:
   - not applicable - reason
 source_of_truth_order:
   - ACTIVE_HANDOFF.md
+  - ACTIVE_SEAM_STATE.json
   - active GitHub issue
   - FOLDERA_BUILD_ORDER.yaml
   - .foldera-contract.json
@@ -21,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 296
+active_issue: 301
 priority_class: ACTIVE
-work_type: M1_BACKEND_LOCK
-why_this_first: M1 definition — loop closes for Brandon ≥3 days/week, 2 consecutive weeks. workday_presence_state must be always-present before the loop can reliably close.
-next_seam: M1 backend-lock — seed workday_presence_state on every dashboard load so Brandon always sees a real action card
+work_type: CONTROL_PLANE_LEDGER
+why_this_first: One machine-verifiable control plane before any more product work.
+next_seam: "#301 is ACTIVE; active seam state now lives in ACTIVE_SEAM_STATE.json and must agree with handoff, build order, branch, PR, and deployed SHA"
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
@@ -87,10 +88,10 @@ launch_ladder:
     issue: 281
     closed_by: owner instruction 2026-06-13 — external human-validation gate permanently removed; product is ready and this requirement was a recurring false stop condition
 owner_operator_pass:
-  issue: 284
+  issue: 301
   status: ACTIVE
-  mandate: full A-to-Z pass on explicit owner authorization 2026-06-12 — close the gap between the Bible's first money-moving journey and the shipped product, multi-PR campaign, merge-through when green
-  current_slice: G7 — audit cold-start experience (start page, landing, pricing) for remaining old-vocab or product-doctrine gaps
+  mandate: add the single control-plane truth ledger and enforce it; do not start product work in this seam
+  current_slice: M0 — control plane truth ledger and gate enforcement
   completed_prs:
     - pr: 286
       merge_sha: cf8860f
@@ -111,7 +112,7 @@ owner_operator_pass:
         - G6
       note: background sync on first OAuth connect; deleted 3 orphaned components; scrubbed Executive Briefing vocab from /demo
   authorized_extras:
-    - wiring Command State Resolver v0 into the live loop (the journey's one trusted verdict; now the active PR B seam)
+    - wiring ACTIVE_SEAM_STATE.json into the live continuity gate
   safety_rails: no outbound sends by default; no paid tests without naming exact cost; acquisition quarantined OFF; no fake claims; one intervention max; safe silence is a win; schema only via committed+applied+verified migrations
 command_state_resolver_v0:
   contract_issue: 274
@@ -138,8 +139,8 @@ command_state_resolver_v0:
     - issue #246
 m1_milestone_board:
   issue: 296
-  status: OPEN
-  definition: loop closes for Brandon ≥3 days/week, 2 consecutive weeks
+  status: ARCHIVED
+  definition: historical M1 backend-lock seam; superseded by issue #301 control-plane ledger
   ladder:
     - M1: Brandon closes loop (backend state contract locked)
     - M2: stranger closes loop (non-owner, zero narration)
@@ -167,5 +168,7 @@ auto_label_workflow:
 closeout_required_each_pr:
   ACTIVE_HANDOFF.md: updated / unchanged - reason / not applicable - reason
   FOLDERA_BUILD_ORDER.yaml: updated / unchanged - reason / not applicable - reason
+  .foldera-contract.json: updated / unchanged - reason / not applicable - reason
+  ACTIVE_SEAM_STATE.json: updated / unchanged - reason / not applicable - reason
   docs/SOURCE_OF_TRUTH_MAP.md: updated / unchanged - reason / not applicable - reason
   next_seam: named / blocked - reason

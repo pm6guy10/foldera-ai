@@ -1,0 +1,9 @@
+{
+  "active_issue": 301,
+  "active_branch": "codex/issue-301-control-plane-ledger",
+  "active_pr": 302,
+  "deployed_commit_sha": "cbacc4da1a94bb5d25d7286f0347eb33b997d362",
+  "runtime_env": "production",
+  "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
+  "last_verified_at": "2026-06-13T14:27:33Z"
+}

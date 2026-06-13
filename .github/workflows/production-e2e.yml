@@ -87,7 +87,7 @@ jobs:
       - name: Run public production contract smoke
         run: npm run test:prod
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: e2e-results

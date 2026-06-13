@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-13 PT (M1 loop-health guardian merged PR #297 96fa9a2; Slack DM alarm live; milestone board #296 open; auto-label workflow #295 merged.)
+Last updated: 2026-06-13 PT (issue #301 control-plane ledger active; production SHA cbacc4da1a94bb5d25d7286f0347eb33b997d362; old M1 notes retained below as archive.)
 
 ## Boot
 
@@ -9,26 +9,24 @@ Last updated: 2026-06-13 PT (M1 loop-health guardian merged PR #297 96fa9a2; Sla
 
 ## Active command gate
 
-Issue #296 is the active milestone seam.
+Issue #301 is the active control-plane seam.
+ACTIVE_SEAM_STATE.json is the machine-readable control plane.
 Issue #281 (rung 9) is OWNER_CLOSED — external human-validation gate permanently removed by owner instruction 2026-06-13. This rung will never be a stop condition again.
 Issue #276 is COMPLETE — Command State Resolver v0 merged via PR #279 (`e848d01`); closeout PR #280 (`13581bf`).
 Issue #262 is COMPLETE — event-driven trigger runner live (PR #273, `d6b99f2`).
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
 One active seam only.
 
-**Active seam: M1 — Loop closes for Brandon (≥3 days/week, 2 consecutive weeks).**
-Milestone board: issue #296. M1 definition: the one metric that means Foldera works is `tkg_actions.approved_at` being stamped by a human, not just the brain generating moves.
+**Active seam: issue #301 — control-plane truth ledger.**
+Milestone board: issue #301. The one metric that matters here is whether active issue, branch, PR, deployed SHA, and DB-state expectation all resolve to the same truth without Brandon translating between files.
 
 ## Current slice:
 
-**#284 campaign COMPLETE** (G1-G7 all done, PRs #286-#289 merged). Rung 9 permanently removed.
+Add the single control-plane truth ledger and wire the gate that enforces it. No product work.
 
-**M1 foundation laid:**
-- PR #295 MERGED — auto-label workflow: every new issue tagged on open (ops/intake/frontend/handoff/product)
-- PR #297 MERGED (`96fa9a2`) — loop-health guardian: daily scheduled check on `tkg_actions.approved_at`; exits non-zero and fires a Slack DM (SLACK_BOT_TOKEN + FOLDERA_SLACK_SELF_CHANNEL_ID) when COLD/NEVER. The loop has been dead since 2026-04-22 — first scheduled run will correctly go red and ping Slack.
-- Issue #296 OPEN — Milestone board M1→M4 (M1: Brandon closes loop; M2: stranger closes loop; M3: frontend on locked contract; M4: runs itself)
+Current production truth: `Last known production SHA: cbacc4da1a94bb5d25d7286f0347eb33b997d362`
 
-**M1 blocker identified:** `workday_presence_state` is not always-present. When it's null/missing, the dashboard renders a dead setup form with no action buttons — no loop possible. Backend state contract must be locked before the loop can reliably close.
+Archive: the M1 loop-health notes below remain as historical context only.
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
@@ -61,9 +59,7 @@ Owner mandate written into `FOLDERA_MASTER_BIBLE.md` PART II-B and II-C. Any ses
 
 ## Next exact move
 
-Loop-health guardian is live (PR #297 merged). Alarm will DM Brandon in Slack when the loop is cold.
-
-**Next seam (M1 backend-lock):** Make `workday_presence_state` always-present — seed a real state object on every dashboard load so Brandon always sees an action button, never a dead setup form. One backend fix, locked contract, no frontend redesign. Issue #284 or a new M1 issue.
+Close issue #301 by shipping the control-plane ledger and gate, then stop. No product work, no broad cleanup, no new runtime surface.
 
 ## Prior closeout records (condensed; GitHub receipts + git history are the archive)
 
