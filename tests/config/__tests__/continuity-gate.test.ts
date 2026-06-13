@@ -97,7 +97,7 @@ describe('continuity gate', () => {
     const failures = runContinuityGate(fixtureRoot);
 
     expect(failures).toContain(
-      'ACTIVE_SEAM_STATE.json active_branch "codex/issue-301-control-plane-ledger" must match current branch "other-branch".',
+      'ACTIVE_SEAM_STATE.json active_branch "deps/consolidate-dependabot-bumps" must match current branch "other-branch".',
     );
   });
 

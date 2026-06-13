@@ -28,9 +28,11 @@ const { mockCreate } = vi.hoisted(() => ({
 }));
 
 vi.mock('@anthropic-ai/sdk', () => ({
-  default: vi.fn().mockImplementation(() => ({
-    messages: { create: mockCreate },
-  })),
+  default: vi.fn().mockImplementation(function () {
+    return {
+      messages: { create: mockCreate },
+    };
+  }),
 }));
 
 vi.mock('@/lib/db/client', () => {
