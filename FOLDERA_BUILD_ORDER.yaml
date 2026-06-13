@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 301
-priority_class: ACTIVE
-work_type: CONTROL_PLANE_LEDGER
-why_this_first: One machine-verifiable control plane before any more product work.
-next_seam: "#301 is ACTIVE; active seam state now lives in ACTIVE_SEAM_STATE.json and must agree with handoff, build order, branch, PR, and deployed SHA"
+active_issue: none
+priority_class: BETWEEN_RUNGS
+work_type: DATA_MOAT_INITIALIZATION
+why_this_first: Wire the one-click receipt to log signal → act → outcome tuples. Data moat accretes when feedback loop exists.
+next_seam: "Data moat initialization pending owner priority. Hidden-op guardian live on main (PR #305)."
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178

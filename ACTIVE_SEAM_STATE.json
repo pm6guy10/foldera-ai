@@ -1,5 +1,5 @@
 {
-  "active_issue": null,
+  "active_issue": 0,
   "active_branch": "main",
   "active_pr": null,
   "deployed_commit_sha": "f29cd80a89cc45deca3ef2d03d1dcc22c8c27a8d",

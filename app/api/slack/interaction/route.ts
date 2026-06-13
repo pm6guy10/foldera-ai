@@ -14,6 +14,7 @@ import {
 } from '@/lib/workday-presence/actions';
 import { buildRightNowMessagePayload, type RightNowMessageActionId } from '@/lib/workday-presence/message';
 import { normalizeWorkdayPresenceState, type WorkdayPresenceState } from '@/lib/workday-presence/model';
+import { normalizeWorkdayPresenceTriggerRunnerCursor } from '@/lib/workday-presence/trigger-runner';
 import { insertPresenceReceipt } from '@/lib/workday-presence/presence-action-receipt';
 import { buildPresenceLoopReceipt } from '@/lib/workday-presence/presence-loop-receipt';
 import { apiErrorForRoute, badRequest } from '@/lib/utils/api-error';
@@ -46,6 +47,36 @@ async function persistState(
   });
   if (updateResult.error) throw updateResult.error;
   return stateWithHistory;
+}
+
+async function handleHiddenOpOutcome(
+  userId: string,
+  metadata: Record<string, unknown>,
+  nowIso: string,
+): Promise<{ acknowledged: true; hidden_op_signal_id: string | null; outcome_logged: boolean } | null> {
+  const cursor = normalizeWorkdayPresenceTriggerRunnerCursor(
+    metadata.workday_presence_trigger_runner,
+  );
+  const lastTriggerKey = cursor.last_trigger_key ?? '';
+  if (!lastTriggerKey.startsWith('hidden_op:')) return null;
+
+  const signalId = lastTriggerKey.slice(10);
+  const supabase = createServerClient();
+  const { error } = await supabase
+    .from('tkg_signals')
+    .update({
+      outcome_label: 'CONFIRMED_WORKED',
+      updated_at: nowIso,
+    })
+    .eq('id', signalId)
+    .eq('user_id', userId);
+
+  if (error) throw error;
+  return {
+    acknowledged: true,
+    hidden_op_signal_id: signalId,
+    outcome_logged: true,
+  };
 }
 
 function requireSlackInteractionConfig() {
@@ -93,9 +124,16 @@ export async function POST(request: Request) {
     if (error) throw error;
     const metadata = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
     const currentState = normalizeWorkdayPresenceState(metadata.workday_presence_state);
-    if (!currentState) return badRequest('No active workday presence state');
 
     const nowIso = new Date().toISOString();
+    if (!currentState) {
+      const hiddenOpOutcome = await handleHiddenOpOutcome(userId, metadata, nowIso);
+      if (hiddenOpOutcome) {
+        return NextResponse.json(redactSlackSecret(hiddenOpOutcome));
+      }
+      return badRequest('No active workday presence state and no hidden-op signal to acknowledge');
+    }
+
     const receipt = buildPresenceLoopReceipt(currentState, {
       action_id: interaction.actionId,
       blocker: interaction.blocker,

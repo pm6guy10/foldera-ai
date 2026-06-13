@@ -1,36 +1,43 @@
 {
-  "backlog_id": "hidden-op-slack-wire",
-  "active_issue": 301,
-  "base_commit": "23ec261ba8ec559efd34c8ccac518484ea097005",
-  "money_loop_rung": "rung-9-guardian-moment",
-  "user_system_path": "Wire detectHiddenOps into the Slack trigger loop so buried high-consequence signals fire a ping without user asking.",
+  "backlog_id": "data-moat-initialization",
+  "active_issue": "none",
+  "base_commit": "453f115f7a8b06f3a0d141174047532a87c08899",
+  "money_loop_rung": "rung-10-data-moat",
+  "user_system_path": "Wire the Got it button on hidden-op Slack cards to log signal→act→outcome tuples to Supabase. Feedback loop accretes the data moat.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
+    "FOLDERA_BUILD_ORDER.yaml",
+    "app/api/slack/interaction/route.ts",
     "lib/workday-presence/trigger-runner.ts",
     "lib/workday-presence/__tests__/trigger-runner.test.ts",
     "tests/config/__tests__/continuity-gate.test.ts"
   ],
   "forbidden_file_patterns": [
-    "app/**",
     "components/**",
-    "supabase/migrations/**"
+    "supabase/migrations/**",
+    "app/page.tsx",
+    "app/dashboard/**",
+    "app/api/auth/**",
+    "app/api/stripe/**",
+    "lib/stripe/**",
+    "lib/auth/**"
   ],
-  "allowed_files_raw": "lib/workday-presence/trigger-runner.ts, lib/workday-presence/__tests__/trigger-runner.test.ts, ACTIVE_SEAM_STATE.json, .foldera-contract.json, tests/config/__tests__/continuity-gate.test.ts",
-  "forbidden_files_raw": "No schema changes, no app/UI/component changes, no new scoring modules without runtime consumer.",
-  "required_local_proof": "./node_modules/.bin/vitest run lib/workday-presence/__tests__/trigger-runner.test.ts --reporter=verbose && npm run lint && npm run build && npm run gate:continuity",
-  "required_browser_proof": "Not required. This is a backend trigger-loop change.",
+  "allowed_files_raw": "Slack interaction route for hidden-op acknowledgments; seam state files; trigger runner for wiring proof",
+  "forbidden_files_raw": "No schema changes, no app/UI/component changes, no auth/stripe/payment work. Slack interaction path only for hidden-op outcome logging.",
+  "required_local_proof": "npm run gate:continuity && npm run lint && npm run build && npm test",
+  "required_browser_proof": "Not required. This is a backend interaction handler for signal outcome logging.",
   "browser_proof_command": "",
-  "acceptance_condition": "hidden-op guardian fires a Slack ping when detectHiddenOps scores a signal >= 50 and the normal trigger path is quiet.",
-  "stop_condition": "Stop when PR is open, CI green, and the trigger-runner test suite proves the wiring end-to-end.",
+  "acceptance_condition": "Hidden-op outcome logging wired: user click Got it on hidden-op Slack card logs CONFIRMED_WORKED outcome to tkg_signals. Signal→act→outcome tuple captured.",
+  "stop_condition": "Stop when outcome logging is tested, CI green, and seam state files agree on between-rungs status.",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "existing trigger-runner tests still pass",
-    "hidden-op does not fire when normal path fires (no double-ping)",
-    "hidden-op dedup suppresses same signal same cursor"
+    "hidden-op trigger-runner tests still pass",
+    "hidden-op outcome logging captures signal ID correctly",
+    "normal workday-presence path unaffected (still requires state)"
   ],
-  "next_command": "git push -u origin claude/hidden-op-slack-wire-f37g10",
+  "next_command": "Data moat initialization in progress. Next: wire the outcome endpoint to record full signal→act→outcome tuples.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

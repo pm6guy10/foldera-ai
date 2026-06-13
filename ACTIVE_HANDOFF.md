@@ -10,15 +10,12 @@ Last updated: 2026-06-13 PT (issue #301 control-plane + hidden-op wiring COMPLET
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
+Between-rungs state: no active seam declared pending owner priority.
 Issue #301 is COMPLETE — control-plane truth ledger + hidden-op Slack wiring merged PR #305 (f29cd80).
 Issue #281 (rung 9) is OWNER_CLOSED — external human-validation gate permanently removed by owner instruction 2026-06-13. This rung will never be a stop condition again.
 Issue #276 is COMPLETE — Command State Resolver v0 merged via PR #279 (`e848d01`); closeout PR #280 (`13581bf`).
 Issue #262 is COMPLETE — event-driven trigger runner live (PR #273, `d6b99f2`).
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
-One active seam only.
-
-**Active seam: NONE (pending next priority).**
-Data moat initialization ready. Guardian moment live: hidden-op detector fires Slack pings on buried high-consequence signals. Next: one-click receipt wiring (signal → act → outcome tuple logging).
 
 ## Current slice:
 
