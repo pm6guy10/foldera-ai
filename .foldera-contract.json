@@ -1,5 +1,6 @@
 {
   "backlog_id": "hidden-op-slack-wire",
+  "active_issue": 301,
   "base_commit": "23ec261ba8ec559efd34c8ccac518484ea097005",
   "money_loop_rung": "rung-9-guardian-moment",
   "user_system_path": "Wire detectHiddenOps into the Slack trigger loop so buried high-consequence signals fire a ping without user asking.",
@@ -27,5 +28,13 @@
     "hidden-op does not fire when normal path fires (no double-ping)",
     "hidden-op dedup suppresses same signal same cursor"
   ],
-  "next_command": "git push -u origin claude/hidden-op-slack-wire-f37g10"
+  "next_command": "git push -u origin claude/hidden-op-slack-wire-f37g10",
+  "terminal_state_authority": {
+    "allowed": [
+      "MERGED_AND_CLOSED",
+      "BLOCKED_WITH_EXACT_RECEIPT",
+      "HUMAN_REVIEW_REQUIRED_WITH_REASON",
+      "STOPPED_WITH_AUTHORIZED_REASON"
+    ]
+  }
 }
