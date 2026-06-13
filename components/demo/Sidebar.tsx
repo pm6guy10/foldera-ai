@@ -24,7 +24,7 @@ type NavItem = {
 };
 
 const items: NavItem[] = [
-  { href: "/demo", label: "Executive Briefing", icon: Inbox, exact: true },
+  { href: "/demo", label: "Right Now", icon: Inbox, exact: true },
   { href: "/demo/playbooks", label: "Playbooks", icon: LayoutGrid, disabled: true },
   { href: "/demo/signals", label: "Signals", icon: Radio, disabled: true },
   { href: "/demo/audit", label: "Audit Log", icon: ClipboardList },
