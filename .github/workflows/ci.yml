@@ -374,8 +374,9 @@ jobs:
           path: |
             .next
             public
-          retention-days: 3
+          retention-days: 1
           if-no-files-found: error
+          overwrite: true
           # upload-artifact@v4 excludes dot-prefixed paths by default, which
           # silently drops the entire `.next/` tree and leaves only `public/`
           # in the archive. Downstream jobs then boot with no server bundle
@@ -438,7 +439,7 @@ jobs:
           path: |
             playwright-report/
             test-results/
-          retention-days: 7
+          retention-days: 1
 
   # ───────────────────────────────────────────────────────────────────────────
   # 5b. E2E authenticated + flow — dashboard, payments, settings.
@@ -495,7 +496,7 @@ jobs:
             playwright-report/
             test-results/
             .screenshots/
-          retention-days: 7
+          retention-days: 1
 
   # ───────────────────────────────────────────────────────────────────────────
   # 5c. E2E payments — targeted subset for stripe-only PRs. Runs ONLY tests
@@ -554,7 +555,7 @@ jobs:
           path: |
             playwright-report/
             test-results/
-          retention-days: 7
+          retention-days: 1
 
   # ───────────────────────────────────────────────────────────────────────────
   # 5d. E2E quarantine — flaky tests tagged `@quarantine`. NON-BLOCKING.
@@ -612,7 +613,7 @@ jobs:
           path: |
             playwright-report/
             test-results/
-          retention-days: 7
+          retention-days: 1
           if-no-files-found: ignore
 
   # ───────────────────────────────────────────────────────────────────────────
