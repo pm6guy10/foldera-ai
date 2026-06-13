@@ -43,11 +43,95 @@ describe('GET /api/workday-presence', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
+    expect(body.surface_state).toBe('setup_needed');
     expect(body.resolution.verdict).toBe('CLEAR');
     expect(body.resolution.rule).toBe('no_saved_state');
     expect(body.card.mode).toBe('setup');
     expect(body.card.verdict_line).toContain('No justified move yet');
     expect(Object.keys(body)).toEqual(expect.arrayContaining(['state', 'card']));
+  });
+
+  it('returns a suppressed_winner surface when a selected move was blocked before it reached the user', async () => {
+    mockSupabase.auth.admin.getUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            workday_presence_suppression_trace: {
+              trace_type: 'suppressed_winner',
+              gate: 'ungrounded_send_draft',
+              blocker_reason: 'drafted email has no real inbound thread',
+              scorer_outcome: 'winner_selected',
+              action_type: 'send_message',
+              selected_candidate: {
+                title: 'Follow up with Arianna',
+                type: 'relationship',
+                score: 999,
+              },
+              candidate_count: 12,
+              evidence_empty: false,
+              artifact_exists: false,
+              draft_exists: false,
+              no_send: true,
+              generation_failed: false,
+              ungrounded_send_draft: true,
+              bottom_gate: false,
+            },
+          },
+        },
+      },
+      error: null,
+    });
+
+    const { GET } = await import('../route');
+    const response = await GET(new Request('http://localhost/api/workday-presence'));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.surface_state).toBe('suppressed_winner');
+    expect(body.card.mode).toBe('setup');
+    expect(body.suppression_trace.gate).toBe('ungrounded_send_draft');
+    expect(body.suppression_trace.selected_candidate.score).toBe(999);
+  });
+
+  it('returns clear safe silence with the candidate count when no candidate clears the bar', async () => {
+    mockSupabase.auth.admin.getUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            workday_presence_suppression_trace: {
+              trace_type: 'safe_silence',
+              gate: 'safe_silence',
+              blocker_reason: 'No candidate combined sufficient score and ranking invariants to authorize an outbound move today.',
+              scorer_outcome: 'no_valid_action',
+              action_type: 'do_nothing',
+              selected_candidate: {
+                title: 'Noise: shipping notification',
+                type: 'signal',
+                score: 0,
+              },
+              candidate_count: 4,
+              evidence_empty: true,
+              artifact_exists: false,
+              draft_exists: false,
+              no_send: true,
+              generation_failed: false,
+              ungrounded_send_draft: false,
+              bottom_gate: false,
+            },
+          },
+        },
+      },
+      error: null,
+    });
+
+    const { GET } = await import('../route');
+    const response = await GET(new Request('http://localhost/api/workday-presence'));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.surface_state).toBe('clear');
+    expect(body.suppression_trace.trace_type).toBe('safe_silence');
+    expect(body.suppression_trace.candidate_count).toBe(4);
   });
 
   it('emits exactly one active card when state exists', async () => {
@@ -89,6 +173,7 @@ describe('GET /api/workday-presence', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
+    expect(body.surface_state).toBe('active_move');
     expect(body.resolution.verdict).toBe('WAIT');
     expect(body.resolution.rule).toBe('external_wait');
     expect(body.card.mode).toBe('active');
@@ -136,6 +221,7 @@ describe('GET /api/workday-presence', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
+    expect(body.surface_state).toBe('active_move');
     expect(body.resolution.verdict).toBe('CLEAR');
     expect(body.resolution.rule).toBe('no_justified_command');
     expect(body.card.mode).toBe('active');

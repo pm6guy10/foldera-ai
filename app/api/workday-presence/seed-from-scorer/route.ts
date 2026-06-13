@@ -21,6 +21,7 @@ import { getLastScorerDiagnostics } from '@/lib/briefing/scorer';
 import type { ConvictionArtifact, ConvictionDirective } from '@/lib/briefing/types';
 import type {
   WorkdayPresenceDraft,
+  WorkdayPresenceSuppressionTrace,
   WorkdayPresenceSourceTrailEntry,
   WorkdayPresenceState,
 } from '@/lib/workday-presence/model';
@@ -30,6 +31,115 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 const GENERATION_FAILED_SENTINEL = '__GENERATION_FAILED__';
+
+function readSelectedCandidate(
+  directive: ConvictionDirective,
+  diagnostics: ReturnType<typeof getLastScorerDiagnostics>,
+): WorkdayPresenceSuppressionTrace['selected_candidate'] {
+  const selected =
+    directive.generationLog?.candidateDiscovery?.topCandidates?.find((candidate) => candidate.decision === 'selected') ??
+    directive.generationLog?.candidateDiscovery?.topCandidates?.[0] ??
+    null;
+
+  return {
+    title: diagnostics?.finalWinner?.title?.trim() ?? null,
+    type: diagnostics?.finalWinner?.type ?? selected?.candidateType ?? null,
+    score: diagnostics?.finalWinner?.score ?? selected?.score ?? null,
+  };
+}
+
+function detectSuppressionShape(input: {
+  directive: ConvictionDirective;
+  blockerReason: string;
+  explicitGate: string;
+}): Pick<
+  WorkdayPresenceSuppressionTrace,
+  'trace_type' | 'gate' | 'generation_failed' | 'ungrounded_send_draft' | 'bottom_gate'
+> {
+  const normalizedReason = input.blockerReason.toLowerCase();
+  const stage = input.directive.generationLog?.stage ?? null;
+  const generationFailed =
+    input.directive.directive === GENERATION_FAILED_SENTINEL &&
+    (stage === 'system' || normalizedReason.includes('generation failed'));
+  const ungroundedSendDraft = input.explicitGate === 'ungrounded_send_draft';
+  const bottomGate = input.explicitGate === 'bottom_gate';
+  const safeSilence =
+    input.explicitGate === 'safe_silence' ||
+    stage === 'scoring' ||
+    input.directive.generationLog?.no_valid_action_blocker === true ||
+    input.directive.action_type === 'do_nothing';
+
+  if (generationFailed) {
+    return {
+      trace_type: 'generation_failed',
+      gate: 'generation_failed',
+      generation_failed: true,
+      ungrounded_send_draft: false,
+      bottom_gate: false,
+    };
+  }
+
+  if (safeSilence) {
+    return {
+      trace_type: 'safe_silence',
+      gate: 'safe_silence',
+      generation_failed: false,
+      ungrounded_send_draft: false,
+      bottom_gate: false,
+    };
+  }
+
+  return {
+    trace_type: 'suppressed_winner',
+    gate: input.explicitGate,
+    generation_failed: false,
+    ungrounded_send_draft: ungroundedSendDraft,
+    bottom_gate: bottomGate,
+  };
+}
+
+function buildSuppressionTrace(input: {
+  directive: ConvictionDirective;
+  diagnostics: ReturnType<typeof getLastScorerDiagnostics>;
+  blockerReason: string;
+  explicitGate: string;
+  artifact: ConvictionArtifact | null;
+}): WorkdayPresenceSuppressionTrace {
+  const candidateDiscovery = input.directive.generationLog?.candidateDiscovery ?? null;
+  const shape = detectSuppressionShape({
+    directive: input.directive,
+    blockerReason: input.blockerReason,
+    explicitGate: input.explicitGate,
+  });
+
+  return {
+    ...shape,
+    blocker_reason: input.blockerReason,
+    scorer_outcome: input.diagnostics?.finalOutcome ?? null,
+    action_type: input.directive.action_type ?? null,
+    selected_candidate: readSelectedCandidate(input.directive, input.diagnostics),
+    candidate_count: candidateDiscovery?.candidateCount ?? null,
+    evidence_empty: (input.directive.evidence ?? []).length === 0,
+    artifact_exists: input.artifact !== null,
+    draft_exists: input.artifact !== null,
+    no_send: true,
+  };
+}
+
+async function persistSuppressionTrace(input: {
+  authUserId: string;
+  metadata: Record<string, unknown>;
+  suppressionTrace: WorkdayPresenceSuppressionTrace;
+}) {
+  const supabase = createServerClient();
+  const updateResult = await supabase.auth.admin.updateUserById(input.authUserId, {
+    user_metadata: {
+      ...input.metadata,
+      workday_presence_suppression_trace: input.suppressionTrace,
+    },
+  });
+  if (updateResult.error) throw updateResult.error;
+}
 
 /** A directive that doesn't represent a real, reviewable move the user can act on. */
 function isRealMove(directive: ConvictionDirective): boolean {
@@ -144,13 +254,30 @@ export async function POST(request: Request) {
       diagnostics?.finalWinner?.title?.trim() ||
       directive.directive.slice(0, 120).trim() ||
       'Scored winner';
+    const supabase = createServerClient();
+    const { data, error } = await supabase.auth.admin.getUserById(auth.userId);
+    if (error) throw error;
+    const metadata = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
 
     if (!isRealMove(directive)) {
+      const suppressionTrace = buildSuppressionTrace({
+        directive,
+        diagnostics,
+        blockerReason: directive.reason || 'No real move produced.',
+        explicitGate: 'safe_silence',
+        artifact: null,
+      });
+      await persistSuppressionTrace({
+        authUserId: auth.userId,
+        metadata,
+        suppressionTrace,
+      });
       return NextResponse.json({
         seeded: false,
         scorer_outcome: diagnostics?.finalOutcome ?? 'no_valid_action',
         blocker_reason: directive.reason || 'No real move produced.',
         action_type: directive.action_type,
+        suppression_trace: suppressionTrace,
       });
     }
 
@@ -166,13 +293,27 @@ export async function POST(request: Request) {
     // Anti-fabrication: an email draft not grounded in a real inbound thread or
     // cited evidence never reaches the card. Stay quiet instead of lying.
     if (directive.action_type === 'send_message' && !sendDraftIsGrounded(directive, artifact)) {
+      const blockerReason =
+        'ungrounded_send_draft: drafted email has no real inbound thread and the recipient is not in cited evidence — refusing to present fabricated correspondence.';
+      const suppressionTrace = buildSuppressionTrace({
+        directive,
+        diagnostics,
+        blockerReason,
+        explicitGate: 'ungrounded_send_draft',
+        artifact,
+      });
+      await persistSuppressionTrace({
+        authUserId: auth.userId,
+        metadata,
+        suppressionTrace,
+      });
       return NextResponse.json({
         seeded: false,
         scorer_outcome: diagnostics?.finalOutcome ?? 'winner_selected',
-        blocker_reason:
-          'ungrounded_send_draft: drafted email has no real inbound thread and the recipient is not in cited evidence — refusing to present fabricated correspondence.',
+        blocker_reason: blockerReason,
         action_type: directive.action_type,
         winner_title: winnerTitle,
+        suppression_trace: suppressionTrace,
       });
     }
 
@@ -181,26 +322,38 @@ export async function POST(request: Request) {
     if (artifact) {
       const gate = evaluateBottomGate(directive, artifact);
       if (!gate.pass) {
+        const blockerReason = `bottom_gate: ${gate.blocked_reasons.join(', ')} — winner not important enough to interrupt.`;
+        const suppressionTrace = buildSuppressionTrace({
+          directive,
+          diagnostics,
+          blockerReason,
+          explicitGate: 'bottom_gate',
+          artifact,
+        });
+        await persistSuppressionTrace({
+          authUserId: auth.userId,
+          metadata,
+          suppressionTrace,
+        });
         return NextResponse.json({
           seeded: false,
           scorer_outcome: diagnostics?.finalOutcome ?? 'winner_selected',
-          blocker_reason: `bottom_gate: ${gate.blocked_reasons.join(', ')} — winner not important enough to interrupt.`,
+          blocker_reason: blockerReason,
           action_type: directive.action_type,
           winner_title: winnerTitle,
+          suppression_trace: suppressionTrace,
         });
       }
     }
 
     const nowIso = new Date().toISOString();
     const state = directiveToPresenceState(directive, winnerTitle, artifact, nowIso);
-
-    const supabase = createServerClient();
-    const { data, error } = await supabase.auth.admin.getUserById(auth.userId);
-    if (error) throw error;
-
-    const metadata = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
     const updateResult = await supabase.auth.admin.updateUserById(auth.userId, {
-      user_metadata: { ...metadata, workday_presence_state: state },
+      user_metadata: {
+        ...metadata,
+        workday_presence_state: state,
+        workday_presence_suppression_trace: null,
+      },
     });
     if (updateResult.error) throw updateResult.error;
 
@@ -222,6 +375,7 @@ export async function POST(request: Request) {
         state_source: state.state_source,
         draft: state.draft,
       },
+      suppression_trace: null,
     });
   } catch (error: unknown) {
     return apiErrorForRoute(error, 'workday-presence seed-from-scorer POST');
