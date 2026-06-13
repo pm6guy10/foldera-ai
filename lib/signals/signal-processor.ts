@@ -34,6 +34,7 @@ import {
   mergeTrustClass,
   type TrustClass,
 } from '@/lib/signals/entity-trust';
+import { computeCommitmentRisk } from '@/lib/signals/commitment-risk';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const BATCH_SIZE = 20;
@@ -1885,6 +1886,19 @@ async function insertCommitment(
 
   if (existingCommitmentResult.data) return existingCommitmentResult.data.id;
 
+  const madeAtIso = new Date().toISOString();
+  const dueAt = normalizeInteractionTimestamp(commitment.due);
+  // Deterministic, free risk + due resolution so the Right Now scorer has real
+  // signal to rank on instead of a uniform risk_score:0 / due_confidence:0.5.
+  const risk = computeCommitmentRisk({
+    category: commitment.category || 'other',
+    description: commitment.description,
+    dueAt,
+    promisorIsSelf: Boolean(selfId) && promisorId === selfId,
+    promiseeIsSelf: Boolean(selfId) && promiseeId === selfId,
+    madeAtIso,
+  });
+
   const createCommitmentResult = await supabase
     .from('tkg_commitments')
     .insert({
@@ -1894,13 +1908,15 @@ async function insertCommitment(
       description: commitment.description,
       canonical_form: canonical,
       category: commitment.category || 'other',
-      made_at: new Date().toISOString(),
-      due_at: normalizeInteractionTimestamp(commitment.due),
+      made_at: madeAtIso,
+      due_at: dueAt,
+      implied_due_at: risk.implied_due_at,
+      due_confidence: risk.due_confidence,
       source: 'signal_extraction',
       source_id: signalId,
       trust_class: signalTrustClass,
       status: 'active',
-      risk_score: 0,
+      risk_score: risk.risk_score,
     })
     .select('id')
     .single();

@@ -21,6 +21,7 @@ import { sanitizeForPrompt } from '@/lib/utils/prompt-sanitization';
 import { encrypt } from '@/lib/encryption';
 import { truncateSignalContent } from '@/lib/utils/signal-egress';
 import { isNonCommitment } from '@/lib/signals/signal-processor';
+import { computeCommitmentRisk } from '@/lib/signals/commitment-risk';
 import { ensureAnthropicBudget } from '@/lib/llm/anthropic-budget-governor';
 import { assertPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
 import { isOverDailyLimit, trackApiCall } from '@/lib/utils/api-tracker';
@@ -313,21 +314,37 @@ export async function extractFromConversation(
   // 5. Write decisions → tkg_commitments (with dedup gate)
   let decisionsWritten = 0;
   if (selfId && payload.decisions.length > 0) {
-    const rows = payload.decisions.map((d) => ({
-      user_id: userId,
-      promisor_id: selfId,
-      promisee_id: selfId,
-      description: d.description,
-      canonical_form: `DECISION:${d.domain}:${d.description.slice(0, 60).replace(/\s+/g, '_')}`,
-      category: 'make_decision',
-      made_at: new Date().toISOString(),
-      source: 'uploaded_document',
-      source_id: signal.id,
-      source_context: d.context,
-      status: d.outcome ? 'fulfilled' : 'active',
-      resolution: d.outcome ? { outcome: d.outcome, resolvedAt: new Date().toISOString() } : null,
-      risk_factors: [{ stakes: d.stakes }],
-    }));
+    const decisionMadeAt = new Date().toISOString();
+    const rows = payload.decisions.map((d) => {
+      // Same deterministic risk + due resolution as the signal path so decision
+      // commitments carry real scoring signal instead of a flat risk_score:0.
+      const risk = computeCommitmentRisk({
+        category: 'make_decision',
+        description: d.description,
+        dueAt: null,
+        promisorIsSelf: true,
+        promiseeIsSelf: true,
+        madeAtIso: decisionMadeAt,
+      });
+      return {
+        user_id: userId,
+        promisor_id: selfId,
+        promisee_id: selfId,
+        description: d.description,
+        canonical_form: `DECISION:${d.domain}:${d.description.slice(0, 60).replace(/\s+/g, '_')}`,
+        category: 'make_decision',
+        made_at: decisionMadeAt,
+        implied_due_at: risk.implied_due_at,
+        due_confidence: risk.due_confidence,
+        source: 'uploaded_document',
+        source_id: signal.id,
+        source_context: d.context,
+        status: d.outcome ? 'fulfilled' : 'active',
+        resolution: d.outcome ? { outcome: d.outcome, resolvedAt: new Date().toISOString() } : null,
+        risk_score: risk.risk_score,
+        risk_factors: [{ stakes: d.stakes }],
+      };
+    });
 
     // Dedup: check which canonical_forms already exist for this user
     const canonicalForms = rows.map((r) => r.canonical_form);
