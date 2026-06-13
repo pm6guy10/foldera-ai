@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-13 PT (issue #301 control-plane + hidden-op wiring COMPLETE; active seam: NONE — data moat initialization pending; production SHA f29cd80a89cc45deca3ef2d03d1dcc22c8c27a8d.)
+Last updated: 2026-06-13 PT (data moat initialization COMPLETE — hidden-op outcome logging + GitHub Actions overage fix deployed; active seam: NONE — between-rungs state; production SHA 370cc7a.)
 
 ## Boot
 
@@ -19,9 +19,9 @@ Issue #262 is COMPLETE — event-driven trigger runner live (PR #273, `d6b99f2`)
 
 ## Current slice:
 
-Data moat initialization: wire the `Got it` button on the hidden-op Slack card to log signal → act → outcome tuples to Supabase. No active seam declared yet — pending owner priority.
+Between-rungs state (data moat initialization complete): `Got it` button on hidden-op Slack card now logs signal → act → outcome tuples to Supabase. Actions overage fixed (disabled 9 scheduled workflows). No active seam declared yet — pending owner priority.
 
-Current production truth: `Last known production SHA: f29cd80a89cc45deca3ef2d03d1dcc22c8c27a8d`
+Current production truth: `Last known production SHA: 370cc7a20bf6835e3eb7ea22e19a152d4cc79454`
 
 Archive: the M1 loop-health notes below remain as historical context only.
 
@@ -56,7 +56,11 @@ Owner mandate written into `FOLDERA_MASTER_BIBLE.md` PART II-B and II-C. Any ses
 
 ## Next exact move
 
-Wire the `Got it` button on the hidden-op Slack card to log signal → act → outcome tuples to Supabase (data moat initialization). No active seam declared until owner priority issued.
+No active seam declared yet. Between-rungs state: awaiting owner priority for next rung.
+
+## Data moat initialization closeout record (2026-06-13)
+
+Hidden-op outcome logging wired: `/app/api/slack/interaction/route.ts` now routes Slack acknowledges from hidden-op signals to `handleHiddenOpOutcome()`, extracting signal ID from `hidden_op:<signal-id>` cursor and logging `CONFIRMED_WORKED` outcome to `tkg_signals` table. Feedback loop data capture live. Proof: Unit tests (4/4 passing) · Playwright integration tests · CI green. GitHub Actions overage fixed: disabled 9 scheduled workflows, saved ~500-600 min/month. Receipt: commits a926029 + 370cc7a.
 
 ## #301 closeout record
 
