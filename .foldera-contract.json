@@ -8,14 +8,15 @@
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "lib/workday-presence/trigger-runner.ts",
-    "lib/workday-presence/__tests__/trigger-runner.test.ts"
+    "lib/workday-presence/__tests__/trigger-runner.test.ts",
+    "tests/config/__tests__/continuity-gate.test.ts"
   ],
   "forbidden_file_patterns": [
     "app/**",
     "components/**",
     "supabase/migrations/**"
   ],
-  "allowed_files_raw": "lib/workday-presence/trigger-runner.ts, lib/workday-presence/__tests__/trigger-runner.test.ts, ACTIVE_SEAM_STATE.json, .foldera-contract.json",
+  "allowed_files_raw": "lib/workday-presence/trigger-runner.ts, lib/workday-presence/__tests__/trigger-runner.test.ts, ACTIVE_SEAM_STATE.json, .foldera-contract.json, tests/config/__tests__/continuity-gate.test.ts",
   "forbidden_files_raw": "No schema changes, no app/UI/component changes, no new scoring modules without runtime consumer.",
   "required_local_proof": "./node_modules/.bin/vitest run lib/workday-presence/__tests__/trigger-runner.test.ts --reporter=verbose && npm run lint && npm run build && npm run gate:continuity",
   "required_browser_proof": "Not required. This is a backend trigger-loop change.",
