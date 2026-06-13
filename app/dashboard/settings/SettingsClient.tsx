@@ -201,10 +201,14 @@ export default function SettingsClient() {
       });
       await refreshGraphStats().catch(() => {});
 
+      // Fire a background sync immediately so the first-run dashboard card can
+      // show real state. Do not await — the user should not wait for sync to finish.
+      void fetch(`/api/${provider}/sync-now`, { method: 'POST' }).catch(() => {});
+
       setSyncStatus(
-        `${provider === 'google' ? 'Google' : 'Microsoft'} connected. Open Sources to check source activity now.`,
+        `${provider === 'google' ? 'Google' : 'Microsoft'} connected. Foldera is reading your sources now.`,
       );
-      setTimeout(() => setSyncStatus(null), 6000);
+      setTimeout(() => setSyncStatus(null), 8000);
     })();
   }, [status, refreshIntegrationsStatus, refreshGraphStats]);
 
