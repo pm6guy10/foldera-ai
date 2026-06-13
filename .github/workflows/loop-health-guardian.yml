@@ -1,0 +1,29 @@
+# Watches the ONE metric that means Foldera works: a human closed the loop.
+# If the hands go cold (no human action beyond the threshold) the scheduled run
+# fails so GitHub notifies the owner. This is the guardian for the guardian.
+name: Loop-Health Guardian
+
+on:
+  schedule:
+    - cron: '0 13 * * *'  # Daily 13:00 UTC / 6am PT — after the morning cron window
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - run: npx tsx scripts/loop-health-guardian.ts
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
