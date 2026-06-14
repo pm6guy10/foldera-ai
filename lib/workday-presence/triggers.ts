@@ -438,6 +438,7 @@ export function evaluateWorkdayPresenceTrigger(
       'blocker_cleared',
       'blocker_cleared: active blocker cleared',
       buildRightNowMessagePayload(clearedState),
+      clearedState,
     );
   }
 
@@ -449,6 +450,7 @@ export function evaluateWorkdayPresenceTrigger(
       'commitment_lapsing',
       'commitment_lapsing: active commitment is nearing lapse',
       buildRightNowMessagePayload(lapsingState),
+      lapsingState,
     );
   }
 
@@ -475,6 +477,7 @@ export function evaluateWorkdayPresenceTrigger(
       'owed_thread_gone_cold',
       'owed_thread_gone_cold: active owed thread cooled off',
       buildRightNowMessagePayload(coldState),
+      coldState,
     );
   }
 
@@ -486,6 +489,7 @@ export function evaluateWorkdayPresenceTrigger(
       'timing_shift',
       'timing_shift: relevant timing window moved',
       buildRightNowMessagePayload(shiftedState),
+      shiftedState,
     );
   }
 
