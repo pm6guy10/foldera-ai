@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-13 PT (repo truth realigned; active seam: #296 — M1 backend-lock activation; production SHA 370cc7a.)
+Last updated: 2026-06-14 PT (active seam: #244 — Right-now cards Slice 1 copy/verbiage scrub; production SHA ecf89dd.)
 
 ## Boot
 
@@ -11,7 +11,8 @@ Last updated: 2026-06-13 PT (repo truth realigned; active seam: #296 — M1 back
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Issue #296 is the active M1 backend-lock seam.
+Issue #244 is the active Right-now cards seam (Slice 1: copy/verbiage scrub).
+Issue #296 (M1 backend-lock) is COMPLETE — merged via PR #307 (`ecf89dd`); production live.
 Issue #301 is COMPLETE — control-plane truth ledger + hidden-op Slack wiring merged through PR #305 (`f29cd80`); hidden-op outcome logging deployed in commit `370cc7a`.
 Issue #284 is COMPLETE — owner-operator pass gaps G1-G7 closed across PRs #286, #287, and #288; product-path receipt posted on the issue.
 Issue #281 (rung 9) is OWNER_CLOSED — external human-validation gate permanently removed by owner instruction 2026-06-13.
@@ -21,11 +22,11 @@ Issue #262 is COMPLETE — event-driven trigger runner live via PR #273 (`d6b99f
 
 ## Current slice:
 
-Current active slice is M1 backend-lock under issue #296.
-Current source-truth action: reactivate the M1 board as the single active seam and carry its next move in the control plane.
-Implementation target after this activation: make `workday_presence_state` always-present on dashboard load so the owner path never falls into a dead setup form instead of a real Right Now state/card.
+Current active slice is Right-now cards Slice 1 under issue #244.
+Current source-truth action: complete copy/verbiage scrub changing "morning brief/daily card" terminology to "Right Now" to reflect state-change-triggered delivery model.
+Implementation target: update all user-facing copy to reflect Right Now state (Slice 1 — copy scrub), then implement product changes to decouple card generation from clock (Slice 2).
 
-Current production truth: `Last known production SHA: 370cc7a20bf6835e3eb7ea22e19a152d4cc79454`
+Current production truth: `Last known production SHA: ecf89ddb61b9155f9a67ff77a31048f121940b94`
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
@@ -44,4 +45,4 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-Finish repo-truth activation of issue #296, then implement the M1 backend-lock on its own issue branch/PR: make `workday_presence_state` always-present on dashboard load and prove the owner loop surfaces a real Right Now state/card instead of dead setup.
+Complete PR #308 (Slice 1 copy scrub) with CI green, then continue to Slice 2 product changes: decouple Right Now card generation from clock-based scheduling and implement state-change triggers. Verify dashboard and public pages reflect Right Now terminology before closing Slice 1.
