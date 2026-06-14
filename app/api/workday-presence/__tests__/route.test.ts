@@ -33,7 +33,7 @@ describe('GET /api/workday-presence', () => {
     );
   });
 
-  it('emits exactly one setup card when no state exists', async () => {
+  it('generates a default state when no state exists (M1 backend-lock)', async () => {
     mockSupabase.auth.admin.getUserById.mockResolvedValue({
       data: { user: { user_metadata: {} } },
       error: null,
@@ -43,11 +43,11 @@ describe('GET /api/workday-presence', () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.surface_state).toBe('setup_needed');
-    expect(body.resolution.verdict).toBe('CLEAR');
-    expect(body.resolution.rule).toBe('no_saved_state');
-    expect(body.card.mode).toBe('setup');
-    expect(body.card.verdict_line).toContain('No justified move yet');
+    expect(body.surface_state).toBe('active_move');
+    expect(body.state).toBeTruthy();
+    expect(body.state.current_focus).toBe('What are you working on now?');
+    expect(body.card.mode).toBe('active');
+    expect(body.card.heading).toBe('Right now.');
     expect(Object.keys(body)).toEqual(expect.arrayContaining(['state', 'card']));
   });
 

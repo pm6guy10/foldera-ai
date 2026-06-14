@@ -1,37 +1,42 @@
 {
   "backlog_id": "m1-backend-lock",
-  "active_issue": 296,
+  "active_issue": "296",
   "base_commit": "0db7cc22d6e9d67d89b8b2afc3a2bc6e56565686",
-  "money_loop_rung": "m1-backend-lock",
-  "user_system_path": "Make workday_presence_state always-present on dashboard load so the Right Now loop surfaces real state instead of a dead setup form.",
+  "money_loop_rung": "rung-11-m1-backend-lock",
+  "user_system_path": "M1 backend-lock: make workday_presence_state always-present on dashboard load so the owner path surfaces a real Right Now state/card instead of a dead setup form.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
-    "FOLDERA_BUILD_ORDER.yaml"
+    "FOLDERA_BUILD_ORDER.yaml",
+    "app/api/workday-presence/route.ts",
+    "app/api/workday-presence/__tests__/route.test.ts",
+    "tests/config/__tests__/continuity-gate.test.ts"
   ],
   "forbidden_file_patterns": [
-    "app/**",
     "components/**",
-    "lib/**",
-    "supabase/**",
-    "tests/**",
-    ".github/workflows/**"
+    "supabase/migrations/**",
+    "app/page.tsx",
+    "app/dashboard/**",
+    "app/api/auth/**",
+    "app/api/stripe/**",
+    "lib/stripe/**",
+    "lib/auth/**"
   ],
-  "allowed_files_raw": "Source-truth activation only: ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, ACTIVE_SEAM_STATE.json, and .foldera-contract.json.",
-  "forbidden_files_raw": "No product code, no tests, no workflows, no schema, and no UI work in this activation branch. This branch only reactivates issue #296 in the control plane.",
-  "required_local_proof": "npm run gate:continuity && git diff --check",
-  "required_browser_proof": "Not required. This branch is source-truth activation only.",
-  "browser_proof_command": "",
-  "acceptance_condition": "The control-plane files agree that issue #296 is the single active seam and the stale completed seams are reconciled in GitHub truth.",
-  "stop_condition": "Stop when source truth is aligned, proof passes, stale issue receipts are posted, and the branch is PR-ready.",
-  "is_user_facing": false,
+  "allowed_files_raw": "workday-presence GET endpoint to generate default state; tests for the new behavior; seam state files",
+  "forbidden_files_raw": "No UI changes, no dashboard changes, no auth/stripe work, no schema migrations.",
+  "required_local_proof": "npm run gate:continuity && npm run lint && npm run build && npm test",
+  "required_browser_proof": "Manual: load dashboard and verify a real Right Now card appears instead of setup form on first load",
+  "browser_proof_command": "npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list",
+  "acceptance_condition": "Dashboard always shows a real Right Now state on load: workday_presence_state present and card.mode is 'active' instead of 'setup' when no saved state exists.",
+  "stop_condition": "Stop when dashboard shows real Right Now card on fresh load, tests pass, CI green, and seam state files agree on active_issue #296.",
+  "is_user_facing": true,
   "anti_regression_checks": [
-    "ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, ACTIVE_SEAM_STATE.json, and .foldera-contract.json agree on issue #296",
-    "deployed commit SHA remains pinned to production commit 370cc7a20bf6835e3eb7ea22e19a152d4cc79454",
-    "no product files are touched in this activation branch"
+    "workday-presence GET tests pass",
+    "suppression traces still honored (safe_silence/suppressed_winner)",
+    "existing saved states unaffected"
   ],
-  "next_command": "After this activation merges, implement the M1 backend-lock on issue #296: make workday_presence_state always-present on dashboard load.",
+  "next_command": "Manual browser verification: load dashboard and confirm Right Now card surfaces without user input",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
