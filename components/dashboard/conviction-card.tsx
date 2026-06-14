@@ -214,7 +214,7 @@ function DoneState({ message, terminal, onReset }: { message: string; terminal: 
         </button>
       )}
       {terminal && (
-        <p className="text-zinc-600 text-xs">Your next read arrives tomorrow morning.</p>
+        <p className="text-zinc-600 text-xs">Your Right Now state updates when it's ready.</p>
       )}
     </div>
   );

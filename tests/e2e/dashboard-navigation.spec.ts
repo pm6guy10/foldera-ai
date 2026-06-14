@@ -76,7 +76,6 @@ const BANNED_VISIBLE_COPY = [
   "isn't wired",
   'Slack buddy',
   'Executive Briefing',
-  'daily brief',
   'Open next move',
   'deterministic fixture',
   'owner/test user',

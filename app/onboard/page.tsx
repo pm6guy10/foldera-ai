@@ -172,7 +172,7 @@ function OnboardContent() {
                 Foldera needs one connected mailbox or calendar before it can prepare a first read.
               </p>
               <p className="mt-3 text-xs leading-relaxed text-text-secondary">
-                Foldera only reads connected source context to prepare your morning move. It will not send from your mailbox or take action without approval.
+                Foldera only reads connected source context to surface your next move right now. It will not send from your mailbox or take action without approval.
               </p>
 
               {connectorReady ? (
