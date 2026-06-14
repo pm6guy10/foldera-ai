@@ -673,7 +673,7 @@ export function buildDailyValueState(
         ? 'Check sources now'
         : missingInputPrompt?.actionLabel ?? (activeSources > 0 ? undefined : 'Connect Google'),
     copyText: copyText || undefined,
-    copyLabel: hasPrimaryMove ? 'Copy brief' : copyText ? 'Copy read' : undefined,
+    copyLabel: hasPrimaryMove ? 'Copy right now' : copyText ? 'Copy read' : undefined,
   };
 }
 

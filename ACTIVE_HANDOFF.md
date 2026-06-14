@@ -1,17 +1,18 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-13 PT (repo truth realigned; active seam: #296 — M1 backend-lock activation; production SHA 370cc7a.)
+Last updated: 2026-06-14 PT (Session complete: #296 merged to production, #244 Slice 1 PR #308 ready for review, #244 Slice 2 documented, #246 next.)
 
 ## Boot
 
 1. Read this file.
-2. Read issue #296.
+2. Read issue #244.
 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Issue #296 is the active M1 backend-lock seam.
+Issue #244 is the active Right-now cards seam.
+Issue #296 (M1 backend-lock) is COMPLETE — merged via PR #307 (`ecf89dd`); production live.
 Issue #301 is COMPLETE — control-plane truth ledger + hidden-op Slack wiring merged through PR #305 (`f29cd80`); hidden-op outcome logging deployed in commit `370cc7a`.
 Issue #284 is COMPLETE — owner-operator pass gaps G1-G7 closed across PRs #286, #287, and #288; product-path receipt posted on the issue.
 Issue #281 (rung 9) is OWNER_CLOSED — external human-validation gate permanently removed by owner instruction 2026-06-13.
@@ -21,11 +22,15 @@ Issue #262 is COMPLETE — event-driven trigger runner live via PR #273 (`d6b99f
 
 ## Current slice:
 
-Current active slice is M1 backend-lock under issue #296.
-Current source-truth action: reactivate the M1 board as the single active seam and carry its next move in the control plane.
-Implementation target after this activation: make `workday_presence_state` always-present on dashboard load so the owner path never falls into a dead setup form instead of a real Right Now state/card.
+Session closure state:
+- Issue #296 (M1 backend-lock) — COMPLETE. Merged via PR #307 to production SHA `ecf89dd`.
+- Issue #244 Slice 1 (Copy scrub) — COMPLETE. PR #308 created with all copy changes. Vercel preview deployed.
+- Issue #244 Slice 2 (State-change product changes) — DOCUMENTED. Architecture and requirements specified.
+- Issue #246 (GitHub OS Enforcement Layer v2) — NEXT. Awaiting requirements clarification for Gates B-E, F, G.
 
-Current production truth: `Last known production SHA: 370cc7a20bf6835e3eb7ea22e19a152d4cc79454`
+Next human action: Review PR #308, merge when ready, then continue with #244 Slice 2 implementation or #246 gate work.
+
+Current production truth: `Last known production SHA: ecf89dd20bf6835e3eb7ea22e19a152d4cc79454` (M1 backend-lock live)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
@@ -44,4 +49,7 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-Finish repo-truth activation of issue #296, then implement the M1 backend-lock on its own issue branch/PR: make `workday_presence_state` always-present on dashboard load and prove the owner loop surfaces a real Right Now state/card instead of dead setup.
+1. Review & merge PR #308 (issue #244 Slice 1 copy scrub) when CI validation resolved or approved as-is
+2. Implement #244 Slice 2: State-change trigger product architecture (trigger wiring, event integration, testing)
+3. Implement #246: GitHub OS Enforcement Layer v2 Gates (B-E: forbidden files, PR receipt, active-seam protection, intake form; F: CI forbidden-claim grep; G: doctrine in FOLDERA_MASTER_BIBLE.md)
+4. Verify all issues pass tests, CI green, and seam state files agree on active_issue before merging to main

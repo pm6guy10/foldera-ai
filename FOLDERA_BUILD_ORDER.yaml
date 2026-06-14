@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 296
+active_issue: 244
 priority_class: M1
-work_type: BACKEND_LOCK
-why_this_first: Reactivate the M1 board as the single active seam, then make workday_presence_state always-present on dashboard load so the owner loop surfaces a real Right Now card instead of a dead setup form.
-next_seam: "Issue #296 active. First implementation move: M1 backend-lock — always-present workday_presence_state on dashboard load."
+work_type: PRODUCT
+why_this_first: M1 backend-lock (#296) shipped via PR #307; the Right-now cards seam (#244) now scrubs morning-brief/daily-card copy to Right Now (Slice 1) and then decouples card generation from the clock (Slice 2).
+next_seam: "Issue #244 active. First implementation move: Slice 1 copy/verbiage scrub from morning brief/daily card to Right Now."
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
@@ -139,9 +139,11 @@ command_state_resolver_v0:
     - issue #246
 m1_milestone_board:
   issue: 296
-  status: ACTIVE
-  definition: current M1→M4 control issue; first active move is the backend-lock seam on dashboard load
-  current_target: make workday_presence_state always-present on dashboard load so the owner loop closes on a real Right Now state/card
+  status: COMPLETE
+  pr: 307
+  pr_merge_sha: ecf89dd
+  definition: M1→M4 control issue; backend-lock seam on dashboard load shipped
+  current_target: DONE — workday_presence_state is always-present on dashboard load; owner loop closes on a real Right Now state/card
   ladder:
     - M1: Brandon closes loop (backend state contract locked)
     - M2: stranger closes loop (non-owner, zero narration)

@@ -9,6 +9,6 @@ Knowing what to work on first is difficult when the day opens with too many plau
 
 The best first move is usually the one that unlocks something else or prevents a meaningful loss from growing. That makes it less about mood and more about leverage.
 
-Foldera is built to identify that kind of first move. The aim is to reduce morning startup friction by making the first decision easier.
+Foldera is built to identify that kind of first move. The aim is to surface your Right Now state by making the first decision automatic.
 
 Try Foldera free at [https://foldera.ai](https://foldera.ai)

@@ -1,9 +1,9 @@
 {
-  "active_issue": 296,
-  "active_branch": "claude/pr-merge-queue-2md0f1",
-  "active_pr": 307,
-  "deployed_commit_sha": "2ae5660",
+  "active_issue": 244,
+  "active_branch": "claude/issue-244-state-change-triggers",
+  "active_pr": 308,
+  "deployed_commit_sha": "ecf89dd",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-14T00:15:00Z"
+  "last_verified_at": "2026-06-14T01:12:00Z"
 }

@@ -330,7 +330,7 @@ export default function SettingsClient() {
           <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 border-b border-border-subtle">
             <SectionHeading className="mb-2">Connected accounts</SectionHeading>
             <p className="text-xs text-text-muted leading-relaxed">
-              Connect Google and Microsoft mail so Foldera can read context for your morning brief.
+              Connect Google and Microsoft mail so Foldera can read context for your Right Now state.
             </p>
           </div>
           <div className="px-4 py-6 sm:px-6 sm:py-6 md:px-6 space-y-4">
