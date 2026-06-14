@@ -27,60 +27,7 @@ name: CI
 # for those paths in ~10 seconds.
 # ─────────────────────────────────────────────────────────────────────────────
 
-on:
-  push:
-    branches: [main]
-    paths:
-      - "app/**"
-      - "components/**"
-      - "lib/**"
-      - "middleware.ts"
-      - "public/**"
-      - "scripts/**"
-      - "supabase/**"
-      - "tests/**"
-      - ".github/workflows/ci.yml"
-      - ".github/workflows/deploy.yml"
-      - "next.config.*"
-      - "postcss.config.*"
-      - "tailwind.config.*"
-      - "playwright*.ts"
-      - "playwright*.config.ts"
-      - "package.json"
-      - "package-lock.json"
-      - "tsconfig.json"
-      - ".eslintrc*"
-      - "eslint.config.*"
-  pull_request:
-    branches: [main]
-    paths:
-      - "app/**"
-      - "components/**"
-      - "lib/**"
-      - "middleware.ts"
-      - "public/**"
-      - "scripts/**"
-      - "supabase/**"
-      - "tests/**"
-      - ".github/workflows/ci.yml"
-      - ".github/workflows/deploy.yml"
-      - "next.config.*"
-      - "postcss.config.*"
-      - "tailwind.config.*"
-      - "playwright*.ts"
-      - "playwright*.config.ts"
-      - "package.json"
-      - "package-lock.json"
-      - "tsconfig.json"
-      - ".eslintrc*"
-      - "eslint.config.*"
-  # Merge queue path: whenever a PR is enqueued, GitHub dispatches a
-  # merge_group event synthesizing the tentative merge commit. Run the full
-  # pipeline here so a queue entry that would break `main` is caught BEFORE
-  # it actually lands — not by the post-merge push. Path filters don't
-  # apply to merge_group events; the `changes` job still classifies the
-  # diff so docs-only queue entries still skip Playwright.
-  merge_group:
+on: [workflow_dispatch]
 
 # Single active CI run per ref/PR. Newer commits cancel older runs immediately.
 concurrency:

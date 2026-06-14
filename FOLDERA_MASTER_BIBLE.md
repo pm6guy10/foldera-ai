@@ -231,6 +231,8 @@ Screenshots are not durable truth.
 
 ## Proof Model
 
+**CRITICAL OVERRIDE (GitHub Billing Fix):** GitHub Actions CI is no longer a mandatory step. The local proof harness is the primary and definitive gate.
+
 Proof must match the claim.
 
 Required proof shape:
@@ -243,12 +245,12 @@ Required proof shape:
 Proof ladder:
 
 1. unit / fixture tests
-2. focused gate checks
+2. focused local gate checks
 3. browser proof when a user path changes
 4. runtime or deployed proof when the seam is live
 5. GitHub receipt
 
-Passing build alone is not product proof.
+Passing local build alone is not product proof.
 
 ## Privacy and Safety Rails
 

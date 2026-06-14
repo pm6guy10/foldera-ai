@@ -261,16 +261,16 @@ blocked - reason
     });
 
     expect(failures).toContain(
-      'Active-seam protection failed: PR targets issue #999 but FOLDERA_BUILD_ORDER.yaml active_issue is #246.',
+      'Active-seam protection failed: PR targets issue #999 but FOLDERA_BUILD_ORDER.yaml active_issue is #316.',
     );
   });
 
   it('passes when a pull request targets the active issue', () => {
     const fixtureRoot = createFixtureRoot();
     const failures = validateActiveSeamPullRequest(fixtureRoot, {
-      title: 'Issue #246: enforce GitHub OS gates',
-      body: 'Closes #246',
-      branch: 'codex/issue-246-enforcement-v2',
+      title: 'Issue #316: demote github ci to optional',
+      body: 'Closes #316',
+      branch: 'feature/demote-github-ci',
     });
 
     expect(failures).toEqual([]);

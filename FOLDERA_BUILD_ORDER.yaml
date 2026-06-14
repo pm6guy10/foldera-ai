@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 246
+active_issue: 316
 priority_class: M1
 work_type: OPS
-why_this_first: "#244 COMPLETE — Slice 1 PR #308 dddece7; Slice 2 PR #313 d2bed9a. #246 is active to convert repo-law prose into merge-time enforcement."
-next_seam: "Blocked until #246 closes; recommended next seam after merge: reconcile #244/#246 receipts and name one product/runtime blocker only if source truth stays clean."
+why_this_first: "GitHub Actions billing limits block PR merges. We are demoting GH Actions to optional and prioritizing local proof."
+next_seam: "Run `gh workflow disable` for all relevant workflows."
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
