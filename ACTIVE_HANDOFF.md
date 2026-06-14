@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-14 PT (Session complete: #296 merged to production, #244 Slice 1 PR #308 ready for review, #244 Slice 2 documented, #246 next.)
+Last updated: 2026-06-14 PT (PR #308 merged to main at dddece7; #244 Slice 1 complete; Slice 2 implementation next.)
 
 ## Boot
 
@@ -22,13 +22,10 @@ Issue #262 is COMPLETE — event-driven trigger runner live via PR #273 (`d6b99f
 
 ## Current slice:
 
-Session closure state:
-- Issue #296 (M1 backend-lock) — COMPLETE. Merged via PR #307 to production SHA `ecf89dd`.
-- Issue #244 Slice 1 (Copy scrub) — COMPLETE. PR #308 created with all copy changes. Vercel preview deployed.
-- Issue #244 Slice 2 (State-change product changes) — DOCUMENTED. Architecture and requirements specified.
-- Issue #246 (GitHub OS Enforcement Layer v2) — NEXT. Awaiting requirements clarification for Gates B-E, F, G.
+- Issue #244 Slice 1 (Copy scrub) — **MERGED**. PR #308 landed at commit dddece7. All morning-brief/daily-card copy changed to Right Now terminology.
+- Issue #244 Slice 2 (State-change product changes) — **NEXT**. Decouple Right Now card generation from clock; implement trigger wiring and event integration.
 
-Next human action: Review PR #308, merge when ready, then continue with #244 Slice 2 implementation or #246 gate work.
+Next human action: Implement #244 Slice 2 — trigger state-change model, replace clock-based scheduling.
 
 Current production truth: `Last known production SHA: ecf89dd20bf6835e3eb7ea22e19a152d4cc79454` (M1 backend-lock live)
 
@@ -49,7 +46,5 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-1. Review & merge PR #308 (issue #244 Slice 1 copy scrub) when CI validation resolved or approved as-is
-2. Implement #244 Slice 2: State-change trigger product architecture (trigger wiring, event integration, testing)
-3. Implement #246: GitHub OS Enforcement Layer v2 Gates (B-E: forbidden files, PR receipt, active-seam protection, intake form; F: CI forbidden-claim grep; G: doctrine in FOLDERA_MASTER_BIBLE.md)
-4. Verify all issues pass tests, CI green, and seam state files agree on active_issue before merging to main
+1. Implement #244 Slice 2: State-change trigger product architecture (right-now card generation decoupled from clock; trigger wiring via workday-presence POST; event integration + testing)
+2. Implement #246: GitHub OS Enforcement Layer v2 Gates (B-E: forbidden files, PR receipt, active-seam protection, intake form; F: CI forbidden-claim grep; G: doctrine in FOLDERA_MASTER_BIBLE.md)

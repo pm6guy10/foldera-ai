@@ -1,9 +1,9 @@
 {
   "active_issue": 244,
-  "active_branch": "claude/issue-244-state-change-triggers",
-  "active_pr": 308,
-  "deployed_commit_sha": "ecf89dd",
+  "active_branch": "claude/source-truth-closeout-244-slice1",
+  "active_pr": null,
+  "deployed_commit_sha": "dddece7",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-14T01:12:00Z"
+  "last_verified_at": "2026-06-14T01:57:00Z"
 }
