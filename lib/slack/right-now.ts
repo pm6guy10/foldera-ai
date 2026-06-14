@@ -51,8 +51,6 @@ export type SlackInteractionPayload = {
 
 function buttonStyle(action: RightNowMessageAction): 'primary' | 'danger' | undefined {
   if (action.id === 'view_draft') return 'primary';
-  if (action.id === 'done') return 'primary';
-  if (action.id === 'stuck') return 'danger';
   return undefined;
 }
 
