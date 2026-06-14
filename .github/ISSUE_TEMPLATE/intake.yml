@@ -1,0 +1,62 @@
+name: Open Threads Intake
+description: Route raw owner thoughts into one classified repo decision.
+title: "[INTAKE] "
+labels:
+  - intake
+  - ops
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for raw ideas, half-built seams, blockers, or findings that need routing before work starts.
+  - type: dropdown
+    id: classification
+    attributes:
+      label: Classification
+      description: Pick the routing bucket before this becomes active work.
+      options:
+        - capture_only
+        - active_issue_candidate
+        - existing_issue_receipt
+        - blocker
+        - reference_only
+    validations:
+      required: true
+  - type: input
+    id: related_issue
+    attributes:
+      label: Related issue or PR
+      description: Use #123 format when known; write NONE when not known.
+      placeholder: "#246"
+    validations:
+      required: true
+  - type: textarea
+    id: source_truth
+    attributes:
+      label: Source truth checked
+      description: Name the files, issue comments, PRs, or runtime evidence checked before routing.
+      placeholder: "ACTIVE_HANDOFF.md; FOLDERA_BUILD_ORDER.yaml; issue #..."
+    validations:
+      required: true
+  - type: textarea
+    id: requested_action
+    attributes:
+      label: Requested action
+      description: One narrow action or STOP/BLOCKED reason.
+    validations:
+      required: true
+  - type: textarea
+    id: forbidden_scope
+    attributes:
+      label: Forbidden scope
+      description: Name surfaces that must not be touched for this routing decision.
+      placeholder: "No product code; no Slack/OAuth/API/send work; no broad cleanup."
+    validations:
+      required: true
+  - type: textarea
+    id: stop_condition
+    attributes:
+      label: Stop condition
+      description: Exact terminal condition for this intake item.
+    validations:
+      required: true

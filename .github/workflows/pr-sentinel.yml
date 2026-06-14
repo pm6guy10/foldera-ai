@@ -12,6 +12,7 @@ on:
       - "supabase/**"
       - "tests/**"
       - ".github/workflows/**"
+      - ".github/ISSUE_TEMPLATE/**"
       - "package.json"
       - "package-lock.json"
       - "tsconfig.json"
@@ -31,6 +32,7 @@ on:
       - "supabase/**"
       - "tests/**"
       - ".github/workflows/**"
+      - ".github/ISSUE_TEMPLATE/**"
       - "package.json"
       - "package-lock.json"
       - "tsconfig.json"
@@ -47,6 +49,8 @@ jobs:
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v5
         with:
           node-version: 20

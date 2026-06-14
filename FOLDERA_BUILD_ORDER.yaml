@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
+active_issue: 246
 priority_class: M1
-work_type: PRODUCT
-why_this_first: "#244 COMPLETE — Slice 1 (copy scrub) PR #308 dddece7; Slice 2 (trigger persistence + fresh-load fix + button trim) PR #313 d2bed9a. Next: #246 GitHub OS Enforcement Layer v2."
-next_seam: "Issue #246: GitHub OS Enforcement Layer v2 Gates (B-E: forbidden files, PR receipt, active-seam protection, intake form; F: CI forbidden-claim grep; G: doctrine in FOLDERA_MASTER_BIBLE.md)"
+work_type: OPS
+why_this_first: "#244 COMPLETE — Slice 1 PR #308 dddece7; Slice 2 PR #313 d2bed9a. #246 is active to convert repo-law prose into merge-time enforcement."
+next_seam: "Blocked until #246 closes; recommended next seam after merge: reconcile #244/#246 receipts and name one product/runtime blocker only if source truth stays clean."
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
