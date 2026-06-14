@@ -2,7 +2,14 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { runContinuityGate, MAX_ROOT_MARKDOWN_FILES } from '@/scripts/continuity-gate';
+import {
+  findForbiddenClaimFailures,
+  runContinuityGate,
+  validateActiveSeamPullRequest,
+  validateContractFileDiff,
+  validatePullRequestReceipt,
+  MAX_ROOT_MARKDOWN_FILES,
+} from '@/scripts/continuity-gate';
 
 const requiredFixtureFiles = [
   'ACTIVE_HANDOFF.md',
@@ -40,7 +47,9 @@ function readFixtureFile(root: string, file: string): string {
 }
 
 function writeFixtureFile(root: string, file: string, body: string): void {
-  fs.writeFileSync(path.join(root, file), body, 'utf8');
+  const destination = path.join(root, file);
+  fs.mkdirSync(path.dirname(destination), { recursive: true });
+  fs.writeFileSync(destination, body, 'utf8');
 }
 
 function currentFixtureLedger(root: string): { active_issue?: number; active_branch?: string | null } {
@@ -188,5 +197,93 @@ describe('continuity gate', () => {
     const failures = runContinuityGate(fixtureRoot, { issueStateFetcher: () => 'skip' });
 
     expect(failures).toEqual([]);
+  });
+
+  it('fails when a pull request changes a file outside the active contract allowlist', () => {
+    const fixtureRoot = createFixtureRoot();
+    const failures = validateContractFileDiff(fixtureRoot, [
+      'ACTIVE_HANDOFF.md',
+      'app/api/auth/session/route.ts',
+    ]);
+
+    expect(failures).toContain(
+      'Forbidden file change: app/api/auth/session/route.ts matches .foldera-contract.json forbidden_file_patterns.',
+    );
+  });
+
+  it('fails when a pull request changes a file that is neither explicitly allowed nor workflow-governance scoped', () => {
+    const fixtureRoot = createFixtureRoot();
+    const failures = validateContractFileDiff(fixtureRoot, ['README.md']);
+
+    expect(failures).toContain(
+      'Unauthorized file change: README.md is not allowed by .foldera-contract.json allowed_file_patterns.',
+    );
+  });
+
+  it('fails when required closeout receipt rows are incomplete', () => {
+    const failures = validatePullRequestReceipt(`
+## Source-truth closeout
+- \`ACTIVE_HANDOFF.md\`: updated
+- \`ACTIVE_SEAM_STATE.json\`: unchanged
+- \`FOLDERA_BUILD_ORDER.yaml\`: unchanged - reason
+- \`.foldera-contract.json\`: not applicable - reason
+- \`docs/SOURCE_OF_TRUTH_MAP.md\`: unchanged - reason
+## Next seam
+named
+`);
+
+    expect(failures).toContain(
+      'PR receipt row for ACTIVE_SEAM_STATE.json must be one of: updated, unchanged - reason, not applicable - reason.',
+    );
+  });
+
+  it('passes a complete closeout receipt', () => {
+    const failures = validatePullRequestReceipt(`
+## Source-truth closeout
+- \`ACTIVE_HANDOFF.md\`: updated
+- \`ACTIVE_SEAM_STATE.json\`: updated
+- \`FOLDERA_BUILD_ORDER.yaml\`: updated
+- \`.foldera-contract.json\`: updated
+- \`docs/SOURCE_OF_TRUTH_MAP.md\`: unchanged - reason
+## Next seam
+blocked - reason
+`);
+
+    expect(failures).toEqual([]);
+  });
+
+  it('fails when a pull request targets a non-active issue', () => {
+    const fixtureRoot = createFixtureRoot();
+    const failures = validateActiveSeamPullRequest(fixtureRoot, {
+      title: 'Issue #999: unrelated cleanup',
+      body: 'Closes #999',
+      branch: 'codex/issue-999-cleanup',
+    });
+
+    expect(failures).toContain(
+      'Active-seam protection failed: PR targets issue #999 but FOLDERA_BUILD_ORDER.yaml active_issue is #246.',
+    );
+  });
+
+  it('passes when a pull request targets the active issue', () => {
+    const fixtureRoot = createFixtureRoot();
+    const failures = validateActiveSeamPullRequest(fixtureRoot, {
+      title: 'Issue #246: enforce GitHub OS gates',
+      body: 'Closes #246',
+      branch: 'codex/issue-246-enforcement-v2',
+    });
+
+    expect(failures).toEqual([]);
+  });
+
+  it('fails when public-facing copy plants a forbidden claim', () => {
+    const fixtureRoot = createFixtureRoot();
+    writeFixtureFile(fixtureRoot, 'app/landing/page.tsx', 'export default "SOC 2 compliance-ready";\n');
+
+    const failures = findForbiddenClaimFailures(fixtureRoot);
+
+    expect(failures.some((failure) => failure.includes('app/landing/page.tsx'))).toBe(true);
+    expect(failures.some((failure) => failure.includes('SOC 2'))).toBe(true);
+    expect(failures.some((failure) => failure.includes('compliance-ready'))).toBe(true);
   });
 });

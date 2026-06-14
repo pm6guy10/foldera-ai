@@ -481,6 +481,8 @@ Public-site direction:
 
 Landing implementation remains out of scope for issue #156.
 
+Hybrid Poster Landing doctrine: when a future active issue explicitly authorizes public-site work, preserve the Hybrid Poster Landing direction as a dark cinematic premium poster sequence with six disciplined sections and a cyan/violet glow system. Do not replace it with screenshot-only mimicry, generic SaaS card grids, or beige dashboard marketing. Enforcement lives in issue-scoped PR review plus the forbidden-claim grep: landing work must stay visually aligned with this direction and must not claim product, connector, trust, automation, Slack, Teams, email, calendar, security, or enterprise behavior beyond source-truth proof.
+
 ## Day-one app experience lock
 
 Day one is not a dashboard tour.

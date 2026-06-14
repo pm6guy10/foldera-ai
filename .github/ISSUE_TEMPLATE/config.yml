@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
+  - name: Structured Open Threads intake
+    url: https://github.com/pm6guy10/foldera-ai/issues/new?template=intake.yml
+    about: Classify raw thoughts, blockers, and findings before they become active seams.
   - name: Owner Whiteboard (raw thoughts intake)
     url: https://github.com/pm6guy10/foldera-ai/issues/165
     about: Raw ideas go to the Open Threads inbox first — they get classified and routed before becoming a seam.
