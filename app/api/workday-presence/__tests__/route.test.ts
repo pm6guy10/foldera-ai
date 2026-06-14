@@ -7,6 +7,19 @@ const mockBadRequest = vi.fn((message: string) =>
   NextResponse.json({ error: message }, { status: 400 }),
 );
 
+const mockSignalsQuery = {
+  data: [] as unknown[],
+  error: null as unknown,
+};
+
+const mockSignalsChain = {
+  select: vi.fn().mockReturnThis(),
+  eq: vi.fn().mockReturnThis(),
+  gte: vi.fn().mockReturnThis(),
+  order: vi.fn().mockReturnThis(),
+  limit: vi.fn().mockImplementation(() => Promise.resolve(mockSignalsQuery)),
+};
+
 const mockSupabase = {
   auth: {
     admin: {
@@ -14,6 +27,7 @@ const mockSupabase = {
       updateUserById: vi.fn(),
     },
   },
+  from: vi.fn().mockReturnValue(mockSignalsChain),
 };
 
 vi.mock('@/lib/auth/resolve-user', () => ({ resolveUser: mockResolveUser, resolveAnyUser: mockResolveUser }));
@@ -182,6 +196,125 @@ describe('GET /api/workday-presence', () => {
     expect(body.card.verdict_line).toContain('Trusted verdict: Hold.');
     expect(body.card.source_line).toContain('Source: your saved focus');
     expect(body.card.last_interaction).toContain('Last interaction: done');
+  });
+
+  describe('fresh-load trigger override (Finding 4)', () => {
+    const stateWithWaitingOn = {
+      current_focus: 'Close ACME renewal decision',
+      next_move: 'Send owner confirmation note',
+      why_it_matters: 'The renewal window closes at 4 PM PT.',
+      blocker: null,
+      do_not_touch: null,
+      waiting_on: 'thread-123',
+      last_completed_step: null,
+      state_source: 'manual_anchor',
+      interaction_history: [],
+      created_at: '2026-06-12T15:00:00.000Z',
+      updated_at: '2026-06-12T15:05:00.000Z',
+    };
+
+    beforeEach(() => {
+      mockSignalsQuery.data = [];
+      mockSignalsQuery.error = null;
+    });
+
+    it('overrides card next_move when a reply-needed signal matches waiting_on thread', async () => {
+      mockSupabase.auth.admin.getUserById.mockResolvedValue({
+        data: { user: { user_metadata: { workday_presence_state: stateWithWaitingOn } } },
+        error: null,
+      });
+      mockSignalsQuery.data = [
+        {
+          id: 'sig-1',
+          source: 'gmail',
+          thread_id: 'thread-123',
+          redacted_summary: 'Customer replied with an answer.',
+          reply_needed: true,
+          ingested_at: '2026-06-12T15:59:00.000Z',
+        },
+      ];
+
+      const { GET } = await import('../route');
+      const response = await GET(new Request('http://localhost/api/workday-presence'));
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.surface_state).toBe('active_move');
+      expect(body.card.mode).toBe('active');
+      expect(body.card.next_move).toContain('Reply needed (email)');
+      expect(body.card.next_move).toContain('Customer replied with an answer.');
+      expect(body.card.next_move).toContain('Send owner confirmation note');
+    });
+
+    it('does not override when signal thread does not match waiting_on', async () => {
+      mockSupabase.auth.admin.getUserById.mockResolvedValue({
+        data: { user: { user_metadata: { workday_presence_state: stateWithWaitingOn } } },
+        error: null,
+      });
+      mockSignalsQuery.data = [
+        {
+          id: 'sig-2',
+          source: 'gmail',
+          thread_id: 'different-thread',
+          redacted_summary: 'Unrelated email.',
+          reply_needed: true,
+          ingested_at: '2026-06-12T15:59:00.000Z',
+        },
+      ];
+
+      const { GET } = await import('../route');
+      const response = await GET(new Request('http://localhost/api/workday-presence'));
+      const body = await response.json();
+
+      // No trigger fires — WAIT verdict is preserved (normal base behavior).
+      expect(response.status).toBe(200);
+      expect(body.card.next_move).not.toContain('Reply needed');
+      expect(body.resolution.verdict).toBe('WAIT');
+      expect(body.resolution.rule).toBe('external_wait');
+    });
+
+    it('leaves card unchanged when there are no fresh signals', async () => {
+      mockSupabase.auth.admin.getUserById.mockResolvedValue({
+        data: { user: { user_metadata: { workday_presence_state: stateWithWaitingOn } } },
+        error: null,
+      });
+      mockSignalsQuery.data = [];
+
+      const { GET } = await import('../route');
+      const response = await GET(new Request('http://localhost/api/workday-presence'));
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.card.next_move).not.toContain('Reply needed');
+    });
+
+    it('respects snooze — does not override even with a matching fresh signal', async () => {
+      const snoozedState = {
+        ...stateWithWaitingOn,
+        snoozed_until: '2099-01-01T00:00:00.000Z',
+      };
+      mockSupabase.auth.admin.getUserById.mockResolvedValue({
+        data: { user: { user_metadata: { workday_presence_state: snoozedState } } },
+        error: null,
+      });
+      mockSignalsQuery.data = [
+        {
+          id: 'sig-3',
+          source: 'gmail',
+          thread_id: 'thread-123',
+          redacted_summary: 'Customer replied.',
+          reply_needed: true,
+          ingested_at: '2026-06-12T15:59:00.000Z',
+        },
+      ];
+
+      const { GET } = await import('../route');
+      const response = await GET(new Request('http://localhost/api/workday-presence'));
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body.card.next_move).not.toContain('Reply needed');
+    });
   });
 
   it('turns source-backed CLEAR into honest quiet instead of a fake next move', async () => {

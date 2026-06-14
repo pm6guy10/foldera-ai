@@ -92,6 +92,8 @@ export type WorkdayPresenceTriggerResult =
       outcome: 'intervention';
       reason: string;
       payload: RightNowMessagePayload;
+      /** The state with any trigger-specific next_move override applied (used for dashboard display). */
+      overridden_state: WorkdayPresenceState;
     };
 
 function quiet(
@@ -110,6 +112,7 @@ function intervention(
   triggerType: WorkdayPresenceTriggerType,
   reason: string,
   payload: RightNowMessagePayload,
+  overriddenState: WorkdayPresenceState,
 ): WorkdayPresenceTriggerResult {
   return {
     kind: 'workday_presence_trigger_result',
@@ -117,6 +120,7 @@ function intervention(
     outcome: 'intervention',
     reason,
     payload,
+    overridden_state: overriddenState,
   };
 }
 
@@ -329,6 +333,7 @@ export function evaluateWorkdayPresenceTrigger(
       'morning_anchor',
       'morning_anchor: re-entry from saved workday state',
       buildRightNowMessagePayload(state),
+      state,
     );
   }
 
@@ -343,6 +348,7 @@ export function evaluateWorkdayPresenceTrigger(
       'pre_meeting',
       `pre_meeting: prep before "${context.event.title}"`,
       buildRightNowMessagePayload(prepState),
+      prepState,
     );
   }
 
@@ -354,6 +360,7 @@ export function evaluateWorkdayPresenceTrigger(
       'end_of_day',
       'end_of_day: carry forward one restart point',
       buildRightNowMessagePayload(carryState),
+      carryState,
     );
   }
 
@@ -380,6 +387,7 @@ export function evaluateWorkdayPresenceTrigger(
       'waiting_on_changed',
       'waiting_on_changed: changed signal affects active thread',
       buildRightNowMessagePayload(changedState),
+      changedState,
     );
   }
 
@@ -409,6 +417,7 @@ export function evaluateWorkdayPresenceTrigger(
       'mention_reply_needed',
       'mention_reply_needed: reply-needed signal affects active thread',
       buildRightNowMessagePayload(replyState),
+      replyState,
     );
   }
 

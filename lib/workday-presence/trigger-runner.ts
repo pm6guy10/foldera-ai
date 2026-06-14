@@ -395,6 +395,39 @@ export async function maybeRunWorkdayPresenceTriggerRunnerForUser(
   };
 }
 
+/**
+ * Pure, side-effect-free trigger check for dashboard fresh-load.
+ * Evaluates whether any signals newer than the cursor would fire a trigger,
+ * and if so returns the state with the trigger's next_move override applied.
+ * No Slack call. No DB write. Safe to call on every GET.
+ */
+export function checkFreshSignalTriggerOverride(input: {
+  signals: FreshSignalRow[];
+  state: WorkdayPresenceState;
+  nowIso?: string;
+}): WorkdayPresenceState | null {
+  const nowIso = input.nowIso ?? new Date().toISOString();
+  if (input.state.snoozed_until && Date.parse(input.state.snoozed_until) > Date.parse(nowIso)) {
+    return null;
+  }
+  const freshEvents = input.signals
+    .map(adaptSignalToFreshEvent)
+    .filter((e): e is SimulatedConnectorEvidenceEvent => Boolean(e));
+  const selection = selectSingleInterventionFromConnectorEvidence(freshEvents);
+  if (!selection.selected) return null;
+  const triggerResult = evaluateWorkdayPresenceTrigger(selection.selected, input.state);
+  if (triggerResult.outcome !== 'intervention') return null;
+
+  // For mention_reply_needed and waiting_on_changed the external wait is now
+  // resolved — something requires action. Clear waiting_on so resolveCommandState
+  // steps down from WAIT and the card displays the trigger's next_move text.
+  const { trigger_type } = selection.selected;
+  if (trigger_type === 'mention_reply_needed' || trigger_type === 'waiting_on_changed') {
+    return { ...triggerResult.overridden_state, waiting_on: null };
+  }
+  return triggerResult.overridden_state;
+}
+
 const HIDDEN_OP_MIN_SCORE = 50;
 
 function adaptSignalToHiddenOpInput(signal: FreshSignalRow): HiddenOpInput {

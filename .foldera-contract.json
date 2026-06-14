@@ -9,7 +9,9 @@
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
+    "app/api/workday-presence/route.ts",
     "app/api/workday-presence/triggers/route.ts",
+    "app/api/workday-presence/__tests__/route.test.ts",
     "app/api/workday-presence/__tests__/triggers-route.test.ts",
     "lib/workday-presence/triggers.ts",
     "lib/workday-presence/trigger-runner.ts",
@@ -21,7 +23,9 @@
     "app/api/connectors/test-mode/ingest/route.ts",
     "app/api/connectors/test-mode/__tests__/ingest-route.test.ts",
     "tests/config/__tests__/continuity-gate.test.ts",
-    "tests/config/__tests__/dashboard-inbox-model.test.ts"
+    "tests/config/__tests__/dashboard-inbox-model.test.ts",
+    "components/dashboard/MorningAnchorCard.tsx",
+    "lib/slack/right-now.ts"
   ],
   "forbidden_file_patterns": [
     "supabase/migrations/**",
@@ -30,20 +34,20 @@
     "lib/stripe/**",
     "lib/auth/**"
   ],
-  "allowed_files_raw": "Active Slice 2 trigger path only: workday-presence trigger route, trigger runner, trigger evaluation/persistence helpers, connector-evidence adapters, and the narrow regression tests needed to keep current Right Now/continuity proof green",
+  "allowed_files_raw": "Active Slice 2 trigger path only: workday-presence trigger route, trigger runner, trigger evaluation/persistence helpers, connector-evidence adapters, the narrow regression tests needed to keep current Right Now/continuity proof green, fresh-load trigger override (route.ts + route.test.ts), and button-trim (MorningAnchorCard + right-now.ts)",
   "forbidden_files_raw": "No auth/stripe/billing work, no schema migrations, no new dashboard surfaces, no broad cron cleanup outside the active trigger path",
   "required_local_proof": "npm run gate:continuity && npm run lint && npm run build && npm test",
   "required_browser_proof": "Manual or focused browser proof: exercise one Right Now state-change trigger path and verify the card/state loop is trigger-driven rather than clock-only",
   "browser_proof_command": "npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list",
-  "acceptance_condition": "At least one justified state-change trigger produces a persisted Right Now state and durable receipt through the active workday-presence loop; clock-only generation is no longer the only live path",
+  "acceptance_condition": "At least one justified state-change trigger produces a persisted Right Now state and durable receipt through the active workday-presence loop; clock-only generation is no longer the only live path; fresh-load returns trigger-overridden card when fresh signals match",
   "stop_condition": "Stop when Slice 2 trigger persistence/wiring is proven on the active path, tests pass, GitHub writeback is posted, and the branch is PR-ready",
   "is_user_facing": true,
   "anti_regression_checks": [
     "dashboard loads without errors",
-    "landing page renders correctly",
-    "blog pages load",
-    "onboarding flow works",
-    "settings page renders"
+    "workday-presence GET still returns a card or justified quiet state",
+    "trigger route honors justified state-change inputs",
+    "dashboard right-now surface still renders",
+    "no dead setup fallback returns for the owner path"
   ],
   "next_command": "Implement and prove Slice 2 trigger-state persistence on the workday-presence loop, then widen trigger semantics toward the issue-named state changes only as needed for proof",
   "terminal_state_authority": {
