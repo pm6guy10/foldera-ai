@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-14 PT (#246 active on codex/issue-246-enforcement-v2.)
+Last updated: 2026-06-14 PT (#316 active on feature/demote-github-ci.)
 
 ## Boot
 
@@ -11,7 +11,7 @@ Last updated: 2026-06-14 PT (#246 active on codex/issue-246-enforcement-v2.)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Issue #246 is the active implementation seam.
+Issue #316 is the active implementation seam.
 
 Issue #296 (M1 backend-lock) is COMPLETE — merged via PR #307 (`ecf89dd`); production live.
 Issue #301 is COMPLETE — control-plane truth ledger + hidden-op Slack wiring merged through PR #305 (`f29cd80`); hidden-op outcome logging deployed in commit `370cc7a`.
@@ -24,12 +24,14 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-- Issue #246 GitHub OS Enforcement Layer v2 Gates (B-E: forbidden files, PR receipt, active-seam protection, intake form; F: CI forbidden-claim grep; G: doctrine in FOLDERA_MASTER_BIBLE.md)
+- Issue #316 [OPS] Demote GitHub CI to Optional: Modify workflow files and doctrine to remove GH CI triggers.
 
 ## Next exact move
 
-1. Implement Gate A extension (Wrong-clone enforcement via scripts/agent-preflight.ts).
-2. Implement Gates B-E, F, and G.
+1. Modify `AGENTS.md` and `FOLDERA_MASTER_BIBLE.md` to establish local proof as the sole blocking requirement.
+2. Edit `.github/workflows/ci.yml`, `pr-sentinel.yml`, and `docs-fast.yml` to remove `push` and `pull_request` triggers.
+3. Commit, push, and create PR for #316.
+4. Manually run `gh workflow disable` for all relevant workflows via the CLI to quarantine them.
 
 Current production truth: `Last known production SHA: d2bed9a` (PR #313 merged; #244 Slice 2 live in production)
 

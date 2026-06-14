@@ -1,46 +1,6 @@
 name: PR Sentinel
 
-on:
-  pull_request:
-    paths:
-      - "app/**"
-      - "components/**"
-      - "lib/**"
-      - "middleware.ts"
-      - "public/**"
-      - "scripts/**"
-      - "supabase/**"
-      - "tests/**"
-      - ".github/workflows/**"
-      - ".github/ISSUE_TEMPLATE/**"
-      - "package.json"
-      - "package-lock.json"
-      - "tsconfig.json"
-      - ".foldera-contract.json"
-      - "ACTIVE_HANDOFF.md"
-      - "ACTIVE_SEAM_STATE.json"
-      - "FOLDERA_BUILD_ORDER.yaml"
-  push:
-    branches: [main]
-    paths:
-      - "app/**"
-      - "components/**"
-      - "lib/**"
-      - "middleware.ts"
-      - "public/**"
-      - "scripts/**"
-      - "supabase/**"
-      - "tests/**"
-      - ".github/workflows/**"
-      - ".github/ISSUE_TEMPLATE/**"
-      - "package.json"
-      - "package-lock.json"
-      - "tsconfig.json"
-      - ".foldera-contract.json"
-      - "ACTIVE_HANDOFF.md"
-      - "ACTIVE_SEAM_STATE.json"
-      - "FOLDERA_BUILD_ORDER.yaml"
-  merge_group:
+on: [workflow_dispatch]
 
 jobs:
   pr-sentinel:
