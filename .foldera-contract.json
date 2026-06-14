@@ -1,14 +1,17 @@
 {
-  "backlog_id": "right-now-cards",
-  "active_issue": "244",
+  "backlog_id": "m1-backend-lock-extension-244",
+  "active_issue": "296",
   "base_commit": "ecf89ddb61b9155f9a67ff77a31048f121940b94",
-  "money_loop_rung": "rung-12-right-now-cards",
-  "user_system_path": "Right-now cards: state-change triggers. Slice 1: copy/verbiage scrub changing morning brief/daily card terminology to Right Now; Slice 2: product changes to decouple card generation from clock.",
+  "money_loop_rung": "rung-11-extension",
+  "user_system_path": "Extended #296 scope to include #244 Slice 1: copy/verbiage scrub changing morning brief/daily card terminology to Right Now; then continue to #246 Gates implementation.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
+    "app/api/workday-presence/route.ts",
+    "app/api/workday-presence/__tests__/route.test.ts",
+    "tests/config/__tests__/continuity-gate.test.ts",
     "public/index.html",
     "public/manifest.json",
     "content/blog/how-to-know-what-to-work-on-first-every-morning.md",
@@ -23,8 +26,7 @@
     "app/api/auth/**",
     "app/api/stripe/**",
     "lib/stripe/**",
-    "lib/auth/**",
-    "lib/billing/**"
+    "lib/auth/**"
   ],
   "allowed_files_raw": "Public-facing copy and verbiage changes; user-facing component updates; e2e tests; blog and marketing content",
   "forbidden_files_raw": "No auth/stripe/billing work, no schema migrations, no API routes besides page rendering",
