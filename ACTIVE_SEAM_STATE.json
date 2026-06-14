@@ -1,9 +1,9 @@
 {
-  "active_issue": 316,
-  "active_branch": "feature/demote-github-ci",
+  "active_issue": 314,
+  "active_branch": "feature/314-slack-cockpit",
   "active_pr": null,
   "deployed_commit_sha": "bc08c934b27634ef753a79256613be585dbe5ec6",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-14T19:23:00Z"
+  "last_verified_at": "2026-06-14T19:33:00Z"
 }

@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-14 PT (#316 active on feature/demote-github-ci.)
+Last updated: 2026-06-14 PT (#314 active on feature/314-slack-cockpit.)
 
 ## Boot
 
@@ -11,8 +11,9 @@ Last updated: 2026-06-14 PT (#316 active on feature/demote-github-ci.)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Issue #316 is the active implementation seam.
+Issue #314 is the active implementation seam.
 
+Issue #316 is COMPLETE — GitHub CI demoted to optional workflow_dispatch via PR #317.
 Issue #296 (M1 backend-lock) is COMPLETE — merged via PR #307 (`ecf89dd`); production live.
 Issue #301 is COMPLETE — control-plane truth ledger + hidden-op Slack wiring merged through PR #305 (`f29cd80`); hidden-op outcome logging deployed in commit `370cc7a`.
 Issue #284 is COMPLETE — owner-operator pass gaps G1-G7 closed across PRs #286, #287, and #288.
@@ -24,16 +25,15 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-- Issue #316 [OPS] Demote GitHub CI to Optional: Modify workflow files and doctrine to remove GH CI triggers.
+- Issue #314 [PRODUCT] Slack cockpit: Foldera command bot for project status.
 
 ## Next exact move
 
-1. Modify `AGENTS.md` and `FOLDERA_MASTER_BIBLE.md` to establish local proof as the sole blocking requirement.
-2. Edit `.github/workflows/ci.yml`, `pr-sentinel.yml`, and `docs-fast.yml` to remove `push` and `pull_request` triggers.
-3. Commit, push, and create PR for #316.
-4. Manually run `gh workflow disable` for all relevant workflows via the CLI to quarantine them.
+1. Build `app/api/slack/command/route.ts` and `lib/slack/command.ts`.
+2. Update `next.config.mjs` to trace necessary governance files.
+3. Commit, test continuity, push, and open PR.
 
-Current production truth: `Last known production SHA: d2bed9a` (PR #313 merged; #244 Slice 2 live in production)
+Current production truth: `Last known production SHA: c95e34b` (PR #317 merged; #316 CI demotion live)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 

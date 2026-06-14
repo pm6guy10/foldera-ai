@@ -1,9 +1,9 @@
 {
-  "backlog_id": "ops-demote-github-ci",
-  "active_issue": 316,
-  "base_commit": "bc08c934b27634ef753a79256613be585dbe5ec6",
-  "money_loop_rung": "ops",
-  "user_system_path": "Ops fix: Remove GitHub Actions triggers to prevent billing block",
+  "backlog_id": "product-slack-cockpit",
+  "active_issue": 314,
+  "base_commit": "b86d19ef2c564f6252859c2901677083bf261ce8",
+  "money_loop_rung": "product",
+  "user_system_path": "Add a Slack command surface for Foldera project command-center use",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -11,17 +11,13 @@
     "FOLDERA_BUILD_ORDER.yaml",
     "FOLDERA_MASTER_BIBLE.md",
     "AGENTS.md",
-    "scripts/continuity-gate.ts",
-    "tests/config/**",
-    ".github/workflows/**",
-    ".github/ISSUE_TEMPLATE/intake.yml",
-    ".github/ISSUE_TEMPLATE/config.yml",
+    "next.config.mjs",
+    "app/api/slack/command/**",
+    "lib/slack/command.ts",
     "docs/SOURCE_OF_TRUTH_MAP.md"
   ],
   "forbidden_file_patterns": [
-    "app/**",
     "components/**",
-    "lib/**",
     "supabase/**",
     "app/api/auth/**",
     "app/api/stripe/**",
@@ -31,14 +27,14 @@
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Issue #246 governance/enforcement files only: continuity gate, focused config tests, PR Sentinel and issue-template wiring, active source-truth files, contract, and the Hybrid Poster Landing doctrine paragraph.",
-  "forbidden_files_raw": "No product code, dashboard/frontend visual changes, Slack/Supabase/Vercel/Stripe/auth, schema migrations, dependency upgrades, or broad cleanup.",
-  "required_local_proof": "npm run gate:continuity && npx vitest run tests/config/__tests__/continuity-gate.test.ts --reporter=verbose && npm run lint && npm run build",
-  "required_browser_proof": "not applicable - governance enforcement seam",
+  "allowed_files_raw": "Issue #314 slack bot route, slack logic lib, and Next.js config.",
+  "forbidden_files_raw": "No UI changes, no Stripe/auth/schema modifications.",
+  "required_local_proof": "npm run gate:continuity && npx vitest run tests/config/__tests__/continuity-gate.test.ts --reporter=verbose && npm run build",
+  "required_browser_proof": "not applicable - slack command only",
   "browser_proof_command": "not applicable",
-  "acceptance_condition": "Gates B-G are enforced by PR Sentinel / continuity gate and focused tests prove forbidden-file, receipt, active-seam, valid PR, and forbidden-claim behavior.",
-  "stop_condition": "Stop only when #246 is merged and closed with GitHub receipts, or blocked with exact receipt.",
-  "is_user_facing": false,
+  "acceptance_condition": "Slack command bot responds with status, next, blockers, deploy, and receipt.",
+  "stop_condition": "Stop only when #314 is merged and closed with GitHub receipts, or blocked with exact receipt.",
+  "is_user_facing": true,
   "anti_regression_checks": [
     "valid PR shape passes",
     "forbidden file diff fails",
@@ -47,7 +43,7 @@
     "forbidden claim planted in public-facing copy fails",
     "current codebase passes forbidden-claim scan"
   ],
-  "next_command": "Finish #246 transaction through PR, CI, receipts, and merge or exact blocker.",
+  "next_command": "Finish #314 transaction through PR, CI, receipts, and merge or exact blocker.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
