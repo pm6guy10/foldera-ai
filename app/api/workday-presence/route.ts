@@ -7,6 +7,7 @@ import {
   normalizeWorkdayPresenceState,
   normalizeWorkdayPresenceSuppressionTrace,
   rightNowHasPreparedObject,
+  buildStateFromPrompt,
   type WorkdayPresenceState,
 } from '@/lib/workday-presence/model';
 import { apiErrorForRoute, badRequest } from '@/lib/utils/api-error';
@@ -44,8 +45,17 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.auth.admin.getUserById(auth.userId);
     if (error) throw error;
     const metadata = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
-    const state = readStoredState(metadata);
+    let state = readStoredState(metadata);
     const suppressionTrace = readStoredSuppressionTrace(metadata);
+
+    // M1 backend-lock: always-present state. Generate a default state if none exists
+    // and no suppression trace is present (suppression traces override default state).
+    if (!state && !suppressionTrace) {
+      state = buildStateFromPrompt({
+        prompt: 'What are you working on now?',
+      });
+    }
+
     const resolution = resolveCommandState({ state });
     const surfaceState =
       state && rightNowHasPreparedObject(state)
