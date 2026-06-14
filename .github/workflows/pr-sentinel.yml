@@ -2,8 +2,42 @@ name: PR Sentinel
 
 on:
   pull_request:
+    paths:
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "middleware.ts"
+      - "public/**"
+      - "scripts/**"
+      - "supabase/**"
+      - "tests/**"
+      - ".github/workflows/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - ".foldera-contract.json"
+      - "ACTIVE_HANDOFF.md"
+      - "ACTIVE_SEAM_STATE.json"
+      - "FOLDERA_BUILD_ORDER.yaml"
   push:
     branches: [main]
+    paths:
+      - "app/**"
+      - "components/**"
+      - "lib/**"
+      - "middleware.ts"
+      - "public/**"
+      - "scripts/**"
+      - "supabase/**"
+      - "tests/**"
+      - ".github/workflows/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.json"
+      - ".foldera-contract.json"
+      - "ACTIVE_HANDOFF.md"
+      - "ACTIVE_SEAM_STATE.json"
+      - "FOLDERA_BUILD_ORDER.yaml"
   merge_group:
 
 jobs:
@@ -13,7 +47,7 @@ jobs:
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm

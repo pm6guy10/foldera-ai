@@ -8,6 +8,13 @@ name: Health Gate
 on:
   push:
     branches: [main]
+    paths:
+      - "app/api/**"
+      - "lib/**"
+      - "supabase/**"
+      - "scripts/health.ts"
+      - "scripts/health/**"
+  workflow_dispatch:
 
 jobs:
   health:
