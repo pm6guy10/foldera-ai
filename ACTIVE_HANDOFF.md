@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-14 PT (active seam: #244 — Right-now cards Slice 1 copy/verbiage scrub; production SHA ecf89dd.)
+Last updated: 2026-06-14 PT (Session complete: #296 merged to production, #244 Slice 1 PR #308 ready for review, #244 Slice 2 documented, #246 next.)
 
 ## Boot
 
@@ -22,11 +22,15 @@ Issue #262 is COMPLETE — event-driven trigger runner live via PR #273 (`d6b99f
 
 ## Current slice:
 
-Current active slice is Right-now cards Slice 1 under issue #244.
-Current source-truth action: complete copy/verbiage scrub changing "morning brief/daily card" terminology to "Right Now" to reflect state-change-triggered delivery model.
-Implementation target: update all user-facing copy to reflect Right Now state (Slice 1 — copy scrub), then implement product changes to decouple card generation from clock (Slice 2).
+Session closure state:
+- Issue #296 (M1 backend-lock) — COMPLETE. Merged via PR #307 to production SHA `ecf89dd`.
+- Issue #244 Slice 1 (Copy scrub) — COMPLETE. PR #308 created with all copy changes. Vercel preview deployed.
+- Issue #244 Slice 2 (State-change product changes) — DOCUMENTED. Architecture and requirements specified.
+- Issue #246 (GitHub OS Enforcement Layer v2) — NEXT. Awaiting requirements clarification for Gates B-E, F, G.
 
-Current production truth: `Last known production SHA: ecf89ddb61b9155f9a67ff77a31048f121940b94`
+Next human action: Review PR #308, merge when ready, then continue with #244 Slice 2 implementation or #246 gate work.
+
+Current production truth: `Last known production SHA: ecf89dd20bf6835e3eb7ea22e19a152d4cc79454` (M1 backend-lock live)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
@@ -45,4 +49,7 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-Complete PR #308 (Slice 1 copy scrub) with CI green, then continue to Slice 2 product changes: decouple Right Now card generation from clock-based scheduling and implement state-change triggers. Verify dashboard and public pages reflect Right Now terminology before closing Slice 1.
+1. Review & merge PR #308 (issue #244 Slice 1 copy scrub) when CI validation resolved or approved as-is
+2. Implement #244 Slice 2: State-change trigger product architecture (trigger wiring, event integration, testing)
+3. Implement #246: GitHub OS Enforcement Layer v2 Gates (B-E: forbidden files, PR receipt, active-seam protection, intake form; F: CI forbidden-claim grep; G: doctrine in FOLDERA_MASTER_BIBLE.md)
+4. Verify all issues pass tests, CI green, and seam state files agree on active_issue before merging to main
