@@ -5,13 +5,13 @@ Last updated: 2026-06-14 PT (Session complete: #296 merged to production, #244 S
 ## Boot
 
 1. Read this file.
-2. Read issue #296.
+2. Read issue #244.
 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Issue #244 is the active Right-now cards seam (Slice 1: copy/verbiage scrub).
+Issue #244 is the active Right-now cards seam.
 Issue #296 (M1 backend-lock) is COMPLETE — merged via PR #307 (`ecf89dd`); production live.
 Issue #301 is COMPLETE — control-plane truth ledger + hidden-op Slack wiring merged through PR #305 (`f29cd80`); hidden-op outcome logging deployed in commit `370cc7a`.
 Issue #284 is COMPLETE — owner-operator pass gaps G1-G7 closed across PRs #286, #287, and #288; product-path receipt posted on the issue.
