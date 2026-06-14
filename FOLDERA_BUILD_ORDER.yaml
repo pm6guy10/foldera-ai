@@ -26,7 +26,7 @@ active_issue: 244
 priority_class: M1
 work_type: PRODUCT
 why_this_first: M1 backend-lock (#296) shipped via PR #307; the Right-now cards seam (#244) now scrubs morning-brief/daily-card copy to Right Now (Slice 1) and then decouples card generation from the clock (Slice 2).
-next_seam: "Issue #244 active. First implementation move: Slice 1 copy/verbiage scrub from morning brief/daily card to Right Now."
+next_seam: "Issue #244 Slice 1 (copy scrub) merged via PR #308 at dddece7. Slice 2: decouple Right Now card generation from clock; trigger state-change model."
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
