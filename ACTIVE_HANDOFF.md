@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-14 PT (PR #308 merged to main at dddece7; #244 Slice 1 complete; Slice 2 implementation next.)
+Last updated: 2026-06-13 PT (PR #313 open for #244 Slice 2 state-change trigger persistence; local proof green.)
 
 ## Boot
 
@@ -23,9 +23,9 @@ Issue #262 is COMPLETE — event-driven trigger runner live via PR #273 (`d6b99f
 ## Current slice:
 
 - Issue #244 Slice 1 (Copy scrub) — **MERGED**. PR #308 landed at commit dddece7. All morning-brief/daily-card copy changed to Right Now terminology.
-- Issue #244 Slice 2 (State-change product changes) — **NEXT**. Decouple Right Now card generation from clock; implement trigger wiring and event integration.
+- Issue #244 Slice 2 (State-change product changes) — **PR OPEN**. PR #313 persists justified state-change triggers into saved Right Now state, writes durable receipts, and wires the live runner/POST path so follow-up clicks no longer act on stale pre-trigger state.
 
-Next human action: Implement #244 Slice 2 — trigger state-change model, replace clock-based scheduling.
+Next human action: Watch PR #313 checks, enable merge through when green, then roll source truth forward on `main`.
 
 Current production truth: `Last known production SHA: ecf89dd20bf6835e3eb7ea22e19a152d4cc79454` (M1 backend-lock live)
 
