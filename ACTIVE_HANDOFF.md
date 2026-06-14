@@ -1,35 +1,33 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-13 PT (data moat initialization COMPLETE — hidden-op outcome logging + GitHub Actions overage fix deployed; active seam: NONE — between-rungs state; production SHA 370cc7a.)
+Last updated: 2026-06-13 PT (repo truth realigned; active seam: #296 — M1 backend-lock activation; production SHA 370cc7a.)
 
 ## Boot
 
 1. Read this file.
-2. Read the active issue it names.
+2. Read issue #296.
+3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Between-rungs state: no active seam declared pending owner priority.
-Issue #301 is COMPLETE — control-plane truth ledger + hidden-op Slack wiring merged PR #305 (f29cd80).
-Issue #281 (rung 9) is OWNER_CLOSED — external human-validation gate permanently removed by owner instruction 2026-06-13. This rung will never be a stop condition again.
+Issue #296 is the active M1 backend-lock seam.
+Issue #301 is COMPLETE — control-plane truth ledger + hidden-op Slack wiring merged through PR #305 (`f29cd80`); hidden-op outcome logging deployed in commit `370cc7a`.
+Issue #284 is COMPLETE — owner-operator pass gaps G1-G7 closed across PRs #286, #287, and #288; product-path receipt posted on the issue.
+Issue #281 (rung 9) is OWNER_CLOSED — external human-validation gate permanently removed by owner instruction 2026-06-13.
 Issue #276 is COMPLETE — Command State Resolver v0 merged via PR #279 (`e848d01`); closeout PR #280 (`13581bf`).
-Issue #262 is COMPLETE — event-driven trigger runner live (PR #273, `d6b99f2`).
+Issue #262 is COMPLETE — event-driven trigger runner live via PR #273 (`d6b99f2`).
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
 
 ## Current slice:
 
-Between-rungs state (data moat initialization complete): `Got it` button on hidden-op Slack card now logs signal → act → outcome tuples to Supabase. Actions overage fixed (disabled 9 scheduled workflows). No active seam declared yet — pending owner priority.
+Current active slice is M1 backend-lock under issue #296.
+Current source-truth action: reactivate the M1 board as the single active seam and carry its next move in the control plane.
+Implementation target after this activation: make `workday_presence_state` always-present on dashboard load so the owner path never falls into a dead setup form instead of a real Right Now state/card.
 
 Current production truth: `Last known production SHA: 370cc7a20bf6835e3eb7ea22e19a152d4cc79454`
 
-Archive: the M1 loop-health notes below remain as historical context only.
-
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
-
-## #276 closeout record
-
-Command State Resolver v0: `lib/workday-presence/command-state-resolver.ts` — four verdicts (`MERGE_READY`, `FIX_FIRST`, `WAIT`, `CLEAR`), conservative precedence, weak truth collapses to CLEAR. Proof: 19/19 contract tests · 66/66 suite · all gates · CI green. Receipt: https://github.com/pm6guy10/foldera-ai/issues/276#issuecomment-4694521189
 
 ## Product doctrine
 
@@ -44,30 +42,6 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 - `ACTIVE_HANDOFF.md` must be updated when the active seam, proof status, next seam, or blocker changes.
 - `FOLDERA_BUILD_ORDER.yaml` must be updated when the active issue changes.
 
-## Guardian Vision Lock (2026-06-13 — DO NOT REGRESS)
-
-Owner mandate written into `FOLDERA_MASTER_BIBLE.md` PART II-B and II-C. Any session that drifts back to "build another scoring module" or "add a new classifier" without a runtime consumer is violating the Brain-Without-Hands Law (AGENTS.md). Snap back here.
-
-**The vision in one sentence:** Foldera is the Facebook pixel inverted — total-context care, not total-context extraction. The magic moment is "how did it know?" not "here are your top 5 items."
-
-**The data moat:** signal→act→outcome tuples at scale teach Foldera what buried signals matter to what persona, when, and how to deliver them. Average-person signals (family, health, money, community) vs. professional signals (GitHub noise, Slack loops, project artifacts) calibrate differently. The crowd makes every user's experience better. That feedback loop is the moat — not the connector count, not the scoring formula.
-
-**The next move law:** Wire one real act onto something already surfaced. The Slack loop is live and proven (owner-only). Widen that thread — don't start a new brain.
-
 ## Next exact move
 
-No active seam declared yet. Between-rungs state: awaiting owner priority for next rung.
-
-## Data moat initialization closeout record (2026-06-13)
-
-Hidden-op outcome logging wired: `/app/api/slack/interaction/route.ts` now routes Slack acknowledges from hidden-op signals to `handleHiddenOpOutcome()`, extracting signal ID from `hidden_op:<signal-id>` cursor and logging `CONFIRMED_WORKED` outcome to `tkg_signals` table. Feedback loop data capture live. Proof: Unit tests (4/4 passing) · Playwright integration tests · CI green. GitHub Actions overage fixed: disabled 9 scheduled workflows, saved ~500-600 min/month. Receipt: commits a926029 + 370cc7a.
-
-## #301 closeout record
-
-Control-plane truth ledger + hidden-op Slack wiring: `ACTIVE_SEAM_STATE.json` machine-readable ledger + `.foldera-contract.json` governance gate + `detectHiddenOps` wired into `runWorkdayPresenceTriggerRunner`. Guardian moment live: buried high-consequence signals (score ≥ 50) fire Slack pings when normal path is quiet. Proof: PR #305 (f29cd80) merged; 5/5 unit tests · `npm run gate:continuity` pass · all CI ✓. Receipt: https://github.com/pm6guy10/foldera-ai/pull/305#issuecomment-4699691553
-
-## Prior closeout records (condensed; GitHub receipts + git history are the archive)
-
-- #259 (rung 7): mechanical non-owner pipe proof — receipt https://github.com/pm6guy10/foldera-ai/issues/259#issuecomment-4692374168
-- #249: scored winner beats recency, enforced in `selectSourceBackedRightNowState` — PR #257 (`ac8b15e`); receipt https://github.com/pm6guy10/foldera-ai/issues/249#issuecomment-4686122101
-- #226 (rung 6): Gmail + Microsoft sign-in + Slack self-loop scored winner — PR #256; receipt https://github.com/pm6guy10/foldera-ai/issues/226#issuecomment-4685107461
+Finish repo-truth activation of issue #296, then implement the M1 backend-lock on its own issue branch/PR: make `workday_presence_state` always-present on dashboard load and prove the owner loop surfaces a real Right Now state/card instead of dead setup.
