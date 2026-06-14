@@ -143,7 +143,7 @@ describe('dashboard finished-work inbox model', () => {
     expect(state.heading).toBe("Today's answer");
     expect(state.statusLabel).toBe('Do this');
     expect(state.summary).toContain('Commitment due in 5d');
-    expect(state.copyLabel).toBe('Copy brief');
+    expect(state.copyLabel).toBe('Copy right now');
     expect(state.copyText).toContain('Current best move');
     expect(state.copyText).toContain('Safe next action:');
     expect(state.valueBlocks.find((block) => block.label === 'What Foldera protected')?.body).toContain(

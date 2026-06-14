@@ -165,5 +165,60 @@ describe('Connectors test-mode ingest', () => {
     expect(body.result.trigger_result).toBeNull();
     expect(body.result.reason).toMatch(/quiet/i);
   });
+
+  it('prefers explicit state-change triggers over older noisy evidence when connector events name a cleared blocker', async () => {
+    mockSupabase.auth.admin.getUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            workday_presence_state: {
+              current_focus: 'Close ACME renewal decision',
+              next_move: 'Send the approval note',
+              why_it_matters: 'The renewal window closes today.',
+              blocker: 'Waiting for legal sign-off',
+              do_not_touch: null,
+              waiting_on: 'thread_123',
+              last_completed_step: 'Drafted the approval note',
+              state_source: 'manual_anchor',
+              created_at: '2026-05-20T12:00:00.000Z',
+              updated_at: '2026-05-20T12:10:00.000Z',
+            },
+          },
+        },
+      },
+      error: null,
+    });
+
+    const { POST } = await import('../ingest/route');
+    const response = await POST(
+      new Request('http://localhost/api/connectors/test-mode/ingest', {
+        method: 'POST',
+        body: JSON.stringify({
+          events: [
+            {
+              kind: 'slack',
+              event_id: 'sl_5',
+              thread_id: 'thread_123',
+              summary: 'Legal approved the redlines and the thread is unblocked.',
+              blocker_cleared: true,
+              cleared_blocker: 'Waiting for legal sign-off',
+            },
+            {
+              kind: 'slack',
+              event_id: 'sl_6',
+              thread_id: 'thread_123',
+              summary: 'Need your reply on the decision',
+              reply_needed: true,
+            },
+          ],
+        }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.result.selected_context.trigger_type).toBe('blocker_cleared');
+    expect(body.result.trigger_result.outcome).toBe('intervention');
+  });
 });
 
