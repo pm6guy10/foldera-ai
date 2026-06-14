@@ -16,7 +16,10 @@
     "app/dashboard/dashboard-page-model.tsx",
     "app/dashboard/settings/SettingsClient.tsx",
     "components/dashboard/conviction-card.tsx",
-    "tests/e2e/dashboard-navigation.spec.ts"
+    "tests/e2e/dashboard-navigation.spec.ts",
+    ".github/workflows/semgrep.yml",
+    ".github/workflows/pr-sentinel.yml",
+    ".github/workflows/health-gate.yml"
   ],
   "forbidden_file_patterns": [
     "supabase/migrations/**",
