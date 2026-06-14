@@ -1,7 +1,7 @@
 {
   "backlog_id": "right-now-cards",
   "active_issue": 244,
-  "base_commit": "ecf89ddb61b9155f9a67ff77a31048f121940b94",
+  "base_commit": "d81240b031bc8ca5a5f254e469c6bffead0cbd71",
   "money_loop_rung": "rung-12-right-now-cards",
   "user_system_path": "Right-now cards: state-change triggers. Slice 1 ships the copy/verbiage scrub changing morning brief/daily card terminology to Right Now; Slice 2 decouples card generation from the clock.",
   "allowed_file_patterns": [
@@ -9,13 +9,18 @@
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "public/index.html",
-    "public/manifest.json",
-    "content/blog/how-to-know-what-to-work-on-first-every-morning.md",
-    "app/onboard/page.tsx",
-    "app/dashboard/dashboard-page-model.tsx",
-    "app/dashboard/settings/SettingsClient.tsx",
-    "components/dashboard/conviction-card.tsx",
+    "app/api/workday-presence/route.ts",
+    "app/api/workday-presence/triggers/route.ts",
+    "app/api/workday-presence/__tests__/route.test.ts",
+    "app/api/workday-presence/__tests__/triggers-route.test.ts",
+    "lib/workday-presence/model.ts",
+    "lib/workday-presence/source-backed-state.ts",
+    "lib/workday-presence/triggers.ts",
+    "lib/workday-presence/trigger-runner.ts",
+    "lib/workday-presence/__tests__/model.test.ts",
+    "lib/workday-presence/__tests__/source-backed-state.test.ts",
+    "lib/workday-presence/__tests__/triggers.test.ts",
+    "lib/workday-presence/__tests__/trigger-runner.test.ts",
     "tests/e2e/dashboard-navigation.spec.ts"
   ],
   "forbidden_file_patterns": [
@@ -25,22 +30,22 @@
     "lib/stripe/**",
     "lib/auth/**"
   ],
-  "allowed_files_raw": "Public-facing copy and verbiage changes; user-facing component updates; e2e tests; blog and marketing content",
-  "forbidden_files_raw": "No auth/stripe/billing work, no schema migrations, no API routes besides page rendering",
-  "required_local_proof": "npm run gate:continuity && npm run lint && npm run build && npm test",
-  "required_browser_proof": "Manual: load dashboard and verify Right Now copy appears; load public pages and verify landing page copy",
+  "allowed_files_raw": "Workday-presence trigger evaluator, trigger route integration, current-state route/model updates, focused right-now tests, and the required source-truth ratchet",
+  "forbidden_files_raw": "No auth/stripe/billing work, no schema migrations, no new connectors, no landing-copy sweep, no broad cron rewrite outside the right-now trigger path",
+  "required_local_proof": "npm run gate:continuity && npm run lint && npm run build && npx vitest run app/api/workday-presence/__tests__/route.test.ts app/api/workday-presence/__tests__/triggers-route.test.ts lib/workday-presence/__tests__/model.test.ts lib/workday-presence/__tests__/source-backed-state.test.ts lib/workday-presence/__tests__/triggers.test.ts lib/workday-presence/__tests__/trigger-runner.test.ts",
+  "required_browser_proof": "Manual: load /dashboard and verify the Right Now card remains present while Slice 2 trigger wiring is introduced; no dead setup fallback returns",
   "browser_proof_command": "npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list",
-  "acceptance_condition": "All user-facing copy uses Right Now terminology instead of morning brief/daily card; landing page reflects state-change model, not time-based delivery; tests pass",
-  "stop_condition": "Stop when copy scrub complete (Slice 1), verified on dashboard and public pages, tests pass, and ready for Slice 2 product changes",
+  "acceptance_condition": "Right Now card generation is no longer clock-only; trigger evaluation can produce the current workday-presence state through the workday-presence route/trigger surface with focused proof and no dead setup fallback",
+  "stop_condition": "Stop when Slice 2 trigger/runtime work is proven on the authorized workday-presence surface, the Right Now card is no longer clock-shaped, and focused proof plus source-truth closeout are posted",
   "is_user_facing": true,
   "anti_regression_checks": [
     "dashboard loads without errors",
-    "landing page renders correctly",
-    "blog pages load",
-    "onboarding flow works",
-    "settings page renders"
+    "workday-presence GET still returns a card or justified quiet state",
+    "trigger route honors justified state-change inputs",
+    "dashboard right-now surface still renders",
+    "no dead setup fallback returns for the owner path"
   ],
-  "next_command": "Slice 1 verification: load dashboard and public pages to confirm Right Now copy in place, then continue to Slice 2 product changes",
+  "next_command": "Implement #244 Slice 2 by wiring state-change triggers into the workday-presence route/trigger surface, then prove the Right Now card is no longer clock-shaped",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
