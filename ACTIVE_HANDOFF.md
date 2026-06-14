@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-14 PT (PR #311 merged to main at d81240b; #244 Slice 1 is merged; Slice 2 source-truth ratchet is active before product wiring.)
+Last updated: 2026-06-14 PT (PR #313 open for #244 Slice 2 state-change trigger persistence + fresh-load fix + button trim; local proof green.)
 
 ## Boot
 
@@ -23,10 +23,9 @@ Issue #262 is COMPLETE — event-driven trigger runner live via PR #273 (`d6b99f
 ## Current slice:
 
 - Issue #244 Slice 1 (Copy scrub) — **MERGED**. PR #308 landed at commit dddece7. All morning-brief/daily-card copy changed to Right Now terminology.
-- Issue #244 Slice 2 (State-change product changes) — **ACTIVE**. Ratchet the control files to the live deploy and widen the seam contract from Slice 1 copy-only files to the trigger/runtime surface required for product work.
-- Issue #244 Slice 2 (Product wiring) — **NEXT**. Decouple Right Now card generation from clock; implement trigger wiring and event integration.
+- Issue #244 Slice 2 (State-change product changes) — **PR OPEN**. PR #313 persists justified state-change triggers into saved Right Now state, writes durable receipts, wires the live runner/POST path so follow-up clicks no longer act on stale pre-trigger state, adds fresh-load trigger override on GET so stale stored state is superseded by fresh signals, and trims MorningAnchorCard to 2 buttons (View Draft + Dismiss).
 
-Next human action: Merge the Slice 2 source-truth ratchet, then implement #244 Slice 2 trigger wiring and state-change model.
+Next human action: Watch PR #313 checks, enable merge through when green, then roll source truth forward on `main`.
 
 Current production truth: `Last known production SHA: d81240b031bc8ca5a5f254e469c6bffead0cbd71` (PR #311 merged; #244 contract-scope housekeeping live in production)
 
@@ -47,5 +46,5 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 
 ## Next exact move
 
-1. Implement #244 Slice 2: State-change trigger product architecture (right-now card generation decoupled from clock; trigger wiring via workday-presence POST; event integration + testing)
+1. Merge PR #313 when CI is green.
 2. Implement #246: GitHub OS Enforcement Layer v2 Gates (B-E: forbidden files, PR receipt, active-seam protection, intake form; F: CI forbidden-claim grep; G: doctrine in FOLDERA_MASTER_BIBLE.md)

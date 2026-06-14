@@ -11,12 +11,15 @@ import {
   type SlackSendResult,
 } from '@/lib/slack/right-now';
 import { createServerClient } from '@/lib/db/client';
+import { insertTriggerReceipt } from './trigger-receipt';
 import { type RightNowMessagePayload } from './message';
 import { normalizeWorkdayPresenceState, type WorkdayPresenceState } from './model';
 import {
+  buildTriggeredWorkdayPresenceState,
   evaluateWorkdayPresenceTrigger,
   type WorkdayPresenceTriggerContext,
   type WorkdayPresenceTriggerResult,
+  type WorkdayPresenceTriggerType,
 } from './triggers';
 
 type FreshSignalRow = Record<string, unknown>;
@@ -36,6 +39,13 @@ export type WorkdayPresenceTriggerRunnerResult = {
   trigger_result: WorkdayPresenceTriggerResult | null;
   slack_result: SlackSendResult | null;
   fresh_event_count: number;
+};
+
+export type PersistTriggeredInterventionInput = {
+  trigger_type: WorkdayPresenceTriggerType;
+  selected_context: WorkdayPresenceTriggerContext;
+  next_state: WorkdayPresenceState;
+  trigger_result: Extract<WorkdayPresenceTriggerResult, { outcome: 'intervention' }>;
 };
 
 export type MaybeTriggerRunnerResult =
@@ -105,6 +115,11 @@ function signalPrepMove(signal: FreshSignalRow): string | null {
   return clean(signal.prep_move) ?? clean(metadata.prep_move);
 }
 
+function signalShiftSummary(signal: FreshSignalRow): string | null {
+  const metadata = signalMetadata(signal);
+  return clean(signal.shift_summary) ?? clean(metadata.shift_summary) ?? normalizeSummary(signal);
+}
+
 function signalReplyNeeded(signal: FreshSignalRow): boolean {
   const metadata = signalMetadata(signal);
   return readBoolean(signal.reply_needed) === true || readBoolean(metadata.reply_needed) === true;
@@ -113,6 +128,36 @@ function signalReplyNeeded(signal: FreshSignalRow): boolean {
 function signalChanged(signal: FreshSignalRow): boolean {
   const metadata = signalMetadata(signal);
   return readBoolean(signal.changed) === true || readBoolean(metadata.changed) === true;
+}
+
+function signalTimingShift(signal: FreshSignalRow): boolean {
+  const metadata = signalMetadata(signal);
+  return readBoolean(signal.timing_shift) === true || readBoolean(metadata.timing_shift) === true;
+}
+
+function signalCommitmentLapsing(signal: FreshSignalRow): boolean {
+  const metadata = signalMetadata(signal);
+  return readBoolean(signal.commitment_lapsing) === true || readBoolean(metadata.commitment_lapsing) === true;
+}
+
+function signalDueAtIso(signal: FreshSignalRow): string | null {
+  const metadata = signalMetadata(signal);
+  return clean(signal.due_at_iso) ?? clean(metadata.due_at_iso) ?? signalStartsAtIso(signal);
+}
+
+function signalBlockerCleared(signal: FreshSignalRow): boolean {
+  const metadata = signalMetadata(signal);
+  return readBoolean(signal.blocker_cleared) === true || readBoolean(metadata.blocker_cleared) === true;
+}
+
+function signalClearedBlocker(signal: FreshSignalRow): string | null {
+  const metadata = signalMetadata(signal);
+  return clean(signal.cleared_blocker) ?? clean(metadata.cleared_blocker);
+}
+
+function signalGoneCold(signal: FreshSignalRow): boolean {
+  const metadata = signalMetadata(signal);
+  return readBoolean(signal.gone_cold) === true || readBoolean(metadata.gone_cold) === true;
 }
 
 function adaptSignalToFreshEvent(signal: FreshSignalRow): SimulatedConnectorEvidenceEvent | null {
@@ -133,6 +178,10 @@ function adaptSignalToFreshEvent(signal: FreshSignalRow): SimulatedConnectorEvid
       starts_at_iso: startsAtIso,
       requires_prep: signalRequiresPrep(signal),
       ...(signalPrepMove(signal) ? { prep_move: signalPrepMove(signal) ?? undefined } : {}),
+      ...(signalTimingShift(signal) ? { timing_shift: true } : {}),
+      ...(signalShiftSummary(signal) ? { shift_summary: signalShiftSummary(signal) ?? undefined } : {}),
+      ...(signalCommitmentLapsing(signal) ? { commitment_lapsing: true } : {}),
+      ...(signalDueAtIso(signal) ? { due_at_iso: signalDueAtIso(signal) ?? undefined } : {}),
     };
   }
 
@@ -147,6 +196,9 @@ function adaptSignalToFreshEvent(signal: FreshSignalRow): SimulatedConnectorEvid
       snippet: summary,
       received_at_iso: occurredAt,
       reply_needed: signalReplyNeeded(signal),
+      ...(signalBlockerCleared(signal) ? { blocker_cleared: true } : {}),
+      ...(signalClearedBlocker(signal) ? { cleared_blocker: signalClearedBlocker(signal) ?? undefined } : {}),
+      ...(signalGoneCold(signal) ? { gone_cold: true } : {}),
     };
   }
 
@@ -159,6 +211,9 @@ function adaptSignalToFreshEvent(signal: FreshSignalRow): SimulatedConnectorEvid
       summary,
       reply_needed: signalReplyNeeded(signal),
       changed: signalChanged(signal),
+      ...(signalBlockerCleared(signal) ? { blocker_cleared: true } : {}),
+      ...(signalClearedBlocker(signal) ? { cleared_blocker: signalClearedBlocker(signal) ?? undefined } : {}),
+      ...(signalGoneCold(signal) ? { gone_cold: true } : {}),
     };
   }
 
@@ -192,6 +247,37 @@ function buildTriggerKey(
       'pre_meeting',
       context.event.starts_at_iso,
       context.event.title,
+      state?.updated_at ?? 'no-state',
+    ].join('|');
+  }
+
+  if (context.trigger_type === 'blocker_cleared') {
+    return ['blocker_cleared', context.cleared.blocker, state?.updated_at ?? 'no-state'].join('|');
+  }
+
+  if (context.trigger_type === 'commitment_lapsing') {
+    return [
+      'commitment_lapsing',
+      context.commitment.due_at_iso,
+      context.commitment.title,
+      state?.updated_at ?? 'no-state',
+    ].join('|');
+  }
+
+  if (context.trigger_type === 'owed_thread_gone_cold') {
+    return [
+      'owed_thread_gone_cold',
+      context.thread.thread_id,
+      context.thread.summary,
+      state?.updated_at ?? 'no-state',
+    ].join('|');
+  }
+
+  if (context.trigger_type === 'timing_shift') {
+    return [
+      'timing_shift',
+      context.shift.starts_at_iso,
+      context.shift.title,
       state?.updated_at ?? 'no-state',
     ].join('|');
   }
@@ -275,6 +361,22 @@ export async function maybeRunWorkdayPresenceTriggerRunnerForUser(
     cursor,
     signals: Array.isArray(signals) ? signals : [],
     slack: createLiveSlackAdapter(slackBotToken),
+    persistIntervention: async (intervention) => {
+      const nextMetadata = {
+        ...metadata,
+        workday_presence_state: intervention.next_state,
+      };
+      await insertTriggerReceipt({
+        supabase,
+        userId,
+        triggerType: intervention.trigger_type,
+        state: intervention.next_state,
+      });
+      const persistStateResult = await supabase.auth.admin.updateUserById(userId, {
+        user_metadata: nextMetadata,
+      });
+      if (persistStateResult.error) throw persistStateResult.error;
+    },
     state: metadata.workday_presence_state,
   });
 
@@ -291,6 +393,39 @@ export async function maybeRunWorkdayPresenceTriggerRunnerForUser(
     user_id: userId,
     ...result,
   };
+}
+
+/**
+ * Pure, side-effect-free trigger check for dashboard fresh-load.
+ * Evaluates whether any signals newer than the cursor would fire a trigger,
+ * and if so returns the state with the trigger's next_move override applied.
+ * No Slack call. No DB write. Safe to call on every GET.
+ */
+export function checkFreshSignalTriggerOverride(input: {
+  signals: FreshSignalRow[];
+  state: WorkdayPresenceState;
+  nowIso?: string;
+}): WorkdayPresenceState | null {
+  const nowIso = input.nowIso ?? new Date().toISOString();
+  if (input.state.snoozed_until && Date.parse(input.state.snoozed_until) > Date.parse(nowIso)) {
+    return null;
+  }
+  const freshEvents = input.signals
+    .map(adaptSignalToFreshEvent)
+    .filter((e): e is SimulatedConnectorEvidenceEvent => Boolean(e));
+  const selection = selectSingleInterventionFromConnectorEvidence(freshEvents);
+  if (!selection.selected) return null;
+  const triggerResult = evaluateWorkdayPresenceTrigger(selection.selected, input.state);
+  if (triggerResult.outcome !== 'intervention') return null;
+
+  // For mention_reply_needed and waiting_on_changed the external wait is now
+  // resolved — something requires action. Clear waiting_on so resolveCommandState
+  // steps down from WAIT and the card displays the trigger's next_move text.
+  const { trigger_type } = selection.selected;
+  if (trigger_type === 'mention_reply_needed' || trigger_type === 'waiting_on_changed') {
+    return { ...triggerResult.overridden_state, waiting_on: null };
+  }
+  return triggerResult.overridden_state;
 }
 
 const HIDDEN_OP_MIN_SCORE = 50;
@@ -341,6 +476,7 @@ export async function runWorkdayPresenceTriggerRunner(input: {
   cursor: unknown;
   nowIso?: string;
   signals: FreshSignalRow[];
+  persistIntervention?: (input: PersistTriggeredInterventionInput) => Promise<void> | void;
   slack: Pick<SlackAdapter, 'postMessage'>;
   state: unknown;
 }): Promise<WorkdayPresenceTriggerRunnerResult> {
@@ -424,6 +560,15 @@ export async function runWorkdayPresenceTriggerRunner(input: {
           const slackResult = await input.slack.postMessage(
             buildSlackRightNowMessage(triggerResult.payload, input.channel),
           );
+          const nextState = buildTriggeredWorkdayPresenceState(selection.selected, state, nowIso);
+          if (nextState) {
+            await input.persistIntervention?.({
+              trigger_type: selection.selected.trigger_type,
+              selected_context: selection.selected,
+              next_state: nextState,
+              trigger_result: triggerResult,
+            });
+          }
           return {
             outcome: 'intervention',
             reason: triggerResult.reason,

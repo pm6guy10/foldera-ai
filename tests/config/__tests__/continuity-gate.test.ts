@@ -43,6 +43,18 @@ function writeFixtureFile(root: string, file: string, body: string): void {
   fs.writeFileSync(path.join(root, file), body, 'utf8');
 }
 
+function currentFixtureLedger(root: string): { active_issue?: number; active_branch?: string | null } {
+  return JSON.parse(readFixtureFile(root, 'ACTIVE_SEAM_STATE.json')) as {
+    active_issue?: number;
+    active_branch?: string | null;
+  };
+}
+
+function currentFixtureBuildOrderIssue(root: string): number | null {
+  const match = readFixtureFile(root, 'FOLDERA_BUILD_ORDER.yaml').match(/^active_issue:\s*(\d+)\s*$/m);
+  return match ? Number(match[1]) : null;
+}
+
 afterEach(() => {
   delete process.env.GITHUB_HEAD_REF;
   delete process.env.GITHUB_EVENT_PATH;
@@ -74,9 +86,8 @@ describe('continuity gate', () => {
 
   it('fails when the active seam ledger disagrees with the active issue', () => {
     const fixtureRoot = createFixtureRoot();
-    const ledger = JSON.parse(readFixtureFile(fixtureRoot, 'ACTIVE_SEAM_STATE.json')) as {
-      active_issue?: number;
-    };
+    const ledger = currentFixtureLedger(fixtureRoot);
+    const buildOrderIssue = currentFixtureBuildOrderIssue(fixtureRoot);
     ledger.active_issue = 9999;
     writeFixtureFile(fixtureRoot, 'ACTIVE_SEAM_STATE.json', `${JSON.stringify(ledger, null, 2)}\n`);
 
@@ -84,20 +95,23 @@ describe('continuity gate', () => {
 
     expect(
       failures.some((failure) =>
-        failure.includes('ACTIVE_SEAM_STATE.json active_issue #9999 must match FOLDERA_BUILD_ORDER.yaml active_issue #301'),
+        failure.includes(
+          `ACTIVE_SEAM_STATE.json active_issue #9999 must match FOLDERA_BUILD_ORDER.yaml active_issue #${buildOrderIssue}`,
+        ),
       ),
     ).toBe(true);
   });
 
   it('fails when the active seam ledger disagrees with the pull request head branch', () => {
     const fixtureRoot = createFixtureRoot();
+    const ledger = currentFixtureLedger(fixtureRoot);
     fs.mkdirSync(path.join(fixtureRoot, '.git'));
     process.env.GITHUB_HEAD_REF = 'other-branch';
 
     const failures = runContinuityGate(fixtureRoot);
 
     expect(failures).toContain(
-      'ACTIVE_SEAM_STATE.json active_branch "claude/hidden-op-slack-wire-f37g10" must match current branch "other-branch".',
+      `ACTIVE_SEAM_STATE.json active_branch "${ledger.active_branch}" must match current branch "other-branch".`,
     );
   });
 

@@ -3,7 +3,7 @@
   "active_issue": 244,
   "base_commit": "d81240b031bc8ca5a5f254e469c6bffead0cbd71",
   "money_loop_rung": "rung-12-right-now-cards",
-  "user_system_path": "Right-now cards: state-change triggers. Slice 1 ships the copy/verbiage scrub changing morning brief/daily card terminology to Right Now; Slice 2 decouples card generation from the clock.",
+  "user_system_path": "Right-now cards: state-change triggers. Slice 1 shipped the copy/verbiage scrub changing morning brief/daily card terminology to Right Now; Slice 2 decouples card generation from the clock by persisting justified state-change triggers into the live workday-presence loop.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -17,11 +17,20 @@
     "lib/workday-presence/source-backed-state.ts",
     "lib/workday-presence/triggers.ts",
     "lib/workday-presence/trigger-runner.ts",
+    "lib/workday-presence/trigger-receipt.ts",
     "lib/workday-presence/__tests__/model.test.ts",
     "lib/workday-presence/__tests__/source-backed-state.test.ts",
-    "lib/workday-presence/__tests__/triggers.test.ts",
     "lib/workday-presence/__tests__/trigger-runner.test.ts",
-    "tests/e2e/dashboard-navigation.spec.ts"
+    "lib/workday-presence/__tests__/triggers.test.ts",
+    "lib/connectors/test-mode/evidence-adapters.ts",
+    "lib/connectors/test-mode/ingest.ts",
+    "app/api/connectors/test-mode/ingest/route.ts",
+    "app/api/connectors/test-mode/__tests__/ingest-route.test.ts",
+    "tests/config/__tests__/continuity-gate.test.ts",
+    "tests/config/__tests__/dashboard-inbox-model.test.ts",
+    "tests/e2e/dashboard-navigation.spec.ts",
+    "components/dashboard/MorningAnchorCard.tsx",
+    "lib/slack/right-now.ts"
   ],
   "forbidden_file_patterns": [
     "supabase/migrations/**",
@@ -30,13 +39,13 @@
     "lib/stripe/**",
     "lib/auth/**"
   ],
-  "allowed_files_raw": "Workday-presence trigger evaluator, trigger route integration, current-state route/model updates, focused right-now tests, and the required source-truth ratchet",
-  "forbidden_files_raw": "No auth/stripe/billing work, no schema migrations, no new connectors, no landing-copy sweep, no broad cron rewrite outside the right-now trigger path",
-  "required_local_proof": "npm run gate:continuity && npm run lint && npm run build && npx vitest run app/api/workday-presence/__tests__/route.test.ts app/api/workday-presence/__tests__/triggers-route.test.ts lib/workday-presence/__tests__/model.test.ts lib/workday-presence/__tests__/source-backed-state.test.ts lib/workday-presence/__tests__/triggers.test.ts lib/workday-presence/__tests__/trigger-runner.test.ts",
-  "required_browser_proof": "Manual: load /dashboard and verify the Right Now card remains present while Slice 2 trigger wiring is introduced; no dead setup fallback returns",
+  "allowed_files_raw": "Active Slice 2 trigger path only: workday-presence trigger route, trigger runner, trigger evaluation/persistence helpers, connector-evidence adapters, the narrow regression tests needed to keep current Right Now/continuity proof green, fresh-load trigger override (route.ts + route.test.ts), and button-trim (MorningAnchorCard + right-now.ts)",
+  "forbidden_files_raw": "No auth/stripe/billing work, no schema migrations, no new dashboard surfaces, no broad cron cleanup outside the active trigger path",
+  "required_local_proof": "npm run gate:continuity && npm run lint && npm run build && npm test",
+  "required_browser_proof": "Manual or focused browser proof: exercise one Right Now state-change trigger path and verify the card/state loop is trigger-driven rather than clock-only",
   "browser_proof_command": "npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list",
-  "acceptance_condition": "Right Now card generation is no longer clock-only; trigger evaluation can produce the current workday-presence state through the workday-presence route/trigger surface with focused proof and no dead setup fallback",
-  "stop_condition": "Stop when Slice 2 trigger/runtime work is proven on the authorized workday-presence surface, the Right Now card is no longer clock-shaped, and focused proof plus source-truth closeout are posted",
+  "acceptance_condition": "At least one justified state-change trigger produces a persisted Right Now state and durable receipt through the active workday-presence loop; clock-only generation is no longer the only live path; fresh-load returns trigger-overridden card when fresh signals match",
+  "stop_condition": "Stop when Slice 2 trigger persistence/wiring is proven on the active path, tests pass, GitHub writeback is posted, and the branch is PR-ready",
   "is_user_facing": true,
   "anti_regression_checks": [
     "dashboard loads without errors",
@@ -45,7 +54,7 @@
     "dashboard right-now surface still renders",
     "no dead setup fallback returns for the owner path"
   ],
-  "next_command": "Implement #244 Slice 2 by wiring state-change triggers into the workday-presence route/trigger surface, then prove the Right Now card is no longer clock-shaped",
+  "next_command": "Implement and prove Slice 2 trigger-state persistence on the workday-presence loop, then widen trigger semantics toward the issue-named state changes only as needed for proof",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

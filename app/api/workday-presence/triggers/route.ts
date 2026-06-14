@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { resolveUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import { normalizeWorkdayPresenceState } from '@/lib/workday-presence/model';
+import { insertTriggerReceipt } from '@/lib/workday-presence/trigger-receipt';
 import {
+  buildTriggeredWorkdayPresenceState,
   evaluateWorkdayPresenceTrigger,
   type WorkdayPresenceTriggerContext,
   type WorkdayPresenceTriggerType,
@@ -28,6 +30,24 @@ type TriggerRequestBody = {
     thread_id?: string;
     summary?: string;
     reply_needed?: boolean;
+  };
+  cleared?: {
+    blocker?: string;
+    summary?: string;
+  };
+  commitment?: {
+    title?: string;
+    due_at_iso?: string;
+    summary?: string;
+  };
+  thread?: {
+    thread_id?: string;
+    summary?: string;
+  };
+  shift?: {
+    title?: string;
+    starts_at_iso?: string;
+    summary?: string;
   };
 };
 
@@ -85,6 +105,62 @@ function buildContext(body: TriggerRequestBody): WorkdayPresenceTriggerContext |
     };
   }
 
+  if (triggerType === 'blocker_cleared') {
+    const cleared = body.cleared ?? {};
+    if (!isNonEmptyString(cleared.blocker)) return null;
+    if (!isNonEmptyString(cleared.summary)) return null;
+    return {
+      trigger_type: 'blocker_cleared',
+      cleared: {
+        blocker: cleared.blocker,
+        summary: cleared.summary,
+      },
+    };
+  }
+
+  if (triggerType === 'commitment_lapsing') {
+    const commitment = body.commitment ?? {};
+    if (!isNonEmptyString(commitment.title)) return null;
+    if (!isNonEmptyString(commitment.due_at_iso)) return null;
+    if (!isNonEmptyString(commitment.summary)) return null;
+    return {
+      trigger_type: 'commitment_lapsing',
+      commitment: {
+        title: commitment.title,
+        due_at_iso: commitment.due_at_iso,
+        summary: commitment.summary,
+      },
+    };
+  }
+
+  if (triggerType === 'owed_thread_gone_cold') {
+    const thread = body.thread ?? {};
+    if (!isNonEmptyString(thread.thread_id)) return null;
+    if (!isNonEmptyString(thread.summary)) return null;
+    return {
+      trigger_type: 'owed_thread_gone_cold',
+      thread: {
+        thread_id: thread.thread_id,
+        summary: thread.summary,
+      },
+    };
+  }
+
+  if (triggerType === 'timing_shift') {
+    const shift = body.shift ?? {};
+    if (!isNonEmptyString(shift.title)) return null;
+    if (!isNonEmptyString(shift.starts_at_iso)) return null;
+    if (!isNonEmptyString(shift.summary)) return null;
+    return {
+      trigger_type: 'timing_shift',
+      shift: {
+        title: shift.title,
+        starts_at_iso: shift.starts_at_iso,
+        summary: shift.summary,
+      },
+    };
+  }
+
   return null;
 }
 
@@ -106,8 +182,31 @@ export async function POST(request: Request) {
     const metadata = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
     const state = normalizeWorkdayPresenceState(metadata.workday_presence_state);
     const result = evaluateWorkdayPresenceTrigger(context, state);
+    if (result.outcome !== 'intervention') {
+      return NextResponse.json({ result });
+    }
 
-    return NextResponse.json({ result });
+    const nextState = buildTriggeredWorkdayPresenceState(context, state);
+    if (!nextState) {
+      return NextResponse.json({ result });
+    }
+
+    const updateResult = await supabase.auth.admin.updateUserById(auth.userId, {
+      user_metadata: {
+        ...metadata,
+        workday_presence_state: nextState,
+      },
+    });
+    if (updateResult.error) throw updateResult.error;
+
+    await insertTriggerReceipt({
+      supabase,
+      userId: auth.userId,
+      triggerType: context.trigger_type,
+      state: nextState,
+    });
+
+    return NextResponse.json({ result, state: nextState });
   } catch (error: unknown) {
     return apiErrorForRoute(error, 'workday-presence triggers POST');
   }
