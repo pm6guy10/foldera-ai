@@ -1,6 +1,6 @@
 {
   "backlog_id": "right-now-cards",
-  "active_issue": 244,
+  "active_issue": "none",
   "base_commit": "d81240b031bc8ca5a5f254e469c6bffead0cbd71",
   "money_loop_rung": "rung-12-right-now-cards",
   "user_system_path": "Right-now cards: state-change triggers. Slice 1 shipped the copy/verbiage scrub changing morning brief/daily card terminology to Right Now; Slice 2 decouples card generation from the clock by persisting justified state-change triggers into the live workday-presence loop.",

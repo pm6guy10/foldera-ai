@@ -1,9 +1,9 @@
 {
   "active_issue": 244,
-  "active_branch": "codex/issue-244-slice-2",
-  "active_pr": 313,
-  "deployed_commit_sha": "d81240b031bc8ca5a5f254e469c6bffead0cbd71",
+  "active_branch": "main",
+  "active_pr": null,
+  "deployed_commit_sha": "d2bed9a",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-14T12:43:37Z"
+  "last_verified_at": "2026-06-14T16:00:00Z"
 }

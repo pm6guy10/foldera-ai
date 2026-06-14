@@ -1,33 +1,37 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-14 PT (PR #313 open for #244 Slice 2 state-change trigger persistence + fresh-load fix + button trim; local proof green.)
+Last updated: 2026-06-14 PT (#244 Slice 2 MERGED via PR #313 at d2bed9a; between seams.)
 
 ## Boot
 
 1. Read this file.
-2. Read issue #244.
+2. Read the next active issue (see below).
 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Issue #244 is the active Right-now cards seam.
+No active seam — between rungs. `active_issue: none` is the valid between-rungs form.
+
 Issue #296 (M1 backend-lock) is COMPLETE — merged via PR #307 (`ecf89dd`); production live.
 Issue #301 is COMPLETE — control-plane truth ledger + hidden-op Slack wiring merged through PR #305 (`f29cd80`); hidden-op outcome logging deployed in commit `370cc7a`.
-Issue #284 is COMPLETE — owner-operator pass gaps G1-G7 closed across PRs #286, #287, and #288; product-path receipt posted on the issue.
+Issue #284 is COMPLETE — owner-operator pass gaps G1-G7 closed across PRs #286, #287, and #288.
 Issue #281 (rung 9) is OWNER_CLOSED — external human-validation gate permanently removed by owner instruction 2026-06-13.
 Issue #276 is COMPLETE — Command State Resolver v0 merged via PR #279 (`e848d01`); closeout PR #280 (`13581bf`).
 Issue #262 is COMPLETE — event-driven trigger runner live via PR #273 (`d6b99f2`).
+Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 (copy scrub) PR #308 `dddece7`; Slice 2 (trigger persistence + fresh-load fix + button trim) PR #313 `d2bed9a`.
 `FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
 
 ## Current slice:
 
-- Issue #244 Slice 1 (Copy scrub) — **MERGED**. PR #308 landed at commit dddece7. All morning-brief/daily-card copy changed to Right Now terminology.
-- Issue #244 Slice 2 (State-change product changes) — **PR OPEN**. PR #313 persists justified state-change triggers into saved Right Now state, writes durable receipts, wires the live runner/POST path so follow-up clicks no longer act on stale pre-trigger state, adds fresh-load trigger override on GET so stale stored state is superseded by fresh signals, and trims MorningAnchorCard to 2 buttons (View Draft + Dismiss).
+- Issue #244 Slice 1 (Copy scrub) — **MERGED**. PR #308 at `dddece7`.
+- Issue #244 Slice 2 (State-change triggers) — **MERGED**. PR #313 at `d2bed9a`. Trigger persistence, durable receipts, fresh-load override on GET, MorningAnchorCard trimmed to 2 buttons.
 
-Next human action: Watch PR #313 checks, enable merge through when green, then roll source truth forward on `main`.
+## Next exact move
 
-Current production truth: `Last known production SHA: d81240b031bc8ca5a5f254e469c6bffead0cbd71` (PR #311 merged; #244 contract-scope housekeeping live in production)
+1. Implement #246: GitHub OS Enforcement Layer v2 Gates (B-E: forbidden files, PR receipt, active-seam protection, intake form; F: CI forbidden-claim grep; G: doctrine in FOLDERA_MASTER_BIBLE.md)
+
+Current production truth: `Last known production SHA: d2bed9a` (PR #313 merged; #244 Slice 2 live in production)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
@@ -43,8 +47,3 @@ Foldera is a Workday Presence Layer: state + connectors + triggers + one interve
 - Before stopping, write one terminal GitHub comment: `PR OPENED`, `PROOF`, `MERGE READY`, `BLOCKED`, or `STOPPED`.
 - `ACTIVE_HANDOFF.md` must be updated when the active seam, proof status, next seam, or blocker changes.
 - `FOLDERA_BUILD_ORDER.yaml` must be updated when the active issue changes.
-
-## Next exact move
-
-1. Merge PR #313 when CI is green.
-2. Implement #246: GitHub OS Enforcement Layer v2 Gates (B-E: forbidden files, PR receipt, active-seam protection, intake form; F: CI forbidden-claim grep; G: doctrine in FOLDERA_MASTER_BIBLE.md)
