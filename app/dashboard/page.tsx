@@ -175,18 +175,16 @@ export default function DashboardPage() {
               your approval.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
-              <a
+              <OAuthConnectButton
+                label="Connect Google"
+                provider="google"
                 href="/api/google/connect"
-                className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-cyan-400 px-5 text-sm font-semibold text-cyan-950 transition-colors hover:bg-cyan-300"
-              >
-                Connect Google
-              </a>
-              <a
+              />
+              <OAuthConnectButton
+                label="Connect Microsoft"
+                provider="azure-ad"
                 href="/api/microsoft/connect"
-                className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-cyan-400/20 bg-white/5 px-5 text-sm font-semibold text-cyan-50 transition-colors hover:bg-white/10 hover:border-cyan-400/40"
-              >
-                Connect Microsoft
-              </a>
+              />
             </div>
           </div>
         ) : null}
