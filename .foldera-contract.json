@@ -4,7 +4,7 @@
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
   "user_system_path": "Stranger closes loop (non-owner, zero narration)",
-  "allowed_file_patterns": [
+  "allowed_file_patterns": ["AGENTS.md", 
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
@@ -40,3 +40,4 @@
     ]
   }
 }
+

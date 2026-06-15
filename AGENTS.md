@@ -494,3 +494,9 @@ These lessons are repo law for autonomous agents. They exist because Brandon sho
 
 131. Do not make Brandon manage the machine that is supposed to manage the work.
 
+
+## Proof Strictness & Canonical Repo Rules
+1. **Never weaken the .foldera-contract.json proof lane** to just 
+pm run test or 'merge'. It must always include the gate:continuity build and a runtime/product proof or a BLOCKED_WITH_EXACT_RECEIPT stop condition if live proof is missing.
+2. **Never declare 'Done' without live product proof**. If a live test requires user credentials or browser auth that we lack, the PR must be set to BLOCKED_WITH_EXACT_RECEIPT awaiting owner validation.
+3. **Never work in a clone risk directory**. All development and pushes must occur strictly from C:\Users\b-kap\foldera-ai.
