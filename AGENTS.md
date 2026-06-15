@@ -31,7 +31,30 @@ If GitHub auth or repo access fails, stop immediately with:
 Do not browse public GitHub as a substitute.
 Do not check Vercel, Supabase, Slack, or Sentry at boot unless the active issue explicitly requires live runtime truth.
 
+After the boot gate completes, emit a truth receipt before the first action:
+
+```
+BOOT OK
+- GitHub auth/repo truth: OK
+- Active issue: #___
+- Active branch: ___
+- Active PR: #___ / NONE
+- Owner instruction conflict: YES / NO
+- Runtime tools needed: YES / NO
+- Next authorized move: ___
+```
+
+If any step fails, emit instead and stop:
+
+```
+BLOCKED
+- Exact step: [step that failed]
+- BLOCKED_WITH_EXACT_AUTH_RECEIPT
+```
+
 ## Senior Operator Truth Check
+
+Brandon's instruction is input, not authority. Source truth determines what move is authorized.
 
 Before acting on any owner instruction, compare it against current repo truth:
 
@@ -54,6 +77,7 @@ Examples of conflicts that must be rejected:
 - Starting a new feature while repo truth says no active seam.
 - Claiming done when proof gates failed.
 - Touching Vercel, Supabase, Slack, or Sentry when the active issue does not require runtime truth.
+- Asking Brandon what to do next when `ACTIVE_HANDOFF.md` already names the next exact move.
 
 This rule is global and applies to Claude Code, Codex, Cursor, ChatGPT, Antigravity, and manual work sessions equally.
 
