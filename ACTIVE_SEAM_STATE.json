@@ -1,6 +1,6 @@
 {
-  "active_issue": 136,
-  "active_branch": "feature/136-run-ledger",
+  "active_issue": 0,
+  "active_branch": "chore/stale-truth-cleanup",
   "active_pr": null,
   "deployed_commit_sha": "b03e7c48ad06c",
   "runtime_env": "production",
