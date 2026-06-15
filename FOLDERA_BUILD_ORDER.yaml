@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 316
+active_issue: 314
 priority_class: M1
-work_type: OPS
-why_this_first: "GitHub Actions billing limits block PR merges. We are demoting GH Actions to optional and prioritizing local proof."
-next_seam: "Run `gh workflow disable` for all relevant workflows."
+work_type: PRODUCT
+why_this_first: "Add a Slack command surface for Foldera project command-center use, backed by live source truth."
+next_seam: "Build app/api/slack/command/route.ts and lib/slack/command.ts."
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
