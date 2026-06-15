@@ -21,11 +21,11 @@
   ],
   "allowed_files_raw": "Dashboard and workday-presence files.",
   "forbidden_files_raw": "Core dependencies.",
-  "required_local_proof": "npm run test",
+  "required_local_proof": "focused tests + npm run gate:continuity + npm run build + runtime/product proof or exact blocker",
   "required_browser_proof": "not applicable",
   "browser_proof_command": "not applicable",
   "acceptance_condition": "Non-owner can automatically detect and save workday presence state from dashboard.",
-  "stop_condition": "Stop when PR is merged.",
+  "stop_condition": "Stop when issue #325 proof standard is met (runtime/product proof or exact blocker).",
   "is_user_facing": true,
   "anti_regression_checks": [
     "Continuity gate passes"

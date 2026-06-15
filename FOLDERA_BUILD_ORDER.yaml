@@ -146,7 +146,7 @@ m1_milestone_board:
   current_target: DONE — workday_presence_state is always-present on dashboard load; owner loop closes on a real Right Now state/card
   ladder:
     - M1: Brandon closes loop (backend state contract locked)
-    - M2: stranger closes loop (non-owner, zero narration)
+    - M2: stranger closes loop (non-owner, zero narration, dashboard-only; Slack delivery explicitly out of scope)
     - M3: frontend rebuilt once on locked M1 contract
     - M4: runs itself (self-heal/learn/optimize)
 
