@@ -10,6 +10,10 @@ import {
   buildStateFromPrompt,
   type WorkdayPresenceState,
 } from '@/lib/workday-presence/model';
+import {
+  checkFreshSignalTriggerOverride,
+  normalizeWorkdayPresenceTriggerRunnerCursor,
+} from '@/lib/workday-presence/trigger-runner';
 import { apiErrorForRoute, badRequest } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -54,6 +58,28 @@ export async function GET(request: Request) {
       state = buildStateFromPrompt({
         prompt: 'What are you working on now?',
       });
+    }
+
+    // Fresh-load trust gap fix: if state exists, check whether signals newer than
+    // the last trigger cursor would fire a trigger override. Pure eval — no Slack,
+    // no DB write. Result only affects the card returned in THIS response.
+    if (state) {
+      const cursor = normalizeWorkdayPresenceTriggerRunnerCursor(
+        metadata.workday_presence_trigger_runner,
+      );
+      const signalWindowStart =
+        cursor.last_signal_cursor ?? new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+      const { data: freshSignals } = await supabase
+        .from('tkg_signals')
+        .select('*')
+        .eq('user_id', auth.userId)
+        .gte('ingested_at', signalWindowStart)
+        .order('ingested_at', { ascending: false })
+        .limit(50);
+      if (freshSignals?.length) {
+        const overridden = checkFreshSignalTriggerOverride({ signals: freshSignals, state });
+        if (overridden) state = overridden;
+      }
     }
 
     const resolution = resolveCommandState({ state });

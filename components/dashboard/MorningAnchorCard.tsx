@@ -15,10 +15,10 @@ type SaveInput = {
   last_completed_step: string;
 };
 
-/** Dashboard contract: acknowledge the move, inspect the draft, defer it, or dismiss it. */
+/** Dashboard contract: two buttons only — View Draft (when a draft exists) and Dismiss. */
 export type RightNowCardActionId = Extract<
   RightNowMessageActionId,
-  'done' | 'view_draft' | 'snooze' | 'dismiss'
+  'view_draft' | 'dismiss'
 >;
 
 export function MorningAnchorCard({
@@ -152,32 +152,16 @@ export function MorningAnchorCard({
         ) : null}
         {onAction ? (
           <div className="mt-6 flex flex-wrap gap-3">
-            <button
-              type="button"
-              className="foldera-button-primary"
-              disabled={actionPending}
-              onClick={() => void onAction('done')}
-            >
-              Done
-            </button>
             {card.draft_ready && !card.draft_expanded ? (
               <button
                 type="button"
-                className="foldera-button-secondary"
+                className="foldera-button-primary"
                 disabled={actionPending}
                 onClick={() => void onAction('view_draft')}
               >
                 View Draft
               </button>
             ) : null}
-            <button
-              type="button"
-              className="foldera-button-secondary"
-              disabled={actionPending}
-              onClick={() => void onAction('snooze')}
-            >
-              Snooze
-            </button>
             <button
               type="button"
               className="foldera-button-secondary"

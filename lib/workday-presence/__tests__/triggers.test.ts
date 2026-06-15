@@ -156,5 +156,86 @@ describe('workday presence trigger evaluation', () => {
       expect(result.payload.text).not.toMatch(BANNED_OUTPUT_RE);
     }
   });
+
+  it('blocker_cleared clears the active blocker and reopens the saved move', () => {
+    const result = evaluateWorkdayPresenceTrigger(
+      {
+        trigger_type: 'blocker_cleared',
+        cleared: {
+          blocker: 'Waiting for legal sign-off',
+          summary: 'Legal approved the redlines and the thread is unblocked.',
+        },
+      },
+      normalizeWorkdayPresenceState({
+        ...baseState,
+        blocker: 'Waiting for legal sign-off',
+      }),
+    );
+    expect(result.outcome).toBe('intervention');
+    if (result.outcome === 'intervention') {
+      expect(result.reason).toMatch(/blocker_cleared/i);
+      expect(result.payload.text).toContain('Blocker cleared');
+      expect(result.payload.text).not.toMatch(BANNED_OUTPUT_RE);
+    }
+  });
+
+  it('commitment_lapsing surfaces one intervention before a commitment slips', () => {
+    const result = evaluateWorkdayPresenceTrigger(
+      {
+        trigger_type: 'commitment_lapsing',
+        commitment: {
+          title: 'ACME renewal confirmation',
+          due_at_iso: '2026-05-20T16:00:00.000Z',
+          summary: 'The renewal window closes at 4 PM PT today.',
+        },
+      },
+      baseState,
+    );
+    expect(result.outcome).toBe('intervention');
+    if (result.outcome === 'intervention') {
+      expect(result.reason).toMatch(/commitment_lapsing/i);
+      expect(result.payload.text).toContain('Commitment lapsing');
+      expect(result.payload.text).not.toMatch(BANNED_OUTPUT_RE);
+    }
+  });
+
+  it('owed_thread_gone_cold intervenes only when the active waiting-on thread is the one that went cold', () => {
+    const result = evaluateWorkdayPresenceTrigger(
+      {
+        trigger_type: 'owed_thread_gone_cold',
+        thread: {
+          thread_id: 'thread-123',
+          summary: 'No answer has arrived on the owner thread and the follow-up window is cooling off.',
+        },
+      },
+      baseState,
+    );
+    expect(result.outcome).toBe('intervention');
+    if (result.outcome === 'intervention') {
+      expect(result.reason).toMatch(/owed_thread_gone_cold/i);
+      expect(result.payload.text).toContain('Owed thread went cold');
+      expect(result.payload.text).not.toMatch(BANNED_OUTPUT_RE);
+    }
+  });
+
+  it('timing_shift produces one intervention when a relevant event window moves', () => {
+    const result = evaluateWorkdayPresenceTrigger(
+      {
+        trigger_type: 'timing_shift',
+        shift: {
+          title: 'Customer renewal call',
+          starts_at_iso: '2026-05-20T15:30:00.000Z',
+          summary: 'The customer moved the call earlier, shrinking the prep window.',
+        },
+      },
+      baseState,
+    );
+    expect(result.outcome).toBe('intervention');
+    if (result.outcome === 'intervention') {
+      expect(result.reason).toMatch(/timing_shift/i);
+      expect(result.payload.text).toContain('Timing shift');
+      expect(result.payload.text).not.toMatch(BANNED_OUTPUT_RE);
+    }
+  });
 });
 

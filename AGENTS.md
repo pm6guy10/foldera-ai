@@ -9,14 +9,18 @@ This is the only agent execution contract in this repo. `CLAUDE.md`, `.cursorrul
 
 ## Boot Sequence
 
-1. Read `ACTIVE_HANDOFF.md`.
-2. Read the active issue it names.
-3. Check Issue #136 for a recent INTERRUPT receipt on the active issue; if one exists, resume from its named next step.
-4. Post a SESSION START receipt to Issue #136 before the first file edit.
+1. **Verify Canonical Repo Path:** Ensure you are in `C:\Users\b-kap\foldera-ai`. Do NOT run in the forbidden clone (`C:\Users\b-kap\OneDrive\Desktop\FOLDERA\foldera-ai`).
+2. **Preflight Checks:** Run `git rev-parse --show-toplevel`, `git branch --show-current`, and `git status --short`.
+3. Read `ACTIVE_HANDOFF.md`.
+4. Read the active issue it names.
+5. Check Issue #136 for a recent INTERRUPT receipt on the active issue; if one exists, resume from its named next step.
+6. Post a SESSION START receipt to Issue #136 before the first file edit.
 
 That is the whole boot. Read other docs only when the active seam requires them. Check open/merged PRs when repo/deploy truth matters. Use Vercel/Supabase MCP only when the seam requires live/runtime truth.
 
 ## Operating Law
+
+- **No Wrong-Clone Rule:** Operations in any directory other than the canonical path are strictly forbidden.
 
 - GitHub source truth beats chat memory.
 - One active seam only.
@@ -77,7 +81,7 @@ Stop only when:
 6. forbidden files touched is NO,
 7. proof commands/checks are recorded.
 
-If any step cannot be completed because of usage limits, permissions, red CI, merge conflict, or missing external access, post `BLOCKED_WITH_EXACT_RECEIPT` with branch, SHA, changed files, proof status, and the exact next command.
+If any step cannot be completed because of usage limits, permissions, merge conflict, or missing external access (NOTE: Red GitHub CI is NO LONGER a blocker), post `BLOCKED_WITH_EXACT_RECEIPT` with branch, SHA, changed files, proof status, and the exact next command.
 
 ## Brandon Product-Owner Doctrine
 
@@ -119,12 +123,13 @@ This is the gate that separates plumbing proof from product proof. Do not let "s
 
 ## Proof Doctrine
 
-Proof must include the affected CI lane. Local proof that omits the CI check capable of failing the seam does not count.
+**CRITICAL OVERRIDE (GitHub Billing Fix):** GitHub CI (Actions) is no longer a mandatory proof gate due to billing limits. Local proof (`npm run gate:continuity`, `vitest`, `lint`, `build`) is the definitive standard. A red GitHub CI check MUST NOT block transaction completion, PR merge, or closeout.
 
-- Browser/product proof is the closure standard: files changed, tests passed, docs updated, CI green, logs, screenshots, and build output are never product success by themselves.
-- If browser/product proof is missing or fails, the verdict is NOT DONE.
+- **No Issue-Comment-as-Proof Rule:** An issue comment is merely a receipt of execution, never proof of product success.
+- Browser/product proof is the closure standard: files changed, tests passed, docs updated, local build output, logs, and screenshots are required.
+- If browser/product proof is missing or fails locally, the verdict is NOT DONE.
 - Deterministic/harness changes: focused tests, replay fixtures, `npm run gate:continuity`, `npm run lint`, `npm run build` are sufficient when the active issue says so.
-- Live-path or user-facing changes: require deployed verification, persisted row, or real route/user-journey proof. A build pass is necessary, not sufficient.
+- Live-path or user-facing changes: require deployed verification, persisted row, or real route/user-journey proof. A local build pass is necessary, not sufficient.
 - Schema work is forbidden unless the active issue explicitly authorizes it; when authorized, the migration must be committed, applied to production Supabase, and verified, or the exact blocker stated.
 
 For dashboard/UI work, the permanent proof gate is:
@@ -208,7 +213,7 @@ Blocker: NONE / <exact>
 
 ### CLOSEOUT receipt — post when reaching a terminal state
 
-The MANDATORY CODEX RUN LEDGER CLOSEOUT below is the CLOSEOUT receipt — the terminal form of the START/INTERRUPT chain. When a CLOSEOUT is posted, any prior INTERRUPT receipt for the same issue is superseded. Post to the primary surface (PR or active issue) first, then Issue #136.
+The MANDATORY RUN LEDGER CLOSEOUT below is the CLOSEOUT receipt — the terminal form of the START/INTERRUPT chain. When a CLOSEOUT is posted, any prior INTERRUPT receipt for the same issue is superseded. Post to the primary surface (PR or active issue) first, then Issue #136.
 
 | Receipt | Destination | When |
 |---|---|---|
@@ -216,13 +221,13 @@ The MANDATORY CODEX RUN LEDGER CLOSEOUT below is the CLOSEOUT receipt — the te
 | INTERRUPT | Issue #136 only | Stopping without a terminal state |
 | CLOSEOUT | PR or active issue + Issue #136 | PROOF / BLOCKED / MERGE READY / STOPPED |
 
-## MANDATORY CODEX RUN LEDGER CLOSEOUT
+## MANDATORY RUN LEDGER CLOSEOUT
 
-Every Codex run must end with a durable GitHub closeout record. The run is not complete until GitHub contains the closeout.
+Every run must end with a durable GitHub closeout record. The run is not complete until GitHub contains the closeout.
 
 1. Primary work surface: post the closeout as a top-level PR comment (or issue comment if no PR exists).
-2. Permanent ledger surface: Find one open issue titled exactly: `[OPS] Codex Run Ledger`. Post one ledger comment for the run.
-3. Generate one `RUN_ID` using this format: `codex-YYYYMMDD-HHMMSSZ-issue-###-pr-###-shortsha`. Include it in both comments; if the same `RUN_ID` already exists, update the existing comment.
+2. Permanent ledger surface: Find one open issue titled exactly: `[OPS] Run Ledger`. Post one ledger comment for the run.
+3. Generate one `RUN_ID` using this format: `agent-YYYYMMDD-HHMMSSZ-issue-###-pr-###-shortsha`. Include it in both comments; if the same `RUN_ID` already exists, update the existing comment.
 4. Post the primary work-surface receipt. Post the ledger receipt. Return only both GitHub receipt URLs to Brandon.
 
 Receipts must include: run id, date/time UTC, repo, active issue/PR, branch, base/head SHA, merge status, blocker status, changed-file list, forbidden work touched YES/NO, proof results per command (PASS/FAIL/SKIPPED WITH REASON), source-truth closeout status, next authorized move, and stop condition. If GitHub posting fails, stop and report the exact operation, exact error, and what was changed/committed/pushed.

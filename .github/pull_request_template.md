@@ -10,6 +10,7 @@
 - Terminal state: MERGED_AND_CLOSED / BLOCKED_WITH_EXACT_RECEIPT / HUMAN_REVIEW_REQUIRED_WITH_REASON / STOPPED_WITH_AUTHORIZED_REASON
 - Source-truth closeout status:
 - Stop condition:
+- Run Ledger ID:
 
 ## What changed
 

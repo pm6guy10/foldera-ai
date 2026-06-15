@@ -47,6 +47,47 @@ describe('runWorkdayPresenceTriggerRunner', () => {
     expect(result.cursor.last_signal_cursor).toBe('2026-06-12T15:59:00.000Z');
   });
 
+  it('persists the triggered state behind the live intervention so follow-up clicks are not acting on stale state', async () => {
+    const postMessage = vi.fn().mockResolvedValue({
+      ok: true,
+      mode: 'live',
+      channel: 'C123',
+      message_ts: '1718200000.123',
+      response: { ok: true },
+    });
+    const persistIntervention = vi.fn().mockResolvedValue(undefined);
+
+    const result = await runWorkdayPresenceTriggerRunner({
+      channel: 'C123',
+      state: baseState,
+      cursor: null,
+      nowIso: '2026-06-12T16:00:00.000Z',
+      signals: [
+        {
+          id: 'sig-1',
+          source: 'gmail',
+          type: 'reply_needed',
+          thread_id: 'thread-123',
+          redacted_summary: 'Customer asked for a human-confirmed renewal answer.',
+          reply_needed: true,
+          ingested_at: '2026-06-12T15:59:00.000Z',
+        },
+      ],
+      slack: { postMessage },
+      persistIntervention,
+    });
+
+    expect(result.outcome).toBe('intervention');
+    expect(persistIntervention).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trigger_type: 'mention_reply_needed',
+        next_state: expect.objectContaining({
+          next_move: expect.stringContaining('Reply needed'),
+        }),
+      }),
+    );
+  });
+
   it('stays quiet and posts nothing when fresh signals do not cross the intervention bar', async () => {
     const postMessage = vi.fn();
 

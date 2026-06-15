@@ -9,6 +9,9 @@ export type SimulatedGmailEvent = {
   snippet: string;
   received_at_iso: string;
   reply_needed?: boolean;
+  blocker_cleared?: boolean;
+  cleared_blocker?: string;
+  gone_cold?: boolean;
   is_noise?: boolean;
 };
 
@@ -19,6 +22,10 @@ export type SimulatedCalendarEvent = {
   starts_at_iso: string;
   requires_prep: boolean;
   prep_move?: string;
+  timing_shift?: boolean;
+  shift_summary?: string;
+  commitment_lapsing?: boolean;
+  due_at_iso?: string;
   is_noise?: boolean;
 };
 
@@ -29,6 +36,9 @@ export type SimulatedSlackEvent = {
   summary: string;
   reply_needed?: boolean;
   changed?: boolean;
+  blocker_cleared?: boolean;
+  cleared_blocker?: string;
+  gone_cold?: boolean;
   is_noise?: boolean;
 };
 
@@ -75,6 +85,36 @@ export function normalizeSimulatedConnectorEvidenceIntoTriggerContexts(
         ignored.push(ignore('calendar', 'noise: missing starts_at_iso'));
         continue;
       }
+      if (event.commitment_lapsing) {
+        contexts.push({
+          trigger_type: 'commitment_lapsing',
+          commitment: {
+            title: normalizeSummary(event.title),
+            due_at_iso: isNonEmptyString(event.due_at_iso) ? event.due_at_iso : event.starts_at_iso,
+            summary: normalizeSummary(
+              isNonEmptyString(event.shift_summary)
+                ? event.shift_summary
+                : `${event.title} is nearing its deadline window.`,
+            ),
+          },
+        });
+        continue;
+      }
+      if (event.timing_shift) {
+        contexts.push({
+          trigger_type: 'timing_shift',
+          shift: {
+            title: normalizeSummary(event.title),
+            starts_at_iso: event.starts_at_iso,
+            summary: normalizeSummary(
+              isNonEmptyString(event.shift_summary)
+                ? event.shift_summary
+                : `${event.title} moved and the timing window changed.`,
+            ),
+          },
+        });
+        continue;
+      }
       if (!event.requires_prep) {
         ignored.push(ignore('calendar', 'noise: requires_prep=false'));
         continue;
@@ -100,14 +140,40 @@ export function normalizeSimulatedConnectorEvidenceIntoTriggerContexts(
         ignored.push(ignore('gmail', 'noise: missing subject/snippet'));
         continue;
       }
+      const summary = normalizeSummary(
+        isNonEmptyString(event.subject) ? event.subject : event.snippet,
+      );
       const replyNeeded = event.reply_needed === true;
+      const blockerCleared = event.blocker_cleared === true;
+      const goneCold = event.gone_cold === true;
+      if (blockerCleared) {
+        if (!isNonEmptyString(event.cleared_blocker)) {
+          ignored.push(ignore('gmail', 'noise: blocker_cleared missing cleared_blocker'));
+          continue;
+        }
+        contexts.push({
+          trigger_type: 'blocker_cleared',
+          cleared: {
+            blocker: event.cleared_blocker.trim(),
+            summary,
+          },
+        });
+        continue;
+      }
+      if (goneCold) {
+        contexts.push({
+          trigger_type: 'owed_thread_gone_cold',
+          thread: {
+            thread_id: event.thread_id.trim(),
+            summary,
+          },
+        });
+        continue;
+      }
       if (!replyNeeded) {
         ignored.push(ignore('gmail', 'noise: reply_needed=false'));
         continue;
       }
-      const summary = normalizeSummary(
-        isNonEmptyString(event.subject) ? event.subject : event.snippet,
-      );
       contexts.push({
         trigger_type: 'mention_reply_needed',
         signal: {
@@ -133,6 +199,23 @@ export function normalizeSimulatedConnectorEvidenceIntoTriggerContexts(
     const normalizedSummary = normalizeSummary(event.summary);
     const replyNeeded = event.reply_needed === true;
     const changed = event.changed === true;
+    const blockerCleared = event.blocker_cleared === true;
+    const goneCold = event.gone_cold === true;
+
+    if (blockerCleared) {
+      if (!isNonEmptyString(event.cleared_blocker)) {
+        ignored.push(ignore('slack', 'noise: blocker_cleared missing cleared_blocker'));
+        continue;
+      }
+      contexts.push({
+        trigger_type: 'blocker_cleared',
+        cleared: {
+          blocker: event.cleared_blocker.trim(),
+          summary: normalizedSummary,
+        },
+      });
+      continue;
+    }
 
     if (replyNeeded) {
       contexts.push({
@@ -142,6 +225,17 @@ export function normalizeSimulatedConnectorEvidenceIntoTriggerContexts(
           thread_id: event.thread_id.trim(),
           summary: normalizedSummary,
           reply_needed: true,
+        },
+      });
+      continue;
+    }
+
+    if (goneCold) {
+      contexts.push({
+        trigger_type: 'owed_thread_gone_cold',
+        thread: {
+          thread_id: event.thread_id.trim(),
+          summary: normalizedSummary,
         },
       });
       continue;
@@ -172,8 +266,12 @@ export type ConnectorEvidenceInterventionSelection = {
 };
 
 function contextPriority(context: WorkdayPresenceTriggerContext): number {
+  if (context.trigger_type === 'commitment_lapsing') return 5;
+  if (context.trigger_type === 'blocker_cleared') return 4;
   if (context.trigger_type === 'mention_reply_needed') return 3;
   if (context.trigger_type === 'waiting_on_changed') return 2;
+  if (context.trigger_type === 'owed_thread_gone_cold') return 2;
+  if (context.trigger_type === 'timing_shift') return 2;
   if (context.trigger_type === 'pre_meeting') return 1;
   return 0;
 }
@@ -187,6 +285,18 @@ function contextDedupKey(context: WorkdayPresenceTriggerContext): string {
   }
   if (context.trigger_type === 'pre_meeting') {
     return `pre_meeting:${context.event.starts_at_iso}:${context.event.title}`;
+  }
+  if (context.trigger_type === 'commitment_lapsing') {
+    return `commitment_lapsing:${context.commitment.due_at_iso}:${context.commitment.title}`;
+  }
+  if (context.trigger_type === 'blocker_cleared') {
+    return `blocker_cleared:${context.cleared.blocker}`;
+  }
+  if (context.trigger_type === 'owed_thread_gone_cold') {
+    return `owed_thread_gone_cold:${context.thread.thread_id}`;
+  }
+  if (context.trigger_type === 'timing_shift') {
+    return `timing_shift:${context.shift.starts_at_iso}:${context.shift.title}`;
   }
   return `other:${(context as unknown as { trigger_type?: string }).trigger_type ?? 'unknown'}`;
 }

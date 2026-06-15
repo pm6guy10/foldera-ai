@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -43,9 +43,63 @@ const requiredCloseoutFiles = [
   'docs/SOURCE_OF_TRUTH_MAP.md',
 ];
 const requiredTerminalStates = ['MERGED_AND_CLOSED', 'BLOCKED_WITH_EXACT_RECEIPT', 'HUMAN_REVIEW_REQUIRED_WITH_REASON', 'STOPPED_WITH_AUTHORIZED_REASON'];
+const workflowGovernanceAllowlist = [
+  '.github/workflows/**',
+  '.github/ISSUE_TEMPLATE/**',
+  'tests/config/**',
+  'scripts/continuity-gate.ts',
+  'FOLDERA_MASTER_BIBLE.md',
+  'ACTIVE_HANDOFF.md',
+  'FOLDERA_BUILD_ORDER.yaml',
+  'ACTIVE_SEAM_STATE.json',
+  '.foldera-contract.json',
+  'docs/SOURCE_OF_TRUTH_MAP.md',
+];
+const forbiddenClaimTerms = [
+  'SOC2',
+  'SOC 2',
+  'HIPAA',
+  'compliance-ready',
+  'audit-ready',
+  'enterprise-grade security',
+  'auto-send',
+  'automatic send',
+  'automatic writeback',
+  'cross-app writeback',
+  'Slack execution',
+  'Teams execution',
+  'surveillance',
+  'screen-reading',
+  'monitors everything',
+  'reads your screen',
+  'sends for you',
+  'guaranteed',
+  'fully automated',
+];
+const publicFacingClaimRoots = ['app', 'components', 'public'];
+const publicFacingExtensions = ['.ts', '.tsx', '.js', '.jsx', '.md', '.mdx', '.html', '.json'];
 
 function readRepoFile(root: string, file: string): string {
   return readFileSync(join(root, file), 'utf8');
+}
+
+function normalizePath(file: string): string {
+  return file.replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
+function globToRegExp(pattern: string): RegExp {
+  const normalized = normalizePath(pattern);
+  const escaped = normalized
+    .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*\*/g, '::DOUBLE_STAR::')
+    .replace(/\*/g, '[^/]*')
+    .replace(/::DOUBLE_STAR::/g, '.*');
+  return new RegExp(`^${escaped}$`);
+}
+
+function matchesAnyPattern(file: string, patterns: string[]): boolean {
+  const normalized = normalizePath(file);
+  return patterns.some((pattern) => globToRegExp(pattern).test(normalized));
 }
 
 function extractYamlNumber(raw: string, key: string): number | null {
@@ -319,8 +373,187 @@ export function runContinuityGate(root: string, options?: { issueStateFetcher?: 
   return failures;
 }
 
+export function validateContractFileDiff(root: string, changedFiles: string[]): string[] {
+  const failures: string[] = [];
+  const contract = JSON.parse(readRepoFile(root, '.foldera-contract.json')) as {
+    allowed_file_patterns?: unknown;
+    forbidden_file_patterns?: unknown;
+  };
+  const allowedPatterns = Array.isArray(contract.allowed_file_patterns)
+    ? contract.allowed_file_patterns.filter((pattern): pattern is string => typeof pattern === 'string')
+    : [];
+  const forbiddenPatterns = Array.isArray(contract.forbidden_file_patterns)
+    ? contract.forbidden_file_patterns.filter((pattern): pattern is string => typeof pattern === 'string')
+    : [];
+  for (const file of changedFiles.map(normalizePath)) {
+    if (matchesAnyPattern(file, forbiddenPatterns)) {
+      failures.push(`Forbidden file change: ${file} matches .foldera-contract.json forbidden_file_patterns.`);
+      continue;
+    }
+    if (!matchesAnyPattern(file, allowedPatterns) && !matchesAnyPattern(file, workflowGovernanceAllowlist)) {
+      failures.push(`Unauthorized file change: ${file} is not allowed by .foldera-contract.json allowed_file_patterns.`);
+    }
+  }
+  return failures;
+}
+
+export function validatePullRequestReceipt(body: string | null | undefined): string[] {
+  const failures: string[] = [];
+  const prBody = body ?? '';
+  if (!prBody.includes('## Source-truth closeout')) failures.push('PR receipt is missing ## Source-truth closeout.');
+  if (!prBody.includes('## Next seam')) failures.push('PR receipt is missing ## Next seam.');
+  if (!prBody.includes('- Run Ledger ID:')) failures.push('PR receipt is missing Run Ledger ID.');
+  for (const file of requiredCloseoutFiles) {
+    const escaped = file.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    const match = prBody.match(new RegExp(`-\\s+\`${escaped}\`:\\s*([^\\r\\n]+)`, 'i'));
+    if (!match) {
+      failures.push(`PR receipt is missing source-truth closeout row for ${file}.`);
+      continue;
+    }
+    const value = match[1].trim().toLowerCase();
+    if (!requiredCloseoutValues.includes(value)) {
+      failures.push(`PR receipt row for ${file} must be one of: ${requiredCloseoutValues.join(', ')}.`);
+    }
+  }
+  return failures;
+}
+
+function extractIssueNumbers(raw: string): number[] {
+  const numbers = new Set<number>();
+  for (const match of raw.matchAll(/(?:issue\s*)?#(\d+)/gi)) {
+    numbers.add(Number(match[1]));
+  }
+  return [...numbers];
+}
+
+export function validateActiveSeamPullRequest(
+  root: string,
+  pullRequest: { title?: string | null; body?: string | null; branch?: string | null },
+): string[] {
+  const failures: string[] = [];
+  const buildOrder = readRepoFile(root, 'FOLDERA_BUILD_ORDER.yaml');
+  const activeIssue = extractYamlNumber(buildOrder, 'active_issue');
+  if (activeIssue === null) return ['Active-seam protection failed: FOLDERA_BUILD_ORDER.yaml active_issue is not a numbered issue.'];
+  const issueNumbers = extractIssueNumbers(`${pullRequest.title ?? ''}\n${pullRequest.body ?? ''}\n${pullRequest.branch ?? ''}`);
+  if (!issueNumbers.includes(activeIssue)) {
+    const target = issueNumbers[0] ?? 'none';
+    failures.push(`Active-seam protection failed: PR targets issue #${target} but FOLDERA_BUILD_ORDER.yaml active_issue is #${activeIssue}.`);
+  }
+  return failures;
+}
+
+function walkFiles(root: string, relativeDir = ''): string[] {
+  const absoluteDir = join(root, relativeDir);
+  if (!existsSync(absoluteDir)) return [];
+  const files: string[] = [];
+  for (const entry of readdirSync(absoluteDir)) {
+    const relative = normalizePath(join(relativeDir, entry));
+    const absolute = join(root, relative);
+    const stat = statSync(absolute);
+    if (stat.isDirectory()) {
+      if (!['node_modules', '.next', '.git', 'tests', '__tests__'].includes(entry)) {
+        files.push(...walkFiles(root, relative));
+      }
+    } else {
+      files.push(relative);
+    }
+  }
+  return files;
+}
+
+function isNegatedClaim(line: string, term: string): boolean {
+  const normalizedLine = line.toLowerCase();
+  const normalizedTerm = term.toLowerCase();
+  const index = normalizedLine.indexOf(normalizedTerm);
+  if (index === -1) return false;
+  const prefix = normalizedLine.slice(Math.max(0, index - 40), index);
+  return /\b(no|not|never|without)\b/.test(prefix) || /\bdo\s+not\s*$/.test(prefix);
+}
+
+export function findForbiddenClaimFailures(root: string): string[] {
+  const failures: string[] = [];
+  const files = publicFacingClaimRoots.flatMap((dir) => walkFiles(root, dir));
+  for (const file of files) {
+    const normalized = normalizePath(file);
+    if (!publicFacingExtensions.some((extension) => normalized.endsWith(extension))) continue;
+    const body = readRepoFile(root, normalized);
+    const lines = body.split(/\r?\n/);
+    lines.forEach((line, index) => {
+      for (const term of forbiddenClaimTerms) {
+        if (line.toLowerCase().includes(term.toLowerCase()) && !isNegatedClaim(line, term)) {
+          failures.push(`Forbidden public-facing claim in ${normalized}:${index + 1}: ${term}`);
+        }
+      }
+    });
+  }
+  return failures;
+}
+
+function readChangedFilesFromGitHubEvent(root: string): string[] {
+  const baseRef = process.env.GITHUB_BASE_REF?.trim();
+  if (!baseRef) return [];
+  try {
+    execSync(`git fetch origin ${baseRef} --depth=1`, {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 20000,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+  } catch {
+    // The diff below may still work when checkout already has the base ref.
+  }
+  try {
+    return execSync(`git diff --name-only origin/${baseRef}...HEAD`, {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 10000,
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+      .split(/\r?\n/)
+      .map((file) => file.trim())
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function readPullRequestFromEvent(): { title?: string | null; body?: string | null; branch?: string | null } | null {
+  const eventPath = process.env.GITHUB_EVENT_PATH?.trim();
+  if (!eventPath || !existsSync(eventPath)) return null;
+  try {
+    const payload = JSON.parse(readFileSync(eventPath, 'utf8')) as {
+      pull_request?: {
+        title?: string | null;
+        body?: string | null;
+        head?: { ref?: string | null };
+      };
+    };
+    if (!payload.pull_request) return null;
+    return {
+      title: payload.pull_request.title,
+      body: payload.pull_request.body,
+      branch: payload.pull_request.head?.ref,
+    };
+  } catch {
+    return null;
+  }
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
-  const failures = runContinuityGate(process.cwd());
+  const root = process.cwd();
+  const failures = runContinuityGate(root);
+  const pullRequest = readPullRequestFromEvent();
+  if (pullRequest) {
+    failures.push(...validatePullRequestReceipt(pullRequest.body));
+    failures.push(...validateActiveSeamPullRequest(root, pullRequest));
+    const changedFiles = readChangedFilesFromGitHubEvent(root);
+    if (changedFiles.length === 0) {
+      failures.push('PR Sentinel could not determine changed files for contract enforcement.');
+    } else {
+      failures.push(...validateContractFileDiff(root, changedFiles));
+    }
+  }
+  failures.push(...findForbiddenClaimFailures(root));
   if (failures.length > 0) {
     console.error('Continuity gate failed:');
     for (const failure of failures) console.error(`- ${failure}`);
