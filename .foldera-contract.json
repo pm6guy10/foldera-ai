@@ -11,7 +11,8 @@
     "FOLDERA_BUILD_ORDER.yaml",
     "app/dashboard/page.tsx",
     "AGENTS.md",
-    "CLAUDE.md"
+    "CLAUDE.md",
+    "docs/SOURCE_OF_TRUTH_MAP.md"
   ],
   "forbidden_file_patterns": [
     "supabase/**",

@@ -30,3 +30,22 @@ A new governance rule may only be added by editing an existing keep-list file, n
 ## Enforcement
 
 `npm run gate:continuity` (also run by PR Sentinel in CI) checks: keep-list files exist, root markdown count is bounded, `ACTIVE_HANDOFF.md` names exactly one seam and stays <= 80 lines, `ACTIVE_SEAM_STATE.json` agrees with handoff/build-order/contract/current branch, and the PR template keeps the source-truth closeout section.
+
+## Supabase Runtime Table Map
+
+| Table | Status | Role in Current Workday Presence / trigger-runner / Slack Flow |
+| --- | --- | --- |
+| `auth.users` | **Authoritative** | Stores `user_metadata` fields: `workday_presence_state` (the active presence card/state) and `workday_presence_suppression_trace` (the last safe-silence/failure trace). |
+| `tkg_signals` | **Authoritative** | The input event stream. Evaluated by trigger-runner to determine if a context change triggers a new Right Now intervention. |
+| `tkg_actions` | **Authoritative** | Durable receipts log. Records trigger emissions (`action_source='workday_presence_trigger'`) and loop closures (`action_source='workday_presence'`). Used by loop health guardian to check the last action (`approved_at`). |
+| `user_tokens` | **Authoritative** | Stores Google/Microsoft integration OAuth sync status, tokens, and reauth status. |
+| `integrations` | **Authoritative** | Stores active user integration settings for Gmail/Calendar/Microsoft. |
+| `pipeline_runs` | **Authoritative** | Observability run-log for trigger runs (`phase='user_run'`) and cron pipelines. |
+| `tkg_commitments` | **Authoritative** | Used during `seed-from-scorer` generation to fetch/evaluate user obligations. |
+| `tkg_entities` | **Authoritative** | Used during `seed-from-scorer` generation to filter and check entity trust. |
+| `api_usage` / `api_budget` | **Authoritative** | Budgets and costs tracking for model calls. |
+| `tkg_briefings` | **Legacy (Deprecated)** | Legacy chief-of-staff caching. Not used; endpoint `/api/briefing/latest` returns 501. |
+| `user_brief_cycle_gates` | **Legacy (Deprecated)** | Legacy daily brief 20-hour cycle cooldown. Ignored by trigger runner. |
+| `signal_summaries` | **Legacy (Deprecated)** | Legacy daily briefing summarizations. Ignored by trigger runner. |
+| `waitlist` / `referral_accounts` | **Legacy (Deprecated)** | Legacy waitlist and referral data. |
+
