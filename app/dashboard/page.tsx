@@ -125,6 +125,22 @@ export default function DashboardPage() {
     [loadCard],
   );
 
+  const autoDetect = useCallback(async () => {
+    setSaveError(null);
+    try {
+      const response = await fetch('/api/workday-presence/seed-from-scorer', {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        setSaveError('Could not detect your next move. Try again.');
+        return;
+      }
+      await loadCard();
+    } catch {
+      setSaveError('Could not detect your next move. Try again.');
+    }
+  }, [loadCard]);
+
   return (
     <main className="min-h-screen bg-[#030305] text-white">
       <header className="border-b border-white/10">
@@ -188,6 +204,7 @@ export default function DashboardPage() {
             }
             onSave={saveAnchor}
             onAction={respond}
+            onAutoDetect={sourceState === 'connected' ? autoDetect : undefined}
             actionPending={actionPending}
           />
         )}

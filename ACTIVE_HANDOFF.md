@@ -11,7 +11,7 @@ Last updated: 2026-06-14 PT (Awaiting next authorized seam)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is NONE / awaiting authorized seam.
+Active implementation seam is issue #325.
 
 Issue #136 is COMPLETE — Run Ledger rule installed via PR #319 (`d1291ff`).
 Issue #321 is COMPLETE — Autonomous Seam Governor installed via PR #322.
@@ -28,11 +28,12 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-- NONE
+- Issue #325 (M2: stranger closes loop)
 
 ## Next exact move
 
-1. Await authorized seam from owner.
+1. Implement UI for M2
+2. Prove M2
 
 Current production truth: `Last known production SHA: c95e34b` (PR #317 merged; #316 CI demotion live)
 

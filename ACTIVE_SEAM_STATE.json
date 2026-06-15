@@ -1,6 +1,6 @@
 {
-  "active_issue": 0,
-  "active_branch": "chore/stale-truth-cleanup",
+  "active_issue": 325,
+  "active_branch": "feature/325-m2-stranger-closes-loop",
   "active_pr": null,
   "deployed_commit_sha": "b03e7c48ad06c",
   "runtime_env": "production",
