@@ -9,7 +9,9 @@
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "app/dashboard/page.tsx"
+    "app/dashboard/page.tsx",
+    "AGENTS.md",
+    "CLAUDE.md"
   ],
   "forbidden_file_patterns": [
     "supabase/**",

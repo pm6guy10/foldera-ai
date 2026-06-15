@@ -2,8 +2,8 @@
   "active_issue": 339,
   "active_branch": "feature/339-frontend-auth-closeout",
   "active_pr": null,
-  "deployed_commit_sha": "80d3a6ba75f5527040fc9e08196a011c85d2ce12",
+  "deployed_commit_sha": "85eb6d4b98129e0bba95f1078594ae598df94bf7",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-15T22:37:00Z"
+  "last_verified_at": "2026-06-15T22:52:00Z"
 }
