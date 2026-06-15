@@ -1,9 +1,9 @@
 {
-  "active_issue": 330,
-  "active_branch": "feature/330-frontend-polish",
+  "active_issue": 0,
+  "active_branch": "ops/stale-330-control-plane",
   "active_pr": null,
   "deployed_commit_sha": "b03e7c48ad06c",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-14T19:33:00Z"
+  "last_verified_at": "2026-06-15T20:31:37Z"
 }
