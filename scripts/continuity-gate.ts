@@ -67,6 +67,7 @@ const GOVERNANCE_CONTRACT_PATTERNS = [
   'SESSION_HISTORY.md',
   'FOLDERA_MASTER_BIBLE.md',
   'scripts/continuity-gate.ts',
+  'scripts/preflight-contract.ts',
   'tests/config/**',
   '.github/workflows/**',
   '.github/ISSUE_TEMPLATE/**',
