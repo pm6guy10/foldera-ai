@@ -320,7 +320,8 @@ export async function maybeRunWorkdayPresenceTriggerRunnerForUser(
   if (isOwner) {
     const slackBotToken = process.env.SLACK_BOT_TOKEN?.trim();
     channel = process.env.FOLDERA_SLACK_SELF_CHANNEL_ID?.trim() ?? null;
-    if (slackBotToken && channel) {
+    const isProduction = process.env.VERCEL_ENV === 'production' || !process.env.VERCEL_ENV;
+    if (slackBotToken && channel && isProduction) {
       slackAdapter = createLiveSlackAdapter(slackBotToken);
     }
   }

@@ -28,13 +28,15 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-Issue #327 is the active frontend-audit seam.
+Issue #328 is the active notification audit seam.
 
 ## Next exact move
 
-1. PR #329 is MERGE_READY. After merge, proceed to Issue #328 (Vercel MCP setup + Slack send-safety audit).
+1. Silence Vercel PR comments (by adding github.silent to vercel.json).
+2. Audit Slack notification noise and ensure test mode or production logs do not spam.
+3. Once proven and receipted, open a PR for #328 and close it out.
 
-Current production truth: `Last known production SHA: c95e34b` (PR #317 merged; #316 CI demotion live)
+Current production truth: `Last known production SHA: 24dff7b` (PR #329 merged; Morning Anchor Card fixed)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 

@@ -148,7 +148,9 @@ export function createLiveSlackAdapter(botToken: string, fetchImpl: typeof fetch
 
 export function resolveSlackAdapterFromEnv(): SlackAdapter {
   const token = process.env.SLACK_BOT_TOKEN;
-  if (!token) return createTestSafeSlackAdapter();
+  // Prevent Vercel preview/dev deployments from sending live Slack noise
+  const isProduction = process.env.VERCEL_ENV === 'production' || !process.env.VERCEL_ENV;
+  if (!token || !isProduction) return createTestSafeSlackAdapter();
   return createLiveSlackAdapter(token);
 }
 
