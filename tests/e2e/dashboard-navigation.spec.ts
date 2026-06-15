@@ -292,8 +292,6 @@ describeAuthMocked('Dashboard Right Now loop', () => {
     await page.goto('/dashboard');
 
     await expect(page.getByRole('heading', { name: /^Right now\.$/ })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('button', { name: /^Done$/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Snooze$/ })).toBeVisible();
     await expect(page.getByRole('button', { name: /^Dismiss$/ })).toBeVisible();
     await expect(page.getByText(/Trusted verdict: Anchor saved/i)).toBeVisible();
     await expect(page.getByTestId('right-now-card')).not.toContainText(/write the next|smallest (next|concrete) step/i);

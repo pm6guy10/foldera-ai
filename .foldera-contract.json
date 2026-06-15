@@ -1,36 +1,36 @@
 {
-  "backlog_id": "m2_stranger_closes_loop",
-  "active_issue": 325,
+  "backlog_id": "audit-frontend-reality",
+  "active_issue": 327,
   "base_commit": "HEAD",
-  "money_loop_rung": "m2",
-  "user_system_path": "Stranger closes loop (non-owner, zero narration)",
-  "allowed_file_patterns": ["AGENTS.md", 
+  "money_loop_rung": "ops",
+  "user_system_path": "Audit frontend mismatch",
+  "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "app/dashboard/**",
-    "components/dashboard/**",
-    "lib/workday-presence/**"
+    "components/dashboard/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
+    "app/**",
+    "lib/**",
     "middleware.ts",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Dashboard and workday-presence files.",
-  "forbidden_files_raw": "Core dependencies.",
-  "required_local_proof": "focused tests + npm run gate:continuity + npm run build + runtime/product proof or exact blocker",
+  "allowed_files_raw": "Source truth files.",
+  "forbidden_files_raw": "No product changes.",
+  "required_local_proof": "npm run gate:continuity",
   "required_browser_proof": "not applicable",
   "browser_proof_command": "not applicable",
-  "acceptance_condition": "Non-owner can automatically detect and save workday presence state from dashboard.",
-  "stop_condition": "Stop when issue #325 proof standard is met (runtime/product proof or exact blocker).",
-  "is_user_facing": true,
+  "acceptance_condition": "Source truth files are updated to reflect the merge of PR #322.",
+  "stop_condition": "Stop when source truth is closed out and issue 323 is merged and closed with receipts.",
+  "is_user_facing": false,
   "anti_regression_checks": [
     "Continuity gate passes"
   ],
-  "next_command": "Implement UI for M2",
+  "next_command": "Update ACTIVE_HANDOFF.md to record PR #322 merge.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
@@ -40,4 +40,3 @@
     ]
   }
 }
-

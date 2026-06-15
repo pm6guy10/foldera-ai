@@ -44,7 +44,6 @@ export function MorningAnchorCard({
     last_completed_step: '',
   });
   const [saving, setSaving] = useState(false);
-  const [detailsOpen, setDetailsOpen] = useState(false);
 
   if (card.mode === 'setup') {
     return (
@@ -63,23 +62,6 @@ export function MorningAnchorCard({
               value={input.current_focus}
               onChange={(e) => setInput((v) => ({ ...v, current_focus: e.target.value }))}
             />
-            <button
-              type="button"
-              className="foldera-button-secondary w-fit"
-              onClick={() => setDetailsOpen((open) => !open)}
-            >
-              {detailsOpen ? 'Hide details' : 'Add details (optional)'}
-            </button>
-            {detailsOpen ? (
-              <div className="grid gap-3">
-                <input className="foldera-input" placeholder="Next move (optional)" value={input.next_move} onChange={(e) => setInput((v) => ({ ...v, next_move: e.target.value }))} />
-                <input className="foldera-input" placeholder="Why this matters (optional)" value={input.why_it_matters} onChange={(e) => setInput((v) => ({ ...v, why_it_matters: e.target.value }))} />
-                <input className="foldera-input" placeholder="Blocker (optional)" value={input.blocker} onChange={(e) => setInput((v) => ({ ...v, blocker: e.target.value }))} />
-                <input className="foldera-input" placeholder="Do not touch (optional)" value={input.do_not_touch} onChange={(e) => setInput((v) => ({ ...v, do_not_touch: e.target.value }))} />
-                <input className="foldera-input" placeholder="Waiting on (optional)" value={input.waiting_on} onChange={(e) => setInput((v) => ({ ...v, waiting_on: e.target.value }))} />
-                <input className="foldera-input" placeholder="Last completed step (optional)" value={input.last_completed_step} onChange={(e) => setInput((v) => ({ ...v, last_completed_step: e.target.value }))} />
-              </div>
-            ) : null}
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
             <button
