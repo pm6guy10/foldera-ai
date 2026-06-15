@@ -1,41 +1,38 @@
 {
-  "backlog_id": "auth-frontend-polish",
-  "active_issue": 330,
+  "backlog_id": "awaiting-authorized-seam",
+  "active_issue": "none",
   "base_commit": "HEAD",
   "money_loop_rung": "ops",
-  "user_system_path": "Auth/Frontend visual polish pass",
+  "user_system_path": "Await next authorized implementation seam",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
-    "FOLDERA_BUILD_ORDER.yaml",
-    "app/dashboard/**",
-    "app/login/**",
-    "app/start/**",
-    "components/**",
-    "tests/e2e/**"
+    "FOLDERA_BUILD_ORDER.yaml"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
+    "app/**",
+    "components/**",
     "middleware.ts",
     "package.json",
     "package-lock.json",
     "lib/slack/**",
-    "app/api/**"
+    "app/api/**",
+    "tests/e2e/**"
   ],
-  "allowed_files_raw": "Source truth and frontend auth/dashboard UI files.",
-  "forbidden_files_raw": "No backend schema, API, or Stripe changes.",
+  "allowed_files_raw": "Source-truth control-plane files only while awaiting the next authorized seam.",
+  "forbidden_files_raw": "No product code, runtime, auth, schema, Slack, Stripe, or UI changes.",
   "required_local_proof": "npm run gate:continuity",
   "required_browser_proof": "npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts",
   "browser_proof_command": "npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts",
-  "acceptance_condition": "Frontend auth and dashboard first-run state are visually polished.",
-  "stop_condition": "Stop when issue 330 is completed with receipts.",
+  "acceptance_condition": "The repo names no closed issue as active and waits for an explicitly authorized successor seam.",
+  "stop_condition": "Stop when source truth no longer points at a closed issue as active and GitHub receipts record the repair.",
   "is_user_facing": true,
   "anti_regression_checks": [
-    "Continuity gate passes",
-    "E2E tests pass"
+    "Continuity gate passes"
   ],
-  "next_command": "Polish first-run auth UI.",
+  "next_command": "Create or name the next authorized issue before any implementation work begins.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

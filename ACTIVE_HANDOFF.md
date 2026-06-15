@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-14 PT (Awaiting next authorized seam)
+Last updated: 2026-06-15 PT (Awaiting next authorized seam)
 
 ## Boot
 
@@ -28,16 +28,15 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-Issue #330 is the active frontend auth polish seam.
+- NONE
 
 ## Next exact move
 
-1. Extract `OAuthButton` and icons into a reusable `components/auth/OAuthConnectButton.tsx`.
-2. Update dashboard first-run state to use the premium visual aesthetic.
-3. Update `app/login/login-inner.tsx` to use the shared button.
-4. Verify with Playwright and gate continuity.
+1. Create or name the next authorized GitHub issue.
+2. Update `ACTIVE_HANDOFF.md`, `ACTIVE_SEAM_STATE.json`, `FOLDERA_BUILD_ORDER.yaml`, and `.foldera-contract.json` to that issue before coding.
+3. Do not start implementation work until the next active seam is explicitly authorized.
 
-Current production truth: `Last known production SHA: 24dff7b` (PR #329 merged; Morning Anchor Card fixed)
+Current production truth: `Last known main SHA: 00f2977` (PR #333 merged; issue #330 closed on GitHub at 2026-06-15T14:28:42Z)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
