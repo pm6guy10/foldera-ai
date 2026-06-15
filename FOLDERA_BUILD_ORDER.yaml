@@ -22,10 +22,10 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 330
-priority_class: PRODUCT
-work_type: FEATURE
-why_this_first: "Auth and first-run visual polish pass"
+active_issue: none
+priority_class: OPS
+work_type: CLOSEOUT
+why_this_first: "Audit closeout for issue #330 (frontend auth polish complete)"
 next_seam: "Audit closeout"
 required_gate_command: npm run gate:continuity
 paused_issues:

@@ -11,7 +11,7 @@ Last updated: 2026-06-14 PT (Awaiting next authorized seam)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active seam: #330 (frontend auth polish). See Current slice below.
+Issue #330 (frontend auth polish) is COMPLETE. Awaiting audit closeout.
 
 Issue #136 is COMPLETE — Run Ledger rule installed via PR #319 (`d1291ff`).
 Issue #321 is COMPLETE — Autonomous Seam Governor installed via PR #322.
@@ -28,14 +28,13 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-Issue #330 is the active frontend auth polish seam.
+Issue #330 is COMPLETE — frontend auth polish merged via PR #336. No active seam.
 
 ## Next exact move
 
-1. Extract `OAuthButton` and icons into a reusable `components/auth/OAuthConnectButton.tsx`.
-2. Update dashboard first-run state to use the premium visual aesthetic.
-3. Update `app/login/login-inner.tsx` to use the shared button.
-4. Verify with Playwright and gate continuity.
+1. Confirm PR #336 is merged and CI is green.
+2. Post audit closeout receipt to issue #136.
+3. Await next authorized seam.
 
 Current production truth: `Last known production SHA: 24dff7b` (PR #329 merged; Morning Anchor Card fixed)
 

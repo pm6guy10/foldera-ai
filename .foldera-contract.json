@@ -1,6 +1,6 @@
 {
   "backlog_id": "auth-frontend-polish",
-  "active_issue": 330,
+  "active_issue": "none",
   "base_commit": "HEAD",
   "money_loop_rung": "ops",
   "user_system_path": "Auth/Frontend visual polish pass",
