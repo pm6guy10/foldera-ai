@@ -28,13 +28,14 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-Issue #328 is the active notification audit seam.
+Issue #330 is the active frontend auth polish seam.
 
 ## Next exact move
 
-1. Silence Vercel PR comments (by adding github.silent to vercel.json).
-2. Audit Slack notification noise and ensure test mode or production logs do not spam.
-3. Once proven and receipted, open a PR for #328 and close it out.
+1. Extract `OAuthButton` and icons into a reusable `components/auth/OAuthConnectButton.tsx`.
+2. Update dashboard first-run state to use the premium visual aesthetic.
+3. Update `app/login/login-inner.tsx` to use the shared button.
+4. Verify with Playwright and gate continuity.
 
 Current production truth: `Last known production SHA: 24dff7b` (PR #329 merged; Morning Anchor Card fixed)
 

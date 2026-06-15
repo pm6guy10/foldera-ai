@@ -22,10 +22,10 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 328
+active_issue: 330
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Implementing bounded frontend audit"
+why_this_first: "Auth and first-run visual polish pass"
 next_seam: "Audit closeout"
 required_gate_command: npm run gate:continuity
 paused_issues:

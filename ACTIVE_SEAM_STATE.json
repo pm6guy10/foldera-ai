@@ -1,6 +1,6 @@
 {
-  "active_issue": 328,
-  "active_branch": "feature/328-notification-audit",
+  "active_issue": 330,
+  "active_branch": "feature/330-frontend-polish",
   "active_pr": null,
   "deployed_commit_sha": "b03e7c48ad06c",
   "runtime_env": "production",
