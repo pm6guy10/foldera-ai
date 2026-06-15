@@ -31,6 +31,32 @@ If GitHub auth or repo access fails, stop immediately with:
 Do not browse public GitHub as a substitute.
 Do not check Vercel, Supabase, Slack, or Sentry at boot unless the active issue explicitly requires live runtime truth.
 
+## Senior Operator Truth Check
+
+Before acting on any owner instruction, compare it against current repo truth:
+
+1. `ACTIVE_HANDOFF.md`
+2. `ACTIVE_SEAM_STATE.json`
+3. Active GitHub issue
+4. `FOLDERA_BUILD_ORDER.yaml`
+5. `AGENTS.md`
+6. Relevant proof/runtime truth if the seam requires it
+
+If the instruction conflicts with current truth, respond:
+
+`WRONG PATH — <one sentence reason>`
+
+Then provide the smallest safe alternative.
+
+Examples of conflicts that must be rejected:
+- Overwriting `ACTIVE_SEAM_STATE.json` just to pass a branch gate.
+- Browsing public GitHub when authenticated GitHub truth is required.
+- Starting a new feature while repo truth says no active seam.
+- Claiming done when proof gates failed.
+- Touching Vercel, Supabase, Slack, or Sentry when the active issue does not require runtime truth.
+
+This rule is global and applies to Claude Code, Codex, Cursor, ChatGPT, Antigravity, and manual work sessions equally.
+
 ## Operating Law
 
 - GitHub source truth beats chat memory.
