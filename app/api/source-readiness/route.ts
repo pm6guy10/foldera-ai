@@ -7,6 +7,7 @@ import {
   loadConnectorHealthRows,
 } from '@/lib/integrations/connector-health';
 import { buildFirstRunSourceReadiness } from '@/lib/source-readiness/first-run-source-readiness';
+import { CURRENT_WORKDAY_PRESENCE_ACTION_SOURCES } from '@/lib/source-readiness/current-runtime-truth';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { withReadOnlyUserCache } from '@/lib/utils/read-only-user-cache';
 
@@ -74,7 +75,8 @@ export async function GET() {
       supabase
         .from('tkg_actions')
         .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId),
+        .eq('user_id', userId)
+        .in('action_source', [...CURRENT_WORKDAY_PRESENCE_ACTION_SOURCES]),
       supabase
         .from('pipeline_runs')
         .select('id', { count: 'exact', head: true })

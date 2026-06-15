@@ -37,7 +37,7 @@ A new governance rule may only be added by editing an existing keep-list file, n
 | --- | --- | --- |
 | `auth.users` | **Authoritative** | Stores `user_metadata` fields: `workday_presence_state` (the active presence card/state) and `workday_presence_suppression_trace` (the last safe-silence/failure trace). |
 | `tkg_signals` | **Authoritative** | The input event stream. Evaluated by trigger-runner to determine if a context change triggers a new Right Now intervention. |
-| `tkg_actions` | **Authoritative** | Durable receipts log. Records trigger emissions (`action_source='workday_presence_trigger'`) and loop closures (`action_source='workday_presence'`). Used by loop health guardian to check the last action (`approved_at`). |
+| `tkg_actions` | **Authoritative (current-path rows only)** | Durable receipts log. Current-path rows have `action_source IN ('workday_presence_trigger', 'workday_presence')`. Legacy rows (`action_source=agent_*` or `NULL`) are not current product truth and must not be counted as finished moves. Loop health guardian checks `approved_at` on current-path rows. |
 | `user_tokens` | **Authoritative** | Stores Google/Microsoft integration OAuth sync status, tokens, and reauth status. |
 | `integrations` | **Authoritative** | Stores active user integration settings for Gmail/Calendar/Microsoft. |
 | `pipeline_runs` | **Authoritative** | Observability run-log for trigger runs (`phase='user_run'`) and cron pipelines. |
