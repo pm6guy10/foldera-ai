@@ -1,9 +1,9 @@
 {
-  "backlog_id": "product-slack-cockpit",
-  "active_issue": 314,
-  "base_commit": "b86d19ef2c564f6252859c2901677083bf261ce8",
-  "money_loop_rung": "product",
-  "user_system_path": "Add a Slack command surface for Foldera project command-center use",
+  "backlog_id": "ops-run-ledger",
+  "active_issue": 136,
+  "base_commit": "b03e7c43b64b070cc7d46cc83d0d13f4134ce435",
+  "money_loop_rung": "ops",
+  "user_system_path": "Install a permanent Codex Run Ledger rule",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -11,39 +11,32 @@
     "FOLDERA_BUILD_ORDER.yaml",
     "FOLDERA_MASTER_BIBLE.md",
     "AGENTS.md",
-    "next.config.mjs",
-    "app/api/slack/command/**",
-    "lib/slack/command.ts",
-    "docs/SOURCE_OF_TRUTH_MAP.md"
+    "docs/SOURCE_OF_TRUTH_MAP.md",
+    "scripts/continuity-gate.ts",
+    ".github/pull_request_template.md"
   ],
   "forbidden_file_patterns": [
     "components/**",
     "supabase/**",
-    "app/api/auth/**",
-    "app/api/stripe/**",
+    "app/**",
     "lib/stripe/**",
     "lib/auth/**",
     "middleware.ts",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Issue #314 slack bot route, slack logic lib, and Next.js config.",
-  "forbidden_files_raw": "No UI changes, no Stripe/auth/schema modifications.",
-  "required_local_proof": "npm run gate:continuity && npx vitest run tests/config/__tests__/continuity-gate.test.ts --reporter=verbose && npm run build",
-  "required_browser_proof": "not applicable - slack command only",
+  "allowed_files_raw": "Issue #136 Run Ledger documentation and continuity gate updates.",
+  "forbidden_files_raw": "No product changes.",
+  "required_local_proof": "npm run gate:continuity && npm run build",
+  "required_browser_proof": "not applicable",
   "browser_proof_command": "not applicable",
-  "acceptance_condition": "Slack command bot responds with status, next, blockers, deploy, and receipt.",
-  "stop_condition": "Stop only when #314 is merged and closed with GitHub receipts, or blocked with exact receipt.",
-  "is_user_facing": true,
+  "acceptance_condition": "Run Ledger rules are codified in doctrine files and continuity gate.",
+  "stop_condition": "Stop only when #136 is merged and closed with GitHub receipts.",
+  "is_user_facing": false,
   "anti_regression_checks": [
-    "valid PR shape passes",
-    "forbidden file diff fails",
-    "incomplete receipt fails",
-    "non-active issue PR fails",
-    "forbidden claim planted in public-facing copy fails",
-    "current codebase passes forbidden-claim scan"
+    "Run ledger rules are present"
   ],
-  "next_command": "Finish #314 transaction through PR, CI, receipts, and merge or exact blocker.",
+  "next_command": "Implement the Run Ledger doctrine in AGENTS.md, FOLDERA_MASTER_BIBLE.md, and optionally scripts/continuity-gate.ts.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

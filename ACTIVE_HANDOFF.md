@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-14 PT (#314 active on feature/314-slack-cockpit.)
+Last updated: 2026-06-14 PT (#136 active on feature/136-run-ledger.)
 
 ## Boot
 
@@ -11,8 +11,9 @@ Last updated: 2026-06-14 PT (#314 active on feature/314-slack-cockpit.)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Issue #314 is the active implementation seam.
+Issue #136 is the active implementation seam.
 
+Issue #314 is COMPLETE — Slack cockpit merged via PR #318 (`b03e7c4`).
 Issue #316 is COMPLETE — GitHub CI demoted to optional workflow_dispatch via PR #317.
 Issue #296 (M1 backend-lock) is COMPLETE — merged via PR #307 (`ecf89dd`); production live.
 Issue #301 is COMPLETE — control-plane truth ledger + hidden-op Slack wiring merged through PR #305 (`f29cd80`); hidden-op outcome logging deployed in commit `370cc7a`.
@@ -25,12 +26,12 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-- Issue #314 [PRODUCT] Slack cockpit: Foldera command bot for project status.
+- Issue #136 [OPS] Run Ledger: Install a permanent Codex Run Ledger rule so every run leaves a queryable GitHub closeout record.
 
 ## Next exact move
 
-1. Build `app/api/slack/command/route.ts` and `lib/slack/command.ts`.
-2. Update `next.config.mjs` to trace necessary governance files.
+1. Add the mandatory ledger closeout rule to the authoritative repo instruction surface (`AGENTS.md` and/or `FOLDERA_MASTER_BIBLE.md`).
+2. Add narrow command/source-truth gate enforcement in `scripts/continuity-gate.ts` if feasible.
 3. Commit, test continuity, push, and open PR.
 
 Current production truth: `Last known production SHA: c95e34b` (PR #317 merged; #316 CI demotion live)

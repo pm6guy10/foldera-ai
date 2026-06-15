@@ -1,8 +1,8 @@
 {
-  "active_issue": 314,
-  "active_branch": "feature/314-slack-cockpit",
+  "active_issue": 136,
+  "active_branch": "feature/136-run-ledger",
   "active_pr": null,
-  "deployed_commit_sha": "bc08c934b27634ef753a79256613be585dbe5ec6",
+  "deployed_commit_sha": "b03e7c48ad06c",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
   "last_verified_at": "2026-06-14T19:33:00Z"

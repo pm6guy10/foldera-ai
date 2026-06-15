@@ -855,7 +855,7 @@ Parked work:
 
 Ledger-only work:
 
-- Issue #136 remains the standing Codex Run Ledger only.
+- issue #136 remains the standing Run Ledger only.
 
 Owner-rejected work:
 

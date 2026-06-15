@@ -213,7 +213,7 @@ Blocker: NONE / <exact>
 
 ### CLOSEOUT receipt — post when reaching a terminal state
 
-The MANDATORY CODEX RUN LEDGER CLOSEOUT below is the CLOSEOUT receipt — the terminal form of the START/INTERRUPT chain. When a CLOSEOUT is posted, any prior INTERRUPT receipt for the same issue is superseded. Post to the primary surface (PR or active issue) first, then Issue #136.
+The MANDATORY RUN LEDGER CLOSEOUT below is the CLOSEOUT receipt — the terminal form of the START/INTERRUPT chain. When a CLOSEOUT is posted, any prior INTERRUPT receipt for the same issue is superseded. Post to the primary surface (PR or active issue) first, then Issue #136.
 
 | Receipt | Destination | When |
 |---|---|---|
@@ -221,13 +221,13 @@ The MANDATORY CODEX RUN LEDGER CLOSEOUT below is the CLOSEOUT receipt — the te
 | INTERRUPT | Issue #136 only | Stopping without a terminal state |
 | CLOSEOUT | PR or active issue + Issue #136 | PROOF / BLOCKED / MERGE READY / STOPPED |
 
-## MANDATORY CODEX RUN LEDGER CLOSEOUT
+## MANDATORY RUN LEDGER CLOSEOUT
 
-Every Codex run must end with a durable GitHub closeout record. The run is not complete until GitHub contains the closeout.
+Every run must end with a durable GitHub closeout record. The run is not complete until GitHub contains the closeout.
 
 1. Primary work surface: post the closeout as a top-level PR comment (or issue comment if no PR exists).
-2. Permanent ledger surface: Find one open issue titled exactly: `[OPS] Codex Run Ledger`. Post one ledger comment for the run.
-3. Generate one `RUN_ID` using this format: `codex-YYYYMMDD-HHMMSSZ-issue-###-pr-###-shortsha`. Include it in both comments; if the same `RUN_ID` already exists, update the existing comment.
+2. Permanent ledger surface: Find one open issue titled exactly: `[OPS] Run Ledger`. Post one ledger comment for the run.
+3. Generate one `RUN_ID` using this format: `agent-YYYYMMDD-HHMMSSZ-issue-###-pr-###-shortsha`. Include it in both comments; if the same `RUN_ID` already exists, update the existing comment.
 4. Post the primary work-surface receipt. Post the ledger receipt. Return only both GitHub receipt URLs to Brandon.
 
 Receipts must include: run id, date/time UTC, repo, active issue/PR, branch, base/head SHA, merge status, blocker status, changed-file list, forbidden work touched YES/NO, proof results per command (PASS/FAIL/SKIPPED WITH REASON), source-truth closeout status, next authorized move, and stop condition. If GitHub posting fails, stop and report the exact operation, exact error, and what was changed/committed/pushed.
