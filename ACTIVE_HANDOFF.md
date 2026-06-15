@@ -17,7 +17,7 @@ PR #338 is COMPLETE — Repo Truth Boot Gate accepts GitHub MCP as valid auth pa
 PR #337 is COMPLETE — Stale #330 control-plane cleared; merged `80d3a6b`.
 PR #335 is COMPLETE — BOOT receipt format, authority principle, route-obvious-work rule; merged `5793b41`.
 PR #334 is COMPLETE — Repo Truth Boot Gate, Senior Operator Truth Check, governance-only gate exemption; merged `b42e8ae`.
-PR #336 is OPEN — frontend auth polish closeout (feature/330-frontend-polish); awaiting merge.
+PR #336 is CLOSED WITHOUT MERGE — frontend auth polish closeout (feature/330-frontend-polish); dashboard OAuthConnectButton fix not on main.
 Issue #136 is COMPLETE — Run Ledger rule installed via PR #319 (`d1291ff`).
 Issue #321 is COMPLETE — Autonomous Seam Governor installed via PR #322.
 Issue #314 is COMPLETE — Slack cockpit merged via PR #318 (`b03e7c4`).
