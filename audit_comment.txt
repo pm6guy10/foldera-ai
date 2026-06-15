@@ -1,0 +1,40 @@
+## DAY-1 BOOT AUDIT
+**Current truth**: 
+ACTIVE_SEAM_STATE.json has active_issue: 325. PR #326 is the active M2 seam and is properly blocked awaiting live non-owner OAuth proof. Product doctrine dictates Foldera is a Workday Presence Layer offering relief, not homework, where sources drive state.
+
+**Open work**:
+Issues: 327 (Audit), 325 (M2), 165 (Open Threads)
+PRs: 326 (M2: stranger closes loop)
+
+**Completed work**:
+M1 milestone complete. Run ledger complete. Auto-seam governor installed. Slack cockpit merged. Owner-operator passes complete. Control plane truth ledger deployed.
+
+**Top 5 blockers**:
+1. PR #326 blocked on live browser automation for non-owner OAuth tests.
+2. Frontend MorningAnchorCard forces users to narrate state (7 text inputs) rather than letting sources drive it.
+3. Dashboard defaults to setup form when no state exists, failing to explain honest safe silence.
+4. Brandon is forced to run live proof loops when browser automation is unavailable.
+5. Minor stale / dead UI links on Landing Page.
+
+**Single controlling blocker**:
+Frontend makes the user narrate state instead of letting sources drive it. The setup mode in `MorningAnchorCard.tsx` displays a 7-field form (Current focus, Next move, Why it matters, Blocker, Do not touch, Waiting on, Last completed step). This is task-manager homework and a direct violation of the Workday Presence Layer doctrine.
+
+**One selected seam**:
+Remove the 6 manual detail inputs from `MorningAnchorCard.tsx`'s setup mode. Retain only the primary "What are you trying to move forward today?" prompt and the "Auto-detect next move" action, ensuring default empty strings for the removed details upon save.
+
+**Files likely touched**:
+- `components/dashboard/MorningAnchorCard.tsx`
+
+**Forbidden work**:
+- Broad redesign, new connectors, schema changes, Stripe/billing, generic cleanup.
+
+**Proof required**:
+- `git rev-parse --show-toplevel`
+- `git branch --show-current`
+- `git status --short`
+- `npm run gate:continuity`
+- `npm run build`
+- `npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list`
+
+**Stop condition**:
+Stop when the controlling blocker is fixed with proof, a PR is opened, and source truth is updated.

@@ -11,7 +11,7 @@ Last updated: 2026-06-14 PT (Awaiting next authorized seam)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Issue #325 is the active M2 implementation seam.
+Active implementation seam is NONE / awaiting authorized seam.
 
 Issue #136 is COMPLETE — Run Ledger rule installed via PR #319 (`d1291ff`).
 Issue #321 is COMPLETE — Autonomous Seam Governor installed via PR #322.
@@ -28,12 +28,11 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-- Issue #325 (M2: stranger closes loop)
+Issue #327 is the active frontend-audit seam.
 
 ## Next exact move
 
-1. BLOCKED_WITH_EXACT_RECEIPT: Need proof that a non-owner can authenticate, connect/seed source state, see their own Right Now state/card or honest safe silence, respond, and persist a receipt. I cannot perform a live non-owner OAuth loop because I lack live dummy Google/Microsoft credentials and browser automation.
-2. Waiting for owner to run live proof or provide credentials.
+1. PR #329 is MERGE_READY. After merge, proceed to Issue #328 (Vercel MCP setup + Slack send-safety audit).
 
 Current production truth: `Last known production SHA: c95e34b` (PR #317 merged; #316 CI demotion live)
 

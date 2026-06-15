@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 325
+active_issue: 327
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Implementing M2 milestone (stranger closes loop)"
-next_seam: "M2 Implementation"
+why_this_first: "Implementing bounded frontend audit"
+next_seam: "Audit closeout"
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
@@ -146,7 +146,7 @@ m1_milestone_board:
   current_target: DONE — workday_presence_state is always-present on dashboard load; owner loop closes on a real Right Now state/card
   ladder:
     - M1: Brandon closes loop (backend state contract locked)
-    - M2: stranger closes loop (non-owner, zero narration, dashboard-only; Slack delivery explicitly out of scope)
+    - M2: stranger closes loop (non-owner, zero narration)
     - M3: frontend rebuilt once on locked M1 contract
     - M4: runs itself (self-heal/learn/optimize)
 
