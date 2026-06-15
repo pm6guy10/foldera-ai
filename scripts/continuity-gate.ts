@@ -55,6 +55,34 @@ const workflowGovernanceAllowlist = [
   '.foldera-contract.json',
   'docs/SOURCE_OF_TRUTH_MAP.md',
 ];
+
+// Files that are governance-contract-only — editing only these files does not
+// constitute a product seam change and may arrive on a different branch than
+// the tracked active_branch without representing seam drift.
+const GOVERNANCE_CONTRACT_PATTERNS = [
+  'AGENTS.md',
+  'CLAUDE.md',
+  'README.md',
+  'LESSONS_LEARNED.md',
+  'SESSION_HISTORY.md',
+  'FOLDERA_MASTER_BIBLE.md',
+  'scripts/continuity-gate.ts',
+  'scripts/preflight-contract.ts',
+  'tests/config/**',
+  '.github/workflows/**',
+  '.github/ISSUE_TEMPLATE/**',
+  '.github/pull_request_template.md',
+  'docs/SOURCE_OF_TRUTH_MAP.md',
+];
+
+// Files that encode active seam state — their presence in a changed-file set
+// disqualifies the PR from the governance-only exemption.
+const SEAM_STATE_PATTERNS = [
+  'ACTIVE_SEAM_STATE.json',
+  'FOLDERA_BUILD_ORDER.yaml',
+  'ACTIVE_HANDOFF.md',
+  '.foldera-contract.json',
+];
 const forbiddenClaimTerms = [
   'SOC2',
   'SOC 2',
@@ -146,6 +174,37 @@ function readCurrentBranch(root: string): string | null {
   }
 }
 
+function readChangedFilesLocally(root: string): string[] {
+  if (!existsSync(join(root, '.git'))) return [];
+  for (const base of ['origin/main', 'main']) {
+    try {
+      const out = execSync(`git diff --name-only ${base}...HEAD`, {
+        cwd: root,
+        encoding: 'utf8',
+        timeout: 10000,
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+      return out.split(/\r?\n/).map((f) => f.trim()).filter(Boolean);
+    } catch {
+      // base may not be available; try next
+    }
+  }
+  return [];
+}
+
+// Returns true only when ALL changed files are governance-contract files AND
+// none of them are seam-state files. Empty file lists are treated as unknown →
+// conservative false so product PRs with no detectable diff still enforce the
+// active_branch rule.
+function isGovernanceOnlyChange(changedFiles: string[]): boolean {
+  if (changedFiles.length === 0) return false;
+  const normalized = changedFiles.map(normalizePath);
+  return (
+    normalized.every((f) => matchesAnyPattern(f, GOVERNANCE_CONTRACT_PATTERNS)) &&
+    !normalized.some((f) => matchesAnyPattern(f, SEAM_STATE_PATTERNS))
+  );
+}
+
 function readGitHubEventPullRequestNumber(): number | null {
   const eventPath = process.env.GITHUB_EVENT_PATH?.trim();
   if (!eventPath || !existsSync(eventPath)) return null;
@@ -192,7 +251,7 @@ export function defaultIssueStateFetcher(issueNumber: number): 'open' | 'closed'
   }
 }
 
-export function runContinuityGate(root: string, options?: { issueStateFetcher?: IssueStateFetcher }): string[] {
+export function runContinuityGate(root: string, options?: { issueStateFetcher?: IssueStateFetcher; changedFiles?: string[] }): string[] {
   const fetchIssueState = options?.issueStateFetcher ?? defaultIssueStateFetcher;
   const failures: string[] = [];
 
@@ -307,9 +366,12 @@ export function runContinuityGate(root: string, options?: { issueStateFetcher?: 
     if (!activeBranch) {
       failures.push('ACTIVE_SEAM_STATE.json must set active_branch.');
     } else if (currentBranch && activeBranch !== currentBranch) {
-      failures.push(
-        `ACTIVE_SEAM_STATE.json active_branch "${activeBranch}" must match current branch "${currentBranch}".`,
-      );
+      const changedFiles = options?.changedFiles ?? readChangedFilesLocally(root);
+      if (!isGovernanceOnlyChange(changedFiles)) {
+        failures.push(
+          `ACTIVE_SEAM_STATE.json active_branch "${activeBranch}" must match current branch "${currentBranch}".`,
+        );
+      }
     }
 
     const currentPrNumber = readGitHubEventPullRequestNumber();

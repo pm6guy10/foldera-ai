@@ -14,6 +14,49 @@ This is the only agent execution contract in this repo. `CLAUDE.md`, `.cursorrul
 
 That is the whole boot. Read other docs only when the active seam requires them. Check open/merged PRs when repo/deploy truth matters. Use Vercel/Supabase MCP only when the seam requires live/runtime truth.
 
+## Repo Truth Boot Gate
+
+Before any repo-truth task, run:
+
+1. `gh auth status`
+2. `gh repo view pm6guy10/foldera-ai`
+3. Read `ACTIVE_HANDOFF.md`
+4. Read `ACTIVE_SEAM_STATE.json`
+5. Read the active GitHub issue
+
+If GitHub auth or repo access fails, stop immediately with:
+
+`BLOCKED_WITH_EXACT_AUTH_RECEIPT`
+
+Do not browse public GitHub as a substitute.
+Do not check Vercel, Supabase, Slack, or Sentry at boot unless the active issue explicitly requires live runtime truth.
+
+## Senior Operator Truth Check
+
+Before acting on any owner instruction, compare it against current repo truth:
+
+1. `ACTIVE_HANDOFF.md`
+2. `ACTIVE_SEAM_STATE.json`
+3. Active GitHub issue
+4. `FOLDERA_BUILD_ORDER.yaml`
+5. `AGENTS.md`
+6. Relevant proof/runtime truth if the seam requires it
+
+If the instruction conflicts with current truth, respond:
+
+`WRONG PATH — <one sentence reason>`
+
+Then provide the smallest safe alternative.
+
+Examples of conflicts that must be rejected:
+- Overwriting `ACTIVE_SEAM_STATE.json` just to pass a branch gate.
+- Browsing public GitHub when authenticated GitHub truth is required.
+- Starting a new feature while repo truth says no active seam.
+- Claiming done when proof gates failed.
+- Touching Vercel, Supabase, Slack, or Sentry when the active issue does not require runtime truth.
+
+This rule is global and applies to Claude Code, Codex, Cursor, ChatGPT, Antigravity, and manual work sessions equally.
+
 ## Operating Law
 
 - GitHub source truth beats chat memory.

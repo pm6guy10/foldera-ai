@@ -133,6 +133,45 @@ describe('continuity gate', () => {
     expect(failures).toEqual([]);
   });
 
+  it('passes active_branch mismatch for a governance-contract-only PR (AGENTS.md only, no seam-state files)', () => {
+    const fixtureRoot = createFixtureRoot();
+    fs.mkdirSync(path.join(fixtureRoot, '.git'));
+    process.env.GITHUB_HEAD_REF = 'claude/some-governance-branch';
+
+    const failures = runContinuityGate(fixtureRoot, {
+      changedFiles: ['AGENTS.md'],
+      issueStateFetcher: () => 'skip',
+    });
+
+    expect(failures.every((f) => !f.includes('active_branch'))).toBe(true);
+  });
+
+  it('fails active_branch mismatch when product/code files are included in changed files', () => {
+    const fixtureRoot = createFixtureRoot();
+    fs.mkdirSync(path.join(fixtureRoot, '.git'));
+    process.env.GITHUB_HEAD_REF = 'feature/some-product-branch';
+
+    const failures = runContinuityGate(fixtureRoot, {
+      changedFiles: ['AGENTS.md', 'app/components/Foo.tsx'],
+      issueStateFetcher: () => 'skip',
+    });
+
+    expect(failures.some((f) => f.includes('active_branch'))).toBe(true);
+  });
+
+  it('fails active_branch mismatch when ACTIVE_SEAM_STATE.json is among changed files', () => {
+    const fixtureRoot = createFixtureRoot();
+    fs.mkdirSync(path.join(fixtureRoot, '.git'));
+    process.env.GITHUB_HEAD_REF = 'claude/some-governance-branch';
+
+    const failures = runContinuityGate(fixtureRoot, {
+      changedFiles: ['AGENTS.md', 'ACTIVE_SEAM_STATE.json'],
+      issueStateFetcher: () => 'skip',
+    });
+
+    expect(failures.some((f) => f.includes('active_branch'))).toBe(true);
+  });
+
   it('fails when handoff and build order disagree on the active issue', () => {
     const fixtureRoot = createFixtureRoot();
     const buildOrder = readFixtureFile(fixtureRoot, 'FOLDERA_BUILD_ORDER.yaml');

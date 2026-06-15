@@ -63,6 +63,24 @@ function runGit(
   };
 }
 
+// Governance-gate files may be edited on any branch without being in the
+// active product contract's allowed_file_patterns. They carry no seam state
+// and do not affect runtime, schema, or UI.
+const GOVERNANCE_GATE_FILES = new Set([
+  'AGENTS.md',
+  'CLAUDE.md',
+  'LESSONS_LEARNED.md',
+  'scripts/continuity-gate.ts',
+  'scripts/preflight-contract.ts',
+]);
+
+function touchesOnlyGovernanceGateFiles(files: string[]): boolean {
+  if (files.length === 0) return false;
+  return files.every(
+    (f) => GOVERNANCE_GATE_FILES.has(f) || f.startsWith('tests/config/'),
+  );
+}
+
 const STOP_STATE_CONTRACTLESS_FILES = new Set([
   '.foldera-contract.json',
   'ACTIVE_HANDOFF.md',
@@ -629,6 +647,16 @@ export function validateContractForStage(
       message: `Forbidden files touched: ${forbiddenTouched.join(', ')}`,
       touchedFiles: touched.files,
       violations: forbiddenTouched,
+    };
+  }
+
+  if (touchesOnlyGovernanceGateFiles(touched.files)) {
+    return {
+      ok: true,
+      code: 'ok',
+      message: 'Governance gate update; file scope exempt from product contract.',
+      touchedFiles: touched.files,
+      violations: [],
     };
   }
 
