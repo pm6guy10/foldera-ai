@@ -1,42 +1,36 @@
 {
-  "backlog_id": "ops-run-ledger",
-  "active_issue": "none",
-  "base_commit": "b03e7c43b64b070cc7d46cc83d0d13f4134ce435",
+  "backlog_id": "ops-source-truth-closeout",
+  "active_issue": 323,
+  "base_commit": "ce92cc5c",
   "money_loop_rung": "ops",
-  "user_system_path": "Install a permanent Codex Run Ledger rule",
+  "user_system_path": "Source-truth closeout for PR #322",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
-    "FOLDERA_BUILD_ORDER.yaml",
-    "FOLDERA_MASTER_BIBLE.md",
-    "AGENTS.md",
-    "docs/SOURCE_OF_TRUTH_MAP.md",
-    "scripts/continuity-gate.ts",
-    ".github/pull_request_template.md"
+    "FOLDERA_BUILD_ORDER.yaml"
   ],
   "forbidden_file_patterns": [
     "components/**",
     "supabase/**",
     "app/**",
-    "lib/stripe/**",
-    "lib/auth/**",
+    "lib/**",
     "middleware.ts",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Issue #136 Run Ledger documentation and continuity gate updates.",
+  "allowed_files_raw": "Source truth files.",
   "forbidden_files_raw": "No product changes.",
-  "required_local_proof": "npm run gate:continuity && npm run build",
+  "required_local_proof": "npm run gate:continuity",
   "required_browser_proof": "not applicable",
   "browser_proof_command": "not applicable",
-  "acceptance_condition": "Run Ledger rules are codified in doctrine files and continuity gate.",
-  "stop_condition": "Stop only when #136 is merged and closed with GitHub receipts.",
+  "acceptance_condition": "Source truth files are updated to reflect the merge of PR #322.",
+  "stop_condition": "Stop when source truth is closed out and issue 323 is merged and closed with receipts.",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "Run ledger rules are present"
+    "Continuity gate passes"
   ],
-  "next_command": "Implement the Run Ledger doctrine in AGENTS.md, FOLDERA_MASTER_BIBLE.md, and optionally scripts/continuity-gate.ts.",
+  "next_command": "Update ACTIVE_HANDOFF.md to record PR #322 merge.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

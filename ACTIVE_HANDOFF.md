@@ -14,6 +14,7 @@ ACTIVE_SEAM_STATE.json is the machine-readable control plane.
 Active implementation seam is NONE / awaiting authorized seam.
 
 Issue #136 is COMPLETE — Run Ledger rule installed via PR #319 (`d1291ff`).
+Issue #321 is COMPLETE — Autonomous Seam Governor installed via PR #322.
 Issue #314 is COMPLETE — Slack cockpit merged via PR #318 (`b03e7c4`).
 Issue #316 is COMPLETE — GitHub CI demoted to optional workflow_dispatch via PR #317.
 Issue #296 (M1 backend-lock) is COMPLETE — merged via PR #307 (`ecf89dd`); production live.
