@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-14 PT (#136 active on feature/136-run-ledger.)
+Last updated: 2026-06-14 PT (Awaiting next authorized seam)
 
 ## Boot
 
@@ -11,8 +11,9 @@ Last updated: 2026-06-14 PT (#136 active on feature/136-run-ledger.)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Issue #136 is the active implementation seam.
+Active implementation seam is NONE / awaiting authorized seam.
 
+Issue #136 is COMPLETE — Run Ledger rule installed via PR #319 (`d1291ff`).
 Issue #314 is COMPLETE — Slack cockpit merged via PR #318 (`b03e7c4`).
 Issue #316 is COMPLETE — GitHub CI demoted to optional workflow_dispatch via PR #317.
 Issue #296 (M1 backend-lock) is COMPLETE — merged via PR #307 (`ecf89dd`); production live.
@@ -26,13 +27,11 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-- Issue #136 [OPS] Run Ledger: Install a permanent Codex Run Ledger rule so every run leaves a queryable GitHub closeout record.
+- NONE
 
 ## Next exact move
 
-1. Add the mandatory ledger closeout rule to the authoritative repo instruction surface (`AGENTS.md` and/or `FOLDERA_MASTER_BIBLE.md`).
-2. Add narrow command/source-truth gate enforcement in `scripts/continuity-gate.ts` if feasible.
-3. Commit, test continuity, push, and open PR.
+1. Await authorized seam from owner.
 
 Current production truth: `Last known production SHA: c95e34b` (PR #317 merged; #316 CI demotion live)
 

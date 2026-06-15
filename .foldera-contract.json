@@ -1,6 +1,6 @@
 {
   "backlog_id": "ops-run-ledger",
-  "active_issue": 136,
+  "active_issue": "none",
   "base_commit": "b03e7c43b64b070cc7d46cc83d0d13f4134ce435",
   "money_loop_rung": "ops",
   "user_system_path": "Install a permanent Codex Run Ledger rule",
