@@ -245,6 +245,7 @@ named
 - \`FOLDERA_BUILD_ORDER.yaml\`: updated
 - \`.foldera-contract.json\`: updated
 - \`docs/SOURCE_OF_TRUTH_MAP.md\`: unchanged - reason
+- Run Ledger ID: abc123def
 ## Next seam
 blocked - reason
 `);
@@ -254,6 +255,7 @@ blocked - reason
 
   it('fails when a pull request targets a non-active issue', () => {
     const fixtureRoot = createFixtureRoot();
+    const activeIssue = currentFixtureBuildOrderIssue(fixtureRoot);
     const failures = validateActiveSeamPullRequest(fixtureRoot, {
       title: 'Issue #999: unrelated cleanup',
       body: 'Closes #999',
@@ -261,16 +263,17 @@ blocked - reason
     });
 
     expect(failures).toContain(
-      'Active-seam protection failed: PR targets issue #999 but FOLDERA_BUILD_ORDER.yaml active_issue is #316.',
+      `Active-seam protection failed: PR targets issue #999 but FOLDERA_BUILD_ORDER.yaml active_issue is #${activeIssue}.`,
     );
   });
 
   it('passes when a pull request targets the active issue', () => {
     const fixtureRoot = createFixtureRoot();
+    const activeIssue = currentFixtureBuildOrderIssue(fixtureRoot);
     const failures = validateActiveSeamPullRequest(fixtureRoot, {
-      title: 'Issue #316: demote github ci to optional',
-      body: 'Closes #316',
-      branch: 'feature/demote-github-ci',
+      title: `Issue #${activeIssue}: some feature`,
+      body: `Closes #${activeIssue}`,
+      branch: `feature/issue-${activeIssue}`,
     });
 
     expect(failures).toEqual([]);
