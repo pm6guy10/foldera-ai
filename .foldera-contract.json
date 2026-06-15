@@ -9,6 +9,7 @@
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
+    "AGENTS.md",
     "app/api/workday-presence/route.ts",
     "app/api/workday-presence/triggers/route.ts",
     "app/api/workday-presence/__tests__/route.test.ts",
