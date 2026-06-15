@@ -28,15 +28,16 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-- NONE
+Issue #339 is the active frontend auth polish closeout seam.
 
 ## Next exact move
 
-1. Create or name the next authorized GitHub issue.
-2. Update `ACTIVE_HANDOFF.md`, `ACTIVE_SEAM_STATE.json`, `FOLDERA_BUILD_ORDER.yaml`, and `.foldera-contract.json` to that issue before coding.
-3. Do not start implementation work until the next active seam is explicitly authorized.
+1. Replace raw connect anchor tags in `app/dashboard/page.tsx` with `OAuthConnectButton`.
+2. Verify gate:continuity, lint, and build.
+3. Push to branch and open a new PR.
+4. Close/supersede PR #336.
 
-Current production truth: `Last known main SHA: 00f2977` (PR #333 merged; issue #330 closed on GitHub at 2026-06-15T14:28:42Z)
+Current production truth: `Last known main SHA: 80d3a6b` (PR #337 merged; ops stale control plane cleared)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
