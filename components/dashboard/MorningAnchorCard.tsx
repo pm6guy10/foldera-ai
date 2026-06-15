@@ -25,11 +25,13 @@ export function MorningAnchorCard({
   card,
   onSave,
   onAction,
+  onAutoDetect,
   actionPending = false,
 }: {
   card: RightNowCard;
   onSave: (input: SaveInput) => Promise<void>;
   onAction?: (actionId: RightNowCardActionId) => Promise<void>;
+  onAutoDetect?: () => Promise<void>;
   actionPending?: boolean;
 }) {
   const [input, setInput] = useState<SaveInput>({
@@ -79,38 +81,57 @@ export function MorningAnchorCard({
               </div>
             ) : null}
           </div>
-          <button
-            type="button"
-            className="foldera-button-primary mt-5"
-            disabled={saving || input.current_focus.trim().length === 0}
-            onClick={async () => {
-              setSaving(true);
-              try {
-                const draft = buildStateFromPrompt({
-                  prompt: input.current_focus,
-                  next_move: input.next_move,
-                  why_it_matters: input.why_it_matters,
-                  blocker: input.blocker,
-                  do_not_touch: input.do_not_touch,
-                  waiting_on: input.waiting_on,
-                  last_completed_step: input.last_completed_step,
-                });
-                await onSave({
-                  current_focus: draft.current_focus,
-                  next_move: draft.next_move,
-                  why_it_matters: draft.why_it_matters,
-                  blocker: draft.blocker ?? '',
-                  do_not_touch: draft.do_not_touch ?? '',
-                  waiting_on: draft.waiting_on ?? '',
-                  last_completed_step: draft.last_completed_step ?? '',
-                });
-              } finally {
-                setSaving(false);
-              }
-            }}
-          >
-            {saving ? 'Saving…' : 'Set Morning Anchor'}
-          </button>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              className="foldera-button-primary"
+              disabled={saving || input.current_focus.trim().length === 0}
+              onClick={async () => {
+                setSaving(true);
+                try {
+                  const draft = buildStateFromPrompt({
+                    prompt: input.current_focus,
+                    next_move: input.next_move,
+                    why_it_matters: input.why_it_matters,
+                    blocker: input.blocker,
+                    do_not_touch: input.do_not_touch,
+                    waiting_on: input.waiting_on,
+                    last_completed_step: input.last_completed_step,
+                  });
+                  await onSave({
+                    current_focus: draft.current_focus,
+                    next_move: draft.next_move,
+                    why_it_matters: draft.why_it_matters,
+                    blocker: draft.blocker ?? '',
+                    do_not_touch: draft.do_not_touch ?? '',
+                    waiting_on: draft.waiting_on ?? '',
+                    last_completed_step: draft.last_completed_step ?? '',
+                  });
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              {saving ? 'Saving…' : 'Set Morning Anchor'}
+            </button>
+            {onAutoDetect ? (
+              <button
+                type="button"
+                className="foldera-button-secondary"
+                disabled={saving}
+                onClick={async () => {
+                  setSaving(true);
+                  try {
+                    await onAutoDetect();
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                {saving ? 'Detecting...' : 'Auto-detect next move'}
+              </button>
+            ) : null}
+          </div>
         </section>
       </div>
     );

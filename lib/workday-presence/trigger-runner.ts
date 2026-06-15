@@ -309,30 +309,20 @@ export function normalizeWorkdayPresenceTriggerRunnerCursor(
   };
 }
 
-function requireTriggerRunnerEnv() {
-  const ownerUserId = process.env.FOLDERA_SELF_USER_ID?.trim();
-  const signingSecret = process.env.SLACK_SIGNING_SECRET?.trim();
-  const slackBotToken = process.env.SLACK_BOT_TOKEN?.trim();
-  const channel = requireSlackChannel();
-
-  if (!ownerUserId) throw new Error('Missing FOLDERA_SELF_USER_ID for workday presence trigger-runner');
-  if (!signingSecret) throw new Error('Missing SLACK_SIGNING_SECRET for workday presence trigger-runner');
-  if (!slackBotToken) throw new Error('Missing SLACK_BOT_TOKEN for workday presence trigger-runner');
-
-  return {
-    ownerUserId,
-    signingSecret,
-    slackBotToken,
-    channel,
-  };
-}
-
 export async function maybeRunWorkdayPresenceTriggerRunnerForUser(
   userId: string,
 ): Promise<MaybeTriggerRunnerResult> {
-  const { ownerUserId, channel, slackBotToken } = requireTriggerRunnerEnv();
-  if (userId !== ownerUserId) {
-    return { started: false, reason: 'non_owner_user' };
+  const ownerUserId = process.env.FOLDERA_SELF_USER_ID?.trim();
+  const isOwner = Boolean(ownerUserId && userId === ownerUserId);
+  let slackAdapter: Pick<SlackAdapter, 'postMessage'> | null = null;
+  let channel: string | null = null;
+
+  if (isOwner) {
+    const slackBotToken = process.env.SLACK_BOT_TOKEN?.trim();
+    channel = process.env.FOLDERA_SLACK_SELF_CHANNEL_ID?.trim() ?? null;
+    if (slackBotToken && channel) {
+      slackAdapter = createLiveSlackAdapter(slackBotToken);
+    }
   }
 
   const supabase = createServerClient();
@@ -360,7 +350,7 @@ export async function maybeRunWorkdayPresenceTriggerRunnerForUser(
     channel,
     cursor,
     signals: Array.isArray(signals) ? signals : [],
-    slack: createLiveSlackAdapter(slackBotToken),
+    slack: slackAdapter,
     persistIntervention: async (intervention) => {
       const nextMetadata = {
         ...metadata,
@@ -472,12 +462,12 @@ function buildHiddenOpPayload(op: HiddenOp): RightNowMessagePayload {
 }
 
 export async function runWorkdayPresenceTriggerRunner(input: {
-  channel: string;
+  channel?: string | null;
   cursor: unknown;
   nowIso?: string;
   signals: FreshSignalRow[];
   persistIntervention?: (input: PersistTriggeredInterventionInput) => Promise<void> | void;
-  slack: Pick<SlackAdapter, 'postMessage'>;
+  slack?: Pick<SlackAdapter, 'postMessage'> | null;
   state: unknown;
 }): Promise<WorkdayPresenceTriggerRunnerResult> {
   const state = normalizeWorkdayPresenceState(input.state);
@@ -557,9 +547,12 @@ export async function runWorkdayPresenceTriggerRunner(input: {
             fresh_event_count: freshEvents.length,
           };
         } else {
-          const slackResult = await input.slack.postMessage(
-            buildSlackRightNowMessage(triggerResult.payload, input.channel),
-          );
+          let slackResult: SlackSendResult | null = null;
+          if (input.slack && input.channel) {
+            slackResult = await input.slack.postMessage(
+              buildSlackRightNowMessage(triggerResult.payload, input.channel),
+            );
+          }
           const nextState = buildTriggeredWorkdayPresenceState(selection.selected, state, nowIso);
           if (nextState) {
             await input.persistIntervention?.({
@@ -601,9 +594,12 @@ export async function runWorkdayPresenceTriggerRunner(input: {
 
       if (!alreadyPinged) {
         const payload = buildHiddenOpPayload(topOp);
-        const slackResult = await input.slack.postMessage(
-          buildSlackRightNowMessage(payload, input.channel),
-        );
+        let slackResult: SlackSendResult | null = null;
+        if (input.slack && input.channel) {
+          slackResult = await input.slack.postMessage(
+            buildSlackRightNowMessage(payload, input.channel),
+          );
+        }
         return {
           outcome: 'intervention',
           reason: `hidden_op: score=${topOp.score} domain=${topOp.domain} — ${topOp.description.slice(0, 80)}`,
