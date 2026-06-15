@@ -16,26 +16,34 @@ That is the whole boot. Read other docs only when the active seam requires them.
 
 ## Repo Truth Boot Gate
 
-Before any repo-truth task, run:
+Before any repo-truth task, verify authenticated private repo access via one of:
 
+**Path A — local gh CLI (terminal sessions):**
 1. `gh auth status`
 2. `gh repo view pm6guy10/foldera-ai`
-3. Read `ACTIVE_HANDOFF.md`
-4. Read `ACTIVE_SEAM_STATE.json`
-5. Read the active GitHub issue
 
-If GitHub auth or repo access fails, stop immediately with:
+**Path B — GitHub MCP / private repo tool access (cloud/web sessions):**
+1. Fetch repo metadata for `pm6guy10/foldera-ai`
+2. Fetch `ACTIVE_HANDOFF.md` from the private repo via MCP
+
+Use whichever path is available. If **neither** works, stop immediately with:
 
 `BLOCKED_WITH_EXACT_AUTH_RECEIPT`
 
-Do not browse public GitHub as a substitute.
+Do not browse public GitHub as a substitute for either path.
 Do not check Vercel, Supabase, Slack, or Sentry at boot unless the active issue explicitly requires live runtime truth.
+
+Then complete the boot sequence (applies to both paths):
+
+3. Read `ACTIVE_HANDOFF.md`
+4. Read `ACTIVE_SEAM_STATE.json`
+5. Read the active GitHub issue
 
 After the boot gate completes, emit a truth receipt before the first action:
 
 ```
 BOOT OK
-- GitHub auth/repo truth: OK
+- GitHub auth/repo truth: OK (via gh CLI / GitHub MCP)
 - Active issue: #___
 - Active branch: ___
 - Active PR: #___ / NONE
