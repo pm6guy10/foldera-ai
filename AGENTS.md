@@ -14,6 +14,19 @@ This is the only agent execution contract in this repo. `CLAUDE.md`, `.cursorrul
 
 That is the whole boot. Read other docs only when the active seam requires them. Check open/merged PRs when repo/deploy truth matters. Use Vercel/Supabase MCP only when the seam requires live/runtime truth.
 
+## GitHub Auth Fail-Closed Rule
+
+Before any repo-truth task, run:
+1. `gh auth status`
+2. `gh repo view pm6guy10/foldera-ai`
+
+If either fails, stop immediately with:
+`BLOCKED_WITH_EXACT_AUTH_RECEIPT`
+
+Do not browse public GitHub as a substitute for repo truth.
+Do not infer active issue/PR state from local files when live GitHub truth is required.
+Unauthenticated Codex is execution-only, not source-truth-capable.
+
 ## Operating Law
 
 - GitHub source truth beats chat memory.
