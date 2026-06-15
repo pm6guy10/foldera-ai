@@ -1,7 +1,7 @@
 {
   "active_issue": 325,
   "active_branch": "feature/325-m2-stranger-closes-loop",
-  "active_pr": null,
+  "active_pr": 326,
   "deployed_commit_sha": "b03e7c48ad06c",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
