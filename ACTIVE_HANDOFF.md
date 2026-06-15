@@ -32,8 +32,8 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Next exact move
 
-1. Implement UI for M2
-2. Prove M2
+1. BLOCKED_WITH_EXACT_RECEIPT: Need proof that a non-owner can authenticate, connect/seed source state, see their own Right Now state/card or honest safe silence, respond, and persist a receipt. I cannot perform a live non-owner OAuth loop because I lack live dummy Google/Microsoft credentials and browser automation.
+2. Waiting for owner to run live proof or provide credentials.
 
 Current production truth: `Last known production SHA: c95e34b` (PR #317 merged; #316 CI demotion live)
 
