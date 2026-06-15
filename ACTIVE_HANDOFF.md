@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-15 PT (Awaiting next authorized seam)
+Last updated: 2026-06-15 PT (Awaiting next authorized seam; governance PRs #334 #335 #337 #338 merged)
 
 ## Boot
 
@@ -13,6 +13,11 @@ Last updated: 2026-06-15 PT (Awaiting next authorized seam)
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
 Active implementation seam is NONE / awaiting authorized seam.
 
+PR #338 is COMPLETE — Repo Truth Boot Gate accepts GitHub MCP as valid auth path; merged `bae154e`.
+PR #337 is COMPLETE — Stale #330 control-plane cleared; merged `80d3a6b`.
+PR #335 is COMPLETE — BOOT receipt format, authority principle, route-obvious-work rule; merged `5793b41`.
+PR #334 is COMPLETE — Repo Truth Boot Gate, Senior Operator Truth Check, governance-only gate exemption; merged `b42e8ae`.
+PR #336 is OPEN — frontend auth polish closeout (feature/330-frontend-polish); awaiting merge.
 Issue #136 is COMPLETE — Run Ledger rule installed via PR #319 (`d1291ff`).
 Issue #321 is COMPLETE — Autonomous Seam Governor installed via PR #322.
 Issue #314 is COMPLETE — Slack cockpit merged via PR #318 (`b03e7c4`).
@@ -36,7 +41,7 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 2. Update `ACTIVE_HANDOFF.md`, `ACTIVE_SEAM_STATE.json`, `FOLDERA_BUILD_ORDER.yaml`, and `.foldera-contract.json` to that issue before coding.
 3. Do not start implementation work until the next active seam is explicitly authorized.
 
-Current production truth: `Last known main SHA: 00f2977` (PR #333 merged; issue #330 closed on GitHub at 2026-06-15T14:28:42Z)
+Current production truth: `Last known main SHA: bae154e` (PR #338 merged 2026-06-15; PR #336 open, not yet merged)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
