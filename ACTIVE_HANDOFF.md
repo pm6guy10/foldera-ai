@@ -11,7 +11,7 @@ Last updated: 2026-06-14 PT (Awaiting next authorized seam)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is NONE / awaiting authorized seam.
+Active seam: #330 (frontend auth polish). See Current slice below.
 
 Issue #136 is COMPLETE — Run Ledger rule installed via PR #319 (`d1291ff`).
 Issue #321 is COMPLETE — Autonomous Seam Governor installed via PR #322.
