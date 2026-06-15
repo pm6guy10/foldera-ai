@@ -1,36 +1,39 @@
 {
-  "backlog_id": "audit-frontend-reality",
-  "active_issue": 327,
+  "backlog_id": "audit-notification-noise",
+  "active_issue": 328,
   "base_commit": "HEAD",
   "money_loop_rung": "ops",
-  "user_system_path": "Audit frontend mismatch",
+  "user_system_path": "Audit Slack/Vercel notification noise",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "components/dashboard/**"
+    "vercel.json",
+    ".github/workflows/**",
+    "lib/slack/**",
+    "lib/workday-presence/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
     "app/**",
-    "lib/**",
+    "components/**",
     "middleware.ts",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Source truth files.",
-  "forbidden_files_raw": "No product changes.",
+  "allowed_files_raw": "Source truth files and deployment configuration files.",
+  "forbidden_files_raw": "No product code changes.",
   "required_local_proof": "npm run gate:continuity",
   "required_browser_proof": "not applicable",
   "browser_proof_command": "not applicable",
-  "acceptance_condition": "Source truth files are updated to reflect the merge of PR #322.",
-  "stop_condition": "Stop when source truth is closed out and issue 323 is merged and closed with receipts.",
+  "acceptance_condition": "Vercel GitHub integration comments are silenced and Slack notification noise is audited/disabled.",
+  "stop_condition": "Stop when issue 328 is completed with receipts.",
   "is_user_facing": false,
   "anti_regression_checks": [
     "Continuity gate passes"
   ],
-  "next_command": "Update ACTIVE_HANDOFF.md to record PR #322 merge.",
+  "next_command": "Silence Vercel PR comments and Slack noise.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
