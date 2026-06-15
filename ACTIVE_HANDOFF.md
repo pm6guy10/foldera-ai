@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-15 PT (Awaiting next authorized seam; governance PRs #334 #335 #337 #338 merged)
+Last updated: 2026-06-15 PT (Issue #339 COMPLETE via PR #340; Issue #341 now active)
 
 ## Boot
 
@@ -11,19 +11,16 @@ Last updated: 2026-06-15 PT (Awaiting next authorized seam; governance PRs #334 
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is NONE / awaiting authorized seam.
+Active implementation seam is Issue #341 — runtime map + current-path Supabase receipts.
 
+Issue #339 is COMPLETE — frontend auth polish closeout merged via PR #340 (`a315394`); dashboard connect anchors now use OAuthConnectButton.
+PR #336 is SUPERSEDED — closed without merge; PR #340 is the clean replacement.
 PR #338 is COMPLETE — Repo Truth Boot Gate accepts GitHub MCP as valid auth path; merged `bae154e`.
 PR #337 is COMPLETE — Stale #330 control-plane cleared; merged `80d3a6b`.
-PR #335 is COMPLETE — BOOT receipt format, authority principle, route-obvious-work rule; merged `5793b41`.
-PR #334 is COMPLETE — Repo Truth Boot Gate, Senior Operator Truth Check, governance-only gate exemption; merged `b42e8ae`.
-PR #336 is CLOSED WITHOUT MERGE — frontend auth polish closeout (feature/330-frontend-polish); dashboard OAuthConnectButton fix not on main.
 Issue #136 is COMPLETE — Run Ledger rule installed via PR #319 (`d1291ff`).
 Issue #321 is COMPLETE — Autonomous Seam Governor installed via PR #322.
 Issue #314 is COMPLETE — Slack cockpit merged via PR #318 (`b03e7c4`).
-Issue #316 is COMPLETE — GitHub CI demoted to optional workflow_dispatch via PR #317.
 Issue #296 (M1 backend-lock) is COMPLETE — merged via PR #307 (`ecf89dd`); production live.
-Issue #301 is COMPLETE — control-plane truth ledger + hidden-op Slack wiring merged through PR #305 (`f29cd80`); hidden-op outcome logging deployed in commit `370cc7a`.
 Issue #284 is COMPLETE — owner-operator pass gaps G1-G7 closed across PRs #286, #287, and #288.
 Issue #281 (rung 9) is OWNER_CLOSED — external human-validation gate permanently removed by owner instruction 2026-06-13.
 Issue #276 is COMPLETE — Command State Resolver v0 merged via PR #279 (`e848d01`); closeout PR #280 (`13581bf`).
@@ -33,16 +30,17 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-Issue #339 is the active frontend auth polish closeout seam.
+Issue #341 is the active runtime-map + current-path Supabase receipts seam.
 
 ## Next exact move
 
-1. Replace raw connect anchor tags in `app/dashboard/page.tsx` with `OAuthConnectButton`.
-2. Verify gate:continuity, lint, and build.
-3. Push to branch and open a new PR.
-4. Close/supersede PR #336.
+1. Check branch `codex/341-runtime-map-current-path` for prior session work on issue #341.
+2. Rebase that branch onto main (post-PR-#340 merge).
+3. Wire one current trigger-runner path that leaves an explicit artifact-backed action or safe-silence receipt.
+4. Run focused tests + gate:continuity + build.
+5. Push and open PR for issue #341.
 
-Current production truth: `Last known main SHA: 85eb6d4` (PR #338 merged; PR #336 closed)
+Current production truth: `Last known main SHA: a315394` (PR #340 merged 2026-06-15; issue #341 active)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
