@@ -11,6 +11,7 @@
     "FOLDERA_BUILD_ORDER.yaml",
     "vercel.json",
     ".github/workflows/**",
+    "tests/config/__tests__/**",
     "lib/slack/**",
     "lib/workday-presence/**"
   ],
