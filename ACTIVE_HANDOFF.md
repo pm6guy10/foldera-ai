@@ -32,7 +32,7 @@ Issue #327 is the active frontend-audit seam.
 
 ## Next exact move
 
-1. Fix the MorningAnchorCard setup mode by removing the 6-field narration form to comply with Workday Presence Layer doctrine.
+1. PR #329 is MERGE_READY. After merge, proceed to Issue #328 (Vercel MCP setup + Slack send-safety audit).
 
 Current production truth: `Last known production SHA: c95e34b` (PR #317 merged; #316 CI demotion live)
 
