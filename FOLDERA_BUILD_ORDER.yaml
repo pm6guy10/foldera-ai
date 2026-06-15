@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 314
-priority_class: M1
-work_type: PRODUCT
-why_this_first: "Add a Slack command surface for Foldera project command-center use, backed by live source truth."
-next_seam: "Build app/api/slack/command/route.ts and lib/slack/command.ts."
+active_issue: 136
+priority_class: M4
+work_type: OPS
+why_this_first: "Install a permanent Codex Run Ledger rule so every future run leaves a queryable GitHub closeout record."
+next_seam: "Add the mandatory ledger closeout rule to AGENTS.md/FOLDERA_MASTER_BIBLE.md."
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178

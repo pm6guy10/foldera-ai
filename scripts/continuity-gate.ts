@@ -402,6 +402,7 @@ export function validatePullRequestReceipt(body: string | null | undefined): str
   const prBody = body ?? '';
   if (!prBody.includes('## Source-truth closeout')) failures.push('PR receipt is missing ## Source-truth closeout.');
   if (!prBody.includes('## Next seam')) failures.push('PR receipt is missing ## Next seam.');
+  if (!prBody.includes('- Run Ledger ID:')) failures.push('PR receipt is missing Run Ledger ID.');
   for (const file of requiredCloseoutFiles) {
     const escaped = file.replace(/[.+^${}()|[\]\\]/g, '\\$&');
     const match = prBody.match(new RegExp(`-\\s+\`${escaped}\`:\\s*([^\\r\\n]+)`, 'i'));
