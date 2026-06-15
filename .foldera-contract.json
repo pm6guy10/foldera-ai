@@ -1,40 +1,41 @@
 {
-  "backlog_id": "audit-notification-noise",
-  "active_issue": 328,
+  "backlog_id": "auth-frontend-polish",
+  "active_issue": 330,
   "base_commit": "HEAD",
   "money_loop_rung": "ops",
-  "user_system_path": "Audit Slack/Vercel notification noise",
+  "user_system_path": "Auth/Frontend visual polish pass",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "vercel.json",
-    ".github/workflows/**",
-    "tests/config/__tests__/**",
-    "lib/slack/**",
-    "lib/workday-presence/**"
+    "app/dashboard/**",
+    "app/login/**",
+    "app/start/**",
+    "components/**",
+    "tests/e2e/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
-    "app/**",
-    "components/**",
     "middleware.ts",
     "package.json",
-    "package-lock.json"
+    "package-lock.json",
+    "lib/slack/**",
+    "app/api/**"
   ],
-  "allowed_files_raw": "Source truth files and deployment configuration files.",
-  "forbidden_files_raw": "No product code changes.",
+  "allowed_files_raw": "Source truth and frontend auth/dashboard UI files.",
+  "forbidden_files_raw": "No backend schema, API, or Stripe changes.",
   "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "not applicable",
-  "browser_proof_command": "not applicable",
-  "acceptance_condition": "Vercel GitHub integration comments are silenced and Slack notification noise is audited/disabled.",
-  "stop_condition": "Stop when issue 328 is completed with receipts.",
-  "is_user_facing": false,
+  "required_browser_proof": "npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts",
+  "browser_proof_command": "npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts",
+  "acceptance_condition": "Frontend auth and dashboard first-run state are visually polished.",
+  "stop_condition": "Stop when issue 330 is completed with receipts.",
+  "is_user_facing": true,
   "anti_regression_checks": [
-    "Continuity gate passes"
+    "Continuity gate passes",
+    "E2E tests pass"
   ],
-  "next_command": "Silence Vercel PR comments and Slack noise.",
+  "next_command": "Polish first-run auth UI.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

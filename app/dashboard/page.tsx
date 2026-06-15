@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { MorningAnchorCard, type RightNowCardActionId } from '@/components/dashboard/MorningAnchorCard';
 import type { RightNowCard } from '@/lib/workday-presence/model';
+import { AuthTrustPills } from '@/components/auth/AuthTrustPills';
+import { OAuthConnectButton } from '@/components/auth/OAuthConnectButton';
 
 type ConnectedSourceState = 'loading' | 'connected' | 'missing' | 'error';
 
@@ -165,23 +167,23 @@ export default function DashboardPage() {
         {sourceState === 'missing' ? (
           <div
             data-testid="dashboard-connect-strip"
-            className="mb-6 rounded-2xl border border-cyan-300/25 bg-cyan-300/5 px-6 py-5"
+            className="mb-6 rounded-[24px] border border-cyan-400/20 bg-cyan-950/20 backdrop-blur-md px-6 py-5 shadow-[0_0_30px_rgba(34,211,238,0.05)]"
           >
-            <p className="text-sm font-semibold text-white">Connect one source</p>
-            <p className="mt-1 text-sm leading-6 text-white/60">
+            <p className="text-sm font-semibold text-cyan-50">Connect one source</p>
+            <p className="mt-1 text-sm leading-6 text-cyan-100/70">
               Foldera reads connected context to find your re-entry point. Nothing sends without
               your approval.
             </p>
             <div className="mt-4 flex flex-wrap gap-3">
               <a
                 href="/api/google/connect"
-                className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-[#46F4FF] px-5 text-sm font-semibold text-[#031016] transition-colors hover:bg-[#7df8ff]"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-full bg-cyan-400 px-5 text-sm font-semibold text-cyan-950 transition-colors hover:bg-cyan-300"
               >
                 Connect Google
               </a>
               <a
                 href="/api/microsoft/connect"
-                className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-white/20 px-5 text-sm font-semibold text-white transition-colors hover:border-white/45"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-full border border-cyan-400/20 bg-white/5 px-5 text-sm font-semibold text-cyan-50 transition-colors hover:bg-white/10 hover:border-cyan-400/40"
               >
                 Connect Microsoft
               </a>
@@ -191,7 +193,9 @@ export default function DashboardPage() {
 
         {cardLoading || status === 'loading' ? (
           <div className="flex justify-center py-24" data-testid="dashboard-card-loading">
-            <span className="h-8 w-8 animate-spin rounded-full border-2 border-[#46F4FF] border-t-transparent" />
+            <div className="flex flex-col gap-4 w-full max-w-2xl">
+              <div className="h-[200px] w-full animate-pulse-fast rounded-[28px] bg-white/[0.03] border border-white/[0.05]" />
+            </div>
           </div>
         ) : (
           <MorningAnchorCard
@@ -215,22 +219,16 @@ export default function DashboardPage() {
           </p>
         ) : null}
 
-        <div
-          data-testid="trust-rail"
-          className="mx-auto mt-8 max-w-[760px] rounded-2xl border border-white/10 bg-white/5 px-6 py-4"
-        >
-          <p className="text-xs leading-5 text-white/50">
-            Foldera reads your connected sources. Nothing is stored raw.
-          </p>
-          <p className="mt-1 text-xs leading-5 text-white/50">
-            Nothing sends without your explicit approval.
-          </p>
-          <Link
-            href="/dashboard/settings"
-            className="mt-3 inline-block text-xs text-[#46F4FF]/70 underline-offset-2 hover:text-[#46F4FF] hover:underline"
-          >
-            Manage sources →
-          </Link>
+        <div data-testid="trust-rail" className="mx-auto mt-8 max-w-[760px]">
+          <AuthTrustPills />
+          <div className="mt-4 text-center">
+            <Link
+              href="/dashboard/settings"
+              className="inline-block text-xs text-cyan-400/70 underline-offset-2 hover:text-cyan-400 hover:underline"
+            >
+              Manage sources →
+            </Link>
+          </div>
         </div>
       </section>
     </main>

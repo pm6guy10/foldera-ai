@@ -48,8 +48,8 @@ export function MorningAnchorCard({
   if (card.mode === 'setup') {
     return (
       <div className="foldera-dashboard-brief-card flex h-full w-full items-start justify-center overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
-        <section className="mx-auto w-full max-w-[760px] rounded-[20px] border border-white/10 bg-white/[0.025] p-6 sm:p-8">
-          <h2 className="text-[34px] font-semibold leading-[1.05] tracking-[-0.02em] text-text-primary sm:text-[42px]">
+        <section className="mx-auto w-full max-w-[760px] rounded-[24px] border border-cyan-400/20 bg-cyan-950/20 backdrop-blur-md p-6 sm:p-8 shadow-[0_0_30px_rgba(34,211,238,0.05)]">
+          <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-white">
             {card.prompt}
           </h2>
           {card.verdict_line ? (
@@ -57,7 +57,7 @@ export function MorningAnchorCard({
           ) : null}
           <div className="mt-5 grid gap-3">
             <input
-              className="foldera-input"
+              className="w-full min-h-[56px] rounded-2xl border border-white/10 bg-black/40 px-5 py-3 text-[15px] font-medium text-white placeholder-white/30 outline-none transition-all focus:border-cyan-400/50 focus:bg-black/60 focus:ring-4 focus:ring-cyan-400/10"
               placeholder="What are you trying to move forward today?"
               value={input.current_focus}
               onChange={(e) => setInput((v) => ({ ...v, current_focus: e.target.value }))}
@@ -66,7 +66,7 @@ export function MorningAnchorCard({
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
-              className="foldera-button-primary"
+              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[14px] border border-cyan-400/30 bg-cyan-400/10 px-5 text-sm font-semibold text-cyan-50 transition-all hover:bg-cyan-400/20 shadow-[0_0_15px_rgba(34,211,238,0.1)] hover:shadow-[0_0_25px_rgba(34,211,238,0.2)] disabled:cursor-wait disabled:opacity-50"
               disabled={saving || input.current_focus.trim().length === 0}
               onClick={async () => {
                 setSaving(true);
@@ -99,7 +99,7 @@ export function MorningAnchorCard({
             {onAutoDetect ? (
               <button
                 type="button"
-                className="foldera-button-secondary"
+                className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[14px] border border-white/10 bg-white/5 px-5 text-sm font-medium text-white transition-colors hover:border-white/20 hover:bg-white/10 disabled:cursor-wait disabled:opacity-50"
                 disabled={saving}
                 onClick={async () => {
                   setSaving(true);
@@ -123,9 +123,9 @@ export function MorningAnchorCard({
     <div className="foldera-dashboard-brief-card flex h-full w-full items-start justify-center overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
       <section
         data-testid="right-now-card"
-        className="mx-auto w-full max-w-[760px] rounded-[20px] border border-white/10 bg-white/[0.025] p-6 sm:p-8"
+        className="mx-auto w-full max-w-[760px] rounded-[24px] border border-cyan-400/20 bg-cyan-950/20 backdrop-blur-md p-6 sm:p-8 shadow-[0_0_30px_rgba(34,211,238,0.05)]"
       >
-        <h2 className="text-[34px] font-semibold leading-[1.05] tracking-[-0.02em] text-text-primary sm:text-[42px]">
+        <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-white">
           {card.heading}
         </h2>
         <p className="mt-3 text-sm text-text-secondary">{card.return_here}</p>
@@ -158,7 +158,7 @@ export function MorningAnchorCard({
             {card.draft_ready && !card.draft_expanded ? (
               <button
                 type="button"
-                className="foldera-button-primary"
+                className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[14px] border border-cyan-400/30 bg-cyan-400/10 px-5 text-sm font-semibold text-cyan-50 transition-all hover:bg-cyan-400/20 shadow-[0_0_15px_rgba(34,211,238,0.1)] hover:shadow-[0_0_25px_rgba(34,211,238,0.2)] disabled:cursor-wait disabled:opacity-50"
                 disabled={actionPending}
                 onClick={() => void onAction('view_draft')}
               >
@@ -167,7 +167,7 @@ export function MorningAnchorCard({
             ) : null}
             <button
               type="button"
-              className="foldera-button-secondary"
+              className="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[14px] border border-white/10 bg-white/5 px-5 text-sm font-medium text-white transition-colors hover:border-white/20 hover:bg-white/10 disabled:cursor-wait disabled:opacity-50"
               disabled={actionPending}
               onClick={() => void onAction('dismiss')}
             >
