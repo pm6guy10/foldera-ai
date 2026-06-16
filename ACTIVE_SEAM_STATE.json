@@ -1,9 +1,9 @@
 {
-  "active_issue": 0,
-  "active_branch": "ops/354-closeout-awaiting-seam",
+  "active_issue": 361,
+  "active_branch": "feat/361-commitment-lapsing-trigger",
   "active_pr": null,
-  "deployed_commit_sha": "4b2908bc62e94601d2da827adf563b987c91a7c5",
+  "deployed_commit_sha": "0f0aa8158ad85b7ea90481b9749659a41208d102",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-16T15:40:00Z"
+  "last_verified_at": "2026-06-16T19:45:00Z"
 }

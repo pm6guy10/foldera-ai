@@ -1,38 +1,38 @@
 {
-  "backlog_id": "awaiting-authorized-seam",
-  "active_issue": "none",
+  "backlog_id": "commitment-lapsing-trigger",
+  "active_issue": 361,
   "base_commit": "HEAD",
-  "money_loop_rung": "ops",
-  "user_system_path": "Await next authorized implementation seam",
+  "money_loop_rung": "m2",
+  "user_system_path": "Wire real commitment-lapsing detection from tkg_commitments into the trigger-runner, and run the trigger-runner on a real schedule (every 15 min via GitHub Actions) instead of only on manual sync-now or never.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
-    "FOLDERA_BUILD_ORDER.yaml"
+    "FOLDERA_BUILD_ORDER.yaml",
+    "lib/workday-presence/**",
+    ".github/workflows/workday-presence-trigger-runner.yml"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
-    "app/**",
     "components/**",
-    "middleware.ts",
     "package.json",
     "package-lock.json",
-    "lib/slack/**",
-    "app/api/**",
     "tests/e2e/**"
   ],
-  "allowed_files_raw": "Source-truth control-plane files only while awaiting the next authorized seam.",
-  "forbidden_files_raw": "No product code, runtime, auth, schema, Slack, Stripe, or UI changes.",
-  "required_local_proof": "npm run gate:continuity",
+  "allowed_files_raw": "lib/workday-presence/**, .github/workflows/workday-presence-trigger-runner.yml, and control-plane files",
+  "forbidden_files_raw": "No schema, no UI, no e2e tests, no dependency changes.",
+  "required_local_proof": "npx vitest run lib/workday-presence/ && npm run build && npm run gate:continuity",
   "required_browser_proof": "not applicable",
   "browser_proof_command": "not applicable",
-  "acceptance_condition": "The repo names no closed issue as active and waits for an explicitly authorized successor seam.",
-  "stop_condition": "Stop when source truth no longer points at a closed issue as active and GitHub receipts record the repair.",
+  "acceptance_condition": "A real active commitment due within 24h produces a real (non-pipe-test) tkg_actions receipt with action_source='workday_presence_trigger', and the trigger-runner is checked every 15 minutes via a scheduled GitHub Action rather than only on manual sync-now or never.",
+  "stop_condition": "Stop when issue #361 has a merged PR with gate + build + vitest proof.",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "Continuity gate passes"
+    "Continuity gate passes",
+    "Build passes",
+    "Vitest passes"
   ],
-  "next_command": "Create or name the next authorized issue before any implementation work begins.",
+  "next_command": "Build the commitment-bridge function with red->green proof, schedule the existing trigger-runner cron route via GitHub Actions, push and open PR.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
