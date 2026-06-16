@@ -28,6 +28,18 @@ export type WorkdayPresenceDraft = {
   body?: string;
 };
 
+/**
+ * A title alone is a label, not a prepared object — see the no-homework
+ * standard in command-state-resolver.ts. Anything that renders "Draft ready"
+ * must use this same check so the card never claims readiness the resolver
+ * would call CLEAR.
+ */
+export function draftIsReviewable(draft: WorkdayPresenceDraft): boolean {
+  const body = draft.body?.trim() ?? '';
+  const preview = draft.preview?.trim() ?? '';
+  return body.length > 0 || preview.length > 0;
+}
+
 export type WorkdayPresenceSuppressionTrace = {
   trace_type: 'safe_silence' | 'suppressed_winner' | 'generation_failed';
   gate: string;
@@ -331,8 +343,10 @@ export function normalizeWorkdayPresenceState(input: unknown): WorkdayPresenceSt
  */
 export function rightNowHasPreparedObject(state: WorkdayPresenceState | null): boolean {
   if (!state) return false;
-  // A drafted artifact is always a reviewable prepared object.
-  if (state.draft) return true;
+  // A title-only draft is a label, not a prepared object — same standard the
+  // command-state-resolver enforces. A title with no reviewable content must
+  // not unlock the active card; fall through to the state_source check below.
+  if (state.draft) return draftIsReviewable(state.draft);
   // The one case the standard forbids: a scored winner with nothing prepared behind it.
   if (state.state_source === 'scored_winner') return false;
   // Every other selection context (manual anchor, source-backed evidence, reviewed
@@ -389,7 +403,7 @@ export function buildRightNowCard(state: WorkdayPresenceState | null, nowIso = n
     last_interaction: lastInteraction
       ? `Last interaction: ${lastInteraction.interaction_type} at ${lastInteraction.timestamp}`
       : null,
-    draft_ready: state.draft
+    draft_ready: state.draft && draftIsReviewable(state.draft)
       ? `Draft ready (${state.draft.action_type}): ${state.draft.title}`
       : null,
     draft_expanded: draftExpanded,

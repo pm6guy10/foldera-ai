@@ -1,7 +1,7 @@
 import { createServerClient } from '@/lib/db/client';
 import {
+  draftIsReviewable,
   normalizeWorkdayPresenceState,
-  type WorkdayPresenceDraft,
   type WorkdayPresenceState,
 } from './model';
 
@@ -106,12 +106,6 @@ function resolution(input: {
  * A prepared object must carry reviewable content. A draft that is only a
  * label (no body, no preview) must not produce the most action-ready verdict.
  */
-function draftIsReviewable(draft: WorkdayPresenceDraft): boolean {
-  const body = draft.body?.trim() ?? '';
-  const preview = draft.preview?.trim() ?? '';
-  return body.length > 0 || preview.length > 0;
-}
-
 function isSnoozed(state: WorkdayPresenceState, nowIso: string): boolean {
   if (!state.snoozed_until) return false;
   const snoozedUntil = Date.parse(state.snoozed_until);
