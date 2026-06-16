@@ -11,8 +11,9 @@ Last updated: 2026-06-16 PT (Awaiting next authorized seam)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is issue #348 — presence receipt insert-error hotfix (no false success).
+Active implementation seam is NONE / awaiting authorized seam.
 
+Issue #348 is COMPLETE — presence receipt insert-error hotfix; `insertPresenceReceipt` now throws on Supabase insert failure so the money loop cannot report false success. Merged via PR #349 (`9377546`).
 Issue #344 is COMPLETE — workday-presence loop closure proven for non-owner user in browser; merged via PR #346 (`e2f7687`).
 Issue #341 is COMPLETE — runtime map + current-path Supabase receipts merged via PR #343 (`613296d`); Slack right-now owner-guard and presence-action receipts wired.
 Issue #339 is COMPLETE — frontend auth polish closeout merged via PR #340 (`a315394`); dashboard connect anchors now use OAuthConnectButton.
@@ -32,15 +33,15 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-Issue #348 — `insertPresenceReceipt` swallowed Supabase insert errors, so terminal money-loop actions could return success with no durable receipt. Fix surfaces the error (500) instead of false success.
+- NONE
 
 ## Next exact move
 
-1. Land the 2-file fix on `fix/receipt-atomicity` (`lib/workday-presence/presence-action-receipt.ts` throws on insert error; route test proves 500 not 200).
-2. Run `npm run gate:continuity && npm run build`, push, open PR for #348.
-3. On merge, close out control plane back to awaiting seam.
+1. Create or name the next authorized GitHub issue.
+2. Update `ACTIVE_HANDOFF.md`, `ACTIVE_SEAM_STATE.json`, `FOLDERA_BUILD_ORDER.yaml`, and `.foldera-contract.json` to that issue before coding.
+3. Do not start implementation work until the next active seam is explicitly authorized.
 
-Current production truth: `Last known main SHA: e2f7687d` (PR #346 merged 2026-06-16; #348 hotfix active)
+Current production truth: `Last known main SHA: 9377546` (PR #349 merged 2026-06-16; awaiting next seam)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
