@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { resolveCronUser, validateCronAuth } from '@/lib/auth/resolve-user';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { resolveCronUser, validateCronAuth, resolveAnyUser } from '@/lib/auth/resolve-user';
 
 const ORIGINAL_CRON_SECRET = process.env.CRON_SECRET;
 const ORIGINAL_INGEST_USER_ID = process.env.INGEST_USER_ID;
@@ -96,5 +96,30 @@ describe('resolveCronUser', () => {
 
     expect(result).toBeInstanceOf(Response);
     expect((result as Response).status).toBe(500);
+  });
+});
+
+describe('resolveAnyUser', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('rejects x-as-user-id impersonation in production', async () => {
+    process.env.CRON_SECRET = TEST_CRON_SECRET;
+    process.env.INGEST_USER_ID = TEST_USER_ID;
+    vi.stubEnv('NODE_ENV', 'production');
+
+    const impersonatedUserId = '22222222-2222-2222-2222-222222222222';
+    const request = cronRequest({
+      'x-cron-secret': TEST_CRON_SECRET,
+      'x-as-user-id': impersonatedUserId,
+    });
+
+    const result = await resolveAnyUser(request);
+    
+    // In production, impersonation should be disabled and return a 403 Response.
+    // If it incorrectly succeeds, result will be { userId: impersonatedUserId }.
+    expect(result).toBeInstanceOf(Response);
+    expect((result as Response).status).toBe(403);
   });
 });
