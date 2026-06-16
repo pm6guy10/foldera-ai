@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-16 PT (Issue #344 active; money seam loop closure)
+Last updated: 2026-06-16 PT (Awaiting next authorized seam)
 
 ## Boot
 
@@ -11,8 +11,9 @@ Last updated: 2026-06-16 PT (Issue #344 active; money seam loop closure)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is Issue #344 — money seam: Done / Skip / Break Smaller dashboard loop.
+Active implementation seam is NONE / awaiting authorized seam.
 
+Issue #344 is COMPLETE — workday-presence loop closure proven for non-owner user in browser; merged via PR #346 (`e2f7687`).
 Issue #341 is COMPLETE — runtime map + current-path Supabase receipts merged via PR #343 (`613296d`); Slack right-now owner-guard and presence-action receipts wired.
 Issue #339 is COMPLETE — frontend auth polish closeout merged via PR #340 (`a315394`); dashboard connect anchors now use OAuthConnectButton.
 PR #336 is SUPERSEDED — closed without merge; PR #340 is the clean replacement.
@@ -31,17 +32,15 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-Issue #344 is the active money seam loop closure seam.
+- NONE
 
 ## Next exact move
 
-1. Keep branch `codex/344-money-seam`.
-2. Apply/verify the dashboard View Draft + Dismiss button styling fixes (use design-system classes, keep the two-button contract).
-3. Ensure model.ts buildRightNowCard respects `snoozed_until` by resolving to `mode: 'setup'`.
-4. Verify all tests pass locally and the continuity gate is green.
-5. Push changes to origin, open PR, verify on Vercel preview, and perform manual browser validation.
+1. Create or name the next authorized GitHub issue.
+2. Update `ACTIVE_HANDOFF.md`, `ACTIVE_SEAM_STATE.json`, `FOLDERA_BUILD_ORDER.yaml`, and `.foldera-contract.json` to that issue before coding.
+3. Do not start implementation work until the next active seam is explicitly authorized.
 
-Current production truth: `Last known main SHA: 6bad9420` (PR #345 merged 2026-06-16; issue #344 active)
+Current production truth: `Last known main SHA: e2f7687d` (PR #346 merged 2026-06-16; awaiting next seam)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
