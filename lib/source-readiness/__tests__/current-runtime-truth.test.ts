@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   countCurrentWorkdayPresenceReceipts,
   isCurrentWorkdayPresenceReceipt,
+  countCurrentWorkdayPresencePipelineRuns,
+  isCurrentWorkdayPresencePipelineRun,
 } from '../current-runtime-truth';
 
 describe('current runtime truth helpers', () => {
@@ -26,4 +28,23 @@ describe('current runtime truth helpers', () => {
       }),
     ).toBe(false);
   });
+
+  it('counts only current Workday Presence pipeline runs (currently always 0)', () => {
+    const rows = [
+      { phase: 'user_run' },
+      { phase: 'cron_start' },
+      { phase: 'cron_complete' },
+    ];
+
+    expect(countCurrentWorkdayPresencePipelineRuns(rows)).toBe(0);
+  });
+
+  it('treats legacy pipeline runs as non-current runtime truth', () => {
+    expect(
+      isCurrentWorkdayPresencePipelineRun({
+        phase: 'user_run',
+      }),
+    ).toBe(false);
+  });
 });
+

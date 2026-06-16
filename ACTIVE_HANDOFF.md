@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-15 PT (Issue #339 COMPLETE via PR #340; Issue #341 now active)
+Last updated: 2026-06-15 PT (Issue #341 COMPLETE via PR #343; next candidate: trigger-runner receipts)
 
 ## Boot
 
@@ -34,11 +34,8 @@ Issue #341 is the active runtime-map + current-path Supabase receipts seam.
 
 ## Next exact move
 
-1. Check branch `codex/341-runtime-map-current-path` for prior session work on issue #341.
-2. Rebase that branch onto main (post-PR-#340 merge).
-3. Wire one current trigger-runner path that leaves an explicit artifact-backed action or safe-silence receipt.
-4. Run focused tests + gate:continuity + build.
-5. Push and open PR for issue #341.
+1. Merge PR #343 (Issue #341 complete; pipeline_runs scoped, legacy ignored).
+2. Transition to next candidate seam: message-action / trigger-runner current receipts.
 
 Current production truth: `Last known main SHA: a315394` (PR #340 merged 2026-06-15; issue #341 active)
 
