@@ -1,9 +1,9 @@
 {
   "active_issue": 354,
-  "active_branch": "ops/351-closeout-activate-354",
+  "active_branch": "fix/354-f-card-resolver-mismatch",
   "active_pr": null,
-  "deployed_commit_sha": "c23816554a8af587dfaaf35cbdd53a5eaf14e381",
+  "deployed_commit_sha": "ba42125299fc88ffd6ec44c085a6581a3155baa3",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-16T13:30:00Z"
+  "last_verified_at": "2026-06-16T15:30:00Z"
 }
