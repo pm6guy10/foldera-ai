@@ -111,7 +111,7 @@ export async function resolveAnyUser(
   if (cronSecret && hasValidCronSecret(request, cronSecret)) {
     const asUserId = request.headers.get('x-as-user-id')?.trim();
     if (asUserId && isValidUuid(asUserId)) {
-      if (process.env.NODE_ENV === 'production') {
+      if (process.env.VERCEL_ENV === 'production') {
         return NextResponse.json({ error: 'Impersonation disabled in production' }, { status: 403 });
       }
       return { userId: asUserId };
