@@ -83,12 +83,15 @@ describe('workday presence message payload', () => {
     expect(payload.actions.map((a) => a.id)).toEqual(['view_draft', 'dismiss']);
   });
 
-  it('renders a quiet dismissed card with no buttons after dismiss', () => {
+  it('renders a quiet dismissed card with no buttons while the dismiss snooze is active', () => {
+    // Mirrors applyDismiss: a real dismiss always sets snoozed_until (4h hold),
+    // not just an interaction_history entry.
     const state = normalizeWorkdayPresenceState({
       current_focus: 'Homeschool meeting with Deanne Varnum',
       next_move: 'Reply to Deanne confirming the 2 PM slot.',
       why_it_matters: 'The meeting is today.',
       state_source: 'scored_winner',
+      snoozed_until: '2026-06-12T20:05:00.000Z',
       interaction_history: [
         {
           interaction_type: 'dismiss',
@@ -102,9 +105,39 @@ describe('workday presence message payload', () => {
         },
       ],
     });
-    const payload = buildRightNowMessagePayload(state);
+    const payload = buildRightNowMessagePayload(state, '2026-06-12T17:00:00.000Z');
     expect(payload.mode).toBe('dismissed');
     expect(payload.text).toBe('Dismissed. Staying quiet until something new matters.');
     expect(payload.actions).toEqual([]);
+  });
+
+  it('F-dismiss (issue #354): reactivates once the dismiss snooze expires instead of staying dismissed forever', () => {
+    // Same dismissed state as above, but "now" is past the 4h snooze window.
+    // The Slack message layer must agree with the dashboard card (which only
+    // checks snoozed_until) instead of treating "last action was dismiss" as
+    // a permanent label.
+    const state = normalizeWorkdayPresenceState({
+      current_focus: 'Homeschool meeting with Deanne Varnum',
+      next_move: 'Reply to Deanne confirming the 2 PM slot.',
+      why_it_matters: 'The meeting is today.',
+      state_source: 'manual_anchor',
+      snoozed_until: '2026-06-12T20:05:00.000Z',
+      interaction_history: [
+        {
+          interaction_type: 'dismiss',
+          timestamp: '2026-06-12T16:05:00.000Z',
+          resulting_state: {
+            next_move: 'Reply to Deanne confirming the 2 PM slot.',
+            blocker: null,
+            waiting_on: null,
+            last_completed_step: null,
+          },
+        },
+      ],
+    });
+    const payload = buildRightNowMessagePayload(state, '2026-06-12T20:10:00.000Z');
+    expect(payload.mode).toBe('active');
+    expect(payload.text).toContain('Right now.');
+    expect(payload.actions.map((a) => a.id)).toEqual(['dismiss']);
   });
 });

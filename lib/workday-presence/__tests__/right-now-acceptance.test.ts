@@ -120,4 +120,31 @@ describe('Right Now acceptance standard: artifact-backed, not winner-backed', ()
       expect(card.why_this_matters).not.toMatch(SCORER_JARGON);
     }
   });
+
+  // F-card (issue #354): a title-only draft is a label, not a prepared object.
+  // command-state-resolver already enforces this (draftIsReviewable) and falls
+  // through to CLEAR. The card must agree instead of independently claiming
+  // "Draft ready" for the same unreviewable draft.
+  const titleOnlyDraftState = normalizeWorkdayPresenceState({
+    current_focus: 'Project update to be sent by end of day Tuesday',
+    next_move: 'Review and take the smallest next step: Project update to be sent by end of day Tuesday',
+    why_it_matters: 'Matched goal: "Close open commitments before end of week". Score: 2.86.',
+    do_not_touch: 'Do not auto-send or mutate source systems.',
+    state_source: 'scored_winner',
+    draft: {
+      action_type: 'send_message',
+      title: 'Project update — EOD Tuesday',
+    },
+    created_at: '2026-06-11T16:00:00.000Z',
+    updated_at: '2026-06-11T16:00:00.000Z',
+  });
+
+  it('F-card: a title-only draft does not unlock a prepared-object card', () => {
+    expect(rightNowHasPreparedObject(titleOnlyDraftState)).toBe(false);
+    expect(buildRightNowCard(titleOnlyDraftState).mode).toBe('setup');
+
+    const payload = buildRightNowMessagePayload(titleOnlyDraftState);
+    expect(payload.mode).toBe('silent');
+    expect(payload.text).not.toContain('Draft ready');
+  });
 });

@@ -83,9 +83,19 @@ function cardActions(
   return actions;
 }
 
-export function buildRightNowMessagePayload(state: WorkdayPresenceState | null): RightNowMessagePayload {
+export function buildRightNowMessagePayload(
+  state: WorkdayPresenceState | null,
+  nowIso = new Date().toISOString(),
+): RightNowMessagePayload {
   const lastInteraction = state?.interaction_history[state.interaction_history.length - 1] ?? null;
-  if (state && lastInteraction?.interaction_type === 'dismiss') {
+  const isDismissSnoozeActive = Boolean(
+    state?.snoozed_until && Date.parse(state.snoozed_until) > Date.parse(nowIso),
+  );
+  // Dismiss is a 4h hold (applyDismiss), not a permanent state. Once
+  // snoozed_until passes, this surface must agree with the dashboard card
+  // (which only checks snoozed_until) instead of treating "last action was
+  // dismiss" as dismissed forever — that mismatch is F-dismiss (issue #354).
+  if (state && lastInteraction?.interaction_type === 'dismiss' && isDismissSnoozeActive) {
     return {
       kind: 'right_now',
       mode: 'dismissed',
@@ -106,7 +116,7 @@ export function buildRightNowMessagePayload(state: WorkdayPresenceState | null):
     };
   }
 
-  const card = buildRightNowCard(state);
+  const card = buildRightNowCard(state, nowIso);
 
   return {
     kind: 'right_now',
