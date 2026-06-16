@@ -1,9 +1,9 @@
 {
   "active_issue": 361,
-  "active_branch": "feat/361-commitment-lapsing-trigger",
+  "active_branch": "claude/context-issue-past-chat-sx4gek",
   "active_pr": null,
-  "deployed_commit_sha": "0f0aa8158ad85b7ea90481b9749659a41208d102",
+  "deployed_commit_sha": "d19a4bf1386548b96713a23ebe3cf70d2d476c12",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-16T19:45:00Z"
+  "last_verified_at": "2026-06-16T20:30:00Z"
 }

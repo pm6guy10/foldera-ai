@@ -11,8 +11,9 @@ Last updated: 2026-06-16 PT (Awaiting next authorized seam)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is issue #361 — wire real commitment-lapsing detection from tkg_commitments into the trigger-runner, and schedule the existing trigger-runner cron route via GitHub Actions every 15 min (as-needed interrupt, not once-daily) instead of only on manual sync-now or never.
+No active seam — awaiting next owner instruction.
 
+Issue #361 is COMPLETE — commitment-lapsing bridge + 15-min GitHub Actions schedule merged via PR #362 (`d19a4bf`).
 Issue #354 is COMPLETE — auth + state-machine integrity findings, all 3 (F-auth, F-card, F-dismiss) resolved and tested. PR #357 merged F-auth (`ba42125`); PR #358 merged F-card + F-dismiss (`4b2908b`).
 Issue #351 is COMPLETE — money-loop integrity sweep, all 5 findings (F1-F5) resolved and tested. PR #352 merged F1+F4 (`b400c5d`); PR #353 recovered and merged F2/F3/F5 + full test coverage (`c238165`).
 Issue #348 is COMPLETE — presence receipt insert-error hotfix; `insertPresenceReceipt` now throws on Supabase insert failure so the money loop cannot report false success. Merged via PR #349 (`9377546`).
@@ -35,14 +36,13 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-- Issue #361: wire tkg_commitments into the trigger-runner (commitment_lapsing), run trigger-runner from nightly-ops cron.
+None — awaiting next owner instruction.
 
 ## Next exact move
 
-1. Build the commitment-bridge function with red->green proof.
-2. Wire into maybeRunWorkdayPresenceTriggerRunnerForUser; add GitHub Actions schedule (every 15 min) calling the existing /api/cron/workday-presence-trigger-runner route, push, open PR, STOP at MERGE READY.
+Awaiting next authorized seam from owner.
 
-Current production truth: `Last known main SHA: 0f0aa8158ad85b7ea90481b9749659a41208d102` (PR #360 merged 2026-06-16; issue #354 closed; issue #361 active)
+Current production truth: `Last known main SHA: d19a4bf1386548b96713a23ebe3cf70d2d476c12` (PR #362 merged 2026-06-16; issue #361 closed)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
