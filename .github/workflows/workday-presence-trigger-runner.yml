@@ -2,6 +2,12 @@
 # on a manual dashboard "sync now" click. Right Now cards are meant to
 # interrupt as-needed, not once a day — this is the as-needed heartbeat.
 # Issue #361.
+#
+# Calls the trigger-runner lib directly (scripts/workday-presence-trigger-runner-cron.ts)
+# instead of POSTing to the Vercel HTTP route. The HTTP route requires a
+# CRON_SECRET GitHub Actions secret that was never provisioned, so every run
+# 401'd silently; this mirrors the already-working loop-health-guardian.yml
+# pattern of calling Supabase/Slack directly with secrets that are already set.
 name: Workday Presence Trigger Runner
 
 on:
@@ -14,21 +20,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Run trigger-runner
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - run: npx tsx scripts/workday-presence-trigger-runner-cron.ts
         env:
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: |
-          URL="https://www.foldera.ai/api/cron/workday-presence-trigger-runner"
-          response=$(curl -s -w "\n%{http_code}" \
-            -X POST "$URL" \
-            -H "Authorization: Bearer $CRON_SECRET")
-
-          http_code=$(echo "$response" | tail -1)
-          body=$(echo "$response" | head -n -1)
-
-          echo "HTTP $http_code | $body"
-
-          if [ "$http_code" != "200" ]; then
-            echo "ERROR: Non-200 response."
-            exit 1
-          fi
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FOLDERA_SELF_USER_ID: ${{ secrets.FOLDERA_SELF_USER_ID }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          FOLDERA_SLACK_SELF_CHANNEL_ID: ${{ secrets.FOLDERA_SLACK_SELF_CHANNEL_ID }}

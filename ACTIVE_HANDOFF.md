@@ -11,9 +11,9 @@ Last updated: 2026-06-16 PT (Awaiting next authorized seam)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-No active seam — awaiting next owner instruction.
+Active implementation seam is issue #364: workday-presence-trigger-runner never fired in production because `CRON_SECRET` was never provisioned to GitHub Actions; fix removes the HTTP/CRON_SECRET dependency by calling the trigger-runner lib directly from the workflow (same pattern as `loop-health-guardian.yml`).
 
-Issue #361 is COMPLETE — commitment-lapsing bridge + 15-min GitHub Actions schedule merged via PR #362 (`d19a4bf`).
+Issue #361 is COMPLETE — commitment-lapsing bridge + 15-min GitHub Actions schedule merged via PR #362 (`d19a4bf`); discovered non-functional in production post-merge, see #364.
 Issue #354 is COMPLETE — auth + state-machine integrity findings, all 3 (F-auth, F-card, F-dismiss) resolved and tested. PR #357 merged F-auth (`ba42125`); PR #358 merged F-card + F-dismiss (`4b2908b`).
 Issue #351 is COMPLETE — money-loop integrity sweep, all 5 findings (F1-F5) resolved and tested. PR #352 merged F1+F4 (`b400c5d`); PR #353 recovered and merged F2/F3/F5 + full test coverage (`c238165`).
 Issue #348 is COMPLETE — presence receipt insert-error hotfix; `insertPresenceReceipt` now throws on Supabase insert failure so the money loop cannot report false success. Merged via PR #349 (`9377546`).
@@ -36,13 +36,13 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-None — awaiting next owner instruction.
+Issue #364: ship the direct-script trigger-runner workflow, merge, then verify a live 15-min run actually fires (HTTP route bypassed entirely — no more dependence on a GitHub-side `CRON_SECRET`).
 
 ## Next exact move
 
-Awaiting next authorized seam from owner.
+Open PR for issue #364, pass `npm run gate:continuity`, merge, then confirm the next scheduled run produces a real `tkg_actions` row or a clean `quiet`/`dedup_suppressed` outcome in the run log (not a silent failure).
 
-Current production truth: `Last known main SHA: d19a4bf1386548b96713a23ebe3cf70d2d476c12` (PR #362 merged 2026-06-16; issue #361 closed)
+Current production truth: `Last known main SHA: 8d68a8e736cb9aeaf8edd7db6083a7c5f0a8c590` (PR #363 merged 2026-06-16; issue #361 closeout complete)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
