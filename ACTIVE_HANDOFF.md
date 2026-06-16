@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-15 PT (Issue #341 active via PR #343; residual receipt gaps authorized)
+Last updated: 2026-06-16 PT (Awaiting next authorized seam)
 
 ## Boot
 
@@ -11,8 +11,9 @@ Last updated: 2026-06-15 PT (Issue #341 active via PR #343; residual receipt gap
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is Issue #341 — runtime map + current-path Supabase receipts.
+Active implementation seam is NONE / awaiting authorized seam.
 
+Issue #341 is COMPLETE — runtime map + current-path Supabase receipts merged via PR #343 (`613296d`); Slack right-now owner-guard and presence-action receipts wired.
 Issue #339 is COMPLETE — frontend auth polish closeout merged via PR #340 (`a315394`); dashboard connect anchors now use OAuthConnectButton.
 PR #336 is SUPERSEDED — closed without merge; PR #340 is the clean replacement.
 PR #338 is COMPLETE — Repo Truth Boot Gate accepts GitHub MCP as valid auth path; merged `bae154e`.
@@ -30,17 +31,15 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-Issue #341 is the active runtime-map + current-path Supabase receipts seam.
+- NONE
 
 ## Next exact move
 
-1. Keep PR #343 on branch `codex/341-runtime-map-current-path`.
-2. Keep source-readiness scoped so legacy `pipeline_runs` and `tkg_actions` rows do not inflate current product truth.
-3. Wire insertPresenceReceipt in message-action route — presence-action-receipt.ts already exists, one import + one await after persistState.
-4. Add the owner-only guard to the live Slack Right Now send route.
-5. Run focused tests + gate:continuity + build, then push and post the PR proof receipt.
+1. Create or name the next authorized GitHub issue.
+2. Update `ACTIVE_HANDOFF.md`, `ACTIVE_SEAM_STATE.json`, `FOLDERA_BUILD_ORDER.yaml`, and `.foldera-contract.json` to that issue before coding.
+3. Do not start implementation work until the next active seam is explicitly authorized.
 
-Current production truth: `Last known main SHA: a315394` (PR #340 merged 2026-06-15; issue #341 active)
+Current production truth: `Last known main SHA: 613296d` (PR #343 merged 2026-06-16; issue #341 closed on GitHub)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
