@@ -1,9 +1,9 @@
 {
-  "active_issue": 344,
-  "active_branch": "codex/344-money-seam",
+  "active_issue": 0,
+  "active_branch": "ops/344-closeout",
   "active_pr": null,
-  "deployed_commit_sha": "6bad9420e6c24236ac28728c712eee829cc706d7",
+  "deployed_commit_sha": "e2f7687db1a2ce96502ff5c96a005129527970ae",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-16T03:26:00Z"
+  "last_verified_at": "2026-06-16T05:18:00Z"
 }
