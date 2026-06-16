@@ -39,7 +39,7 @@ describe('first-run source readiness', () => {
       'Metadata says Google is connected and 1 Gmail/calendar item has arrived.',
     );
     expect(readiness.why_no_finished_move).toBe(
-      'No finished move exists because 0 source items have been processed and no action or pipeline run exists yet.',
+      'No finished move exists because 0 source items have been processed and no action exists yet.',
     );
     expect(readiness.value_unlock_next).toBe(
       'Check sources now to process the waiting item, or connect another source if this inbox is too thin.',
@@ -79,7 +79,7 @@ describe('first-run source readiness', () => {
       'Metadata says Google is connected and 2 Gmail/calendar items have arrived.',
     );
     expect(readiness.why_no_finished_move).toBe(
-      'No finished move exists because 0 source items have been processed and no action or pipeline run exists yet.',
+      'No finished move exists because 0 source items have been processed and no action exists yet.',
     );
     expect(readiness.value_unlock_next).toBe(
       'Check sources now to process the waiting items, or connect another source if this inbox is too thin.',

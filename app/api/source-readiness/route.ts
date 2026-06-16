@@ -7,6 +7,10 @@ import {
   loadConnectorHealthRows,
 } from '@/lib/integrations/connector-health';
 import { buildFirstRunSourceReadiness } from '@/lib/source-readiness/first-run-source-readiness';
+import {
+  CURRENT_WORKDAY_PRESENCE_ACTION_SOURCES,
+  countCurrentWorkdayPresencePipelineRuns,
+} from '@/lib/source-readiness/current-runtime-truth';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { withReadOnlyUserCache } from '@/lib/utils/read-only-user-cache';
 
@@ -74,11 +78,10 @@ export async function GET() {
       supabase
         .from('tkg_actions')
         .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId),
-      supabase
-        .from('pipeline_runs')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId),
+        .eq('user_id', userId)
+        .in('action_source', [...CURRENT_WORKDAY_PRESENCE_ACTION_SOURCES]),
+      // We pass 0 count for pipeline runs as no current Workday Presence paths write pipeline_runs yet
+      Promise.resolve({ count: countCurrentWorkdayPresencePipelineRuns([]) }),
       supabase
         .from('tkg_signals')
         .select('ingested_at, occurred_at, created_at')

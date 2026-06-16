@@ -124,7 +124,7 @@ export function buildFirstRunSourceReadiness(
     : 'Metadata says no Google or Microsoft source is connected yet.';
   const whyNoFinishedMove = actionCount > 0
     ? `A finished move already exists outside this readiness state: ${actionCount} action ${actionCount === 1 ? 'row' : 'rows'} recorded.`
-    : `No finished move exists because ${processedCount} source ${itemWord(processedCount)} ${processedCount === 1 ? 'has' : 'have'} been processed and no action or pipeline run exists yet.`;
+    : `No finished move exists because ${processedCount} source ${itemWord(processedCount)} ${processedCount === 1 ? 'has' : 'have'} been processed and no action exists yet.`;
   const valueUnlockNext = connected
     ? unprocessedCount > 0
       ? `Check sources now to process the waiting ${itemWord(unprocessedCount)}, or connect another source if this inbox is too thin.`
@@ -150,7 +150,7 @@ export function buildFirstRunSourceReadiness(
     headline = `Foldera connected ${providerLabel} and found ${processedCount} processed source ${itemWord(processedCount)}.`;
     reason = actionCount > 0
       ? `Foldera has processed source evidence and ${actionCount} action ${actionCount === 1 ? 'row' : 'rows'} recorded.`
-      : `Foldera has processed source evidence, but no safe action exists yet. Pipeline runs recorded: ${pipelineRunCount}.`;
+      : `Foldera has processed source evidence, but no safe action exists yet.`;
   }
 
   return {
