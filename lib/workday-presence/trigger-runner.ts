@@ -11,6 +11,7 @@ import {
   type SlackSendResult,
 } from '@/lib/slack/right-now';
 import { createServerClient } from '@/lib/db/client';
+import { findLapsingCommitmentSignal } from './commitment-bridge';
 import { insertTriggerReceipt } from './trigger-receipt';
 import { type RightNowMessagePayload } from './message';
 import { normalizeWorkdayPresenceState, type WorkdayPresenceState } from './model';
@@ -347,10 +348,18 @@ export async function maybeRunWorkdayPresenceTriggerRunnerForUser(
     .limit(50);
   if (signalsError) throw signalsError;
 
+  const nowIso = new Date().toISOString();
+  const lapsingCommitmentSignal = await findLapsingCommitmentSignal(supabase, userId, nowIso);
+  const allSignals = [
+    ...(Array.isArray(signals) ? signals : []),
+    ...(lapsingCommitmentSignal ? [lapsingCommitmentSignal] : []),
+  ];
+
   const result = await runWorkdayPresenceTriggerRunner({
     channel,
     cursor,
-    signals: Array.isArray(signals) ? signals : [],
+    nowIso,
+    signals: allSignals,
     slack: slackAdapter,
     persistIntervention: async (intervention) => {
       const nextMetadata = {

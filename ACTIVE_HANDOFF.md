@@ -11,7 +11,7 @@ Last updated: 2026-06-16 PT (Awaiting next authorized seam)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-No implementation seam is currently active. Awaiting next authorized seam from owner.
+Active implementation seam is issue #361 — wire real commitment-lapsing detection from tkg_commitments into the trigger-runner, and schedule the existing trigger-runner cron route via GitHub Actions every 15 min (as-needed interrupt, not once-daily) instead of only on manual sync-now or never.
 
 Issue #354 is COMPLETE — auth + state-machine integrity findings, all 3 (F-auth, F-card, F-dismiss) resolved and tested. PR #357 merged F-auth (`ba42125`); PR #358 merged F-card + F-dismiss (`4b2908b`).
 Issue #351 is COMPLETE — money-loop integrity sweep, all 5 findings (F1-F5) resolved and tested. PR #352 merged F1+F4 (`b400c5d`); PR #353 recovered and merged F2/F3/F5 + full test coverage (`c238165`).
@@ -35,14 +35,14 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-- Awaiting next authorized seam. No issue is active.
+- Issue #361: wire tkg_commitments into the trigger-runner (commitment_lapsing), run trigger-runner from nightly-ops cron.
 
 ## Next exact move
 
-1. Owner names or authorizes the next issue.
-2. Do not start implementation work until a seam is named.
+1. Build the commitment-bridge function with red->green proof.
+2. Wire into maybeRunWorkdayPresenceTriggerRunnerForUser; add GitHub Actions schedule (every 15 min) calling the existing /api/cron/workday-presence-trigger-runner route, push, open PR, STOP at MERGE READY.
 
-Current production truth: `Last known main SHA: 4b2908bc62e94601d2da827adf563b987c91a7c5` (PR #358 merged 2026-06-16; issue #354 closed)
+Current production truth: `Last known main SHA: 0f0aa8158ad85b7ea90481b9749659a41208d102` (PR #360 merged 2026-06-16; issue #354 closed; issue #361 active)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
