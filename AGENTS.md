@@ -266,3 +266,15 @@ Report only: active seam, files changed, proof run, source-truth closeout status
 2. **Never build in OneDrive.** Do not run `npm run build`, tests, git cleanup, `rm`, or generated-artifact deletion inside `C:/Users/b-kap/OneDrive/Desktop/FOLDERA/foldera-ai`.
 3. **Never approve OneDrive deletion.** Never tell Brandon to approve deletion of synced repo/build files unless the exact path is confirmed disposable.
 4. **Leave synced artifacts alone.** If a prior run created/deleted build artifacts in OneDrive, do not continue cleanup there; leave it alone or tell Brandon to click **Keep items**.
+
+## Multi-Agent & Proof-Integrity Hardening
+
+Added 2026-06-16 after concurrent agents (Claude / Codex / Antigravity) lost a proven fix and corrupted the git index. These apply to every tool equally.
+
+1. **One agent, one working tree.** Only one agent operates a given clone's working tree at a time. Two agents running git in the same tree corrupt `.git/index` (`index.lock` / "several Git processes still alive"). If parallel work is required, the second agent uses its own `git worktree` under `.claude/worktrees/` — never the shared tree. The canonical clone is `C:\Users\b-kap\foldera-ai`; there is no second clone.
+2. **Never bypass git hooks.** No `HUSKY=0`, `--no-verify`, or skipping the pre-push gate to "make progress." If the pre-push build/e2e gate is slow, let it run. Bypass only on an explicit per-session owner instruction naming the bypass.
+3. **Proof identity integrity.** A "non-owner" proof MUST use a real non-owner test account. Never use the owner account (`b.kapp1010@gmail.com`) and label it a stranger/non-owner. If no non-owner test user exists, stop with `BLOCKED_WITH_EXACT_RECEIPT` — do not relabel the owner.
+4. **Secrets stay put.** Never read, print, copy, or move `.env` / `.env.local` / tokens between directories or clones. Mock at the boundary in tests.
+5. **No production mutation to manufacture proof.** Never run SQL or any write that creates/seeds/updates production rows just to produce a proof artifact. Use an authorized test user or mock at the boundary. Prod writes are allowed only when the active issue explicitly requires them.
+6. **No stale-instruction execution.** Verify the active GitHub issue is OPEN before working it. An instruction to "finish" or "continue" an already-merged or closed issue is `WRONG PATH` — re-read the live control plane and act on what it names now, not on remembered or pasted next-moves.
+7. **No sleep-timer polling.** Do not burn cycles scheduling repeated wait-timers for background tasks. Start the long task, then check once when it completes.
