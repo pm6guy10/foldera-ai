@@ -11,8 +11,9 @@ Last updated: 2026-06-16 PT (Awaiting next authorized seam)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is issue #351 — Money-loop integrity sweep.
+Active implementation seam is issue #354 — Auth + state-machine integrity findings (resolveAnyUser backdoor, card lies, dismiss semantics). Priority order: F-auth → F-card → F-dismiss.
 
+Issue #351 is COMPLETE — money-loop integrity sweep, all 5 findings (F1-F5) resolved and tested. PR #352 merged F1+F4 (`b400c5d`); PR #353 recovered and merged F2/F3/F5 + full test coverage (`c238165`).
 Issue #348 is COMPLETE — presence receipt insert-error hotfix; `insertPresenceReceipt` now throws on Supabase insert failure so the money loop cannot report false success. Merged via PR #349 (`9377546`).
 Issue #344 is COMPLETE — workday-presence loop closure proven for non-owner user in browser; merged via PR #346 (`e2f7687`).
 Issue #341 is COMPLETE — runtime map + current-path Supabase receipts merged via PR #343 (`613296d`); Slack right-now owner-guard and presence-action receipts wired.
@@ -33,14 +34,14 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-- Issue #351: Sweep every money-loop surface for the same defect class as #348 (all findings resolved and tested).
+- Issue #354: Auth + state-machine integrity findings. Start with F-auth (resolveAnyUser impersonation backdoor in prod routes).
 
 ## Next exact move
 
-1. PR updated on `fix/351-finish-sweep` branch and comment with local mechanical proof posted.
-2. Awaiting auditor review before merge. DO NOT merge yet.
+1. Branch off main for issue #354, fix F-auth first with red→green proof (failing test demonstrating the impersonation path, then the fix).
+2. Push, open PR, post mechanical proof (vitest + gate:continuity + build), STOP at MERGE READY — do not merge.
 
-Current production truth: `Last known main SHA: b400c5dd1e5bf50e6069caee9a5e92f5643c0700` (PR #352 merged 2026-06-16; issue #351 active)
+Current production truth: `Last known main SHA: c23816554a8af587dfaaf35cbdd53a5eaf14e381` (PR #353 merged 2026-06-16; issue #351 closed; issue #354 active)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 

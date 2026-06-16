@@ -1,14 +1,15 @@
 {
-  "backlog_id": "money-loop-integrity-sweep",
-  "active_issue": 351,
+  "backlog_id": "auth-state-machine-integrity",
+  "active_issue": 354,
   "base_commit": "HEAD",
   "money_loop_rung": "m1",
-  "user_system_path": "Sweep every money-loop surface for the same defect class as #348",
+  "user_system_path": "Fix resolveAnyUser impersonation backdoor, card/resolver state mismatch, and dismiss semantics. Priority order F-auth -> F-card -> F-dismiss.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
+    "lib/auth/**",
     "lib/workday-presence/**",
     "app/api/workday-presence/**",
     "app/api/slack/**",
@@ -21,20 +22,20 @@
     "package-lock.json",
     "tests/e2e/**"
   ],
-  "allowed_files_raw": "lib/workday-presence/**, app/api/workday-presence/**, app/api/slack/**, lib/slack/**, and control-plane files",
+  "allowed_files_raw": "lib/auth/**, lib/workday-presence/**, app/api/workday-presence/**, app/api/slack/**, lib/slack/**, and control-plane files",
   "forbidden_files_raw": "No schema, no UI, no e2e tests, no dependency changes.",
-  "required_local_proof": "npx vitest run lib/workday-presence/ app/api/workday-presence/ lib/slack/ app/api/slack/ && npm run build && npm run gate:continuity",
+  "required_local_proof": "npx vitest run lib/auth/ lib/workday-presence/ app/api/workday-presence/ lib/slack/ app/api/slack/ && npm run build && npm run gate:continuity",
   "required_browser_proof": "not applicable",
   "browser_proof_command": "not applicable",
-  "acceptance_condition": "All money-loop surfaces are proven to surface errors on durable receipt write failure instead of reporting false success.",
-  "stop_condition": "Stop when issue #351 has a merged PR with gate + build + vitest proof.",
+  "acceptance_condition": "resolveAnyUser impersonation path is gated behind non-prod env or removed from prod routes (F-auth); the Right Now card never states 'Draft ready' when command-state-resolver independently verdicts CLEAR (F-card); dismiss behavior matches its recorded interaction history (F-dismiss).",
+  "stop_condition": "Stop when issue #354 has a merged PR with gate + build + vitest proof, addressing findings in priority order.",
   "is_user_facing": false,
   "anti_regression_checks": [
     "Continuity gate passes",
     "Build passes",
     "Vitest passes"
   ],
-  "next_command": "Fix defects and prove with tests, push, and open PR.",
+  "next_command": "Fix F-auth first with red->green proof, prove with tests, push, and open PR.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
