@@ -2,8 +2,8 @@
   "active_issue": 351,
   "active_branch": "fix/351-integrity-sweep",
   "active_pr": null,
-  "deployed_commit_sha": "9377546efd0613dc590df45ca4fc4fba61f6c2b0",
+  "deployed_commit_sha": "b400c5dd1e5bf50e6069caee9a5e92f5643c0700",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-16T06:30:00Z"
+  "last_verified_at": "2026-06-16T06:41:00Z"
 }

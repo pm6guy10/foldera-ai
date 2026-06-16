@@ -45,6 +45,8 @@ describe('GET /api/workday-presence', () => {
     mockApiErrorForRoute.mockImplementation((error: unknown) =>
       NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 }),
     );
+    mockSignalsQuery.error = null;
+    mockSignalsQuery.data = [];
   });
 
   it('generates a default state when no state exists (M1 backend-lock)', async () => {
@@ -314,6 +316,21 @@ describe('GET /api/workday-presence', () => {
 
       expect(response.status).toBe(200);
       expect(body.card.next_move ?? '').not.toContain('Reply needed');
+    });
+
+    it('surfaces tkg_signals query error and returns 500', async () => {
+      mockSupabase.auth.admin.getUserById.mockResolvedValue({
+        data: { user: { user_metadata: { workday_presence_state: stateWithWaitingOn } } },
+        error: null,
+      });
+      mockSignalsQuery.error = new Error('Database query failed');
+
+      const { GET } = await import('../route');
+      const response = await GET(new Request('http://localhost/api/workday-presence'));
+      const body = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(body.error).toBe('Database query failed');
     });
   });
 

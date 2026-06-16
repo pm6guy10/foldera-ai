@@ -69,13 +69,14 @@ export async function GET(request: Request) {
       );
       const signalWindowStart =
         cursor.last_signal_cursor ?? new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
-      const { data: freshSignals } = await supabase
+      const { data: freshSignals, error: freshSignalsError } = await supabase
         .from('tkg_signals')
         .select('*')
         .eq('user_id', auth.userId)
         .gte('ingested_at', signalWindowStart)
         .order('ingested_at', { ascending: false })
         .limit(50);
+      if (freshSignalsError) throw freshSignalsError;
       if (freshSignals?.length) {
         const overridden = checkFreshSignalTriggerOverride({ signals: freshSignals, state });
         if (overridden) state = overridden;

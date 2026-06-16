@@ -7,16 +7,32 @@ const mockBadRequest = vi.fn((message: string) =>
   NextResponse.json({ error: message }, { status: 400 }),
 );
 
+const mockInsert = vi.fn();
 const mockSupabase = {
   auth: {
     admin: {
       getUserById: vi.fn(),
     },
   },
+  from: vi.fn().mockReturnValue({
+    insert: mockInsert,
+  }),
+};
+
+const mockPostMessage = vi.fn();
+const mockSlackAdapter = {
+  postMessage: mockPostMessage,
 };
 
 vi.mock('@/lib/auth/resolve-user', () => ({ resolveUser: mockResolveUser }));
 vi.mock('@/lib/db/client', () => ({ createServerClient: () => mockSupabase }));
+vi.mock('@/lib/slack/right-now', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@/lib/slack/right-now')>();
+  return {
+    ...original,
+    resolveSlackAdapterFromEnv: () => mockSlackAdapter,
+  };
+});
 vi.mock('@/lib/utils/api-error', () => ({
   apiErrorForRoute: mockApiErrorForRoute,
   badRequest: mockBadRequest,
@@ -72,5 +88,42 @@ describe('POST /api/slack/right-now', () => {
     expect(response.status).toBe(403);
     expect(body.error).toBe('Forbidden');
     expect(mockSupabase.auth.admin.getUserById).not.toHaveBeenCalled();
+  });
+
+  it('inserts receipt before sending Slack message and returns 200 on success', async () => {
+    mockInsert.mockResolvedValue({ error: null });
+    mockPostMessage.mockResolvedValue({
+      ok: true,
+      mode: 'test_safe',
+      channel: 'CSELF',
+      message_ts: 'mock-ts',
+      response: {},
+    });
+
+    const { POST } = await import('../route');
+    const response = await POST(
+      new Request('http://localhost/api/slack/right-now', { method: 'POST' }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(mockPostMessage).toHaveBeenCalledTimes(1);
+    expect(body.acknowledged).toBe(true);
+  });
+
+  it('blocks sending Slack message and returns 500 when receipt insert fails', async () => {
+    mockInsert.mockResolvedValue({ error: new Error('Durable receipt write failed') });
+
+    const { POST } = await import('../route');
+    const response = await POST(
+      new Request('http://localhost/api/slack/right-now', { method: 'POST' }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(mockPostMessage).not.toHaveBeenCalled();
+    expect(body.error).toContain('Durable receipt write failed');
   });
 });

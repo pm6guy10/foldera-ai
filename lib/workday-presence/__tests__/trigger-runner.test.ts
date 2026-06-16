@@ -211,4 +211,40 @@ describe('runWorkdayPresenceTriggerRunner', () => {
     expect(result.cursor.last_trigger_key).toContain('mention_reply_needed');
     expect(result.cursor.last_signal_cursor).toBe('2026-06-12T15:59:00.000Z');
   });
+
+  it('calls persistIntervention BEFORE slack.postMessage and blocks sending if persist fails', async () => {
+    const postMessage = vi.fn().mockResolvedValue({
+      ok: true,
+      mode: 'live',
+      channel: 'C123',
+      message_ts: '1718200000.123',
+      response: { ok: true },
+    });
+    const persistIntervention = vi.fn().mockRejectedValue(new Error('DB write failed'));
+
+    await expect(
+      runWorkdayPresenceTriggerRunner({
+        channel: 'C123',
+        state: baseState,
+        cursor: null,
+        nowIso: '2026-06-12T16:00:00.000Z',
+        signals: [
+          {
+            id: 'sig-1',
+            source: 'gmail',
+            type: 'reply_needed',
+            thread_id: 'thread-123',
+            redacted_summary: 'Customer asked for a human-confirmed renewal answer.',
+            reply_needed: true,
+            ingested_at: '2026-06-12T15:59:00.000Z',
+          },
+        ],
+        slack: { postMessage },
+        persistIntervention,
+      })
+    ).rejects.toThrow('DB write failed');
+
+    expect(persistIntervention).toHaveBeenCalledTimes(1);
+    expect(postMessage).not.toHaveBeenCalled();
+  });
 });
