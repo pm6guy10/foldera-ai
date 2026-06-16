@@ -14,6 +14,24 @@ const mockSupabase = {
       updateUserById: vi.fn(),
     },
   },
+  from: vi.fn(),
+};
+const mockInsert = vi.fn();
+
+const activeState = {
+  current_focus: 'Close ACME renewal decision',
+  next_move: 'Send owner confirmation note',
+  why_it_matters: 'The renewal window closes at 4 PM PT.',
+  blocker: null,
+  do_not_touch: null,
+  waiting_on: null,
+  last_completed_step: null,
+  state_source: 'manual_anchor',
+  source_trail: [],
+  snoozed_until: null,
+  interaction_history: [],
+  created_at: '2026-05-19T12:00:00.000Z',
+  updated_at: '2026-05-19T12:10:00.000Z',
 };
 
 vi.mock('@/lib/auth/resolve-user', () => ({ resolveUser: mockResolveUser }));
@@ -35,6 +53,8 @@ describe('POST /api/workday-presence/message-action', () => {
       ),
     );
     mockSupabase.auth.admin.updateUserById.mockResolvedValue({ data: {}, error: null });
+    mockInsert.mockResolvedValue({ error: null });
+    mockSupabase.from.mockReturnValue({ insert: mockInsert });
   });
 
   it('Done updates progress state (last_completed_step) and clears blocker', async () => {
@@ -191,6 +211,65 @@ describe('POST /api/workday-presence/message-action', () => {
     expect(body.state.snoozed_until).toBeTruthy();
     expect(body.state.waiting_on).toMatch(/snoozed/i);
     expect(body.state.interaction_history.at(-1).interaction_type).toBe('snooze');
+  });
+
+  it.each([
+    ['done', 'approved'],
+    ['dismiss', 'draft_rejected'],
+    ['break_smaller', 'approved'],
+  ] as const)('writes a durable current-path receipt for %s', async (actionId, expectedStatus) => {
+    mockSupabase.auth.admin.getUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            workday_presence_state: activeState,
+          },
+        },
+      },
+      error: null,
+    });
+
+    const { POST } = await import('../route');
+    const response = await POST(
+      new Request('http://localhost/api/workday-presence/message-action', {
+        method: 'POST',
+        body: JSON.stringify({ action_id: actionId }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockSupabase.from).toHaveBeenCalledWith('tkg_actions');
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(mockInsert.mock.calls[0][0]).toMatchObject({
+      user_id: 'u-53',
+      status: expectedStatus,
+      action_source: 'workday_presence',
+      execution_result: expect.objectContaining({ action_id: actionId }),
+    });
+  });
+
+  it('does not write a terminal receipt for view_draft', async () => {
+    mockSupabase.auth.admin.getUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            workday_presence_state: activeState,
+          },
+        },
+      },
+      error: null,
+    });
+
+    const { POST } = await import('../route');
+    const response = await POST(
+      new Request('http://localhost/api/workday-presence/message-action', {
+        method: 'POST',
+        body: JSON.stringify({ action_id: 'view_draft' }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockInsert).not.toHaveBeenCalled();
   });
 });
 
