@@ -23,7 +23,8 @@ export const dynamic = 'force-dynamic';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-async function persistState(
+async function persistStateAndReceipt(
+  supabase: ReturnType<typeof createServerClient>,
   userId: string,
   metadata: Record<string, unknown>,
   nextState: WorkdayPresenceState,
@@ -35,7 +36,7 @@ async function persistState(
     nextState,
     nextState.updated_at,
   );
-  const supabase = createServerClient();
+  await insertPresenceReceipt(supabase, userId, actionId, stateWithHistory);
   const nextMetadata = appendWorkdayPresenceInteractionHistory(
     metadata,
     actionId,
@@ -139,8 +140,7 @@ export async function POST(request: Request) {
       blocker: interaction.blocker,
       nowIso,
     });
-    const persistedState = await persistState(userId, metadata, receipt.after_state, interaction.actionId);
-    await insertPresenceReceipt(supabase, userId, interaction.actionId, persistedState);
+    const persistedState = await persistStateAndReceipt(supabase, userId, metadata, receipt.after_state, interaction.actionId);
     const nextPayload = buildRightNowMessagePayload(persistedState);
 
     let updateResult = null;

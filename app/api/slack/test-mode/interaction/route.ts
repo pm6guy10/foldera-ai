@@ -26,7 +26,8 @@ type InteractionBody = {
   blocker?: string;
 };
 
-async function persistState(
+async function persistStateAndReceipt(
+  supabase: ReturnType<typeof createServerClient>,
   userId: string,
   metadata: Record<string, unknown>,
   nextState: WorkdayPresenceState,
@@ -38,7 +39,7 @@ async function persistState(
     nextState,
     nextState.updated_at,
   );
-  const supabase = createServerClient();
+  await insertPresenceReceipt(supabase, userId, actionId, stateWithHistory);
   const nextMetadata = appendWorkdayPresenceInteractionHistory(
     metadata,
     actionId,
@@ -85,8 +86,7 @@ export async function POST(request: Request) {
     }
 
     const nextState = receipt.after_state;
-    const persistedState = await persistState(auth.userId, metadata, nextState, actionId);
-    await insertPresenceReceipt(supabase, auth.userId, actionId, persistedState);
+    const persistedState = await persistStateAndReceipt(supabase, auth.userId, metadata, nextState, actionId);
 
     const nextPayload = buildRightNowMessagePayload(persistedState);
     return NextResponse.json({

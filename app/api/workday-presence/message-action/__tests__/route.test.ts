@@ -294,7 +294,7 @@ describe('POST /api/workday-presence/message-action', () => {
     );
     const body = await response.json();
 
-    expect(mockSupabase.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
+    expect(mockSupabase.auth.admin.updateUserById).not.toHaveBeenCalled();
     expect(mockInsert).toHaveBeenCalledTimes(1);
     expect(response.status).toBe(500);
     expect(body.error).toMatch(/receipt write failed/);

@@ -191,6 +191,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ result });
     }
 
+    await insertTriggerReceipt({
+      supabase,
+      userId: auth.userId,
+      triggerType: context.trigger_type,
+      state: nextState,
+    });
+
     const updateResult = await supabase.auth.admin.updateUserById(auth.userId, {
       user_metadata: {
         ...metadata,
@@ -198,13 +205,6 @@ export async function POST(request: Request) {
       },
     });
     if (updateResult.error) throw updateResult.error;
-
-    await insertTriggerReceipt({
-      supabase,
-      userId: auth.userId,
-      triggerType: context.trigger_type,
-      state: nextState,
-    });
 
     return NextResponse.json({ result, state: nextState });
   } catch (error: unknown) {

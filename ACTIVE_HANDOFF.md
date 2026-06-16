@@ -11,7 +11,7 @@ Last updated: 2026-06-16 PT (Awaiting next authorized seam)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is NONE / awaiting authorized seam.
+Active implementation seam is issue #351 — Money-loop integrity sweep.
 
 Issue #348 is COMPLETE — presence receipt insert-error hotfix; `insertPresenceReceipt` now throws on Supabase insert failure so the money loop cannot report false success. Merged via PR #349 (`9377546`).
 Issue #344 is COMPLETE — workday-presence loop closure proven for non-owner user in browser; merged via PR #346 (`e2f7687`).
@@ -33,15 +33,15 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-- NONE
+- Issue #351: Sweep every money-loop surface for the same defect class as #348.
 
 ## Next exact move
 
-1. Create or name the next authorized GitHub issue.
-2. Update `ACTIVE_HANDOFF.md`, `ACTIVE_SEAM_STATE.json`, `FOLDERA_BUILD_ORDER.yaml`, and `.foldera-contract.json` to that issue before coding.
-3. Do not start implementation work until the next active seam is explicitly authorized.
+1. Find and fix all instances of swallowed Supabase insert errors or false success responses in money-loop routes.
+2. Prove fixes with red->green vitest.
+3. Push to `fix/351-integrity-sweep` and open PR.
 
-Current production truth: `Last known main SHA: 9377546` (PR #349 merged 2026-06-16; awaiting next seam)
+Current production truth: `Last known main SHA: 9377546` (PR #349 merged 2026-06-16; issue #351 active)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 

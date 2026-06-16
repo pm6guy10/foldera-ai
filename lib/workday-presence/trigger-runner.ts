@@ -548,12 +548,6 @@ export async function runWorkdayPresenceTriggerRunner(input: {
             fresh_event_count: freshEvents.length,
           };
         } else {
-          let slackResult: SlackSendResult | null = null;
-          if (input.slack && input.channel) {
-            slackResult = await input.slack.postMessage(
-              buildSlackRightNowMessage(triggerResult.payload, input.channel),
-            );
-          }
           const nextState = buildTriggeredWorkdayPresenceState(selection.selected, state, nowIso);
           if (nextState) {
             await input.persistIntervention?.({
@@ -562,6 +556,12 @@ export async function runWorkdayPresenceTriggerRunner(input: {
               next_state: nextState,
               trigger_result: triggerResult,
             });
+          }
+          let slackResult: SlackSendResult | null = null;
+          if (input.slack && input.channel) {
+            slackResult = await input.slack.postMessage(
+              buildSlackRightNowMessage(triggerResult.payload, input.channel),
+            );
           }
           return {
             outcome: 'intervention',
