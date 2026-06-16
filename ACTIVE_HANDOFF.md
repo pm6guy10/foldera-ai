@@ -37,7 +37,7 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Next exact move
 
-1. PR updated on `fix/351-integrity-sweep` branch and comment with local mechanical proof posted.
+1. PR updated on `fix/351-finish-sweep` branch and comment with local mechanical proof posted.
 2. Awaiting auditor review before merge. DO NOT merge yet.
 
 Current production truth: `Last known main SHA: b400c5dd1e5bf50e6069caee9a5e92f5643c0700` (PR #352 merged 2026-06-16; issue #351 active)
