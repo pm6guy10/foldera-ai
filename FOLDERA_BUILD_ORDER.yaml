@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
-priority_class: NONE
-work_type: NONE
-why_this_first: "Issue #344 is closed on GitHub; no successor seam is currently authorized."
-next_seam: "Await authorized seam from owner; do not start coding."
+active_issue: 348
+priority_class: HOTFIX
+work_type: BUGFIX
+why_this_first: "Presence receipt insert errors were silently swallowed; the money loop could report false success without a durable tkg_actions receipt."
+next_seam: "Land the receipt-atomicity hotfix on fix/receipt-atomicity, then return to awaiting seam."
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178

@@ -271,5 +271,33 @@ describe('POST /api/workday-presence/message-action', () => {
     expect(response.status).toBe(200);
     expect(mockInsert).not.toHaveBeenCalled();
   });
+
+  it('does not report success when state persists but the receipt insert fails', async () => {
+    mockSupabase.auth.admin.getUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            workday_presence_state: activeState,
+          },
+        },
+      },
+      error: null,
+    });
+    mockInsert.mockResolvedValue({ error: new Error('receipt write failed') });
+
+    const { POST } = await import('../route');
+    const response = await POST(
+      new Request('http://localhost/api/workday-presence/message-action', {
+        method: 'POST',
+        body: JSON.stringify({ action_id: 'done' }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(mockSupabase.auth.admin.updateUserById).toHaveBeenCalledTimes(1);
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(response.status).toBe(500);
+    expect(body.error).toMatch(/receipt write failed/);
+  });
 });
 

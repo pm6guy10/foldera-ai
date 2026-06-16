@@ -17,7 +17,7 @@ export async function insertPresenceReceipt(
 ): Promise<void> {
   if (actionId === 'view_draft') return;
   const status = actionId === 'done' || actionId === 'break_smaller' ? 'approved' : 'draft_rejected';
-  await supabase.from('tkg_actions').insert({
+  const { error } = await supabase.from('tkg_actions').insert({
     user_id: userId,
     directive_text: `${actionId}: ${state.current_focus ?? 'workday presence action'}`,
     action_type: 'presence_action',
@@ -34,4 +34,5 @@ export async function insertPresenceReceipt(
       ...(state.draft ? { draft_title: state.draft.title, draft_action_type: state.draft.action_type } : {}),
     },
   });
+  if (error) throw error;
 }
