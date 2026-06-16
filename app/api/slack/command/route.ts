@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 
     // Slack slash commands expect a 200 OK with JSON response
     return NextResponse.json({
-      response_type: 'in_channel', // or 'ephemeral' if we don't want others to see
+      response_type: 'ephemeral',
       text: responseText,
     });
   } catch (error: unknown) {

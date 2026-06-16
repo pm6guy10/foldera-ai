@@ -33,15 +33,14 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-- Issue #351: Sweep every money-loop surface for the same defect class as #348.
+- Issue #351: Sweep every money-loop surface for the same defect class as #348 (all findings resolved and tested).
 
 ## Next exact move
 
-1. Find and fix all instances of swallowed Supabase insert errors or false success responses in money-loop routes.
-2. Prove fixes with red->green vitest.
-3. Push to `fix/351-integrity-sweep` and open PR.
+1. PR updated on `fix/351-finish-sweep` branch and comment with local mechanical proof posted.
+2. Awaiting auditor review before merge. DO NOT merge yet.
 
-Current production truth: `Last known main SHA: 9377546` (PR #349 merged 2026-06-16; issue #351 active)
+Current production truth: `Last known main SHA: b400c5dd1e5bf50e6069caee9a5e92f5643c0700` (PR #352 merged 2026-06-16; issue #351 active)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 

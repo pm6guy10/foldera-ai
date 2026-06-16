@@ -26,7 +26,7 @@ active_issue: 351
 priority_class: HOTFIX
 work_type: BUGFIX
 why_this_first: "Sweep every money-loop surface for the same defect class as #348 (false success / silent lie)."
-next_seam: "Sweep and prove fixes, then push and open PR."
+next_seam: "Await auditor review before merge."
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
