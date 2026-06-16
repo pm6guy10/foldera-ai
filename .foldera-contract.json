@@ -12,7 +12,11 @@
     "app/api/workday-presence/seed-from-scorer/**",
     "app/api/source-readiness/**",
     "lib/source-readiness/**",
-    "docs/SOURCE_OF_TRUTH_MAP.md"
+    "docs/SOURCE_OF_TRUTH_MAP.md",
+    "app/api/slack/right-now/**",
+    "app/api/workday-presence/message-action/**",
+    "lib/workday-presence/presence-action-receipt.ts",
+    "lib/workday-presence/__tests__/presence-action-receipt.test.ts"
   ],
   "forbidden_file_patterns": [
     "supabase/**",

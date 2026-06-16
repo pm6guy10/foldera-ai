@@ -34,8 +34,11 @@ Issue #341 is the active runtime-map + current-path Supabase receipts seam.
 
 ## Next exact move
 
-1. Merge PR #343 (Issue #341 complete; pipeline_runs scoped, legacy ignored).
-2. Transition to next candidate seam: message-action / trigger-runner current receipts.
+1. Check branch `codex/341-runtime-map-current-path` for prior session work on issue #341.
+2. Rebase that branch onto main (post-PR-#340 merge).
+3. Wire insertPresenceReceipt in message-action route — presence-action-receipt.ts already exists, one import + one await after persistState.
+4. Run focused tests + gate:continuity + build.
+5. Push and open PR for issue #341.
 
 Current production truth: `Last known main SHA: a315394` (PR #340 merged 2026-06-15; issue #341 active)
 

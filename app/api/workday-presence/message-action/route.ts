@@ -15,6 +15,7 @@ import {
   appendWorkdayPresenceInteractionHistory,
   applyWorkdayPresenceAction,
 } from '@/lib/workday-presence/actions';
+import { insertPresenceReceipt } from '@/lib/workday-presence/presence-action-receipt';
 import { apiErrorForRoute, badRequest } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -77,6 +78,8 @@ export async function POST(request: Request) {
     if (!currentState) return badRequest('No active workday presence state');
 
     const persistedState = await persistState(auth.userId, metadata, nextState, actionId);
+
+    await insertPresenceReceipt(supabase, auth.userId, actionId, persistedState);
 
     return NextResponse.json({
       state: persistedState,
