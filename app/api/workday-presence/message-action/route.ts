@@ -80,8 +80,6 @@ export async function POST(request: Request) {
     const persistedState = await persistState(auth.userId, metadata, nextState, actionId);
     await insertPresenceReceipt(supabase, auth.userId, actionId, persistedState);
 
-    await insertPresenceReceipt(supabase, auth.userId, actionId, persistedState);
-
     return NextResponse.json({
       state: persistedState,
       payload: buildRightNowMessagePayload(persistedState),

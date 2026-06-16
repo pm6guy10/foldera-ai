@@ -17,11 +17,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  const selfUserId = process.env.FOLDERA_SELF_USER_ID;
-  if (!selfUserId || auth.userId !== selfUserId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
   try {
     const channel = requireSlackChannel();
     const supabase = createServerClient();
