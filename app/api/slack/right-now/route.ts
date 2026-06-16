@@ -12,6 +12,10 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   const auth = await resolveUser(request);
   if (auth instanceof NextResponse) return auth;
+  const selfUserId = process.env.FOLDERA_SELF_USER_ID;
+  if (!selfUserId || auth.userId !== selfUserId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
 
   const selfUserId = process.env.FOLDERA_SELF_USER_ID;
   if (!selfUserId || auth.userId !== selfUserId) {

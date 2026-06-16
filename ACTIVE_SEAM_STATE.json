@@ -1,9 +1,9 @@
 {
   "active_issue": 341,
   "active_branch": "codex/341-runtime-map-current-path",
-  "active_pr": null,
+  "active_pr": 343,
   "deployed_commit_sha": "8e12c28",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-16T00:00:00Z"
+  "last_verified_at": "2026-06-16T00:13:20Z"
 }

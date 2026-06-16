@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-15 PT (Issue #341 COMPLETE via PR #343; next candidate: trigger-runner receipts)
+Last updated: 2026-06-15 PT (Issue #341 active via PR #343; residual receipt gaps authorized)
 
 ## Boot
 
@@ -34,11 +34,11 @@ Issue #341 is the active runtime-map + current-path Supabase receipts seam.
 
 ## Next exact move
 
-1. Check branch `codex/341-runtime-map-current-path` for prior session work on issue #341.
-2. Rebase that branch onto main (post-PR-#340 merge).
+1. Keep PR #343 on branch `codex/341-runtime-map-current-path`.
+2. Keep source-readiness scoped so legacy `pipeline_runs` and `tkg_actions` rows do not inflate current product truth.
 3. Wire insertPresenceReceipt in message-action route — presence-action-receipt.ts already exists, one import + one await after persistState.
-4. Run focused tests + gate:continuity + build.
-5. Push and open PR for issue #341.
+4. Add the owner-only guard to the live Slack Right Now send route.
+5. Run focused tests + gate:continuity + build, then push and post the PR proof receipt.
 
 Current production truth: `Last known main SHA: a315394` (PR #340 merged 2026-06-15; issue #341 active)
 
