@@ -1,9 +1,9 @@
 {
-  "active_issue": 354,
-  "active_branch": "fix/354-f-card-resolver-mismatch",
+  "active_issue": 0,
+  "active_branch": "ops/354-closeout-awaiting-seam",
   "active_pr": null,
-  "deployed_commit_sha": "ba42125299fc88ffd6ec44c085a6581a3155baa3",
+  "deployed_commit_sha": "4b2908bc62e94601d2da827adf563b987c91a7c5",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-16T15:30:00Z"
+  "last_verified_at": "2026-06-16T15:40:00Z"
 }
