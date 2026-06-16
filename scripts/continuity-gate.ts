@@ -291,10 +291,10 @@ export function runContinuityGate(root: string, options?: { issueStateFetcher?: 
   }
 
   const handoffIssue = extractActiveHandoffIssue(activeHandoff);
-  const activeSeamLines =
-    activeHandoff.match(/^Issue #\d+ is the active .* seam\.$/gm)
-    ?? activeHandoff.match(/^Active implementation seam is issue #\d+.*$/gm)
-    ?? [];
+  const activeSeamLines = [
+    ...(activeHandoff.match(/^Issue #\d+ is the active .* seam\.$/gm) ?? []),
+    ...(activeHandoff.match(/^Active implementation seam is issue #\d+.*$/gm) ?? []),
+  ];
   const buildOrderIssue = extractYamlNumber(buildOrder, 'active_issue');
   const buildOrderIssueScalar = extractYamlScalar(buildOrder, 'active_issue');
   const betweenRungs = buildOrderIssueScalar === 'none';
