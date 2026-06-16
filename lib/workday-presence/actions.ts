@@ -20,6 +20,7 @@ function applyDone(state: WorkdayPresenceState, nowIso: string): WorkdayPresence
     ...state,
     blocker: null,
     snoozed_until: null,
+    draft: null,
     last_completed_step: state.next_move,
     waiting_on: state.waiting_on ?? 'Waiting for the next real change.',
     next_move: `Hold here until "${state.current_focus}" changes or a clearer move is ready.`,

@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-16 PT (Awaiting next authorized seam)
+Last updated: 2026-06-16 PT (Issue #344 active; money seam loop closure)
 
 ## Boot
 
@@ -11,7 +11,7 @@ Last updated: 2026-06-16 PT (Awaiting next authorized seam)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is NONE / awaiting authorized seam.
+Active implementation seam is Issue #344 — money seam: Done / Skip / Break Smaller dashboard loop.
 
 Issue #341 is COMPLETE — runtime map + current-path Supabase receipts merged via PR #343 (`613296d`); Slack right-now owner-guard and presence-action receipts wired.
 Issue #339 is COMPLETE — frontend auth polish closeout merged via PR #340 (`a315394`); dashboard connect anchors now use OAuthConnectButton.
@@ -31,15 +31,17 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-- NONE
+Issue #344 is the active money seam loop closure seam.
 
 ## Next exact move
 
-1. Create or name the next authorized GitHub issue.
-2. Update `ACTIVE_HANDOFF.md`, `ACTIVE_SEAM_STATE.json`, `FOLDERA_BUILD_ORDER.yaml`, and `.foldera-contract.json` to that issue before coding.
-3. Do not start implementation work until the next active seam is explicitly authorized.
+1. Keep branch `codex/344-money-seam`.
+2. Apply/verify the dashboard View Draft + Dismiss button styling fixes (use design-system classes, keep the two-button contract).
+3. Ensure model.ts buildRightNowCard respects `snoozed_until` by resolving to `mode: 'setup'`.
+4. Verify all tests pass locally and the continuity gate is green.
+5. Push changes to origin, open PR, verify on Vercel preview, and perform manual browser validation.
 
-Current production truth: `Last known main SHA: 613296d` (PR #343 merged 2026-06-16; issue #341 closed on GitHub)
+Current production truth: `Last known main SHA: 6bad9420` (PR #345 merged 2026-06-16; issue #344 active)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 

@@ -340,11 +340,14 @@ export function rightNowHasPreparedObject(state: WorkdayPresenceState | null): b
   return true;
 }
 
-export function buildRightNowCard(state: WorkdayPresenceState | null): RightNowCard {
+export function buildRightNowCard(state: WorkdayPresenceState | null, nowIso = new Date().toISOString()): RightNowCard {
+  const isSnoozed = Boolean(
+    state?.snoozed_until && Date.parse(state.snoozed_until) > Date.parse(nowIso)
+  );
   // Acceptance gate: no prepared object behind the move means not-ready. Fall back
   // to the setup prompt (SAFE_SILENCE proxy on the card union) rather than render a
   // winner-backed homework card. See rightNowHasPreparedObject.
-  if (!state || !rightNowHasPreparedObject(state)) {
+  if (!state || !rightNowHasPreparedObject(state) || isSnoozed) {
     return {
       mode: 'setup',
       prompt: 'What are you trying to move forward today?',

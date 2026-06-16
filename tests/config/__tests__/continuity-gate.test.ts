@@ -242,11 +242,11 @@ describe('continuity gate', () => {
     const fixtureRoot = createFixtureRoot();
     const failures = validateContractFileDiff(fixtureRoot, [
       'ACTIVE_HANDOFF.md',
-      'app/api/auth/session/route.ts',
+      'supabase/migrations/test.sql',
     ]);
 
     expect(failures).toContain(
-      'Forbidden file change: app/api/auth/session/route.ts matches .foldera-contract.json forbidden_file_patterns.',
+      'Forbidden file change: supabase/migrations/test.sql matches .foldera-contract.json forbidden_file_patterns.',
     );
   });
 
