@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
-priority_class: NONE
-work_type: NONE
-why_this_first: "Issue #341 is closed on GitHub; no successor seam is currently authorized."
-next_seam: "Await authorized seam from owner; do not start coding."
+active_issue: 344
+priority_class: PRODUCT
+work_type: FEATURE
+why_this_first: "Verify and prove the Workday Presence loop closes for non-owner user in browser."
+next_seam: "Issue #344 — money seam: Done / Skip / Break Smaller dashboard loop"
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178

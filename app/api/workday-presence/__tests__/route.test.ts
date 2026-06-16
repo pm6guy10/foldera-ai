@@ -313,7 +313,7 @@ describe('GET /api/workday-presence', () => {
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body.card.next_move).not.toContain('Reply needed');
+      expect(body.card.next_move ?? '').not.toContain('Reply needed');
     });
   });
 
