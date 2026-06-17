@@ -94,17 +94,13 @@ const pilotScope = [
   'Demo remains the existing product demo route, not a new fake flow.',
 ];
 
-/* ---- shared premium surfaces (depth instead of flat) ---- */
-const cardStyle: CSSProperties = {
-  backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.012))',
-  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06)',
-};
-const cardClass =
-  'rounded-xl border border-white/[0.08] transition duration-200 hover:border-cyan-300/30 hover:shadow-[0_24px_60px_-30px_rgba(34,211,238,0.45)]';
-
-function Eyebrow({ children }: { children: ReactNode }) {
+function SectionLabel({ index, children }: { index: string; children: ReactNode }) {
   return (
-    <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-cyan-300">{children}</p>
+    <div className="flex items-baseline gap-3 font-mono text-[11px] uppercase tracking-[0.28em] text-slate-500">
+      <span className="text-cyan-300/80">{index}</span>
+      <span className="h-px w-8 bg-white/15" />
+      <span>{children}</span>
+    </div>
   );
 }
 
@@ -164,7 +160,7 @@ function AccessLink({
     <a
       href={accessHref}
       data-testid={testId}
-      className={`inline-flex min-h-[46px] items-center justify-center gap-2 rounded-lg border border-cyan-300/35 bg-cyan-300 px-5 text-sm font-semibold text-slate-950 shadow-[0_0_30px_rgba(34,211,238,0.28)] transition hover:-translate-y-px hover:bg-cyan-200 hover:shadow-[0_8px_36px_-8px_rgba(34,211,238,0.6)] ${className}`}
+      className={`inline-flex min-h-[46px] items-center justify-center gap-2 rounded-full bg-cyan-300 px-6 text-sm font-semibold text-slate-950 transition hover:-translate-y-px hover:bg-cyan-200 ${className}`}
     >
       {children}
       <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -185,9 +181,10 @@ function SecondaryLink({
     <a
       href={href}
       data-testid={testId}
-      className="inline-flex min-h-[46px] items-center justify-center rounded-lg border border-white/14 bg-white/[0.03] px-5 text-sm font-semibold text-slate-100 transition-colors hover:border-white/28 hover:bg-white/[0.07]"
+      className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-full px-5 text-sm font-semibold text-slate-200 transition-colors hover:text-white"
     >
       {children}
+      <ArrowRight className="h-4 w-4 opacity-60" aria-hidden="true" />
     </a>
   );
 }
@@ -196,94 +193,84 @@ function RightNowCard() {
   return (
     <div
       data-testid="landing-right-now-card"
-      className="relative overflow-hidden rounded-2xl border border-cyan-300/25 p-5 sm:p-6"
+      className="relative overflow-hidden rounded-2xl p-6 sm:p-7"
       style={{
-        backgroundImage:
-          'radial-gradient(120% 80% at 80% 0%, rgba(34,211,238,0.12), transparent 55%), linear-gradient(180deg, #0d1622 0%, #080c12 100%)',
-        boxShadow:
-          '0 30px 90px -28px rgba(0,0,0,0.85), 0 0 0 1px rgba(34,211,238,0.06), 0 0 70px -22px rgba(34,211,238,0.35)',
+        backgroundImage: 'linear-gradient(180deg, #0c121b 0%, #090d14 100%)',
+        boxShadow: '0 1px 0 rgba(255,255,255,0.05) inset, 0 40px 80px -40px rgba(0,0,0,0.9)',
+        border: '1px solid rgba(255,255,255,0.08)',
       }}
     >
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <div className="inline-flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.2em] text-cyan-200">
-          <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_16px_rgba(34,211,238,0.85)]" />
+      <div className="mb-6 flex items-center justify-between gap-3">
+        <div className="inline-flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.22em] text-slate-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
           Right Now
         </div>
-        <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-slate-400">
-          2 min ago
-        </span>
+        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">2 min ago</span>
       </div>
 
-      <div className="mb-5 flex items-center gap-2" aria-label="Consented connectors">
-        {connectors.map((c) => (
-          <span
-            key={c.name}
-            title={c.name}
-            aria-label={c.name}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-[#0b121c]"
-          >
-            {c.el}
-          </span>
-        ))}
-      </div>
-
-      <h2 className="text-2xl font-semibold tracking-[-0.025em] text-white sm:text-[28px]">
+      <h2 className="text-[26px] font-semibold leading-tight tracking-[-0.025em] text-white sm:text-[30px]">
         Review the Q2 headcount plan.
       </h2>
-      <p className="mt-3 text-sm leading-6 text-slate-300 sm:text-base">
+      <p className="mt-3 text-[15px] leading-7 text-slate-400">
         Sarah updated the doc. Finance commented. You were mentioned in Slack. Approval now unlocks the budget timeline.
       </p>
 
-      <div className="mt-5 grid gap-3 rounded-xl border border-white/10 bg-white/[0.025] p-4">
+      <div className="mt-6 space-y-3 border-t border-white/8 pt-5">
         <div className="flex items-start gap-3">
-          <MessageSquare className="mt-0.5 h-4 w-4 text-cyan-200" aria-hidden="true" />
-          <p className="text-sm text-slate-300">Mention and finance comment are attached.</p>
+          <MessageSquare className="mt-0.5 h-4 w-4 text-cyan-300/80" aria-hidden="true" />
+          <p className="text-sm text-slate-400">Mention and finance comment are attached.</p>
         </div>
         <div className="flex items-start gap-3">
-          <FileText className="mt-0.5 h-4 w-4 text-amber-200" aria-hidden="true" />
-          <p className="text-sm text-slate-300">The current plan is ready to review.</p>
+          <FileText className="mt-0.5 h-4 w-4 text-slate-400" aria-hidden="true" />
+          <p className="text-sm text-slate-400">The current plan is ready to review.</p>
         </div>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3" aria-label="Example Right Now actions">
+      <div className="mt-6 flex flex-wrap items-center gap-2">
+        {connectors.map((c) => (
+          <span key={c.name} title={c.name} aria-label={c.name} className="opacity-90">
+            {c.el}
+          </span>
+        ))}
+        <span className="ml-1 font-mono text-[10px] uppercase tracking-[0.16em] text-slate-600">consented</span>
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-2.5" aria-label="Example Right Now actions">
         {[
-          { label: 'Done', Icon: Check, tone: 'bg-cyan-300 text-slate-950 border-cyan-300/40 shadow-[0_0_24px_-6px_rgba(34,211,238,0.6)]' },
-          { label: 'Stuck', Icon: X, tone: 'bg-white/[0.04] text-slate-100 border-white/12' },
-          { label: 'Break smaller', Icon: RefreshCw, tone: 'bg-white/[0.04] text-slate-100 border-white/12' },
-          { label: 'Snooze', Icon: Pause, tone: 'bg-white/[0.04] text-slate-100 border-white/12' },
-        ].map(({ label, Icon, tone }) => (
-          <div key={label} className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold ${tone}`}>
+          { label: 'Done', Icon: Check, primary: true },
+          { label: 'Stuck', Icon: X, primary: false },
+          { label: 'Break smaller', Icon: RefreshCw, primary: false },
+          { label: 'Snooze', Icon: Pause, primary: false },
+        ].map(({ label, Icon, primary }) => (
+          <div
+            key={label}
+            className={`inline-flex min-h-[40px] items-center gap-2 rounded-full px-4 text-[13px] font-semibold ${
+              primary ? 'bg-cyan-300 text-slate-950' : 'border border-white/12 text-slate-200'
+            }`}
+          >
             <Icon className="h-4 w-4" aria-hidden="true" />
             {label}
           </div>
         ))}
       </div>
 
-      <p className="mt-5 border-t border-white/10 pt-4 text-center font-mono text-[11px] uppercase tracking-wider text-slate-500">
+      <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.18em] text-slate-600">
         State is attached. Context stays private.
       </p>
     </div>
   );
 }
 
+const sectionWrap = 'mx-auto w-full max-w-6xl px-5 sm:px-6 lg:px-8';
+
 export function LandingPage({ isAuthenticated: _isAuthenticated = false }: LandingPageProps = {}) {
   return (
-    <main className="relative min-h-[100dvh] overflow-x-hidden bg-[#05070a] text-white">
-      {/* atmosphere — cyan aurora, never a flat canvas */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-[820px]"
-        style={{
-          background:
-            'radial-gradient(60% 50% at 82% -5%, rgba(34,211,238,0.14), transparent 60%), radial-gradient(45% 40% at 100% 20%, rgba(14,116,144,0.16), transparent 55%)',
-        }}
-      />
-
+    <main className="relative min-h-[100dvh] overflow-x-hidden bg-[#06080c] text-white">
       <header
-        className="sticky top-0 z-[60] border-b border-white/[0.06] bg-[#03060bd9] pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl"
+        className="sticky top-0 z-[60] border-b border-white/[0.06] bg-[#06080c]/85 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl"
         data-testid="landing-header"
       >
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-5 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-5 px-5 sm:px-6 lg:px-8">
           <a
             href="/"
             aria-label="Foldera"
@@ -295,7 +282,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
 
           <nav
             aria-label="Landing navigation"
-            className="hidden items-center gap-7 text-[13px] font-medium text-slate-400 md:flex"
+            className="hidden items-center gap-8 text-[13px] font-medium text-slate-400 md:flex"
           >
             <a href="#how-foldera-works" className="transition-colors hover:text-white">How it works</a>
             <a href="/security" className="transition-colors hover:text-white">Security</a>
@@ -303,7 +290,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
             <a href="/try" className="transition-colors hover:text-white">Try it</a>
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <a
               href={loginHref}
               data-testid="landing-login-cta"
@@ -314,36 +301,38 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
             <a
               href={accessHref}
               data-testid="landing-header-cta"
-              className="inline-flex min-h-[40px] items-center gap-2 rounded-[9px] border border-cyan-300/25 bg-cyan-300 px-4 text-[12px] font-semibold text-slate-950 shadow-[0_0_22px_rgba(34,211,238,0.22)] transition hover:bg-cyan-200"
+              className="inline-flex min-h-[38px] items-center gap-2 rounded-full bg-cyan-300 px-4 text-[12px] font-semibold text-slate-950 transition hover:bg-cyan-200"
             >
               Request access
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
             </a>
           </div>
         </div>
       </header>
 
-      <section className="relative z-10 border-b border-white/10" data-testid="landing-hero">
-        <div className="mx-auto grid min-h-[calc(100dvh-64px)] w-full max-w-7xl items-center gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(360px,480px)] lg:px-8 lg:py-14">
+      {/* HERO */}
+      <section className="relative border-b border-white/[0.07]" data-testid="landing-hero">
+        <div className={`${sectionWrap} grid items-center gap-12 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:py-24`}>
           <div>
-            <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-300/[0.06] px-3 py-1 font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-cyan-200">
-              <span className="h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+            <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-cyan-300/90">
               The Workday Presence Layer
             </p>
-            <h1 className="max-w-3xl text-[2.75rem] font-semibold leading-[1.02] tracking-[-0.04em] text-white sm:text-6xl lg:text-[4.25rem]">
+            <h1 className="mt-6 max-w-2xl text-[2.9rem] font-semibold leading-[0.98] tracking-[-0.045em] text-white sm:text-6xl lg:text-[4.4rem]">
               Stop rebuilding the work.
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300/90">
+            <p className="mt-7 max-w-xl text-lg leading-8 text-slate-400">
               Foldera restores continuity across fractured apps, messages, meetings, approvals, and decisions so you can stop rebuilding context just to do the work.
             </p>
 
-            <div className="mt-7 flex flex-wrap gap-2.5 text-sm">
-              <span className="rounded-lg border border-cyan-300/20 bg-cyan-300/[0.07] px-3 py-2 text-cyan-100">Consent-first</span>
-              <span className="rounded-lg border border-emerald-300/20 bg-emerald-300/[0.07] px-3 py-2 text-emerald-100">No surveillance</span>
-              <span className="rounded-lg border border-amber-300/20 bg-amber-300/[0.07] px-3 py-2 text-amber-100">Quiet by design</span>
+            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[12px] uppercase tracking-[0.14em] text-slate-500">
+              <span>Consent-first</span>
+              <span className="text-slate-700">/</span>
+              <span>No surveillance</span>
+              <span className="text-slate-700">/</span>
+              <span>Quiet by design</span>
             </div>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-9 flex flex-col gap-2 sm:flex-row sm:items-center">
               <AccessLink testId="landing-primary-access-cta">Request access</AccessLink>
               <SecondaryLink href="#how-foldera-works">See how it works</SecondaryLink>
             </div>
@@ -353,133 +342,128 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24" data-testid="landing-pain">
-        <div className="max-w-3xl">
-          <Eyebrow>Context collapse</Eyebrow>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-[2.5rem]">You are a high-paid filing clerk.</h2>
-          <p className="mt-4 text-base leading-7 text-slate-300/90">
-            You spend too much of your day rebuilding context across fractured apps just to do a few minutes of actual work.
-          </p>
-        </div>
-        <div className="mt-10 grid gap-4 md:grid-cols-3">
-          {painPoints.map((item) => (
-            <article key={item.title} className={`${cardClass} p-6`} style={cardStyle}>
-              <h3 className="text-lg font-semibold tracking-[-0.02em] text-white">{item.title}</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-300/90">{item.body}</p>
-            </article>
+      {/* PAIN */}
+      <section className={`${sectionWrap} py-20 lg:py-28`} data-testid="landing-pain">
+        <SectionLabel index="01">Context collapse</SectionLabel>
+        <h2 className="mt-6 max-w-3xl text-[2rem] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[2.75rem]">
+          You are a high-paid filing clerk.
+        </h2>
+        <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-400">
+          You spend too much of your day rebuilding context across fractured apps just to do a few minutes of actual work.
+        </p>
+        <div className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-3">
+          {painPoints.map((item, i) => (
+            <div key={item.title} className="border-t border-white/12 pt-5">
+              <span className="font-mono text-[11px] text-cyan-300/70">{String(i + 1).padStart(2, '0')}</span>
+              <h3 className="mt-3 text-lg font-semibold tracking-[-0.02em] text-white">{item.title}</h3>
+              <p className="mt-3 text-[15px] leading-7 text-slate-400">{item.body}</p>
+            </div>
           ))}
         </div>
       </section>
 
-      <section id="how-foldera-works" className="relative z-10 border-y border-white/10 bg-white/[0.015]" data-testid="landing-doctrine">
-        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
-          <div className="max-w-3xl">
-            <Eyebrow>How it works</Eyebrow>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-[2.5rem]">
-              The problem isn&apos;t lack of AI. The problem is broken continuity.
-            </h2>
-            <p className="mt-4 text-base leading-7 text-slate-300/90">
-              Every app remembers its own slice. Microsoft remembers Microsoft. Google remembers Google. Foldera is the cross-system presence layer that remembers the state of your workday.
-            </p>
-          </div>
+      {/* DOCTRINE / HOW IT WORKS */}
+      <section id="how-foldera-works" className="border-y border-white/[0.07] bg-white/[0.012]" data-testid="landing-doctrine">
+        <div className={`${sectionWrap} py-20 lg:py-28`}>
+          <SectionLabel index="02">How it works</SectionLabel>
+          <h2 className="mt-6 max-w-4xl text-[2rem] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[2.75rem]">
+            The problem isn&apos;t lack of AI. <span className="text-slate-500">The problem is broken continuity.</span>
+          </h2>
+          <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-400">
+            Every app remembers its own slice. Microsoft remembers Microsoft. Google remembers Google. Foldera is the cross-system presence layer that remembers the state of your workday.
+          </p>
 
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-14 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
             {doctrine.map((item) => (
-              <article key={item.label} className={`${cardClass} p-6`} style={cardStyle}>
-                <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-300">{item.label}</p>
-                <p className="mt-4 text-sm leading-6 text-slate-300/90">{item.body}</p>
-              </article>
+              <div key={item.label} className="border-t border-white/12 pt-5">
+                <p className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-cyan-300/90">{item.label}</p>
+                <p className="mt-4 text-[15px] leading-7 text-slate-400">{item.body}</p>
+              </div>
             ))}
           </div>
 
-          <ol className="mt-10 grid gap-3" data-testid="landing-workflow">
+          <ol className="mt-16 divide-y divide-white/8 border-y border-white/8" data-testid="landing-workflow">
             {howItWorks.map((step, index) => (
-              <li key={step} className="flex gap-4 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-300 text-sm font-bold text-slate-950 shadow-[0_0_18px_-4px_rgba(34,211,238,0.7)]">
-                  {index + 1}
-                </span>
-                <span className="pt-1 text-sm leading-6 text-slate-300/90">{step}</span>
+              <li key={step} className="flex items-baseline gap-5 py-5">
+                <span className="font-mono text-sm text-cyan-300/70">{String(index + 1).padStart(2, '0')}</span>
+                <span className="text-[15px] leading-7 text-slate-300">{step}</span>
               </li>
             ))}
           </ol>
         </div>
       </section>
 
-      <section id="trust" className="relative z-10 mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24" data-testid="landing-trust">
-        <div className="max-w-3xl">
-          <Eyebrow>Habitat</Eyebrow>
-          <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-[2.5rem]">It lives where you work. And stays quiet otherwise.</h2>
-          <p className="mt-4 text-base leading-7 text-slate-300/90">
-            Foldera interrupts only when there is a clean moment to act, hands you the next move where you already are, and then disappears.
-          </p>
-        </div>
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* TRUST */}
+      <section id="trust" className={`${sectionWrap} py-20 lg:py-28`} data-testid="landing-trust">
+        <SectionLabel index="03">Habitat</SectionLabel>
+        <h2 className="mt-6 max-w-3xl text-[2rem] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[2.75rem]">
+          It lives where you work. <span className="text-slate-500">And stays quiet otherwise.</span>
+        </h2>
+        <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-400">
+          Foldera interrupts only when there is a clean moment to act, hands you the next move where you already are, and then disappears.
+        </p>
+        <div className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
           {trustItems.map(({ icon: Icon, title, body }) => (
-            <article key={title} className={`${cardClass} p-6`} style={cardStyle}>
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-cyan-300/20 bg-cyan-300/[0.06]">
-                <Icon className="h-5 w-5 text-cyan-200" aria-hidden="true" />
-              </span>
-              <h3 className="mt-4 text-lg font-semibold text-white">{title}</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-300/90">{body}</p>
-            </article>
+            <div key={title} className="border-t border-white/12 pt-5">
+              <Icon className="h-5 w-5 text-cyan-300/80" aria-hidden="true" />
+              <h3 className="mt-4 text-lg font-semibold tracking-[-0.02em] text-white">{title}</h3>
+              <p className="mt-3 text-[15px] leading-7 text-slate-400">{body}</p>
+            </div>
           ))}
         </div>
       </section>
 
-      <section id="pilot" className="relative z-10 border-y border-white/10 bg-[#070b11]" data-testid="landing-pilot">
-        <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8 lg:py-24">
+      {/* PILOT */}
+      <section id="pilot" className="border-y border-white/[0.07] bg-white/[0.012]" data-testid="landing-pilot">
+        <div className={`${sectionWrap} grid gap-12 py-20 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16 lg:py-28`}>
           <div>
-            <Eyebrow>Pilot access</Eyebrow>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.03em] sm:text-[2.5rem]">
-              Stop checking nine apps. Foldera keeps track.
+            <SectionLabel index="04">Pilot access</SectionLabel>
+            <h2 className="mt-6 text-[2rem] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[2.75rem]">
+              Stop checking nine apps. <span className="text-slate-500">Foldera keeps track.</span>
             </h2>
-            <p className="mt-4 text-base leading-7 text-slate-300/90">
+            <p className="mt-5 max-w-xl text-lg leading-8 text-slate-400">
               Foldera is not a dashboard. It watches consented signals, remembers your focus, and calculates the next state of your work.
             </p>
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-9 flex flex-col gap-2 sm:flex-row sm:items-center">
               <AccessLink testId="landing-pilot-access-cta">Join pilot</AccessLink>
               <SecondaryLink href="/demo" testId="landing-demo-link">View existing demo</SecondaryLink>
             </div>
           </div>
 
-          <div className="grid gap-3">
+          <div className="divide-y divide-white/8 border-y border-white/8 lg:mt-2">
             {pilotScope.map((item) => (
-              <div key={item} className="flex gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] p-4">
-                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-amber-200" aria-hidden="true" />
-                <p className="text-sm leading-6 text-slate-300/90">{item}</p>
+              <div key={item} className="flex items-start gap-4 py-4">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300/70" aria-hidden="true" />
+                <p className="text-[15px] leading-7 text-slate-400">{item}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-24" data-testid="landing-final-cta">
-        <div
-          className="relative overflow-hidden rounded-2xl border border-cyan-300/25 p-8 text-center sm:p-12"
-          style={{
-            backgroundImage:
-              'radial-gradient(80% 120% at 50% -10%, rgba(34,211,238,0.12), transparent 60%), linear-gradient(180deg, #0c1521, #080c12)',
-            boxShadow: '0 30px 90px -34px rgba(0,0,0,0.8), 0 0 70px -26px rgba(34,211,238,0.3)',
-          }}
-        >
-          <h2 className="text-3xl font-semibold tracking-[-0.03em] sm:text-[2.75rem]">Restore your continuity.</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-300/90">
+      {/* FINAL CTA */}
+      <section className={`${sectionWrap} py-24 lg:py-32`} data-testid="landing-final-cta">
+        <div className="mx-auto max-w-3xl text-center">
+          <h2 className="text-[2.4rem] font-semibold leading-[1.03] tracking-[-0.04em] sm:text-[3.5rem]">
+            Restore your continuity.
+          </h2>
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-400">
             Stop acting as the human integration layer. Let Foldera hold the context, so you can do the work.
           </p>
-          <p className="mx-auto mt-3 max-w-2xl text-sm font-semibold text-cyan-100">
+          <p className="mx-auto mt-4 font-mono text-[12px] uppercase tracking-[0.16em] text-cyan-300/90">
             One trusted answer. All the context. Next move ready.
           </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <div className="mt-9 flex flex-col items-center justify-center gap-2 sm:flex-row">
             <AccessLink testId="landing-final-access-cta">Get started</AccessLink>
             <SecondaryLink href={loginHref} testId="landing-final-login-cta">Login</SecondaryLink>
           </div>
         </div>
       </section>
 
-      <footer className="relative z-10 border-t border-white/10 px-4 py-8 text-sm text-slate-500" data-testid="landing-footer">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p>Foldera - Workday Presence Layer.</p>
-          <div className="flex flex-wrap gap-4">
+      <footer className="border-t border-white/[0.07] px-5 py-10 text-sm text-slate-500 sm:px-6 lg:px-8" data-testid="landing-footer">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="font-mono text-[12px] uppercase tracking-[0.16em]">Foldera — Workday Presence Layer.</p>
+          <div className="flex flex-wrap gap-5">
             <a href="/pricing" className="hover:text-slate-300">Pricing</a>
             <a href="/security" className="hover:text-slate-300">Security</a>
             <a href="/about" className="hover:text-slate-300">About</a>

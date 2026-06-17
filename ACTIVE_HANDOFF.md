@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-17 UTC (issue #370 — landing page visual polish to production-grade)
+Last updated: 2026-06-17 UTC (issue #372 — landing de-block to editorial)
 
 ## Boot
 
@@ -11,7 +11,7 @@ Last updated: 2026-06-17 UTC (issue #370 — landing page visual polish to produ
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is issue #370: elevate the live landing (`components/foldera/LandingPage.tsx`) to a production-grade dark/cyan aesthetic — glowing Right Now card with connector chips, background atmosphere, card depth, tighter type — preserving every data-testid, heading, copy string, and href so the e2e suite stays green. Owner-authorized to ship to live via PR + merge.
+Active implementation seam is issue #372: de-block the live landing (`components/foldera/LandingPage.tsx`) to an editorial treatment — section numerals (01–04), hairline dividers instead of bordered card grids, oversized confident type, glow dialed down, Right Now card as the single panel. Same copy, testids, and hrefs. Owner approved the v2 look; shipping to live. Supersedes the #370 boxed visuals.
 
 Issue #364/#366 is COMPLETE — heartbeat moved off capped GitHub Actions to a free external cron (PRs #365/#366 via #367); owner must create the external cron job for live firing.
 Issue #361 is COMPLETE — commitment-lapsing bridge + 15-min GitHub Actions schedule merged via PR #362 (`d19a4bf`); discovered non-functional in production post-merge, see #364.
