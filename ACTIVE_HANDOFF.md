@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-17 UTC (Awaiting next authorized seam — between rungs)
+Last updated: 2026-06-17 UTC (issue #378 — design system locked; full landing overhaul next)
 
 ## Boot
 
@@ -11,7 +11,7 @@ Last updated: 2026-06-17 UTC (Awaiting next authorized seam — between rungs)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-No active implementation seam — awaiting the next authorized seam (between rungs). Boot: read ACTIVE_SEAM_STATE.json, fetch origin, then check OPEN issues on GitHub before starting work.
+Active implementation seam is issue #378 — lock the design standard then FULLY overhaul the landing to it ($500M / Linear-Vercel-Notion bar, matching the owner's AI Studio reference). The design standard is now LOCKED in `docs/DESIGN_SYSTEM.md` (read it first — it is the binding spec: tokens, type, spacing, real-logos rule, realistic product mockup, motion, responsive, §12 quality checklist). Remaining work: rebuild `components/foldera/LandingPage.tsx` (+ tokens in app/globals.css / tailwind.config.js, + real logos in public/) to that bar — an obvious full leap, not micro-polish. Preserve data-testids/copy/hrefs or update the e2e specs in the same PR. Show desktop + mobile screenshots before shipping.
 
 Issue #376 is COMPLETE — landing raised to product-window hero + motion (Linear/Vercel tier); merged via PR #377 (`b1bc061`).
 Issue #374 is COMPLETE — removed the visible BuildMarker deploy-SHA badge from all pages; merged via PR #375 (`2e8c7b2`).
@@ -41,11 +41,15 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-None — between rungs. No active seam. The landing redesign series (#370 → #372 → #374 → #376) is shipped and live.
+Issue #378, part 1 (DONE this PR): design standard locked in `docs/DESIGN_SYSTEM.md`, referenced from `FOLDERA_MASTER_BIBLE.md` + `docs/SOURCE_OF_TRUTH_MAP.md`. Part 2 (next session): full landing overhaul to that standard.
 
 ## Next exact move
 
-None assigned. Await the next authorized seam from the owner. When one is named: create/confirm the GitHub issue, set the control plane (ACTIVE_SEAM_STATE.json + this file + FOLDERA_BUILD_ORDER.yaml + .foldera-contract.json), branch, then work.
+1. Read `docs/DESIGN_SYSTEM.md` end to end + study the references (owner's AI Studio build, Linear, Vercel, Notion; mine Figma/Lovable assets too).
+2. Fully overhaul `components/foldera/LandingPage.tsx` to the bar: realistic product mockup as the hero centerpiece, real official brand logos, locked color/type/spacing tokens (add to app/globals.css + tailwind.config.js), smooth motion, flawless at 1440 AND 390.
+3. Preserve every data-testid / heading / copy / href, OR update the e2e specs in the same PR if the approved design changes the content.
+4. Prove: build + lint + large-file-splits + playwright (public-routes, landing-hero-visual-qa, dashboard-navigation, authenticated-routes). Capture desktop + mobile screenshots and show the owner BEFORE merging.
+5. It must be OBVIOUSLY better than the current live landing (b1bc061). Pass the §12 checklist in docs/DESIGN_SYSTEM.md.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence heartbeat (#364 code shipped, owner must create the cron job for live firing); (2) landing polish is an open standing goal — owner wants each pass obviously better, not incremental.
 

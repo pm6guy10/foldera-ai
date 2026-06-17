@@ -1,37 +1,45 @@
 {
-  "backlog_id": "between-rungs",
-  "active_issue": "none",
+  "backlog_id": "landing-design-system-overhaul",
+  "active_issue": 378,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Between rungs — no active seam. The landing redesign series (#370 -> #372 -> #374 -> #376) is shipped and live on main (b1bc061). Await the next owner-authorized seam; when named, set the control plane and branch before working.",
+  "user_system_path": "Lock the design system (docs/DESIGN_SYSTEM.md — DONE this PR) then FULLY overhaul the landing to it: $500M / Linear-Vercel-Notion tier, matching the owner's AI Studio reference build. Lead with a realistic product mockup; real official brand logos (not flat hand-drawn); locked color/type/spacing tokens; smooth motion; flawless on desktop AND mobile. Not a micro-polish pass — an obvious, full leap. Port from existing good material (AI Studio / Figma / Lovable) rather than reinventing.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
-    "FOLDERA_BUILD_ORDER.yaml"
+    "FOLDERA_BUILD_ORDER.yaml",
+    "FOLDERA_MASTER_BIBLE.md",
+    "docs/**",
+    "components/foldera/**",
+    "components/nav/**",
+    "app/globals.css",
+    "tailwind.config.js",
+    "public/**",
+    "tests/e2e/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
     "lib/**",
     "app/api/**",
-    "components/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "control-plane files only (between rungs)",
-  "forbidden_files_raw": "No code changes between rungs. Next seam must define its own allowed scope.",
-  "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "not applicable — between rungs, no active code seam",
-  "browser_proof_command": "not applicable",
-  "acceptance_condition": "Control plane is in a clean between-rungs state: FOLDERA_BUILD_ORDER.yaml active_issue=none, .foldera-contract.json active_issue=none, ACTIVE_HANDOFF.md declares no active seam; gate:continuity passes.",
-  "is_user_facing": false,
+  "allowed_files_raw": "design system doc + landing/nav components + globals.css/tailwind tokens + public logo assets + e2e specs + control-plane files",
+  "forbidden_files_raw": "No backend, schema, API, or dependency changes. If the overhaul needs a dep (e.g. a brand-logo set), name it for a scoped exception.",
+  "required_local_proof": "npm run build && npm run lint && npx vitest run tests/config/__tests__/large-file-splits.test.ts && npx playwright test tests/e2e/public-routes.spec.ts tests/e2e/landing-hero-visual-qa.spec.ts tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts",
+  "required_browser_proof": "Landing meets docs/DESIGN_SYSTEM.md §12 quality checklist; flawless at 1440 and 390; real logos; realistic product mockup; smooth motion; no horizontal overflow.",
+  "browser_proof_command": "playwright public-routes + landing-hero-visual-qa; screenshots at 1440 and 390",
+  "acceptance_condition": "Landing is overhauled to docs/DESIGN_SYSTEM.md (the $500M bar, §12 checklist all pass), obviously better than the prior pass; every data-testid/heading/copy/href preserved OR e2e specs updated in the same PR; full UI proof gate green.",
+  "is_user_facing": true,
   "anti_regression_checks": [
-    "gate:continuity passes",
-    "no active seam declared in ACTIVE_HANDOFF.md",
-    "active_issue is none across build order and contract"
+    "docs/DESIGN_SYSTEM.md §12 checklist passes",
+    "real official logos, consistent icon set",
+    "no horizontal overflow at 375/390; great at 1440 and 390",
+    "build, lint, e2e green"
   ],
-  "stop_condition": "Between rungs. Stop until the owner authorizes the next seam.",
-  "next_command": "Await the next owner-authorized seam. Standing landing goal: each pass must be obviously better, not incremental — not yet at the bar.",
+  "stop_condition": "Stop when issue #378 has a merged PR whose landing meets docs/DESIGN_SYSTEM.md and the full UI proof gate is green.",
+  "next_command": "New session: read docs/DESIGN_SYSTEM.md + the owner's AI Studio reference, then fully overhaul components/foldera/LandingPage.tsx (+ tokens in app/globals.css / tailwind.config.js, + public/logos) to the bar. Show desktop + mobile screenshots before shipping.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

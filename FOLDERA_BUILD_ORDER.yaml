@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
-priority_class: none
-work_type: none
-why_this_first: "Between rungs — no active seam. Landing redesign series (#370 -> #372 -> #374 -> #376) is shipped and live (main b1bc061). Await the next owner-authorized seam."
-next_seam: "Owner names the next seam. Standing landing goal: each pass must be OBVIOUSLY better, not incremental (owner direction 2026-06-17) — not yet at the bar."
+active_issue: 378
+priority_class: PRODUCT
+work_type: FEATURE
+why_this_first: "Owner direction 2026-06-17: stop incremental landing polish; lock the design standard as durable truth then do a FULL overhaul to the $500M / Linear-Vercel-Notion bar, matching the AI Studio reference build. Design standard is now locked in docs/DESIGN_SYSTEM.md (this PR). Remaining work: rebuild components/foldera/LandingPage.tsx (+ tokens, + real logos) to that bar."
+next_seam: "New session: read docs/DESIGN_SYSTEM.md + the owner AI Studio reference, fully overhaul the landing (real logos, realistic product mockup, locked tokens, smooth motion, flawless desktop+mobile). Preserve testids/copy/hrefs or update e2e in the same PR. Show desktop+mobile screenshots before shipping. Every pass must be OBVIOUSLY better, not incremental."
 completed_issue_376:
   issue: 376
   pr: 377
