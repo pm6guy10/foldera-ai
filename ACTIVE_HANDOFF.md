@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-16 PT (Awaiting next authorized seam)
+Last updated: 2026-06-17 PT (issue #364 — heartbeat scheduling moves off capped GitHub Actions)
 
 ## Boot
 
@@ -11,7 +11,7 @@ Last updated: 2026-06-16 PT (Awaiting next authorized seam)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is issue #364: workday-presence-trigger-runner never fired in production because `CRON_SECRET` was never provisioned to GitHub Actions; fix removes the HTTP/CRON_SECRET dependency by calling the trigger-runner lib directly from the workflow (same pattern as `loop-health-guardian.yml`).
+Active implementation seam is issue #364: make the workday-presence 15-min heartbeat actually fire in production. PR #365 (`f173bdc`) removed the dead CRON_SECRET-over-HTTP path; remaining work is scheduling — GitHub Actions is capped on this private repo (runners never start, every workflow instant-fails), so the heartbeat moves to a free external cron service hitting `/api/cron/workday-presence-trigger-runner` (CRON_SECRET already set in Vercel). No new spend.
 
 Issue #361 is COMPLETE — commitment-lapsing bridge + 15-min GitHub Actions schedule merged via PR #362 (`d19a4bf`); discovered non-functional in production post-merge, see #364.
 Issue #354 is COMPLETE — auth + state-machine integrity findings, all 3 (F-auth, F-card, F-dismiss) resolved and tested. PR #357 merged F-auth (`ba42125`); PR #358 merged F-card + F-dismiss (`4b2908b`).
@@ -36,13 +36,13 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-Issue #364: ship the direct-script trigger-runner workflow, merge, then verify a live 15-min run actually fires (HTTP route bypassed entirely — no more dependence on a GitHub-side `CRON_SECRET`).
+Issue #364: GitHub Actions is capped on this repo, so the 15-min schedule can never run there. Move the production heartbeat to a free external cron (e.g. cron-job.org) hitting the existing Vercel route; route + `CRON_SECRET` already exist. Workflow `schedule:` removed (noise-only while Actions capped); `workflow_dispatch` kept as a manual lever.
 
 ## Next exact move
 
-Open PR for issue #364, pass `npm run gate:continuity`, merge, then confirm the next scheduled run produces a real `tkg_actions` row or a clean `quiet`/`dedup_suppressed` outcome in the run log (not a silent failure).
+Owner: in a free cron service (e.g. cron-job.org) create one job — `GET https://www.foldera.ai/api/cron/workday-presence-trigger-runner`, header `Authorization: Bearer <CRON_SECRET>` (copy `CRON_SECRET` from Vercel env), schedule `*/15 * * * *`. First hit returns HTTP 200 with a `quiet`/`dedup_suppressed`/`intervention` outcome — that closes #364. Code + runbook shipped in the PR for #364.
 
-Current production truth: `Last known main SHA: 8d68a8e736cb9aeaf8edd7db6083a7c5f0a8c590` (PR #363 merged 2026-06-16; issue #361 closeout complete)
+Current production truth: `Last known main SHA: f173bdcfc64de634e17e5dee6ed96d44f733fca2` (PR #365 merged 2026-06-17; issue #364 code fix landed)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 

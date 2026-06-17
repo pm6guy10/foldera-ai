@@ -25,8 +25,8 @@ accepted_terminal_states:
 active_issue: 364
 priority_class: bug_fix
 work_type: ops
-why_this_first: "Issue #361 shipped a 15-min trigger-runner schedule, but the workflow's CRON_SECRET was never provisioned to GitHub Actions, so the brain has never fired in production since merge. This is the as-needed heartbeat the whole Right Now card model depends on."
-next_seam: "Open PR for #364 (direct-script workflow, no CRON_SECRET dependency), pass gate:continuity, merge, verify a live scheduled run fires cleanly."
+why_this_first: "Issue #361 shipped a 15-min trigger-runner schedule, but it never fired in production: first CRON_SECRET was never provisioned (fixed by PR #365, f173bdc), then GitHub Actions itself was found capped on this private repo so no scheduled workflow can run there at all. This heartbeat is what the whole Right Now card model depends on, so it must run off Actions with no new spend."
+next_seam: "Production heartbeat moves to a free external cron service hitting GET /api/cron/workday-presence-trigger-runner (Bearer CRON_SECRET, already in Vercel) every 15 min. Code/runbook in the PR for #364; owner creates the cron job; first HTTP 200 closes #364."
 completed_issue_361:
   issue: 361
   pr: 362
