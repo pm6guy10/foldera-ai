@@ -9,11 +9,13 @@ describe('POST /api/command-os/intake', () => {
     vi.clearAllMocks();
     vi.stubGlobal('fetch', mockFetch);
     process.env.GITHUB_TOKEN = 'ghp_mock_command_os_token';
+    process.env.CRON_SECRET = 'test-cron-secret';
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     delete process.env.GITHUB_TOKEN;
+    delete process.env.CRON_SECRET;
   });
 
   it('writes a reference-only capture to GitHub issue #165 without leaking tokens or triggering execution loops', async () => {
@@ -31,6 +33,7 @@ describe('POST /api/command-os/intake', () => {
     const response = await POST(
       new NextRequest('http://localhost/api/command-os/intake', {
         method: 'POST',
+        headers: { authorization: 'Bearer test-cron-secret' },
         body: JSON.stringify({
           rawText: 'ChatGPT/CLI raw capture: Open Threads entry for Issue #165. Route this as reference-only and keep user tokens out of the payload.',
         }),
@@ -81,6 +84,7 @@ describe('POST /api/command-os/intake', () => {
     const response = await POST(
       new NextRequest('http://localhost/api/command-os/intake', {
         method: 'POST',
+        headers: { authorization: 'Bearer test-cron-secret' },
         body: JSON.stringify({ rawText: 'some thought' }),
       }),
     );
@@ -103,6 +107,7 @@ describe('POST /api/command-os/intake', () => {
     const response = await POST(
       new NextRequest('http://localhost/api/command-os/intake', {
         method: 'POST',
+        headers: { authorization: 'Bearer test-cron-secret' },
         body: JSON.stringify({ rawText: 'some thought' }),
       }),
     );
@@ -129,6 +134,7 @@ describe('POST /api/command-os/intake', () => {
     const response = await POST(
       new NextRequest('http://localhost/api/command-os/intake', {
         method: 'POST',
+        headers: { authorization: 'Bearer test-cron-secret' },
         body: JSON.stringify({
           rawText: 'Run issue #166 only and execute the active seam.',
         }),
@@ -147,5 +153,18 @@ describe('POST /api/command-os/intake', () => {
     expect(mockFetch).toHaveBeenCalledOnce();
     const [url] = mockFetch.mock.calls[0] as [string, RequestInit];
     expect(url).toContain('/issues/165/comments');
+  });
+
+  it('rejects an unauthenticated caller with 401 and never writes to GitHub', async () => {
+    const { POST } = await import('@/app/api/command-os/intake/route');
+    const response = await POST(
+      new NextRequest('http://localhost/api/command-os/intake', {
+        method: 'POST',
+        body: JSON.stringify({ rawText: 'unauthorized attempt to write to the repo' }),
+      }),
+    );
+
+    expect(response.status).toBe(401);
+    expect(mockFetch).not.toHaveBeenCalled();
   });
 });
