@@ -191,26 +191,46 @@ function RightNowCard() {
 export function LandingPage({ isAuthenticated: _isAuthenticated = false }: LandingPageProps = {}) {
   return (
     <main className="min-h-[100dvh] overflow-x-hidden bg-[#05070a] text-white">
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#05070a]/90 backdrop-blur-xl" data-testid="landing-header">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <a href="/" aria-label="Foldera" className="inline-flex min-h-[44px] items-center gap-3 rounded-lg px-1 focus-visible:ring-2 focus-visible:ring-cyan-300">
+      <header
+        className="sticky top-0 z-[60] border-b border-white/[0.06] bg-[#03060bd9] pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl"
+        data-testid="landing-header"
+      >
+        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-5 px-4 sm:px-6 lg:px-8">
+          <a
+            href="/"
+            aria-label="Foldera"
+            className="inline-flex min-h-[44px] min-w-[44px] items-center gap-2.5 rounded-[12px] px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
+          >
             <FolderaMark size="sm" decorative />
-            <span className="text-base font-semibold tracking-[-0.025em]">Foldera</span>
+            <span className="text-[16px] font-semibold tracking-[-0.025em] text-white">Foldera</span>
           </a>
 
-          <nav aria-label="Landing navigation" className="hidden items-center gap-6 text-sm text-slate-300 md:flex">
+          <nav
+            aria-label="Landing navigation"
+            className="hidden items-center gap-7 text-[12px] font-medium text-slate-400 md:flex"
+          >
             <a href="#how-foldera-works" className="transition-colors hover:text-white">How it works</a>
-            <a href="#trust" className="transition-colors hover:text-white">Trust</a>
-            <a href="#pilot" className="transition-colors hover:text-white">Pilot</a>
+            <a href="/security" className="transition-colors hover:text-white">Security</a>
+            <a href="/pricing" className="transition-colors hover:text-white">Pricing</a>
+            <a href="/try" className="transition-colors hover:text-white">Try it</a>
           </nav>
 
           <div className="flex items-center gap-3">
-            <a href={loginHref} data-testid="landing-login-cta" className="hidden text-sm font-medium text-slate-300 transition-colors hover:text-white sm:inline-flex">
+            <a
+              href={loginHref}
+              data-testid="landing-login-cta"
+              className="hidden text-[12px] font-medium text-slate-400 transition-colors hover:text-white sm:inline-flex"
+            >
               Login
             </a>
-            <AccessLink testId="landing-header-cta" className="min-h-[40px] px-3 text-xs sm:px-4">
+            <a
+              href={accessHref}
+              data-testid="landing-header-cta"
+              className="inline-flex min-h-[40px] items-center gap-2 rounded-[9px] border border-cyan-300/25 bg-cyan-300 px-4 text-[12px] font-semibold text-slate-950 shadow-[0_0_22px_rgba(34,211,238,0.18)] transition-colors hover:bg-cyan-200"
+            >
               Request access
-            </AccessLink>
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </a>
           </div>
         </div>
       </header>
@@ -361,7 +381,10 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
       <footer className="border-t border-white/10 px-4 py-8 text-sm text-slate-500" data-testid="landing-footer">
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p>Foldera - Workday Presence Layer.</p>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4">
+            <a href="/pricing" className="hover:text-slate-300">Pricing</a>
+            <a href="/security" className="hover:text-slate-300">Security</a>
+            <a href="/about" className="hover:text-slate-300">About</a>
             <a href="/privacy" className="hover:text-slate-300">Privacy</a>
             <a href="/terms" className="hover:text-slate-300">Terms</a>
           </div>

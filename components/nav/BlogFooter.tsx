@@ -9,6 +9,9 @@ export function BlogFooter() {
           <span className="text-base font-black uppercase tracking-[0.12em] text-text-primary">Foldera</span>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-4 text-[10px] font-black uppercase tracking-[0.14em] text-text-muted">
+          <a href="/about" className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 transition-colors hover:text-text-secondary">
+            About
+          </a>
           <a href="/privacy" className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center px-2 transition-colors hover:text-text-secondary">
             Privacy
           </a>
