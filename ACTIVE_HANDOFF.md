@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-17 UTC (issue #372 — landing de-block to editorial)
+Last updated: 2026-06-17 UTC (issue #374 — remove visible BuildMarker badge)
 
 ## Boot
 
@@ -11,7 +11,7 @@ Last updated: 2026-06-17 UTC (issue #372 — landing de-block to editorial)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is issue #372: de-block the live landing (`components/foldera/LandingPage.tsx`) to an editorial treatment — section numerals (01–04), hairline dividers instead of bordered card grids, oversized confident type, glow dialed down, Right Now card as the single panel. Same copy, testids, and hrefs. Owner approved the v2 look; shipping to live. Supersedes the #370 boxed visuals.
+Active implementation seam is issue #374: remove the visible BuildMarker deploy-SHA badge (was fixed bottom-right on every page via app/layout.js) — owner found it ugly. Deploy identity remains available via lib/config/deploy-revision.ts + the Slack/status path. Landing v2 editorial redesign shipped via #372/#373 (`891d24f`).
 
 Issue #364/#366 is COMPLETE — heartbeat moved off capped GitHub Actions to a free external cron (PRs #365/#366 via #367); owner must create the external cron job for live firing.
 Issue #361 is COMPLETE — commitment-lapsing bridge + 15-min GitHub Actions schedule merged via PR #362 (`d19a4bf`); discovered non-functional in production post-merge, see #364.
