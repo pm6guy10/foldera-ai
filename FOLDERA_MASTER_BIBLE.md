@@ -17,6 +17,10 @@ This bible is reference authority, not live execution authority.
 It does not activate queue tasks.
 It does not mutate `FOLDERA_EXECUTION_QUEUE.yaml`.
 
+## Design authority
+
+`docs/DESIGN_SYSTEM.md` is the binding design standard for every visible Foldera surface (landing, dashboard, Slack card, emails). It encodes the quality bar (Linear / Vercel / Notion / the owner's AI Studio build — a $500M-company feel), the reference set, color/type/spacing tokens, the real-logos rule, the realistic product mockup, motion, and the responsive bar. Any visual work must meet it; do not re-explain design intent in chat — read and follow `docs/DESIGN_SYSTEM.md`.
+
 ## Foldera In One Sentence
 
 Foldera is a Workday Presence Layer that finds the workday re-entry point before the user reopens five tools, then gives one grounded next move or stays quiet safely.

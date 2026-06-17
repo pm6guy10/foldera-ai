@@ -22,11 +22,16 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 376
+active_issue: 378
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Owner-authorized: the live landing visually reads unpolished ('looks like it was made in 10 minutes') even though copy + structure are right. Elevate components/foldera/LandingPage.tsx to a production-grade dark/cyan aesthetic (glowing Right Now card with connector chips, atmosphere, depth, tighter type) while preserving every data-testid, heading, copy, and href so the e2e suite stays green. Ship to live via PR + merge."
-next_seam: "After merge, verify production deploy renders the new landing; return control plane to awaiting next seam."
+why_this_first: "Owner direction 2026-06-17: stop incremental landing polish; lock the design standard as durable truth then do a FULL overhaul to the $500M / Linear-Vercel-Notion bar, matching the AI Studio reference build. Design standard is now locked in docs/DESIGN_SYSTEM.md (this PR). Remaining work: rebuild components/foldera/LandingPage.tsx (+ tokens, + real logos) to that bar."
+next_seam: "New session: read docs/DESIGN_SYSTEM.md + the owner AI Studio reference, fully overhaul the landing (real logos, realistic product mockup, locked tokens, smooth motion, flawless desktop+mobile). Preserve testids/copy/hrefs or update e2e in the same PR. Show desktop+mobile screenshots before shipping. Every pass must be OBVIOUSLY better, not incremental."
+completed_issue_376:
+  issue: 376
+  pr: 377
+  pr_merge_sha: b1bc061
+  summary: "landing raised to product-window hero (Watching chrome, connected tools, evidence rows with source favicons, one action) + tasteful framer-motion; 'use client'. public-routes 54/54 green."
 completed_issue_364:
   issue: 364
   prs: [365, 366]

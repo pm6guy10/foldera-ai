@@ -1,9 +1,9 @@
 {
-  "active_issue": 376,
-  "active_branch": "feat/376-landing-product-hero-motion",
+  "active_issue": 378,
+  "active_branch": "feat/378-design-system-lock",
   "active_pr": null,
-  "deployed_commit_sha": "2e8c7b2",
+  "deployed_commit_sha": "b1bc061",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-17T14:40:00Z"
+  "last_verified_at": "2026-06-17T19:10:00Z"
 }

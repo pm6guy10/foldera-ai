@@ -1,15 +1,22 @@
 {
-  "backlog_id": "landing-product-hero-motion",
-  "active_issue": 376,
+  "backlog_id": "landing-design-system-overhaul",
+  "active_issue": 378,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Elevate the live landing (components/foldera/LandingPage.tsx) to a production-grade dark/cyan aesthetic — glowing Right Now card with connector chips, background atmosphere, depth on cards, tighter type — while preserving every data-testid, heading, copy string, and href so the e2e suite stays green. Owner-authorized to ship to live via PR + merge.",
+  "user_system_path": "Lock the design system (docs/DESIGN_SYSTEM.md — DONE this PR) then FULLY overhaul the landing to it: $500M / Linear-Vercel-Notion tier, matching the owner's AI Studio reference build. Lead with a realistic product mockup; real official brand logos (not flat hand-drawn); locked color/type/spacing tokens; smooth motion; flawless on desktop AND mobile. Not a micro-polish pass — an obvious, full leap. Port from existing good material (AI Studio / Figma / Lovable) rather than reinventing.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "components/foldera/LandingPage.tsx"
+    "FOLDERA_MASTER_BIBLE.md",
+    "docs/**",
+    "components/foldera/**",
+    "components/nav/**",
+    "app/globals.css",
+    "tailwind.config.js",
+    "public/**",
+    "tests/e2e/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
@@ -18,21 +25,21 @@
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "components/foldera/LandingPage.tsx and control-plane files",
-  "forbidden_files_raw": "No backend, no schema, no API, no dependency changes. Visual re-skin of one component only.",
+  "allowed_files_raw": "design system doc + landing/nav components + globals.css/tailwind tokens + public logo assets + e2e specs + control-plane files",
+  "forbidden_files_raw": "No backend, schema, API, or dependency changes. If the overhaul needs a dep (e.g. a brand-logo set), name it for a scoped exception.",
   "required_local_proof": "npm run build && npm run lint && npx vitest run tests/config/__tests__/large-file-splits.test.ts && npx playwright test tests/e2e/public-routes.spec.ts tests/e2e/landing-hero-visual-qa.spec.ts tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts",
-  "required_browser_proof": "Landing renders at / with all testids, headings, copy intact; no horizontal overflow at 375/390; premium dark/cyan visuals.",
-  "browser_proof_command": "playwright public-routes + landing-hero-visual-qa",
-  "acceptance_condition": "The live landing route / renders the elevated dark/cyan design with every preserved data-testid, heading, copy string, and href; public-routes + landing-hero-visual-qa + dashboard-navigation + authenticated-routes e2e pass; build + lint + large-file-splits pass; no horizontal overflow at 375/390.",
+  "required_browser_proof": "Landing meets docs/DESIGN_SYSTEM.md §12 quality checklist; flawless at 1440 and 390; real logos; realistic product mockup; smooth motion; no horizontal overflow.",
+  "browser_proof_command": "playwright public-routes + landing-hero-visual-qa; screenshots at 1440 and 390",
+  "acceptance_condition": "Landing is overhauled to docs/DESIGN_SYSTEM.md (the $500M bar, §12 checklist all pass), obviously better than the prior pass; every data-testid/heading/copy/href preserved OR e2e specs updated in the same PR; full UI proof gate green.",
   "is_user_facing": true,
   "anti_regression_checks": [
-    "All landing data-testids preserved",
-    "Heading /stop rebuilding the work/i present",
-    "No horizontal overflow at mobile widths",
-    "Build, lint, e2e green"
+    "docs/DESIGN_SYSTEM.md §12 checklist passes",
+    "real official logos, consistent icon set",
+    "no horizontal overflow at 375/390; great at 1440 and 390",
+    "build, lint, e2e green"
   ],
-  "stop_condition": "Stop when issue #370 has a merged PR with build + lint + e2e proof green.",
-  "next_command": "After merge, verify the production deploy renders the new landing; then return control plane to awaiting next seam.",
+  "stop_condition": "Stop when issue #378 has a merged PR whose landing meets docs/DESIGN_SYSTEM.md and the full UI proof gate is green.",
+  "next_command": "New session: read docs/DESIGN_SYSTEM.md + the owner's AI Studio reference, then fully overhaul components/foldera/LandingPage.tsx (+ tokens in app/globals.css / tailwind.config.js, + public/logos) to the bar. Show desktop + mobile screenshots before shipping.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

@@ -18,6 +18,7 @@ This is the keep-list ledger. Everything not listed here is reference, archive, 
 | `README.md` | Repo entrypoint and local commands. |
 | `SESSION_HISTORY.md` / `LESSONS_LEARNED.md` | Append-only history. Never current control. |
 | `docs/SOURCE_OF_TRUTH_MAP.md` | This ledger. |
+| `docs/DESIGN_SYSTEM.md` | Binding design standard / quality bar for every visible surface (tokens, type, spacing, real-logos rule, product mockup, motion, responsive). Design authority, referenced by `FOLDERA_MASTER_BIBLE.md`. |
 
 ## Conflict rule
 
