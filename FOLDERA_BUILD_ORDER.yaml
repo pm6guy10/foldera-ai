@@ -22,11 +22,16 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 364
-priority_class: bug_fix
-work_type: ops
-why_this_first: "Issue #361 shipped a 15-min trigger-runner schedule, but it never fired in production: first CRON_SECRET was never provisioned (fixed by PR #365, f173bdc), then GitHub Actions itself was found capped on this private repo so no scheduled workflow can run there at all. This heartbeat is what the whole Right Now card model depends on, so it must run off Actions with no new spend."
-next_seam: "Production heartbeat moves to a free external cron service hitting GET /api/cron/workday-presence-trigger-runner (Bearer CRON_SECRET, already in Vercel) every 15 min. Code/runbook in the PR for #364; owner creates the cron job; first HTTP 200 closes #364."
+active_issue: 370
+priority_class: PRODUCT
+work_type: FEATURE
+why_this_first: "Owner-authorized: the live landing visually reads unpolished ('looks like it was made in 10 minutes') even though copy + structure are right. Elevate components/foldera/LandingPage.tsx to a production-grade dark/cyan aesthetic (glowing Right Now card with connector chips, atmosphere, depth, tighter type) while preserving every data-testid, heading, copy, and href so the e2e suite stays green. Ship to live via PR + merge."
+next_seam: "After merge, verify production deploy renders the new landing; return control plane to awaiting next seam."
+completed_issue_364:
+  issue: 364
+  prs: [365, 366]
+  merged_via: 367
+  summary: "heartbeat moved off capped GitHub Actions to a free external cron hitting the Vercel route; owner must create the external cron job for live firing (see project memory)."
 completed_issue_361:
   issue: 361
   pr: 362

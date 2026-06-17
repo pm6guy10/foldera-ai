@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-17 PT (issue #364 — heartbeat scheduling moves off capped GitHub Actions)
+Last updated: 2026-06-17 UTC (issue #370 — landing page visual polish to production-grade)
 
 ## Boot
 
@@ -11,8 +11,9 @@ Last updated: 2026-06-17 PT (issue #364 — heartbeat scheduling moves off cappe
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is issue #364: make the workday-presence 15-min heartbeat actually fire in production. PR #365 (`f173bdc`) removed the dead CRON_SECRET-over-HTTP path; remaining work is scheduling — GitHub Actions is capped on this private repo (runners never start, every workflow instant-fails), so the heartbeat moves to a free external cron service hitting `/api/cron/workday-presence-trigger-runner` (CRON_SECRET already set in Vercel). No new spend.
+Active implementation seam is issue #370: elevate the live landing (`components/foldera/LandingPage.tsx`) to a production-grade dark/cyan aesthetic — glowing Right Now card with connector chips, background atmosphere, card depth, tighter type — preserving every data-testid, heading, copy string, and href so the e2e suite stays green. Owner-authorized to ship to live via PR + merge.
 
+Issue #364/#366 is COMPLETE — heartbeat moved off capped GitHub Actions to a free external cron (PRs #365/#366 via #367); owner must create the external cron job for live firing.
 Issue #361 is COMPLETE — commitment-lapsing bridge + 15-min GitHub Actions schedule merged via PR #362 (`d19a4bf`); discovered non-functional in production post-merge, see #364.
 Issue #354 is COMPLETE — auth + state-machine integrity findings, all 3 (F-auth, F-card, F-dismiss) resolved and tested. PR #357 merged F-auth (`ba42125`); PR #358 merged F-card + F-dismiss (`4b2908b`).
 Issue #351 is COMPLETE — money-loop integrity sweep, all 5 findings (F1-F5) resolved and tested. PR #352 merged F1+F4 (`b400c5d`); PR #353 recovered and merged F2/F3/F5 + full test coverage (`c238165`).
