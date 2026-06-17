@@ -22,11 +22,16 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 376
-priority_class: PRODUCT
-work_type: FEATURE
-why_this_first: "Owner-authorized: the live landing visually reads unpolished ('looks like it was made in 10 minutes') even though copy + structure are right. Elevate components/foldera/LandingPage.tsx to a production-grade dark/cyan aesthetic (glowing Right Now card with connector chips, atmosphere, depth, tighter type) while preserving every data-testid, heading, copy, and href so the e2e suite stays green. Ship to live via PR + merge."
-next_seam: "After merge, verify production deploy renders the new landing; return control plane to awaiting next seam."
+active_issue: none
+priority_class: none
+work_type: none
+why_this_first: "Between rungs — no active seam. Landing redesign series (#370 -> #372 -> #374 -> #376) is shipped and live (main b1bc061). Await the next owner-authorized seam."
+next_seam: "Owner names the next seam. Standing landing goal: each pass must be OBVIOUSLY better, not incremental (owner direction 2026-06-17) — not yet at the bar."
+completed_issue_376:
+  issue: 376
+  pr: 377
+  pr_merge_sha: b1bc061
+  summary: "landing raised to product-window hero (Watching chrome, connected tools, evidence rows with source favicons, one action) + tasteful framer-motion; 'use client'. public-routes 54/54 green."
 completed_issue_364:
   issue: 364
   prs: [365, 366]

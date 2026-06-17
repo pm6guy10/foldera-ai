@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-17 UTC (issue #376 — landing product-window hero + motion)
+Last updated: 2026-06-17 UTC (Awaiting next authorized seam — between rungs)
 
 ## Boot
 
@@ -11,8 +11,12 @@ Last updated: 2026-06-17 UTC (issue #376 — landing product-window hero + motio
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is issue #376: raise the landing to Linear/Vercel tier — hero is now a believable product window (Watching chrome + connected tools + evidence rows with source favicons + one clear action) and the page has tasteful motion (staggered hero load, product window + evidence reveal, scroll reveals) via a 'use client' framer-motion conversion of components/foldera/LandingPage.tsx. Same copy/testids/hrefs. Owner authorized full treatment + ship to live. (Prior: #374 removed BuildMarker; #372/#373 editorial de-block; #370/#371 first skin.)
+No active implementation seam — awaiting the next authorized seam (between rungs). Boot: read ACTIVE_SEAM_STATE.json, fetch origin, then check OPEN issues on GitHub before starting work.
 
+Issue #376 is COMPLETE — landing raised to product-window hero + motion (Linear/Vercel tier); merged via PR #377 (`b1bc061`).
+Issue #374 is COMPLETE — removed the visible BuildMarker deploy-SHA badge from all pages; merged via PR #375 (`2e8c7b2`).
+Issue #372 is COMPLETE — landing de-block to editorial; merged via PR #373 (`891d24f`).
+Issue #370 is COMPLETE — first landing dark/cyan elevation; merged via PR #371 (`64e0e1e`).
 Issue #364/#366 is COMPLETE — heartbeat moved off capped GitHub Actions to a free external cron (PRs #365/#366 via #367); owner must create the external cron job for live firing.
 Issue #361 is COMPLETE — commitment-lapsing bridge + 15-min GitHub Actions schedule merged via PR #362 (`d19a4bf`); discovered non-functional in production post-merge, see #364.
 Issue #354 is COMPLETE — auth + state-machine integrity findings, all 3 (F-auth, F-card, F-dismiss) resolved and tested. PR #357 merged F-auth (`ba42125`); PR #358 merged F-card + F-dismiss (`4b2908b`).
@@ -37,13 +41,15 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-Issue #364: GitHub Actions is capped on this repo, so the 15-min schedule can never run there. Move the production heartbeat to a free external cron (e.g. cron-job.org) hitting the existing Vercel route; route + `CRON_SECRET` already exist. Workflow `schedule:` removed (noise-only while Actions capped); `workflow_dispatch` kept as a manual lever.
+None — between rungs. No active seam. The landing redesign series (#370 → #372 → #374 → #376) is shipped and live.
 
 ## Next exact move
 
-Owner: in a free cron service (e.g. cron-job.org) create one job — `GET https://www.foldera.ai/api/cron/workday-presence-trigger-runner`, header `Authorization: Bearer <CRON_SECRET>` (copy `CRON_SECRET` from Vercel env), schedule `*/15 * * * *`. First hit returns HTTP 200 with a `quiet`/`dedup_suppressed`/`intervention` outcome — that closes #364. Code + runbook shipped in the PR for #364.
+None assigned. Await the next authorized seam from the owner. When one is named: create/confirm the GitHub issue, set the control plane (ACTIVE_SEAM_STATE.json + this file + FOLDERA_BUILD_ORDER.yaml + .foldera-contract.json), branch, then work.
 
-Current production truth: `Last known main SHA: f173bdcfc64de634e17e5dee6ed96d44f733fca2` (PR #365 merged 2026-06-17; issue #364 code fix landed)
+Open owner items (not active seams): (1) configure the free external cron for the workday-presence heartbeat (#364 code shipped, owner must create the cron job for live firing); (2) landing polish is an open standing goal — owner wants each pass obviously better, not incremental.
+
+Current production truth: `Last known main SHA: b1bc061` (PR #377 merged 2026-06-17; landing v3 live; issues #370/#372/#374/#376 closed)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 

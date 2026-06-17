@@ -1,38 +1,37 @@
 {
-  "backlog_id": "landing-product-hero-motion",
-  "active_issue": 376,
+  "backlog_id": "between-rungs",
+  "active_issue": "none",
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Elevate the live landing (components/foldera/LandingPage.tsx) to a production-grade dark/cyan aesthetic — glowing Right Now card with connector chips, background atmosphere, depth on cards, tighter type — while preserving every data-testid, heading, copy string, and href so the e2e suite stays green. Owner-authorized to ship to live via PR + merge.",
+  "user_system_path": "Between rungs — no active seam. The landing redesign series (#370 -> #372 -> #374 -> #376) is shipped and live on main (b1bc061). Await the next owner-authorized seam; when named, set the control plane and branch before working.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
-    "FOLDERA_BUILD_ORDER.yaml",
-    "components/foldera/LandingPage.tsx"
+    "FOLDERA_BUILD_ORDER.yaml"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
     "lib/**",
     "app/api/**",
+    "components/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "components/foldera/LandingPage.tsx and control-plane files",
-  "forbidden_files_raw": "No backend, no schema, no API, no dependency changes. Visual re-skin of one component only.",
-  "required_local_proof": "npm run build && npm run lint && npx vitest run tests/config/__tests__/large-file-splits.test.ts && npx playwright test tests/e2e/public-routes.spec.ts tests/e2e/landing-hero-visual-qa.spec.ts tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts",
-  "required_browser_proof": "Landing renders at / with all testids, headings, copy intact; no horizontal overflow at 375/390; premium dark/cyan visuals.",
-  "browser_proof_command": "playwright public-routes + landing-hero-visual-qa",
-  "acceptance_condition": "The live landing route / renders the elevated dark/cyan design with every preserved data-testid, heading, copy string, and href; public-routes + landing-hero-visual-qa + dashboard-navigation + authenticated-routes e2e pass; build + lint + large-file-splits pass; no horizontal overflow at 375/390.",
-  "is_user_facing": true,
+  "allowed_files_raw": "control-plane files only (between rungs)",
+  "forbidden_files_raw": "No code changes between rungs. Next seam must define its own allowed scope.",
+  "required_local_proof": "npm run gate:continuity",
+  "required_browser_proof": "not applicable — between rungs, no active code seam",
+  "browser_proof_command": "not applicable",
+  "acceptance_condition": "Control plane is in a clean between-rungs state: FOLDERA_BUILD_ORDER.yaml active_issue=none, .foldera-contract.json active_issue=none, ACTIVE_HANDOFF.md declares no active seam; gate:continuity passes.",
+  "is_user_facing": false,
   "anti_regression_checks": [
-    "All landing data-testids preserved",
-    "Heading /stop rebuilding the work/i present",
-    "No horizontal overflow at mobile widths",
-    "Build, lint, e2e green"
+    "gate:continuity passes",
+    "no active seam declared in ACTIVE_HANDOFF.md",
+    "active_issue is none across build order and contract"
   ],
-  "stop_condition": "Stop when issue #370 has a merged PR with build + lint + e2e proof green.",
-  "next_command": "After merge, verify the production deploy renders the new landing; then return control plane to awaiting next seam.",
+  "stop_condition": "Between rungs. Stop until the owner authorizes the next seam.",
+  "next_command": "Await the next owner-authorized seam. Standing landing goal: each pass must be obviously better, not incremental — not yet at the bar.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
