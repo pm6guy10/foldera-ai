@@ -3149,3 +3149,229 @@
 
 .text-balance { text-wrap: balance; }
 .text-pretty { text-wrap: pretty; }
+
+/* =========================================================================
+   LANDING — Amber Presence Layer  (issue #378)
+   Self-contained design layer for the marketing landing. Warm amber/gold
+   signal on a warm near-black canvas, per docs/DESIGN_SYSTEM.md (binding).
+   Scoped under .ld so the dashboard palette is untouched. Token-driven —
+   no raw hex in the component.
+   ========================================================================= */
+
+.ld {
+  /* canvas — warm near-black, layered */
+  --ld-bg:        #0a0a0c;
+  --ld-bg-2:      #0d0d10;
+  --ld-surface:   #131318;
+  --ld-surface-2: #1a1b21;
+  --ld-line:      rgba(255, 255, 255, 0.07);
+  --ld-line-2:    rgba(255, 255, 255, 0.11);
+
+  /* text */
+  --ld-fg:        #f5f6f8;
+  --ld-fg-soft:   #c8ccd4;
+  --ld-fg-muted:  #9aa0aa;
+  --ld-fg-dim:    #5a606b;
+
+  /* signal — warm amber/gold (single dominant accent) */
+  --ld-accent:        #f5a623;
+  --ld-accent-bright: #ffc25c;
+  --ld-accent-deep:   #b4760f;
+  --ld-on-accent:     #1c1303;
+
+  /* status only */
+  --ld-green:  #34d399;
+  --ld-danger: #f87171;
+
+  /* fonts — local so helpers never depend on an undefined global var */
+  --font-mono: "GeistMono", ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, monospace;
+
+  color: var(--ld-fg);
+  background-color: var(--ld-bg);
+  font-feature-settings: "cv11", "ss01";
+}
+
+/* atmosphere — faint amber aurora upper-right, soft, never neon */
+.ld-aurora {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(56% 44% at 86% -4%, rgba(245, 166, 35, 0.10) 0%, transparent 62%),
+    radial-gradient(44% 38% at 102% 26%, rgba(180, 118, 15, 0.09) 0%, transparent 58%);
+}
+
+/* ---- type helpers ---- */
+.ld-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--ld-accent);
+}
+.ld-mono { font-family: var(--font-mono); }
+.ld-display {
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.04;
+}
+/* graphite-to-fade second line, Linear/Vercel style */
+.ld-text-fade {
+  background: linear-gradient(180deg, #8c93a0 0%, #3a404b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ---- controls ---- */
+.ld-btn-primary {
+  background: var(--ld-accent);
+  color: var(--ld-on-accent);
+  border-radius: 9999px;
+  font-weight: 600;
+  transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  box-shadow: 0 0 0 0 rgba(245, 166, 35, 0);
+}
+.ld-btn-primary:hover {
+  background: var(--ld-accent-bright);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 32px -10px rgba(245, 166, 35, 0.5);
+}
+.ld-btn-ghost {
+  background: transparent;
+  color: var(--ld-fg-soft);
+  border: 1px solid var(--ld-line-2);
+  border-radius: 9999px;
+  font-weight: 500;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+.ld-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--ld-fg);
+}
+.ld-icon-btn {
+  border: 1px solid var(--ld-line-2);
+  border-radius: 9999px;
+  color: var(--ld-fg-soft);
+  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+.ld-icon-btn:hover {
+  color: var(--ld-fg);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ---- surfaces ---- */
+.ld-rule { border-color: var(--ld-line); }
+.ld-card {
+  background: var(--ld-surface);
+  border: 1px solid var(--ld-line);
+  border-radius: 14px;
+}
+.ld-card-interactive {
+  background: var(--ld-surface);
+  border: 1px solid var(--ld-line);
+  border-radius: 14px;
+  transition: border-color 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease, background 0.22s ease;
+}
+.ld-card-interactive:hover {
+  border-color: rgba(245, 166, 35, 0.38);
+  background: var(--ld-surface-2);
+  transform: translateY(-2px);
+  box-shadow: 0 22px 54px -30px rgba(245, 166, 35, 0.35);
+}
+
+/* the hero artifact — Right Now product window */
+.ld-panel {
+  position: relative;
+  background:
+    radial-gradient(120% 78% at 82% -8%, rgba(245, 166, 35, 0.09) 0%, transparent 56%),
+    linear-gradient(180deg, #16161c 0%, #0d0d11 100%);
+  border: 1px solid var(--ld-line-2);
+  border-radius: 16px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 60px 110px -45px rgba(0, 0, 0, 0.92),
+    0 0 60px -26px rgba(245, 166, 35, 0.22);
+}
+
+/* translucent accent surface (icon chips, active rail item) */
+.ld-accent-soft {
+  background: color-mix(in srgb, var(--ld-accent) 12%, transparent);
+  color: var(--ld-accent);
+}
+
+/* real-logo connector chip */
+.ld-conn-chip {
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  background: #101015;
+  border: 1px solid var(--ld-line);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ld-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 5px 11px;
+  border-radius: 9999px;
+  border: 1px solid var(--ld-line-2);
+  color: var(--ld-fg-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.ld-nav-link {
+  position: relative;
+  color: var(--ld-fg-muted);
+  transition: color 0.18s ease;
+}
+.ld-nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0; bottom: -6px;
+  height: 1px; width: 0;
+  background: var(--ld-accent);
+  transition: width 0.24s ease;
+}
+.ld-nav-link:hover { color: var(--ld-fg); }
+.ld-nav-link:hover::after { width: 100%; }
+
+.ld :focus-visible {
+  outline: 2px solid var(--ld-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* hairline grid texture */
+.ld-gridlines {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 128px 100%;
+}
+
+/* ---- motion ---- */
+@keyframes ldSignal {
+  0%, 100% { opacity: 1;   box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55); }
+  50%      { opacity: 0.6; box-shadow: 0 0 0 5px rgba(52, 211, 153, 0); }
+}
+.ld-signal { animation: ldSignal 2.2s ease-in-out infinite; }
+
+@keyframes ldMarquee {
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+.ld-marquee { animation: ldMarquee 38s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ld-signal, .ld-marquee { animation: none; }
+}

@@ -147,7 +147,8 @@ test.describe('Visual system screenshots', () => {
     for (const capture of captures) {
       await page.setViewportSize({ width: capture.width, height: capture.height });
       await page.goto('/');
-      await expect(page.getByRole('heading', { name: /Workday Presence Layer/i })).toBeVisible();
+      await expect(page.getByText('The Workday Presence Layer').first()).toBeVisible();
+      await expect(page.getByRole('heading', { name: /Stop rebuilding the work\./i })).toBeVisible();
       await page.screenshot({ path: path.join(OUT_DIR, capture.file), fullPage: true });
     }
   });
