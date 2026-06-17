@@ -1,19 +1,35 @@
-# Runs the workday-presence trigger-runner on a real schedule instead of only
-# on a manual dashboard "sync now" click. Right Now cards are meant to
-# interrupt as-needed, not once a day — this is the as-needed heartbeat.
-# Issue #361.
+# Workday-presence trigger-runner — manual lever only (production heartbeat runs OFF GitHub Actions).
 #
-# Calls the trigger-runner lib directly (scripts/workday-presence-trigger-runner-cron.ts)
-# instead of POSTing to the Vercel HTTP route. The HTTP route requires a
-# CRON_SECRET GitHub Actions secret that was never provisioned, so every run
-# 401'd silently; this mirrors the already-working loop-health-guardian.yml
-# pattern of calling Supabase/Slack directly with secrets that are already set.
+# History:
+#   - Issue #361 shipped this as a GitHub Actions schedule (every 15 min) that
+#     curled the Vercel route with a CRON_SECRET never provisioned to Actions,
+#     so every run 401'd silently.
+#   - Issue #364 / PR #365 (f173bdc) removed that dead CRON_SECRET-over-HTTP path
+#     by calling the lib directly via scripts/workday-presence-trigger-runner-cron.ts.
+#   - Then GitHub Actions itself was found CAPPED on this private repo: runners no
+#     longer start, so EVERY workflow (this one, Health Gate, Production E2E, ...)
+#     instant-fails with no runner assigned. Lifting the Actions spend cap is
+#     explicitly out of scope.
+#
+# Because Actions can't run a schedule here, the production 15-minute heartbeat
+# runs via a free EXTERNAL cron service (e.g. cron-job.org) calling the existing
+# Vercel HTTP route every 15 minutes — no GitHub Actions, no new spend:
+#
+#   GET https://www.foldera.ai/api/cron/workday-presence-trigger-runner
+#   Header:   Authorization: Bearer <CRON_SECRET>     # already set in Vercel env
+#   Schedule: */15 * * * *
+#
+# The route (app/api/cron/workday-presence-trigger-runner/route.ts) runs the same
+# maybeRunWorkdayPresenceTriggerRunnerForUser logic this script does. Full setup
+# runbook is in the PR for issue #364.
+#
+# The `schedule:` trigger was removed because it can never fire while Actions is
+# capped — it only generated 15-min failure noise. This workflow is retained
+# solely as a manual lever (workflow_dispatch) that runs the direct script.
 name: Workday Presence Trigger Runner
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '*/15 * * * *'
 
 jobs:
   run:
