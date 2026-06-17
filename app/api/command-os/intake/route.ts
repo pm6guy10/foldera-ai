@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildIntakePacket } from '@/lib/repo-intake-governor';
 import { appendOpenThreadsComment } from '@/lib/repo-intake-governor/writeback';
+import { validateCronAuth } from '@/lib/auth/resolve-user';
 
 const COMMAND_OS_CONTEXT = {
   activeIssue: 168,
@@ -22,6 +23,13 @@ function readRawText(body: IntakeBody | null): string | null {
 }
 
 export async function POST(request: NextRequest) {
+  // This route writes to GitHub using a server-side token. It is machine-called
+  // (ChatGPT capture action), so gate it with the shared cron secret instead of
+  // leaving it open to the internet. Caller must send Authorization: Bearer
+  // <CRON_SECRET> (or x-cron-secret).
+  const authError = validateCronAuth(request);
+  if (authError) return authError;
+
   try {
     const body = (await request.json().catch(() => null)) as IntakeBody | null;
     const rawText = readRawText(body)?.trim() ?? '';
@@ -55,7 +63,7 @@ export async function POST(request: NextRequest) {
     const sanitized = message.replace(/ghp_[A-Za-z0-9]+/g, '[REDACTED]').replace(/Bearer\s+\S+/gi, 'Bearer [REDACTED]');
     console.error('[command-os/intake] write-back failure:', sanitized);
     return NextResponse.json(
-      { ok: false, error: 'Command OS intake failed', failureStage: 'github_writeback', detail: sanitized },
+      { ok: false, error: 'Command OS intake failed', failureStage: 'github_writeback' },
       { status: 500 },
     );
   }
