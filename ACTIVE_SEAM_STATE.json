@@ -1,9 +1,9 @@
 {
-  "active_issue": 361,
+  "active_issue": 364,
   "active_branch": "claude/context-issue-past-chat-sx4gek",
   "active_pr": null,
-  "deployed_commit_sha": "d19a4bf1386548b96713a23ebe3cf70d2d476c12",
+  "deployed_commit_sha": "8d68a8e736cb9aeaf8edd7db6083a7c5f0a8c590",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-16T20:30:00Z"
+  "last_verified_at": "2026-06-16T23:30:00Z"
 }

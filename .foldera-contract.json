@@ -1,28 +1,35 @@
 {
-  "backlog_id": "between-rungs",
-  "active_issue": "none",
-  "base_commit": "HEAD",
+  "backlog_id": "issue-364-trigger-runner-fix",
+  "active_issue": 364,
+  "base_commit": "8d68a8e736cb9aeaf8edd7db6083a7c5f0a8c590",
   "money_loop_rung": "m2",
-  "user_system_path": "Issue #361 COMPLETE (PR #362, d19a4bf). Awaiting next owner instruction.",
+  "user_system_path": "Issue #364 IN PROGRESS — fixing workday-presence-trigger-runner so it actually fires in production (CRON_SECRET was never provisioned to GitHub Actions).",
   "allowed_file_patterns": [
+    ".github/workflows/workday-presence-trigger-runner.yml",
+    "scripts/workday-presence-trigger-runner-cron.ts",
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml"
   ],
-  "forbidden_file_patterns": [],
-  "allowed_files_raw": "control-plane files only",
-  "forbidden_files_raw": "none — between rungs",
-  "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "not applicable",
+  "forbidden_file_patterns": [
+    "app/dashboard/**",
+    "components/**"
+  ],
+  "allowed_files_raw": "the trigger-runner workflow + its new direct-call script, plus control-plane files",
+  "forbidden_files_raw": "dashboard UI, components — this is a backend cron-plumbing fix only",
+  "required_local_proof": "npm run gate:continuity && npm run lint && npx vitest run lib/workday-presence",
+  "required_browser_proof": "not applicable — backend-only fix, no UI surface",
   "browser_proof_command": "not applicable",
-  "acceptance_condition": "Source truth closed out; issue #361 receipt posted.",
-  "stop_condition": "Stop after source-truth closeout PR is merged.",
+  "acceptance_condition": "PR merged; next scheduled GitHub Actions run for workday-presence-trigger-runner.yml completes without the silent-401 failure mode (clean quiet/dedup_suppressed/intervention outcome in the run log).",
+  "stop_condition": "Stop after the PR is merged and one live scheduled run is confirmed to execute the trigger-runner logic (not necessarily an intervention — quiet is a valid healthy outcome).",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "Continuity gate passes"
+    "Continuity gate passes",
+    "lib/workday-presence vitest suite passes",
+    "lint passes on the new script"
   ],
-  "next_command": "Await next authorized seam from owner.",
+  "next_command": "Open PR for issue #364, then merge once gate:continuity is green.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

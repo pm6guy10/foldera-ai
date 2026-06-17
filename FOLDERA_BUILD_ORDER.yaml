@@ -22,17 +22,18 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
-priority_class: null
-work_type: null
-why_this_first: null
-next_seam: "none — awaiting next owner instruction"
+active_issue: 364
+priority_class: bug_fix
+work_type: ops
+why_this_first: "Issue #361 shipped a 15-min trigger-runner schedule, but the workflow's CRON_SECRET was never provisioned to GitHub Actions, so the brain has never fired in production since merge. This is the as-needed heartbeat the whole Right Now card model depends on."
+next_seam: "Open PR for #364 (direct-script workflow, no CRON_SECRET dependency), pass gate:continuity, merge, verify a live scheduled run fires cleanly."
 completed_issue_361:
   issue: 361
   pr: 362
   pr_merge_sha: d19a4bf
   merged_at: "2026-06-16T20:19:10Z"
   summary: "commitment-lapsing bridge (lib/workday-presence/commitment-bridge.ts) wired into trigger-runner; GitHub Actions schedule every 15 min calling /api/cron/workday-presence-trigger-runner; 249/249 vitest + 53/53 e2e green at merge"
+  note: "discovered non-functional in production post-merge — see issue #364"
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178
