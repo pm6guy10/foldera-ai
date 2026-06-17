@@ -549,7 +549,7 @@ function AccountPanel() {
 
 function DashboardContent() {
   const searchParams = useSearchParams();
-  const panel = resolvePanel(searchParams.get('panel'));
+  const panel = resolvePanel(searchParams?.get('panel') ?? null);
   const meta = PANEL_META[panel];
 
   return (
