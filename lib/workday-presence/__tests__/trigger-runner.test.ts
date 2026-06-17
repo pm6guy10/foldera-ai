@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { normalizeWorkdayPresenceState } from '../model';
-import { runWorkdayPresenceTriggerRunner } from '../trigger-runner';
+import {
+  checkFreshSignalTriggerOverride,
+  runWorkdayPresenceTriggerRunner,
+} from '../trigger-runner';
 
 describe('runWorkdayPresenceTriggerRunner', () => {
   const baseState = normalizeWorkdayPresenceState({
@@ -246,5 +249,91 @@ describe('runWorkdayPresenceTriggerRunner', () => {
 
     expect(persistIntervention).toHaveBeenCalledTimes(1);
     expect(postMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe('real ingested calendar signals fire pre_meeting (no flags, encrypted content)', () => {
+  const state = normalizeWorkdayPresenceState({
+    current_focus: 'Ship the Q3 plan',
+    next_move: 'Draft the exec summary',
+    why_it_matters: 'Board reviews it Friday.',
+    state_source: 'manual_anchor',
+    created_at: '2026-06-12T15:00:00.000Z',
+    updated_at: '2026-06-12T15:05:00.000Z',
+  });
+
+  // Mirrors lib/sync/google-sync.ts real ingestion: source 'google_calendar',
+  // type 'calendar_event', occurred_at = event start, content encrypted, and
+  // NO starts_at_iso / title / requires_prep columns.
+  function realCalendarSignal(occurredAt: string) {
+    return {
+      id: `cal-${occurredAt}`,
+      source: 'google_calendar',
+      type: 'calendar_event',
+      author: 'organizer@example.com',
+      content: 'ENC:opaque-ciphertext',
+      occurred_at: occurredAt,
+      ingested_at: '2026-06-12T15:59:00.000Z',
+      processed: false,
+    };
+  }
+
+  it('fires pre_meeting when a freshly-synced meeting is imminent', () => {
+    const override = checkFreshSignalTriggerOverride({
+      state,
+      nowIso: '2026-06-12T16:00:00.000Z',
+      signals: [realCalendarSignal('2026-06-12T17:00:00.000Z')], // 60 min out
+    });
+    expect(override).not.toBeNull();
+    expect(override?.next_move).toContain('Prep for');
+  });
+
+  it('stays silent when the synced meeting is days away (not imminent)', () => {
+    const override = checkFreshSignalTriggerOverride({
+      state,
+      nowIso: '2026-06-12T16:00:00.000Z',
+      signals: [realCalendarSignal('2026-06-18T17:00:00.000Z')], // 6 days out
+    });
+    expect(override).toBeNull();
+  });
+
+  it('respects an explicit requires_prep=false flag so fixtures are unchanged', () => {
+    const override = checkFreshSignalTriggerOverride({
+      state,
+      nowIso: '2026-06-12T16:00:00.000Z',
+      signals: [
+        {
+          id: 'cal-fixture',
+          source: 'calendar',
+          type: 'calendar_event',
+          title: 'Imminent fixture meeting',
+          starts_at_iso: '2026-06-12T17:00:00.000Z',
+          requires_prep: false,
+          ingested_at: '2026-06-12T15:59:00.000Z',
+        },
+      ],
+    });
+    expect(override).toBeNull();
+  });
+
+  it('drives a full intervention + Slack ping end to end from a real calendar signal', async () => {
+    const postMessage = vi.fn().mockResolvedValue({
+      ok: true,
+      mode: 'live',
+      channel: 'C123',
+      message_ts: 't',
+      response: { ok: true },
+    });
+    const result = await runWorkdayPresenceTriggerRunner({
+      channel: 'C123',
+      state,
+      cursor: null,
+      nowIso: '2026-06-12T16:00:00.000Z',
+      signals: [realCalendarSignal('2026-06-12T17:00:00.000Z')],
+      slack: { postMessage },
+    });
+    expect(result.outcome).toBe('intervention');
+    expect(result.selected_context?.trigger_type).toBe('pre_meeting');
+    expect(postMessage).toHaveBeenCalledTimes(1);
   });
 });
