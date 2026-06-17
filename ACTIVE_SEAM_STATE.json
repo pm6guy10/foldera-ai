@@ -1,9 +1,9 @@
 {
-  "active_issue": 364,
-  "active_branch": "claude/context-issue-past-chat-sx4gek",
+  "active_issue": 370,
+  "active_branch": "feat/370-landing-visual-polish",
   "active_pr": null,
-  "deployed_commit_sha": "f173bdcfc64de634e17e5dee6ed96d44f733fca2",
+  "deployed_commit_sha": "f6b02ecd710bb1f9eeb434b708d92ae86a9f1756",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-17T01:00:00Z"
+  "last_verified_at": "2026-06-17T14:40:00Z"
 }
