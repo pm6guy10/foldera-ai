@@ -1,7 +1,6 @@
 // File: app/layout.js
 
 import "./globals.css";
-import { BuildMarker } from "@/components/BuildMarker";
 import { resolveCanonicalSiteOrigin } from "@/lib/site-canonical";
 
 const siteOrigin = resolveCanonicalSiteOrigin();
@@ -72,7 +71,6 @@ export default function RootLayout({ children }) {
           Skip to main content
         </a>
         {children}
-        <BuildMarker />
       </body>
     </html>
   );

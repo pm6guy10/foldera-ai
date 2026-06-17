@@ -1,8 +1,8 @@
 {
-  "active_issue": 372,
-  "active_branch": "feat/372-landing-deblock",
+  "active_issue": 374,
+  "active_branch": "feat/374-remove-build-marker",
   "active_pr": null,
-  "deployed_commit_sha": "64e0e1e",
+  "deployed_commit_sha": "891d24f",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
   "last_verified_at": "2026-06-17T14:40:00Z"
