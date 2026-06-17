@@ -1,32 +1,44 @@
 import { expect, test } from '@playwright/test';
 
-const expectedImages = [
-  '/landing/mobile-sections/01.jpg',
-  '/landing/mobile-sections/02.jpg',
-  '/landing/mobile-sections/03.jpg',
-  '/landing/mobile-sections/04.jpg',
-  '/landing/mobile-sections/05.jpg',
-  '/landing/mobile-sections/06.jpg',
+// Section order for the product-led landing (issue #378 amber overhaul).
+const orderedSections = [
+  'landing-hero',
+  'landing-connectors',
+  'landing-stats',
+  'landing-pain',
+  'landing-doctrine',
+  'landing-trust',
+  'landing-enterprise',
+  'landing-pilot',
+  'landing-final-cta',
+  'landing-footer',
 ];
 
-test.describe('Landing mobile section assets', () => {
-  test('renders six sections in order with CTA only on 1 and 6', async ({ page }) => {
+test.describe('Landing sections', () => {
+  test('renders the product-led sections in order with the access/login CTA contract', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
 
-    for (let i = 0; i < expectedImages.length; i += 1) {
-      const slide = page.getByTestId(`landing-slide-${i + 1}`);
-      await expect(slide).toBeVisible();
-      const image = slide.locator('img').first();
-      await expect(image).toHaveAttribute('src', new RegExp(expectedImages[i].replace('.', '\\.')));
+    // Every section present and in document order.
+    let previousTop = -Infinity;
+    for (const testId of orderedSections) {
+      const section = page.getByTestId(testId);
+      await expect(section).toBeVisible();
+      const box = await section.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.y).toBeGreaterThanOrEqual(previousTop - 1);
+      previousTop = box!.y;
     }
 
-    await expect(page.getByTestId('landing-cta-1')).toHaveAttribute('href', '/start');
-    await expect(page.getByTestId('landing-cta-6')).toHaveAttribute('href', '/start');
-    await expect(page.getByTestId('landing-cta-2')).toHaveCount(0);
-    await expect(page.getByTestId('landing-cta-3')).toHaveCount(0);
-    await expect(page.getByTestId('landing-cta-4')).toHaveCount(0);
-    await expect(page.getByTestId('landing-cta-5')).toHaveCount(0);
+    // Access CTAs route to /start, login CTAs route to /login.
+    for (const testId of [
+      'landing-primary-access-cta',
+      'landing-pilot-access-cta',
+      'landing-final-access-cta',
+    ]) {
+      await expect(page.getByTestId(testId)).toHaveAttribute('href', '/start');
+    }
+    await expect(page.getByTestId('landing-final-login-cta')).toHaveAttribute('href', '/login');
   });
 
   test('has no horizontal overflow at 390x844', async ({ page }) => {
