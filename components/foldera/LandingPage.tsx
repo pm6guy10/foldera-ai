@@ -1,18 +1,17 @@
+'use client';
+
 import {
   ArrowRight,
   BellOff,
   Check,
   Clock3,
-  FileText,
   LockKeyhole,
-  MessageSquare,
   Pause,
-  RefreshCw,
   ShieldCheck,
   Sparkles,
-  X,
 } from 'lucide-react';
-import type { CSSProperties, ReactNode } from 'react';
+import { motion, type Variants } from 'framer-motion';
+import type { ReactNode } from 'react';
 import { FolderaMark } from '@/components/nav/FolderaMark';
 
 type LandingPageProps = {
@@ -21,6 +20,31 @@ type LandingPageProps = {
 
 const accessHref = '/start';
 const loginHref = '/login';
+
+const EASE = [0.16, 1, 0.3, 1] as const;
+
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 22 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE } },
+};
+const stagger: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
+};
+
+function Reveal({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <motion.div
+      className={className}
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: '-80px' }}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
 const painPoints = [
   {
@@ -147,6 +171,12 @@ const connectors: Array<{ name: string; el: ReactNode }> = [
   { name: 'Google Calendar', el: <GCal /> },
 ];
 
+const evidenceRows = [
+  { el: <Slack />, label: '#q2-planning — mentioned you', meta: '3 new' },
+  { el: <Gmail />, label: 'Re: Headcount — Finance', meta: '2:14 PM' },
+  { el: <GCal />, label: 'Budget review · Today 4:00', meta: '' },
+];
+
 function AccessLink({
   children,
   className = '',
@@ -191,73 +221,94 @@ function SecondaryLink({
 
 function RightNowCard() {
   return (
-    <div
-      data-testid="landing-right-now-card"
-      className="relative overflow-hidden rounded-2xl p-6 sm:p-7"
-      style={{
-        backgroundImage: 'linear-gradient(180deg, #0c121b 0%, #090d14 100%)',
-        boxShadow: '0 1px 0 rgba(255,255,255,0.05) inset, 0 40px 80px -40px rgba(0,0,0,0.9)',
-        border: '1px solid rgba(255,255,255,0.08)',
-      }}
+    <motion.div
+      className="relative"
+      initial={{ opacity: 0, y: 26, scale: 0.985 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.85, delay: 0.15, ease: EASE }}
     >
-      <div className="mb-6 flex items-center justify-between gap-3">
-        <div className="inline-flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.22em] text-slate-300">
-          <span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
-          Right Now
-        </div>
-        <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-slate-500">2 min ago</span>
-      </div>
-
-      <h2 className="text-[26px] font-semibold leading-tight tracking-[-0.025em] text-white sm:text-[30px]">
-        Review the Q2 headcount plan.
-      </h2>
-      <p className="mt-3 text-[15px] leading-7 text-slate-400">
-        Sarah updated the doc. Finance commented. You were mentioned in Slack. Approval now unlocks the budget timeline.
-      </p>
-
-      <div className="mt-6 space-y-3 border-t border-white/8 pt-5">
-        <div className="flex items-start gap-3">
-          <MessageSquare className="mt-0.5 h-4 w-4 text-cyan-300/80" aria-hidden="true" />
-          <p className="text-sm text-slate-400">Mention and finance comment are attached.</p>
-        </div>
-        <div className="flex items-start gap-3">
-          <FileText className="mt-0.5 h-4 w-4 text-slate-400" aria-hidden="true" />
-          <p className="text-sm text-slate-400">The current plan is ready to review.</p>
-        </div>
-      </div>
-
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        {connectors.map((c) => (
-          <span key={c.name} title={c.name} aria-label={c.name} className="opacity-90">
-            {c.el}
-          </span>
-        ))}
-        <span className="ml-1 font-mono text-[10px] uppercase tracking-[0.16em] text-slate-600">consented</span>
-      </div>
-
-      <div className="mt-6 flex flex-wrap gap-2.5" aria-label="Example Right Now actions">
-        {[
-          { label: 'Done', Icon: Check, primary: true },
-          { label: 'Stuck', Icon: X, primary: false },
-          { label: 'Break smaller', Icon: RefreshCw, primary: false },
-          { label: 'Snooze', Icon: Pause, primary: false },
-        ].map(({ label, Icon, primary }) => (
-          <div
-            key={label}
-            className={`inline-flex min-h-[40px] items-center gap-2 rounded-full px-4 text-[13px] font-semibold ${
-              primary ? 'bg-cyan-300 text-slate-950' : 'border border-white/12 text-slate-200'
-            }`}
-          >
-            <Icon className="h-4 w-4" aria-hidden="true" />
-            {label}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -inset-x-10 -top-16 bottom-0 -z-10"
+        style={{ background: 'radial-gradient(45% 45% at 62% 28%, rgba(34,211,238,0.16), transparent 72%)' }}
+      />
+      <div
+        data-testid="landing-right-now-card"
+        className="overflow-hidden rounded-2xl"
+        style={{
+          border: '1px solid rgba(255,255,255,0.10)',
+          backgroundImage: 'linear-gradient(180deg, #0e151f 0%, #0a0e15 100%)',
+          boxShadow: '0 1px 0 rgba(255,255,255,0.07) inset, 0 60px 110px -45px rgba(0,0,0,0.95)',
+        }}
+      >
+        <div className="flex items-center justify-between border-b border-white/8 px-5 py-3.5">
+          <div className="inline-flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/70" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+            </span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-slate-400">Watching</span>
           </div>
-        ))}
-      </div>
+          <div className="flex items-center gap-2">
+            {connectors.map((c) => (
+              <span key={c.name} title={c.name} aria-label={c.name} className="opacity-85">
+                {c.el}
+              </span>
+            ))}
+          </div>
+        </div>
 
-      <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.18em] text-slate-600">
-        State is attached. Context stays private.
-      </p>
-    </div>
+        <div className="p-6 sm:p-7">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-cyan-300/90">Right Now</span>
+            <span className="font-mono text-[10px] text-slate-500">9:42 AM</span>
+          </div>
+
+          <h2 className="mt-4 text-[24px] font-semibold leading-[1.15] tracking-[-0.025em] text-white sm:text-[28px]">
+            Review the Q2 headcount plan.
+          </h2>
+          <p className="mt-3 text-[14px] leading-6 text-slate-400">
+            Sarah updated the doc. Finance commented. You were mentioned in Slack. Approval now unlocks the budget timeline.
+          </p>
+
+          <motion.div
+            className="mt-6 overflow-hidden rounded-xl border border-white/8"
+            variants={stagger}
+            initial="hidden"
+            animate="show"
+          >
+            {evidenceRows.map((row, i) => (
+              <motion.div
+                key={i}
+                variants={fadeUp}
+                className={`flex items-center gap-3 bg-white/[0.02] px-4 py-3 ${i > 0 ? 'border-t border-white/6' : ''}`}
+              >
+                <span className="shrink-0 opacity-90">{row.el}</span>
+                <span className="flex-1 truncate text-[13px] text-slate-300">{row.label}</span>
+                {row.meta ? <span className="font-mono text-[10px] text-slate-500">{row.meta}</span> : null}
+              </motion.div>
+            ))}
+          </motion.div>
+
+          <div className="mt-6 flex items-center gap-2.5">
+            <button className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-full bg-cyan-300 px-5 text-[13px] font-semibold text-slate-950 transition hover:bg-cyan-200">
+              Open the doc
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/12 text-slate-300 transition-colors hover:text-white" aria-label="Mark done">
+              <Check className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <button className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/12 text-slate-300 transition-colors hover:text-white" aria-label="Snooze">
+              <Pause className="h-4 w-4" aria-hidden="true" />
+            </button>
+          </div>
+
+          <p className="mt-5 font-mono text-[10px] uppercase tracking-[0.18em] text-slate-600">
+            State attached · context private
+          </p>
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -313,30 +364,30 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
       {/* HERO */}
       <section className="relative border-b border-white/[0.07]" data-testid="landing-hero">
         <div className={`${sectionWrap} grid items-center gap-12 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:py-24`}>
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.28em] text-cyan-300/90">
+          <motion.div variants={stagger} initial="hidden" animate="show">
+            <motion.p variants={fadeUp} className="font-mono text-[11px] uppercase tracking-[0.28em] text-cyan-300/90">
               The Workday Presence Layer
-            </p>
-            <h1 className="mt-6 max-w-2xl text-[2.9rem] font-semibold leading-[0.98] tracking-[-0.045em] text-white sm:text-6xl lg:text-[4.4rem]">
+            </motion.p>
+            <motion.h1 variants={fadeUp} className="mt-6 max-w-2xl text-[2.9rem] font-semibold leading-[0.98] tracking-[-0.045em] text-white sm:text-6xl lg:text-[4.4rem]">
               Stop rebuilding the work.
-            </h1>
-            <p className="mt-7 max-w-xl text-lg leading-8 text-slate-400">
+            </motion.h1>
+            <motion.p variants={fadeUp} className="mt-7 max-w-xl text-lg leading-8 text-slate-400">
               Foldera restores continuity across fractured apps, messages, meetings, approvals, and decisions so you can stop rebuilding context just to do the work.
-            </p>
+            </motion.p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[12px] uppercase tracking-[0.14em] text-slate-500">
+            <motion.div variants={fadeUp} className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[12px] uppercase tracking-[0.14em] text-slate-500">
               <span>Consent-first</span>
               <span className="text-slate-700">/</span>
               <span>No surveillance</span>
               <span className="text-slate-700">/</span>
               <span>Quiet by design</span>
-            </div>
+            </motion.div>
 
-            <div className="mt-9 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <motion.div variants={fadeUp} className="mt-9 flex flex-col gap-2 sm:flex-row sm:items-center">
               <AccessLink testId="landing-primary-access-cta">Request access</AccessLink>
               <SecondaryLink href="#how-foldera-works">See how it works</SecondaryLink>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           <RightNowCard />
         </div>
@@ -344,43 +395,59 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
 
       {/* PAIN */}
       <section className={`${sectionWrap} py-20 lg:py-28`} data-testid="landing-pain">
-        <SectionLabel index="01">Context collapse</SectionLabel>
-        <h2 className="mt-6 max-w-3xl text-[2rem] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[2.75rem]">
-          You are a high-paid filing clerk.
-        </h2>
-        <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-400">
-          You spend too much of your day rebuilding context across fractured apps just to do a few minutes of actual work.
-        </p>
-        <div className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-3">
+        <Reveal>
+          <SectionLabel index="01">Context collapse</SectionLabel>
+          <h2 className="mt-6 max-w-3xl text-[2rem] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[2.75rem]">
+            You are a high-paid filing clerk.
+          </h2>
+          <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-400">
+            You spend too much of your day rebuilding context across fractured apps just to do a few minutes of actual work.
+          </p>
+        </Reveal>
+        <motion.div
+          className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-3"
+          variants={stagger}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-80px' }}
+        >
           {painPoints.map((item, i) => (
-            <div key={item.title} className="border-t border-white/12 pt-5">
+            <motion.div key={item.title} variants={fadeUp} className="border-t border-white/12 pt-5">
               <span className="font-mono text-[11px] text-cyan-300/70">{String(i + 1).padStart(2, '0')}</span>
               <h3 className="mt-3 text-lg font-semibold tracking-[-0.02em] text-white">{item.title}</h3>
               <p className="mt-3 text-[15px] leading-7 text-slate-400">{item.body}</p>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </section>
 
       {/* DOCTRINE / HOW IT WORKS */}
       <section id="how-foldera-works" className="border-y border-white/[0.07] bg-white/[0.012]" data-testid="landing-doctrine">
         <div className={`${sectionWrap} py-20 lg:py-28`}>
-          <SectionLabel index="02">How it works</SectionLabel>
-          <h2 className="mt-6 max-w-4xl text-[2rem] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[2.75rem]">
-            The problem isn&apos;t lack of AI. <span className="text-slate-500">The problem is broken continuity.</span>
-          </h2>
-          <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-400">
-            Every app remembers its own slice. Microsoft remembers Microsoft. Google remembers Google. Foldera is the cross-system presence layer that remembers the state of your workday.
-          </p>
+          <Reveal>
+            <SectionLabel index="02">How it works</SectionLabel>
+            <h2 className="mt-6 max-w-4xl text-[2rem] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[2.75rem]">
+              The problem isn&apos;t lack of AI. <span className="text-slate-500">The problem is broken continuity.</span>
+            </h2>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-400">
+              Every app remembers its own slice. Microsoft remembers Microsoft. Google remembers Google. Foldera is the cross-system presence layer that remembers the state of your workday.
+            </p>
+          </Reveal>
 
-          <div className="mt-14 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+          <motion.div
+            className="mt-14 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4"
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-80px' }}
+          >
             {doctrine.map((item) => (
-              <div key={item.label} className="border-t border-white/12 pt-5">
+              <motion.div key={item.label} variants={fadeUp} className="border-t border-white/12 pt-5">
                 <p className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-cyan-300/90">{item.label}</p>
                 <p className="mt-4 text-[15px] leading-7 text-slate-400">{item.body}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
 
           <ol className="mt-16 divide-y divide-white/8 border-y border-white/8" data-testid="landing-workflow">
             {howItWorks.map((step, index) => (
@@ -395,28 +462,36 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
 
       {/* TRUST */}
       <section id="trust" className={`${sectionWrap} py-20 lg:py-28`} data-testid="landing-trust">
-        <SectionLabel index="03">Habitat</SectionLabel>
-        <h2 className="mt-6 max-w-3xl text-[2rem] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[2.75rem]">
-          It lives where you work. <span className="text-slate-500">And stays quiet otherwise.</span>
-        </h2>
-        <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-400">
-          Foldera interrupts only when there is a clean moment to act, hands you the next move where you already are, and then disappears.
-        </p>
-        <div className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
+        <Reveal>
+          <SectionLabel index="03">Habitat</SectionLabel>
+          <h2 className="mt-6 max-w-3xl text-[2rem] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[2.75rem]">
+            It lives where you work. <span className="text-slate-500">And stays quiet otherwise.</span>
+          </h2>
+          <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-400">
+            Foldera interrupts only when there is a clean moment to act, hands you the next move where you already are, and then disappears.
+          </p>
+        </Reveal>
+        <motion.div
+          className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-2 lg:grid-cols-4"
+          variants={stagger}
+          initial="hidden"
+          whileInView="show"
+          viewport={{ once: true, margin: '-80px' }}
+        >
           {trustItems.map(({ icon: Icon, title, body }) => (
-            <div key={title} className="border-t border-white/12 pt-5">
+            <motion.div key={title} variants={fadeUp} className="border-t border-white/12 pt-5">
               <Icon className="h-5 w-5 text-cyan-300/80" aria-hidden="true" />
               <h3 className="mt-4 text-lg font-semibold tracking-[-0.02em] text-white">{title}</h3>
               <p className="mt-3 text-[15px] leading-7 text-slate-400">{body}</p>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </section>
 
       {/* PILOT */}
       <section id="pilot" className="border-y border-white/[0.07] bg-white/[0.012]" data-testid="landing-pilot">
         <div className={`${sectionWrap} grid gap-12 py-20 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16 lg:py-28`}>
-          <div>
+          <Reveal>
             <SectionLabel index="04">Pilot access</SectionLabel>
             <h2 className="mt-6 text-[2rem] font-semibold leading-[1.08] tracking-[-0.035em] sm:text-[2.75rem]">
               Stop checking nine apps. <span className="text-slate-500">Foldera keeps track.</span>
@@ -428,22 +503,28 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
               <AccessLink testId="landing-pilot-access-cta">Join pilot</AccessLink>
               <SecondaryLink href="/demo" testId="landing-demo-link">View existing demo</SecondaryLink>
             </div>
-          </div>
+          </Reveal>
 
-          <div className="divide-y divide-white/8 border-y border-white/8 lg:mt-2">
+          <motion.div
+            className="divide-y divide-white/8 border-y border-white/8 lg:mt-2"
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, margin: '-80px' }}
+          >
             {pilotScope.map((item) => (
-              <div key={item} className="flex items-start gap-4 py-4">
+              <motion.div key={item} variants={fadeUp} className="flex items-start gap-4 py-4">
                 <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300/70" aria-hidden="true" />
                 <p className="text-[15px] leading-7 text-slate-400">{item}</p>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* FINAL CTA */}
       <section className={`${sectionWrap} py-24 lg:py-32`} data-testid="landing-final-cta">
-        <div className="mx-auto max-w-3xl text-center">
+        <Reveal className="mx-auto max-w-3xl text-center">
           <h2 className="text-[2.4rem] font-semibold leading-[1.03] tracking-[-0.04em] sm:text-[3.5rem]">
             Restore your continuity.
           </h2>
@@ -457,7 +538,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
             <AccessLink testId="landing-final-access-cta">Get started</AccessLink>
             <SecondaryLink href={loginHref} testId="landing-final-login-cta">Login</SecondaryLink>
           </div>
-        </div>
+        </Reveal>
       </section>
 
       <footer className="border-t border-white/[0.07] px-5 py-10 text-sm text-slate-500 sm:px-6 lg:px-8" data-testid="landing-footer">

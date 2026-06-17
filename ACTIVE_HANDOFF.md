@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-17 UTC (issue #374 — remove visible BuildMarker badge)
+Last updated: 2026-06-17 UTC (issue #376 — landing product-window hero + motion)
 
 ## Boot
 
@@ -11,7 +11,7 @@ Last updated: 2026-06-17 UTC (issue #374 — remove visible BuildMarker badge)
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is issue #374: remove the visible BuildMarker deploy-SHA badge (was fixed bottom-right on every page via app/layout.js) — owner found it ugly. Deploy identity remains available via lib/config/deploy-revision.ts + the Slack/status path. Landing v2 editorial redesign shipped via #372/#373 (`891d24f`).
+Active implementation seam is issue #376: raise the landing to Linear/Vercel tier — hero is now a believable product window (Watching chrome + connected tools + evidence rows with source favicons + one clear action) and the page has tasteful motion (staggered hero load, product window + evidence reveal, scroll reveals) via a 'use client' framer-motion conversion of components/foldera/LandingPage.tsx. Same copy/testids/hrefs. Owner authorized full treatment + ship to live. (Prior: #374 removed BuildMarker; #372/#373 editorial de-block; #370/#371 first skin.)
 
 Issue #364/#366 is COMPLETE — heartbeat moved off capped GitHub Actions to a free external cron (PRs #365/#366 via #367); owner must create the external cron job for live firing.
 Issue #361 is COMPLETE — commitment-lapsing bridge + 15-min GitHub Actions schedule merged via PR #362 (`d19a4bf`); discovered non-functional in production post-merge, see #364.
