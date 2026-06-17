@@ -26,7 +26,7 @@ active_issue: 378
 priority_class: PRODUCT
 work_type: FEATURE
 why_this_first: "Owner direction 2026-06-17: stop incremental landing polish; lock the design standard as durable truth then do a FULL overhaul to the $500M / Linear-Vercel-Notion bar, matching the AI Studio reference build. Design standard is now locked in docs/DESIGN_SYSTEM.md (this PR). Remaining work: rebuild components/foldera/LandingPage.tsx (+ tokens, + real logos) to that bar."
-next_seam: "New session: read docs/DESIGN_SYSTEM.md + the owner AI Studio reference, fully overhaul the landing (real logos, realistic product mockup, locked tokens, smooth motion, flawless desktop+mobile). Preserve testids/copy/hrefs or update e2e in the same PR. Show desktop+mobile screenshots before shipping. Every pass must be OBVIOUSLY better, not incremental."
+next_seam: "PR #380 OPEN (branch feat/378-landing-amber-overhaul): full landing overhaul to docs/DESIGN_SYSTEM.md — warm amber on warm near-black, real product window (chrome+left rail+evidence rows w/ real source logos), 8 real official brand SVGs in public/logos/, stats row, enterprise strip (no SOC 2 claim), orchestrated framer-motion, mobile hamburger sheet; tokens scoped to a .ld layer so the dashboard palette is untouched. All locked testids/copy/hrefs preserved; two stale landing specs refreshed. Proof: next build, eslint, gate:continuity, public-routes + landing-hero-visual-qa 54/54, flawless 1440+390. Owner reviewed desktop+mobile before opening. Awaiting owner merge; on merge set deployed_commit_sha + close #378. Follow-up (not started): migrate dashboard cyan->amber (tailwind.config accent still cyan); optionally warm foldera-glyph.svg."
 completed_issue_376:
   issue: 376
   pr: 377

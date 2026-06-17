@@ -41,19 +41,17 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-Issue #378, part 1 (DONE this PR): design standard locked in `docs/DESIGN_SYSTEM.md`, referenced from `FOLDERA_MASTER_BIBLE.md` + `docs/SOURCE_OF_TRUTH_MAP.md`. Part 2 (next session): full landing overhaul to that standard.
+Issue #378, part 1 (DONE): design standard locked in `docs/DESIGN_SYSTEM.md`. Part 2 (DONE this PR, awaiting owner merge): **full landing overhaul to that standard — PR #380** on branch `feat/378-landing-amber-overhaul`. Warm amber/gold on warm near-black (owner-confirmed over cyan); real product window (chrome + left rail + evidence rows w/ real source logos), 8 real official brand SVGs in `public/logos/`, stats row, enterprise strip (no SOC 2 claim), orchestrated framer-motion, mobile hamburger sheet. Tokens scoped to a `.ld` layer in `app/globals.css` so the dashboard palette is untouched. All locked testids/copy/hrefs preserved; two stale landing specs refreshed. Owner reviewed desktop+mobile before opening.
 
 ## Next exact move
 
-1. Read `docs/DESIGN_SYSTEM.md` end to end + study the references (owner's AI Studio build, Linear, Vercel, Notion; mine Figma/Lovable assets too).
-2. Fully overhaul `components/foldera/LandingPage.tsx` to the bar: realistic product mockup as the hero centerpiece, real official brand logos, locked color/type/spacing tokens (add to app/globals.css + tailwind.config.js), smooth motion, flawless at 1440 AND 390.
-3. Preserve every data-testid / heading / copy / href, OR update the e2e specs in the same PR if the approved design changes the content.
-4. Prove: build + lint + large-file-splits + playwright (public-routes, landing-hero-visual-qa, dashboard-navigation, authenticated-routes). Capture desktop + mobile screenshots and show the owner BEFORE merging.
-5. It must be OBVIOUSLY better than the current live landing (b1bc061). Pass the §12 checklist in docs/DESIGN_SYSTEM.md.
+1. Owner: review + merge PR #380. After merge, set `deployed_commit_sha` to the merge SHA, flip `active_issue` to `none` (between-rungs) or the next chosen seam, and close #378.
+2. Follow-up candidates (NOT started): (a) migrate the rest of the app (dashboard) from cyan to the amber system — currently amber is landing-scoped only; `tailwind.config.js` accent still cyan. (b) Optionally warm the `foldera-glyph.svg` mark, which reads slightly teal beside amber.
+3. Any further landing pass must stay OBVIOUSLY better, not incremental, and keep §12 of `docs/DESIGN_SYSTEM.md` green.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence heartbeat (#364 code shipped, owner must create the cron job for live firing); (2) landing polish is an open standing goal — owner wants each pass obviously better, not incremental.
 
-Current production truth: `Last known main SHA: b1bc061` (PR #377 merged 2026-06-17; landing v3 live; issues #370/#372/#374/#376 closed)
+Current production truth: `Last known main SHA: b1bc061` (PR #377 merged 2026-06-17; landing v3 live). PR #380 (landing v4, amber overhaul) is OPEN, not yet merged — production still serves b1bc061 until merge.
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
