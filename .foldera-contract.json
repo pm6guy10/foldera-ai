@@ -1,6 +1,6 @@
 {
-  "backlog_id": "landing-design-system-overhaul",
-  "active_issue": 378,
+  "backlog_id": "none",
+  "active_issue": "none",
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
   "user_system_path": "Lock the design system (docs/DESIGN_SYSTEM.md — DONE this PR) then FULLY overhaul the landing to it: $500M / Linear-Vercel-Notion tier, matching the owner's AI Studio reference build. Lead with a realistic product mockup; real official brand logos (not flat hand-drawn); locked color/type/spacing tokens; smooth motion; flawless on desktop AND mobile. Not a micro-polish pass — an obvious, full leap. Port from existing good material (AI Studio / Figma / Lovable) rather than reinventing.",

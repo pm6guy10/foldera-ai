@@ -22,11 +22,17 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 378
+active_issue: none
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Owner direction 2026-06-17: stop incremental landing polish; lock the design standard as durable truth then do a FULL overhaul to the $500M / Linear-Vercel-Notion bar, matching the AI Studio reference build. Design standard is now locked in docs/DESIGN_SYSTEM.md (this PR). Remaining work: rebuild components/foldera/LandingPage.tsx (+ tokens, + real logos) to that bar."
-next_seam: "PR #380 OPEN (branch feat/378-landing-amber-overhaul): full landing overhaul to docs/DESIGN_SYSTEM.md — warm amber on warm near-black, real product window (chrome+left rail+evidence rows w/ real source logos), 8 real official brand SVGs in public/logos/, stats row, enterprise strip (no SOC 2 claim), orchestrated framer-motion, mobile hamburger sheet; tokens scoped to a .ld layer so the dashboard palette is untouched. All locked testids/copy/hrefs preserved; two stale landing specs refreshed. Proof: next build, eslint, gate:continuity, public-routes + landing-hero-visual-qa 54/54, flawless 1440+390. Owner reviewed desktop+mobile before opening. Awaiting owner merge; on merge set deployed_commit_sha + close #378. Follow-up (not started): migrate dashboard cyan->amber (tailwind.config accent still cyan); optionally warm foldera-glyph.svg."
+why_this_first: "Between rungs. #378 (design system lock + full amber landing overhaul) is COMPLETE and merged. Awaiting the owner's next chosen seam."
+next_seam: "Owner names the next seam. Standing follow-up candidates (NOT started, not yet authorized): migrate the rest of the app (dashboard) from cyan to the amber system (amber is currently landing-scoped via the .ld layer in app/globals.css; tailwind.config accent still cyan); optionally warm foldera-glyph.svg. Any further landing pass must stay OBVIOUSLY better and keep §12 of docs/DESIGN_SYSTEM.md green."
+completed_issue_378:
+  issue: 378
+  prs: [379, 380]
+  merged_via: 380
+  pr_merge_sha: 40b687a
+  summary: "Design system locked in docs/DESIGN_SYSTEM.md (PR #379, 1230c13), then full landing overhaul to it (PR #380, 40b687a): warm amber/gold on warm near-black (owner-confirmed over cyan), real product window (chrome + left rail + evidence rows w/ real official source logos), 8 real brand SVGs in public/logos/, stats row, honest enterprise strip (no SOC 2 claim), orchestrated framer-motion w/ reduced-motion, mobile hamburger sheet. Tokens scoped to a .ld layer so the dashboard palette is untouched. All locked testids/copy/hrefs preserved; two stale landing specs refreshed. Proof: build + lint + gate:continuity + public-routes + landing-hero-visual-qa 54/54, flawless 1440+390."
 completed_issue_376:
   issue: 376
   pr: 377
