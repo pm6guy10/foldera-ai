@@ -1,6 +1,6 @@
 {
-  "backlog_id": "remove-build-marker",
-  "active_issue": 374,
+  "backlog_id": "landing-product-hero-motion",
+  "active_issue": 376,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
   "user_system_path": "Elevate the live landing (components/foldera/LandingPage.tsx) to a production-grade dark/cyan aesthetic — glowing Right Now card with connector chips, background atmosphere, depth on cards, tighter type — while preserving every data-testid, heading, copy string, and href so the e2e suite stays green. Owner-authorized to ship to live via PR + merge.",
@@ -9,7 +9,7 @@
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "app/layout.js"
+    "components/foldera/LandingPage.tsx"
   ],
   "forbidden_file_patterns": [
     "supabase/**",

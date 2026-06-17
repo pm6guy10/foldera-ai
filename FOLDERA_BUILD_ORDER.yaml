@@ -22,7 +22,7 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 374
+active_issue: 376
 priority_class: PRODUCT
 work_type: FEATURE
 why_this_first: "Owner-authorized: the live landing visually reads unpolished ('looks like it was made in 10 minutes') even though copy + structure are right. Elevate components/foldera/LandingPage.tsx to a production-grade dark/cyan aesthetic (glowing Right Now card with connector chips, atmosphere, depth, tighter type) while preserving every data-testid, heading, copy, and href so the e2e suite stays green. Ship to live via PR + merge."
