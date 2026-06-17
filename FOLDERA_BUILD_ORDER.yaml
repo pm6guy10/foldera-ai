@@ -22,18 +22,25 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 364
-priority_class: bug_fix
-work_type: ops
-why_this_first: "Issue #361 shipped a 15-min trigger-runner schedule, but it never fired in production: first CRON_SECRET was never provisioned (fixed by PR #365, f173bdc), then GitHub Actions itself was found capped on this private repo so no scheduled workflow can run there at all. This heartbeat is what the whole Right Now card model depends on, so it must run off Actions with no new spend."
-next_seam: "Production heartbeat moves to a free external cron service hitting GET /api/cron/workday-presence-trigger-runner (Bearer CRON_SECRET, already in Vercel) every 15 min. Code/runbook in the PR for #364; owner creates the cron job; first HTTP 200 closes #364."
+active_issue: 368
+priority_class: PRODUCT
+work_type: FEATURE
+why_this_first: "#364/#366 moved the 15-min heartbeat to a free external cron hitting the Vercel route, but it requires owner setup and tkg_actions still shows only 4 synthetic workday_presence rows (last 2026-06-16) — the brain has STILL fired zero real interventions despite 127 real lapsing commitments. Add a zero-config daily floor by chaining the trigger-runner into the already-paid, already-running Vercel morning-pipeline cron, so the brain fires at least daily with no additional owner setup, under #366's external cron rather than replacing it."
+next_seam: "After the next daily Vercel morning-pipeline cron run, confirm a persisted real (non-synthetic) commitment_lapsing receipt in tkg_actions for the owner (requires a saved workday_presence_state); then wire the next dead trigger flag (reply_needed or requires_prep) to its real data source."
 completed_issue_361:
   issue: 361
   pr: 362
   pr_merge_sha: d19a4bf
   merged_at: "2026-06-16T20:19:10Z"
   summary: "commitment-lapsing bridge (lib/workday-presence/commitment-bridge.ts) wired into trigger-runner; GitHub Actions schedule every 15 min calling /api/cron/workday-presence-trigger-runner; 249/249 vitest + 53/53 e2e green at merge"
-  note: "discovered non-functional in production post-merge — see issue #364"
+  note: "discovered non-functional in production post-merge — see issues #364/#366/#368"
+completed_issue_364:
+  issue: 364
+  prs: [365, 366]
+  pr_merge_sha: f173bdc
+  merged_via: 367
+  summary: "removed dead CRON_SECRET-over-HTTP path (PR #365) and dead GitHub Actions schedule (PR #366); heartbeat moved to a free external cron hitting the Vercel route every 15 min"
+  note: "code/runbook shipped; owner must create the external cron job for 15-min granularity. #368 adds a zero-config Vercel daily floor under it."
 required_gate_command: npm run gate:continuity
 paused_issues:
   - issue: 178

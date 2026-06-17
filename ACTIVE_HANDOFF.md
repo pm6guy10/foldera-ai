@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-17 PT (issue #364 — heartbeat scheduling moves off capped GitHub Actions)
+Last updated: 2026-06-17 UTC (Active seam: #368 — zero-config Vercel-cron heartbeat floor; #364/#366 external cron is the primary 15-min path)
 
 ## Boot
 
@@ -11,9 +11,10 @@ Last updated: 2026-06-17 PT (issue #364 — heartbeat scheduling moves off cappe
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is issue #364: make the workday-presence 15-min heartbeat actually fire in production. PR #365 (`f173bdc`) removed the dead CRON_SECRET-over-HTTP path; remaining work is scheduling — GitHub Actions is capped on this private repo (runners never start, every workflow instant-fails), so the heartbeat moves to a free external cron service hitting `/api/cron/workday-presence-trigger-runner` (CRON_SECRET already set in Vercel). No new spend.
+Active implementation seam is issue #368 — a zero-config daily heartbeat floor. Live truth (2026-06-17): #364/#366 moved the 15-min heartbeat to a free external cron hitting the Vercel route, but that needs owner setup and `tkg_actions` still shows only 4 synthetic workday_presence rows (last 2026-06-16 03:55 UTC) — the brain has STILL fired zero real interventions despite 127 real lapsing commitments. Fix: chain the existing trigger-runner route into the already-paid, already-running Vercel morning-pipeline cron as a 4th stage, so the runner fires at least daily with no additional owner setup — a floor under #366's external cron, not a replacement. Function-call stage, not a new vercel.json cron entry (hobby one-cron limit holds).
 
-Issue #361 is COMPLETE — commitment-lapsing bridge + 15-min GitHub Actions schedule merged via PR #362 (`d19a4bf`); discovered non-functional in production post-merge, see #364.
+Issue #364/#366 is COMPLETE — heartbeat scheduling moved off capped GitHub Actions to a free external cron; PR #365 (`f173bdc`) removed the dead CRON_SECRET-over-HTTP path, PR #366 removed the dead Actions `schedule:` and shipped the external-cron runbook. Owner must create the external cron job to get 15-min granularity.
+Issue #361 is COMPLETE — commitment-lapsing bridge (lib/workday-presence/commitment-bridge.ts) + 15-min GitHub Actions schedule merged via PR #362 (`d19a4bf`); discovered non-functional in production post-merge, see #364/#366/#368.
 Issue #354 is COMPLETE — auth + state-machine integrity findings, all 3 (F-auth, F-card, F-dismiss) resolved and tested. PR #357 merged F-auth (`ba42125`); PR #358 merged F-card + F-dismiss (`4b2908b`).
 Issue #351 is COMPLETE — money-loop integrity sweep, all 5 findings (F1-F5) resolved and tested. PR #352 merged F1+F4 (`b400c5d`); PR #353 recovered and merged F2/F3/F5 + full test coverage (`c238165`).
 Issue #348 is COMPLETE — presence receipt insert-error hotfix; `insertPresenceReceipt` now throws on Supabase insert failure so the money loop cannot report false success. Merged via PR #349 (`9377546`).
@@ -36,13 +37,18 @@ Issue #244 is COMPLETE — Right Now cards / state-change triggers. Slice 1 PR #
 
 ## Current slice:
 
-Issue #364: GitHub Actions is capped on this repo, so the 15-min schedule can never run there. Move the production heartbeat to a free external cron (e.g. cron-job.org) hitting the existing Vercel route; route + `CRON_SECRET` already exist. Workflow `schedule:` removed (noise-only while Actions capped); `workflow_dispatch` kept as a manual lever.
+- Issue #368: chain the trigger-runner into the Vercel morning-pipeline cron as a zero-config daily heartbeat floor (the brain has still fired zero real interventions; #366's external cron needs owner setup that hasn't produced a receipt yet).
 
 ## Next exact move
 
-Owner: in a free cron service (e.g. cron-job.org) create one job — `GET https://www.foldera.ai/api/cron/workday-presence-trigger-runner`, header `Authorization: Bearer <CRON_SECRET>` (copy `CRON_SECRET` from Vercel env), schedule `*/15 * * * *`. First hit returns HTTP 200 with a `quiet`/`dedup_suppressed`/`intervention` outcome — that closes #364. Code + runbook shipped in the PR for #364.
+1. (this PR #369) morning-pipeline route adds the trigger-runner as a 4th stage; tests cover order/quiet/error; reconcile control plane. STOP at MERGE READY.
+2. After the next daily Vercel morning-pipeline cron run (0 11 * * *), confirm a persisted real commitment_lapsing receipt in tkg_actions; then file the next dead-flag wiring (reply_needed / requires_prep).
 
-Current production truth: `Last known main SHA: f173bdcfc64de634e17e5dee6ed96d44f733fca2` (PR #365 merged 2026-06-17; issue #364 code fix landed)
+Owner actions (out of repo authority) to reach 15-min granularity / first real fire:
+- Create the external cron job per #366 runbook (cron-job.org → GET the Vercel route every 15 min with Bearer CRON_SECRET), AND
+- Ensure the owner has a saved workday_presence_state (commitment_lapsing only fires when state exists).
+
+Current production truth: `Last known main SHA: f6b02ecd710bb1f9eeb434b708d92ae86a9f1756` (PR #367 merged 2026-06-17; issues #361/#364 closed; issue #368 active via PR #369)
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 

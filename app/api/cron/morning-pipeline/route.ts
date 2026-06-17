@@ -6,6 +6,19 @@
  *   1. nightly-ops
  *   2. daily-brief
  *   3. daily-maintenance
+ *   4. workday-presence-trigger-runner
+ *
+ * Stage 4 is a zero-config daily floor for the Right Now heartbeat. The 15-min
+ * heartbeat moved to a free external cron service hitting this same route
+ * (issues #364/#366) because GitHub Actions is capped on this private repo and
+ * every scheduled workflow instant-failed; there is also event-driven sync-now
+ * firing (issue #262). But the external cron requires owner setup, and as of
+ * issue #368 the brain had still fired zero real interventions in production.
+ * Chaining the existing trigger-runner route into this already-paid,
+ * already-running Vercel cron guarantees the runner gets at least one run per
+ * day with NO additional owner setup — a floor under the external cron, not a
+ * replacement. Function-call stage, NOT a new vercel.json cron entry, so the
+ * hobby one-cron limit holds. Issue #368.
  *
  * The underlying routes remain callable directly for manual/operator use.
  *
@@ -19,11 +32,16 @@ import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { GET as runNightlyOps } from '@/app/api/cron/nightly-ops/route';
 import { GET as runDailyBrief } from '@/app/api/cron/daily-brief/route';
 import { GET as runDailyMaintenance } from '@/app/api/cron/daily-maintenance/route';
+import { POST as runWorkdayPresenceTriggerRunner } from '@/app/api/cron/workday-presence-trigger-runner/route';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-type StageName = 'nightly_ops' | 'daily_brief' | 'daily_maintenance';
+type StageName =
+  | 'nightly_ops'
+  | 'daily_brief'
+  | 'daily_maintenance'
+  | 'workday_presence_trigger_runner';
 
 type StageInvocation = {
   name: StageName;
@@ -58,6 +76,16 @@ const STAGE_INVOCATIONS: StageInvocation[] = [
     path: '/api/cron/daily-maintenance',
     method: 'GET',
     handler: runDailyMaintenance,
+  },
+  {
+    // Runs last so it evaluates the freshest state after nightly ingestion has
+    // refreshed signals/commitments. A 'quiet' runner outcome still returns
+    // ok:true, so a silent day does not fail the pipeline; only a thrown
+    // runner error degrades morning-pipeline to 207.
+    name: 'workday_presence_trigger_runner',
+    path: '/api/cron/workday-presence-trigger-runner',
+    method: 'POST',
+    handler: runWorkdayPresenceTriggerRunner,
   },
 ];
 

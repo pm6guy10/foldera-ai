@@ -5,6 +5,7 @@ const validateCronAuth = vi.fn();
 const mockNightlyOps = vi.fn();
 const mockDailyBrief = vi.fn();
 const mockDailyMaintenance = vi.fn();
+const mockTriggerRunner = vi.fn();
 
 vi.mock('@/lib/auth/resolve-user', () => ({
   validateCronAuth,
@@ -20,6 +21,10 @@ vi.mock('@/app/api/cron/daily-brief/route', () => ({
 
 vi.mock('@/app/api/cron/daily-maintenance/route', () => ({
   GET: mockDailyMaintenance,
+}));
+
+vi.mock('@/app/api/cron/workday-presence-trigger-runner/route', () => ({
+  POST: mockTriggerRunner,
 }));
 
 function request() {
@@ -38,6 +43,9 @@ describe('morning-pipeline cron route', () => {
     mockDailyMaintenance.mockResolvedValue(
       NextResponse.json({ ok: true, stage: 'daily-maintenance' }),
     );
+    mockTriggerRunner.mockResolvedValue(
+      NextResponse.json({ ok: true, outcome: 'quiet' }),
+    );
   });
 
   it('passes through cron auth failures before invoking child stages', async () => {
@@ -51,9 +59,10 @@ describe('morning-pipeline cron route', () => {
     expect(mockNightlyOps).not.toHaveBeenCalled();
     expect(mockDailyBrief).not.toHaveBeenCalled();
     expect(mockDailyMaintenance).not.toHaveBeenCalled();
+    expect(mockTriggerRunner).not.toHaveBeenCalled();
   });
 
-  it('runs the existing three cron stages in order and forwards cron auth', async () => {
+  it('runs all four cron stages in order and forwards cron auth', async () => {
     const { GET, maxDuration } = await import('../route');
     const response = await GET(request());
     const body = await response.json();
@@ -63,21 +72,30 @@ describe('morning-pipeline cron route', () => {
     expect(mockNightlyOps).toHaveBeenCalledTimes(1);
     expect(mockDailyBrief).toHaveBeenCalledTimes(1);
     expect(mockDailyMaintenance).toHaveBeenCalledTimes(1);
+    expect(mockTriggerRunner).toHaveBeenCalledTimes(1);
     expect(mockNightlyOps.mock.invocationCallOrder[0]).toBeLessThan(
       mockDailyBrief.mock.invocationCallOrder[0],
     );
     expect(mockDailyBrief.mock.invocationCallOrder[0]).toBeLessThan(
       mockDailyMaintenance.mock.invocationCallOrder[0],
     );
+    // Trigger-runner must run LAST so it evaluates the freshest post-ingestion state.
+    expect(mockDailyMaintenance.mock.invocationCallOrder[0]).toBeLessThan(
+      mockTriggerRunner.mock.invocationCallOrder[0],
+    );
 
     const nightlyRequest = mockNightlyOps.mock.calls[0][0] as NextRequest;
     const briefRequest = mockDailyBrief.mock.calls[0][0] as NextRequest;
     const maintenanceRequest = mockDailyMaintenance.mock.calls[0][0] as NextRequest;
+    const triggerRequest = mockTriggerRunner.mock.calls[0][0] as NextRequest;
 
     expect(nightlyRequest.nextUrl.pathname).toBe('/api/cron/nightly-ops');
     expect(briefRequest.nextUrl.pathname).toBe('/api/cron/daily-brief');
     expect(maintenanceRequest.nextUrl.pathname).toBe('/api/cron/daily-maintenance');
+    expect(triggerRequest.nextUrl.pathname).toBe('/api/cron/workday-presence-trigger-runner');
+    expect(triggerRequest.method).toBe('POST');
     expect(nightlyRequest.headers.get('authorization')).toBe('Bearer test-cron-secret');
+    expect(triggerRequest.headers.get('authorization')).toBe('Bearer test-cron-secret');
     expect(body).toMatchObject({
       ok: true,
       cron_mode: 'single_morning_entrypoint',
@@ -85,7 +103,45 @@ describe('morning-pipeline cron route', () => {
         { stage: 'nightly_ops', ok: true, status: 200 },
         { stage: 'daily_brief', ok: true, status: 200 },
         { stage: 'daily_maintenance', ok: true, status: 200 },
+        { stage: 'workday_presence_trigger_runner', ok: true, status: 200 },
       ],
+    });
+  });
+
+  it('keeps morning-pipeline ok when the trigger-runner stays quiet (no false 207)', async () => {
+    mockTriggerRunner.mockResolvedValue(
+      NextResponse.json({ ok: true, outcome: 'quiet', reason: 'no lapsing commitment' }),
+    );
+    const { GET } = await import('../route');
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.stage_results[3]).toMatchObject({
+      stage: 'workday_presence_trigger_runner',
+      ok: true,
+      status: 200,
+      body: { ok: true, outcome: 'quiet' },
+    });
+  });
+
+  it('degrades to 207 when the trigger-runner stage errors, without breaking earlier stages', async () => {
+    mockTriggerRunner.mockResolvedValue(
+      NextResponse.json({ ok: false, error: 'runner threw' }, { status: 500 }),
+    );
+    const { GET } = await import('../route');
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(207);
+    expect(body.ok).toBe(false);
+    expect(mockNightlyOps).toHaveBeenCalledTimes(1);
+    expect(mockDailyMaintenance).toHaveBeenCalledTimes(1);
+    expect(body.stage_results[3]).toMatchObject({
+      stage: 'workday_presence_trigger_runner',
+      ok: false,
+      status: 500,
     });
   });
 

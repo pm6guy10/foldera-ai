@@ -1,34 +1,39 @@
 {
-  "backlog_id": "issue-364-trigger-runner-fix",
-  "active_issue": 364,
-  "base_commit": "f173bdcfc64de634e17e5dee6ed96d44f733fca2",
+  "backlog_id": "resilient-trigger-runner-heartbeat",
+  "active_issue": 368,
+  "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Issue #364 — make the workday-presence 15-min heartbeat actually fire in production. PR #365 (f173bdc) removed the dead CRON_SECRET-over-HTTP path. GitHub Actions is capped on this private repo (runners never start), so scheduling moves to a free external cron service hitting the existing Vercel route; route + CRON_SECRET already exist, no new spend. This PR removes the dead Actions schedule and ships the setup runbook; owner creates the external cron job to close out.",
+  "user_system_path": "#364/#366 moved the 15-min heartbeat to a free external cron hitting /api/cron/workday-presence-trigger-runner (GitHub Actions is capped on this private repo). But that external cron requires owner setup and, as of #368, the brain has still fired zero real interventions in production (tkg_actions workday_presence still 4 synthetic rows, last 2026-06-16). Add a zero-config daily floor: chain the existing trigger-runner route into the already-paid, already-running Vercel morning-pipeline cron as a 4th stage so the runner fires at least daily with no additional owner setup, under the external cron rather than replacing it.",
   "allowed_file_patterns": [
-    ".github/workflows/workday-presence-trigger-runner.yml",
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
-    "FOLDERA_BUILD_ORDER.yaml"
+    "FOLDERA_BUILD_ORDER.yaml",
+    "app/api/cron/morning-pipeline/**"
   ],
   "forbidden_file_patterns": [
+    "supabase/**",
     "app/dashboard/**",
-    "components/**"
+    "components/**",
+    "package.json",
+    "package-lock.json",
+    "tests/e2e/**"
   ],
-  "allowed_files_raw": "the trigger-runner workflow (remove dead Actions schedule, document external-cron heartbeat) plus control-plane files",
-  "forbidden_files_raw": "dashboard UI, components — this is backend cron-scheduling plumbing only; no product/runtime logic change",
-  "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "not applicable — backend cron plumbing, no UI surface",
+  "allowed_files_raw": "app/api/cron/morning-pipeline/** and control-plane files",
+  "forbidden_files_raw": "No schema, no UI, no e2e tests, no dependency changes.",
+  "required_local_proof": "npx vitest run app/api/cron/morning-pipeline lib/workday-presence/__tests__/commitment-bridge.test.ts lib/workday-presence/__tests__/trigger-runner-commitment-bridge.test.ts && npm run build && npm run gate:continuity",
+  "required_browser_proof": "not applicable",
   "browser_proof_command": "not applicable",
-  "acceptance_condition": "PR merged; a free external cron job hits GET https://www.foldera.ai/api/cron/workday-presence-trigger-runner every 15 min with the Vercel CRON_SECRET and returns HTTP 200 with a quiet/dedup_suppressed/intervention outcome (no silent 401, no dependence on capped GitHub Actions).",
-  "stop_condition": "Stop after the PR is merged and the owner has created the external cron job; issue #364 closes on the first confirmed HTTP 200 from the route.",
+  "acceptance_condition": "The trigger-runner runs as a stage of the already-paid Vercel morning-pipeline cron, so a lapsing-commitment intervention is evaluated at least once per day independent of the owner-configured external cron. A 'quiet' runner outcome does not fail the pipeline; only a thrown runner error degrades morning-pipeline to 207.",
+  "stop_condition": "Stop when issue #368 has a merged PR with gate + build + vitest proof. Production confirmation of a persisted real commitment_lapsing receipt in tkg_actions is BLOCKED_WITH_EXACT_RECEIPT until the next daily Vercel morning-pipeline cron run (0 11 * * *) executes, and requires the owner to have a saved workday_presence_state.",
   "is_user_facing": false,
   "anti_regression_checks": [
     "Continuity gate passes",
-    "workday-presence-trigger-runner.yml no longer carries a schedule trigger that can never fire",
+    "Build passes",
+    "Vitest passes",
     "the /api/cron/workday-presence-trigger-runner route and its CRON_SECRET auth are unchanged"
   ],
-  "next_command": "Owner creates the external cron job (cron-job.org or equivalent) per the runbook; confirm first HTTP 200, then close issue #364 and return control plane to between-rungs.",
+  "next_command": "Confirm a persisted real (non-synthetic) commitment_lapsing receipt in tkg_actions after the next daily Vercel cron run; then file the next dead-flag wiring (reply_needed / requires_prep).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
