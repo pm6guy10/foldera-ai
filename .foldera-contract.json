@@ -1,6 +1,6 @@
 {
-  "backlog_id": "landing-visual-polish",
-  "active_issue": 370,
+  "backlog_id": "landing-deblock-v2",
+  "active_issue": 372,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
   "user_system_path": "Elevate the live landing (components/foldera/LandingPage.tsx) to a production-grade dark/cyan aesthetic — glowing Right Now card with connector chips, background atmosphere, depth on cards, tighter type — while preserving every data-testid, heading, copy string, and href so the e2e suite stays green. Owner-authorized to ship to live via PR + merge.",
