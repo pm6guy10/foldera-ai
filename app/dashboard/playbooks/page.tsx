@@ -48,9 +48,9 @@ function AutopsyList({
   icon: ReactNode;
 }) {
   return (
-    <section className="rounded-[20px] border border-cyan-200/10 bg-white/[0.035] p-5">
+    <section className="rounded-[20px] border border-accent-hover/10 bg-white/[0.035] p-5">
       <div className="flex items-center gap-3">
-        <span className="inline-flex h-9 w-9 items-center justify-center rounded-[12px] border border-cyan-200/14 bg-cyan-300/[0.07] text-cyan-100">
+        <span className="inline-flex h-9 w-9 items-center justify-center rounded-[12px] border border-accent-hover/14 bg-accent/[0.07] text-accent-hover">
           {icon}
         </span>
         <h2 className="text-sm font-black uppercase tracking-[0.14em] text-white">{title}</h2>
@@ -91,9 +91,9 @@ function AutopsyView({
 
   return (
     <div className="space-y-5" data-testid="outcome-autopsy-view">
-      <section className="grid gap-4 rounded-[24px] border border-cyan-200/10 bg-[#050d16]/92 p-5 shadow-[0_22px_80px_rgba(0,0,0,0.28)] lg:grid-cols-[1.1fr_0.9fr] lg:p-6">
+      <section className="grid gap-4 rounded-[24px] border border-accent-hover/10 bg-[#050d16]/92 p-5 shadow-[0_22px_80px_rgba(0,0,0,0.28)] lg:grid-cols-[1.1fr_0.9fr] lg:p-6">
         <div className="min-w-0">
-          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200/70">
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-accent-hover/70">
             Outcome autopsy
           </p>
           <h1 className="mt-3 text-[clamp(30px,4vw,48px)] font-semibold leading-tight tracking-normal text-white">
@@ -181,7 +181,7 @@ function AutopsyView({
               </ul>
             </div>
             <div className="rounded-[18px] border border-white/[0.08] bg-white/[0.025] p-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent-hover">
                 Repeat
               </p>
               <ul className="mt-3 space-y-2 text-sm leading-6 text-[#B8C4D2]">
@@ -205,9 +205,9 @@ function AutopsyView({
       ) : null}
 
       <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="rounded-[24px] border border-cyan-200/10 bg-[#07111c]/90 p-5 lg:p-6">
+        <div className="rounded-[24px] border border-accent-hover/10 bg-[#07111c]/90 p-5 lg:p-6">
           <div className="flex items-center gap-3">
-            <Route className="h-5 w-5 text-cyan-200" aria-hidden />
+            <Route className="h-5 w-5 text-accent-hover" aria-hidden />
             <h2 className="text-sm font-black uppercase tracking-[0.14em] text-white">
               Timeline
             </h2>
@@ -219,7 +219,7 @@ function AutopsyView({
                 className="rounded-[18px] border border-white/[0.08] bg-white/[0.025] p-4"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.13em] text-cyan-100">
+                  <span className="rounded-full border border-accent-hover/14 bg-accent/[0.06] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.13em] text-accent-hover">
                     {item.kind}
                   </span>
                   <span className="text-xs font-semibold text-[#91A2B6]">{formatDate(item.occurred_at)}</span>
@@ -240,7 +240,7 @@ function AutopsyView({
         </div>
 
         <div className="space-y-5">
-          <section className="rounded-[24px] border border-cyan-200/10 bg-[#07111c]/90 p-5">
+          <section className="rounded-[24px] border border-accent-hover/10 bg-[#07111c]/90 p-5">
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-200" aria-hidden />
               <h2 className="text-sm font-black uppercase tracking-[0.14em] text-white">
@@ -251,7 +251,7 @@ function AutopsyView({
               {positiveSignals.map((signal) => (
                 <article key={signal.id} className="rounded-[16px] border border-white/[0.08] bg-white/[0.025] p-4">
                   <p className="text-sm font-semibold text-white">{signal.label}</p>
-                  <p className="mt-2 text-xs font-black uppercase tracking-[0.12em] text-cyan-100">
+                  <p className="mt-2 text-xs font-black uppercase tracking-[0.12em] text-accent-hover">
                     {classLabel(signal.classification)}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-[#AEBBCD]">{signal.why_strong}</p>
@@ -277,9 +277,9 @@ function AutopsyView({
       </section>
 
       {highSignalArtifacts.length > 0 ? (
-        <section className="rounded-[24px] border border-cyan-200/10 bg-[#07111c]/90 p-5 lg:p-6">
+        <section className="rounded-[24px] border border-accent-hover/10 bg-[#07111c]/90 p-5 lg:p-6">
           <div className="flex items-center gap-3">
-            <ListChecks className="h-5 w-5 text-cyan-200" aria-hidden />
+            <ListChecks className="h-5 w-5 text-accent-hover" aria-hidden />
             <h2 className="text-sm font-black uppercase tracking-[0.14em] text-white">
               High-signal artifacts
             </h2>
@@ -288,7 +288,7 @@ function AutopsyView({
             {highSignalArtifacts.map((item) => (
               <article key={item.id} className="rounded-[16px] border border-white/[0.08] bg-white/[0.025] p-4">
                 <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">
+                  <span className="rounded-full border border-accent-hover/14 bg-accent/[0.06] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-accent-hover">
                     {item.strength.replace(/_/g, ' ')}
                   </span>
                   <span className="rounded-full border border-white/[0.08] bg-white/[0.035] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#C9D2DE]">
@@ -313,9 +313,9 @@ function AutopsyView({
 
       {learning ? (
         <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-          <section className="rounded-[24px] border border-cyan-200/10 bg-[#07111c]/90 p-5 lg:p-6">
+          <section className="rounded-[24px] border border-accent-hover/10 bg-[#07111c]/90 p-5 lg:p-6">
             <div className="flex items-center gap-3">
-              <ListChecks className="h-5 w-5 text-cyan-200" aria-hidden />
+              <ListChecks className="h-5 w-5 text-accent-hover" aria-hidden />
               <h2 className="text-sm font-black uppercase tracking-[0.14em] text-white">
                 Evidence packet
               </h2>
@@ -325,7 +325,7 @@ function AutopsyView({
               {rawEvidence.slice(0, 7).map((item) => (
                 <article key={item.id} className="rounded-[16px] border border-white/[0.08] bg-white/[0.025] p-4">
                   <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">
+                    <span className="rounded-full border border-accent-hover/14 bg-accent/[0.06] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-accent-hover">
                       {classLabel(item.artifact_type)}
                     </span>
                     <span className="rounded-full border border-white/[0.08] bg-white/[0.035] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#C9D2DE]">
@@ -404,7 +404,7 @@ function AutopsyView({
 
       {learning ? (
         <section className="grid gap-5 lg:grid-cols-2">
-          <section className="rounded-[24px] border border-cyan-200/10 bg-[#07111c]/90 p-5">
+          <section className="rounded-[24px] border border-accent-hover/10 bg-[#07111c]/90 p-5">
             <h2 className="text-sm font-black uppercase tracking-[0.14em] text-white">
               Recommendation feedback ledger
             </h2>
@@ -412,7 +412,7 @@ function AutopsyView({
               {feedbackLedger.slice(0, 5).map((entry) => (
                 <article key={entry.id} className="rounded-[16px] border border-white/[0.08] bg-white/[0.025] p-4">
                   <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">
+                    <span className="rounded-full border border-accent-hover/14 bg-accent/[0.06] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-accent-hover">
                       {classLabel(entry.user_response)}
                     </span>
                     <span className="rounded-full border border-white/[0.08] bg-white/[0.035] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#C9D2DE]">
@@ -446,7 +446,7 @@ function AutopsyView({
       ) : null}
 
       <section className="grid gap-5 lg:grid-cols-2">
-        <section className="rounded-[20px] border border-cyan-200/10 bg-white/[0.035] p-5">
+        <section className="rounded-[20px] border border-accent-hover/10 bg-white/[0.035] p-5">
           <h2 className="text-sm font-black uppercase tracking-[0.14em] text-white">
             Decisive actions
           </h2>
@@ -529,7 +529,7 @@ export default function PlaybooksPage() {
       subtitle="Foldera reverse-engineers completed outcome paths into repeatable moves."
     >
       {state.status === 'loading' ? (
-        <section className="rounded-[24px] border border-cyan-200/10 bg-[#07111c]/90 p-6 text-sm text-[#AEBBCD]">
+        <section className="rounded-[24px] border border-accent-hover/10 bg-[#07111c]/90 p-6 text-sm text-[#AEBBCD]">
           Building the latest outcome autopsy...
         </section>
       ) : null}

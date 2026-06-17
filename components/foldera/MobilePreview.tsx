@@ -15,7 +15,7 @@ export function MobilePreview({ className = '' }: MobilePreviewProps) {
         <div className="overflow-hidden rounded-[24px] border border-border bg-bg">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <span className="flex items-center gap-2 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-text-primary/85">
-              <span className="h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_10px_rgba(34,211,238,0.9)]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_10px_rgba(245,166,35,0.9)]" />
               Daily Brief
             </span>
             <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-accent">
@@ -60,7 +60,7 @@ export function MobilePreview({ className = '' }: MobilePreviewProps) {
 
             <button
               type="button"
-              className="flex w-full items-center justify-center gap-1.5 rounded-[12px] border border-cyan-300/25 bg-accent px-3 py-2.5 text-[12.5px] font-semibold text-slate-950 shadow-[0_8px_24px_-10px_rgba(14,165,233,0.55)]"
+              className="flex w-full items-center justify-center gap-1.5 rounded-[12px] border border-accent/25 bg-accent px-3 py-2.5 text-[12.5px] font-semibold text-slate-950 shadow-[0_8px_24px_-10px_rgba(180,118,15,0.55)]"
             >
               <Zap className="h-3.5 w-3.5" strokeWidth={2.2} aria-hidden />
               Approve

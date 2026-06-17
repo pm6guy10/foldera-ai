@@ -86,7 +86,7 @@ export function DailyUtilitySlateCard({
       data-testid="dashboard-daily-utility-slate"
     >
       <section className="mx-auto w-full max-w-[760px] rounded-[20px] border border-white/10 bg-white/[0.025] p-6 sm:p-8">
-        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-300/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+        <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/8 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
           Foldera already checked your connected sources
         </div>

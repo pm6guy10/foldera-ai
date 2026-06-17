@@ -7,13 +7,13 @@ export function DashboardLoadingCard() {
       <header className="flex items-center justify-between border-b border-white/[0.028] px-5 py-4 sm:px-6">
         <div className="h-3.5 w-24 animate-pulse rounded-full bg-white/[0.08]" />
         <div className="flex items-center gap-3">
-          <div className="h-3.5 w-32 animate-pulse rounded-full bg-cyan-300/[0.15]" />
-          <div className="h-3 w-3 animate-pulse rounded-full bg-cyan-300/[0.3]" />
+          <div className="h-3.5 w-32 animate-pulse rounded-full bg-accent/[0.15]" />
+          <div className="h-3 w-3 animate-pulse rounded-full bg-accent/[0.3]" />
         </div>
       </header>
       <div className="space-y-6 px-5 py-6 sm:px-6 sm:py-6">
         <section className="grid gap-4 border-b border-white/[0.028] pb-5 md:grid-cols-[72px_minmax(0,1fr)]">
-          <div className="h-12 w-12 animate-pulse rounded-[16px] bg-cyan-300/[0.12]" />
+          <div className="h-12 w-12 animate-pulse rounded-[16px] bg-accent/[0.12]" />
           <div className="space-y-3">
             <div className="h-3 w-28 animate-pulse rounded-full bg-white/[0.08]" />
             <div className="h-8 w-full max-w-[680px] animate-pulse rounded-[14px] bg-white/[0.06]" />

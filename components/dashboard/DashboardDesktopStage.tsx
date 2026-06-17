@@ -106,7 +106,7 @@ export function DashboardDesktopStage({
                     role="status"
                     aria-label="Notifications unavailable until live alerts are connected"
                     title="Notifications unavailable until live alerts are connected"
-                    className={`inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-full border border-cyan-200/14 bg-white/[0.04] text-cyan-100 ${
+                    className={`inline-flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-full border border-accent-hover/14 bg-white/[0.04] text-accent-hover ${
                       isTodayPanel ? 'opacity-45' : 'opacity-70'
                     }`}
                   >
@@ -115,7 +115,7 @@ export function DashboardDesktopStage({
                   <div
                     role="status"
                     aria-label={`Current dashboard section: ${activeSidebarLabel}`}
-                    className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-4 py-2 text-sm font-semibold text-cyan-100"
+                    className="rounded-full border border-accent-hover/14 bg-accent/[0.06] px-4 py-2 text-sm font-semibold text-accent-hover"
                   >
                     {activeSidebarLabel}
                   </div>

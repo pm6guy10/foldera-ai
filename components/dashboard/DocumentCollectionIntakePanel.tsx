@@ -23,7 +23,7 @@ export function DocumentCollectionIntakePanel({
 }: DocumentCollectionIntakePanelProps) {
   return (
     <section
-      className="rounded-[16px] border border-cyan-200/12 bg-cyan-300/[0.04] p-4"
+      className="rounded-[16px] border border-accent-hover/12 bg-accent/[0.04] p-4"
       data-testid="document-collection-intake"
     >
       <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
@@ -39,7 +39,7 @@ export function DocumentCollectionIntakePanel({
             value={submissionUrl}
             onChange={(event) => onSubmissionUrlChange(event.target.value)}
             placeholder="https://..."
-            className="rounded-[12px] border border-border bg-panel px-3 py-2 text-sm text-text-primary outline-none focus:border-cyan-300/40"
+            className="rounded-[12px] border border-border bg-panel px-3 py-2 text-sm text-text-primary outline-none focus:border-accent/40"
           />
         </label>
         <label className="grid gap-1.5 text-sm font-medium text-text-primary">
@@ -49,7 +49,7 @@ export function DocumentCollectionIntakePanel({
             onChange={(event) => onCandidateDocumentsChange(event.target.value)}
             rows={4}
             placeholder="List each owned .docx, title/topic, or paste the source body notes."
-            className="resize-none rounded-[12px] border border-border bg-panel px-3 py-2 text-sm leading-6 text-text-primary outline-none focus:border-cyan-300/40"
+            className="resize-none rounded-[12px] border border-border bg-panel px-3 py-2 text-sm leading-6 text-text-primary outline-none focus:border-accent/40"
           />
         </label>
         <button

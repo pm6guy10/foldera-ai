@@ -36,7 +36,7 @@ export default function StatusPage() {
                   <h2 className="text-sm font-black uppercase tracking-[0.12em] text-text-primary">
                     {check.label}
                   </h2>
-                  <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-accent">
+                  <span className="rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-accent">
                     {check.state}
                   </span>
                 </article>

@@ -197,7 +197,7 @@ export function DailyBriefCard({
             <span className="text-[16px] font-semibold uppercase tracking-[0.16em] text-text-muted">{eyebrowLabel}</span>
             <div className="flex items-center gap-3">
               <span className="text-[17px] font-semibold uppercase tracking-[0.14em] text-accent">{statusText}</span>
-              <span className="h-4 w-4 rounded-full bg-accent shadow-[0_0_12px_rgba(34,211,238,0.55)]" aria-hidden="true" />
+              <span className="h-4 w-4 rounded-full bg-accent shadow-[0_0_12px_rgba(245,166,35,0.55)]" aria-hidden="true" />
             </div>
           </div>
         </header>
@@ -207,7 +207,7 @@ export function DailyBriefCard({
             className="grid grid-cols-[126px_minmax(0,1fr)] gap-0"
             data-testid="dashboard-brief-directive-section"
           >
-            <div className="flex h-[52px] w-[52px] items-center justify-center self-start justify-self-center rounded-[16px] border border-cyan-400/34 bg-cyan-400/10 text-accent">
+            <div className="flex h-[52px] w-[52px] items-center justify-center self-start justify-self-center rounded-[16px] border border-accent/34 bg-accent/10 text-accent">
               <DirectiveIcon className="h-6 w-6" strokeWidth={2} aria-hidden="true" />
             </div>
             <div className="min-w-0">
@@ -315,7 +315,7 @@ export function DailyBriefCard({
           <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">{eyebrowLabel}</span>
           <div className="flex items-center gap-3">
             <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">{statusText}</span>
-            <span className="h-3 w-3 rounded-full bg-accent shadow-[0_0_10px_rgba(34,211,238,0.55)]" aria-hidden="true" />
+            <span className="h-3 w-3 rounded-full bg-accent shadow-[0_0_10px_rgba(245,166,35,0.55)]" aria-hidden="true" />
           </div>
         </div>
       </header>
@@ -325,7 +325,7 @@ export function DailyBriefCard({
           className={`${compact ? 'gap-4' : dashboardSectionGap} grid grid-cols-[auto_minmax(0,1fr)] items-start`}
           data-testid="dashboard-brief-directive-section"
         >
-          <div className="flex h-11 w-11 items-center justify-center rounded-[16px] border border-cyan-400/20 bg-cyan-400/6 text-accent">
+          <div className="flex h-11 w-11 items-center justify-center rounded-[16px] border border-accent/20 bg-accent/6 text-accent">
             <DirectiveIcon className="h-5 w-5" strokeWidth={2} aria-hidden="true" />
           </div>
           <div>

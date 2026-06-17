@@ -193,10 +193,10 @@ function TodayPanel() {
       {sourceState === 'missing' ? (
         <div
           data-testid="dashboard-connect-strip"
-          className="mb-6 rounded-[24px] border border-cyan-400/20 bg-cyan-950/20 backdrop-blur-md px-6 py-5 shadow-[0_0_30px_rgba(34,211,238,0.05)]"
+          className="mb-6 rounded-[24px] border border-accent/20 bg-accent-dim/20 backdrop-blur-md px-6 py-5 shadow-[0_0_30px_rgba(245,166,35,0.05)]"
         >
-          <p className="text-sm font-semibold text-cyan-50">Connect one source</p>
-          <p className="mt-1 text-sm leading-6 text-cyan-100/70">
+          <p className="text-sm font-semibold text-accent-hover">Connect one source</p>
+          <p className="mt-1 text-sm leading-6 text-accent-hover/70">
             Foldera reads connected context to find your re-entry point. Nothing sends without
             your approval.
           </p>
@@ -248,7 +248,7 @@ function TodayPanel() {
         <div className="mt-4 text-center">
           <Link
             href="/dashboard?panel=sources"
-            className="inline-block text-xs text-cyan-400/70 underline-offset-2 hover:text-cyan-400 hover:underline"
+            className="inline-block text-xs text-accent/70 underline-offset-2 hover:text-accent hover:underline"
           >
             Manage sources →
           </Link>

@@ -21,8 +21,8 @@ import type { ConvictionAction, ActionType, ConvictionArtifact } from '@/lib/bri
 // ---------------------------------------------------------------------------
 
 const ACTION_META: Record<ActionType, { label: string; icon: React.ElementType; color: string }> = {
-  write_document: { label: 'Write',    icon: FileText, color: 'text-cyan-400'   },
-  send_message:   { label: 'Send',     icon: Send,     color: 'text-cyan-400'   },
+  write_document: { label: 'Write',    icon: FileText, color: 'text-accent'   },
+  send_message:   { label: 'Send',     icon: Send,     color: 'text-accent'   },
   make_decision:  { label: 'Decide',   icon: GitFork,  color: 'text-amber-400'  },
   do_nothing:     { label: 'Wait',     icon: Pause,    color: 'text-zinc-400'   },
   schedule:       { label: 'Schedule', icon: Calendar, color: 'text-emerald-400'},
@@ -111,7 +111,7 @@ export default function ConvictionCard({
       {/* Header */}
       <div className="px-5 py-3 border-b border-zinc-800">
         <div className="flex items-center gap-2">
-          <Shield className="w-4 h-4 text-cyan-400" />
+          <Shield className="w-4 h-4 text-accent" />
           <span className="text-zinc-200 font-semibold text-xs uppercase tracking-widest font-mono">
             Today&apos;s Read
           </span>
@@ -285,7 +285,7 @@ function LockedArtifact() {
         <button
           onClick={handleUpgrade}
           disabled={loading}
-          className="px-5 py-2.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-sm font-semibold transition-colors disabled:opacity-60"
+          className="px-5 py-2.5 rounded-lg bg-accent hover:bg-accent text-black text-sm font-semibold transition-colors disabled:opacity-60"
         >
           {loading ? 'Loading...' : 'Upgrade to Pro \u2014 $29/mo'}
         </button>
@@ -360,7 +360,7 @@ function ArtifactPreview({ artifact }: { artifact: ConvictionArtifact }) {
                 <p className="text-[10px] font-mono text-zinc-500 uppercase mb-1">Sources</p>
                 <div className="space-y-0.5">
                   {artifact.sources.slice(0, 5).map((s, i) => (
-                    <p key={i} className="text-xs text-cyan-400 truncate">{s}</p>
+                    <p key={i} className="text-xs text-accent truncate">{s}</p>
                   ))}
                 </div>
               </div>

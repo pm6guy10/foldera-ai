@@ -48,16 +48,16 @@ export function MorningAnchorCard({
   if (card.mode === 'setup') {
     return (
       <div className="foldera-dashboard-brief-card flex h-full w-full items-start justify-center overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
-        <section className="mx-auto w-full max-w-[760px] rounded-[24px] border border-cyan-400/20 bg-cyan-950/20 backdrop-blur-md p-6 sm:p-8 shadow-[0_0_30px_rgba(34,211,238,0.05)]">
+        <section className="mx-auto w-full max-w-[760px] rounded-[24px] border border-accent/20 bg-accent-dim/20 backdrop-blur-md p-6 sm:p-8 shadow-[0_0_30px_rgba(245,166,35,0.05)]">
           <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-white">
             {card.prompt}
           </h2>
           {card.verdict_line ? (
-            <p className="mt-3 text-sm text-cyan-100/80">{card.verdict_line}</p>
+            <p className="mt-3 text-sm text-accent-hover/80">{card.verdict_line}</p>
           ) : null}
           <div className="mt-5 grid gap-3">
             <input
-              className="w-full min-h-[56px] rounded-2xl border border-white/10 bg-black/40 px-5 py-3 text-[15px] font-medium text-white placeholder-white/30 outline-none transition-all focus:border-cyan-400/50 focus:bg-black/60 focus:ring-4 focus:ring-cyan-400/10"
+              className="w-full min-h-[56px] rounded-2xl border border-white/10 bg-black/40 px-5 py-3 text-[15px] font-medium text-white placeholder-white/30 outline-none transition-all focus:border-accent/50 focus:bg-black/60 focus:ring-4 focus:ring-accent/10"
               placeholder="What are you trying to move forward today?"
               value={input.current_focus}
               onChange={(e) => setInput((v) => ({ ...v, current_focus: e.target.value }))}
@@ -123,7 +123,7 @@ export function MorningAnchorCard({
     <div className="foldera-dashboard-brief-card flex h-full w-full items-start justify-center overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
       <section
         data-testid="right-now-card"
-        className="mx-auto w-full max-w-[760px] rounded-[24px] border border-cyan-400/20 bg-cyan-950/20 backdrop-blur-md p-6 sm:p-8 shadow-[0_0_30px_rgba(34,211,238,0.05)]"
+        className="mx-auto w-full max-w-[760px] rounded-[24px] border border-accent/20 bg-accent-dim/20 backdrop-blur-md p-6 sm:p-8 shadow-[0_0_30px_rgba(245,166,35,0.05)]"
       >
         <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-white">
           {card.heading}
@@ -132,16 +132,16 @@ export function MorningAnchorCard({
         <p className="mt-3 text-base text-text-primary">{card.next_move}</p>
         <p className="mt-3 text-sm text-text-secondary">{card.why_this_matters}</p>
         {card.verdict_line ? (
-          <p className="mt-3 text-sm font-semibold text-cyan-100/90">{card.verdict_line}</p>
+          <p className="mt-3 text-sm font-semibold text-accent-hover/90">{card.verdict_line}</p>
         ) : null}
-        <p className="mt-3 text-sm text-cyan-100/80">{card.source_line}</p>
+        <p className="mt-3 text-sm text-accent-hover/80">{card.source_line}</p>
         {card.last_interaction ? (
-          <p className="mt-3 text-sm text-cyan-200">{card.last_interaction}</p>
+          <p className="mt-3 text-sm text-accent-hover">{card.last_interaction}</p>
         ) : null}
         {card.do_not_touch ? <p className="mt-3 text-sm text-amber-200">{card.do_not_touch}</p> : null}
         <p className="mt-4 text-sm font-semibold text-text-primary">{card.stop_when_done}</p>
         {card.draft_ready ? (
-          <p className="mt-4 text-sm font-semibold text-cyan-100" data-testid="right-now-draft-ready">
+          <p className="mt-4 text-sm font-semibold text-accent-hover" data-testid="right-now-draft-ready">
             {card.draft_ready}
           </p>
         ) : null}
