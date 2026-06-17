@@ -106,11 +106,6 @@ function signalStartsAtIso(signal: FreshSignalRow): string | null {
   return clean(signal.starts_at_iso) ?? clean(metadata.starts_at_iso) ?? clean(metadata.start_time);
 }
 
-function signalRequiresPrep(signal: FreshSignalRow): boolean {
-  const metadata = signalMetadata(signal);
-  return readBoolean(signal.requires_prep) === true || readBoolean(metadata.requires_prep) === true;
-}
-
 function signalPrepMove(signal: FreshSignalRow): string | null {
   const metadata = signalMetadata(signal);
   return clean(signal.prep_move) ?? clean(metadata.prep_move);
@@ -161,23 +156,63 @@ function signalGoneCold(signal: FreshSignalRow): boolean {
   return readBoolean(signal.gone_cold) === true || readBoolean(metadata.gone_cold) === true;
 }
 
-function adaptSignalToFreshEvent(signal: FreshSignalRow): SimulatedConnectorEvidenceEvent | null {
+const PREP_IMMINENCE_WINDOW_MS = 90 * 60 * 1000;
+
+// Real Google/Microsoft calendar signals arrive as source 'google_calendar' /
+// 'outlook_calendar'; the test-mode fixtures use 'calendar'. Accept all of them
+// so the normal trigger path recognizes real ingested calendar events, not just
+// fixtures.
+function isCalendarSource(source: string): boolean {
+  return source === 'calendar' || source.includes('calendar');
+}
+
+// Resolve whether a calendar event warrants a prep nudge. An explicit flag
+// (test-mode fixtures, or future enriched signals) always wins, so fixture
+// behavior is unchanged. Real ingested calendar signals carry no flag, so
+// derive prep-worthiness from imminence: the meeting starts within the prep
+// window and has not started yet.
+function resolveRequiresPrep(
+  signal: FreshSignalRow,
+  startsAtIso: string | null,
+  nowIso: string,
+): boolean {
+  const explicit =
+    readBoolean(signal.requires_prep) ?? readBoolean(signalMetadata(signal).requires_prep);
+  if (explicit !== null) return explicit;
+  if (!startsAtIso) return false;
+  const startMs = Date.parse(startsAtIso);
+  const nowMs = Date.parse(nowIso);
+  if (Number.isNaN(startMs) || Number.isNaN(nowMs)) return false;
+  return startMs > nowMs && startMs - nowMs <= PREP_IMMINENCE_WINDOW_MS;
+}
+
+function adaptSignalToFreshEvent(
+  signal: FreshSignalRow,
+  nowIso: string = new Date().toISOString(),
+): SimulatedConnectorEvidenceEvent | null {
   const source = clean(signal.source)?.toLowerCase() ?? '';
   const summary = normalizeSummary(signal);
   const threadId = signalThreadId(signal);
   const occurredAt =
     clean(signal.ingested_at) ?? clean(signal.occurred_at) ?? clean(signal.created_at) ?? new Date().toISOString();
 
-  if (source === 'calendar') {
-    const title = clean(signal.title) ?? clean(signal.subject) ?? summary;
-    const startsAtIso = signalStartsAtIso(signal);
+  if (isCalendarSource(source)) {
+    // Real ingestion stores the event start in occurred_at and the title inside
+    // encrypted content; fixtures provide starts_at_iso/title directly. Fall
+    // back so both shapes yield a usable event.
+    const startsAtIso = signalStartsAtIso(signal) ?? clean(signal.occurred_at);
+    const title =
+      clean(signal.title) ??
+      clean(signal.subject) ??
+      summary ??
+      (startsAtIso ? 'your upcoming meeting' : null);
     if (!title || !startsAtIso) return null;
     return {
       kind: 'calendar',
       event_id: clean(signal.id) ?? `${title}:${startsAtIso}`,
       title,
       starts_at_iso: startsAtIso,
-      requires_prep: signalRequiresPrep(signal),
+      requires_prep: resolveRequiresPrep(signal, startsAtIso, nowIso),
       ...(signalPrepMove(signal) ? { prep_move: signalPrepMove(signal) ?? undefined } : {}),
       ...(signalTimingShift(signal) ? { timing_shift: true } : {}),
       ...(signalShiftSummary(signal) ? { shift_summary: signalShiftSummary(signal) ?? undefined } : {}),
@@ -411,7 +446,7 @@ export function checkFreshSignalTriggerOverride(input: {
     return null;
   }
   const freshEvents = input.signals
-    .map(adaptSignalToFreshEvent)
+    .map((signal) => adaptSignalToFreshEvent(signal, nowIso))
     .filter((e): e is SimulatedConnectorEvidenceEvent => Boolean(e));
   const selection = selectSingleInterventionFromConnectorEvidence(freshEvents);
   if (!selection.selected) return null;
@@ -485,7 +520,7 @@ export async function runWorkdayPresenceTriggerRunner(input: {
   const nowIso = input.nowIso ?? new Date().toISOString();
   const signalCursor = latestSignalCursor(input.signals);
   const freshEvents = input.signals
-    .map(adaptSignalToFreshEvent)
+    .map((signal) => adaptSignalToFreshEvent(signal, nowIso))
     .filter((event): event is SimulatedConnectorEvidenceEvent => Boolean(event));
 
   // Snoozed: unconditional quiet — user explicitly asked not to be interrupted.

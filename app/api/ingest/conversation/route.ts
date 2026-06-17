@@ -13,14 +13,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { extractFromConversation } from '@/lib/extraction/conversation-extractor';
+import { validateCronAuth } from '@/lib/auth/resolve-user';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
-  const auth = request.headers.get('authorization');
-  if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  // Use the shared, timing-safe cron-auth helper (constant-time compare + accepts
+  // Authorization: Bearer or x-cron-secret) instead of a hand-rolled `!==` check.
+  const authError = validateCronAuth(request);
+  if (authError) return authError;
 
   const userId = process.env.INGEST_USER_ID;
   if (!userId) {
