@@ -11,7 +11,7 @@ import type { RightNowCard } from '@/lib/workday-presence/model';
 import { AuthTrustPills } from '@/components/auth/AuthTrustPills';
 import { OAuthConnectButton } from '@/components/auth/OAuthConnectButton';
 import { SIGN_OUT_CALLBACK_URL } from '@/lib/auth/constants';
-import { formatRelativeTime, providerDisplayName } from '@/lib/ui/provider-display';
+import { formatRelativeTime, normalizeMicrosoftAccountEmail, providerDisplayName } from '@/lib/ui/provider-display';
 
 type ConnectedSourceState = 'loading' | 'connected' | 'missing' | 'error';
 
@@ -482,7 +482,7 @@ function SourcesPanel() {
                   {providerDisplayName(integration.provider)}
                 </p>
                 <p className="mt-1 truncate text-sm text-text-secondary">
-                  {integration.sync_email || 'Connected'}
+                  {normalizeMicrosoftAccountEmail(integration.sync_email) || 'Connected'}
                   {integration.last_synced_at ? ` · ${formatRelativeTime(integration.last_synced_at)}` : ''}
                 </p>
               </li>

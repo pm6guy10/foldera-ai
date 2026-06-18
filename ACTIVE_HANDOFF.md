@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-18 UTC (between rungs — shipped #402 send + #404 attachments + #407 write_document delivery attachment; owner names next seam)
+Last updated: 2026-06-18 UTC (active seam #411 — fix Sources screen raw Azure guest UPN; branch `claude/fix-microsoft-guest-upn-display`)
 
 ## Boot
 
@@ -35,13 +35,18 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 ## Current slice:
 
-None — between rungs. This session shipped #402 (review-gated one-tap send, PR #403, `b698566`), #404 (email draft attachments, PR #405, `4125585`), and #407 (the generator attaches its own work — approved write_document delivery carries the doc as a real `<title>.md` file attachment, PR #408, `82dc104`). The remaining money-loop moves are owner-gated. Awaiting the owner's next chosen seam.
+Issue #411 is the active product seam.
+
+#411 — the Sources screen renders the Microsoft connected account as a broken raw Azure guest UPN (`b-kapp_outlook.com#EXT#@tenant.onmicrosoft.com`) instead of the real email (`b-kapp@outlook.com`). Owner spotted it live. Both capture paths store `me.mail || me.userPrincipalName`, so a guest/B2B account with empty `mail` lands the mangled UPN. Fix: a pure `normalizeMicrosoftAccountEmail()` in `lib/ui/provider-display.ts` (recovers the real email from an `#EXT#` UPN, case-insensitive; clean emails pass through), applied at the display (`app/dashboard/page.tsx` — repairs the existing row, no DB migration) and at both capture points (`app/api/microsoft/callback/route.ts`, `lib/sync/microsoft-sync.ts`). Deterministic, free, harness-proven.
+
+This session already shipped #402 (review-gated send), #404 (attachment rails), #407 (write_document delivery attachment) — all LIVE on main.
 
 ## Next exact move
 
-1. Owner names the next seam (or pick from the candidates below). Until then `active_issue: none` is the valid between-rungs control-plane form.
-2. OWNER-SIDE live-readiness: set `ALLOW_APPROVAL_EMAIL_SEND=true` and (a) approve a `write_document` → confirm the delivery email arrives with the `<title>.md` file attached (#407); (b) trigger a guardian ping → tap **Review & send** → confirm a real Gmail send (#402/#404); (c) configure the free external 15-min guardian cron.
-3. CODE candidate (needs owner go + paid validation): teach the generator to compose + attach a companion document for a `send_message`, so an email to an external recipient carries the work. Constraint reminder: NO paid API calls to test — prove in the harness.
+1. Open the draft PR for `claude/fix-microsoft-guest-upn-display` → #411; get CI green.
+2. Proof (free): `lib/ui/__tests__/provider-display.test.ts` 7/7 (guest UPN upper/lower `#EXT#`, clean-email passthrough, empty fallback, no-/multi-underscore edges); existing microsoft callback test green; `tsc` 0 new errors. `gate:continuity` + `lint` + `build` before PR.
+3. Live owner validation: open the Sources screen, confirm the Microsoft row reads `b-kapp@outlook.com` — `BLOCKED_WITH_EXACT_RECEIPT` until then.
+4. STILL OPEN owner-side (separate from #411): `ALLOW_APPROVAL_EMAIL_SEND` is on — confirm `RESEND_API_KEY` in Vercel Production; connect a real source so a genuine move generates (brain is in safe-silence now, nothing to approve/send); configure the free external 15-min guardian cron. Constraint: NO paid API calls to test — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
 

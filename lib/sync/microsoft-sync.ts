@@ -14,6 +14,7 @@ import { createServerClient } from "@/lib/db/client";
 import { getUserToken, updateSyncTimestamp } from "@/lib/auth/user-tokens";
 import { getMicrosoftTokens, forceRefreshMicrosoftTokens } from "@/lib/auth/token-store";
 import { encrypt } from "@/lib/encryption";
+import { normalizeMicrosoftAccountEmail } from "@/lib/ui/provider-display";
 import { truncateSignalContent } from "@/lib/utils/signal-egress";
 import { createHash } from "crypto";
 import mammoth from 'mammoth';
@@ -908,7 +909,7 @@ export async function syncMicrosoft(
       `${GRAPH_BASE}/me?$select=mail,userPrincipalName`,
     );
     const raw = (me.mail ?? me.userPrincipalName ?? "") as string;
-    graphSelfEmail = typeof raw === "string" ? raw.toLowerCase().trim() : "";
+    graphSelfEmail = normalizeMicrosoftAccountEmail(typeof raw === "string" ? raw : "").toLowerCase();
   } catch {
     /* optional */
   }
