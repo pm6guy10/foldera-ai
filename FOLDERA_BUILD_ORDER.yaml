@@ -22,11 +22,21 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 404
+active_issue: none
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Owner directive: the app is not simply an email draft generator — 'the way the work gets done is: send an email and it has the work attached. Here's the updated budget doc, the sales presentation, the forecasting sheet — the evidence of why Foldera said to do this.' #402 wired the review-gated hands (send from the owner's own Gmail). #404 makes the thing that gets sent the actual work: the budget doc / forecast / memo the brain drafted rides with the email as an attachment, surfaced read-only on the review surface. Without it the send is still homework ('now go find the file and attach it'). Grounded (attachment content is the generated artifact, never fabricated), bounded (count + size caps), and reuses #402's executeAction sign-off — no new send path."
-next_seam: "Complete #404: open the draft PR for branch claude/email-draft-attachments-2ek5np, get CI green. Live owner validation (set ALLOW_APPROVAL_EMAIL_SEND=true, trigger a guardian ping on a draft with attachments, tap Review & send, confirm a real Gmail send with the file attached) is the one owner-side step — BLOCKED_WITH_EXACT_RECEIPT until then. STILL OPEN owner-side: the free external 15-min cron for guardian firing cadence; #402 PR #403 awaits the same live send validation."
+why_this_first: "Between rungs. This session shipped #402 (review-gated one-tap send from the Slack guardian ping, PR #403, b698566) and #404 (email draft attachments — the send carries the finished work, PR #405, 4125585): the guardian drafts → reviews → sends from the owner's own Gmail, and the email can carry the budget doc / forecast / memo as an attachment. No code seam I can execute remains: the live-readiness blockers are owner-side (flip ALLOW_APPROVAL_EMAIL_SEND to validate a real attached send; configure the external 15-min guardian cron). The remaining code candidate — teach the generator to emit attachments — needs a prompt change + paid validation, so it awaits the owner's go. Awaiting the owner's next move."
+next_seam: "OWNER-SIDE (live-readiness): (1) set ALLOW_APPROVAL_EMAIL_SEND=true, trigger a guardian ping on a draft with attachments, tap Review & send, confirm a real Gmail send with the file attached (validates both #402 and #404); (2) configure the free external 15-min cron for guardian firing cadence. CODE candidate (not started, needs owner go + paid validation): teach the generator to actually populate EmailArtifact.attachments with the work it drafts, so the attachment plumbing carries real files end-to-end."
+completed_issue_404:
+  issue: 404
+  pr: 405
+  pr_merge_sha: 4125585
+  summary: "Email draft attachments — the send carries the finished work. Builds on #402: the budget doc / forecast / memo the brain drafted rides with the email as an attachment, listed read-only on the Slack review modal. New dependency-free lib/email/attachments.ts (normalize + count/size caps, RFC 2822 multipart/mixed builder, Graph + Resend mappers); EmailArtifact + WorkdayPresenceDraft gain attachments; Gmail/Outlook/Resend send clients + executeAction thread them through (attachment_count recorded). Grounded (content is the generated artifact, never fabricated), bounded, no new send path, no auto-send. Proof: new attachments/draft/modal/execute-action tests + full related suites (263) + gate:continuity + lint + build; NO paid calls; live attached-send validation owner-side (ALLOW_APPROVAL_EMAIL_SEND) — BLOCKED_WITH_EXACT_RECEIPT. NOTE: the generator does not yet emit attachments — plumbing only until that follow-on seam."
+completed_issue_402:
+  issue: 402
+  pr: 403
+  pr_merge_sha: b698566
+  summary: "Review-gated one-tap send from the Slack guardian ping (the indispensability pass: act, don't assign homework). A primary Review & send button on the ping (only for grounded send_message drafts with a real tkg_actions id) opens a Slack modal — recipient read-only, editable subject + body, source trail — and submit IS the sign-off → executeAction sends from the owner's own Gmail, updates the ping to '✓ Sent', records the move done, flips the row to executed. No auto-send; live send behind ALLOW_APPROVAL_EMAIL_SEND. Proof: 224 harness tests + new interaction-route tests + gate:continuity + lint + build; NO paid calls; live owner validation BLOCKED_WITH_EXACT_RECEIPT."
 completed_issue_399:
   issue: 399
   pr: 400

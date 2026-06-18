@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-18 UTC (active seam #404 — email draft attachments; branch `claude/email-draft-attachments-2ek5np`)
+Last updated: 2026-06-18 UTC (between rungs — shipped #402 review-gated send + #404 email draft attachments; owner names next seam)
 
 ## Boot
 
@@ -35,18 +35,13 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 ## Current slice:
 
-Issue #404 is the active product seam.
-
-#404 — email draft attachments: the send carries the finished work, not just a note. Builds on #402's review-gated one-tap send. The budget doc / forecast / memo the brain drafted rides with the email as an attachment, listed read-only on the Slack review modal so the sign-off shows exactly what leaves the mailbox. Attachment content is the generated artifact, never fabricated; bounded by count (5) + size (5 MB/file, 10 MB total) caps validated at the boundary. Reuses the existing `executeAction` send layer — Gmail builds `multipart/mixed` when attachments are present (single text/plain path unchanged otherwise), Outlook adds Graph `fileAttachment`, Resend adds `{filename,content}`; `attachment_count` recorded. No new send path, no auto-send. New dependency-free `lib/email/attachments.ts` (normalize/cap, RFC 2822 multipart builder, Graph + Resend mappers). Files: `lib/email/{attachments,resend}.ts`, `lib/integrations/{gmail,outlook}-client.ts`, `lib/conviction/execute-action.ts`, `lib/briefing/types.ts`, `lib/workday-presence/{model,seed-from-directive}.ts`, `lib/slack/right-now.ts`, `app/api/slack/interaction/route.ts`.
-
-#402 (review-gated one-tap Slack send) is the foundation — PR #403 OPEN, awaiting the same owner-side live send validation.
+None — between rungs. This session shipped #402 (review-gated one-tap send from the Slack guardian ping, PR #403, `b698566`) and #404 (email draft attachments — the send carries the finished work, PR #405, `4125585`): the guardian drafts → reviews → sends from the owner's own Gmail, and the email can carry the budget doc / forecast / memo as an attachment (plumbing end-to-end; the generator does not yet emit attachments). No code seam I can execute remains: the live-readiness blockers are owner-side. Awaiting the owner's next chosen seam.
 
 ## Next exact move
 
-1. Open the draft PR for `claude/email-draft-attachments-2ek5np` → #404; get CI green.
-2. Proof so far (free): full related suites green (workday-presence + slack + conviction + email + integrations + app/api/slack), new `lib/email/__tests__/attachments.test.ts` + draft/model/seed/modal/execute-action coverage, `tsc` 0 new errors, lint clean. `gate:continuity` + `build` before PR.
-3. Live owner validation is the one owner-side step: set `ALLOW_APPROVAL_EMAIL_SEND=true`, trigger a guardian ping on a draft with attachments, tap **Review & send**, sign off, confirm a real Gmail send with the file attached. Until then the live path is `BLOCKED_WITH_EXACT_RECEIPT`. Separately STILL OPEN owner-side: the free external 15-min cron for guardian firing cadence.
-4. Constraint reminder: NO paid API calls to test — prove in the harness.
+1. Owner names the next seam (or pick from the candidates below). Until then `active_issue: none` is the valid between-rungs control-plane form.
+2. OWNER-SIDE live-readiness: set `ALLOW_APPROVAL_EMAIL_SEND=true`, trigger a guardian ping on a draft with attachments, tap **Review & send**, sign off, confirm a real Gmail send with the file attached (validates both #402 and #404); and configure the free external 15-min cron for guardian firing cadence.
+3. CODE candidate (not started, needs owner go + paid validation): teach the generator to populate `EmailArtifact.attachments` with the work it drafts, so the attachment plumbing carries real files. Constraint reminder: NO paid API calls to test — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
 
