@@ -230,36 +230,34 @@ export default function PricingPage() {
               </motion.aside>
             </motion.div>
 
-            {/* enterprise line */}
-            <div className="mx-auto mt-6 max-w-6xl">
-              <div className="flex flex-col items-start justify-between gap-4 rounded-[var(--r-card)] border border-border-subtle bg-white/[0.012] px-6 py-5 sm:flex-row sm:items-center">
-                <div className="flex items-center gap-3">
-                  <ShieldCheck className="h-5 w-5 text-accent" strokeWidth={1.75} aria-hidden="true" />
-                  <p className="text-[15px] text-text-secondary">
-                    <span className="text-text-primary">Need team or enterprise?</span> Read-only connectors, SSO/SCIM, and audit logs.
-                  </p>
-                </div>
-                <Link
-                  href="/security"
-                  className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent transition-colors hover:text-accent-hover"
-                >
-                  See security →
-                </Link>
+            {/* enterprise line — quiet, no box */}
+            <div className="mx-auto mt-10 flex max-w-6xl flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 text-accent" strokeWidth={1.5} aria-hidden="true" />
+                <p className="text-[15px] text-text-muted">
+                  <span className="text-text-secondary">Need team or enterprise?</span> Read-only, SSO/SCIM, audit logs.
+                </p>
               </div>
+              <Link
+                href="/security"
+                className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent transition-colors hover:text-accent-hover"
+              >
+                See security →
+              </Link>
             </div>
           </section>
 
-          {/* FAQ */}
-          <section className="px-5 pb-24 sm:px-6 lg:px-8">
+          {/* FAQ — airy, no dividers */}
+          <section className="px-5 pb-28 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-3xl">
               <h2 className="font-display text-[clamp(1.6rem,1.2rem+1.6vw,2.25rem)] font-semibold tracking-[-0.025em]">
                 Questions
               </h2>
-              <div className="mt-8 divide-y divide-border-subtle border-y border-border-subtle">
+              <div className="mt-10 space-y-10">
                 {faq.map((item) => (
-                  <article key={item.question} className="py-6">
+                  <article key={item.question}>
                     <h3 className="text-[16px] font-semibold tracking-[-0.01em] text-text-primary">{item.question}</h3>
-                    <p className="mt-2.5 text-[15px] leading-7 text-text-secondary">{item.answer}</p>
+                    <p className="mt-2 text-[15px] leading-7 text-text-muted">{item.answer}</p>
                   </article>
                 ))}
               </div>
