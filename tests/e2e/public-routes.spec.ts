@@ -184,7 +184,7 @@ test.describe('Landing page /', () => {
     await page.goto('/');
     await expect(page.getByText('The Workday Presence Layer').first()).toBeVisible();
     await expect(page.getByText('Stop rebuilding the work.').first()).toBeVisible();
-    await expect(page.getByText('Foldera restores continuity across fractured apps, messages, meetings, approvals, and decisions so you can stop rebuilding context just to do the work.')).toBeVisible();
+    await expect(page.getByText('Foldera holds the thread across your apps, then pings you in Slack with the one finished move that matters — context attached, ready to approve.')).toBeVisible();
     await expect(page.getByTestId('landing-doctrine')).toContainText('State');
     await expect(page.getByTestId('landing-doctrine')).toContainText('Connectors');
     await expect(page.getByTestId('landing-doctrine')).toContainText('Triggers');
