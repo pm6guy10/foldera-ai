@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
+active_issue: 402
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Between rungs. This session (owner directive 'you pick / clear the queue / total ownership of the app being ready') shipped #397 (brief seeds matched draft at generation time, PR #398, 4eb68f1) and #399 (commitment-title hygiene, PR #400, 30fbf13). No code seam I can execute remains: the one live-readiness blocker is owner-side, and the favicon cleanup is tooling-blocked. Awaiting the owner's next move."
-next_seam: "OWNER-SIDE (the single live-readiness blocker): configure the free external 15-min cron for guardian firing cadence — the guardian's code is shipped + harness-proven but does not fire on a schedule until this cron exists. CODE candidates (not started): recolor legacy cyan favicons (app/favicon.ico + 1MB public/favicon.png — BLOCKED on image tooling: sharp/imagemagick absent, needs amber assets or a tool); triage 46 stale remote branches + skipped tests. Any landing pass stays OBVIOUSLY better and keeps docs/DESIGN_SYSTEM.md §12 green."
+why_this_first: "Owner directive 'make the app helpful to me RN — it's forgettable, do an I-cant-live-without-this pass.' Foldera is the Bible's brain-with-no-hands: the guardian drafts a real email and pings Slack, but the only buttons are View Draft + Dismiss — the owner still has to open Gmail and do it himself. #402 closes the loop: a review-gated one-tap send on the Slack ping that executes the drafted move from the owner's own Gmail via the existing executeAction layer. Highest-leverage indispensability move and doctrine-perfect (brain→hands, one intervention, explicit sign-off, never auto-send)."
+next_seam: "Complete #402: open the draft PR for branch claude/app-indispensability-plan-4mzo87, get CI green. Live owner validation (set ALLOW_APPROVAL_EMAIL_SEND=true, trigger a guardian ping, tap Review & send, confirm a real Gmail send) is the one owner-side step — BLOCKED_WITH_EXACT_RECEIPT until then. STILL OPEN owner-side: the free external 15-min cron for guardian firing cadence (separate blocker)."
 completed_issue_399:
   issue: 399
   pr: 400

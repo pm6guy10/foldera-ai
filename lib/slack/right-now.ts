@@ -1,11 +1,17 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import {
   RIGHT_NOW_ACTION_IDS,
+  RIGHT_NOW_SEND_ACTION_ID,
   type RightNowMessageAction,
   type RightNowMessageActionId,
+  type RightNowMessageButtonId,
   type RightNowMessagePayload,
 } from '@/lib/workday-presence/message';
+import type { WorkdayPresenceDraft } from '@/lib/workday-presence/model';
 import { redactSlackSecret } from './redaction';
+
+/** Modal that carries the review-gated send sign-off. */
+export const REVIEW_SEND_MODAL_CALLBACK_ID = 'foldera_review_send';
 
 export type SlackRightNowBlock =
   | { type: 'section'; text: { type: 'mrkdwn'; text: string } }
@@ -15,11 +21,20 @@ export type SlackRightNowBlock =
       elements: Array<{
         type: 'button';
         text: { type: 'plain_text'; text: string };
-        action_id: RightNowMessageActionId;
-        value: RightNowMessageActionId;
+        action_id: RightNowMessageButtonId;
+        value: RightNowMessageButtonId;
         style?: 'primary' | 'danger';
       }>;
     };
+
+/** Private metadata stashed on the review modal so the sign-off can execute + update in place. */
+export type ReviewSendModalMetadata = {
+  action_id: string;
+  channel?: string;
+  message_ts?: string;
+};
+
+export type SlackModalView = Record<string, unknown> & { callback_id: string };
 
 export type SlackRightNowMessage = {
   channel: string;
@@ -35,9 +50,16 @@ export type SlackSendResult = {
   response: unknown;
 };
 
+export type SlackViewOpenResult = {
+  ok: true;
+  mode: 'live' | 'test_safe';
+  response: unknown;
+};
+
 export type SlackAdapter = {
   postMessage(message: SlackRightNowMessage): Promise<SlackSendResult>;
   updateMessage(message: SlackRightNowMessage & { ts: string }): Promise<SlackSendResult>;
+  openView(triggerId: string, view: SlackModalView): Promise<SlackViewOpenResult>;
 };
 
 export type SlackInteractionPayload = {
@@ -45,12 +67,19 @@ export type SlackInteractionPayload = {
   user?: { id?: string };
   channel?: { id?: string };
   message?: { ts?: string };
+  trigger_id?: string;
   actions?: Array<{ action_id?: string; value?: string }>;
   state?: { values?: Record<string, Record<string, { value?: string }>> };
+  view?: {
+    callback_id?: string;
+    private_metadata?: string;
+    state?: { values?: Record<string, Record<string, { value?: string }>> };
+  };
 };
 
 function buttonStyle(action: RightNowMessageAction): 'primary' | 'danger' | undefined {
-  if (action.id === 'view_draft') return 'primary';
+  if (action.id === RIGHT_NOW_SEND_ACTION_ID) return 'primary';
+  if (action.id === 'view_draft') return undefined;
   return undefined;
 }
 
@@ -102,11 +131,17 @@ export function createTestSafeSlackAdapter(): SlackAdapter {
         response: { ok: true, test_safe: true },
       };
     },
+    async openView() {
+      return { ok: true, mode: 'test_safe', response: { ok: true, test_safe: true } };
+    },
   };
 }
 
 export function createLiveSlackAdapter(botToken: string, fetchImpl: typeof fetch = fetch): SlackAdapter {
-  async function slackApi(method: 'chat.postMessage' | 'chat.update', body: Record<string, unknown>) {
+  async function slackApi(
+    method: 'chat.postMessage' | 'chat.update' | 'views.open',
+    body: Record<string, unknown>,
+  ) {
     const response = await fetchImpl(`https://slack.com/api/${method}`, {
       method: 'POST',
       headers: {
@@ -143,7 +178,131 @@ export function createLiveSlackAdapter(botToken: string, fetchImpl: typeof fetch
         response: redactSlackSecret(json),
       };
     },
+    async openView(triggerId, view) {
+      const json = await slackApi('views.open', { trigger_id: triggerId, view });
+      return { ok: true, mode: 'live', response: redactSlackSecret(json) };
+    },
   };
+}
+
+/**
+ * The review-gated send modal: the deliberate sign-off surface. Shows the recipient
+ * (read-only), an editable subject and body, and the source trail the move was grounded
+ * in. Nothing sends until the user submits — submit IS the authorization. The originating
+ * action id and the message coordinates ride in private_metadata so the sign-off can
+ * execute the real send and update the original ping in place.
+ */
+export function buildReviewSendModal(input: {
+  draft: WorkdayPresenceDraft;
+  sourceLine?: string | null;
+  metadata: ReviewSendModalMetadata;
+}): SlackModalView {
+  const { draft, sourceLine, metadata } = input;
+  const to = draft.to?.trim() || '(recipient unknown)';
+  const subject = draft.title?.trim() || '';
+  const body = (draft.body || draft.preview || '').trim();
+
+  const blocks: Array<Record<string, unknown>> = [
+    { type: 'section', text: { type: 'mrkdwn', text: `*To:* ${to}` } },
+    {
+      type: 'input',
+      block_id: 'review_send_subject',
+      label: { type: 'plain_text', text: 'Subject' },
+      element: {
+        type: 'plain_text_input',
+        action_id: 'subject',
+        initial_value: subject.slice(0, 150),
+      },
+    },
+    {
+      type: 'input',
+      block_id: 'review_send_body',
+      label: { type: 'plain_text', text: 'Message' },
+      element: {
+        type: 'plain_text_input',
+        action_id: 'body',
+        multiline: true,
+        initial_value: body,
+      },
+    },
+  ];
+
+  if (sourceLine && sourceLine.trim()) {
+    blocks.push({
+      type: 'context',
+      elements: [{ type: 'mrkdwn', text: `Grounded in — ${sourceLine.trim()}` }],
+    });
+  }
+
+  blocks.push({
+    type: 'context',
+    elements: [
+      {
+        type: 'mrkdwn',
+        text: ':warning: This sends from *your* Gmail. Review above, then sign off to send.',
+      },
+    ],
+  });
+
+  return {
+    type: 'modal',
+    callback_id: REVIEW_SEND_MODAL_CALLBACK_ID,
+    private_metadata: JSON.stringify(metadata),
+    title: { type: 'plain_text', text: 'Review & send' },
+    submit: { type: 'plain_text', text: 'Send from my Gmail' },
+    close: { type: 'plain_text', text: 'Cancel' },
+    blocks,
+  };
+}
+
+/**
+ * Read a review-send button tap (block_actions). Returns null unless the tapped action is
+ * exactly the review-send button — so the normal action path (view_draft/dismiss/…) is
+ * never disturbed.
+ */
+export function parseSlackReviewSendAction(payload: SlackInteractionPayload): {
+  triggerId: string;
+  channel?: string;
+  messageTs?: string;
+} | null {
+  if (payload.type !== 'block_actions') return null;
+  const action = payload.actions?.[0];
+  const rawId = action?.action_id ?? action?.value;
+  if (rawId !== RIGHT_NOW_SEND_ACTION_ID) return null;
+  const triggerId = payload.trigger_id?.trim();
+  if (!triggerId) return null;
+  return {
+    triggerId,
+    channel: payload.channel?.id,
+    messageTs: payload.message?.ts,
+  };
+}
+
+/** Read the modal sign-off (view_submission). Returns the edited fields + carried metadata. */
+export function parseSlackReviewSendSubmission(payload: SlackInteractionPayload): {
+  metadata: ReviewSendModalMetadata;
+  subject: string;
+  body: string;
+} | null {
+  if (payload.type !== 'view_submission') return null;
+  if (payload.view?.callback_id !== REVIEW_SEND_MODAL_CALLBACK_ID) return null;
+  let metadata: ReviewSendModalMetadata | null = null;
+  try {
+    const parsed = JSON.parse(payload.view?.private_metadata ?? '{}') as Record<string, unknown>;
+    const actionId = typeof parsed.action_id === 'string' ? parsed.action_id.trim() : '';
+    if (!actionId) return null;
+    metadata = {
+      action_id: actionId,
+      channel: typeof parsed.channel === 'string' ? parsed.channel : undefined,
+      message_ts: typeof parsed.message_ts === 'string' ? parsed.message_ts : undefined,
+    };
+  } catch {
+    return null;
+  }
+  const values = payload.view?.state?.values ?? {};
+  const subject = values.review_send_subject?.subject?.value?.trim() ?? '';
+  const body = values.review_send_body?.body?.value?.trim() ?? '';
+  return { metadata, subject, body };
 }
 
 export function resolveSlackAdapterFromEnv(): SlackAdapter {

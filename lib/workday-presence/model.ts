@@ -26,6 +26,14 @@ export type WorkdayPresenceDraft = {
   to?: string;
   /** Full draft body (capped) — what "View Draft" expands in place. */
   body?: string;
+  /**
+   * The originating tkg_actions row id this draft was generated from. Present only
+   * when the move was persisted as an actionable row (daily-brief / seed-from-scorer
+   * paths). It is the handle the review-gated Slack send uses to call executeAction —
+   * without it, the draft is review-only (no "Review & send" button). A draft is never
+   * sent on a fabricated or missing action id.
+   */
+  action_id?: string;
 };
 
 /**
@@ -200,12 +208,14 @@ function normalizeDraft(input: unknown): WorkdayPresenceDraft | null {
   if (!actionType && !title && !preview) return null;
   const to = clean(row.to);
   const body = clean(row.body);
+  const actionId = clean(row.action_id);
   return {
     action_type: actionType ?? 'unknown',
     title: title ?? 'Draft',
     preview: preview ?? '',
     ...(to ? { to } : {}),
     ...(body ? { body } : {}),
+    ...(actionId ? { action_id: actionId } : {}),
   };
 }
 

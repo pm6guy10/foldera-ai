@@ -243,7 +243,41 @@ export async function POST(request: Request) {
     }
 
     const nowIso = new Date().toISOString();
-    const state = directiveToPresenceState(directive, winnerTitle, artifact, nowIso);
+
+    // Persist the move as a pending_approval tkg_actions row so the review-gated Slack
+    // send has a real backing id to call executeAction with. Best-effort: if the insert
+    // fails, the card still seeds (review-only, no send button) — the move keeps its value.
+    let persistedActionId: string | null = null;
+    if (artifact) {
+      try {
+        const { data: savedAction, error: saveActionError } = await supabase
+          .from('tkg_actions')
+          .insert({
+            user_id: auth.userId,
+            action_type: directive.action_type,
+            directive_text: directive.directive,
+            reason: directive.reason,
+            status: 'pending_approval',
+            confidence: directive.confidence,
+            evidence: directive.evidence,
+            generated_at: nowIso,
+            generation_attempts: 1,
+            artifact,
+            execution_result: { artifact },
+          })
+          .select('id')
+          .single();
+        if (saveActionError || !savedAction?.id) {
+          console.warn('[seed-from-scorer] action persist failed:', saveActionError?.message);
+        } else {
+          persistedActionId = savedAction.id;
+        }
+      } catch (persistError: unknown) {
+        console.warn('[seed-from-scorer] action persist threw:', persistError);
+      }
+    }
+
+    const state = directiveToPresenceState(directive, winnerTitle, artifact, nowIso, persistedActionId);
     const updateResult = await supabase.auth.admin.updateUserById(auth.userId, {
       user_metadata: {
         ...metadata,

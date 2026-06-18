@@ -3,8 +3,17 @@ import { NextResponse } from 'next/server';
 
 const mockInsert = vi.fn();
 const mockUpdate = vi.fn();
+const mockMaybeSingle = vi.fn();
 const mockGetUserById = vi.fn();
 const mockUpdateUserById = vi.fn();
+
+const queryChain = {
+  select: vi.fn(() => queryChain),
+  eq: vi.fn(() => queryChain),
+  maybeSingle: mockMaybeSingle,
+  insert: mockInsert,
+  update: mockUpdate,
+};
 
 const mockSupabase = {
   auth: {
@@ -13,26 +22,33 @@ const mockSupabase = {
       updateUserById: mockUpdateUserById,
     },
   },
-  from: vi.fn().mockReturnValue({
-    insert: mockInsert,
-    update: mockUpdate,
-  }),
+  from: vi.fn(() => queryChain),
 };
 
 const mockVerifySignature = vi.fn();
 const mockParseSlackInteractionAction = vi.fn();
+const mockParseReviewSendAction = vi.fn();
+const mockParseReviewSendSubmission = vi.fn();
+const mockBuildReviewSendModal = vi.fn(() => ({ callback_id: 'foldera_review_send' }));
 const mockUpdateMessage = vi.fn();
+const mockOpenView = vi.fn();
 const mockSlackAdapter = {
   updateMessage: mockUpdateMessage,
+  openView: mockOpenView,
 };
+const mockExecuteAction = vi.fn();
 
 vi.mock('@/lib/db/client', () => ({ createServerClient: () => mockSupabase }));
 vi.mock('@/lib/slack/right-now', () => ({
   verifySlackRequestSignature: mockVerifySignature,
   parseSlackInteractionAction: mockParseSlackInteractionAction,
+  parseSlackReviewSendAction: mockParseReviewSendAction,
+  parseSlackReviewSendSubmission: mockParseReviewSendSubmission,
+  buildReviewSendModal: mockBuildReviewSendModal,
   resolveSlackAdapterFromEnv: () => mockSlackAdapter,
   buildSlackRightNowMessage: (payload: any, channel: string) => ({ channel, text: 'mock' }),
 }));
+vi.mock('@/lib/conviction/execute-action', () => ({ executeAction: mockExecuteAction }));
 
 const mockApiErrorForRoute = vi.fn((err: any) =>
   NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 }),
@@ -62,6 +78,26 @@ const activeState = {
   updated_at: '2026-05-20T12:10:00.000Z',
 };
 
+const sendState = {
+  ...activeState,
+  state_source: 'scored_winner',
+  draft: {
+    action_type: 'send_message',
+    title: 'Q2 budget confirmation',
+    preview: 'Confirming the Q2 budget numbers ahead of the 4pm close.',
+    body: 'Hi Sarah, confirming the Q2 budget numbers ahead of the 4pm close. — Brandon',
+    to: 'sarah@acme.com',
+    action_id: 'action-q2-budget',
+  },
+};
+
+function postBody() {
+  return new Request('http://localhost/api/slack/interaction', {
+    method: 'POST',
+    body: 'payload=%7B%7D',
+  });
+}
+
 describe('POST /api/slack/interaction', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -75,6 +111,9 @@ describe('POST /api/slack/interaction', () => {
     });
     mockInsert.mockResolvedValue({ error: null });
     mockUpdateUserById.mockResolvedValue({ data: {}, error: null });
+    // Default: not a review-send button and not a modal sign-off.
+    mockParseReviewSendAction.mockReturnValue(null);
+    mockParseReviewSendSubmission.mockReturnValue(null);
   });
 
   it('rejects invalid signature', async () => {
@@ -82,12 +121,7 @@ describe('POST /api/slack/interaction', () => {
     mockParseSlackInteractionAction.mockReturnValue({ actionId: 'dismiss' });
 
     const { POST } = await import('../route');
-    const response = await POST(
-      new Request('http://localhost/api/slack/interaction', {
-        method: 'POST',
-        body: 'payload=%7B%7D',
-      }),
-    );
+    const response = await POST(postBody());
     const body = await response.json();
 
     expect(response.status).toBe(401);
@@ -103,12 +137,7 @@ describe('POST /api/slack/interaction', () => {
     mockUpdateMessage.mockResolvedValue({ ok: true, message_ts: '12345.678' });
 
     const { POST } = await import('../route');
-    const response = await POST(
-      new Request('http://localhost/api/slack/interaction', {
-        method: 'POST',
-        body: 'payload=%7B%7D',
-      }),
-    );
+    const response = await POST(postBody());
     const body = await response.json();
 
     expect(response.status).toBe(200);
@@ -127,17 +156,104 @@ describe('POST /api/slack/interaction', () => {
     mockInsert.mockResolvedValue({ error: new Error('Durable action receipt write failed') });
 
     const { POST } = await import('../route');
-    const response = await POST(
-      new Request('http://localhost/api/slack/interaction', {
-        method: 'POST',
-        body: 'payload=%7B%7D',
-      }),
-    );
+    const response = await POST(postBody());
     const body = await response.json();
 
     expect(response.status).toBe(500);
     expect(mockInsert).toHaveBeenCalledTimes(1);
     expect(mockUpdateUserById).not.toHaveBeenCalled();
     expect(body.error).toContain('Durable action receipt write failed');
+  });
+
+  it('opens the review modal on the review-send button without sending', async () => {
+    mockGetUserById.mockResolvedValue({
+      data: { user: { user_metadata: { workday_presence_state: sendState } } },
+      error: null,
+    });
+    mockParseReviewSendAction.mockReturnValue({
+      triggerId: 'trigger-123',
+      channel: 'C123',
+      messageTs: '12345.678',
+    });
+    mockOpenView.mockResolvedValue({ ok: true, mode: 'test_safe', response: { ok: true } });
+
+    const { POST } = await import('../route');
+    const response = await POST(postBody());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockOpenView).toHaveBeenCalledTimes(1);
+    expect(mockOpenView).toHaveBeenCalledWith('trigger-123', expect.any(Object));
+    expect(mockExecuteAction).not.toHaveBeenCalled();
+    expect(body.acknowledged).toBe(true);
+  });
+
+  it('refuses to open the modal when there is no sendable draft', async () => {
+    mockParseReviewSendAction.mockReturnValue({ triggerId: 'trigger-123' });
+
+    const { POST } = await import('../route');
+    const response = await POST(postBody());
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(mockOpenView).not.toHaveBeenCalled();
+    expect(body.error).toContain('No sendable draft');
+  });
+
+  it('executes the real send on modal sign-off and confirms in the original message', async () => {
+    mockParseReviewSendSubmission.mockReturnValue({
+      metadata: { action_id: 'action-q2-budget', channel: 'C123', message_ts: '12345.678' },
+      subject: 'Q2 budget confirmation',
+      body: 'Hi Sarah, confirming the Q2 numbers. — Brandon',
+    });
+    mockMaybeSingle.mockResolvedValue({
+      data: { artifact: { to: 'sarah@acme.com', subject: 'Q2 budget confirmation', body: 'orig' }, execution_result: {} },
+      error: null,
+    });
+    mockExecuteAction.mockResolvedValue({
+      status: 'executed',
+      action_id: 'action-q2-budget',
+      result: { sent: true, sent_via: 'gmail' },
+    });
+    mockUpdateMessage.mockResolvedValue({ ok: true });
+
+    const { POST } = await import('../route');
+    const response = await POST(postBody());
+
+    expect(response.status).toBe(200);
+    expect(mockExecuteAction).toHaveBeenCalledTimes(1);
+    expect(mockExecuteAction).toHaveBeenCalledWith(
+      expect.objectContaining({ actionId: 'action-q2-budget', decision: 'approve' }),
+    );
+    // The reviewed subject/body are sent (edited artifact), recipient preserved.
+    const call = mockExecuteAction.mock.calls[0][0];
+    expect(call.editedArtifact).toMatchObject({ type: 'email', to: 'sarah@acme.com', body: 'Hi Sarah, confirming the Q2 numbers. — Brandon' });
+    // The original ping is updated to a sent confirmation.
+    expect(mockUpdateMessage).toHaveBeenCalledTimes(1);
+    expect(mockUpdateMessage.mock.calls[0][0].text).toContain('Sent to sarah@acme.com');
+  });
+
+  it('reports the armed-off state honestly when live send is disabled', async () => {
+    mockParseReviewSendSubmission.mockReturnValue({
+      metadata: { action_id: 'action-q2-budget', channel: 'C123', message_ts: '12345.678' },
+      subject: 'Q2 budget confirmation',
+      body: 'Hi Sarah',
+    });
+    mockMaybeSingle.mockResolvedValue({
+      data: { artifact: { to: 'sarah@acme.com', subject: 's', body: 'b' }, execution_result: {} },
+      error: null,
+    });
+    mockExecuteAction.mockResolvedValue({
+      status: 'executed',
+      action_id: 'action-q2-budget',
+      result: { sent: false, email_send_disabled: true },
+    });
+    mockUpdateMessage.mockResolvedValue({ ok: true });
+
+    const { POST } = await import('../route');
+    const response = await POST(postBody());
+
+    expect(response.status).toBe(200);
+    expect(mockUpdateMessage.mock.calls[0][0].text).toContain('ALLOW_APPROVAL_EMAIL_SEND');
   });
 });

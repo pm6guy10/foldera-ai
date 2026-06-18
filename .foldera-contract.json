@@ -1,37 +1,41 @@
 {
-  "backlog_id": "between-rungs",
-  "active_issue": "none",
+  "backlog_id": "indispensability-review-gated-send",
+  "active_issue": 402,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Between rungs. The live product thread is the GUARDIAN (workday-presence): it fires, grounds a real commitment, and pings Slack only when it has a reviewable move. This session shipped #397 (brief seeds the matched draft at generation time, deterministic — retiring the fuzzy recycle for the brief path) and #399 (commitment-title hygiene — the card no longer shows the SYNC: dedup key). The one live-readiness blocker is owner-side: the free external 15-min cron for firing cadence. Remaining code candidates: cyan favicons (tooling-blocked), stale-branch/skipped-test triage. Constraint: NO paid API calls to test — prove in the harness.",
+  "user_system_path": "Seam #402 — the indispensability pass: 'act, don't assign homework.' The guardian's Slack ping carries a primary Review & send button (only for grounded send_message drafts backed by a real tkg_actions id). It opens a Slack modal — recipient read-only, editable subject + body, source trail — and submit IS the explicit sign-off, which runs the existing executeAction layer to send from the owner's own Gmail, updates the ping to '✓ Sent', records the move done, and flips the row to executed (visible in dashboard Recent Work). No auto-send; live send stays behind ALLOW_APPROVAL_EMAIL_SEND. Constraint: NO paid API calls to test — Gmail send mocked at the boundary; Slack adapter test-safe.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "docs/**"
+    "docs/**",
+    "lib/workday-presence/**",
+    "lib/slack/**",
+    "lib/cron/daily-brief-generate.ts",
+    "app/api/slack/**",
+    "app/api/workday-presence/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
-    "app/api/**",
-    "lib/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Between rungs — only control-plane + docs may change until the owner names the next seam (which re-scopes this contract).",
-  "forbidden_files_raw": "No product/runtime/schema/deps changes without an active seam + scoped contract.",
-  "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "N/A — between rungs.",
-  "browser_proof_command": "N/A",
-  "acceptance_condition": "Control plane is consistent in the between-rungs form (build-order active_issue: none, contract active_issue: none, no active-seam line in ACTIVE_HANDOFF) and gate:continuity passes.",
-  "is_user_facing": false,
+  "allowed_files_raw": "Seam #402: the review-gated send wiring — workday-presence model/message/seed mapping, the Slack adapter + interaction route, the seed-from-scorer + daily-brief seed call sites, plus control-plane + docs.",
+  "forbidden_files_raw": "No schema (supabase/**) and no dependency changes (package.json / lock) — the send reuses the existing executeAction + Gmail layer.",
+  "required_local_proof": "npm run gate:continuity && npm run build && npm run lint",
+  "required_browser_proof": "Harness-proven (224 workday-presence/slack/conviction tests + new interaction-route send tests). Live owner validation is owner-side: set ALLOW_APPROVAL_EMAIL_SEND=true, trigger a guardian ping, tap Review & send, sign off, confirm a real Gmail send — BLOCKED_WITH_EXACT_RECEIPT until then.",
+  "browser_proof_command": "npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list",
+  "acceptance_condition": "Review & send appears only on grounded send_message drafts with a real action_id; the modal sign-off executes via executeAction and updates the ping; armed-off path reports email_send_disabled honestly; no send without a backing action_id; gate:continuity + build + lint green.",
+  "is_user_facing": true,
   "anti_regression_checks": [
-    "gate:continuity green in between-rungs form",
-    "no active-seam line in ACTIVE_HANDOFF.md",
-    "no product/runtime files changed"
+    "gate:continuity green",
+    "no send path without an explicit modal sign-off (no auto-send)",
+    "no send without a real tkg_actions action_id behind the draft",
+    "no schema or dependency changes"
   ],
-  "stop_condition": "Stop when the control plane is rolled forward to a clean between-rungs state and the owner has a boot prompt for the next session.",
-  "next_command": "New session: read ACTIVE_HANDOFF.md + FOLDERA_MASTER_BIBLE.md Part II-B; the owner names the next seam — likely the owner-side external 15-min cron for guardian firing cadence (the one live-readiness blocker), or a code candidate (cyan favicons once image tooling exists; stale-branch/skipped-test triage).",
+  "stop_condition": "Stop when the draft PR for #402 is open with CI green, or BLOCKED_WITH_EXACT_RECEIPT on the owner-side live send validation.",
+  "next_command": "Owner: set ALLOW_APPROVAL_EMAIL_SEND=true in prod, trigger a guardian ping, tap Review & send, sign off, and confirm a real Gmail send + '✓ Sent'. Separately still open: the free external 15-min cron for guardian firing cadence.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
