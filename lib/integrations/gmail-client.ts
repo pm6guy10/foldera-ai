@@ -10,6 +10,7 @@
 
 import { google } from 'googleapis';
 import { getGoogleTokens } from '@/lib/auth/token-store';
+import { buildRfc2822Message, type EmailAttachment } from '@/lib/email/attachments';
 
 /** Ensure Message-ID form for In-Reply-To / References headers. */
 function normalizeMessageIdHeader(value: string): string {
@@ -29,6 +30,8 @@ export type SendGmailEmailOptions = {
   inReplyTo?: string | null;
   /** Space-separated prior Message-IDs for threading (often includes in_reply_to). */
   references?: string | null;
+  /** Finished work products to attach (multipart/mixed when present). */
+  attachments?: EmailAttachment[] | null;
 };
 
 /**
@@ -37,7 +40,7 @@ export type SendGmailEmailOptions = {
  */
 export async function sendGmailEmail(
   userId: string,
-  { to, subject, body, threadId, inReplyTo, references }: SendGmailEmailOptions,
+  { to, subject, body, threadId, inReplyTo, references, attachments }: SendGmailEmailOptions,
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const tokens = await getGoogleTokens(userId);
   if (!tokens) return { success: false, error: 'No Google tokens for user' };
@@ -54,16 +57,23 @@ export async function sendGmailEmail(
 
   const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-  // RFC 2822 message (optional reply headers for in-thread delivery)
-  const messageParts: string[] = [`To: ${to}`, `Subject: ${subject}`];
+  // RFC 2822 message — single text/plain part, or multipart/mixed when the move
+  // carries finished work products. Reply headers keep it in-thread.
+  const headers: Array<{ name: string; value: string }> = [];
   if (inReplyTo?.trim()) {
-    messageParts.push(`In-Reply-To: ${normalizeMessageIdHeader(inReplyTo)}`);
+    headers.push({ name: 'In-Reply-To', value: normalizeMessageIdHeader(inReplyTo) });
   }
   if (references?.trim()) {
-    messageParts.push(`References: ${references.trim()}`);
+    headers.push({ name: 'References', value: references.trim() });
   }
-  messageParts.push('Content-Type: text/plain; charset=UTF-8', '', body);
-  const raw = Buffer.from(messageParts.join('\r\n'))
+  const message = buildRfc2822Message({
+    to,
+    subject,
+    headers,
+    body,
+    attachments: attachments ?? [],
+  });
+  const raw = Buffer.from(message)
     .toString('base64')
     .replace(/\+/g, '-')
     .replace(/\//g, '_')

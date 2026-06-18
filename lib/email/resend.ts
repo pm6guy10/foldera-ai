@@ -461,6 +461,7 @@ export async function sendResendEmail({
   html,
   from,
   tags,
+  attachments,
 }: {
   to: string | string[];
   subject: string;
@@ -468,6 +469,8 @@ export async function sendResendEmail({
   html?: string;
   from?: string;
   tags?: Array<{ name: string; value: string }>;
+  /** { filename, content } where content is base64 — see toResendAttachments. */
+  attachments?: Array<{ filename: string; content: string }>;
 }) {
   return getResend().emails.send({
     from: from ?? process.env.RESEND_FROM_EMAIL ?? DEFAULT_RESEND_FROM,
@@ -476,6 +479,7 @@ export async function sendResendEmail({
     ...(text ? { text } : {}),
     ...(html ? { html } : {}),
     ...(tags ? { tags } : {}),
+    ...(attachments && attachments.length > 0 ? { attachments } : {}),
   } as any);
 }
 

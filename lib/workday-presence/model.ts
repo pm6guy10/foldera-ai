@@ -1,3 +1,9 @@
+import {
+  normalizeEmailAttachments,
+  describeAttachments,
+  type EmailAttachment,
+} from '@/lib/email/attachments';
+
 export type WorkdayPresenceSourceTrailEntry = {
   table: 'tkg_signals' | 'tkg_commitments' | 'tkg_actions';
   source: string;
@@ -26,6 +32,13 @@ export type WorkdayPresenceDraft = {
   to?: string;
   /** Full draft body (capped) — what "View Draft" expands in place. */
   body?: string;
+  /**
+   * Finished work products that ride with the send (budget doc / forecast / memo).
+   * Surfaced read-only on the review surface so the sign-off shows exactly what
+   * leaves the mailbox. The grounded source of truth for the actual bytes is the
+   * stored tkg_actions artifact; this mirror is for display.
+   */
+  attachments?: EmailAttachment[];
   /**
    * The originating tkg_actions row id this draft was generated from. Present only
    * when the move was persisted as an actionable row (daily-brief / seed-from-scorer
@@ -209,12 +222,14 @@ function normalizeDraft(input: unknown): WorkdayPresenceDraft | null {
   const to = clean(row.to);
   const body = clean(row.body);
   const actionId = clean(row.action_id);
+  const attachments = normalizeEmailAttachments(row.attachments);
   return {
     action_type: actionType ?? 'unknown',
     title: title ?? 'Draft',
     preview: preview ?? '',
     ...(to ? { to } : {}),
     ...(body ? { body } : {}),
+    ...(attachments.length > 0 ? { attachments } : {}),
     ...(actionId ? { action_id: actionId } : {}),
   };
 }
@@ -389,11 +404,15 @@ export function buildRightNowCard(state: WorkdayPresenceState | null, nowIso = n
   const stopWhenDone = state.waiting_on
     ? `Stop when this is done: ${state.waiting_on}`
     : `Stop when this is done: ${state.current_focus} moved forward.`;
+  const draftAttachments = state.draft?.attachments ?? [];
   const draftExpanded =
     state.draft && lastInteraction?.interaction_type === 'view_draft'
       ? [
           state.draft.to ? `To: ${state.draft.to}` : null,
           `Subject: ${state.draft.title}`,
+          draftAttachments.length > 0
+            ? `Attachments: ${describeAttachments(draftAttachments)}`
+            : null,
           state.draft.body || state.draft.preview,
         ]
           .filter(Boolean)
@@ -414,7 +433,11 @@ export function buildRightNowCard(state: WorkdayPresenceState | null, nowIso = n
       ? `Last interaction: ${lastInteraction.interaction_type} at ${lastInteraction.timestamp}`
       : null,
     draft_ready: state.draft && draftIsReviewable(state.draft)
-      ? `Draft ready (${state.draft.action_type}): ${state.draft.title}`
+      ? `Draft ready (${state.draft.action_type}): ${state.draft.title}${
+          draftAttachments.length > 0
+            ? ` — ${draftAttachments.length} attached (${describeAttachments(draftAttachments)})`
+            : ''
+        }`
       : null,
     draft_expanded: draftExpanded,
   };

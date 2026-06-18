@@ -8,6 +8,7 @@ import {
   type RightNowMessagePayload,
 } from '@/lib/workday-presence/message';
 import type { WorkdayPresenceDraft } from '@/lib/workday-presence/model';
+import { describeAttachments } from '@/lib/email/attachments';
 import { redactSlackSecret } from './redaction';
 
 /** Modal that carries the review-gated send sign-off. */
@@ -227,6 +228,21 @@ export function buildReviewSendModal(input: {
     },
   ];
 
+  const attachments = draft.attachments ?? [];
+  if (attachments.length > 0) {
+    blocks.push({
+      type: 'context',
+      elements: [
+        {
+          type: 'mrkdwn',
+          text: `:paperclip: Attaching ${attachments.length} file${
+            attachments.length === 1 ? '' : 's'
+          }: ${describeAttachments(attachments)}`,
+        },
+      ],
+    });
+  }
+
   if (sourceLine && sourceLine.trim()) {
     blocks.push({
       type: 'context',
@@ -239,7 +255,7 @@ export function buildReviewSendModal(input: {
     elements: [
       {
         type: 'mrkdwn',
-        text: ':warning: This sends from *your* Gmail. Review above, then sign off to send.',
+        text: ':warning: This sends from *your* Gmail with the attachments above. Review, then sign off to send.',
       },
     ],
   });

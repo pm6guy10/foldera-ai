@@ -81,6 +81,12 @@ export interface EmailArtifact {
   subject: string;
   body: string;
   draft_type: 'email_compose' | 'email_reply';
+  /**
+   * Finished work products that ride with the send — the budget doc / forecast /
+   * memo the brain drafted. The email is the work, not a note about it. Content is
+   * the artifact the generator produced, never a fabricated external file.
+   */
+  attachments?: import('@/lib/email/attachments').EmailAttachment[];
   /** When true, generator failed; persistence skips strict artifact gates so a brief can still ship. */
   emergency_fallback?: boolean;
   /** Gmail thread id for `users.messages.send` so replies stay in the same thread. */

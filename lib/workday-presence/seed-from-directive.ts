@@ -10,6 +10,7 @@
 import { BUDGET_CAP_DIRECTIVE_SENTINEL } from '@/lib/briefing/generator';
 import type { createServerClient } from '@/lib/db/client';
 import type { ConvictionArtifact, ConvictionDirective } from '@/lib/briefing/types';
+import { normalizeEmailAttachments } from '@/lib/email/attachments';
 import {
   normalizeWorkdayPresenceState,
   type WorkdayPresenceDraft,
@@ -51,6 +52,7 @@ export function draftFromArtifact(
     str(record.context);
   const to = str(record.to);
   const trimmedActionId = typeof actionId === 'string' ? actionId.trim() : '';
+  const attachments = normalizeEmailAttachments(record.attachments);
 
   return {
     action_type: directive.action_type,
@@ -58,6 +60,7 @@ export function draftFromArtifact(
     preview: body.replace(/\s+/g, ' ').slice(0, 240),
     ...(to ? { to } : {}),
     ...(body ? { body: body.slice(0, 2000) } : {}),
+    ...(attachments.length > 0 ? { attachments } : {}),
     ...(trimmedActionId ? { action_id: trimmedActionId } : {}),
   };
 }

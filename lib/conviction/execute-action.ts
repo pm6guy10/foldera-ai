@@ -18,6 +18,7 @@ import {
   renderWriteDocumentReadyEmailHtml,
   sendResendEmail,
 } from '@/lib/email/resend';
+import { normalizeEmailAttachments, toResendAttachments } from '@/lib/email/attachments';
 import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-users';
 import { updateMlSnapshotOutcome } from '@/lib/ml/directive-ml-snapshot';
 import { reinforceAttentionForAction } from '@/lib/signals/entity-attention-runtime';
@@ -319,6 +320,12 @@ async function executeArtifact(
               : undefined;
         const references =
           typeof artifact.references === 'string' ? artifact.references : undefined;
+        // Finished work products ride with the send. Normalized at the boundary so a
+        // malformed or oversized attachment list can never reach a provider call.
+        const attachments = normalizeEmailAttachments(artifact.attachments);
+        if (attachments.length > 0) {
+          out.attachment_count = attachments.length;
+        }
         if (!approvalEmailSendEnabled()) {
           out = { ...out, ...disabledEmailSendResult() };
           console.log(
@@ -340,6 +347,7 @@ async function executeArtifact(
               threadId: gmailThreadId ?? null,
               inReplyTo: inReplyTo ?? null,
               references: references ?? null,
+              ...(attachments.length > 0 ? { attachments } : {}),
             });
             if (gmailResult.success) {
               out = { ...out, sent: true, sent_at: now, sent_via: 'gmail' };
@@ -358,6 +366,7 @@ async function executeArtifact(
               body,
               inReplyTo: inReplyTo ?? null,
               references: references ?? null,
+              ...(attachments.length > 0 ? { attachments } : {}),
             });
             if (outlookResult.success) {
               out = { ...out, sent: true, sent_at: now, sent_via: 'outlook' };
@@ -380,6 +389,9 @@ async function executeArtifact(
                 { name: 'user_id', value: userId },
                 { name: 'action_id', value: actionId },
               ],
+              ...(attachments.length > 0
+                ? { attachments: toResendAttachments(attachments) }
+                : {}),
             });
             const resendError =
               delivery && typeof delivery === 'object' && 'error' in delivery
@@ -409,6 +421,7 @@ async function executeArtifact(
                 threadId: gmailThreadId ?? null,
                 inReplyTo: inReplyTo ?? null,
                 references: references ?? null,
+                ...(attachments.length > 0 ? { attachments } : {}),
               })
             : await sendOutlookEmail(userId, {
                 to,
@@ -416,6 +429,7 @@ async function executeArtifact(
                 body,
                 inReplyTo: inReplyTo ?? null,
                 references: references ?? null,
+                ...(attachments.length > 0 ? { attachments } : {}),
               });
           if (result.success) {
             out = { ...out, sent: true, sent_at: now };

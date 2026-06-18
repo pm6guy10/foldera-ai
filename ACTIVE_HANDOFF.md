@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-18 UTC (active seam #402 — review-gated one-tap Slack send; branch `claude/app-indispensability-plan-4mzo87`)
+Last updated: 2026-06-18 UTC (active seam #404 — email draft attachments; branch `claude/email-draft-attachments-2ek5np`)
 
 ## Boot
 
@@ -35,15 +35,17 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 ## Current slice:
 
-Issue #402 is the active product seam.
+Issue #404 is the active product seam.
 
-#402 — review-gated one-tap Slack send (the indispensability pass: "act, don't assign homework"). The guardian's Slack ping now carries a primary **Review & send** button (only for grounded `send_message` drafts backed by a real `tkg_actions` id). It opens a Slack modal — recipient read-only, editable subject + body, source trail — and submit IS the explicit sign-off → `executeAction` sends from the owner's own Gmail (the existing send layer), updates the ping to "✓ Sent", records the move done, and the row flips to `executed` (shows in dashboard Recent Work). Live send stays behind `ALLOW_APPROVAL_EMAIL_SEND`; flag-off path reports `email_send_disabled` honestly. No auto-send — honors the `do_not_touch` contract. Files: `lib/workday-presence/{model,message,seed-from-directive}.ts`, `lib/slack/right-now.ts`, `app/api/slack/interaction/route.ts`, `app/api/workday-presence/seed-from-scorer/route.ts`, `lib/cron/daily-brief-generate.ts`.
+#404 — email draft attachments: the send carries the finished work, not just a note. Builds on #402's review-gated one-tap send. The budget doc / forecast / memo the brain drafted rides with the email as an attachment, listed read-only on the Slack review modal so the sign-off shows exactly what leaves the mailbox. Attachment content is the generated artifact, never fabricated; bounded by count (5) + size (5 MB/file, 10 MB total) caps validated at the boundary. Reuses the existing `executeAction` send layer — Gmail builds `multipart/mixed` when attachments are present (single text/plain path unchanged otherwise), Outlook adds Graph `fileAttachment`, Resend adds `{filename,content}`; `attachment_count` recorded. No new send path, no auto-send. New dependency-free `lib/email/attachments.ts` (normalize/cap, RFC 2822 multipart builder, Graph + Resend mappers). Files: `lib/email/{attachments,resend}.ts`, `lib/integrations/{gmail,outlook}-client.ts`, `lib/conviction/execute-action.ts`, `lib/briefing/types.ts`, `lib/workday-presence/{model,seed-from-directive}.ts`, `lib/slack/right-now.ts`, `app/api/slack/interaction/route.ts`.
+
+#402 (review-gated one-tap Slack send) is the foundation — PR #403 OPEN, awaiting the same owner-side live send validation.
 
 ## Next exact move
 
-1. Open the draft PR for `claude/app-indispensability-plan-4mzo87` → #402; get CI green.
-2. Proof so far (free): 224 harness tests green (workday-presence + slack + conviction execute-action), new interaction-route tests (open-modal / real send with edited artifact / armed-off honesty / no-send-without-action_id), `tsc` 0 new errors, lint clean. `gate:continuity` + `build` before PR.
-3. Live owner validation is the one owner-side step: set `ALLOW_APPROVAL_EMAIL_SEND=true`, trigger a guardian ping, tap **Review & send**, sign off, confirm a real Gmail send + "✓ Sent". Until then the live path is `BLOCKED_WITH_EXACT_RECEIPT`. Separately STILL OPEN owner-side: the free external 15-min cron for guardian firing cadence.
+1. Open the draft PR for `claude/email-draft-attachments-2ek5np` → #404; get CI green.
+2. Proof so far (free): full related suites green (workday-presence + slack + conviction + email + integrations + app/api/slack), new `lib/email/__tests__/attachments.test.ts` + draft/model/seed/modal/execute-action coverage, `tsc` 0 new errors, lint clean. `gate:continuity` + `build` before PR.
+3. Live owner validation is the one owner-side step: set `ALLOW_APPROVAL_EMAIL_SEND=true`, trigger a guardian ping on a draft with attachments, tap **Review & send**, sign off, confirm a real Gmail send with the file attached. Until then the live path is `BLOCKED_WITH_EXACT_RECEIPT`. Separately STILL OPEN owner-side: the free external 15-min cron for guardian firing cadence.
 4. Constraint reminder: NO paid API calls to test — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.

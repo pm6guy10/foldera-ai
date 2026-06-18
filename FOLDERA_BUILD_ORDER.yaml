@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 402
+active_issue: 404
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Owner directive 'make the app helpful to me RN — it's forgettable, do an I-cant-live-without-this pass.' Foldera is the Bible's brain-with-no-hands: the guardian drafts a real email and pings Slack, but the only buttons are View Draft + Dismiss — the owner still has to open Gmail and do it himself. #402 closes the loop: a review-gated one-tap send on the Slack ping that executes the drafted move from the owner's own Gmail via the existing executeAction layer. Highest-leverage indispensability move and doctrine-perfect (brain→hands, one intervention, explicit sign-off, never auto-send)."
-next_seam: "Complete #402: open the draft PR for branch claude/app-indispensability-plan-4mzo87, get CI green. Live owner validation (set ALLOW_APPROVAL_EMAIL_SEND=true, trigger a guardian ping, tap Review & send, confirm a real Gmail send) is the one owner-side step — BLOCKED_WITH_EXACT_RECEIPT until then. STILL OPEN owner-side: the free external 15-min cron for guardian firing cadence (separate blocker)."
+why_this_first: "Owner directive: the app is not simply an email draft generator — 'the way the work gets done is: send an email and it has the work attached. Here's the updated budget doc, the sales presentation, the forecasting sheet — the evidence of why Foldera said to do this.' #402 wired the review-gated hands (send from the owner's own Gmail). #404 makes the thing that gets sent the actual work: the budget doc / forecast / memo the brain drafted rides with the email as an attachment, surfaced read-only on the review surface. Without it the send is still homework ('now go find the file and attach it'). Grounded (attachment content is the generated artifact, never fabricated), bounded (count + size caps), and reuses #402's executeAction sign-off — no new send path."
+next_seam: "Complete #404: open the draft PR for branch claude/email-draft-attachments-2ek5np, get CI green. Live owner validation (set ALLOW_APPROVAL_EMAIL_SEND=true, trigger a guardian ping on a draft with attachments, tap Review & send, confirm a real Gmail send with the file attached) is the one owner-side step — BLOCKED_WITH_EXACT_RECEIPT until then. STILL OPEN owner-side: the free external 15-min cron for guardian firing cadence; #402 PR #403 awaits the same live send validation."
 completed_issue_399:
   issue: 399
   pr: 400
