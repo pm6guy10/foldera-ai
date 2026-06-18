@@ -26,17 +26,27 @@ Use web search / open these and match the craft. Other owner assets to mine: Fig
 
 - **Logo mark:** `public/foldera-glyph.svg`, always via `<FolderaMark />` (`components/nav/FolderaMark.tsx`). Never re-draw the mark inline.
 - **Wordmark:** "Foldera", Inter, weight 600, tight tracking (-0.025em).
-- **Accent:** match the approved AI Studio reference — a **warm signal accent (amber/gold direction)** on a near-black canvas. (The live repo previously used electric cyan `#22D3EE`; that was not the approved direction. Confirm the exact accent hue from the reference build / Figma before finalizing — but default warm, not cyan, unless the owner says otherwise.) One dominant accent only; use it sparingly and precisely.
+- **Accent:** **CONFIRMED amber/gold `#F5A623`** (hover `#FFC25C`, deep `#B4760F`) on a warm near-black canvas — owner-approved 2026-06-17 (#378/#382), app-wide. The electric-cyan `#22D3EE` era is fully retired. One dominant accent only; use it sparingly and precisely (the one primary action, the live "ready" state, small highlights).
 
-## 4. Color tokens (dark canvas)
+## 4. Color tokens (dark canvas) — IMPLEMENTED (#382)
 
-Encode as CSS variables in `app/globals.css` and Tailwind theme; never hard-code raw hex in components.
+Token-driven; never hard-code raw hex in components. Two coordinated layers, both warm-amber:
 
-- Canvas: near-black, slightly warm (e.g. `#0A0A0C`–`#0E0F12`). Layer 2 surface a few % lighter.
-- Text: high-contrast off-white primary (`#F5F6F8`), muted (`#9AA0AA`), dim (`#5A606B`).
-- Borders/hairlines: very low-alpha white (`rgba(255,255,255,0.06–0.10)`).
-- Accent (warm): a confident amber/gold for the single signal — used on the one primary action, the live "ready" state, and small highlights. Plus success-green and danger-red for status only.
-- Depth comes from **layered surfaces + soft shadows + subtle gradient**, not neon glow.
+**A. App-wide Tailwind tokens** (`tailwind.config.js` → use as `bg-bg`, `bg-panel`, `text-text-primary`, `text-accent`, `border-border`, etc.):
+
+| Token | Hex | Use |
+|---|---|---|
+| `bg` | `#0A0A0C` | page canvas (warm near-black) |
+| `panel` | `#131318` | card / panel surface |
+| `panel-raised` | `#1A1B21` | elevated panel, hover |
+| `border` / `border-subtle` / `border-strong` | `#26262D` / `#191920` / `#34343D` | hairlines → prominent |
+| `text-primary` / `text-secondary` / `text-muted` | `#F5F6F8` / `#C8CCD4` / `#9AA0AA` | headings → body → dim |
+| `accent` / `accent-hover` / `accent-dim` | `#F5A623` / `#FFC25C` / `#B4760F` | the single signal |
+| `success` | `#34D399` | status only |
+
+**B. Landing `.ld` layer** (`app/globals.css`, `--ld-*` CSS vars) mirrors the same palette for the marketing surface (`--ld-bg #0A0A0C`, `--ld-accent #F5A623`, `--ld-fg #F5F6F8`, hairlines `rgba(255,255,255,0.07–0.11)`). **C. `/demo`** uses `app/demo/demo.css` oklch tokens tuned to the same warm-amber hue (~70–75) / warm neutrals (~70).
+
+- Depth comes from **layered surfaces + soft shadows + subtle amber gradient**, not neon glow. Atmosphere = a faint amber aurora upper-right (`.ld-aurora` / `.foldera-app-surface`), never a blue/cyan wash.
 
 ## 5. Typography
 
@@ -44,7 +54,8 @@ Encode as CSS variables in `app/globals.css` and Tailwind theme; never hard-code
 - **Body:** Inter (`--font-sans`, Tailwind `font-sans`), 16–18px, leading ~1.6, muted color.
 - **Mono (labels/eyebrows/data):** JetBrains Mono (`--font-mono`, Tailwind `font-mono`) — uppercase, tracked (0.16–0.28em) for eyebrows; tabular for data.
 - Scale (px / line-height): Display 56–72 / 1.0 · H1 40–48 / 1.05 · H2 30–36 / 1.1 · H3 20–24 / 1.2 · Body 16–18 / 1.6 · Caption 13 / 1.5 · Mono-label 11–12 / 1.4.
-- Fluid with `clamp()` so it scales desktop→mobile.
+- **Fluid `clamp()` tokens (IMPLEMENTED, `app/globals.css :root`):** `--fs-display: clamp(2.6rem,1.55rem+4.6vw,4.5rem)` · `--fs-h1: clamp(2.1rem,1.55rem+2.5vw,3rem)` · `--fs-h2: clamp(1.6rem,1.28rem+1.5vw,2.25rem)` · `--fs-h3: clamp(1.25rem,1.12rem+0.6vw,1.5rem)` · `--fs-body: clamp(1rem,0.97rem+0.15vw,1.125rem)` · `--fs-caption: 0.8125rem` · `--fs-mono-label: 0.6875rem`. Scales desktop→mobile with no breakpoints.
+- **Visual hierarchy (one ladder, everywhere):** mono amber eyebrow (uppercase, tracked) → display heading (Bricolage, tight) → secondary fade/dim sub-line → body (Inter, `text-secondary`) → mono caption/label. Numerals (stats, prices) use the display face for character.
 
 ## 6. Spacing & layout
 
@@ -57,7 +68,8 @@ Encode as CSS variables in `app/globals.css` and Tailwind theme; never hard-code
 
 - Radius: controls 8–10px (pills for primary CTAs are OK), cards 12–16px, product window 16px.
 - Borders: 1px hairlines at low-alpha white. Avoid heavy/boxy outlines.
-- Shadows: soft, large, low-opacity (e.g. `0 24px 48px -12px rgba(0,0,0,0.6)`); used for the product window and raised cards — not on everything.
+- Shadows: soft, large, low-opacity; used for the product window and raised cards — not on everything.
+- **Tokens (IMPLEMENTED, `app/globals.css :root`):** radius `--r-control: 10px` · `--r-card: 14px` · `--r-window: 16px` · `--r-pill: 9999px`. Shadow `--shadow-card` (flat raised) · `--shadow-raised` (`0 24px 60px -28px rgba(0,0,0,.7)`) · `--shadow-window` (product window: inner top highlight + deep drop). Premium card = subtle amber gradient surface + 1px amber-alpha border + inner top hairline highlight + `--shadow-window` (see `/pricing` Pro card, landing product window).
 
 ## 8. Icons & logos — NON-NEGOTIABLE (this is where it has looked cheap)
 
@@ -81,7 +93,8 @@ Encode as CSS variables in `app/globals.css` and Tailwind theme; never hard-code
 - Scroll-reveals on sections (once), gentle fade-up.
 - Micro-interactions: button hover lift, card hover, the live "Right Now" dot pulse, evidence rows revealing.
 - Easing: `cubic-bezier(0.16, 1, 0.3, 1)`. Durations 0.5–0.85s. Tasteful, never bouncy/flashy.
-- Honor `prefers-reduced-motion`. Use `framer-motion` (already a dep); client components only where motion is needed.
+- **Tokens (IMPLEMENTED, `app/globals.css :root`):** `--ease-out: cubic-bezier(0.16,1,0.3,1)` · `--dur-1: 0.5s` · `--dur-2: 0.65s` · `--dur-3: 0.85s`. Under `prefers-reduced-motion` the durations collapse to `0.01ms` (content stays visible — never gate base visibility on JS).
+- Honor `prefers-reduced-motion` (`framer-motion` + `<MotionConfig reducedMotion="user">`); client components only where motion is needed. Standard hero pattern: `stagger` parent + `fadeUp` children (`opacity:0,y:20 → opacity:1,y:0`).
 
 ## 11. Responsive / adaptive (must be excellent on BOTH)
 
@@ -108,6 +121,20 @@ Encode as CSS variables in `app/globals.css` and Tailwind theme; never hard-code
 - Sparse text-only sections with no product visual.
 - Desktop layout naively shrunk to mobile; horizontal overflow.
 - Tiny incremental polish presented as a redesign.
+- Hard-coded `cyan-*` / blue hex (retired) or raw hex in components — use the tokens (§4).
+- Gating base content visibility on JS motion (use the `stagger`/`fadeUp` pattern, but content must remain readable if rAF is throttled / reduced-motion).
+
+## 14. Implementation status — whole-app overhaul (epic #382)
+
+Where the system lives: tokens in `app/globals.css :root` (type scale, radius, shadow, motion) + `.ld` landing vars; Tailwind tokens in `tailwind.config.js`; demo theme in `app/demo/demo.css`; fonts in `app/layout.js` via `next/font`. Shared chrome: `components/nav/NavPublic.tsx` (header) + `components/nav/BlogFooter.tsx` (premium multi-column footer, used by every public page).
+
+Phased delivery (each a reviewed PR merged to live):
+- **Phase 1 — DONE & LIVE** (PR #383): app-wide amber cohesion + Bricolage/Inter/JetBrains type system + design tokens.
+- **Phase 2a — DONE & LIVE** (PR #384): premium shared site footer across all public pages.
+- **Phase 3 (in progress):** marketing-funnel craft — `/pricing` rebuilt (premium Recommended card, depth, motion, trust + enterprise row); `/start`, `/login`, `/try`, `/security`, `/about` next.
+- **Phase 4:** content & legal pages. **Phase 5:** product (`/demo` + `/dashboard/*`).
+
+Reference exemplars in-repo: the landing hero product window and `/pricing` Pro card are the canonical "premium card + depth + motion" patterns to copy.
 
 ---
 

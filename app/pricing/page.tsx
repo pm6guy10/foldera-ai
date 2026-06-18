@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, Check, ShieldCheck } from 'lucide-react';
+import { MotionConfig, motion, type Variants } from 'framer-motion';
 import { NavPublic } from '@/components/nav/NavPublic';
 import { BlogFooter } from '@/components/nav/BlogFooter';
 
@@ -18,6 +19,15 @@ const proFeatures = [
   'Approve, skip, copy, or save with outbound off by default',
   'Learns from every approve and skip',
 ];
+
+const trustLine = ['No card to start', 'Outbound off by default', 'Cancel anytime'];
+
+const EASE = [0.16, 1, 0.3, 1] as const;
+const fadeUp: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE } },
+};
+const stagger: Variants = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
 
 function ProCheckoutButton() {
   const [loading, setLoading] = useState(false);
@@ -54,9 +64,10 @@ function ProCheckoutButton() {
         type="button"
         onClick={handleCheckout}
         disabled={loading}
-        className="inline-flex foldera-touch-height w-full items-center justify-center gap-2 foldera-button-radius bg-accent px-4 text-xs font-black uppercase tracking-[0.14em] text-bg transition-colors hover:bg-accent-hover disabled:cursor-wait disabled:opacity-60"
+        className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-accent px-5 text-[13px] font-semibold text-bg transition-all hover:-translate-y-px hover:bg-accent-hover hover:shadow-[0_10px_32px_-10px_rgba(245,166,35,0.5)] disabled:cursor-wait disabled:opacity-60"
       >
         {loading ? 'Loading…' : 'Upgrade to Pro'}
+        {!loading && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
       </button>
       {error && <p className="text-xs text-text-secondary">{error}</p>}
     </div>
@@ -89,84 +100,175 @@ export default function PricingPage() {
   }, []);
 
   return (
-    <div className="bg-bg text-text-primary">
-      <NavPublic scrolled={scrolled} platformHref="/#product" />
-      <main id="main" className="pt-24 sm:pt-32">
-        <section className="border-b border-border-subtle pb-16">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Pricing</p>
-            <h1 className="mt-6 text-5xl font-black tracking-tight sm:text-6xl">Start free. Upgrade when it clicks.</h1>
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-text-secondary">
-              The free tier proves value first. Pro removes limits once you want a daily finished-work inbox.
-            </p>
-          </div>
-        </section>
-
-        <section className="border-b border-border-subtle py-16">
-          <div className="mx-auto grid max-w-6xl gap-5 px-4 sm:px-6 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,0.9fr)]">
-            <article className="rounded-card border border-accent-dim bg-panel p-7 sm:p-8">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">Pro</p>
-              <div className="mt-4 flex items-end gap-3">
-                <p className="text-5xl font-black tracking-tight">$29</p>
-                <p className="pb-1 text-xs font-black uppercase tracking-[0.14em] text-text-secondary">per month</p>
-              </div>
-              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-text-secondary">
-                Keep the full finished-work inbox visible, including source trail, actions, and safe holdbacks.
-              </p>
-              <ul className="mt-7 divide-y divide-border-subtle border-y border-border-subtle">
-                {proFeatures.map((feature) => (
-                  <li key={feature} className="flex items-start gap-3 py-3 text-sm text-text-primary">
-                    <Check className="mt-0.5 h-4 w-4 text-success" aria-hidden="true" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-8">
-                <ProCheckoutButton />
-              </div>
-            </article>
-
-            <aside className="rounded-card border border-border bg-panel p-7 sm:p-8">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-text-secondary">Free</p>
-              <p className="mt-4 text-4xl font-black tracking-tight">$0</p>
-              <p className="mt-4 text-sm leading-relaxed text-text-secondary">
-                Start with a daily source-backed check and your first three finished artifacts.
-              </p>
-              <ul className="mt-6 space-y-3">
-                {freeFeatures.map((feature) => (
-                  <li key={feature} className="flex items-start gap-3 text-sm text-text-primary">
-                    <Check className="mt-0.5 h-4 w-4 text-success" aria-hidden="true" />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href="/start"
-                className="mt-8 inline-flex foldera-touch-height w-full items-center justify-center gap-2 foldera-button-radius border border-border bg-panel-raised px-4 text-xs font-black uppercase tracking-[0.14em] text-text-primary transition-colors hover:border-border-strong"
+    <MotionConfig reducedMotion="user">
+      <div className="foldera-app-surface min-h-[100dvh] text-text-primary">
+        <NavPublic scrolled={scrolled} platformHref="/#product" />
+        <main id="main" className="relative z-10 pt-28 sm:pt-36">
+          {/* hero */}
+          <section className="px-5 sm:px-6 lg:px-8">
+            <motion.div
+              className="mx-auto max-w-6xl"
+              variants={stagger}
+              initial="hidden"
+              animate="show"
+            >
+              <motion.p
+                variants={fadeUp}
+                className="font-mono text-[11px] uppercase tracking-[0.28em] text-accent"
               >
-                Get started free
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </aside>
-          </div>
-        </section>
+                Pricing
+              </motion.p>
+              <motion.h1
+                variants={fadeUp}
+                className="mt-6 max-w-3xl font-display text-[clamp(2.4rem,1.6rem+3.2vw,3.75rem)] font-semibold leading-[1.02] tracking-[-0.03em]"
+              >
+                Start free. Upgrade when it clicks.
+              </motion.h1>
+              <motion.p
+                variants={fadeUp}
+                className="mt-6 max-w-2xl text-lg leading-8 text-text-secondary"
+              >
+                The free tier proves value first. Pro removes limits once you want a daily finished-work inbox.
+              </motion.p>
+              <motion.div
+                variants={fadeUp}
+                className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted"
+              >
+                {trustLine.map((t, i) => (
+                  <span key={t} className="inline-flex items-center gap-2">
+                    {i > 0 && <span className="text-text-muted/40">·</span>}
+                    {t}
+                  </span>
+                ))}
+              </motion.div>
+            </motion.div>
+          </section>
 
-        <section className="py-16">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6">
-            <h2 className="text-2xl font-black tracking-tight sm:text-3xl">Questions</h2>
-            <div className="mt-8 divide-y divide-border-subtle border-y border-border-subtle">
-              {faq.map((item) => (
-                <article key={item.question} className="py-5 sm:py-6">
-                  <h3 className="text-sm font-black uppercase tracking-[0.12em] text-text-primary">{item.question}</h3>
-                  <p className="mt-3 text-sm leading-relaxed text-text-secondary">{item.answer}</p>
-                </article>
-              ))}
+          {/* plans */}
+          <section className="px-5 py-16 sm:px-6 lg:px-8 lg:py-20">
+            <motion.div
+              className="mx-auto grid max-w-6xl items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,0.95fr)]"
+              variants={stagger}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true, margin: '-80px' }}
+            >
+              {/* Pro — premium card */}
+              <motion.article
+                variants={fadeUp}
+                className="relative overflow-hidden rounded-[var(--r-card)] p-7 sm:p-9"
+                style={{
+                  border: '1px solid rgba(245,166,35,0.32)',
+                  backgroundImage:
+                    'radial-gradient(120% 80% at 85% -10%, rgba(245,166,35,0.10), transparent 56%), linear-gradient(180deg, #16161c 0%, #0d0d11 100%)',
+                  boxShadow: 'var(--shadow-window)',
+                }}
+              >
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 top-0 h-px"
+                  style={{ background: 'linear-gradient(90deg, transparent, rgba(245,166,35,0.6), transparent)' }}
+                />
+                <div className="flex items-center justify-between">
+                  <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-accent">Pro</p>
+                  <span className="rounded-full border border-accent/30 bg-accent/10 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-accent">
+                    Recommended
+                  </span>
+                </div>
+                <div className="mt-5 flex items-end gap-2.5">
+                  <p className="font-display text-[3.25rem] font-semibold leading-none tracking-[-0.03em]">$29</p>
+                  <p className="pb-2 font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted">per month</p>
+                </div>
+                <p className="mt-4 max-w-md text-[15px] leading-7 text-text-secondary">
+                  Keep the full finished-work inbox visible, including source trail, actions, and safe holdbacks.
+                </p>
+                <ul className="mt-7 space-y-3.5">
+                  {proFeatures.map((feature) => (
+                    <li key={feature} className="flex items-start gap-3 text-[15px] text-text-primary">
+                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/12">
+                        <Check className="h-3 w-3 text-accent" aria-hidden="true" />
+                      </span>
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-9">
+                  <ProCheckoutButton />
+                </div>
+              </motion.article>
+
+              {/* Free — flat card */}
+              <motion.aside
+                variants={fadeUp}
+                className="rounded-[var(--r-card)] border border-border bg-panel/60 p-7 sm:p-9"
+              >
+                <p className="font-mono text-[11px] uppercase tracking-[0.22em] text-text-muted">Free</p>
+                <div className="mt-5 flex items-end gap-2.5">
+                  <p className="font-display text-[3.25rem] font-semibold leading-none tracking-[-0.03em]">$0</p>
+                  <p className="pb-2 font-mono text-[11px] uppercase tracking-[0.18em] text-text-muted">forever</p>
+                </div>
+                <p className="mt-4 text-[15px] leading-7 text-text-secondary">
+                  Start with a daily source-backed check and your first three finished artifacts.
+                </p>
+                <ul className="mt-7 space-y-3.5">
+                  {freeFeatures.map((feature) => (
+                    <li key={feature} className="flex items-start gap-3 text-[15px] text-text-primary">
+                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/[0.06]">
+                        <Check className="h-3 w-3 text-text-secondary" aria-hidden="true" />
+                      </span>
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/start"
+                  className="mt-9 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-border-strong bg-transparent px-5 text-[13px] font-semibold text-text-primary transition-colors hover:border-text-muted hover:bg-white/[0.03]"
+                >
+                  Get started free
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </motion.aside>
+            </motion.div>
+
+            {/* enterprise line */}
+            <div className="mx-auto mt-6 max-w-6xl">
+              <div className="flex flex-col items-start justify-between gap-4 rounded-[var(--r-card)] border border-border-subtle bg-white/[0.012] px-6 py-5 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 text-accent" strokeWidth={1.75} aria-hidden="true" />
+                  <p className="text-[15px] text-text-secondary">
+                    <span className="text-text-primary">Need team or enterprise?</span> Read-only connectors, SSO/SCIM, and audit logs.
+                  </p>
+                </div>
+                <Link
+                  href="/security"
+                  className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent transition-colors hover:text-accent-hover"
+                >
+                  See security →
+                </Link>
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <BlogFooter />
-      </main>
-    </div>
+          {/* FAQ */}
+          <section className="px-5 pb-24 sm:px-6 lg:px-8">
+            <div className="mx-auto max-w-3xl">
+              <h2 className="font-display text-[clamp(1.6rem,1.2rem+1.6vw,2.25rem)] font-semibold tracking-[-0.025em]">
+                Questions
+              </h2>
+              <div className="mt-8 divide-y divide-border-subtle border-y border-border-subtle">
+                {faq.map((item) => (
+                  <article key={item.question} className="py-6">
+                    <h3 className="text-[16px] font-semibold tracking-[-0.01em] text-text-primary">{item.question}</h3>
+                    <p className="mt-2.5 text-[15px] leading-7 text-text-secondary">{item.answer}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <BlogFooter />
+        </main>
+      </div>
+    </MotionConfig>
   );
 }
