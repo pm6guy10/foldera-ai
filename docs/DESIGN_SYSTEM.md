@@ -10,8 +10,19 @@ This is the durable design truth for every visible Foldera surface (landing, das
 
 - **Tier:** Linear, Vercel, Notion. World-class product marketing craft.
 - **The test:** show it to a non-technical person → "no way you made this." Obvious, undeniable quality.
-- **Feel:** smooth, calm, confident, dense-but-uncluttered, premium. Lead with the **product**, not marketing copy.
+- **Feel:** smooth, calm, confident, premium. Lead with the **product**, not marketing copy.
 - **No micro-polish passes.** Changes are full, obvious leaps. If someone has to ask "what changed?", it failed.
+
+### 1a. Art direction — SHOW, DON'T TELL (owner direction 2026-06-18, BINDING)
+
+> "Better contrast/hierarchy. Less words, more images and blank space. Show don't tell — if I don't even speak English I should get it. Not all lines and borders. Open-concept flow with some division, but don't overdo it."
+
+- **Show, don't tell.** A non-English-speaker should understand the page from visuals alone: the product window, real logos, icons-as-meaning, simple diagrams, motion. Words support the image, never replace it.
+- **Less words.** Ruthlessly cut copy. One strong line beats a paragraph. Headline + one supporting clause, not headline + 3-sentence body. Delete eyebrow/label clutter where the layout already says it.
+- **More blank space.** Generous, confident negative space is the default. Big section rhythm (≥128px desktop). When unsure, add air.
+- **Fewer lines & borders.** Do NOT divide everything with hairlines/`border-t`/`divide-y`. Separate with **space and subtle surface tint**, not rules. At most a few intentional hairlines per page. No uniform bordered-box grids.
+- **Open-concept flow.** Sections breathe into each other; light division only (a tint shift, a soft gradient seam) — never heavy boxing. But still legible structure: don't make it one undifferentiated wash.
+- **Stronger contrast & hierarchy.** Bigger jumps between levels — display headings larger and brighter (`text-primary`), secondary text dimmer (`text-muted`), accent on fewer elements so it punches. The eye should land in an obvious order.
 
 ## 2. Reference set — STUDY THESE BEFORE BUILDING
 
