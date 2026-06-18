@@ -3421,6 +3421,13 @@
 }
 .ld-marquee { animation: ldMarquee 38s linear infinite; }
 
+/* gentle drift for the scattered-app cards */
+@keyframes ldFloat {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-7px); }
+}
+.ld-float { animation: ldFloat 6s ease-in-out infinite; will-change: transform; }
+
 @media (prefers-reduced-motion: reduce) {
-  .ld-signal, .ld-marquee { animation: none; }
+  .ld-signal, .ld-marquee, .ld-float { animation: none; }
 }
