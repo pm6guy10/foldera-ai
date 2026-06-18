@@ -113,9 +113,10 @@ async function parseSlackBody(request: Request): Promise<{ rawBody: string; payl
 
 /**
  * Resolve the artifact to send: prefer the stored row artifact (carries thread headers
- * like gmail_thread_id so a reply stays in-thread), then overlay the reviewed subject/body
- * the user signed off on. Returns the edited artifact passed to executeAction, or null if
- * the row has no usable artifact.
+ * like gmail_thread_id and the finished-work attachments so they ride with the send),
+ * then overlay the reviewed subject/body the user signed off on. The attachments stay
+ * server-side through `...stored` — the modal never re-sends file bytes. Returns the
+ * edited artifact passed to executeAction, or null if the row has no usable artifact.
  */
 async function buildEditedSendArtifact(
   supabase: ReturnType<typeof createServerClient>,
@@ -183,13 +184,19 @@ async function handleReviewSendSubmission(
     });
     const execResult = (result.result ?? {}) as Record<string, unknown>;
     const to = typeof editedArtifact?.to === 'string' ? editedArtifact.to : 'the recipient';
+    const attachmentCount =
+      typeof execResult.attachment_count === 'number' ? execResult.attachment_count : 0;
+    const withAttachments =
+      attachmentCount > 0
+        ? ` with ${attachmentCount} attachment${attachmentCount === 1 ? '' : 's'}`
+        : '';
     if (result.status !== 'executed') {
       sentLine = `:warning: Could not send — ${result.error ?? 'action was not actionable'}.`;
     } else if (execResult.email_send_disabled === true) {
       sentLine = `:white_check_mark: Reviewed & approved. Live send is armed *off* — set \`ALLOW_APPROVAL_EMAIL_SEND=true\` to actually send to ${to}.`;
     } else if (execResult.sent === true) {
       const via = typeof execResult.sent_via === 'string' ? execResult.sent_via : 'your mailbox';
-      sentLine = `:white_check_mark: Sent to ${to} from ${via}.`;
+      sentLine = `:white_check_mark: Sent to ${to} from ${via}${withAttachments}.`;
     } else {
       sentLine = `:white_check_mark: Approved — sending to ${to}.`;
     }

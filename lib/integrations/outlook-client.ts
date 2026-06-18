@@ -9,6 +9,7 @@
  */
 
 import { getMicrosoftTokens } from '@/lib/auth/token-store';
+import { toGraphAttachments, type EmailAttachment } from '@/lib/email/attachments';
 
 function normalizeMessageIdHeader(value: string): string {
   const t = value.trim();
@@ -23,6 +24,8 @@ export type SendOutlookEmailOptions = {
   body: string;
   inReplyTo?: string | null;
   references?: string | null;
+  /** Finished work products to attach (Graph fileAttachment objects). */
+  attachments?: EmailAttachment[] | null;
 };
 
 /**
@@ -31,7 +34,7 @@ export type SendOutlookEmailOptions = {
  */
 export async function sendOutlookEmail(
   userId: string,
-  { to, subject, body, inReplyTo, references }: SendOutlookEmailOptions,
+  { to, subject, body, inReplyTo, references, attachments }: SendOutlookEmailOptions,
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const tokens = await getMicrosoftTokens(userId);
   if (!tokens) return { success: false, error: 'No Microsoft tokens for user' };
@@ -50,6 +53,9 @@ export async function sendOutlookEmail(
   }
   if (headers.length > 0) {
     message.internetMessageHeaders = headers;
+  }
+  if (attachments && attachments.length > 0) {
+    message.attachments = toGraphAttachments(attachments);
   }
 
   const payload = {

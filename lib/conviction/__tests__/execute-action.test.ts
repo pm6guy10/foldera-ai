@@ -245,6 +245,43 @@ describe('executeAction', () => {
     expect(mockSupabase._signalInsertCalls).toBe(1);
   });
 
+  it('passes finished-work attachments to Gmail and records the count', async () => {
+    mockSupabase._actionRow = {
+      ...actionWithArtifact({
+        type: 'send_message',
+        recipient: 'dana@example.com',
+        subject: 'Q3 budget',
+        body: 'Attached.',
+        attachments: [
+          { filename: 'Q3-Budget.md', mime_type: 'text/markdown', content: '# Q3' },
+          { filename: 'Forecast.csv', mime_type: 'text/csv', content: 'a,b' },
+        ],
+      }),
+      action_type: 'send_message',
+    };
+    const out = await executeAction({ userId: USER_ID, actionId: ACTION_ID, decision: 'approve' });
+    expect(out.status).toBe('executed');
+    expect(out.result?.attachment_count).toBe(2);
+    const call = vi.mocked(sendGmailEmail).mock.calls[0][1];
+    expect(call.attachments).toHaveLength(2);
+    expect(call.attachments?.map((a) => a.filename)).toEqual(['Q3-Budget.md', 'Forecast.csv']);
+  });
+
+  it('omits attachments and attachment_count when the artifact has none', async () => {
+    mockSupabase._actionRow = {
+      ...actionWithArtifact({
+        type: 'send_message',
+        recipient: 'a@b.com',
+        subject: 'Subj',
+        body: 'Body',
+      }),
+      action_type: 'send_message',
+    };
+    const out = await executeAction({ userId: USER_ID, actionId: ACTION_ID, decision: 'approve' });
+    expect(out.result?.attachment_count).toBeUndefined();
+    expect(vi.mocked(sendGmailEmail).mock.calls[0][1].attachments).toBeUndefined();
+  });
+
   it('blocks send_message outbound email by default and records email_send_disabled', async () => {
     vi.stubEnv('ALLOW_APPROVAL_EMAIL_SEND', 'false');
     mockSupabase._actionRow = {
