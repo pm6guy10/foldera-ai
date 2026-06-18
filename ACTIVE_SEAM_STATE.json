@@ -1,8 +1,8 @@
 {
   "active_issue": 382,
-  "active_branch": "feat/cohesion-amber-app",
+  "active_branch": "feat/382-phase2-chrome",
   "active_pr": null,
-  "deployed_commit_sha": "fa15e40",
+  "deployed_commit_sha": "6b4d8b6",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
   "last_verified_at": "2026-06-17T23:10:00Z"
