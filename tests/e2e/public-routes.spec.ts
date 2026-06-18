@@ -167,7 +167,7 @@ test.describe('Landing page /', () => {
     await page.goto('/');
     await expect(page.getByTestId('landing-header')).toBeVisible();
     await expect(page.getByTestId('landing-footer')).toBeVisible();
-    await expect(page.getByRole('link', { name: /request access/i }).first()).toHaveAttribute('href', '/start');
+    await expect(page.getByRole('link', { name: /start free/i }).first()).toHaveAttribute('href', '/start');
     await expect(page.getByText(/waitlist/i)).toHaveCount(0);
     await expect(page.getByText(/email\/password|password/i)).toHaveCount(0);
   });

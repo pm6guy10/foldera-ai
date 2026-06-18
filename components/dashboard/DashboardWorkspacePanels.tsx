@@ -150,9 +150,9 @@ function HistoryRow({ item }: { item: DashboardHistoryItem }) {
     : null;
 
   return (
-    <li className="group rounded-[14px] border border-white/[0.07] bg-white/[0.026] px-3.5 py-3.5 transition duration-200 hover:border-cyan-200/20 hover:bg-white/[0.04]">
+    <li className="group rounded-[14px] border border-white/[0.07] bg-white/[0.026] px-3.5 py-3.5 transition duration-200 hover:border-accent-hover/20 hover:bg-white/[0.04]">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] border border-cyan-300/20 bg-cyan-300/[0.07] text-accent">
+        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] border border-accent/20 bg-accent/[0.07] text-accent">
           <History className="h-4 w-4" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">

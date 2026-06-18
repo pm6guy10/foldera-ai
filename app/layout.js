@@ -1,7 +1,33 @@
 // File: app/layout.js
 
 import "./globals.css";
+import { Inter, Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
 import { resolveCanonicalSiteOrigin } from "@/lib/site-canonical";
+
+// Body / UI — Inter (clean, proven).
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+// Display / headings — Bricolage Grotesque (distinctive, editorial-premium; the
+// "designed" signal per docs/DESIGN_SYSTEM.md §5).
+const display = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+});
+
+// Mono — JetBrains Mono (eyebrows, labels, tabular data).
+const mono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
+
+const fontVars = `${inter.variable} ${display.variable} ${mono.variable}`;
 
 const siteOrigin = resolveCanonicalSiteOrigin();
 
@@ -62,11 +88,11 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className={fontVars}>
       <body className="font-sans">
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-cyan-500 focus:text-black focus:rounded-lg focus:font-black focus:text-xs focus:uppercase"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-accent focus:text-black focus:rounded-lg focus:font-black focus:text-xs focus:uppercase"
         >
           Skip to main content
         </a>

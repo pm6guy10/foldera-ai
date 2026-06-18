@@ -7,7 +7,7 @@ export function EmptyStateCard() {
       <div className="flex min-h-full w-full flex-col justify-between gap-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <span className="h-3 w-3 rounded-full bg-accent shadow-[0_0_22px_rgba(34,211,238,0.68)]" />
+            <span className="h-3 w-3 rounded-full bg-accent shadow-[0_0_22px_rgba(245,166,35,0.68)]" />
             <p className="text-[15px] font-semibold uppercase tracking-[0.14em] text-text-secondary">
               Today
             </p>

@@ -9,32 +9,32 @@ module.exports = {
   ],
   theme: {
     extend: {
-      // ─── Color palette — DO NOT CHANGE. Cyan/emerald accent decided. ───────
+      // ─── Color palette — warm amber on warm near-black (issue #378 → app-wide). ─
       colors: {
-        bg: "#07090d",             // page background
-        panel: "#0b0f14",          // card/panel background
-        'panel-raised': "#121820", // elevated panels, hover states
+        bg: "#0a0a0c",             // page background (warm near-black)
+        panel: "#131318",          // card/panel background
+        'panel-raised': "#1a1b21", // elevated panels, hover states
         border: {
-          DEFAULT: "#1b2530",      // default border
-          subtle:  "#121922",      // subtle separator
-          strong:  "#2a3948",      // prominent border
+          DEFAULT: "#26262d",      // default border (warm)
+          subtle:  "#191920",      // subtle separator
+          strong:  "#34343d",      // prominent border
         },
         text: {
-          primary:   "#e6e8eb",    // headings
-          secondary: "#aeb7c2",    // body / labels
-          muted:     "#7a8594",    // placeholder / disabled
+          primary:   "#f5f6f8",    // headings
+          secondary: "#c8ccd4",    // body / labels
+          muted:     "#9aa0aa",    // placeholder / disabled
         },
         accent: {
-          DEFAULT: "#22d3ee",      // cyan — primary interactive accent
-          hover:   "#67e8f9",      // bright cyan hover state
-          dim:     "#0ea5e9",      // blue accent
+          DEFAULT: "#f5a623",      // amber/gold — primary interactive accent
+          hover:   "#ffc25c",      // bright amber hover state
+          dim:     "#b4760f",      // deep amber accent
         },
         brand: {
-          purple: "#7c3aed",
-          blue: "#0ea5e9",
+          purple: "#b4760f",
+          blue: "#b4760f",
         },
         warning: "#f59e0b",
-        success: "#22c55e",
+        success: "#34d399",
         'demo-background': 'oklch(var(--demo-background) / <alpha-value>)',
         'demo-foreground': 'oklch(var(--demo-foreground) / <alpha-value>)',
         'demo-surface': {
@@ -82,8 +82,9 @@ module.exports = {
 
       // ─── Typography ────────────────────────────────────────────────────
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['GeistMono', 'Menlo', 'monospace'],
+        sans: ['var(--font-sans)', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'var(--font-sans)', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-mono)', 'GeistMono', 'Menlo', 'monospace'],
       },
 
       // ─── Animations ────────────────────────────────────────────────────

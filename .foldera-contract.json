@@ -1,9 +1,9 @@
 {
-  "backlog_id": "none",
-  "active_issue": "none",
+  "backlog_id": "frontend-overhaul-500m",
+  "active_issue": 382,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Lock the design system (docs/DESIGN_SYSTEM.md — DONE this PR) then FULLY overhaul the landing to it: $500M / Linear-Vercel-Notion tier, matching the owner's AI Studio reference build. Lead with a realistic product mockup; real official brand logos (not flat hand-drawn); locked color/type/spacing tokens; smooth motion; flawless on desktop AND mobile. Not a micro-polish pass — an obvious, full leap. Port from existing good material (AI Studio / Figma / Lovable) rather than reinventing.",
+  "user_system_path": "Overhaul the WHOLE frontend (not just color) to docs/DESIGN_SYSTEM.md — $500M / Linear-Vercel-Notion tier. Phased PRs: (1) design foundation = fonts via next/font (distinctive display + Inter body + JetBrains Mono), fluid type scale, spacing/radius/shadow/motion tokens; (2) shared component + chrome library; (3) marketing funnel; (4) content + legal; (5) product/dashboard. Amber-on-warm-black token cohesion already done. Preserve data-testids/copy/hrefs or update e2e in the same PR. §12 checklist per screen; screenshots desktop+mobile before each merge.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -11,12 +11,12 @@
     "FOLDERA_BUILD_ORDER.yaml",
     "FOLDERA_MASTER_BIBLE.md",
     "docs/**",
-    "components/foldera/**",
-    "components/nav/**",
-    "app/globals.css",
+    "components/**",
+    "app/**",
     "tailwind.config.js",
+    "postcss.config.mjs",
     "public/**",
-    "tests/e2e/**"
+    "tests/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",

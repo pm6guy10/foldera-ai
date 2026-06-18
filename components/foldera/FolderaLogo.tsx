@@ -18,7 +18,7 @@ export function FolderaLogo({
     <>
       <FolderaMark size={markSize} decorative />
       <span
-        className={`bg-gradient-to-r from-cyan-100 via-slate-100 to-slate-300 bg-clip-text text-[16px] font-semibold tracking-[-0.018em] text-transparent ${wordmarkClassName}`}
+        className={`bg-gradient-to-r from-accent-hover via-slate-100 to-slate-300 bg-clip-text text-[16px] font-semibold tracking-[-0.018em] text-transparent ${wordmarkClassName}`}
       >
         Foldera
       </span>

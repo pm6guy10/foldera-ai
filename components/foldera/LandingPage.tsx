@@ -375,19 +375,20 @@ function Header() {
             data-testid="landing-login-cta"
             className="ld-nav-link hidden text-[13px] font-medium sm:inline-flex"
           >
-            Login
+            Sign in
           </a>
           <a
             href={accessHref}
             data-testid="landing-header-cta"
             className="ld-btn-primary hidden min-h-[38px] items-center gap-2 px-4 text-[12px] sm:inline-flex"
           >
-            Request access
+            Start free
             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </a>
           <button
             type="button"
-            aria-label={open ? 'Close menu' : 'Open menu'}
+            data-testid="nav-mobile-menu-toggle"
+            aria-label={open ? 'Close menu (toggle)' : 'Open menu'}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
             className="ld-icon-btn inline-flex h-10 w-10 items-center justify-center md:hidden"
@@ -398,34 +399,52 @@ function Header() {
       </div>
 
       {open ? (
-        <div className="border-t border-white/[0.06] bg-[color:var(--ld-bg-2)] px-5 py-4 md:hidden">
-          <nav className="flex flex-col gap-1">
-            {navLinks.map((l) => (
+        <div className="fixed inset-0 z-[70] md:hidden" role="dialog" aria-modal="true" aria-label="Site menu">
+          <button
+            type="button"
+            className="absolute inset-0 bg-[#0a0a0c]/95 backdrop-blur-xl"
+            role="presentation"
+            onClick={() => setOpen(false)}
+            aria-label="Dismiss overlay"
+          />
+          <div className="relative mx-4 mt-[calc(4rem+env(safe-area-inset-top,0px))] overflow-hidden rounded-[18px] border border-white/10 bg-[color:var(--ld-bg-2)] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.72)]">
+            <button
+              type="button"
+              data-testid="nav-mobile-overlay-close"
+              onClick={() => setOpen(false)}
+              className="ld-icon-btn absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center"
+              aria-label="Close menu"
+            >
+              <X className="h-4 w-4" aria-hidden="true" />
+            </button>
+            <nav className="mt-12 flex flex-col gap-1">
+              {navLinks.map((l) => (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setOpen(false)}
+                  className="flex min-h-[44px] items-center rounded-[10px] px-3 text-[15px] text-[color:var(--ld-fg-soft)] transition-colors hover:bg-white/[0.045]"
+                >
+                  {l.label}
+                </a>
+              ))}
               <a
-                key={l.href}
-                href={l.href}
+                href={loginHref}
                 onClick={() => setOpen(false)}
-                className="flex min-h-[44px] items-center text-[15px] text-[color:var(--ld-fg-soft)]"
+                className="flex min-h-[44px] items-center rounded-[10px] px-3 text-[15px] text-[color:var(--ld-fg-soft)] transition-colors hover:bg-white/[0.045]"
               >
-                {l.label}
+                Sign in
               </a>
-            ))}
-            <a
-              href={loginHref}
-              onClick={() => setOpen(false)}
-              className="flex min-h-[44px] items-center text-[15px] text-[color:var(--ld-fg-soft)]"
-            >
-              Login
-            </a>
-            <a
-              href={accessHref}
-              onClick={() => setOpen(false)}
-              className="ld-btn-primary mt-2 inline-flex min-h-[46px] items-center justify-center gap-2 px-5 text-sm"
-            >
-              Request access
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </a>
-          </nav>
+              <a
+                href={accessHref}
+                onClick={() => setOpen(false)}
+                className="ld-btn-primary mt-2 inline-flex min-h-[46px] items-center justify-center gap-2 px-5 text-sm"
+              >
+                Start free
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </nav>
+          </div>
         </div>
       ) : null}
     </header>
@@ -474,7 +493,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
                 </motion.div>
 
                 <motion.div variants={fadeUp} className="mt-9 flex flex-col gap-2.5 sm:flex-row sm:items-center">
-                  <AccessLink testId="landing-primary-access-cta">Request access</AccessLink>
+                  <AccessLink testId="landing-primary-access-cta">Start free</AccessLink>
                   <GhostLink href="#how-foldera-works">See how it works</GhostLink>
                 </motion.div>
               </motion.div>
@@ -695,7 +714,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
               </p>
               <div className="mt-9 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
                 <AccessLink testId="landing-final-access-cta">Get started</AccessLink>
-                <GhostLink href={loginHref} testId="landing-final-login-cta">Login</GhostLink>
+                <GhostLink href={loginHref} testId="landing-final-login-cta">Sign in</GhostLink>
               </div>
             </Reveal>
           </section>
@@ -729,8 +748,8 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
                 links={[
                   { href: '/about', label: 'About' },
                   { href: '/security', label: 'Security' },
-                  { href: loginHref, label: 'Login' },
-                  { href: accessHref, label: 'Request access' },
+                  { href: loginHref, label: 'Sign in' },
+                  { href: accessHref, label: 'Start free' },
                 ]}
               />
               <FooterCol

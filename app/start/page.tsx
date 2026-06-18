@@ -54,9 +54,9 @@ function StartContent() {
     <div className="foldera-app-surface min-h-[100dvh] text-text-primary">
       <NavAuthMinimal variant="start" />
       <main id="main" className="mx-auto flex min-h-[calc(100dvh-4rem)] max-w-6xl flex-col justify-center px-4 py-10 sm:px-6 sm:py-14">
-        <div className="mx-auto w-full max-w-[500px] overflow-hidden rounded-[32px] border border-white/[0.08] bg-[#030711]/60 backdrop-blur-xl px-6 py-10 shadow-[0_24px_90px_rgba(34,211,238,0.06),inset_0_1px_0_rgba(255,255,255,0.05)] sm:px-12 sm:py-12">
+        <div className="mx-auto w-full max-w-[500px] overflow-hidden rounded-[32px] border border-white/[0.08] bg-[#100d0a]/60 backdrop-blur-xl px-6 py-10 shadow-[0_24px_90px_rgba(245,166,35,0.06),inset_0_1px_0_rgba(255,255,255,0.05)] sm:px-12 sm:py-12">
           <div className="accent-glow -mx-6 -mt-10 mb-8 sm:-mx-12 sm:-mt-12" />
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-400/80">Finished work when it is safe</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-accent/80">Finished work when it is safe</p>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-4xl">Get started with Foldera</h1>
           <p className="mt-3 text-sm leading-relaxed text-white/60">
             One secure sign-in. Foldera reads your connected context and shows finished work or the exact blocker.

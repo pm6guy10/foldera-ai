@@ -22,7 +22,7 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
+active_issue: 382
 priority_class: PRODUCT
 work_type: FEATURE
 why_this_first: "Between rungs. #378 (design system lock + full amber landing overhaul) is COMPLETE and merged. Awaiting the owner's next chosen seam."

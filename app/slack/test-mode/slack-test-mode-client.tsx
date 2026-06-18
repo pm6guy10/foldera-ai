@@ -83,10 +83,10 @@ export default function SlackTestModeClient() {
   return (
     <div className="min-h-screen bg-[#050914] text-slate-100">
       <div className="mx-auto max-w-2xl px-6 py-10">
-        <div className="rounded-3xl border border-white/10 bg-black/40 p-6 shadow-[0_0_40px_rgba(34,211,238,0.08)]">
+        <div className="rounded-3xl border border-white/10 bg-black/40 p-6 shadow-[0_0_40px_rgba(245,166,35,0.08)]">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-xs uppercase tracking-wide text-cyan-200/80">Slack test-mode</div>
+              <div className="text-xs uppercase tracking-wide text-accent-hover/80">Slack test-mode</div>
               <h1 className="mt-1 text-lg font-semibold text-slate-100">Right Now DM</h1>
             </div>
             <button

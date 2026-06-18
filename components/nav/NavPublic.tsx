@@ -11,9 +11,10 @@ export type NavPublicProps = {
 };
 
 const navLinks = [
-  { label: 'Product', href: '/#how-foldera-works' },
+  { label: 'How it works', href: '/#how-foldera-works' },
   { label: 'Security', href: '/security' },
   { label: 'Pricing', href: '/pricing' },
+  { label: 'Try it', href: '/try' },
 ];
 
 export function NavPublic({
@@ -43,7 +44,7 @@ export function NavPublic({
 
   const shellClass =
     scrolled || menuOpen
-      ? 'border-b border-white/10 bg-[#03060bd9] shadow-[0_1px_0_rgba(34,211,238,0.08)] backdrop-blur-xl'
+      ? 'border-b border-white/10 bg-[#03060bd9] shadow-[0_1px_0_rgba(245,166,35,0.08)] backdrop-blur-xl'
       : 'border-b border-white/[0.04] bg-[#03060bc4] backdrop-blur-md';
   const primaryHref = isAuthenticated ? '/dashboard' : '/start';
   const primaryLabel = isAuthenticated ? 'Dashboard' : 'Start free';
@@ -86,7 +87,7 @@ export function NavPublic({
           )}
           <a
             href={primaryHref}
-            className="inline-flex min-h-[42px] items-center gap-2 rounded-[9px] border border-cyan-300/25 bg-cyan-300 px-4 text-[12px] font-semibold text-slate-950 shadow-[0_0_22px_rgba(34,211,238,0.18)] transition-colors hover:bg-cyan-200"
+            className="inline-flex min-h-[42px] items-center gap-2 rounded-[9px] border border-accent/25 bg-accent px-4 text-[12px] font-semibold text-slate-950 shadow-[0_0_22px_rgba(245,166,35,0.18)] transition-colors hover:bg-accent-hover"
           >
             {primaryLabel}
             <ChevronRight className="h-4 w-4" aria-hidden="true" />
@@ -96,7 +97,7 @@ export function NavPublic({
         <div className="flex items-center gap-2 lg:hidden">
           <a
             href={primaryHref}
-            className="inline-flex min-h-[38px] items-center rounded-[9px] bg-cyan-300 px-3 text-[12px] font-semibold text-slate-950 shadow-[0_0_16px_rgba(34,211,238,0.16)] sm:hidden"
+            className="inline-flex min-h-[38px] items-center rounded-[9px] bg-accent px-3 text-[12px] font-semibold text-slate-950 shadow-[0_0_16px_rgba(245,166,35,0.16)] sm:hidden"
           >
             {isAuthenticated ? 'Dashboard' : 'Start'}
           </a>
@@ -131,8 +132,8 @@ export function NavPublic({
             onClick={() => setMenuOpen(false)}
             aria-label="Dismiss overlay"
           />
-          <div className="relative mx-4 mt-[calc(4rem+env(safe-area-inset-top,0px))] overflow-hidden rounded-[18px] border border-cyan-300/18 bg-[#03070d] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.72)]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/60 to-transparent" aria-hidden />
+          <div className="relative mx-4 mt-[calc(4rem+env(safe-area-inset-top,0px))] overflow-hidden rounded-[18px] border border-accent/18 bg-[#03070d] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.72)]">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent/60 to-transparent" aria-hidden />
             <button
               type="button"
               data-testid="nav-mobile-overlay-close"

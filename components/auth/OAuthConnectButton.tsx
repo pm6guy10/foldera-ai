@@ -32,7 +32,7 @@ export function OAuthConnectButton({
 
   const className = `relative inline-flex foldera-touch-height w-full items-center justify-center gap-3 foldera-button-radius px-4 text-xs font-black uppercase tracking-[0.14em] transition-all duration-300 disabled:cursor-wait disabled:opacity-50 overflow-hidden group border ${
     provider === 'google'
-      ? 'bg-accent/10 border-accent/20 text-accent hover:bg-accent/20 hover:border-accent/40 shadow-[0_0_15px_rgba(34,211,238,0.1)] hover:shadow-[0_0_25px_rgba(34,211,238,0.2)]'
+      ? 'bg-accent/10 border-accent/20 text-accent hover:bg-accent/20 hover:border-accent/40 shadow-[0_0_15px_rgba(245,166,35,0.1)] hover:shadow-[0_0_25px_rgba(245,166,35,0.2)]'
       : 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-white/20'
   }`;
 

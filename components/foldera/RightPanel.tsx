@@ -82,7 +82,7 @@ export function RightPanel({
                       className="rounded-[16px] border border-white/[0.08] bg-white/[0.035] p-3 shadow-[0_18px_44px_rgba(0,0,0,0.18)]"
                     >
                       <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-cyan-200/15 bg-cyan-300/[0.07] text-cyan-100">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-[10px] border border-accent-hover/15 bg-accent/[0.07] text-accent-hover">
                           <Icon className="h-4 w-4" strokeWidth={1.8} aria-hidden />
                         </div>
                         <div className="min-w-0">

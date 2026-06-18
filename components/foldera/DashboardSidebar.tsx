@@ -80,12 +80,12 @@ export function DashboardMobileNav({
     <div
       id="dashboard-mobile-menu"
       data-testid="dashboard-mobile-menu"
-      className={`rounded-[24px] border border-cyan-200/12 bg-[#050d16]/98 p-3 shadow-[0_18px_60px_rgba(0,0,0,0.38)] ${
+      className={`rounded-[24px] border border-accent-hover/12 bg-[#050d16]/98 p-3 shadow-[0_18px_60px_rgba(0,0,0,0.38)] ${
         compact ? 'absolute right-0 top-full z-30 mt-3 w-[290px]' : 'mt-4'
       }`}
     >
-      <div className="mb-3 flex items-center gap-3 rounded-[18px] border border-cyan-200/10 bg-white/[0.035] px-3 py-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-cyan-300/10 text-cyan-200">
+      <div className="mb-3 flex items-center gap-3 rounded-[18px] border border-accent-hover/10 bg-white/[0.035] px-3 py-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-[14px] bg-accent/10 text-accent-hover">
           <ActiveIcon className="h-5 w-5" aria-hidden />
         </div>
         <div className="min-w-0">
@@ -102,8 +102,8 @@ export function DashboardMobileNav({
           const isActive = item.panel === activePanel;
           const classes = `flex min-h-[52px] w-full items-center gap-3 rounded-[16px] border px-3 text-left text-sm font-semibold transition-colors ${
             isActive
-              ? 'border-cyan-200/20 bg-cyan-300/[0.075] text-text-primary shadow-[inset_3px_0_0_rgba(34,211,238,0.82)]'
-              : 'border-transparent text-text-secondary hover:border-cyan-200/10 hover:bg-white/[0.035] hover:text-text-primary'
+              ? 'border-accent-hover/20 bg-accent/[0.075] text-text-primary shadow-[inset_3px_0_0_rgba(245,166,35,0.82)]'
+              : 'border-transparent text-text-secondary hover:border-accent-hover/10 hover:bg-white/[0.035] hover:text-text-primary'
           }`;
 
           return (
@@ -121,20 +121,20 @@ export function DashboardMobileNav({
             >
               <Icon
                 className={`h-5 w-5 shrink-0 ${
-                  isActive ? 'text-cyan-200' : 'text-text-muted'
+                  isActive ? 'text-accent-hover' : 'text-text-muted'
                 }`}
                 aria-hidden
               />
               <span className="min-w-0 truncate">{item.label}</span>
               {isActive ? (
-                <span className="ml-auto h-2 w-2 rounded-full bg-cyan-300" aria-hidden />
+                <span className="ml-auto h-2 w-2 rounded-full bg-accent" aria-hidden />
               ) : null}
             </button>
           );
         })}
       </nav>
 
-      <div className="mt-3 flex items-center gap-3 rounded-[18px] border border-cyan-200/10 bg-white/[0.03] px-3 py-3">
+      <div className="mt-3 flex items-center gap-3 rounded-[18px] border border-accent-hover/10 bg-white/[0.03] px-3 py-3">
         <div
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-slate-600 to-slate-950 text-sm font-semibold text-white"
           aria-hidden
@@ -166,7 +166,7 @@ export function DashboardMobileNav({
           aria-controls="dashboard-mobile-menu"
           aria-expanded={open}
           aria-label={open ? 'Close dashboard menu' : 'Open dashboard menu'}
-          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] border border-white/10 bg-white/[0.04] text-text-primary transition-colors hover:border-cyan-200/28 hover:bg-white/[0.06]"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] border border-white/10 bg-white/[0.04] text-text-primary transition-colors hover:border-accent-hover/28 hover:bg-white/[0.06]"
           onClick={() => setOpen((current) => !current)}
         >
           {open ? (
@@ -183,12 +183,12 @@ export function DashboardMobileNav({
 
   return (
     <div className="lg:hidden">
-      <div className="foldera-dashboard-mobile-chrome rounded-[28px] border border-cyan-200/10 bg-[#030a12]/95 px-4 py-3 shadow-[0_22px_70px_rgba(0,0,0,0.42)]">
+      <div className="foldera-dashboard-mobile-chrome rounded-[28px] border border-accent-hover/10 bg-[#030a12]/95 px-4 py-3 shadow-[0_22px_70px_rgba(0,0,0,0.42)]">
         <div className="flex min-h-[44px] items-center gap-3">
           <FolderaLogo href="/" markSize="sm" />
 
           <div className="ml-auto min-w-0 text-right">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200/55">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-accent-hover/55">
               Dashboard
             </p>
             <p className="truncate text-sm font-semibold text-text-primary">{activeLabel}</p>
@@ -200,7 +200,7 @@ export function DashboardMobileNav({
             aria-controls="dashboard-mobile-menu"
             aria-expanded={open}
             aria-label={open ? 'Close dashboard menu' : 'Open dashboard menu'}
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border border-cyan-200/14 bg-white/[0.035] text-text-primary shadow-[inset_0_0_0_1px_rgba(255,255,255,0.025)] transition-colors hover:border-cyan-200/28 hover:bg-white/[0.06]"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border border-accent-hover/14 bg-white/[0.035] text-text-primary shadow-[inset_0_0_0_1px_rgba(255,255,255,0.025)] transition-colors hover:border-accent-hover/28 hover:bg-white/[0.06]"
             onClick={() => setOpen((current) => !current)}
           >
             {open ? (
@@ -292,7 +292,7 @@ export function DashboardSidebar({
         <div className="mt-auto space-y-4 pt-6">
           <Link
             href="/pricing"
-            className="foldera-dashboard-upgrade block rounded-[18px] border border-border bg-white/[0.03] px-4 py-4 transition-colors hover:border-cyan-200/20 hover:bg-white/[0.045]"
+            className="foldera-dashboard-upgrade block rounded-[18px] border border-border bg-white/[0.03] px-4 py-4 transition-colors hover:border-accent-hover/20 hover:bg-white/[0.045]"
             data-testid="dashboard-upgrade-pro"
           >
             <p className="text-sm font-semibold text-accent">Upgrade to Pro</p>

@@ -40,9 +40,9 @@ Encode as CSS variables in `app/globals.css` and Tailwind theme; never hard-code
 
 ## 5. Typography
 
-- **Display/headings:** Inter (or Inter Display) — large, tight tracking (-0.03 to -0.045em), confident leading (~1.0–1.1).
-- **Body:** Inter, 16–18px, leading ~1.6, muted color.
-- **Mono (labels/eyebrows/data):** JetBrains Mono — uppercase, tracked (0.16–0.28em) for eyebrows; tabular for data.
+- **Display/headings:** **Bricolage Grotesque** (loaded via `next/font`, CSS var `--font-display`, Tailwind `font-display`; applied to every `h1–h4`) — distinctive editorial-premium character at large sizes, tight tracking (-0.02 to -0.045em), confident leading (~1.0–1.1). _Owner decision 2026-06-17 (#382): a distinctive display face over plain Inter for the "designed/$500M" signal._
+- **Body:** Inter (`--font-sans`, Tailwind `font-sans`), 16–18px, leading ~1.6, muted color.
+- **Mono (labels/eyebrows/data):** JetBrains Mono (`--font-mono`, Tailwind `font-mono`) — uppercase, tracked (0.16–0.28em) for eyebrows; tabular for data.
 - Scale (px / line-height): Display 56–72 / 1.0 · H1 40–48 / 1.05 · H2 30–36 / 1.1 · H3 20–24 / 1.2 · Body 16–18 / 1.6 · Caption 13 / 1.5 · Mono-label 11–12 / 1.4.
 - Fluid with `clamp()` so it scales desktop→mobile.
 

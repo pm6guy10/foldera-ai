@@ -50,7 +50,7 @@ function HotspotButton({
       title={label}
       onClick={onClick}
       disabled={disabled}
-      className="absolute rounded-md bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400 disabled:cursor-not-allowed"
+      className="absolute rounded-md bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent disabled:cursor-not-allowed"
       style={rectToStyle(rect)}
     />
   );
@@ -70,7 +70,7 @@ function HotspotLink({
       href={href}
       aria-label={label}
       title={label}
-      className="absolute rounded-md bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-cyan-400"
+      className="absolute rounded-md bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
       style={rectToStyle(rect)}
     />
   );
@@ -122,7 +122,7 @@ export function FolderaDashboardPixelLock({
                       {artifactTitle}
                     </h2>
                   ) : null}
-                  <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-cyan-400">{artifactTypeLabel}</p>
+                  <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-accent">{artifactTypeLabel}</p>
                   {artifactBody ? (
                     <div
                       className="mt-3 max-h-[calc(100%-52px)] overflow-y-auto whitespace-pre-line pr-1 text-[12px] leading-5 text-[#d9e2ea]"
@@ -137,7 +137,7 @@ export function FolderaDashboardPixelLock({
                   <button
                     type="button"
                     onClick={onUpgrade}
-                    className="mt-3 inline-flex min-h-[40px] items-center justify-center rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-black"
+                    className="mt-3 inline-flex min-h-[40px] items-center justify-center rounded-lg bg-accent px-4 py-2 text-sm font-medium text-black"
                   >
                     Upgrade to Pro
                   </button>
@@ -150,7 +150,7 @@ export function FolderaDashboardPixelLock({
                     {artifactTitle}
                   </h2>
                 ) : null}
-                <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-cyan-400">{artifactTypeLabel}</p>
+                <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-accent">{artifactTypeLabel}</p>
                 {artifactBody ? (
                   <div
                     className="mt-3 max-h-[calc(100%-52px)] overflow-y-auto whitespace-pre-line pr-1 text-[12px] leading-5 text-[#d9e2ea]"

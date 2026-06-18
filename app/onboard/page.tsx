@@ -150,7 +150,7 @@ function OnboardContent() {
   return (
     <div className="foldera-app-surface min-h-[100dvh] text-text-primary">
       <main id="main" className="mx-auto flex min-h-[100dvh] max-w-6xl flex-col justify-center px-4 py-10 sm:px-6 sm:py-14">
-        <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-[28px] border border-cyan-300/14 bg-[#050c14]/94 px-6 py-8 shadow-[0_24px_90px_rgba(0,0,0,0.44)] sm:px-10 sm:py-10">
+        <div className="mx-auto w-full max-w-3xl overflow-hidden rounded-[28px] border border-accent/14 bg-[#050c14]/94 px-6 py-8 shadow-[0_24px_90px_rgba(0,0,0,0.44)] sm:px-10 sm:py-10">
           <div className="accent-glow -mx-6 -mt-8 mb-8 sm:-mx-10 sm:-mt-10" />
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-accent">
             {isEdit ? 'Edit setup' : 'Setup'}

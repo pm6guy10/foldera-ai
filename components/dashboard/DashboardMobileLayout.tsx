@@ -114,7 +114,7 @@ export function DashboardMobileLayout({
                 role="status"
                 aria-label="Notifications unavailable until live alerts are connected"
                 title="Notifications unavailable until live alerts are connected"
-                className={`inline-flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-full border border-cyan-200/14 bg-white/[0.04] text-cyan-100 ${
+                className={`inline-flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-full border border-accent-hover/14 bg-white/[0.04] text-accent-hover ${
                   isTodayPanel ? 'opacity-45' : 'opacity-70'
                 }`}
               >
@@ -123,7 +123,7 @@ export function DashboardMobileLayout({
               <div
                 role="status"
                 aria-label={`Current dashboard section: ${activeSidebarLabel}`}
-                className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.06] px-3 py-1.5 text-xs font-semibold text-cyan-100"
+                className="rounded-full border border-accent-hover/14 bg-accent/[0.06] px-3 py-1.5 text-xs font-semibold text-accent-hover"
               >
                 {activeSidebarLabel}
               </div>
@@ -207,7 +207,7 @@ export function DashboardMobileLayout({
                   aria-current={isActive ? 'page' : undefined}
                   className={`rounded-[14px] px-2 py-3 text-center text-[11px] font-semibold transition-colors ${
                     isActive
-                      ? 'bg-cyan-300/[0.12] text-accent'
+                      ? 'bg-accent/[0.12] text-accent'
                       : 'bg-transparent text-text-muted'
                   }`}
                   onClick={() => selectPanel(tab.panel)}
