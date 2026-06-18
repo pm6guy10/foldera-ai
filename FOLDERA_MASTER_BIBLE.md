@@ -1125,3 +1125,30 @@ Enforcement:
 - This file names exactly one next seam.
 - `ACTIVE_HANDOFF.md` and `FOLDERA_BUILD_ORDER.yaml` carry this next-seam recommendation after issue #163.
 - Repo Intake Governor implementation must wait for its own controlling GitHub issue.
+
+---
+
+# PART IV — SELF-REVIEW: THE BRANDON AVATAR + THE EXPERT PANEL (added 2026-06-18 by owner mandate)
+
+## Why this exists
+
+The Owner-burden rule (§10) and the household-peace constraint say the repo must carry the vision so **Brandon is no longer the router** and no longer the reviewer. The recurring tax is Brandon being asked *"how's this look? is it good? are we good?"* — questions the repo should answer itself. This part makes that self-answer binding.
+
+Two artifacts carry it:
+
+- **`docs/BRANDON.md`** — the owner avatar (taste authority). Who Brandon is, what he wants, his voice, and the **rejection checklist** of what he would say. `OWNER_TASTE_AUTHORITY`.
+- **`docs/EXPERT_PANEL.md`** — the fortification panel (review authority). Nine domain experts (Growth, Product Design, UX, Pricing, Security, AI/ML, Database, Frontend, Trust), each grounded in a real framework, each with Foldera-specific kill-questions. `REVIEW_AUTHORITY`.
+
+## The binding ritual
+
+Before any agent declares a pass **done** — and before it asks Brandon anything subjective — it must:
+
+1. Run the work against `docs/BRANDON.md` §5 (the rejection checklist). Any "no" is a blocker.
+2. Convene the relevant members of `docs/EXPERT_PANEL.md` (see its convening table). Any `BLOCK` stops the ship; any `CONCERN` is answered or consciously deferred with a reason.
+3. Report **leading with proof and the panel verdict**, not with a question. "Done, and here's why it survives Brandon + the panel" — never "is this good?"
+
+If the work would not survive the avatar or the panel, **fix it before reporting**, not after Brandon catches it. Surfacing a question Brandon's own avatar could have answered is itself an owner-burden regression.
+
+## Authority
+
+`docs/BRANDON.md` and `docs/EXPERT_PANEL.md` are subordinate to this Bible and to one active GitHub issue at a time, but any user-facing or product PR should be self-reviewed against them. They are taste/review authority, not execution authority — they do not select the active seam or authorize implementation. Keep them current: when Brandon gives new taste, a new recurring critique, or a new expert lens, update these files in the same spirit as updating this Bible — so he never has to say it twice.
