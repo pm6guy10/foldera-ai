@@ -1,9 +1,9 @@
 {
-  "backlog_id": "guardian-seed-draft-at-generation",
-  "active_issue": 397,
+  "backlog_id": "guardian-commitment-title-hygiene",
+  "active_issue": 399,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Guardian (workday-presence) seeds the matched draft at GENERATION TIME. When the daily brief persists a winning directive+artifact to tkg_actions, it also seeds workday_presence_state (with its draft) grounded to that exact winner — so the guardian's draft is deterministic, retiring the post-hoc fuzzy 48h recycle (#394) for the brief path (#394 stays as a fallback for other paths). Widens the one real act (hands), not a new brain (Bible Part II-B). Constraint: NO paid API calls to test — prove in the harness.",
+  "user_system_path": "Guardian commitment-title hygiene (#399). commitment-bridge.ts set the lapsing-commitment signal title to canonical_form (the SYNC:<category>:<slug> dedup key) over description, so the guardian card could read SYNC:payment_financial:Pay_the_invoice. New humanCommitmentTitle() prefers the human description and, as a fallback, strips the SYNC: prefix so the card is never cheap. Read-time display fix only — NO prod data mutation, NO paid API calls.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -19,22 +19,22 @@
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Seam #397: the workday-presence seed lib + the seed-from-scorer route (extraction) + the daily-brief generate file (one additive seed call) + control-plane + docs. Schema and dependency files stay forbidden — no migrations, no new deps.",
-  "forbidden_files_raw": "No schema (supabase/**) or dependency (package*.json) changes in this seam. Any lib/app path outside the allowed list is out of scope.",
-  "required_local_proof": "npm run gate:continuity && npm run lint && npm run build && focused vitest (seed-from-directive + seed-from-scorer route + recycled-draft + finished-work-gate)",
-  "required_browser_proof": "DEFERRED — exercising the live seeded card requires a paid daily-brief generation cycle; owner directive forbids paid tests (Cost Doctrine). Harness proof is complete; the live path is reported unproven-by-paid, not claimed done.",
+  "allowed_files_raw": "Seam #399: lib/workday-presence/commitment-bridge.ts (+ its test) for the human-title fix + control-plane + docs. Schema and dependency files stay forbidden — no migrations, no new deps.",
+  "forbidden_files_raw": "No schema (supabase/**) or dependency (package*.json) changes in this seam. Read-time display fix only — no tkg_commitments row mutation. Any lib/app path outside the allowed list is out of scope.",
+  "required_local_proof": "npm run gate:continuity && npm run lint && npm run build && npx vitest run lib/workday-presence/__tests__/commitment-bridge.test.ts",
+  "required_browser_proof": "N/A — deterministic read-time display fix proven by fixtures; no paid generation needed.",
   "browser_proof_command": "N/A — no-paid directive; prove in harness",
-  "acceptance_condition": "Seed lib extracted with byte-identical behavior (seed-from-scorer route suite green), daily-brief seeds workday_presence_state at the scored-winner persistence point (best-effort, snooze-preserving, refuses ungrounded send drafts), #394 recycle/finished-work suites stay green, and gate:continuity + lint + build pass.",
+  "acceptance_condition": "The guardian's lapsing-commitment title prefers the human description and never surfaces a raw SYNC:<category>:<slug> key (stripped fallback). commitment-bridge.test.ts green (incl. the updated key-vs-description test), and gate:continuity + lint + build pass.",
   "is_user_facing": true,
   "anti_regression_checks": [
-    "seed-from-scorer route suite green (extraction is behavior-preserving)",
-    "#394 recycled-draft + finished-work-gate suites green (recycle fallback intact)",
+    "card title prefers description; SYNC: key never shown (prefix stripped in fallback)",
+    "findLapsingCommitmentSignal still returns null when nothing is due and still throws on query error",
     "no paid API calls in any test",
-    "an existing active snooze is preserved by the brief reseed (never wakes a silenced card)",
+    "read-time display only — no tkg_commitments rows mutated",
     "no schema or dependency files changed"
   ],
-  "stop_condition": "Stop when the seam is merged (MERGED_AND_CLOSED) with harness proof, or blocked with an exact receipt. The live user-facing path is explicitly deferred (no-paid directive) — not a blocker on the harness-proven change.",
-  "next_command": "After #397 merges: configure the free external 15-min cron (owner-side firing cadence). Then optional code cleanups — malformed commitment titles, legacy cyan favicons, stale-branch/skipped-test triage.",
+  "stop_condition": "Stop when the seam is merged (MERGED_AND_CLOSED) with harness proof, or blocked with an exact receipt.",
+  "next_command": "OWNER-SIDE: configure the free external 15-min cron (guardian firing cadence) — the one live-readiness blocker. CODE: recolor legacy cyan favicons (BLOCKED on image tooling — sharp/imagemagick absent); triage stale branches + skipped tests.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
