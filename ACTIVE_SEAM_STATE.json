@@ -1,9 +1,9 @@
 {
   "active_issue": 382,
-  "active_branch": "feat/382-phase2-chrome",
+  "active_branch": "feat/382-phase3-pricing",
   "active_pr": null,
-  "deployed_commit_sha": "6b4d8b6",
+  "deployed_commit_sha": "78e1c6f",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-17T23:10:00Z"
+  "last_verified_at": "2026-06-18T00:10:00Z"
 }
