@@ -179,6 +179,42 @@ function GhostLink({
   );
 }
 
+/* ----------------------------------------------------- scattered apps (the chaos) */
+
+const scatterCards: Array<{ brand: Brand; label: string; meta: string; x: string; y: string; r: number }> = [
+  { brand: connectors[0], label: 'Re: Contract v4', meta: '2:14', x: '2%', y: '4%', r: -5 },
+  { brand: connectors[1], label: 'DM from Sarah', meta: '2:06', x: '50%', y: '0%', r: 4 },
+  { brand: connectors[3], label: 'PROJ-4821 · blocked', meta: '', x: '54%', y: '30%', r: -3 },
+  { brand: connectors[4], label: 'Stakeholder sync', meta: '3:00', x: '6%', y: '38%', r: 5 },
+  { brand: connectors[2], label: 'Launch plan · v7', meta: '', x: '34%', y: '60%', r: -4 },
+  { brand: connectors[5], label: 'PR #128 · review', meta: '', x: '0%', y: '72%', r: 3 },
+  { brand: connectors[6], label: 'Budget update', meta: '12:24', x: '52%', y: '74%', r: 5 },
+];
+
+function ScatteredApps() {
+  return (
+    <div aria-hidden="true" className="relative h-[340px] w-full overflow-hidden sm:h-[420px]">
+      <div
+        className="absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{ background: 'radial-gradient(circle, rgba(245,166,35,0.20), transparent 70%)', filter: 'blur(10px)' }}
+      />
+      {scatterCards.map((c, i) => (
+        <div
+          key={c.label}
+          className="ld-float absolute"
+          style={{ left: c.x, top: c.y, rotate: `${c.r}deg`, animationDelay: `${(i % 4) * 0.5}s` }}
+        >
+          <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#15151b] px-3 py-2 shadow-[0_14px_34px_-14px_rgba(0,0,0,0.85)]">
+            <BrandLogo brand={c.brand} size={15} />
+            <span className="whitespace-nowrap text-[12px] text-[color:var(--ld-fg-soft)]">{c.label}</span>
+            {c.meta ? <span className="ld-mono text-[10px] text-[color:var(--ld-fg-dim)]">{c.meta}</span> : null}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ----------------------------------------------------- the product window */
 
 function ProductWindow() {
@@ -516,28 +552,35 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
             </motion.div>
           </section>
 
-          {/* PAIN — one big line, three quiet beats */}
+          {/* PAIN — show the chaos: real apps scattered, one big line */}
           <section className={`${sectionWrap} py-28 lg:py-36`} data-testid="landing-pain">
-            <Reveal>
-              <h2 className="ld-display max-w-4xl text-[clamp(2.4rem,1.6rem+3.2vw,4rem)] leading-[1.02] tracking-[-0.04em] text-[color:var(--ld-fg)]">
-                You are a high-paid <span className="text-[color:var(--ld-accent)]">filing clerk.</span>
-              </h2>
-            </Reveal>
-            <motion.div
-              className="mt-20 grid gap-x-12 gap-y-12 sm:grid-cols-3"
-              variants={stagger}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true, margin: '-80px' }}
-            >
-              {painPoints.map((item, i) => (
-                <motion.div key={item.title} variants={fadeUp}>
-                  <span className="ld-mono text-[12px] text-[color:var(--ld-accent)]">{String(i + 1).padStart(2, '0')}</span>
-                  <h3 className="ld-display mt-4 text-[1.35rem] tracking-[-0.02em] text-[color:var(--ld-fg)]">{item.title}</h3>
-                  <p className="mt-2 text-[15px] leading-6 text-[color:var(--ld-fg-dim)]">{item.body}</p>
+            <div className="grid items-center gap-14 lg:grid-cols-2 lg:gap-20">
+              <div>
+                <Reveal>
+                  <h2 className="ld-display max-w-xl text-[clamp(2.4rem,1.6rem+3.2vw,4rem)] leading-[1.02] tracking-[-0.04em] text-[color:var(--ld-fg)]">
+                    You are a high-paid <span className="text-[color:var(--ld-accent)]">filing clerk.</span>
+                  </h2>
+                </Reveal>
+                <motion.div
+                  className="mt-12 space-y-8"
+                  variants={stagger}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={{ once: true, margin: '-80px' }}
+                >
+                  {painPoints.map((item, i) => (
+                    <motion.div key={item.title} variants={fadeUp} className="flex gap-4">
+                      <span className="ld-mono mt-1 text-[12px] text-[color:var(--ld-accent)]">{String(i + 1).padStart(2, '0')}</span>
+                      <div>
+                        <h3 className="ld-display text-[1.25rem] tracking-[-0.02em] text-[color:var(--ld-fg)]">{item.title}</h3>
+                        <p className="mt-1 text-[15px] leading-6 text-[color:var(--ld-fg-dim)]">{item.body}</p>
+                      </div>
+                    </motion.div>
+                  ))}
                 </motion.div>
-              ))}
-            </motion.div>
+              </div>
+              <ScatteredApps />
+            </div>
           </section>
 
           {/* DOCTRINE / HOW IT WORKS — open concept, soft seam, no boxes */}
