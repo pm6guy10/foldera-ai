@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
+active_issue: 397
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Between rungs. #378 (design system lock + full amber landing overhaul) is COMPLETE and merged. Awaiting the owner's next chosen seam."
-next_seam: "Owner names the next seam. Standing follow-up candidates (NOT started, not yet authorized): migrate the rest of the app (dashboard) from cyan to the amber system (amber is currently landing-scoped via the .ld layer in app/globals.css; tailwind.config accent still cyan); optionally warm foldera-glyph.svg. Any further landing pass must stay OBVIOUSLY better and keep §12 of docs/DESIGN_SYSTEM.md green."
+why_this_first: "Owner directive 2026-06-18 ('you pick, take ownership'). The live product thread is the GUARDIAN. Honest next code seam per ACTIVE_HANDOFF: have the brief seed the matched draft at GENERATION TIME so the guardian's draft is deterministic, retiring the post-hoc fuzzy 48h recycle (#394) for the brief path. Widens the one real act (hands), not a new brain (Bible Part II-B). Proven in harness — NO paid API calls."
+next_seam: "After #397 merges: configure the free external 15-min cron (owner-side, the live firing cadence). Then optional code cleanups — malformed commitment titles (SYNC:payment_financial:…), legacy cyan favicons, stale-branch/skipped-test triage. Any landing pass stays OBVIOUSLY better and keeps docs/DESIGN_SYSTEM.md §12 green."
 completed_issue_378:
   issue: 378
   prs: [379, 380]

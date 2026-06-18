@@ -1,37 +1,40 @@
 {
-  "backlog_id": "between-rungs",
-  "active_issue": "none",
+  "backlog_id": "guardian-seed-draft-at-generation",
+  "active_issue": 397,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Between rungs — no active implementation seam. The owner names the next seam. Live product thread is the GUARDIAN (workday-presence): it fires, grounds a real commitment, and pings Slack only when it has a reviewable move (#391/#393/#394 live). Standing candidates: owner-side external 15-min cron for cadence; code-side, the brief seeding the matched draft at generation time; clean malformed commitment titles; legacy cyan favicons; triage stale branches + skipped tests. Constraint: NO paid API calls to test — prove in the harness.",
+  "user_system_path": "Guardian (workday-presence) seeds the matched draft at GENERATION TIME. When the daily brief persists a winning directive+artifact to tkg_actions, it also seeds workday_presence_state (with its draft) grounded to that exact winner — so the guardian's draft is deterministic, retiring the post-hoc fuzzy 48h recycle (#394) for the brief path (#394 stays as a fallback for other paths). Widens the one real act (hands), not a new brain (Bible Part II-B). Constraint: NO paid API calls to test — prove in the harness.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "docs/**"
+    "docs/**",
+    "lib/workday-presence/**",
+    "app/api/workday-presence/**",
+    "lib/cron/daily-brief-generate.ts"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
-    "app/api/**",
-    "lib/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "between rungs — only control-plane + docs may change until the owner names the next seam (which re-scopes this contract).",
-  "forbidden_files_raw": "No product/runtime/schema/deps changes without an active seam + scoped contract.",
-  "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "N/A — between rungs.",
-  "browser_proof_command": "N/A",
-  "acceptance_condition": "Control plane is consistent in the between-rungs form (build-order active_issue: none, contract active_issue: none, no active-seam line in ACTIVE_HANDOFF) and gate:continuity passes.",
-  "is_user_facing": false,
+  "allowed_files_raw": "Seam #397: the workday-presence seed lib + the seed-from-scorer route (extraction) + the daily-brief generate file (one additive seed call) + control-plane + docs. Schema and dependency files stay forbidden — no migrations, no new deps.",
+  "forbidden_files_raw": "No schema (supabase/**) or dependency (package*.json) changes in this seam. Any lib/app path outside the allowed list is out of scope.",
+  "required_local_proof": "npm run gate:continuity && npm run lint && npm run build && focused vitest (seed-from-directive + seed-from-scorer route + recycled-draft + finished-work-gate)",
+  "required_browser_proof": "DEFERRED — exercising the live seeded card requires a paid daily-brief generation cycle; owner directive forbids paid tests (Cost Doctrine). Harness proof is complete; the live path is reported unproven-by-paid, not claimed done.",
+  "browser_proof_command": "N/A — no-paid directive; prove in harness",
+  "acceptance_condition": "Seed lib extracted with byte-identical behavior (seed-from-scorer route suite green), daily-brief seeds workday_presence_state at the scored-winner persistence point (best-effort, snooze-preserving, refuses ungrounded send drafts), #394 recycle/finished-work suites stay green, and gate:continuity + lint + build pass.",
+  "is_user_facing": true,
   "anti_regression_checks": [
-    "gate:continuity green in between-rungs form",
-    "no active-seam line in ACTIVE_HANDOFF.md",
-    "no product/runtime files changed"
+    "seed-from-scorer route suite green (extraction is behavior-preserving)",
+    "#394 recycled-draft + finished-work-gate suites green (recycle fallback intact)",
+    "no paid API calls in any test",
+    "an existing active snooze is preserved by the brief reseed (never wakes a silenced card)",
+    "no schema or dependency files changed"
   ],
-  "stop_condition": "Stop when the control plane is rolled forward to a clean between-rungs state and the owner has a boot prompt for the next session.",
-  "next_command": "New session: read ACTIVE_HANDOFF.md + FOLDERA_MASTER_BIBLE.md Part II-B + the heartbeat memory; the owner names the next seam (likely the external cron for guardian cadence, or the brief seeding the matched draft).",
+  "stop_condition": "Stop when the seam is merged (MERGED_AND_CLOSED) with harness proof, or blocked with an exact receipt. The live user-facing path is explicitly deferred (no-paid directive) — not a blocker on the harness-proven change.",
+  "next_command": "After #397 merges: configure the free external 15-min cron (owner-side firing cadence). Then optional code cleanups — malformed commitment titles, legacy cyan favicons, stale-branch/skipped-test triage.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

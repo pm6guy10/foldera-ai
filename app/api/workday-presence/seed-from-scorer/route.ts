@@ -11,26 +11,22 @@
 import { NextResponse } from 'next/server';
 import { resolveAnyUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
-import {
-  BUDGET_CAP_DIRECTIVE_SENTINEL,
-  generateDirective,
-} from '@/lib/briefing/generator';
+import { generateDirective } from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
 import { evaluateBottomGate } from '@/lib/cron/daily-brief-generate';
 import { getLastScorerDiagnostics } from '@/lib/briefing/scorer';
 import type { ConvictionArtifact, ConvictionDirective } from '@/lib/briefing/types';
-import type {
-  WorkdayPresenceDraft,
-  WorkdayPresenceSuppressionTrace,
-  WorkdayPresenceSourceTrailEntry,
-  WorkdayPresenceState,
-} from '@/lib/workday-presence/model';
+import type { WorkdayPresenceSuppressionTrace } from '@/lib/workday-presence/model';
+import {
+  directiveToPresenceState,
+  GENERATION_FAILED_SENTINEL,
+  isRealMove,
+  sendDraftIsGrounded,
+} from '@/lib/workday-presence/seed-from-directive';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
-
-const GENERATION_FAILED_SENTINEL = '__GENERATION_FAILED__';
 
 function readSelectedCandidate(
   directive: ConvictionDirective,
@@ -139,106 +135,6 @@ async function persistSuppressionTrace(input: {
     },
   });
   if (updateResult.error) throw updateResult.error;
-}
-
-/** A directive that doesn't represent a real, reviewable move the user can act on. */
-function isRealMove(directive: ConvictionDirective): boolean {
-  const text = directive.directive?.trim() ?? '';
-  if (directive.action_type === 'do_nothing') return false;
-  if (!text) return false;
-  if (text === GENERATION_FAILED_SENTINEL || text === BUDGET_CAP_DIRECTIVE_SENTINEL) return false;
-  return true;
-}
-
-/** One-line, recognizable preview of the drafted artifact for the "View Draft" surface. */
-function draftFromArtifact(
-  directive: ConvictionDirective,
-  artifact: ConvictionArtifact | null,
-): WorkdayPresenceDraft | null {
-  if (!artifact) return null;
-  const record = artifact as unknown as Record<string, unknown>;
-  const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
-
-  const title =
-    str(record.subject) ||
-    str(record.title) ||
-    str(record.recommendation) ||
-    directive.directive.slice(0, 120);
-  const body =
-    str(record.body) ||
-    str(record.content) ||
-    str(record.findings) ||
-    str(record.recommendation) ||
-    str(record.context);
-  const to = str(record.to);
-
-  return {
-    action_type: directive.action_type,
-    title: title.slice(0, 160),
-    preview: body.replace(/\s+/g, ' ').slice(0, 240),
-    ...(to ? { to } : {}),
-    ...(body ? { body: body.slice(0, 2000) } : {}),
-  };
-}
-
-/**
- * Anti-fabrication gate for email drafts. A send_message draft may only ship
- * when it is grounded in reality: it replies in a real inbound thread
- * (gmail_thread_id / in_reply_to), or the recipient verifiably appears in the
- * evidence the generator cited. A drafted reply to an email that never
- * happened must never reach the card — quiet beats fabricated.
- */
-function sendDraftIsGrounded(
-  directive: ConvictionDirective,
-  artifact: ConvictionArtifact | null,
-): boolean {
-  if (!artifact) return false;
-  const record = artifact as unknown as Record<string, unknown>;
-  const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
-
-  if (str(record.gmail_thread_id) || str(record.in_reply_to)) return true;
-
-  const to = str(record.to).toLowerCase();
-  if (!to.includes('@')) return false;
-  return (directive.evidence ?? []).some((ev) =>
-    (ev.description ?? '').toLowerCase().includes(to),
-  );
-}
-
-/** Evidence the generator grounded the move in — surfaced as the card's source trail. */
-function sourceTrailFromDirective(directive: ConvictionDirective): WorkdayPresenceSourceTrailEntry[] {
-  return (directive.evidence ?? []).slice(0, 3).map((ev) => ({
-    table: ev.type === 'commitment' ? ('tkg_commitments' as const) : ('tkg_signals' as const),
-    source: 'generator_evidence',
-    type: ev.type,
-    occurred_at: ev.date,
-    redacted_summary: (ev.description ?? '').slice(0, 200),
-    selection_reason: 'evidence grounding the generated move',
-  }));
-}
-
-function directiveToPresenceState(
-  directive: ConvictionDirective,
-  winnerTitle: string,
-  artifact: ConvictionArtifact | null,
-  nowIso: string,
-): WorkdayPresenceState {
-  return {
-    current_focus: winnerTitle,
-    next_move: directive.directive,
-    why_it_matters: directive.reason || `Confidence ${directive.confidence}/100.`,
-    blocker: null,
-    do_not_touch: 'Do not auto-send or mutate source systems without review.',
-    waiting_on: null,
-    last_completed_step: null,
-    state_source: 'scored_winner',
-    source_trail: sourceTrailFromDirective(directive),
-    draft: draftFromArtifact(directive, artifact),
-    snoozed_until: null,
-    interaction_history: [],
-    created_at: nowIso,
-    updated_at: nowIso,
-  };
 }
 
 export async function POST(request: Request) {
