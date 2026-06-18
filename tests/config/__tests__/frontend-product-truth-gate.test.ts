@@ -53,8 +53,8 @@ const BANNED_HOMEPAGE_MARKETING_PHRASES = [
 
 const REQUIRED_HOMEPAGE_COPY = [
   'Stop rebuilding the work.',
-  'Foldera restores continuity across fractured apps, messages, meetings, approvals, and decisions so you can stop rebuilding context just to do the work.',
-  'Stop checking nine apps. Foldera keeps track.',
+  'Foldera holds the thread across your apps, then pings you in Slack with the one finished move that matters — context attached, ready to approve.',
+  'Stop checking nine apps.',
   'One trusted answer. All the context. Next move ready.',
 ];
 

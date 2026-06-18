@@ -1,10 +1,10 @@
 <svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Foldera glyph">
   <defs>
     <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#67f8ff"/>
-      <stop offset="42%" stop-color="#38bdf8"/>
-      <stop offset="72%" stop-color="#7dd3fc"/>
-      <stop offset="100%" stop-color="#22d3ee"/>
+      <stop offset="0%" stop-color="#FFD78A"/>
+      <stop offset="38%" stop-color="#FFC25C"/>
+      <stop offset="72%" stop-color="#F5A623"/>
+      <stop offset="100%" stop-color="#B4760F"/>
     </linearGradient>
   </defs>
   <path d="M52 196a8 8 0 0 1-8-8V76a8 8 0 0 1 8-8h62l22 22h68a8 8 0 0 1 8 8v90a8 8 0 0 1-8 8Z" fill="none" stroke="url(#g1)" stroke-width="8" stroke-linejoin="round"/>
