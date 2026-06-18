@@ -1,9 +1,9 @@
 {
   "active_issue": 382,
-  "active_branch": "feat/382-pain-visual",
+  "active_branch": "feat/382-pixel-polish",
   "active_pr": null,
-  "deployed_commit_sha": "592fec6",
+  "deployed_commit_sha": "05ba0df",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-18T02:10:00Z"
+  "last_verified_at": "2026-06-18T05:40:00Z"
 }

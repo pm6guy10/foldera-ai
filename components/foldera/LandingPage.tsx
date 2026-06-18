@@ -12,12 +12,13 @@ import {
   Layers,
   LockKeyhole,
   Menu,
+  MousePointerClick,
   ScrollText,
   Settings,
   ShieldCheck,
-  Sparkles,
   UserX,
   Users,
+  Workflow,
   X,
   Zap,
 } from 'lucide-react';
@@ -103,9 +104,9 @@ const stats = [
 
 const doctrine = [
   { label: 'State', icon: Layers, body: 'Where you left off.' },
-  { label: 'Connectors', icon: Activity, body: 'Only what you consent to.' },
+  { label: 'Connectors', icon: Workflow, body: 'Only what you consent to.' },
   { label: 'Triggers', icon: Zap, body: 'When it’s worth a nudge.' },
-  { label: 'One move', icon: Sparkles, body: 'A single next step.' },
+  { label: 'One move', icon: MousePointerClick, body: 'A single next step.' },
 ];
 
 const howItWorks = [
@@ -202,11 +203,11 @@ function ScatteredApps() {
         <div
           key={c.label}
           className="ld-float absolute"
-          style={{ left: c.x, top: c.y, rotate: `${c.r}deg`, animationDelay: `${(i % 4) * 0.5}s` }}
+          style={{ left: c.x, top: c.y, animationDelay: `${(i % 4) * 0.6}s`, animationDuration: `${6 + (i % 3)}s` }}
         >
-          <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-[#15151b] px-3 py-2 shadow-[0_14px_34px_-14px_rgba(0,0,0,0.85)]">
-            <BrandLogo brand={c.brand} size={15} />
-            <span className="whitespace-nowrap text-[12px] text-[color:var(--ld-fg-soft)]">{c.label}</span>
+          <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.07] bg-[#15151b] px-3.5 py-2.5 shadow-[0_18px_40px_-16px_rgba(0,0,0,0.9)]">
+            <BrandLogo brand={c.brand} size={16} />
+            <span className="whitespace-nowrap text-[12.5px] text-[color:var(--ld-fg-soft)]">{c.label}</span>
             {c.meta ? <span className="ld-mono text-[10px] text-[color:var(--ld-fg-dim)]">{c.meta}</span> : null}
           </div>
         </div>
@@ -359,7 +360,7 @@ function Header() {
       data-testid="landing-header"
       className="sticky top-0 z-[60] border-b border-white/[0.06] bg-[#0a0a0c]/85 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl"
     >
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-5 px-5 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-16 w-full max-w-[1240px] items-center justify-between gap-5 px-5 sm:px-8 lg:px-10">
         <a
           href="/"
           aria-label="Foldera"
@@ -461,7 +462,7 @@ function Header() {
 
 /* ----------------------------------------------------- page */
 
-const sectionWrap = 'mx-auto w-full max-w-6xl px-5 sm:px-6 lg:px-8';
+const sectionWrap = 'mx-auto w-full max-w-[1240px] px-5 sm:px-8 lg:px-10';
 
 export function LandingPage({ isAuthenticated: _isAuthenticated = false }: LandingPageProps = {}) {
   return (
@@ -485,8 +486,8 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
                   Stop rebuilding the work.
                   <span className="ld-text-fade block">The reconstruction tax ends here.</span>
                 </motion.h1>
-                <motion.p variants={fadeUp} className="mt-7 max-w-xl text-lg leading-8 text-[color:var(--ld-fg-muted)]">
-                  Foldera restores continuity across fractured apps, messages, meetings, approvals, and decisions so you can stop rebuilding context just to do the work.
+                <motion.p variants={fadeUp} className="mt-7 max-w-[34rem] text-xl leading-[1.55] text-[color:var(--ld-fg-soft)]">
+                  Foldera holds the thread across your apps, then pings you in Slack with the one finished move that matters — context attached, ready to approve.
                 </motion.p>
 
                 <motion.div
@@ -510,21 +511,21 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
             </div>
           </section>
 
-          {/* CONNECTOR STRIP — just the logos, no chrome */}
-          <section className="pt-12 pb-4" data-testid="landing-connectors">
-            <div className={`${sectionWrap} flex flex-col items-center gap-7`}>
-              <p className="ld-mono text-[10px] uppercase tracking-[0.3em] text-[color:var(--ld-fg-dim)]">
+          {/* CONNECTOR STRIP — real logos in clean chips */}
+          <section className="pt-14 pb-6" data-testid="landing-connectors">
+            <div className={`${sectionWrap} flex flex-col items-center gap-8`}>
+              <p className="ld-mono text-[11px] uppercase tracking-[0.3em] text-[color:var(--ld-fg-dim)]">
                 Works where you already work
               </p>
-              <div className="flex flex-wrap items-center justify-center gap-x-9 gap-y-6">
+              <div className="flex flex-wrap items-center justify-center gap-3.5">
                 {connectors.map((c) => (
                   <span
                     key={c.name}
                     title={c.name}
                     aria-label={c.name}
-                    className="opacity-75 transition-opacity duration-300 hover:opacity-100"
+                    className="ld-conn-chip transition-colors duration-300 hover:border-white/20"
                   >
-                    <BrandLogo brand={c} size={26} />
+                    <BrandLogo brand={c} size={24} />
                   </span>
                 ))}
               </div>
@@ -532,7 +533,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
           </section>
 
           {/* STATS — big numerals, few words, no lines */}
-          <section className={`${sectionWrap} py-28 lg:py-36`} data-testid="landing-stats">
+          <section className={`${sectionWrap} py-24 lg:py-28`} data-testid="landing-stats">
             <motion.div
               className="grid grid-cols-2 gap-x-8 gap-y-16 lg:grid-cols-4"
               variants={stagger}
@@ -553,7 +554,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
           </section>
 
           {/* PAIN — show the chaos: real apps scattered, one big line */}
-          <section className={`${sectionWrap} py-28 lg:py-36`} data-testid="landing-pain">
+          <section className={`${sectionWrap} py-24 lg:py-28`} data-testid="landing-pain">
             <div className="grid items-center gap-14 lg:grid-cols-2 lg:gap-20">
               <div>
                 <Reveal>
@@ -590,7 +591,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
             data-testid="landing-doctrine"
             style={{ background: 'radial-gradient(80% 60% at 50% 0%, rgba(245,166,35,0.05), transparent 70%)' }}
           >
-            <div className={`${sectionWrap} py-28 lg:py-36`}>
+            <div className={`${sectionWrap} py-24 lg:py-28`}>
               <Reveal className="mx-auto max-w-3xl text-center">
                 <h2 className="ld-display text-[clamp(2rem,1.4rem+2.4vw,3.25rem)] leading-[1.05] tracking-[-0.035em] text-[color:var(--ld-fg)]">
                   Not a lack of AI.{' '}
@@ -606,13 +607,19 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
                 whileInView="show"
                 viewport={{ once: true, margin: '-80px' }}
               >
-                {doctrine.map(({ label, icon: Icon, body }) => (
+                {doctrine.map(({ label, icon: Icon, body }, i) => (
                   <motion.div key={label} variants={fadeUp} className="flex flex-col items-center text-center">
-                    <span className="ld-accent-soft flex h-14 w-14 items-center justify-center rounded-2xl">
-                      <Icon className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
+                    <span
+                      className={`flex h-14 w-14 items-center justify-center rounded-2xl border ${
+                        i === 3
+                          ? 'border-[color:var(--ld-accent)]/30 bg-[color:var(--ld-accent)]/[0.08] text-[color:var(--ld-accent)]'
+                          : 'border-white/[0.07] bg-white/[0.025] text-[color:var(--ld-fg-soft)]'
+                      }`}
+                    >
+                      <Icon className="h-[26px] w-[26px]" strokeWidth={1.5} aria-hidden="true" />
                     </span>
-                    <p className="ld-display mt-5 text-[1.1rem] tracking-[-0.01em] text-[color:var(--ld-fg)]">{label}</p>
-                    <p className="mt-1.5 text-[14px] text-[color:var(--ld-fg-dim)]">{body}</p>
+                    <p className="ld-display mt-5 text-[1.15rem] tracking-[-0.01em] text-[color:var(--ld-fg)]">{label}</p>
+                    <p className="mt-1.5 text-[14.5px] text-[color:var(--ld-fg-muted)]">{body}</p>
                   </motion.div>
                 ))}
               </motion.div>
@@ -636,7 +643,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
           </section>
 
           {/* TRUST — icon-led, no card boxes */}
-          <section id="trust" className={`${sectionWrap} py-28 lg:py-36`} data-testid="landing-trust">
+          <section id="trust" className={`${sectionWrap} py-24 lg:py-28`} data-testid="landing-trust">
             <Reveal>
               <h2 className="ld-display max-w-3xl text-[clamp(2rem,1.4rem+2.4vw,3.25rem)] leading-[1.05] tracking-[-0.035em] text-[color:var(--ld-fg)]">
                 It lives where you work.{' '}
@@ -652,9 +659,9 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
             >
               {trustItems.map(({ icon: Icon, title, body }) => (
                 <motion.div key={title} variants={fadeUp}>
-                  <Icon className="h-7 w-7 text-[color:var(--ld-accent)]" strokeWidth={1.5} aria-hidden="true" />
-                  <h3 className="ld-display mt-5 text-[1.15rem] tracking-[-0.01em] text-[color:var(--ld-fg)]">{title}</h3>
-                  <p className="mt-1.5 text-[15px] leading-6 text-[color:var(--ld-fg-dim)]">{body}</p>
+                  <Icon className="h-7 w-7 text-[color:var(--ld-fg-soft)]" strokeWidth={1.5} aria-hidden="true" />
+                  <h3 className="ld-display mt-5 text-[1.2rem] tracking-[-0.01em] text-[color:var(--ld-fg)]">{title}</h3>
+                  <p className="mt-1.5 text-[15px] leading-6 text-[color:var(--ld-fg-muted)]">{body}</p>
                 </motion.div>
               ))}
             </motion.div>
@@ -665,7 +672,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
             <div className={`${sectionWrap} flex flex-wrap items-center justify-center gap-x-10 gap-y-5 pb-8`}>
               {enterprise.map(({ icon: Icon, t }) => (
                 <span key={t} className="inline-flex items-center gap-2.5 text-[13px] text-[color:var(--ld-fg-muted)]">
-                  <Icon className="h-4 w-4 text-[color:var(--ld-accent)]" strokeWidth={1.75} aria-hidden="true" />
+                  <Icon className="h-4 w-4 text-[color:var(--ld-fg-dim)]" strokeWidth={1.75} aria-hidden="true" />
                   {t}
                 </span>
               ))}
@@ -673,7 +680,7 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
           </section>
 
           {/* PILOT — product-led, minimal words */}
-          <section className={`${sectionWrap} py-28 lg:py-36`} data-testid="landing-pilot">
+          <section className={`${sectionWrap} py-24 lg:py-28`} data-testid="landing-pilot">
             <Reveal className="mx-auto max-w-3xl text-center">
               <h2 className="ld-display text-[clamp(2rem,1.4rem+2.4vw,3.25rem)] leading-[1.04] tracking-[-0.035em] text-[color:var(--ld-fg)]">
                 Stop checking nine apps.

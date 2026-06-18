@@ -6,7 +6,6 @@ import {
   ArrowRight,
   ChevronDown,
   ClipboardList,
-  Folder,
   Inbox,
   LayoutGrid,
   Puzzle,
@@ -14,6 +13,7 @@ import {
   Settings,
   Sparkles,
 } from "lucide-react";
+import { FolderaMark } from "@/components/nav/FolderaMark";
 
 type NavItem = {
   href: string;
@@ -37,12 +37,14 @@ export function Sidebar() {
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col border-r border-demo-border bg-demo-sidebar md:flex">
-      <div className="flex items-center gap-2 px-6 pb-8 pt-6">
-        <div className="grid h-8 w-8 place-items-center rounded-md bg-demo-accent/10 text-demo-accent">
-          <Folder className="h-4 w-4" />
-        </div>
+      <Link
+        href="/"
+        aria-label="Foldera — back to home"
+        className="flex items-center gap-2.5 rounded-md px-6 pb-8 pt-6 transition-opacity hover:opacity-90"
+      >
+        <FolderaMark size="sm" decorative />
         <span className="text-lg font-semibold tracking-tight">Foldera</span>
-      </div>
+      </Link>
 
       <nav className="flex-1 px-3">
         <ul className="space-y-1">

@@ -1021,7 +1021,7 @@
       margin-left: -8px;
       border: 1px solid rgba(255, 255, 255, 0.5);
       border-radius: 999px;
-      background: linear-gradient(135deg, #ffd1a3, #7dd3fc);
+      background: linear-gradient(135deg, #ffd78a, #f5a623);
       color: #16151a;
       font-size: 11px;
       font-weight: 800;
@@ -1683,7 +1683,7 @@
   }
 
   .foldera-button-primary {
-    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[14px] border border-cyan-300/25 bg-accent px-5 text-sm font-semibold text-slate-950 transition-all hover:bg-accent-hover;
+    @apply inline-flex min-h-[48px] items-center justify-center gap-2 rounded-[14px] border border-accent/25 bg-accent px-5 text-sm font-semibold text-slate-950 transition-all hover:bg-accent-hover;
     box-shadow: 0 10px 26px rgba(180, 118, 15, 0.24);
   }
 
@@ -3266,9 +3266,9 @@
   letter-spacing: -0.035em;
   line-height: 1.04;
 }
-/* graphite-to-fade second line, Linear/Vercel style */
+/* graphite-to-fade second line, Linear/Vercel style — floor kept legible */
 .ld-text-fade {
-  background: linear-gradient(180deg, #8c93a0 0%, #3a404b 100%);
+  background: linear-gradient(180deg, #b6bcc6 0%, #6a7180 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -3426,7 +3426,7 @@
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-7px); }
 }
-.ld-float { animation: ldFloat 6s ease-in-out infinite; will-change: transform; }
+.ld-float { animation: ldFloat 6s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   .ld-signal, .ld-marquee, .ld-float { animation: none; }
