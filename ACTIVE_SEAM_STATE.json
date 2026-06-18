@@ -1,9 +1,9 @@
 {
   "active_issue": 394,
-  "active_branch": "feat/394-guardian-finished-work",
+  "active_branch": "chore/roll-forward-between-rungs",
   "active_pr": null,
-  "deployed_commit_sha": "7b573eb",
+  "deployed_commit_sha": "d235cde",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-18T14:00:00Z"
+  "last_verified_at": "2026-06-18T15:00:00Z"
 }
