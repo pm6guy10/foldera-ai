@@ -22,11 +22,16 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 397
+active_issue: 399
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Owner directive 2026-06-18 ('you pick, take ownership'). The live product thread is the GUARDIAN. Honest next code seam per ACTIVE_HANDOFF: have the brief seed the matched draft at GENERATION TIME so the guardian's draft is deterministic, retiring the post-hoc fuzzy 48h recycle (#394) for the brief path. Widens the one real act (hands), not a new brain (Bible Part II-B). Proven in harness — NO paid API calls."
-next_seam: "After #397 merges: configure the free external 15-min cron (owner-side, the live firing cadence). Then optional code cleanups — malformed commitment titles (SYNC:payment_financial:…), legacy cyan favicons, stale-branch/skipped-test triage. Any landing pass stays OBVIOUSLY better and keeps docs/DESIGN_SYSTEM.md §12 green."
+why_this_first: "Owner directive 2026-06-18 ('clear the queue, take total ownership of the app being ready'). #397 (brief seeds matched draft at generation time) is MERGED (PR #398, 4eb68f1). #399 is the next cheap-detail-removal toward 'ready': stop the guardian card surfacing the SYNC:<category>:<slug> dedup key as a commitment title — prefer the human description (read-time display fix, no prod data mutation). NO paid API calls."
+next_seam: "OWNER-SIDE (the one live-readiness blocker I cannot do): configure the free external 15-min cron for guardian firing cadence. CODE candidates remaining: recolor legacy cyan favicons (app/favicon.ico + 1MB public/favicon.png — BLOCKED on image tooling: sharp/imagemagick absent, needs amber assets or a tool); triage 46 stale remote branches + skipped tests. Any landing pass stays OBVIOUSLY better and keeps docs/DESIGN_SYSTEM.md §12 green."
+completed_issue_397:
+  issue: 397
+  pr: 398
+  pr_merge_sha: 4eb68f1
+  summary: "Guardian seeds the matched draft at generation time. Daily brief seeds workday_presence_state (with its draft) at the scored-winner persistence point — deterministic, retiring the post-hoc fuzzy 48h recycle (#394) for the brief path (#394 stays a fallback). Seed-mapping extracted to lib/workday-presence/seed-from-directive.ts (route imports it; byte-identical). Conservative: refuses ungrounded send drafts, preserves an existing snooze. Proof: 38 harness tests + gate:continuity + lint + build; NO paid calls; live path deferred per no-paid directive."
 completed_issue_378:
   issue: 378
   prs: [379, 380]

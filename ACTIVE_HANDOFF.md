@@ -11,8 +11,8 @@ Last updated: 2026-06-18 UTC (#394 guardian-finished-work merged `d235cde`; betw
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Issue #397 is the active product seam.
-The live product thread is the GUARDIAN (workday-presence): it fires, grounds a real commitment, and pings Slack ONLY when it has a reviewable move — see `FOLDERA_MASTER_BIBLE.md` Part II-B for the full architecture map. #397 widens the guardian's hands: the daily brief seeds the matched draft at generation time (deterministic), retiring the post-hoc fuzzy recycle (#394) for the brief path.
+Issue #399 is the active product seam.
+The live product thread is the GUARDIAN (workday-presence): it fires, grounds a real commitment, and pings Slack ONLY when it has a reviewable move — see `FOLDERA_MASTER_BIBLE.md` Part II-B for the full architecture map. #397 (brief seeds the matched draft at generation time) is MERGED — PR #398, prod `4eb68f1`. #399 removes a cheap detail: the guardian card no longer shows the `SYNC:<category>:<slug>` dedup key as a commitment title (prefers the human description). The ONE live-readiness blocker is owner-side: the free external 15-min cron for guardian firing cadence.
 **LIVE (production `d235cde`):** #382 frontend overhaul (PRs #383–#389 incl. pixel-polish) · #390 owner self-review system (`docs/BRANDON.md` avatar + `docs/EXPERT_PANEL.md` panel + Bible Part IV) · #391/#393 guardian fires-grounded-and-pings (daily-cron reverted, honoring #369) · #394/#395 guardian pings only finished work + no-paid recycled draft. #382 stays OPEN for optional polish.
 **Standing candidates (NOT started, owner to choose):** OWNER-SIDE — configure the external 15-min cron for guardian cadence (the ongoing firing mechanism; NOT a Vercel daily cron). CODE — have the brief seed the matched draft at generation time (touches the paid generator); clean malformed commitment titles (`SYNC:payment_financial:…`); recolor legacy cyan favicons (`app/favicon.ico`/`public/favicon.png`); triage 44 stale remote branches + 24 skipped tests. Constraint: NO paid API calls to test — prove in the harness.
 
@@ -36,7 +36,7 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 ## Current slice:
 
-#397 — guardian seeds the matched draft at GENERATION TIME. Owner directive 2026-06-18 ("you pick, take ownership"). The daily brief now seeds `workday_presence_state` (with its draft) at the exact moment it persists a winning directive+artifact to `tkg_actions` — so the draft is grounded to the precise winner, retiring the post-hoc fuzzy 48h recycle (#394) for the brief path (#394 stays as a fallback for other paths). Extracted the seed-mapping into shared `lib/workday-presence/seed-from-directive.ts` (route imports it; behavior byte-identical). Conservative: refuses ungrounded send drafts, PRESERVES an existing snooze. Proven in harness — 16 new fixtures + the seed-from-scorer route suite (proves extraction) + #394 recycle/finished-work suites all green; NO paid calls. Branch `claude/foldera-boot-memory-qlsywu`.
+#399 — guardian commitment-title hygiene: `commitment-bridge.ts` no longer surfaces the `SYNC:<category>:<slug>` dedup key as the card title; new `humanCommitmentTitle()` prefers the human `description` and strips the `SYNC:` prefix in the fallback so the card is never cheap. Read-time display fix, no prod-data mutation. 8/8 commitment-bridge tests + gate:continuity + lint + build green; no paid calls. Branch `claude/foldera-boot-memory-qlsywu`. Prior (merged this session): #397 — brief seeds the matched draft at generation time (PR #398, prod `4eb68f1`).
 
 ## Next exact move
 

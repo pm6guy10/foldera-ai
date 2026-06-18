@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { findLapsingCommitmentSignal } from '../commitment-bridge';
+import { findLapsingCommitmentSignal, humanCommitmentTitle } from '../commitment-bridge';
 
 function makeSupabaseStub(rows: unknown[], error: unknown = null) {
   const limit = vi.fn().mockResolvedValue({ data: rows, error });
@@ -52,12 +52,15 @@ describe('findLapsingCommitmentSignal', () => {
     });
   });
 
-  it('prefers canonical_form over description when both exist', async () => {
+  it('prefers the human description over the canonical dedup key (#399)', async () => {
+    // canonical_form is the SYNC:<category>:<slug> dedup KEY (signal-processor.ts),
+    // never a display title. Real data looks like this — the card must show the
+    // human description, not the machine key.
     const supabase = makeSupabaseStub([
       {
         id: 'commit-2',
-        description: 'raw extracted text, less clean',
-        canonical_form: 'Reply to Acme renewal question',
+        description: 'Reply to Acme renewal question',
+        canonical_form: 'SYNC:relationship:Reply_to_Acme_renewal_question',
         due_at: null,
         implied_due_at: '2026-06-16T18:00:00.000Z',
       },
@@ -70,7 +73,29 @@ describe('findLapsingCommitmentSignal', () => {
     );
 
     expect(result?.title).toBe('Reply to Acme renewal question');
+    expect(result?.title).not.toContain('SYNC:');
     expect(result?.due_at_iso).toBe('2026-06-16T18:00:00.000Z');
+  });
+
+  it('cleans a SYNC: key into a human title when description is missing (#399)', async () => {
+    const supabase = makeSupabaseStub([
+      {
+        id: 'commit-3',
+        description: null,
+        canonical_form: 'SYNC:payment_financial:Pay_the_Supabase_invoice',
+        due_at: '2026-06-16T20:00:00.000Z',
+        implied_due_at: null,
+      },
+    ]);
+
+    const result = await findLapsingCommitmentSignal(
+      supabase as any,
+      'user-1',
+      '2026-06-16T12:00:00.000Z',
+    );
+
+    expect(result?.title).toBe('Pay the Supabase invoice');
+    expect(result?.title).not.toContain('SYNC:');
   });
 
   it('throws when the query errors instead of silently returning null', async () => {
@@ -78,5 +103,25 @@ describe('findLapsingCommitmentSignal', () => {
     await expect(
       findLapsingCommitmentSignal(supabase as any, 'user-1', '2026-06-16T12:00:00.000Z'),
     ).rejects.toThrow('db unreachable');
+  });
+});
+
+describe('humanCommitmentTitle (#399)', () => {
+  it('prefers the human description', () => {
+    expect(
+      humanCommitmentTitle('Pay the Supabase invoice', 'SYNC:payment_financial:Pay_the_Supabase_invoice'),
+    ).toBe('Pay the Supabase invoice');
+  });
+
+  it('strips the SYNC: prefix and restores spaces when only the key exists', () => {
+    expect(humanCommitmentTitle(null, 'SYNC:payment_financial:Pay_the_Supabase_invoice')).toBe(
+      'Pay the Supabase invoice',
+    );
+    expect(humanCommitmentTitle('   ', 'SYNC:other:Reply_to_Deanne')).toBe('Reply to Deanne');
+  });
+
+  it('returns null when neither a description nor a usable key exists', () => {
+    expect(humanCommitmentTitle(null, null)).toBeNull();
+    expect(humanCommitmentTitle('', 'SYNC:payment_financial:')).toBeNull();
   });
 });

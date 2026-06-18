@@ -30,6 +30,29 @@ export type SynthesizedCommitmentSignal = {
 };
 
 /**
+ * Human-readable commitment title for the guardian card. `canonical_form` is a
+ * dedup KEY (`SYNC:<category>:<slug>`, see signal-processor.ts) — never a display
+ * title. Prefer the real extracted `description`; only if it is missing fall back
+ * to the canonical key with its machine prefix stripped and underscores restored,
+ * so the card never shows raw `SYNC:payment_financial:...` to the user.
+ */
+export function humanCommitmentTitle(
+  description: string | null | undefined,
+  canonicalForm: string | null | undefined,
+): string | null {
+  const desc = description?.trim();
+  if (desc) return desc;
+  const canon = canonicalForm?.trim();
+  if (!canon) return null;
+  const cleaned = canon
+    .replace(/^sync:[^:]*:/i, '')
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned.length > 0 ? cleaned : null;
+}
+
+/**
  * Finds the user's single most urgent active, non-suppressed commitment with
  * a due date within the next LAPSING_WINDOW_HOURS (or already overdue), and
  * returns it as a FreshSignalRow-shaped pseudo-signal. Returns null when
@@ -59,7 +82,7 @@ export async function findLapsingCommitmentSignal(
   const dueAtIso = row.due_at ?? row.implied_due_at;
   if (!dueAtIso) return null;
 
-  const title = row.canonical_form?.trim() || row.description?.trim();
+  const title = humanCommitmentTitle(row.description, row.canonical_form);
   if (!title) return null;
 
   return {
