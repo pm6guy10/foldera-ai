@@ -4,6 +4,19 @@
 
 Operating doctrine pointer: see [FOLDERA_OPERATING_DOCTRINE.md](/C:/Users/b-kap/foldera-ai/FOLDERA_OPERATING_DOCTRINE.md) for the durable owner/operator seam order and current stop condition.
 
+## 2026-06-18 — Act-on-it loop: review-gated send + attachments shipped (#402 / #404 / #407)
+
+- MODE: Three product seams, each issue → harness proof → draft PR → squash-merge → control-plane roll. No paid LLM calls; all proven in the harness. Source docs rolled forward; merged remote/local session branches cleaned (local pruned to `main`; remote delete blocked by the git proxy 403 / no MCP delete-branch tool — 50 historical remote branches flagged for owner pruning).
+- Files changed (product): `lib/conviction/execute-action.ts`, `lib/email/attachments.ts`, `lib/email/send.ts` (+ focused tests); control plane: `ACTIVE_HANDOFF.md`, `ACTIVE_SEAM_STATE.json`, `FOLDERA_BUILD_ORDER.yaml`, `.foldera-contract.json`, `SESSION_HISTORY.md`.
+- What changed:
+  - **#402** (PR #403, `b698566`) — review-gated one-tap send from the Slack guardian ping: the owner reviews, then sends from their own Gmail. Live send stays behind `ALLOW_APPROVAL_EMAIL_SEND`.
+  - **#404** (PR #405, `4125585`) — email-draft attachment rails end-to-end (normalize/cap/provider-map for Resend + Graph), so the send can carry the finished work.
+  - **#407** (PR #408, `82dc104`) — the generator attaches its own work: an approved `write_document` is delivered with its own content as a real `<title>.md` file attachment (deterministic `deriveDocumentAttachment` at the delivery boundary; no new model call). First real population of #404's rails.
+  - Control plane rolled to clean between-rungs after each (#406, #409).
+- Verification: `lib/email` + `lib/conviction` suites green (85 tests, incl. new `deriveDocumentAttachment` / `attachmentFilenameFromTitle` tests + updated write_document delivery test); `npm run gate:continuity` + `lint` + `build` green; `tsc` 0 new errors. NO paid API calls — Resend mocked at the boundary.
+- Alignment: matches `FOLDERA_MASTER_BIBLE.md` money path steps 7–9 (one trusted verdict → one click → durable receipt) and the "no external send without explicit permission and the right proof for that rail" doctrine (send stays flag-gated). No vision drift; runtime table map unchanged.
+- Unresolved (owner-gated): (1) flip `ALLOW_APPROVAL_EMAIL_SEND=true` and validate the real attached sends/deliveries live; (2) configure the free external 15-min guardian cron; (3) paid generator build (cost ceiling needed) to compose + attach a companion document for an external `send_message`. 50 historical remote branches await owner pruning (no in-env delete path).
+
 ## 2026-06-10 — Live data audit + diagnosis alignment; #249 scoped and queued
 
 - MODE: Diagnosis cross-check + live Supabase audit. No code written, no PRs opened, no seam changed. One issue created (#249, queued). Source docs updated.
