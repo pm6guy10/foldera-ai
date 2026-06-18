@@ -88,6 +88,7 @@ import { isAutomatedRoutingRecipient } from '@/lib/email/automated-routing-recip
 import { insertDirectiveMlSnapshot } from '@/lib/ml/directive-ml-snapshot';
 import { logMlSendworthShadow } from '@/lib/ml/sendworth-shadow';
 import { getLastScorerDiagnostics } from '@/lib/briefing/scorer';
+import { seedWorkdayPresenceStateFromBrief } from '@/lib/workday-presence/seed-from-directive';
 import {
   buildGateFunnelFromScorerDiagnostics,
   finalizeUserPipelineRun,
@@ -3210,6 +3211,40 @@ export async function runDailyGenerate(
           userId,
         });
         continue;
+      }
+
+      // Guardian (#397): seed workday_presence_state from THIS winner at generation
+      // time — we know exactly which artifact belongs to the move, so no fuzzy 48h
+      // recycle is needed (#394 stays as a fallback for other paths). Best-effort:
+      // a failure here must never break brief generation.
+      try {
+        const seedResult = await seedWorkdayPresenceStateFromBrief({
+          supabase,
+          userId,
+          directive,
+          artifact: artifactForRow ?? artifact,
+          winnerTitle: getLastScorerDiagnostics()?.finalWinner?.title?.trim() ?? null,
+        });
+        if (!seedResult.seeded) {
+          logStructuredEvent({
+            event: 'workday_presence_seed_skipped',
+            level: 'info',
+            userId,
+            artifactType: artifactTypeForAction(directive.action_type),
+            generationStatus: 'presence_seed_skipped',
+            details: { scope: 'daily-generate', action_id: saved.id, reason: seedResult.reason },
+          });
+        }
+      } catch (seedErr: unknown) {
+        const message = seedErr instanceof Error ? seedErr.message : String(seedErr);
+        logStructuredEvent({
+          event: 'workday_presence_seed_failed',
+          level: 'warn',
+          userId,
+          artifactType: artifactTypeForAction(directive.action_type),
+          generationStatus: 'presence_seed_failed',
+          details: { scope: 'daily-generate', action_id: saved.id, error: message },
+        });
       }
 
       try {
