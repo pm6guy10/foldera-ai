@@ -22,11 +22,16 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 411
+active_issue: none
 priority_class: PRODUCT
 work_type: BUGFIX
-why_this_first: "Owner spotted it live on the Sources screen: the Microsoft connected account renders as a broken raw Azure guest UPN (b-kapp_outlook.com#EXT#@tenant.onmicrosoft.com) instead of the real email. Both capture paths store me.mail || me.userPrincipalName, so a guest/B2B account with empty mail lands the mangled UPN. #411 adds a pure normalizeMicrosoftAccountEmail() and applies it at the display (repairs the existing row, no migration) + both capture points. Deterministic, free, harness-proven. Trust surface: the Sources screen is where the owner verifies what Foldera reads — a garbled account label undermines exactly that trust."
-next_seam: "OWNER-SIDE: (1) open the Sources screen and confirm the Microsoft row now reads b-kapp@outlook.com (validates #411); (2) resume the live send/attachment validation — ALLOW_APPROVAL_EMAIL_SEND is on, confirm RESEND_API_KEY is set in Vercel Production, and connect a real source so a genuine write_document/send_message generates (the brain is currently in safe-silence, so there is nothing to approve/send yet); (3) configure the free external 15-min guardian cron. CODE candidate (needs owner go + paid validation): teach the generator to compose + attach a companion document for a send_message."
+why_this_first: "Between rungs. This session shipped #402 (review-gated send, PR #403), #404 (email draft attachments, PR #405), #407 (write_document delivery carries the doc as a real file, PR #408), and #411 (Sources screen shows the real Microsoft email instead of the raw Azure guest UPN, PR #412, 191520a). The remaining money-loop moves are owner-gated: ALLOW_APPROVAL_EMAIL_SEND is on — confirm RESEND_API_KEY and connect a real source so a genuine move generates; configure the free external 15-min guardian cron; and (paid, needs a cost ceiling) the generator companion-document build. Awaiting the owner's next move."
+next_seam: "OWNER-SIDE: (1) open the Sources screen and confirm the Microsoft row reads b-kapp@outlook.com (validates #411); (2) confirm RESEND_API_KEY in Vercel Production and connect a real source so a genuine write_document/send_message generates (brain is in safe-silence now — nothing to approve/send yet), then approve it to validate the live attached send (#402/#404/#407); (3) configure the free external 15-min guardian cron. CODE candidate (needs owner go + paid budget): teach the generator to compose + attach a companion document for a send_message."
+completed_issue_411:
+  issue: 411
+  pr: 412
+  pr_merge_sha: 191520a
+  summary: "Sources screen showed the Microsoft connected account as a broken raw Azure guest UPN (b-kapp_outlook.com#EXT#@tenant.onmicrosoft.com). Added pure normalizeMicrosoftAccountEmail() in lib/ui/provider-display.ts (recovers real email from #EXT# UPN, case-insensitive; clean emails pass through), applied at the display (app/dashboard/page.tsx — repairs existing row, no migration) + both capture points (callback + sync). Proof: lib/ui/__tests__/provider-display.test.ts 7/7; existing MS callback test green; gate:continuity + lint + build; NO paid calls; live Sources-screen validation owner-side — BLOCKED_WITH_EXACT_RECEIPT."
 completed_issue_407:
   issue: 407
   pr: 408

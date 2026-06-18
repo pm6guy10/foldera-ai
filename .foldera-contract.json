@@ -1,41 +1,39 @@
 {
-  "backlog_id": "fix-microsoft-guest-upn-display",
-  "active_issue": 411,
+  "backlog_id": "between-rungs",
+  "active_issue": "none",
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Seam #411 — the Sources screen shows the Microsoft connected account as a broken raw Azure guest UPN (b-kapp_outlook.com#EXT#@tenant.onmicrosoft.com) instead of the real email (b-kapp@outlook.com). Both capture paths store me.mail || me.userPrincipalName, so a guest/B2B account with empty mail lands the mangled UPN. Fix: a pure normalizeMicrosoftAccountEmail() in lib/ui/provider-display.ts that recovers the real email from an #EXT# UPN (case-insensitive; clean emails pass through), applied at the display (app/dashboard/page.tsx — repairs the already-stored row with no DB migration) and at both capture points (callback + sync) so new connects store clean. Deterministic, free, no schema/data migration. Constraint: NO paid API calls to test — prove in the harness.",
+  "user_system_path": "Between rungs. The live product thread is the GUARDIAN (workday-presence): it fires, grounds a real commitment, and pings Slack only when it has a reviewable move. Recent shipped work: #402 (review-gated send), #404 (email draft attachments), #407 (the generator attaches its own work — write_document delivery carries the doc as a real file), #411 (Sources screen shows the real Microsoft email instead of the raw Azure guest UPN). The remaining money-loop moves are owner-gated: ALLOW_APPROVAL_EMAIL_SEND is on — confirm RESEND_API_KEY in Vercel Production and connect a real source so a genuine write_document/send_message generates (the brain is in safe-silence now, so there is nothing to approve/send); configure the free external 15-min guardian cron; and (paid, needs a cost ceiling) teach the generator to compose + attach a companion document for a send_message. Constraint: NO paid API calls to test — prove in the harness.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "docs/**",
-    "lib/ui/provider-display.ts",
-    "lib/ui/__tests__/**",
-    "lib/sync/microsoft-sync.ts",
-    "app/api/microsoft/callback/route.ts",
-    "app/dashboard/page.tsx"
+    "SESSION_HISTORY.md",
+    "LESSONS_LEARNED.md",
+    "docs/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
+    "app/api/**",
+    "lib/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Seam #411: one pure helper in lib/ui/provider-display.ts + three call sites (display in app/dashboard/page.tsx, capture in app/api/microsoft/callback/route.ts and lib/sync/microsoft-sync.ts) + unit tests + control-plane.",
-  "forbidden_files_raw": "No schema (supabase/**), no DB data migration, no dependency changes (package.json / lock).",
-  "required_local_proof": "npm run gate:continuity && npm run build && npm run lint",
-  "required_browser_proof": "Harness-proven (lib/ui/__tests__/provider-display.test.ts: guest UPN upper/lower #EXT#, clean-email passthrough, empty fallback, no-underscore + multi-underscore edges; existing microsoft callback test green). Live owner validation: open the Sources screen and confirm the Microsoft row now reads b-kapp@outlook.com instead of the #EXT# UPN.",
-  "browser_proof_command": "npx playwright test tests/e2e/authenticated-routes.spec.ts --reporter=list",
-  "acceptance_condition": "The Sources screen renders the Microsoft account as the real email (recovered from the #EXT# guest UPN), the existing stored row is repaired at display with no DB migration, new connects store the clean email, clean (Google) emails are unaffected, and gate:continuity + build + lint are green.",
-  "is_user_facing": true,
+  "allowed_files_raw": "Between rungs — only control-plane + docs may change until the owner names the next seam (which re-scopes this contract).",
+  "forbidden_files_raw": "No product/runtime/schema/deps changes without an active seam + scoped contract.",
+  "required_local_proof": "npm run gate:continuity",
+  "required_browser_proof": "N/A — between rungs.",
+  "browser_proof_command": "N/A",
+  "acceptance_condition": "Control plane is consistent in the between-rungs form (build-order active_issue: none, contract active_issue: none, no active-seam line in ACTIVE_HANDOFF) and gate:continuity passes.",
+  "is_user_facing": false,
   "anti_regression_checks": [
-    "gate:continuity green",
-    "clean emails (Google) pass through normalizeMicrosoftAccountEmail untouched",
-    "no schema or DB data migration",
-    "no dependency changes"
+    "gate:continuity green in between-rungs form",
+    "no active-seam line in ACTIVE_HANDOFF.md",
+    "no product/runtime files changed"
   ],
-  "stop_condition": "Stop when the draft PR for #411 is open with CI green, or BLOCKED_WITH_EXACT_RECEIPT on owner-side Sources-screen validation.",
-  "next_command": "Owner: open the Sources screen and confirm the Microsoft row reads b-kapp@outlook.com. Then resume the live send/attachment validation (ALLOW_APPROVAL_EMAIL_SEND is on; confirm RESEND_API_KEY; connect a real source so a genuine move generates).",
+  "stop_condition": "Stop when the control plane is rolled forward to a clean between-rungs state and the owner has a boot prompt for the next session.",
+  "next_command": "Owner: (1) open the Sources screen and confirm the Microsoft row reads b-kapp@outlook.com (validates #411); (2) confirm RESEND_API_KEY in Vercel Production and connect a real source so a genuine move generates, then approve it to validate the live attached send (#402/#404/#407); (3) configure the free external 15-min guardian cron. CODE candidate (needs owner go + paid budget): generator composes + attaches a companion document for a send_message.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
