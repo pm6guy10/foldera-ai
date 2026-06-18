@@ -2,7 +2,7 @@
 
 This gate protects dashboard/frontend proof. It is regression prevention, not visual polish.
 
-The dashboard money shot must read as one focused executive surface: one current move or honest held-back state, one visible artifact state, a source trail, and safe controls. The visual reference is the dark Foldera command-center direction: compact hierarchy, cyan/emerald accents, restrained support rail, and no debug/admin language.
+The dashboard money shot must read as one focused executive surface: one current move or honest held-back state, one visible artifact state, a source trail, and safe controls. The visual reference is the dark Foldera command-center direction: compact hierarchy, **warm amber/gold accent on warm near-black** (per `DESIGN_SYSTEM.md` — the cyan/emerald era is retired as of #382), restrained support rail, and no debug/admin language.
 
 ## Today's Answer Source-Coverage Law
 
