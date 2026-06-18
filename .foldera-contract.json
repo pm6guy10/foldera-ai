@@ -1,41 +1,37 @@
 {
-  "backlog_id": "guardian-finished-work",
-  "active_issue": 394,
+  "backlog_id": "between-rungs",
+  "active_issue": "none",
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Guardian pings only finished work (NO new paid LLM calls). (1) Gate the Slack send in runWorkdayPresenceTriggerRunner: when the intervention payload mode is 'silent' or 'dismissed', do not send Slack — record quiet. Stops the 'nothing prepared to act on yet' noise ping. (2) Seed a real presence draft from the latest already-generated daily-brief artifact in tkg_actions (pure mapping via draftFromArtifact-shape), attached to a draftless scored_winner state before the guardian evaluates — recycles generation the brief already paid for, zero new API calls. Prove with deterministic fixtures only (no live fire, no paid generation).",
+  "user_system_path": "Between rungs — no active implementation seam. The owner names the next seam. Live product thread is the GUARDIAN (workday-presence): it fires, grounds a real commitment, and pings Slack only when it has a reviewable move (#391/#393/#394 live). Standing candidates: owner-side external 15-min cron for cadence; code-side, the brief seeding the matched draft at generation time; clean malformed commitment titles; legacy cyan favicons; triage stale branches + skipped tests. Constraint: NO paid API calls to test — prove in the harness.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "lib/workday-presence/**"
+    "docs/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
-    "lib/briefing/**",
-    "lib/conviction/**",
-    "app/api/slack/**",
-    "app/api/stripe/**",
-    "app/api/auth/**",
+    "app/api/**",
+    "lib/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "only lib/workday-presence (trigger-runner Slack-send gate + a new pure draft-seed helper + their tests) + control-plane files. Do NOT touch the generator (lib/briefing, lib/conviction) — reuse the artifact it already produced.",
-  "forbidden_files_raw": "No generator/LLM changes, no Slack/Stripe/auth routes, no schema, no deps, no paid generation calls.",
-  "required_local_proof": "npm run lint && npx vitest run lib/workday-presence/__tests__ && npm run gate:continuity",
-  "required_browser_proof": "N/A — server/runtime logic proven by deterministic fixtures (test-harness mode, owner directive: no paid API calls to prove this).",
-  "browser_proof_command": "vitest fixtures: silent payload => no Slack send; fixture artifact => reviewable draft => active card",
-  "acceptance_condition": "Guardian does NOT send Slack on a silent/dismissed payload; a draftless scored_winner gains a reviewable draft from the latest grounded tkg_actions artifact (no new generation) so the card renders active. Proven by deterministic vitest fixtures; no paid LLM calls.",
-  "is_user_facing": true,
+  "allowed_files_raw": "between rungs — only control-plane + docs may change until the owner names the next seam (which re-scopes this contract).",
+  "forbidden_files_raw": "No product/runtime/schema/deps changes without an active seam + scoped contract.",
+  "required_local_proof": "npm run gate:continuity",
+  "required_browser_proof": "N/A — between rungs.",
+  "browser_proof_command": "N/A",
+  "acceptance_condition": "Control plane is consistent in the between-rungs form (build-order active_issue: none, contract active_issue: none, no active-seam line in ACTIVE_HANDOFF) and gate:continuity passes.",
+  "is_user_facing": false,
   "anti_regression_checks": [
-    "silent/dismissed payload never reaches Slack (only actionable cards ping)",
-    "draft-seed is a pure mapping from an existing artifact row — no new LLM/generator call",
-    "runner still fires + persists the grounded receipt; stays quiet safely with no state/draft",
-    "lint + lib/workday-presence vitest + gate:continuity green"
+    "gate:continuity green in between-rungs form",
+    "no active-seam line in ACTIVE_HANDOFF.md",
+    "no product/runtime files changed"
   ],
-  "stop_condition": "Stop when the silent-send gate + the no-paid draft-seed helper are built and proven by deterministic fixtures, with the runtime/live-fire proof explicitly deferred (owner: no paid test calls).",
-  "next_command": "Build the silent-send gate in trigger-runner + a pure draft-seed-from-latest-artifact helper, wire it before evaluate, prove with vitest fixtures (no paid calls).",
+  "stop_condition": "Stop when the control plane is rolled forward to a clean between-rungs state and the owner has a boot prompt for the next session.",
+  "next_command": "New session: read ACTIVE_HANDOFF.md + FOLDERA_MASTER_BIBLE.md Part II-B + the heartbeat memory; the owner names the next seam (likely the external cron for guardian cadence, or the brief seeding the matched draft).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
