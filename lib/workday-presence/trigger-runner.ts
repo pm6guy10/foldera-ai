@@ -14,7 +14,8 @@ import { createServerClient } from '@/lib/db/client';
 import { findLapsingCommitmentSignal } from './commitment-bridge';
 import { insertTriggerReceipt } from './trigger-receipt';
 import { type RightNowMessagePayload } from './message';
-import { normalizeWorkdayPresenceState, type WorkdayPresenceState } from './model';
+import { draftIsReviewable, normalizeWorkdayPresenceState, type WorkdayPresenceState } from './model';
+import { attachRecycledDraft } from './recycled-draft';
 import {
   buildTriggeredWorkdayPresenceState,
   evaluateWorkdayPresenceTrigger,
@@ -345,6 +346,26 @@ export function normalizeWorkdayPresenceTriggerRunnerCursor(
   };
 }
 
+// #394: the latest already-generated brief artifact (within 48h), to recycle into
+// a reviewable draft with no new LLM call. Returns the raw artifact jsonb or null.
+async function fetchLatestRecentArtifact(
+  supabase: ReturnType<typeof createServerClient>,
+  userId: string,
+): Promise<unknown> {
+  const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from('tkg_actions')
+    .select('artifact, generated_at')
+    .eq('user_id', userId)
+    .not('artifact', 'is', null)
+    .gte('generated_at', since)
+    .order('generated_at', { ascending: false })
+    .limit(1);
+  if (error) return null;
+  const row = Array.isArray(data) ? (data[0] as Record<string, unknown> | undefined) : undefined;
+  return row?.artifact ?? null;
+}
+
 export async function maybeRunWorkdayPresenceTriggerRunnerForUser(
   userId: string,
 ): Promise<MaybeTriggerRunnerResult> {
@@ -367,6 +388,24 @@ export async function maybeRunWorkdayPresenceTriggerRunnerForUser(
   if (error) throw error;
 
   const metadata = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
+
+  // #394: if the stored state is a draftless scored winner, recycle the latest
+  // already-generated (already-paid) brief artifact into a reviewable draft so the
+  // guardian has finished work to present — but only when it matches the move
+  // (attachRecycledDraft is conservative and no-ops otherwise). No new LLM call.
+  let stateForRunner: unknown = metadata.workday_presence_state;
+  const normalizedStoredState = normalizeWorkdayPresenceState(metadata.workday_presence_state);
+  if (
+    normalizedStoredState &&
+    normalizedStoredState.state_source === 'scored_winner' &&
+    !(normalizedStoredState.draft && draftIsReviewable(normalizedStoredState.draft))
+  ) {
+    const recentArtifact = await fetchLatestRecentArtifact(supabase, userId);
+    if (recentArtifact) {
+      stateForRunner = attachRecycledDraft(normalizedStoredState, recentArtifact);
+    }
+  }
+
   const cursor = normalizeWorkdayPresenceTriggerRunnerCursor(
     metadata.workday_presence_trigger_runner,
   );
@@ -412,7 +451,7 @@ export async function maybeRunWorkdayPresenceTriggerRunnerForUser(
       });
       if (persistStateResult.error) throw persistStateResult.error;
     },
-    state: metadata.workday_presence_state,
+    state: stateForRunner,
   });
 
   const updateResult = await supabase.auth.admin.updateUserById(userId, {
@@ -566,6 +605,27 @@ export async function runWorkdayPresenceTriggerRunner(input: {
         normalOutcome = {
           outcome: 'quiet',
           reason: triggerResult.reason,
+          cursor: nextCursor(cursor, nowIso, {
+            last_signal_cursor: signalCursor ?? cursor.last_signal_cursor,
+            last_trigger_key: null,
+          }),
+          selected_context: selection.selected,
+          trigger_result: triggerResult,
+          slack_result: null,
+          fresh_event_count: freshEvents.length,
+        };
+      } else if (
+        triggerResult.payload.mode === 'silent' ||
+        triggerResult.payload.mode === 'dismissed'
+      ) {
+        // Finished-work gate (#394): the trigger fired, but the payload has no
+        // reviewable move behind it — a scored winner with no prepared draft
+        // ('silent'), or a dismissed hold. Pinging that is noise ("nothing
+        // prepared to act on yet"). Stay quiet: no receipt, no Slack. The guardian
+        // pings finished work only, never an empty card.
+        normalOutcome = {
+          outcome: 'quiet',
+          reason: `quiet: trigger fired but no reviewable move (mode=${triggerResult.payload.mode}) — guardian pings finished work only`,
           cursor: nextCursor(cursor, nowIso, {
             last_signal_cursor: signalCursor ?? cursor.last_signal_cursor,
             last_trigger_key: null,

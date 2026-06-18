@@ -1,41 +1,41 @@
 {
-  "backlog_id": "guardian-daily-fire",
-  "active_issue": 391,
+  "backlog_id": "guardian-finished-work",
+  "active_issue": 394,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Fire the grounded workday-presence guardian on the one scheduled cron. The grounded path (insertTriggerReceipt -> action_source='workday_presence_trigger', evidence from the real lapsing commitment) works but has fired 0 times in prod because nothing scheduled invokes it; morning-pipeline (the only Vercel cron) runs the legacy brief pipeline. Wire the existing owner-targeted /api/cron/workday-presence-trigger-runner in as a 4th morning-pipeline stage so the guardian fires one grounded intervention/day against the owner's real lapsing commitment (owner has 26 active lapsing commitments). No new detector, no new brain.",
+  "user_system_path": "Guardian pings only finished work (NO new paid LLM calls). (1) Gate the Slack send in runWorkdayPresenceTriggerRunner: when the intervention payload mode is 'silent' or 'dismissed', do not send Slack — record quiet. Stops the 'nothing prepared to act on yet' noise ping. (2) Seed a real presence draft from the latest already-generated daily-brief artifact in tkg_actions (pure mapping via draftFromArtifact-shape), attached to a draftless scored_winner state before the guardian evaluates — recycles generation the brief already paid for, zero new API calls. Prove with deterministic fixtures only (no live fire, no paid generation).",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "app/api/cron/morning-pipeline/**",
-    "tests/**"
+    "lib/workday-presence/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
-    "lib/**",
-    "package.json",
-    "package-lock.json",
+    "lib/briefing/**",
+    "lib/conviction/**",
     "app/api/slack/**",
     "app/api/stripe/**",
-    "app/api/auth/**"
+    "app/api/auth/**",
+    "package.json",
+    "package-lock.json"
   ],
-  "allowed_files_raw": "only the morning-pipeline cron route + its test + control-plane files. The trigger-runner, commitment-bridge, and receipt writer already exist and work — do not modify them; just invoke the existing owner cron route as a 4th stage.",
-  "forbidden_files_raw": "No lib changes (the guardian path already works), no Slack/Stripe/auth route changes, no schema, no deps.",
-  "required_local_proof": "npm run build && npm run lint && npx vitest run app/api/cron/morning-pipeline/__tests__/route.test.ts && npm run gate:continuity",
-  "required_browser_proof": "Runtime: invoking the morning-pipeline cron produces a tkg_actions row with action_source='workday_presence_trigger' and non-empty evidence (a real lapsing commitment) for the owner.",
-  "browser_proof_command": "trigger /api/cron/morning-pipeline (or the workday-presence-trigger-runner stage) for the owner; observe the grounded receipt + owner Slack ping",
-  "acceptance_condition": "morning-pipeline invokes the workday-presence trigger-runner as a 4th stage; the guardian fires one grounded intervention for the owner's real lapsing commitment, proven by a workday_presence_trigger receipt with non-empty evidence. Stays quiet safely if no state / no lapsing commitment.",
+  "allowed_files_raw": "only lib/workday-presence (trigger-runner Slack-send gate + a new pure draft-seed helper + their tests) + control-plane files. Do NOT touch the generator (lib/briefing, lib/conviction) — reuse the artifact it already produced.",
+  "forbidden_files_raw": "No generator/LLM changes, no Slack/Stripe/auth routes, no schema, no deps, no paid generation calls.",
+  "required_local_proof": "npm run lint && npx vitest run lib/workday-presence/__tests__ && npm run gate:continuity",
+  "required_browser_proof": "N/A — server/runtime logic proven by deterministic fixtures (test-harness mode, owner directive: no paid API calls to prove this).",
+  "browser_proof_command": "vitest fixtures: silent payload => no Slack send; fixture artifact => reviewable draft => active card",
+  "acceptance_condition": "Guardian does NOT send Slack on a silent/dismissed payload; a draftless scored_winner gains a reviewable draft from the latest grounded tkg_actions artifact (no new generation) so the card renders active. Proven by deterministic vitest fixtures; no paid LLM calls.",
   "is_user_facing": true,
   "anti_regression_checks": [
-    "morning-pipeline still runs nightly-ops -> daily-brief -> daily-maintenance unchanged",
-    "the new stage uses owner-only FOLDERA_SELF_USER_ID gating; no new outbound surface beyond the proven owner Slack loop",
-    "runner stays quiet with no saved state or no lapsing commitment",
-    "build, lint, morning-pipeline test, gate:continuity green"
+    "silent/dismissed payload never reaches Slack (only actionable cards ping)",
+    "draft-seed is a pure mapping from an existing artifact row — no new LLM/generator call",
+    "runner still fires + persists the grounded receipt; stays quiet safely with no state/draft",
+    "lint + lib/workday-presence vitest + gate:continuity green"
   ],
-  "stop_condition": "Stop when morning-pipeline fires the grounded guardian and a workday_presence_trigger receipt with real evidence is proven (or the exact remaining owner-side blocker — e.g. no saved state — is named with a receipt).",
-  "next_command": "Wire the workday-presence-trigger-runner route as a 4th stage in app/api/cron/morning-pipeline/route.ts; update its test; prove a grounded receipt fires for the owner.",
+  "stop_condition": "Stop when the silent-send gate + the no-paid draft-seed helper are built and proven by deterministic fixtures, with the runtime/live-fire proof explicitly deferred (owner: no paid test calls).",
+  "next_command": "Build the silent-send gate in trigger-runner + a pure draft-seed-from-latest-artifact helper, wire it before evaluate, prove with vitest fixtures (no paid calls).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
