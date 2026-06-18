@@ -9,6 +9,8 @@
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
+    "SESSION_HISTORY.md",
+    "LESSONS_LEARNED.md",
     "docs/**"
   ],
   "forbidden_file_patterns": [
