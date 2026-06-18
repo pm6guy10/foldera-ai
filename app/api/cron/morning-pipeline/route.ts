@@ -6,6 +6,10 @@
  *   1. nightly-ops
  *   2. daily-brief
  *   3. daily-maintenance
+ *   4. workday-presence-guardian (fires the grounded Right Now intervention for the
+ *      owner against the day's freshest lapsing commitment — runs LAST so it acts on
+ *      the just-refreshed signals/commitments. This is the only scheduled invocation
+ *      of the grounded guardian path; without it the guardian never fires on a schedule.)
  *
  * The underlying routes remain callable directly for manual/operator use.
  *
@@ -19,11 +23,16 @@ import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { GET as runNightlyOps } from '@/app/api/cron/nightly-ops/route';
 import { GET as runDailyBrief } from '@/app/api/cron/daily-brief/route';
 import { GET as runDailyMaintenance } from '@/app/api/cron/daily-maintenance/route';
+import { GET as runWorkdayPresenceGuardian } from '@/app/api/cron/workday-presence-trigger-runner/route';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-type StageName = 'nightly_ops' | 'daily_brief' | 'daily_maintenance';
+type StageName =
+  | 'nightly_ops'
+  | 'daily_brief'
+  | 'daily_maintenance'
+  | 'workday_presence_guardian';
 
 type StageInvocation = {
   name: StageName;
@@ -58,6 +67,12 @@ const STAGE_INVOCATIONS: StageInvocation[] = [
     path: '/api/cron/daily-maintenance',
     method: 'GET',
     handler: runDailyMaintenance,
+  },
+  {
+    name: 'workday_presence_guardian',
+    path: '/api/cron/workday-presence-trigger-runner',
+    method: 'GET',
+    handler: runWorkdayPresenceGuardian,
   },
 ];
 

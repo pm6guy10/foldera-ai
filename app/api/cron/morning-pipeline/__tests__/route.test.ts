@@ -5,6 +5,7 @@ const validateCronAuth = vi.fn();
 const mockNightlyOps = vi.fn();
 const mockDailyBrief = vi.fn();
 const mockDailyMaintenance = vi.fn();
+const mockGuardian = vi.fn();
 
 vi.mock('@/lib/auth/resolve-user', () => ({
   validateCronAuth,
@@ -20,6 +21,10 @@ vi.mock('@/app/api/cron/daily-brief/route', () => ({
 
 vi.mock('@/app/api/cron/daily-maintenance/route', () => ({
   GET: mockDailyMaintenance,
+}));
+
+vi.mock('@/app/api/cron/workday-presence-trigger-runner/route', () => ({
+  GET: mockGuardian,
 }));
 
 function request() {
@@ -38,6 +43,9 @@ describe('morning-pipeline cron route', () => {
     mockDailyMaintenance.mockResolvedValue(
       NextResponse.json({ ok: true, stage: 'daily-maintenance' }),
     );
+    mockGuardian.mockResolvedValue(
+      NextResponse.json({ ok: true, outcome: 'intervention', reason: 'commitment_lapsing' }),
+    );
   });
 
   it('passes through cron auth failures before invoking child stages', async () => {
@@ -51,6 +59,28 @@ describe('morning-pipeline cron route', () => {
     expect(mockNightlyOps).not.toHaveBeenCalled();
     expect(mockDailyBrief).not.toHaveBeenCalled();
     expect(mockDailyMaintenance).not.toHaveBeenCalled();
+    expect(mockGuardian).not.toHaveBeenCalled();
+  });
+
+  it('fires the workday-presence guardian LAST, after data is refreshed, forwarding cron auth', async () => {
+    const { GET } = await import('../route');
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockGuardian).toHaveBeenCalledTimes(1);
+    // Guardian must run after maintenance so it acts on the freshest signals/commitments.
+    expect(mockDailyMaintenance.mock.invocationCallOrder[0]).toBeLessThan(
+      mockGuardian.mock.invocationCallOrder[0],
+    );
+    const guardianRequest = mockGuardian.mock.calls[0][0] as NextRequest;
+    expect(guardianRequest.nextUrl.pathname).toBe('/api/cron/workday-presence-trigger-runner');
+    expect(guardianRequest.headers.get('authorization')).toBe('Bearer test-cron-secret');
+    expect(body.stage_results.at(-1)).toMatchObject({
+      stage: 'workday_presence_guardian',
+      ok: true,
+      status: 200,
+    });
   });
 
   it('runs the existing three cron stages in order and forwards cron auth', async () => {
@@ -85,6 +115,7 @@ describe('morning-pipeline cron route', () => {
         { stage: 'nightly_ops', ok: true, status: 200 },
         { stage: 'daily_brief', ok: true, status: 200 },
         { stage: 'daily_maintenance', ok: true, status: 200 },
+        { stage: 'workday_presence_guardian', ok: true, status: 200 },
       ],
     });
   });

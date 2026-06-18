@@ -1,9 +1,9 @@
 {
-  "active_issue": 382,
-  "active_branch": "chore/382-owner-avatar-self-review",
+  "active_issue": 391,
+  "active_branch": "feat/391-guardian-daily-fire",
   "active_pr": null,
-  "deployed_commit_sha": "c42166b",
+  "deployed_commit_sha": "8fd766b",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-18T06:30:00Z"
+  "last_verified_at": "2026-06-18T07:00:00Z"
 }
