@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-18 UTC (between rungs — shipped #402 review-gated send + #404 email draft attachments; owner names next seam)
+Last updated: 2026-06-18 UTC (active seam #407 — generator attaches its own work (write_document delivery); branch `claude/generator-attaches-own-work-doc`)
 
 ## Boot
 
@@ -35,13 +35,18 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 ## Current slice:
 
-None — between rungs. This session shipped #402 (review-gated one-tap send from the Slack guardian ping, PR #403, `b698566`) and #404 (email draft attachments — the send carries the finished work, PR #405, `4125585`): the guardian drafts → reviews → sends from the owner's own Gmail, and the email can carry the budget doc / forecast / memo as an attachment (plumbing end-to-end; the generator does not yet emit attachments). No code seam I can execute remains: the live-readiness blockers are owner-side. Awaiting the owner's next chosen seam.
+Issue #407 is the active product seam.
+
+#407 — the generator attaches its own work (deterministic slice). Follow-on to #404 (rails shipped but unpopulated). When an approved `write_document` is delivered, the brain's own drafted content also rides as a real `<title>.md` file attachment, not just inline HTML — the first real population of #404's attachment rails. Placed at the delivery boundary (`executeAction`), NOT inside the 11.8k-line generator LLM flow: same user outcome, no new model call, no breakage risk. New `deriveDocumentAttachment` + `attachmentFilenameFromTitle` in `lib/email/attachments.ts`; one call site in `executeAction`'s `write_document` delivery email via the existing Resend attachment support. Live delivery behind `ALLOW_APPROVAL_EMAIL_SEND`. Files: `lib/email/attachments.ts`, `lib/conviction/execute-action.ts`.
+
+#402 (review-gated send) and #404 (attachment rails) are LIVE on main (`b698566` / `4125585`).
 
 ## Next exact move
 
-1. Owner names the next seam (or pick from the candidates below). Until then `active_issue: none` is the valid between-rungs control-plane form.
-2. OWNER-SIDE live-readiness: set `ALLOW_APPROVAL_EMAIL_SEND=true`, trigger a guardian ping on a draft with attachments, tap **Review & send**, sign off, confirm a real Gmail send with the file attached (validates both #402 and #404); and configure the free external 15-min cron for guardian firing cadence.
-3. CODE candidate (not started, needs owner go + paid validation): teach the generator to populate `EmailArtifact.attachments` with the work it drafts, so the attachment plumbing carries real files. Constraint reminder: NO paid API calls to test — prove in the harness.
+1. Open the draft PR for `claude/generator-attaches-own-work-doc` → #407; get CI green.
+2. Proof so far (free): `lib/email` + `lib/conviction` suites green (85), new `deriveDocumentAttachment`/`attachmentFilenameFromTitle` tests + updated write_document delivery test, `tsc` 0 new errors. `gate:continuity` + `lint` + `build` before PR.
+3. Live owner validation: approve a `write_document` with `ALLOW_APPROVAL_EMAIL_SEND=true`, confirm the delivery email arrives with the `<title>.md` file attached — `BLOCKED_WITH_EXACT_RECEIPT` until then. STILL OPEN owner-side: #402/#404 live send validation + the free external 15-min guardian cron.
+4. Constraint reminder: NO paid API calls to test — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
 

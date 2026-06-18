@@ -104,6 +104,36 @@ export function describeAttachments(attachments: EmailAttachment[]): string {
   return attachments.map((att) => sanitizeAttachmentFilename(att.filename)).join(', ');
 }
 
+/** Slugify a document title into a safe download filename, e.g. "Q3 Budget" → "q3-budget.md". */
+export function attachmentFilenameFromTitle(title: string, ext = 'md'): string {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+  return `${slug || 'document'}.${ext}`;
+}
+
+/**
+ * Repackage a finished document the brain already drafted into a single file
+ * attachment — no new model call, just the artifact's own content as a file the
+ * recipient can forward/save. Returns [] when there is no real content to attach.
+ */
+export function deriveDocumentAttachment(
+  title: string,
+  content: string,
+): EmailAttachment[] {
+  if (!content || !content.trim()) return [];
+  return normalizeEmailAttachments([
+    {
+      filename: attachmentFilenameFromTitle(title),
+      mime_type: 'text/markdown',
+      content,
+    },
+  ]);
+}
+
+
 /** Wrap a base64 payload at 76 chars per line (RFC 2045). */
 function wrapBase64(value: string): string {
   return value.replace(/.{1,76}/g, '$&\r\n').trimEnd();

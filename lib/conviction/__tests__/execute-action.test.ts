@@ -412,9 +412,17 @@ describe('executeAction', () => {
           { name: 'email_type', value: 'approved_write_document' },
           { name: 'action_id', value: ACTION_ID },
         ]),
+        // The brain's own document rides as a real file attachment.
+        attachments: [
+          { filename: 'doc.md', content: Buffer.from('Content', 'utf8').toString('base64') },
+        ],
       }),
     );
-    expect(out.result?.document_ready_email).toEqual({ sent: true, resend_id: 'resend-123' });
+    expect(out.result?.document_ready_email).toEqual({
+      sent: true,
+      resend_id: 'resend-123',
+      attachment_filename: 'doc.md',
+    });
   });
 
   it('approve write_document saves but blocks document-ready Resend email when approval send is disabled', async () => {
