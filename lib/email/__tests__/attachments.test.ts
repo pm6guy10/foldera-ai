@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   attachmentByteLength,
+  attachmentFilenameFromTitle,
   attachmentToBase64,
   buildRfc2822Message,
+  deriveDocumentAttachment,
   describeAttachments,
   MAX_ATTACHMENTS,
   normalizeEmailAttachments,
@@ -149,6 +151,31 @@ describe('buildRfc2822Message', () => {
     expect(msg).toContain(Buffer.from(textAttachment.content!, 'utf8').toString('base64').slice(0, 20));
     // closes with the terminal boundary
     expect(msg.trimEnd().endsWith('--BOUND--')).toBe(true);
+  });
+});
+
+describe('attachmentFilenameFromTitle', () => {
+  it('slugifies a title into a safe filename', () => {
+    expect(attachmentFilenameFromTitle('Q3 Budget')).toBe('q3-budget.md');
+    expect(attachmentFilenameFromTitle('Forecast: 2026 / Q1', 'csv')).toBe('forecast-2026-q1.csv');
+  });
+
+  it('falls back to "document" when the title has no usable characters', () => {
+    expect(attachmentFilenameFromTitle('   !!!  ')).toBe('document.md');
+  });
+});
+
+describe('deriveDocumentAttachment', () => {
+  it('repackages document content into a single markdown attachment', () => {
+    const [att] = deriveDocumentAttachment('Q3 Budget', '# Q3\nBurn: $480k');
+    expect(att.filename).toBe('q3-budget.md');
+    expect(att.mime_type).toBe('text/markdown');
+    expect(att.content).toBe('# Q3\nBurn: $480k');
+  });
+
+  it('returns [] when there is no content to attach', () => {
+    expect(deriveDocumentAttachment('Empty', '   ')).toEqual([]);
+    expect(deriveDocumentAttachment('Empty', '')).toEqual([]);
   });
 });
 

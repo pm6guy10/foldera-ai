@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
+active_issue: 407
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Between rungs. This session shipped #402 (review-gated one-tap send from the Slack guardian ping, PR #403, b698566) and #404 (email draft attachments — the send carries the finished work, PR #405, 4125585): the guardian drafts → reviews → sends from the owner's own Gmail, and the email can carry the budget doc / forecast / memo as an attachment. No code seam I can execute remains: the live-readiness blockers are owner-side (flip ALLOW_APPROVAL_EMAIL_SEND to validate a real attached send; configure the external 15-min guardian cron). The remaining code candidate — teach the generator to emit attachments — needs a prompt change + paid validation, so it awaits the owner's go. Awaiting the owner's next move."
-next_seam: "OWNER-SIDE (live-readiness): (1) set ALLOW_APPROVAL_EMAIL_SEND=true, trigger a guardian ping on a draft with attachments, tap Review & send, confirm a real Gmail send with the file attached (validates both #402 and #404); (2) configure the free external 15-min cron for guardian firing cadence. CODE candidate (not started, needs owner go + paid validation): teach the generator to actually populate EmailArtifact.attachments with the work it drafts, so the attachment plumbing carries real files end-to-end."
+why_this_first: "Owner directive 'keep working — make the generator attach its own work.' Follow-on to #404 (which shipped the attachment rails but left them unpopulated). #407 takes the deterministic, FREE, no-new-model-call slice: when an approved write_document is delivered, the brain's own drafted content also rides as a real <title>.md file attachment, not just inline HTML — the first real population of #404's rails. Placed at the delivery boundary (executeAction), NOT inside the 11.8k-line generator LLM flow, so there is no breakage risk and it proves in the harness with zero paid cost. The bigger send_message-companion-document case stays a paid generator build awaiting an owner cost ceiling."
+next_seam: "OWNER-SIDE: approve a write_document with ALLOW_APPROVAL_EMAIL_SEND=true and confirm the delivery email arrives with the <title>.md file attached (validates #407); plus the still-open #402/#404 live send validation + external 15-min guardian cron. CODE candidate (needs owner go + paid validation): teach the generator to compose a companion document for a send_message and attach it, so an email to an external recipient carries the work."
 completed_issue_404:
   issue: 404
   pr: 405

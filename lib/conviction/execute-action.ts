@@ -18,7 +18,11 @@ import {
   renderWriteDocumentReadyEmailHtml,
   sendResendEmail,
 } from '@/lib/email/resend';
-import { normalizeEmailAttachments, toResendAttachments } from '@/lib/email/attachments';
+import {
+  deriveDocumentAttachment,
+  normalizeEmailAttachments,
+  toResendAttachments,
+} from '@/lib/email/attachments';
 import { getVerifiedDailyBriefRecipientEmail } from '@/lib/auth/daily-brief-users';
 import { updateMlSnapshotOutcome } from '@/lib/ml/directive-ml-snapshot';
 import { reinforceAttentionForAction } from '@/lib/signals/entity-attention-runtime';
@@ -502,6 +506,9 @@ async function executeArtifact(
             out.document_ready_email = { sent: false, reason: 'no_verified_email' };
             console.warn(`[execute-action] write_document delivery email skipped (no verified email) for ${actionId}`);
           } else {
+            // The brain's own drafted document also rides as a real file the owner
+            // can forward/save — same content as the inline HTML, no new model call.
+            const docAttachments = deriveDocumentAttachment(docTitle, docBody);
             const delivery = await sendResendEmail({
               to: userEmail,
               subject,
@@ -515,6 +522,9 @@ async function executeArtifact(
                 { name: 'user_id', value: userId },
                 { name: 'action_id', value: actionId },
               ],
+              ...(docAttachments.length > 0
+                ? { attachments: toResendAttachments(docAttachments) }
+                : {}),
             });
             const resendError =
               delivery && typeof delivery === 'object' && 'error' in delivery
@@ -529,7 +539,13 @@ async function executeArtifact(
               out.document_ready_email = { sent: false, send_error: errMsg };
               console.warn(`[execute-action] write_document delivery email failed for ${actionId}:`, errMsg);
             } else {
-              out.document_ready_email = { sent: true, resend_id: resendId };
+              out.document_ready_email = {
+                sent: true,
+                resend_id: resendId,
+                ...(docAttachments.length > 0
+                  ? { attachment_filename: docAttachments[0].filename }
+                  : {}),
+              };
               console.log(`[execute-action] write_document delivery email sent for ${actionId}`);
             }
           }
