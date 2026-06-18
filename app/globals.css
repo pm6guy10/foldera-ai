@@ -46,6 +46,42 @@
   }
 }
 
+/* =========================================================================
+   DESIGN TOKENS (#382 foundation) — fluid type scale, radius, shadow, motion.
+   Shared plumbing for every surface (DESIGN_SYSTEM.md §5/§7/§10).
+   ========================================================================= */
+:root {
+  /* fluid type scale (clamp: mobile → desktop) */
+  --fs-display:    clamp(2.6rem, 1.55rem + 4.6vw, 4.5rem);
+  --fs-h1:         clamp(2.1rem, 1.55rem + 2.5vw, 3rem);
+  --fs-h2:         clamp(1.6rem, 1.28rem + 1.5vw, 2.25rem);
+  --fs-h3:         clamp(1.25rem, 1.12rem + 0.6vw, 1.5rem);
+  --fs-body:       clamp(1rem, 0.97rem + 0.15vw, 1.125rem);
+  --fs-caption:    0.8125rem;
+  --fs-mono-label: 0.6875rem;
+
+  /* radius */
+  --r-control: 10px;
+  --r-card:    14px;
+  --r-window:  16px;
+  --r-pill:    9999px;
+
+  /* shadow (soft, large, low-opacity) */
+  --shadow-card:   0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 18px 40px -20px rgba(0, 0, 0, 0.6);
+  --shadow-raised: 0 24px 60px -28px rgba(0, 0, 0, 0.7);
+  --shadow-window: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 60px 110px -45px rgba(0, 0, 0, 0.9);
+
+  /* motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-1: 0.5s;
+  --dur-2: 0.65s;
+  --dur-3: 0.85s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur-1: 0.01ms; --dur-2: 0.01ms; --dur-3: 0.01ms; }
+}
+
 @layer components {
   .foldera-page {
     background:
