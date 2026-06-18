@@ -3224,6 +3224,7 @@ export async function runDailyGenerate(
           directive,
           artifact: artifactForRow ?? artifact,
           winnerTitle: getLastScorerDiagnostics()?.finalWinner?.title?.trim() ?? null,
+          actionId: saved.id,
         });
         if (!seedResult.seeded) {
           logStructuredEvent({

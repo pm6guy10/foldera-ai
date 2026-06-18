@@ -7,6 +7,7 @@ const mockGenerateArtifact = vi.fn();
 const mockGetLastScorerDiagnostics = vi.fn();
 const mockGetUserById = vi.fn();
 const mockUpdateUserById = vi.fn();
+const mockActionSingle = vi.fn();
 
 vi.mock('@/lib/auth/resolve-user', () => ({
   resolveAnyUser: mockResolveAnyUser,
@@ -37,6 +38,14 @@ vi.mock('@/lib/db/client', () => ({
         getUserById: mockGetUserById,
         updateUserById: mockUpdateUserById,
       },
+    },
+    from: () => {
+      const chain = {
+        insert: () => chain,
+        select: () => chain,
+        single: mockActionSingle,
+      };
+      return chain;
     },
   }),
 }));
@@ -96,6 +105,7 @@ describe('POST /api/workday-presence/seed-from-scorer', () => {
     mockGenerateArtifact.mockResolvedValue(REAL_ARTIFACT);
     mockGetLastScorerDiagnostics.mockReturnValue(DIAGNOSTICS_WINNER);
     mockEvaluateBottomGate.mockReturnValue({ pass: true, blocked_reasons: [] });
+    mockActionSingle.mockResolvedValue({ data: { id: 'persisted-action-1' }, error: null });
   });
 
   it('returns 401 when auth resolution fails', async () => {
@@ -212,6 +222,8 @@ describe('POST /api/workday-presence/seed-from-scorer', () => {
     expect(body.state_seeded.draft.preview).toContain('confirming 2 PM works');
     expect(body.state_seeded.draft.to).toBe('deanne@example.com');
     expect(body.state_seeded.draft.body).toContain('Curriculum outline attached');
+    // The persisted action id is threaded into the draft so the review-gated send has a real handle.
+    expect(body.state_seeded.draft.action_id).toBe('persisted-action-1');
 
     const updateCall = mockUpdateUserById.mock.calls[0][1];
     expect(updateCall.user_metadata.workday_presence_state.next_move).toBe(REAL_DIRECTIVE.directive);

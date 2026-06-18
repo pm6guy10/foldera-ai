@@ -32,6 +32,7 @@ export function isRealMove(directive: ConvictionDirective): boolean {
 export function draftFromArtifact(
   directive: ConvictionDirective,
   artifact: ConvictionArtifact | null,
+  actionId?: string | null,
 ): WorkdayPresenceDraft | null {
   if (!artifact) return null;
   const record = artifact as unknown as Record<string, unknown>;
@@ -49,6 +50,7 @@ export function draftFromArtifact(
     str(record.recommendation) ||
     str(record.context);
   const to = str(record.to);
+  const trimmedActionId = typeof actionId === 'string' ? actionId.trim() : '';
 
   return {
     action_type: directive.action_type,
@@ -56,6 +58,7 @@ export function draftFromArtifact(
     preview: body.replace(/\s+/g, ' ').slice(0, 240),
     ...(to ? { to } : {}),
     ...(body ? { body: body.slice(0, 2000) } : {}),
+    ...(trimmedActionId ? { action_id: trimmedActionId } : {}),
   };
 }
 
@@ -102,6 +105,7 @@ export function directiveToPresenceState(
   winnerTitle: string,
   artifact: ConvictionArtifact | null,
   nowIso: string,
+  actionId?: string | null,
 ): WorkdayPresenceState {
   return {
     current_focus: winnerTitle,
@@ -113,7 +117,7 @@ export function directiveToPresenceState(
     last_completed_step: null,
     state_source: 'scored_winner',
     source_trail: sourceTrailFromDirective(directive),
-    draft: draftFromArtifact(directive, artifact),
+    draft: draftFromArtifact(directive, artifact, actionId),
     snoozed_until: null,
     interaction_history: [],
     created_at: nowIso,
@@ -142,6 +146,8 @@ export async function seedWorkdayPresenceStateFromBrief(input: {
   directive: ConvictionDirective;
   artifact: ConvictionArtifact | null;
   winnerTitle?: string | null;
+  /** The persisted tkg_actions row id behind this move — the handle the review-gated send uses. */
+  actionId?: string | null;
   nowIso?: string;
 }): Promise<{ seeded: boolean; reason: string }> {
   const { supabase, userId, directive, artifact } = input;
@@ -168,7 +174,7 @@ export async function seedWorkdayPresenceStateFromBrief(input: {
     normalizeWorkdayPresenceState(metadata.workday_presence_state)?.snoozed_until ?? null;
 
   const state: WorkdayPresenceState = {
-    ...directiveToPresenceState(directive, winnerTitle, artifact, nowIso),
+    ...directiveToPresenceState(directive, winnerTitle, artifact, nowIso, input.actionId),
     snoozed_until: existingSnooze,
   };
 

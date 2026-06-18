@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-18 UTC (#397 brief-seeds-draft PR #398 + #399 title-hygiene PR #400 merged `30fbf13`; between rungs)
+Last updated: 2026-06-18 UTC (active seam #402 — review-gated one-tap Slack send; branch `claude/app-indispensability-plan-4mzo87`)
 
 ## Boot
 
@@ -35,13 +35,16 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 ## Current slice:
 
-None — between rungs. This session shipped #397 (brief seeds the matched draft at generation time, PR #398) and #399 (commitment-title hygiene, PR #400, prod `30fbf13`). No code seam I can execute remains: the live-readiness blocker is owner-side (cron) and the favicon cleanup is tooling-blocked. Awaiting the owner's next chosen seam.
+Issue #402 is the active product seam.
+
+#402 — review-gated one-tap Slack send (the indispensability pass: "act, don't assign homework"). The guardian's Slack ping now carries a primary **Review & send** button (only for grounded `send_message` drafts backed by a real `tkg_actions` id). It opens a Slack modal — recipient read-only, editable subject + body, source trail — and submit IS the explicit sign-off → `executeAction` sends from the owner's own Gmail (the existing send layer), updates the ping to "✓ Sent", records the move done, and the row flips to `executed` (shows in dashboard Recent Work). Live send stays behind `ALLOW_APPROVAL_EMAIL_SEND`; flag-off path reports `email_send_disabled` honestly. No auto-send — honors the `do_not_touch` contract. Files: `lib/workday-presence/{model,message,seed-from-directive}.ts`, `lib/slack/right-now.ts`, `app/api/slack/interaction/route.ts`, `app/api/workday-presence/seed-from-scorer/route.ts`, `lib/cron/daily-brief-generate.ts`.
 
 ## Next exact move
 
-1. Owner names the next seam (or pick from the standing candidates above). Until then `active_issue: none` is the valid between-rungs control-plane form.
-2. The live product thread is the GUARDIAN. Highest-leverage owner-side action: configure the external 15-min cron so the guardian checks on the right cadence (it now only pings finished work). Code-side, the honest next seam is the brief seeding the matched draft at generation time.
-3. Constraint reminder: NO paid API calls to test the guardian — prove in the harness. Any landing pass must stay OBVIOUSLY better and keep `docs/DESIGN_SYSTEM.md` §12 green.
+1. Open the draft PR for `claude/app-indispensability-plan-4mzo87` → #402; get CI green.
+2. Proof so far (free): 224 harness tests green (workday-presence + slack + conviction execute-action), new interaction-route tests (open-modal / real send with edited artifact / armed-off honesty / no-send-without-action_id), `tsc` 0 new errors, lint clean. `gate:continuity` + `build` before PR.
+3. Live owner validation is the one owner-side step: set `ALLOW_APPROVAL_EMAIL_SEND=true`, trigger a guardian ping, tap **Review & send**, sign off, confirm a real Gmail send + "✓ Sent". Until then the live path is `BLOCKED_WITH_EXACT_RECEIPT`. Separately STILL OPEN owner-side: the free external 15-min cron for guardian firing cadence.
+4. Constraint reminder: NO paid API calls to test — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
 

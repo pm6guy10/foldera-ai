@@ -16,8 +16,21 @@ export type RightNowMessageActionId = WorkdayPresenceInteractionType;
 
 export const RIGHT_NOW_ACTION_IDS = WORKDAY_PRESENCE_INTERACTION_TYPES;
 
+/**
+ * Slack-only button that opens the review-gated send modal. It is deliberately NOT a
+ * WorkdayPresenceInteractionType: it never mutates presence state on its own. The Slack
+ * interaction route intercepts it, opens the review modal, and only the explicit modal
+ * sign-off (view_submission) executes the send. Kept off the dashboard's two-button
+ * contract — Slack-first per the indispensability pass.
+ */
+export const RIGHT_NOW_SEND_ACTION_ID = 'review_send' as const;
+export type RightNowSendActionId = typeof RIGHT_NOW_SEND_ACTION_ID;
+
+/** Any button id that can ride a Right Now message (state actions + the Slack send button). */
+export type RightNowMessageButtonId = RightNowMessageActionId | RightNowSendActionId;
+
 export type RightNowMessageAction = {
-  id: RightNowMessageActionId;
+  id: RightNowMessageButtonId;
   label: string;
 };
 
@@ -78,6 +91,11 @@ function cardActions(
   // Setup prompt and dismissed cards take no further button input.
   if (card.mode !== 'active') return [];
   const actions: RightNowMessageAction[] = [];
+  // Review-gated send: only when the move is a send_message backed by a real persisted
+  // action row. Without action_id there is nothing safe to execute, so no send button.
+  if (state?.draft?.action_type === 'send_message' && state.draft.action_id) {
+    actions.push({ id: RIGHT_NOW_SEND_ACTION_ID, label: 'Review & send' });
+  }
   if (state?.draft) actions.push({ id: 'view_draft', label: 'View Draft' });
   actions.push({ id: 'dismiss', label: 'Dismiss' });
   return actions;
