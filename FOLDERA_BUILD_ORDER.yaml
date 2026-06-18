@@ -22,11 +22,16 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 407
+active_issue: none
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Owner directive 'keep working — make the generator attach its own work.' Follow-on to #404 (which shipped the attachment rails but left them unpopulated). #407 takes the deterministic, FREE, no-new-model-call slice: when an approved write_document is delivered, the brain's own drafted content also rides as a real <title>.md file attachment, not just inline HTML — the first real population of #404's rails. Placed at the delivery boundary (executeAction), NOT inside the 11.8k-line generator LLM flow, so there is no breakage risk and it proves in the harness with zero paid cost. The bigger send_message-companion-document case stays a paid generator build awaiting an owner cost ceiling."
-next_seam: "OWNER-SIDE: approve a write_document with ALLOW_APPROVAL_EMAIL_SEND=true and confirm the delivery email arrives with the <title>.md file attached (validates #407); plus the still-open #402/#404 live send validation + external 15-min guardian cron. CODE candidate (needs owner go + paid validation): teach the generator to compose a companion document for a send_message and attach it, so an email to an external recipient carries the work."
+why_this_first: "Between rungs. This session shipped #402 (review-gated one-tap send, PR #403), #404 (email draft attachments, PR #405), and #407 (the generator attaches its own work — approved write_document delivery carries the doc as a real <title>.md file attachment, PR #408, 82dc104). The remaining money-loop moves are owner-gated: flip ALLOW_APPROVAL_EMAIL_SEND to validate the real attached sends/deliveries live; configure the free external 15-min guardian cron; and (paid, needs a cost ceiling) teach the generator to compose + attach a companion document for a send_message. Awaiting the owner's next move."
+next_seam: "OWNER-SIDE: (1) approve a write_document with ALLOW_APPROVAL_EMAIL_SEND=true and confirm the delivery email arrives with the <title>.md file attached (validates #407); (2) the still-open #402/#404 live send validation; (3) configure the free external 15-min guardian cron. CODE candidate (needs owner go + paid validation): teach the generator to compose a companion document for a send_message and attach it, so an email to an external recipient carries the work."
+completed_issue_407:
+  issue: 407
+  pr: 408
+  pr_merge_sha: 82dc104
+  summary: "The generator attaches its own work (deterministic slice). Follow-on to #404: when an approved write_document is delivered, the brain's own drafted content also rides as a real <title>.md file attachment, not just inline HTML — the first real population of #404's rails. New deriveDocumentAttachment + attachmentFilenameFromTitle in lib/email/attachments.ts; wired into executeAction's write_document delivery email via the existing Resend attachment support (records attachment_filename). Placed at the delivery boundary, NOT inside the 11.8k-line generator LLM flow — no new model call, no breakage risk. Proof: new derive/filename tests + updated write_document delivery test; lib/email + lib/conviction suites green (85); gate:continuity + lint + build; NO paid calls; live delivery validation owner-side — BLOCKED_WITH_EXACT_RECEIPT."
 completed_issue_404:
   issue: 404
   pr: 405

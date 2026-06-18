@@ -1,39 +1,37 @@
 {
-  "backlog_id": "generator-attaches-own-work-doc",
-  "active_issue": 407,
+  "backlog_id": "between-rungs",
+  "active_issue": "none",
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Seam #407 — the generator attaches its own work (deterministic slice). Follow-on to #404: when an approved write_document is delivered, the brain's own drafted content also rides as a real file attachment (<title>.md), not just inline HTML — the first real population of #404's attachment rails. Placed at the delivery boundary (executeAction), NOT inside the 11.8k-line generator LLM flow: same user outcome, no new model call, no breakage risk. New deriveDocumentAttachment + attachmentFilenameFromTitle in lib/email/attachments.ts; wired into the write_document delivery email via the existing Resend attachment support. Live delivery stays behind ALLOW_APPROVAL_EMAIL_SEND. Constraint: NO paid API calls to test — Resend mocked at the boundary.",
+  "user_system_path": "Between rungs. The live product thread is the GUARDIAN (workday-presence): it fires, grounds a real commitment, and pings Slack only when it has a reviewable move. Recent shipped work: #402 (review-gated one-tap send), #404 (email draft attachments — the send carries the finished work), #407 (the generator attaches its own work — an approved write_document is delivered with its content as a real <title>.md file attachment). The remaining money-loop moves are owner-gated: flip ALLOW_APPROVAL_EMAIL_SEND to validate the real attached sends/deliveries live; configure the free external 15-min guardian cron; and (paid, needs a cost ceiling) teach the generator to compose + attach a companion document for a send_message to an external recipient. Constraint: NO paid API calls to test — prove in the harness.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "docs/**",
-    "lib/email/**",
-    "lib/conviction/execute-action.ts",
-    "lib/conviction/__tests__/**"
+    "docs/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
+    "app/api/**",
+    "lib/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Seam #407: a deterministic delivery-boundary transform — deriveDocumentAttachment in lib/email/attachments.ts and one call site in executeAction's write_document delivery email, plus tests + control-plane.",
-  "forbidden_files_raw": "No generator LLM flow changes, no schema (supabase/**), no dependency changes (package.json / lock).",
-  "required_local_proof": "npm run gate:continuity && npm run build && npm run lint",
-  "required_browser_proof": "Harness-proven (lib/email + lib/conviction suites, incl. new deriveDocumentAttachment/filename tests + updated write_document delivery test). Live owner validation: approve a write_document with ALLOW_APPROVAL_EMAIL_SEND=true and confirm the delivery email arrives with the <title>.md file attached — BLOCKED_WITH_EXACT_RECEIPT until then.",
-  "browser_proof_command": "npx playwright test tests/e2e/dashboard-navigation.spec.ts tests/e2e/authenticated-routes.spec.ts --reporter=list",
-  "acceptance_condition": "An approved write_document delivery email carries the document's own content as a real <title>.md attachment (derived deterministically, no new model call), bounded by the existing attachment caps; empty content attaches nothing; no generator/schema/dependency changes; gate:continuity + build + lint green.",
-  "is_user_facing": true,
+  "allowed_files_raw": "Between rungs — only control-plane + docs may change until the owner names the next seam (which re-scopes this contract).",
+  "forbidden_files_raw": "No product/runtime/schema/deps changes without an active seam + scoped contract.",
+  "required_local_proof": "npm run gate:continuity",
+  "required_browser_proof": "N/A — between rungs.",
+  "browser_proof_command": "N/A",
+  "acceptance_condition": "Control plane is consistent in the between-rungs form (build-order active_issue: none, contract active_issue: none, no active-seam line in ACTIVE_HANDOFF) and gate:continuity passes.",
+  "is_user_facing": false,
   "anti_regression_checks": [
-    "gate:continuity green",
-    "no new LLM/model call — attachment is repackaged from the brain's own drafted content",
-    "no generator LLM flow changes",
-    "no schema or dependency changes"
+    "gate:continuity green in between-rungs form",
+    "no active-seam line in ACTIVE_HANDOFF.md",
+    "no product/runtime files changed"
   ],
-  "stop_condition": "Stop when the draft PR for #407 is open with CI green, or BLOCKED_WITH_EXACT_RECEIPT on the owner-side live delivery validation.",
-  "next_command": "Owner: approve a write_document with ALLOW_APPROVAL_EMAIL_SEND=true and confirm the delivery email arrives with the <title>.md file attached. Then: optionally extend to send_message companion documents (paid generator build) once approved with a cost ceiling.",
+  "stop_condition": "Stop when the control plane is rolled forward to a clean between-rungs state and the owner has a boot prompt for the next session.",
+  "next_command": "New session: read ACTIVE_HANDOFF.md + FOLDERA_MASTER_BIBLE.md Part II-B; the owner names the next seam — likely owner-side live validation of the attached sends/deliveries (flip ALLOW_APPROVAL_EMAIL_SEND) + the external 15-min guardian cron, or the paid generator build to compose + attach a companion document for a send_message.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
