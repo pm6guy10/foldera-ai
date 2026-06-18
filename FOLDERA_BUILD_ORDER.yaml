@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
+active_issue: 411
 priority_class: PRODUCT
-work_type: FEATURE
-why_this_first: "Between rungs. This session shipped #402 (review-gated one-tap send, PR #403), #404 (email draft attachments, PR #405), and #407 (the generator attaches its own work — approved write_document delivery carries the doc as a real <title>.md file attachment, PR #408, 82dc104). The remaining money-loop moves are owner-gated: flip ALLOW_APPROVAL_EMAIL_SEND to validate the real attached sends/deliveries live; configure the free external 15-min guardian cron; and (paid, needs a cost ceiling) teach the generator to compose + attach a companion document for a send_message. Awaiting the owner's next move."
-next_seam: "OWNER-SIDE: (1) approve a write_document with ALLOW_APPROVAL_EMAIL_SEND=true and confirm the delivery email arrives with the <title>.md file attached (validates #407); (2) the still-open #402/#404 live send validation; (3) configure the free external 15-min guardian cron. CODE candidate (needs owner go + paid validation): teach the generator to compose a companion document for a send_message and attach it, so an email to an external recipient carries the work."
+work_type: BUGFIX
+why_this_first: "Owner spotted it live on the Sources screen: the Microsoft connected account renders as a broken raw Azure guest UPN (b-kapp_outlook.com#EXT#@tenant.onmicrosoft.com) instead of the real email. Both capture paths store me.mail || me.userPrincipalName, so a guest/B2B account with empty mail lands the mangled UPN. #411 adds a pure normalizeMicrosoftAccountEmail() and applies it at the display (repairs the existing row, no migration) + both capture points. Deterministic, free, harness-proven. Trust surface: the Sources screen is where the owner verifies what Foldera reads — a garbled account label undermines exactly that trust."
+next_seam: "OWNER-SIDE: (1) open the Sources screen and confirm the Microsoft row now reads b-kapp@outlook.com (validates #411); (2) resume the live send/attachment validation — ALLOW_APPROVAL_EMAIL_SEND is on, confirm RESEND_API_KEY is set in Vercel Production, and connect a real source so a genuine write_document/send_message generates (the brain is currently in safe-silence, so there is nothing to approve/send yet); (3) configure the free external 15-min guardian cron. CODE candidate (needs owner go + paid validation): teach the generator to compose + attach a companion document for a send_message."
 completed_issue_407:
   issue: 407
   pr: 408

@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { saveUserToken } from '@/lib/auth/user-tokens';
+import { normalizeMicrosoftAccountEmail } from '@/lib/ui/provider-display';
 import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
@@ -128,7 +129,7 @@ export async function GET(request: NextRequest) {
     });
     if (meRes.ok) {
       const me = await meRes.json();
-      msEmail = me.mail || me.userPrincipalName || undefined;
+      msEmail = normalizeMicrosoftAccountEmail(me.mail || me.userPrincipalName) || undefined;
     }
   } catch (err: any) {
     console.warn('[microsoft/callback] Failed to fetch user email:', err.message);

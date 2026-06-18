@@ -12,6 +12,25 @@ const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
   assistant_chat: 'Assistant Chat',
 };
 
+/**
+ * Azure AD federates personal/guest (B2B) accounts under a mangled UPN like
+ * `b-kapp_outlook.com#EXT#@tenant.onmicrosoft.com` when Graph `mail` is empty.
+ * Recover the real address (`b-kapp@outlook.com`) for display and storage.
+ * `#EXT#` match is case-insensitive; clean emails (e.g. Google's) pass through
+ * untouched. Returns '' for empty input so callers can apply their own fallback.
+ */
+export function normalizeMicrosoftAccountEmail(raw: string | null | undefined): string {
+  if (!raw) return '';
+  const value = raw.trim();
+  if (!value) return '';
+  const extIdx = value.toLowerCase().indexOf('#ext#');
+  if (extIdx === -1) return value;
+  const prefix = value.slice(0, extIdx);
+  const lastUnderscore = prefix.lastIndexOf('_');
+  if (lastUnderscore === -1) return prefix;
+  return `${prefix.slice(0, lastUnderscore)}@${prefix.slice(lastUnderscore + 1)}`;
+}
+
 export function providerDisplayName(provider: string | null | undefined): string {
   if (!provider) return 'Unknown source';
   const normalized = provider.trim().toLowerCase();
