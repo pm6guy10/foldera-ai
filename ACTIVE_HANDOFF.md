@@ -11,7 +11,9 @@ Last updated: 2026-06-17 UTC (issue #378 COMPLETE — landing amber overhaul mer
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Active implementation seam is issue #382 — overhaul the WHOLE frontend (not just color) to `docs/DESIGN_SYSTEM.md` ($500M / Linear-Vercel-Notion tier), in phased PRs. Foundation (amber-on-warm-black token cohesion across the app) is done on branch `feat/cohesion-amber-app`. Owner decisions: distinctive display face + Inter body + JetBrains Mono; phased delivery. Phase 1 (active): design foundation — fonts via next/font, fluid type scale, spacing/radius/shadow/motion tokens. Read `docs/DESIGN_SYSTEM.md` first (binding spec; §12 checklist per screen). Preserve testids/copy/hrefs or update e2e in the same PR; screenshots desktop+mobile before each merge.
+Active implementation seam is issue #382 — overhaul the WHOLE frontend (not just color) to `docs/DESIGN_SYSTEM.md` ($500M / Linear-Vercel-Notion tier), in phased PRs merged to LIVE (owner-delegated). Read `docs/DESIGN_SYSTEM.md` first — it now documents the real implemented tokens (§4 amber palette, §5 fluid type scale + Bricolage display, §7 radius/shadow, §10 motion, §14 phase status). Owner decisions: distinctive display (Bricolage Grotesque) + Inter body + JetBrains Mono; phased delivery; §12 checklist + desktop(1440)+mobile(390) screenshots per phase; preserve testids/copy/hrefs or update e2e same-PR.
+**LIVE so far:** Phase 1 design foundation (PR #383, amber cohesion + type system + tokens) · Phase 2a premium shared footer (PR #384) · Phase 3 start: premium `/pricing` + DESIGN_SYSTEM docs (PR #385). Production at `d8a788f`.
+**Next:** finish Phase 3 funnel screens (`/start`, `/login`, `/try`, `/security`, `/about` bodies — still sparse) → Phase 4 content/legal → Phase 5 product (`/demo` + `/dashboard/*`). Plus open chrome item: collapse the landing header + `NavPublic` into one shared `SiteHeader` (content already aligned).
 
 Issue #378 is COMPLETE — design system locked (PR #379, `1230c13`) then full landing overhaul to it: warm amber/gold on warm near-black, real product window (chrome + left rail + evidence rows w/ real source logos), 8 real official brand SVGs in `public/logos/`, stats row, honest enterprise strip (no SOC 2 claim), orchestrated framer-motion, mobile hamburger sheet. Tokens scoped to a `.ld` layer in `app/globals.css` so the dashboard palette is untouched. Merged via PR #380 (`40b687a`). Proof: build + lint + gate:continuity + public-routes + landing-hero-visual-qa 54/54; flawless 1440+390.
 Issue #376 is COMPLETE — landing raised to product-window hero + motion (Linear/Vercel tier); merged via PR #377 (`b1bc061`).
@@ -52,7 +54,7 @@ None — between rungs. #378 (design system + full amber landing overhaul) merge
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence heartbeat (#364 code shipped, owner must create the cron job for live firing); (2) landing polish is an open standing goal — owner wants each pass obviously better, not incremental.
 
-Current production truth: `Last known main SHA: 40b687a` (PR #380 merged 2026-06-17; landing v4 amber overhaul live; #378 closed).
+Current production truth: `Last known main SHA: d8a788f` (frontend overhaul #382 phases 1/2a/3 live via PRs #383/#384/#385; whole-app amber + Bricolage type system + premium footer + premium /pricing). #382 remains OPEN for the remaining phases.
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
