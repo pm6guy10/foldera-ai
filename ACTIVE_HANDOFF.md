@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-18 UTC (#394 guardian-finished-work merged `d235cde`; between rungs)
+Last updated: 2026-06-18 UTC (#397 brief-seeds-draft PR #398 + #399 title-hygiene PR #400 merged `30fbf13`; between rungs)
 
 ## Boot
 
@@ -11,10 +11,9 @@ Last updated: 2026-06-18 UTC (#394 guardian-finished-work merged `d235cde`; betw
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Issue #399 is the active product seam.
-The live product thread is the GUARDIAN (workday-presence): it fires, grounds a real commitment, and pings Slack ONLY when it has a reviewable move — see `FOLDERA_MASTER_BIBLE.md` Part II-B for the full architecture map. #397 (brief seeds the matched draft at generation time) is MERGED — PR #398, prod `4eb68f1`. #399 removes a cheap detail: the guardian card no longer shows the `SYNC:<category>:<slug>` dedup key as a commitment title (prefers the human description). The ONE live-readiness blocker is owner-side: the free external 15-min cron for guardian firing cadence.
-**LIVE (production `d235cde`):** #382 frontend overhaul (PRs #383–#389 incl. pixel-polish) · #390 owner self-review system (`docs/BRANDON.md` avatar + `docs/EXPERT_PANEL.md` panel + Bible Part IV) · #391/#393 guardian fires-grounded-and-pings (daily-cron reverted, honoring #369) · #394/#395 guardian pings only finished work + no-paid recycled draft. #382 stays OPEN for optional polish.
-**Standing candidates (NOT started, owner to choose):** OWNER-SIDE — configure the external 15-min cron for guardian cadence (the ongoing firing mechanism; NOT a Vercel daily cron). CODE — have the brief seed the matched draft at generation time (touches the paid generator); clean malformed commitment titles (`SYNC:payment_financial:…`); recolor legacy cyan favicons (`app/favicon.ico`/`public/favicon.png`); triage 44 stale remote branches + 24 skipped tests. Constraint: NO paid API calls to test — prove in the harness.
+Between rungs — `active_issue: none` is the valid control-plane form; the owner names the next seam. The live product thread is the GUARDIAN (workday-presence): it fires, grounds a real commitment, and pings Slack ONLY when it has a reviewable move — see `FOLDERA_MASTER_BIBLE.md` Part II-B for the full architecture map. The ONE live-readiness blocker is owner-side: the free external 15-min cron for guardian firing cadence (code shipped + harness-proven; it does not fire on schedule until the cron exists).
+**LIVE (production `30fbf13`):** #382 frontend overhaul · #390 owner self-review system (`docs/BRANDON.md` + `docs/EXPERT_PANEL.md` + Bible Part IV) · #391/#393 guardian fires-grounded-and-pings · #394/#395 guardian pings only finished work · #397 (PR #398) brief seeds the matched draft at generation time · #399 (PR #400) commitment-title hygiene (no SYNC: key in the card). #382 stays OPEN for optional polish.
+**Standing candidates (NOT started, owner to choose):** OWNER-SIDE — configure the external 15-min cron for guardian cadence (the ongoing firing mechanism; NOT a Vercel daily cron). CODE — recolor legacy cyan favicons (`app/favicon.ico`/`public/favicon.png`, BLOCKED on image tooling — `sharp`/imagemagick absent); triage 46 stale remote branches + skipped tests. Constraint: NO paid API calls to test — prove in the harness.
 
 Issue #394 is COMPLETE — guardian pings only finished work: silent/dismissed payload → no Slack (no noise ping); draftless scored_winner recycles the latest matching daily-brief artifact into a reviewable draft (no new LLM, conservative anti-mismatch guard). Merged via PR #395 (`d235cde`); 13 fixtures + 107/107 suite; runtime proof deferred per owner no-paid directive.
 Issue #391 is COMPLETE/REVERTED — wired the guardian into the daily morning-pipeline cron (PR #392) then reverted it (PR #393, `7b573eb`) for conflicting with #369 (no daily cron). Runtime proof obtained instead: first grounded `workday_presence_trigger` receipt (`9695a5c6`, ev_count=1) + live Slack ping via a one-time owner-go fire.
@@ -36,7 +35,7 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 ## Current slice:
 
-#399 — guardian commitment-title hygiene: `commitment-bridge.ts` no longer surfaces the `SYNC:<category>:<slug>` dedup key as the card title; new `humanCommitmentTitle()` prefers the human `description` and strips the `SYNC:` prefix in the fallback so the card is never cheap. Read-time display fix, no prod-data mutation. 8/8 commitment-bridge tests + gate:continuity + lint + build green; no paid calls. Branch `claude/foldera-boot-memory-qlsywu`. Prior (merged this session): #397 — brief seeds the matched draft at generation time (PR #398, prod `4eb68f1`).
+None — between rungs. This session shipped #397 (brief seeds the matched draft at generation time, PR #398) and #399 (commitment-title hygiene, PR #400, prod `30fbf13`). No code seam I can execute remains: the live-readiness blocker is owner-side (cron) and the favicon cleanup is tooling-blocked. Awaiting the owner's next chosen seam.
 
 ## Next exact move
 

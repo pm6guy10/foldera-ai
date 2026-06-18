@@ -1,40 +1,37 @@
 {
-  "backlog_id": "guardian-commitment-title-hygiene",
-  "active_issue": 399,
+  "backlog_id": "between-rungs",
+  "active_issue": "none",
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Guardian commitment-title hygiene (#399). commitment-bridge.ts set the lapsing-commitment signal title to canonical_form (the SYNC:<category>:<slug> dedup key) over description, so the guardian card could read SYNC:payment_financial:Pay_the_invoice. New humanCommitmentTitle() prefers the human description and, as a fallback, strips the SYNC: prefix so the card is never cheap. Read-time display fix only — NO prod data mutation, NO paid API calls.",
+  "user_system_path": "Between rungs. The live product thread is the GUARDIAN (workday-presence): it fires, grounds a real commitment, and pings Slack only when it has a reviewable move. This session shipped #397 (brief seeds the matched draft at generation time, deterministic — retiring the fuzzy recycle for the brief path) and #399 (commitment-title hygiene — the card no longer shows the SYNC: dedup key). The one live-readiness blocker is owner-side: the free external 15-min cron for firing cadence. Remaining code candidates: cyan favicons (tooling-blocked), stale-branch/skipped-test triage. Constraint: NO paid API calls to test — prove in the harness.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "docs/**",
-    "lib/workday-presence/**",
-    "app/api/workday-presence/**",
-    "lib/cron/daily-brief-generate.ts"
+    "docs/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
+    "app/api/**",
+    "lib/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Seam #399: lib/workday-presence/commitment-bridge.ts (+ its test) for the human-title fix + control-plane + docs. Schema and dependency files stay forbidden — no migrations, no new deps.",
-  "forbidden_files_raw": "No schema (supabase/**) or dependency (package*.json) changes in this seam. Read-time display fix only — no tkg_commitments row mutation. Any lib/app path outside the allowed list is out of scope.",
-  "required_local_proof": "npm run gate:continuity && npm run lint && npm run build && npx vitest run lib/workday-presence/__tests__/commitment-bridge.test.ts",
-  "required_browser_proof": "N/A — deterministic read-time display fix proven by fixtures; no paid generation needed.",
-  "browser_proof_command": "N/A — no-paid directive; prove in harness",
-  "acceptance_condition": "The guardian's lapsing-commitment title prefers the human description and never surfaces a raw SYNC:<category>:<slug> key (stripped fallback). commitment-bridge.test.ts green (incl. the updated key-vs-description test), and gate:continuity + lint + build pass.",
-  "is_user_facing": true,
+  "allowed_files_raw": "Between rungs — only control-plane + docs may change until the owner names the next seam (which re-scopes this contract).",
+  "forbidden_files_raw": "No product/runtime/schema/deps changes without an active seam + scoped contract.",
+  "required_local_proof": "npm run gate:continuity",
+  "required_browser_proof": "N/A — between rungs.",
+  "browser_proof_command": "N/A",
+  "acceptance_condition": "Control plane is consistent in the between-rungs form (build-order active_issue: none, contract active_issue: none, no active-seam line in ACTIVE_HANDOFF) and gate:continuity passes.",
+  "is_user_facing": false,
   "anti_regression_checks": [
-    "card title prefers description; SYNC: key never shown (prefix stripped in fallback)",
-    "findLapsingCommitmentSignal still returns null when nothing is due and still throws on query error",
-    "no paid API calls in any test",
-    "read-time display only — no tkg_commitments rows mutated",
-    "no schema or dependency files changed"
+    "gate:continuity green in between-rungs form",
+    "no active-seam line in ACTIVE_HANDOFF.md",
+    "no product/runtime files changed"
   ],
-  "stop_condition": "Stop when the seam is merged (MERGED_AND_CLOSED) with harness proof, or blocked with an exact receipt.",
-  "next_command": "OWNER-SIDE: configure the free external 15-min cron (guardian firing cadence) — the one live-readiness blocker. CODE: recolor legacy cyan favicons (BLOCKED on image tooling — sharp/imagemagick absent); triage stale branches + skipped tests.",
+  "stop_condition": "Stop when the control plane is rolled forward to a clean between-rungs state and the owner has a boot prompt for the next session.",
+  "next_command": "New session: read ACTIVE_HANDOFF.md + FOLDERA_MASTER_BIBLE.md Part II-B; the owner names the next seam — likely the owner-side external 15-min cron for guardian firing cadence (the one live-readiness blocker), or a code candidate (cyan favicons once image tooling exists; stale-branch/skipped-test triage).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
