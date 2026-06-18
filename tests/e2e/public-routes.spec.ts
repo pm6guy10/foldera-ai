@@ -188,7 +188,7 @@ test.describe('Landing page /', () => {
     await expect(page.getByTestId('landing-doctrine')).toContainText('State');
     await expect(page.getByTestId('landing-doctrine')).toContainText('Connectors');
     await expect(page.getByTestId('landing-doctrine')).toContainText('Triggers');
-    await expect(page.getByTestId('landing-doctrine')).toContainText('One intervention');
+    await expect(page.getByTestId('landing-doctrine')).toContainText('One move');
     await expect(page.getByTestId('landing-final-cta')).toContainText('Restore your continuity.');
     await expect(page.getByTestId('landing-final-cta')).toContainText('One trusted answer. All the context. Next move ready.');
   });

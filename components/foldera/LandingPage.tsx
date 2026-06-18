@@ -8,7 +8,6 @@ import {
   BellOff,
   Check,
   Clock3,
-  FileText,
   Inbox,
   Layers,
   LockKeyhole,
@@ -90,47 +89,37 @@ function BrandLogo({ brand, size = 20 }: { brand: Brand; size?: number }) {
 /* ----------------------------------------------------- copy / content */
 
 const painPoints = [
-  {
-    title: 'The reconstruction tax.',
-    body: 'Every tool switch leaks context. You are not working; you are scavenging.',
-  },
-  {
-    title: 'Every app remembers its own slice',
-    body: 'Microsoft remembers Microsoft. Google remembers Google. Your workday still has to move across both.',
-  },
-  {
-    title: 'The human integration layer',
-    body: 'The person doing the work becomes the system that reconnects messages, meetings, approvals, and decisions.',
-  },
+  { title: 'The reconstruction tax.', body: 'Every tool switch leaks context.' },
+  { title: 'Every app, its own slice', body: 'Microsoft remembers Microsoft. Google, Google.' },
+  { title: 'You are the glue', body: 'A person doing a system’s job.' },
 ];
 
 const stats = [
-  { n: '9.4', u: 'hrs', l: 'lost per knowledge worker each week to context switching.' },
-  { n: '2.7', u: '×', l: 'longer to ramp back into deep work after an interruption.' },
-  { n: '31', u: '%', l: 'of work time spent reconstructing context, not doing the work.' },
-  { n: '$37', u: 'B+', l: 'annual cost of fractured context to the Fortune 500.' },
+  { n: '9.4', u: 'hrs', l: 'lost every week' },
+  { n: '2.7', u: '×', l: 'slower to refocus' },
+  { n: '31', u: '%', l: 'of work is rework' },
+  { n: '$37', u: 'B+', l: 'a year, Fortune 500' },
 ];
 
 const doctrine = [
-  { label: 'State', icon: Layers, body: 'Current focus, next move, blocker, do-not-touch, waiting-on, and last completed step.' },
-  { label: 'Connectors', icon: Activity, body: 'Consented systems provide evidence. Foldera does not screen-read or secretly monitor work.' },
-  { label: 'Triggers', icon: Zap, body: 'Meetings, mentions, replies, waiting-on changes, user actions, and end-of-day carry-forward.' },
-  { label: 'One intervention', icon: Sparkles, body: 'A single Right Now card with one useful next move and one clear response path.' },
+  { label: 'State', icon: Layers, body: 'Where you left off.' },
+  { label: 'Connectors', icon: Activity, body: 'Only what you consent to.' },
+  { label: 'Triggers', icon: Zap, body: 'When it’s worth a nudge.' },
+  { label: 'One move', icon: Sparkles, body: 'A single next step.' },
 ];
 
 const howItWorks = [
-  'Work happens across messages, meetings, documents, files, and approvals.',
-  'Foldera keeps the workday state attached to the evidence you consented to connect.',
-  'When something meaningful changes, Foldera decides whether it is worth interrupting.',
-  'One Right Now card appears where the work is already happening.',
-  'You click once. Foldera updates state and goes quiet again.',
+  'Work scatters across your tools.',
+  'Foldera holds the thread.',
+  'One card when it matters.',
+  'You click once — then quiet.',
 ];
 
 const trustItems = [
-  { icon: ShieldCheck, title: 'Consent first', body: 'You choose what connects and what Foldera can use.' },
-  { icon: LockKeyhole, title: 'No surveillance', body: 'No hidden activity monitoring, no screen-reading, and no surveillance framing.' },
-  { icon: BellOff, title: 'Quiet by design', body: 'Foldera is not another inbox, task list, or dashboard to babysit.' },
-  { icon: Clock3, title: 'Pilot honest', body: 'Pilot access is staged. Live claims stay inside what the repo already supports.' },
+  { icon: ShieldCheck, title: 'Consent first', body: 'You choose what connects.' },
+  { icon: LockKeyhole, title: 'No surveillance', body: 'No screen-reading. Ever.' },
+  { icon: BellOff, title: 'Quiet by design', body: 'Not another inbox to babysit.' },
+  { icon: Clock3, title: 'Honest pilot', body: 'Staged access. No fake claims.' },
 ];
 
 const enterprise = [
@@ -141,13 +130,6 @@ const enterprise = [
   { icon: UserX, t: 'No training', s: 'on your data, ever' },
 ];
 
-const pilotScope = [
-  'Public access starts at the existing /start route.',
-  'Login stays on the existing /login route.',
-  'Pricing is shaped through pilot usage; no fake public price promise here.',
-  'Demo remains the existing product demo route, not a new fake flow.',
-];
-
 const evidenceRows: Array<{ brand: Brand; label: string; meta: string }> = [
   { brand: connectors[1], label: '#q2-planning — mentioned you', meta: '3 new' },
   { brand: connectors[0], label: 'Re: Headcount — Finance', meta: '2:14 PM' },
@@ -155,16 +137,6 @@ const evidenceRows: Array<{ brand: Brand; label: string; meta: string }> = [
 ];
 
 /* ----------------------------------------------------- small primitives */
-
-function SectionLabel({ index, children }: { index: string; children: ReactNode }) {
-  return (
-    <div className="ld-mono flex items-center gap-3 text-[11px] uppercase tracking-[0.28em] text-[color:var(--ld-fg-dim)]">
-      <span className="text-[color:var(--ld-accent)]">{index}</span>
-      <span className="h-px w-8 bg-white/15" />
-      <span>{children}</span>
-    </div>
-  );
-}
 
 function AccessLink({
   children,
@@ -502,202 +474,175 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
             </div>
           </section>
 
-          {/* CONNECTOR STRIP */}
-          <section className="border-b border-white/[0.07]" data-testid="landing-connectors">
-            <div className={`${sectionWrap} flex flex-col items-center gap-7 py-12 sm:flex-row sm:gap-10`}>
-              <p className="ld-mono shrink-0 text-[11px] uppercase tracking-[0.22em] text-[color:var(--ld-fg-dim)]">
+          {/* CONNECTOR STRIP — just the logos, no chrome */}
+          <section className="pt-12 pb-4" data-testid="landing-connectors">
+            <div className={`${sectionWrap} flex flex-col items-center gap-7`}>
+              <p className="ld-mono text-[10px] uppercase tracking-[0.3em] text-[color:var(--ld-fg-dim)]">
                 Works where you already work
               </p>
-              <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-4 sm:justify-start">
+              <div className="flex flex-wrap items-center justify-center gap-x-9 gap-y-6">
                 {connectors.map((c) => (
-                  <span key={c.name} className="ld-conn-chip" title={c.name} aria-label={c.name}>
-                    <BrandLogo brand={c} size={20} />
+                  <span
+                    key={c.name}
+                    title={c.name}
+                    aria-label={c.name}
+                    className="opacity-75 transition-opacity duration-300 hover:opacity-100"
+                  >
+                    <BrandLogo brand={c} size={26} />
                   </span>
                 ))}
               </div>
             </div>
           </section>
 
-          {/* STATS */}
-          <section className={`${sectionWrap} py-16 lg:py-20`} data-testid="landing-stats">
+          {/* STATS — big numerals, few words, no lines */}
+          <section className={`${sectionWrap} py-28 lg:py-36`} data-testid="landing-stats">
             <motion.div
-              className="grid grid-cols-2 gap-x-8 gap-y-10 lg:grid-cols-4"
+              className="grid grid-cols-2 gap-x-8 gap-y-16 lg:grid-cols-4"
               variants={stagger}
               initial="hidden"
               whileInView="show"
               viewport={{ once: true, margin: '-80px' }}
             >
               {stats.map((s) => (
-                <motion.div key={s.n} variants={fadeUp} className="border-t border-white/12 pt-5">
+                <motion.div key={s.n} variants={fadeUp}>
                   <div className="ld-display flex items-baseline text-[color:var(--ld-fg)]">
-                    <span className="text-[2.6rem] leading-none sm:text-[3rem]">{s.n}</span>
-                    <span className="ml-0.5 text-[1.4rem] text-[color:var(--ld-accent)]">{s.u}</span>
+                    <span className="text-[3.25rem] leading-none sm:text-[4.25rem]">{s.n}</span>
+                    <span className="ml-1 text-[1.6rem] text-[color:var(--ld-accent)] sm:text-[2rem]">{s.u}</span>
                   </div>
-                  <p className="mt-3 max-w-[15rem] text-[14px] leading-6 text-[color:var(--ld-fg-muted)]">{s.l}</p>
+                  <p className="mt-3 text-[14px] uppercase tracking-[0.06em] text-[color:var(--ld-fg-dim)]">{s.l}</p>
                 </motion.div>
               ))}
             </motion.div>
           </section>
 
-          {/* PAIN */}
-          <section className={`${sectionWrap} py-20 lg:py-28`} data-testid="landing-pain">
+          {/* PAIN — one big line, three quiet beats */}
+          <section className={`${sectionWrap} py-28 lg:py-36`} data-testid="landing-pain">
             <Reveal>
-              <SectionLabel index="01">Context collapse</SectionLabel>
-              <h2 className="ld-display mt-6 max-w-3xl text-[2rem] tracking-[-0.035em] text-[color:var(--ld-fg)] sm:text-[2.75rem]">
-                You are a high-paid filing clerk.
+              <h2 className="ld-display max-w-4xl text-[clamp(2.4rem,1.6rem+3.2vw,4rem)] leading-[1.02] tracking-[-0.04em] text-[color:var(--ld-fg)]">
+                You are a high-paid <span className="text-[color:var(--ld-accent)]">filing clerk.</span>
               </h2>
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-[color:var(--ld-fg-muted)]">
-                You spend too much of your day rebuilding context across fractured apps just to do a few minutes of actual work.
-              </p>
             </Reveal>
             <motion.div
-              className="mt-14 grid gap-x-10 gap-y-12 sm:grid-cols-3"
+              className="mt-20 grid gap-x-12 gap-y-12 sm:grid-cols-3"
               variants={stagger}
               initial="hidden"
               whileInView="show"
               viewport={{ once: true, margin: '-80px' }}
             >
               {painPoints.map((item, i) => (
-                <motion.div key={item.title} variants={fadeUp} className="border-t border-white/12 pt-5">
-                  <span className="ld-mono text-[11px] text-[color:var(--ld-accent)]">{String(i + 1).padStart(2, '0')}</span>
-                  <h3 className="ld-display mt-3 text-lg tracking-[-0.02em] text-[color:var(--ld-fg)]">{item.title}</h3>
-                  <p className="mt-3 text-[15px] leading-7 text-[color:var(--ld-fg-muted)]">{item.body}</p>
+                <motion.div key={item.title} variants={fadeUp}>
+                  <span className="ld-mono text-[12px] text-[color:var(--ld-accent)]">{String(i + 1).padStart(2, '0')}</span>
+                  <h3 className="ld-display mt-4 text-[1.35rem] tracking-[-0.02em] text-[color:var(--ld-fg)]">{item.title}</h3>
+                  <p className="mt-2 text-[15px] leading-6 text-[color:var(--ld-fg-dim)]">{item.body}</p>
                 </motion.div>
               ))}
             </motion.div>
           </section>
 
-          {/* DOCTRINE / HOW IT WORKS */}
+          {/* DOCTRINE / HOW IT WORKS — open concept, soft seam, no boxes */}
           <section
             id="how-foldera-works"
-            className="border-y border-white/[0.07] bg-white/[0.012]"
+            className="relative"
             data-testid="landing-doctrine"
+            style={{ background: 'radial-gradient(80% 60% at 50% 0%, rgba(245,166,35,0.05), transparent 70%)' }}
           >
-            <div className={`${sectionWrap} py-20 lg:py-28`}>
-              <Reveal>
-                <SectionLabel index="02">How it works</SectionLabel>
-                <h2 className="ld-display mt-6 max-w-4xl text-[2rem] tracking-[-0.035em] text-[color:var(--ld-fg)] sm:text-[2.75rem]">
-                  The problem isn&apos;t lack of AI.{' '}
-                  <span className="text-[color:var(--ld-fg-dim)]">The problem is broken continuity.</span>
+            <div className={`${sectionWrap} py-28 lg:py-36`}>
+              <Reveal className="mx-auto max-w-3xl text-center">
+                <h2 className="ld-display text-[clamp(2rem,1.4rem+2.4vw,3.25rem)] leading-[1.05] tracking-[-0.035em] text-[color:var(--ld-fg)]">
+                  Not a lack of AI.{' '}
+                  <span className="text-[color:var(--ld-fg-dim)]">A lack of continuity.</span>
                 </h2>
-                <p className="mt-5 max-w-2xl text-lg leading-8 text-[color:var(--ld-fg-muted)]">
-                  Every app remembers its own slice. Microsoft remembers Microsoft. Google remembers Google. Foldera is the cross-system presence layer that remembers the state of your workday.
-                </p>
+                <p className="sr-only">The problem is broken continuity.</p>
               </Reveal>
 
               <motion.div
-                className="mt-14 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-4"
+                className="mx-auto mt-20 grid max-w-5xl gap-x-10 gap-y-14 sm:grid-cols-2 lg:grid-cols-4"
                 variants={stagger}
                 initial="hidden"
                 whileInView="show"
                 viewport={{ once: true, margin: '-80px' }}
               >
                 {doctrine.map(({ label, icon: Icon, body }) => (
-                  <motion.div key={label} variants={fadeUp} className="border-t border-white/12 pt-5">
-                    <Icon className="h-5 w-5 text-[color:var(--ld-accent)]" strokeWidth={1.75} aria-hidden="true" />
-                    <p className="ld-mono mt-4 text-[11px] font-medium uppercase tracking-[0.18em] text-[color:var(--ld-fg)]">
-                      {label}
-                    </p>
-                    <p className="mt-3 text-[15px] leading-7 text-[color:var(--ld-fg-muted)]">{body}</p>
+                  <motion.div key={label} variants={fadeUp} className="flex flex-col items-center text-center">
+                    <span className="ld-accent-soft flex h-14 w-14 items-center justify-center rounded-2xl">
+                      <Icon className="h-6 w-6" strokeWidth={1.5} aria-hidden="true" />
+                    </span>
+                    <p className="ld-display mt-5 text-[1.1rem] tracking-[-0.01em] text-[color:var(--ld-fg)]">{label}</p>
+                    <p className="mt-1.5 text-[14px] text-[color:var(--ld-fg-dim)]">{body}</p>
                   </motion.div>
                 ))}
               </motion.div>
 
-              <ol className="mt-16 divide-y divide-white/[0.07] border-y border-white/[0.07]" data-testid="landing-workflow">
+              <motion.ol
+                className="mx-auto mt-24 flex max-w-4xl flex-col gap-y-8 sm:flex-row sm:items-start sm:justify-between sm:gap-x-6"
+                data-testid="landing-workflow"
+                variants={stagger}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true, margin: '-80px' }}
+              >
                 {howItWorks.map((step, index) => (
-                  <li key={step} className="flex items-baseline gap-5 py-5">
-                    <span className="ld-mono text-sm text-[color:var(--ld-accent)]">{String(index + 1).padStart(2, '0')}</span>
-                    <span className="text-[15px] leading-7 text-[color:var(--ld-fg-soft)]">{step}</span>
-                  </li>
+                  <motion.li key={step} variants={fadeUp} className="flex items-start gap-3 sm:flex-1 sm:flex-col sm:items-center sm:text-center">
+                    <span className="ld-mono text-[20px] leading-none text-[color:var(--ld-accent)]">{String(index + 1).padStart(2, '0')}</span>
+                    <span className="text-[15px] leading-6 text-[color:var(--ld-fg-soft)]">{step}</span>
+                  </motion.li>
                 ))}
-              </ol>
+              </motion.ol>
             </div>
           </section>
 
-          {/* TRUST */}
-          <section id="trust" className={`${sectionWrap} py-20 lg:py-28`} data-testid="landing-trust">
+          {/* TRUST — icon-led, no card boxes */}
+          <section id="trust" className={`${sectionWrap} py-28 lg:py-36`} data-testid="landing-trust">
             <Reveal>
-              <SectionLabel index="03">Habitat</SectionLabel>
-              <h2 className="ld-display mt-6 max-w-3xl text-[2rem] tracking-[-0.035em] text-[color:var(--ld-fg)] sm:text-[2.75rem]">
+              <h2 className="ld-display max-w-3xl text-[clamp(2rem,1.4rem+2.4vw,3.25rem)] leading-[1.05] tracking-[-0.035em] text-[color:var(--ld-fg)]">
                 It lives where you work.{' '}
-                <span className="text-[color:var(--ld-fg-dim)]">And stays quiet otherwise.</span>
+                <span className="text-[color:var(--ld-fg-dim)]">And stays quiet.</span>
               </h2>
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-[color:var(--ld-fg-muted)]">
-                Foldera interrupts only when there is a clean moment to act, hands you the next move where you already are, and then disappears.
-              </p>
             </Reveal>
             <motion.div
-              className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-4"
+              className="mt-20 grid gap-x-12 gap-y-14 sm:grid-cols-2 lg:grid-cols-4"
               variants={stagger}
               initial="hidden"
               whileInView="show"
               viewport={{ once: true, margin: '-80px' }}
             >
               {trustItems.map(({ icon: Icon, title, body }) => (
-                <motion.div key={title} variants={fadeUp} className="ld-card-interactive p-6">
-                  <span className="ld-accent-soft flex h-10 w-10 items-center justify-center rounded-[10px]">
-                    <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden="true" />
-                  </span>
-                  <h3 className="ld-display mt-5 text-lg tracking-[-0.02em] text-[color:var(--ld-fg)]">{title}</h3>
-                  <p className="mt-2.5 text-[15px] leading-7 text-[color:var(--ld-fg-muted)]">{body}</p>
+                <motion.div key={title} variants={fadeUp}>
+                  <Icon className="h-7 w-7 text-[color:var(--ld-accent)]" strokeWidth={1.5} aria-hidden="true" />
+                  <h3 className="ld-display mt-5 text-[1.15rem] tracking-[-0.01em] text-[color:var(--ld-fg)]">{title}</h3>
+                  <p className="mt-1.5 text-[15px] leading-6 text-[color:var(--ld-fg-dim)]">{body}</p>
                 </motion.div>
               ))}
             </motion.div>
           </section>
 
-          {/* ENTERPRISE STRIP */}
-          <section className="border-y border-white/[0.07] bg-white/[0.012]" data-testid="landing-enterprise">
-            <div className={`${sectionWrap} py-14`}>
-              <p className="ld-mono mb-9 text-center text-[11px] uppercase tracking-[0.24em] text-[color:var(--ld-fg-dim)]">
-                Enterprise-ready from the ground up
-              </p>
-              <div className="grid grid-cols-2 gap-x-8 gap-y-8 sm:grid-cols-3 lg:grid-cols-5">
-                {enterprise.map(({ icon: Icon, t, s }) => (
-                  <div key={t} className="flex items-start gap-3">
-                    <Icon className="mt-0.5 h-5 w-5 shrink-0 text-[color:var(--ld-accent)]" strokeWidth={1.75} aria-hidden="true" />
-                    <span className="text-[13px] leading-snug">
-                      <span className="block text-[color:var(--ld-fg)]">{t}</span>
-                      <span className="text-[color:var(--ld-fg-muted)]">{s}</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
+          {/* ENTERPRISE STRIP — quiet single row */}
+          <section data-testid="landing-enterprise">
+            <div className={`${sectionWrap} flex flex-wrap items-center justify-center gap-x-10 gap-y-5 pb-8`}>
+              {enterprise.map(({ icon: Icon, t }) => (
+                <span key={t} className="inline-flex items-center gap-2.5 text-[13px] text-[color:var(--ld-fg-muted)]">
+                  <Icon className="h-4 w-4 text-[color:var(--ld-accent)]" strokeWidth={1.75} aria-hidden="true" />
+                  {t}
+                </span>
+              ))}
             </div>
           </section>
 
-          {/* PILOT */}
-          <section className={`${sectionWrap} py-20 lg:py-28`} data-testid="landing-pilot">
-            <div className="grid gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:gap-16">
-              <Reveal>
-                <SectionLabel index="04">Pilot access</SectionLabel>
-                <h2 className="ld-display mt-6 text-[2rem] tracking-[-0.035em] text-[color:var(--ld-fg)] sm:text-[2.75rem]">
-                  Stop checking nine apps.{' '}
-                  <span className="text-[color:var(--ld-fg-dim)]">Foldera keeps track.</span>
-                </h2>
-                <p className="mt-5 max-w-xl text-lg leading-8 text-[color:var(--ld-fg-muted)]">
-                  Foldera is not a dashboard. It watches consented signals, remembers your focus, and calculates the next state of your work.
-                </p>
-                <div className="mt-9 flex flex-col gap-2.5 sm:flex-row sm:items-center">
-                  <AccessLink testId="landing-pilot-access-cta">Join pilot</AccessLink>
-                  <GhostLink href="/demo" testId="landing-demo-link">View existing demo</GhostLink>
-                </div>
-              </Reveal>
-
-              <motion.div
-                className="divide-y divide-white/[0.07] border-y border-white/[0.07] lg:mt-2"
-                variants={stagger}
-                initial="hidden"
-                whileInView="show"
-                viewport={{ once: true, margin: '-80px' }}
-              >
-                {pilotScope.map((item) => (
-                  <motion.div key={item} variants={fadeUp} className="flex items-start gap-4 py-4">
-                    <FileText className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--ld-accent)]" strokeWidth={1.75} aria-hidden="true" />
-                    <p className="text-[15px] leading-7 text-[color:var(--ld-fg-muted)]">{item}</p>
-                  </motion.div>
-                ))}
-              </motion.div>
-            </div>
+          {/* PILOT — product-led, minimal words */}
+          <section className={`${sectionWrap} py-28 lg:py-36`} data-testid="landing-pilot">
+            <Reveal className="mx-auto max-w-3xl text-center">
+              <h2 className="ld-display text-[clamp(2rem,1.4rem+2.4vw,3.25rem)] leading-[1.04] tracking-[-0.035em] text-[color:var(--ld-fg)]">
+                Stop checking nine apps.
+              </h2>
+              <p className="mx-auto mt-5 max-w-lg text-lg leading-8 text-[color:var(--ld-fg-muted)]">
+                Foldera keeps track, and shows you the one thing that matters.
+              </p>
+              <div className="mt-9 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
+                <AccessLink testId="landing-pilot-access-cta">Join pilot</AccessLink>
+                <GhostLink href="/demo" testId="landing-demo-link">See the demo</GhostLink>
+              </div>
+            </Reveal>
           </section>
 
           {/* FINAL CTA */}
