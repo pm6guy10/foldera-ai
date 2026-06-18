@@ -1,9 +1,9 @@
 {
   "active_issue": 411,
-  "active_branch": "claude/fix-microsoft-guest-upn-display",
+  "active_branch": "claude/roll-control-plane-postmerge-411",
   "active_pr": null,
-  "deployed_commit_sha": "0a148d5",
+  "deployed_commit_sha": "191520a",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-18T23:55:00Z"
+  "last_verified_at": "2026-06-19T00:05:00Z"
 }
