@@ -24,8 +24,10 @@ function resolveExtractionDailyCapUsd(): number {
     const n = Number(raw);
     if (Number.isFinite(n) && n > 0 && n <= 100) return n;
   }
-  // Temporary raise (2026-04-09): drain extractable backlog; revert default to 0.25 after backlog near zero.
-  return 4;
+  // Reverted 2026-06-19 (Pass 3, #445) to the documented 0.25 intent after the 2026-04-09
+  // backlog-drain raise was never reverted — it left a 16x latent worst-case landmine ($4 vs $0.25).
+  // The env override (EXTRACTION_DAILY_CAP_USD) remains for deliberate backlog catch-up.
+  return 0.25;
 }
 export const EXTRACTION_DAILY_CAP = resolveExtractionDailyCapUsd();
 // Max directive-generation LLM calls per UTC day for manual/interactive runs.

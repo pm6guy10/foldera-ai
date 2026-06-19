@@ -25,8 +25,8 @@ accepted_terminal_states:
 active_issue: 445
 priority_class: PRODUCT
 work_type: CHORE
-why_this_first: "Master Audit (#445): firm-foundation review in 13 expert-led passes, anti-rediscovery. Pass 0 merged (#446, 75dca52) — docs/SYSTEM_INVENTORY.md is the canonical what-IS. Pass 1 (Security & multi-tenant isolation) verdict PASS: proved read-only that all 26 tables are RLS-enabled, every tenant policy is scoped by auth.uid(), internal tables are restrictive-deny, service-role key is server-only, connector tokens encrypted at rest. Closed the one CONCERN (no regression guard) by shipping tests/security/__tests__/rls-isolation.test.ts (6 invariants over a committed live-policy snapshot) + docs/security/RLS_ISOLATION.md."
-next_seam: "After Pass 1 merges: Pass 3 (Cost & unit economics — execute docs/COST_AND_ECONOMICS_AUDIT.md) as its own seam -> PR. Owner-side: ANTHROPIC_API_KEY (+ Slack/CRON env) in Vercel Production; enable Supabase leaked-password protection + more MFA (advisor WARN, S-3). Constraint: NO paid API calls — prove in the harness."
+why_this_first: "Master Audit (#445): firm-foundation review in 13 expert-led passes, anti-rediscovery. Pass 0 merged (#446) — docs/SYSTEM_INVENTORY.md. Pass 1 merged (#447, 6a3be87) — RLS isolation PASS + 6-invariant contract test. Pass 3 (Cost & unit economics) verdict CONCERN: cross-checked real spend read-only ($0.02-0.19/user/day vs $0.97 revenue — healthy now); shipped P0.1 (EXTRACTION_DAILY_CAP 4->0.25, the 16x landmine, locked by tests/cost/__tests__/extraction-cap.test.ts); finding C-2 (directive_retry > directive cost) routed to Pass 4. The structural fix (P0.2 lazy generation) is deferred — needs design + paid validation."
+next_seam: "After Pass 3 merges: P0.2 lazy/as-needed generation + P0.3 selective extraction (design + paid validation) as their own cost seam, OR continue the audit at Pass 2 (Database & data integrity). Owner-side: ANTHROPIC_API_KEY (+ Slack/CRON env) in Vercel Production; enable Supabase leaked-password protection + more MFA. Constraint: NO paid API calls — prove in the harness."
 completed_issue_425:
   issue: 425
   pr: 426

@@ -148,3 +148,57 @@ Cadence (both free):
 
 Each ships through the normal gate (build + public-routes smoke) and squash-merges to
 `main`, leaving the control plane in the clean between-rungs form.
+
+---
+
+## 9. Pass 3 execution log (Master Audit #445) — verdict `CONCERN`
+
+Executed 2026-06-19. Cross-checked against **real** spend (Supabase `cost_events` /
+`api_usage`, read-only). No paid calls.
+
+### Live cross-check — actual COGS is healthy *today*
+Per-user/day spend over the last 14 days ran **$0.02–$0.19**, against **$0.97/user/day**
+revenue. 30-day total spend across all endpoints ≈ **$2.27**. The "$5/day/user"
+scenario is the worst-case *cap ceiling*, not reality — at the current scale (1–3
+active users, low signal volume) the unit economics are comfortably positive.
+
+30-day spend by endpoint:
+
+| endpoint | events | USD |
+|---|---:|---:|
+| signal_extraction | 151 | 0.82 |
+| insight_scan | 42 | 0.58 |
+| directive_retry | 40 | 0.35 |
+| directive | 39 | 0.26 |
+| researcher_synthesis | 29 | 0.16 |
+| anomaly_identification | 39 | 0.08 |
+| signal_summary | 14 | 0.02 |
+
+### Findings
+- **C-1 (P0.1) — DONE.** `EXTRACTION_DAILY_CAP` default reverted **4 → 0.25**
+  (`lib/utils/api-tracker.ts`) — the 16× landmine from the un-reverted 2026-04-09
+  backlog raise. Locked by `tests/cost/__tests__/extraction-cap.test.ts` (4 tests).
+  The `EXTRACTION_DAILY_CAP_USD` env override remains for deliberate backlog drains.
+- **C-2 (new) — `directive_retry` costs *more* than `directive`** ($0.35 vs $0.26;
+  ~1 retry per directive). Generation is effectively paying ~2× per delivered draft.
+  Worth a root-cause (why do ~half of directives retry?) — routed to **Pass 4
+  (runtime correctness)**, not fixed here.
+- **C-3 — worst-case still above revenue after P0.1.** Caps now bound a user at
+  `$1.00` (generation) + `$0.25` (extraction) = **$1.25/user/day** vs `$0.97` revenue.
+  The realistic spend is ~$0.05, but the *shape* is still `users × days`. Truly
+  bounding worst-case under revenue requires **P0.2 lazy/as-needed generation** —
+  an architectural change (gate the paid draft behind a warranted threshold +
+  generate-on-view) that needs design + paid validation. **Deferred as its own seam**
+  (with P0.3 selective extraction). This is why Pass 3's verdict is `CONCERN`, not
+  `PASS`: the bleed is stopped and reality is healthy, but the structural fix remains.
+
+### Acceptance status
+- "COGS tracks engaged cards, not users×days" — **partial**: event-driven generation
+  (#421) already repackages the already-paid artifact for free on view; eager daily
+  generation still runs the paid path N-users-wide. Full closure = P0.2.
+- "Worst-case bounded well under revenue" — **not yet** (see C-3). P0.1 cut the
+  worst case 16× on the extraction leg; the generation leg + the users×days shape
+  await P0.2.
+
+Pass 3 ships C-1 (the safe, instant P0 fix) + this live cross-check. P0.2/P0.3 are
+named as the next cost seams.
