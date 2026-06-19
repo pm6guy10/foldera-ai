@@ -23,16 +23,18 @@ Keep this cockpit short and value-first. Completed-issue history lives in `SESSI
 Issue #445 is the active firm-foundation audit seam.
 (Master Audit — anti-rediscovery; one expert pass per PR.)
 
-**Merged to main (through `8654637`):** Pass 0 inventory · Pass 1 RLS `PASS` · Pass 2 database `PASS` (+D-3) · Pass 3 cost `CONCERN` (extraction cap 4→0.25) · **Pass 4 backend/runtime `CONCERN` (#458)** · F-1 (CI-on-PRs) · gem-ranking floor #456 · lapsing-card hygiene #457 · **overdue-admission window #460 (60d for risk≥60)** · gem-surfacing revert #453 · **LESSONS_LEARNED #19 (value-is-the-only-score) #458.**
+**Merged to main (through `8654637`):** Pass 0 inventory · Pass 1 RLS `PASS` · Pass 2 database `PASS` (+D-3) · Pass 3 cost `CONCERN` (extraction cap 4→0.25) · **Pass 4 backend/runtime `CONCERN` (#458)** · **Pass 5 AI/ML grounding `PASS`** · F-1 (CI-on-PRs) · gem-ranking floor #456 · lapsing-card hygiene #457 · **overdue-admission window #460 (60d for risk≥60)** · gem-surfacing revert #453 · **LESSONS_LEARNED #19 (value-is-the-only-score) #458.**
 
 **Pass 4 (#458) detail:** fixed B-2 — the `morning-pipeline` orchestrator had no per-stage isolation, so a thrown stage (e.g. nightly sync) silently dropped `daily_brief` (the value stage) for the whole day; `invokeStage` now isolates each stage (fails safe). C-2 root-caused: ~74% of directives pay for a second full LLM call because the first fails validation → routed to **Pass 5 + paid validation**, not shipped blind. Record: `docs/backend/RUNTIME_CORRECTNESS.md`. Verdict CONCERN — runtime is *safe* but still costs without producing value.
 
-**Passes 5–12 NOT started.** Pass 5 (AI/ML grounding) owns the C-2 quality fix.
+**Pass 5 (AI/ML grounding) `PASS`:** read-only forensic pass over the grounding chain (scorer → evidence resolution → worthiness gate → quality gate → send), mapped to the AI/ML kill-questions. All 4 answered affirmative: hard `no_evidence` rejection ("must be grounded in real context"), `fabricated_claim` hard block, scored ranking with freshness *penalizing* recency (magic invariant), 37 grounding/invariant tests green. One soft-by-design observation (O-5.1: `no_source_grounding` is a logged send-receipt warning, not a hard blocker — acceptable because the hard evidence gate already ran). C-2 (first-pass validation quality, ~74% retry) is the AI/ML lever but **needs a paid generation cycle → owner wall**, not shipped blind. Record: `docs/backend/AI_GROUNDING_FAITHFULNESS.md`.
+
+**Passes 6–12 NOT started.** Frontend passes 6 (perf/a11y), 7 (design/UX), 8 (trust/claims) next; or owner runs the C-2 paid-validation lever.
 
 ## Next exact move
 
 1. **Owner — the value lever (TRUE wall):** one paid generation cycle to confirm a real gem now surfaces. This is the *only* move that turns "healthy" into "valuable."
-2. **Next audit pass: Pass 5 (AI/ML grounding)** — owns the C-2 first-pass-validation-quality fix (needs paid validation); or frontend passes 6–8.
+2. **Next audit pass: frontend 6 (perf/a11y), 7 (design/UX), or 8 (trust/claims)** — all harness-doable. (Pass 5 done; its C-2 paid-validation lever is the owner item above.)
 3. **PR #454 (DRAFT) — broadcast/recruiting-sender suppression** (owner judgment; changes entity admission, can over-suppress at edge cases). On `claude/mvp-polish-pass-audit-sg9e4k`.
 4. Deferred follow-ups (harness-only): B-4 budget-reservation reconciliation; B-5 persist retry reasons (Pass 11); the two-way test for relationship gems (coupled to #454). [>30d-overdue admission window shipped via #460.]
 
