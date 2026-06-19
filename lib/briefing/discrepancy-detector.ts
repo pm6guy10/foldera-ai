@@ -194,6 +194,22 @@ const MEDICAL_PROVIDER_PATTERNS = [
   /\b(?:wellness|fitness|gym|yoga|pilates|spa|massage)\s+(?:center|studio|clinic|group)\b/i,
 ];
 
+// Automated / broadcast / recruiting-platform senders — never a real 1:1 relationship.
+// A gem requires a two-way human relationship; these are the 95% automated noise the
+// guardian must suppress (Bible Part II-C). Matched against the entity's email(s) and
+// name. (#445 — "roman@expert.micro1.ai", an AI-recruiting platform sender with
+// "(via Google Sheets)" automation, was wrongly surfaced as a high-value relationship.)
+const BROADCAST_SENDER_PATTERNS = [
+  // Clearly-automated local-parts (left of @).
+  /\b(?:no[-_]?reply|do[-_]?not[-_]?reply|noreply|notifications?|notify|mailer|mailer-daemon|bounce|postmaster|newsletter|marketing|digest|updates?|alerts?|onboarding|jobs|careers|talent|recruit(?:ing|er)?)@/i,
+  // Recruiting / job / scheduling / marketing platform domains.
+  /@(?:[a-z0-9-]+\.)*(?:micro1\.ai|joinhandshake\.com|handshake|indeed\.com|ziprecruiter\.com|lever\.co|greenhouse\.io|workday(?:\.com)?|myworkdayjobs\.com|calendly\.com|linkedin\.com|glassdoor\.com|monster\.com|dice\.com|wellfound\.com|notion\.so|docusign\.net|mailchimp\.com|sendgrid\.net|substack\.com)\b/i,
+  // Automated mailing subdomains (mail., email., notifications., marketing., …).
+  /@(?:mail|email|em|news|mailer|notifications?|nl|marketing|reply|bounce)\.[a-z0-9.-]+/i,
+  // "(via <platform>)" automation marker in a display name.
+  /\(via\s+[^)]+\)/i,
+];
+
 /**
  * Office, location, organizational, and service-provider entity names.
  * These are entities extracted from email signatures, headers, or location
@@ -269,6 +285,7 @@ export type EntityRejectionReason =
   | 'office_or_org_entity'
   | 'mention_inflation_only'
   | 'one_off_calendar_contact'
+  | 'transactional_or_broadcast_sender'
   | 'low_signal_density';
 
 /**
@@ -295,6 +312,22 @@ export function getEntityRejectionReasons(
   // B. Office/org entity — reject regardless of interaction count
   if (OFFICE_SERVICE_PATTERNS.some((p) => p.test(entity.name))) {
     reasons.push('office_or_org_entity');
+  }
+
+  // B.5 Transactional / broadcast / recruiting-platform sender — never a 1:1 gem.
+  // Prefer the entity's own trust classification when set; otherwise match the
+  // email(s)/name against automated-sender patterns. Fails safe: a false positive
+  // only means more silence, never more noise. (#445 — roman@expert.micro1.ai.)
+  if (entity.trust_class === 'transactional' || entity.trust_class === 'junk') {
+    reasons.push('transactional_or_broadcast_sender');
+  } else {
+    const senderBlob = [entity.primary_email ?? '', ...(entity.emails ?? []), entity.name]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    if (BROADCAST_SENDER_PATTERNS.some((p) => p.test(senderBlob))) {
+      reasons.push('transactional_or_broadcast_sender');
+    }
   }
 
   // C. Low signal density — post-migration total_interactions only counts real
