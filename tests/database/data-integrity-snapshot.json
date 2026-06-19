@@ -1,0 +1,51 @@
+{
+  "_comment": "Pass 2 (Master Audit #445) data-integrity ground truth. Generated read-only from the live Foldera Supabase project on 2026-06-19 (information_schema.columns + pg_indexes). Contract for tests/database/__tests__/data-integrity.test.ts. Regenerate after any migration that adds a table, user_id column, index, or unique constraint (see docs/database/DATA_INTEGRITY.md).",
+  "generated_at": "2026-06-19",
+  "project_ref": "neydszeamsflpghtrhue",
+  "user_scoped_tables": [
+    { "table": "api_usage", "has_user_id": true, "user_id_leading_index": "idx_api_usage_user_date" },
+    { "table": "cost_events", "has_user_id": true, "user_id_leading_index": null },
+    { "table": "integrations", "has_user_id": true, "user_id_leading_index": "idx_integrations_user_id" },
+    { "table": "pipeline_runs", "has_user_id": true, "user_id_leading_index": "idx_pipeline_runs_user_created" },
+    { "table": "signal_summaries", "has_user_id": true, "user_id_leading_index": "idx_signal_summaries_user_week" },
+    { "table": "system_health", "has_user_id": true, "user_id_leading_index": "idx_system_health_user" },
+    { "table": "tkg_actions", "has_user_id": true, "user_id_leading_index": "idx_tkg_actions_generated" },
+    { "table": "tkg_briefings", "has_user_id": true, "user_id_leading_index": "idx_tkg_briefings_unique" },
+    { "table": "tkg_commitments", "has_user_id": true, "user_id_leading_index": "idx_tkg_commitments_user_id" },
+    { "table": "tkg_conflicts", "has_user_id": true, "user_id_leading_index": "idx_tkg_conflicts_user_id" },
+    { "table": "tkg_constraints", "has_user_id": true, "user_id_leading_index": "idx_tkg_constraints_user_entity" },
+    { "table": "tkg_directive_ml_snapshots", "has_user_id": true, "user_id_leading_index": "idx_ml_snapshots_user" },
+    { "table": "tkg_entities", "has_user_id": true, "user_id_leading_index": "idx_tkg_entities_user_id" },
+    { "table": "tkg_feedback", "has_user_id": true, "user_id_leading_index": "idx_tkg_feedback_user_id" },
+    { "table": "tkg_goals", "has_user_id": true, "user_id_leading_index": "idx_tkg_goals_priority" },
+    { "table": "tkg_pattern_metrics", "has_user_id": true, "user_id_leading_index": "tkg_pattern_metrics_user_id_pattern_hash_key" },
+    { "table": "tkg_signals", "has_user_id": true, "user_id_leading_index": "idx_tkg_signals_user_id" },
+    { "table": "tkg_user_meta", "has_user_id": true, "user_id_leading_index": "tkg_user_meta_pkey" },
+    { "table": "user_brief_cycle_gates", "has_user_id": true, "user_id_leading_index": "user_brief_cycle_gates_pkey" },
+    { "table": "user_subscriptions", "has_user_id": true, "user_id_leading_index": "user_subscriptions_user_id_unique" },
+    { "table": "user_tokens", "has_user_id": true, "user_id_leading_index": "user_tokens_user_id_provider_key" }
+  ],
+  "non_user_scoped_tables": [
+    { "table": "api_budget", "reason": "global API budget guard; not per-user" },
+    { "table": "referral_accounts", "reason": "keyed by user_email (legacy, pre-auth); 0 rows" },
+    { "table": "session_state", "reason": "agent/ops session ledger (commit/deploy/pipeline status), not end-user data" },
+    { "table": "tkg_directive_ml_global_priors", "reason": "global ML priors by design" },
+    { "table": "waitlist", "reason": "pre-auth email signups; no user_id yet" }
+  ],
+  "known_index_gaps": [
+    { "table": "cost_events", "note": "has user_id but no user_id-leading index; low-traffic operator cost table queried by time window (twin api_usage IS indexed). Add idx when convenient; remove from this list when fixed." }
+  ],
+  "idempotency_unique_constraints": [
+    { "table": "tkg_signals", "columns": ["user_id", "content_hash"], "role": "reprocessing dedupe — the double-fire guard" },
+    { "table": "integrations", "columns": ["user_id", "provider"] },
+    { "table": "user_tokens", "columns": ["user_id", "provider"] },
+    { "table": "signal_summaries", "columns": ["user_id", "week_start"] },
+    { "table": "tkg_pattern_metrics", "columns": ["user_id", "pattern_hash"] },
+    { "table": "tkg_briefings", "columns": ["user_id", "briefing_date"] }
+  ],
+  "receipt_table": {
+    "table": "tkg_actions",
+    "reconstruct_trail_columns": ["evidence", "reason", "directive_text", "action_type", "confidence", "status", "generated_at", "approved_at", "executed_at", "execution_result", "action_source"],
+    "note": "Lifecycle-stamped mutable row (not an append-only event stream); reconstructs before->verdict->after->source from the final row + timestamps + evidence/execution_result jsonb."
+  }
+}
