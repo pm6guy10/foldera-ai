@@ -51,7 +51,7 @@ export function ProductShell({
     <div className="foldera-app-surface min-h-[100dvh] bg-bg text-text-primary">
       <header className="fixed inset-x-0 top-0 z-50 border-b border-accent/10 bg-[#02070d]/92 pt-[env(safe-area-inset-top,0px)] shadow-[0_1px_0_rgba(245,166,35,0.06)] backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <Link href="/dashboard" className="inline-flex min-h-[44px] min-w-[44px] items-center gap-3 foldera-button-radius px-1">
+          <Link href="/" aria-label="Foldera — home" className="inline-flex min-h-[44px] min-w-[44px] items-center gap-3 foldera-button-radius px-1">
             <FolderaMark size="sm" decorative />
             <span className="text-sm font-black uppercase tracking-[0.12em]">Foldera</span>
           </Link>

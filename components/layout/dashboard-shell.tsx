@@ -24,7 +24,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
           {/* Minimal header: logo + sign out */}
           <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl">
             <div className="flex items-center justify-between h-14 px-6 max-w-3xl mx-auto w-full">
-              <Link href="/dashboard" className="flex items-center gap-3">
+              <Link href="/" aria-label="Foldera — home" className="flex items-center gap-3">
                 <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-accent to-emerald-500 flex items-center justify-center">
                   <span className="text-white font-bold text-xs">F</span>
                 </div>

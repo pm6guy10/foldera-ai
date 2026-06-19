@@ -154,12 +154,10 @@ test.describe('Landing page /', () => {
       'landing-header-cta',
       'landing-primary-access-cta',
       'landing-pilot-access-cta',
-      'landing-final-access-cta',
     ]) {
       await expect(page.getByTestId(testId)).toHaveAttribute('href', '/start');
     }
     await expect(page.getByTestId('landing-login-cta')).toHaveAttribute('href', '/login');
-    await expect(page.getByTestId('landing-final-login-cta')).toHaveAttribute('href', '/login');
   });
 
   test('homepage exposes no fake signup or waitlist flow', async ({ page }) => {
@@ -189,8 +187,6 @@ test.describe('Landing page /', () => {
     await expect(page.getByTestId('landing-doctrine')).toContainText('Connectors');
     await expect(page.getByTestId('landing-doctrine')).toContainText('Triggers');
     await expect(page.getByTestId('landing-doctrine')).toContainText('One move');
-    await expect(page.getByTestId('landing-final-cta')).toContainText('Restore your continuity.');
-    await expect(page.getByTestId('landing-final-cta')).toContainText('One trusted answer. All the context. Next move ready.');
   });
   test('no actionable console errors — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });

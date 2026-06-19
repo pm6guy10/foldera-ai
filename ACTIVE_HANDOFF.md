@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-19 UTC (between rungs — shipped #402 send + #404 attachments + #407 write_document delivery attachment + #411 Sources MS email fix; owner names next seam)
+Last updated: 2026-06-19 UTC (active seam #414 — homepage continuity: brand→home + kill redundant final CTA; branch `claude/homepage-continuity-logo-cta`)
 
 ## Boot
 
@@ -35,13 +35,18 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 ## Current slice:
 
-None — between rungs. This session shipped #402 (review-gated send, PR #403, `b698566`), #404 (email draft attachments, PR #405, `4125585`), #407 (write_document delivery carries the doc as a real file, PR #408, `82dc104`), and #411 (Sources screen shows the real Microsoft email instead of the raw Azure guest UPN, PR #412, `191520a`). The remaining money-loop moves are owner-gated. Awaiting the owner's next chosen seam.
+Issue #414 is the active product seam.
+
+#414 — owner-reported continuity defects, batched (the owner is losing confidence because these reach him one at a time). (1) The Foldera brand wordmark linked to `/dashboard` in all three app shells (`ProductShell`, `layout/dashboard-shell`, `layout/sidebar`) instead of the homepage — now `/`. (2) The homepage had two stacked CTA blocks at the bottom; removed the redundant `landing-final-cta` ("Restore your continuity"), kept the `landing-pilot` ("Stop checking nine apps"). Updated the three coupled e2e specs. Sign-in survives in header/mobile-menu/footer. Frontend-only, deterministic.
+
+Also this session: shipped #402 (send), #404 (attachment rails), #407 (write_document delivery attachment), #411 (Sources MS email fix) — all LIVE on main. Slack delivery smoke-tested OK (manual DM via workspace; the product's own bot→Slack pipe still needs a real generated move to fire).
 
 ## Next exact move
 
-1. Owner names the next seam (or pick from the candidates below). Until then `active_issue: none` is the valid between-rungs control-plane form.
-2. OWNER-SIDE: (a) open the Sources screen and confirm the Microsoft row reads `b-kapp@outlook.com` (validates #411); (b) `ALLOW_APPROVAL_EMAIL_SEND` is on — confirm `RESEND_API_KEY` in Vercel Production and connect a real source so a genuine `write_document`/`send_message` generates (the brain is in safe-silence now, so there is nothing to approve/send yet), then approve it to validate the live attached send (#402/#404/#407); (c) configure the free external 15-min guardian cron.
-3. CODE candidate (needs owner go + paid validation): teach the generator to compose + attach a companion document for a `send_message`. Constraint reminder: NO paid API calls to test — prove in the harness.
+1. Open the draft PR for `claude/homepage-continuity-logo-cta` → #414; get CI green.
+2. Proof (free): build + lint + tsc clean; e2e specs updated to match the single-CTA homepage; no dangling `landing-final-*` refs. `gate:continuity` before PR.
+3. Live owner validation: homepage bottom shows ONE CTA block; clicking the Foldera brand in the app returns home — `BLOCKED_WITH_EXACT_RECEIPT` until then.
+4. NEXT — standing continuity audit: unify the three brand marks (FolderaMark vs gradient "F"); sweep nav/dead-links; consolidate duplicate shells. Plus the open owner-side live-send validation. Constraint: NO paid API calls — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
 
