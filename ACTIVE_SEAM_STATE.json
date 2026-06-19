@@ -1,9 +1,9 @@
 {
   "active_issue": 421,
-  "active_branch": "claude/right-away-guardian-on-open",
+  "active_branch": "claude/roll-control-plane-postmerge-421",
   "active_pr": null,
-  "deployed_commit_sha": "8556fa3",
+  "deployed_commit_sha": "e300505",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-19T01:30:00Z"
+  "last_verified_at": "2026-06-19T01:40:00Z"
 }
