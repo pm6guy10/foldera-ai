@@ -89,6 +89,29 @@ describe('morning-pipeline cron route', () => {
     });
   });
 
+  it('isolates a thrown stage so downstream stages still run (one throw cannot drop the whole pipeline)', async () => {
+    // nightly_ops throws an uncaught error — daily_brief (value stage) and
+    // daily_maintenance must still run, and the failure is recorded as 207.
+    mockNightlyOps.mockRejectedValue(new Error('nightly boom'));
+    const { GET } = await import('../route');
+    const response = await GET(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(207);
+    expect(mockNightlyOps).toHaveBeenCalledTimes(1);
+    expect(mockDailyBrief).toHaveBeenCalledTimes(1);
+    expect(mockDailyMaintenance).toHaveBeenCalledTimes(1);
+    expect(body.ok).toBe(false);
+    expect(body.stage_results[0]).toMatchObject({
+      stage: 'nightly_ops',
+      ok: false,
+      status: 500,
+      body: { threw: true, error: 'nightly boom' },
+    });
+    expect(body.stage_results[1]).toMatchObject({ stage: 'daily_brief', ok: true });
+    expect(body.stage_results[2]).toMatchObject({ stage: 'daily_maintenance', ok: true });
+  });
+
   it('returns 207 when a child stage reports ok false even if the HTTP status is 200', async () => {
     mockDailyBrief.mockResolvedValue(
       NextResponse.json({ ok: false, skipped: true, reason: 'credit_canary_failed' }),
