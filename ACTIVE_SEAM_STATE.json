@@ -1,6 +1,6 @@
 {
   "active_issue": 432,
-  "active_branch": "claude/fix-config-gate-reds",
+  "active_branch": "claude/dependabot-safe-bumps",
   "active_pr": null,
   "deployed_commit_sha": "e300505",
   "runtime_env": "production",
