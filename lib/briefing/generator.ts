@@ -9453,9 +9453,18 @@ function bucketValidationIssuesForLogs(issues: string[]): string[] {
 }
 
 /**
- * Validation retries after the first Sonnet call (hard cap: 1 retry → 2 LLM calls max).
- * At most one `directive_retry` per `generatePayload`; no third round-trip.
- * After the last attempt fails, caller gets payload null (empty directive path).
+ * Generation has two nested retry budgets, both of which spend a paid Sonnet call:
+ *  - validation: 1 retry after the first attempt → up to 2 *validation* attempts.
+ *  - JSON parse: up to MAX_JSON_PARSE_RETRIES extra calls per attempt when the
+ *    model returns unparseable text.
+ * Every call after the very first (attempt 0, parseRetry 0) is billed as
+ * `directive_retry` (see callType at the messages.create site). The common case
+ * is exactly one `directive_retry` (first attempt parses but fails validation);
+ * the worst case — repeated parse failures on both attempts — is
+ * 2 × (1 + MAX_JSON_PARSE_RETRIES) = 6 LLM calls (5 of them `directive_retry`).
+ * Per #445 Pass 4 / C-2: ~74% of directives incur a retry, so generation pays
+ * ~2× per delivered draft in practice. After the last attempt fails the caller
+ * gets payload null (empty directive path).
  */
 const MAX_DIRECTIVE_VALIDATION_RETRIES = 1;
 const MAX_DIRECTIVE_LLM_ATTEMPTS = 1 + MAX_DIRECTIVE_VALIDATION_RETRIES;

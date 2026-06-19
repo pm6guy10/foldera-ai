@@ -113,7 +113,9 @@ describe('trackApiCall', () => {
     const summary = await getSpendSummary('user-1');
 
     expect(summary.dailyCapUSD).toBe(1);
-    expect(summary.extractionDailyCapUSD).toBe(4);
+    // Reverted 4 -> 0.25 in #445 Pass 3 C-1 (the un-reverted 2026-04-09 backlog
+    // raise was a 16x latent landmine); this stale assertion was missed then.
+    expect(summary.extractionDailyCapUSD).toBe(0.25);
     expect(summary.capPct).toBe(0);
   });
 

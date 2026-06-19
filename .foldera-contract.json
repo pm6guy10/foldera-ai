@@ -14,16 +14,19 @@
     "lib/briefing/scorer.ts",
     "lib/briefing/__tests__/**",
     "lib/workday-presence/triggers.ts",
-    "lib/workday-presence/__tests__/**"
+    "lib/workday-presence/__tests__/**",
+    "app/api/cron/morning-pipeline/**",
+    "lib/briefing/generator.ts",
+    "lib/utils/__tests__/api-tracker.test.ts",
+    "LESSONS_LEARNED.md"
   ],
   "forbidden_file_patterns": [
-    "app/api/**",
     "supabase/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "The scorer stakes-floor (lib/briefing/scorer.ts) + its unit test + control-plane. No schema, no deps, no app/api.",
-  "forbidden_files_raw": "No app/api, schema, or deps. Pure deterministic scoring change.",
+  "allowed_files_raw": "Overdue-window scorer change (lib/briefing/scorer.ts) + unit test + control-plane. NOTE: this commit also merges Pass 4's already-merged files (morning-pipeline orchestrator + generator docstring + api-tracker test + LESSONS_LEARNED) from main — a parallel-agent collision resolution — so those are allow-listed for the merge. No schema, no deps.",
+  "forbidden_files_raw": "No schema (supabase/**), no deps (package.json/lock).",
   "required_local_proof": "npm run gate:continuity && npx vitest run lib/briefing && npm run typecheck",
   "required_browser_proof": "N/A — deterministic backend scoring change, exercised by unit + suite tests, not browser-observable.",
   "browser_proof_command": "N/A",
