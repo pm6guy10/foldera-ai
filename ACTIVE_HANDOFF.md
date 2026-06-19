@@ -1,72 +1,53 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — passes 0/1/2/3 + D-3 + F-1 + gem-surfacing revert #453 merged to main `27df0c2`; gem-ranking #456 + lapsing-card hygiene #457 merged to `c686812`; **Pass 4 (Backend/runtime) shipped as PR (verdict CONCERN)** — see new slice; broadcast-sender suppression staged as DRAFT PR #454 awaiting owner live validation)
+## DON'T FORGET — read first, every boot
+
+1. **Value is the only score.** Foldera exists to produce one act the user wouldn't have done. Green CI, audits, clean code, merged PRs are *hygiene* — not value. "Healthy but not producing value" = still failing. (Bible II-B; `LESSONS_LEARNED.md` #19.)
+2. **Safe silence beats a fake card.** Never manufacture a verdict; quiet on weak evidence.
+3. **No "done" without live product proof.** Build/tests/CI green is necessary, never sufficient.
+4. **Don't make Brandon the router/tester/merger.** Encode the decision; bring the result + reasoning, not the question. (BRANDON.md.)
+5. **The ONE value-blocker right now (owner-side):** run a single paid generation cycle and confirm a real gem clears the bar (gem-ranking #456 is live) instead of "nothing cleared the bar." Everything else is secondary to this.
+
+Keep this cockpit short and value-first. Completed-issue history lives in `SESSION_HISTORY.md` + git, never here.
 
 ## Boot
 
-1. Read this file.
-2. Read the next active issue (see below).
-3. Check issue #136 for recent INTERRUPT receipts.
+1. Read this file. 2. Read the active issue. 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
-ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Between rungs — `active_issue: none` is the valid control-plane form; the owner names the next seam. The NEXT_SESSION_HARDENING mission (roadmap #420) shipped as four themed PRs: #426 (dead-code deletion), #428 (typecheck — 120 tsc errors to 0), #430 (auth PII tracing gated behind FOLDERA_DEBUG_AUTH), #433 (.env.example completeness + dead skip-branch / TODO cleanup). Batch 5 (Supabase index drop) was evaluated and rejected as WRONG PATH — both indexes are intentionally retained FK-support indexes (#434). Constraint: NO paid API calls — prove in the harness. The live product thread remains the GUARDIAN (workday-presence) — see `FOLDERA_MASTER_BIBLE.md` Part II-B; the one live-readiness blocker stays owner-side (ANTHROPIC_API_KEY in Vercel Production + the free external guardian cron).
-**LIVE (in production):** #382 frontend overhaul · #390 owner self-review system (`docs/BRANDON.md` + `docs/EXPERT_PANEL.md` + Bible Part IV) · #391/#393 guardian fires-grounded-and-pings · #394/#395 guardian pings only finished work · #397 (PR #398) brief seeds the matched draft at generation time · #399 (PR #400) commitment-title hygiene (no SYNC: key in the card). #382 stays OPEN for optional polish.
-**Standing candidates (NOT started, owner to choose):** OWNER-SIDE — configure the external 15-min cron for guardian cadence (the ongoing firing mechanism; NOT a Vercel daily cron). CODE — recolor legacy cyan favicons (`app/favicon.ico`/`public/favicon.png`, BLOCKED on image tooling — `sharp`/imagemagick absent); triage 46 stale remote branches + skipped tests. Constraint: NO paid API calls to test — prove in the harness.
-
-Issue #394 is COMPLETE — guardian pings only finished work: silent/dismissed payload → no Slack (no noise ping); draftless scored_winner recycles the latest matching daily-brief artifact into a reviewable draft (no new LLM, conservative anti-mismatch guard). Merged via PR #395 (`d235cde`); 13 fixtures + 107/107 suite; runtime proof deferred per owner no-paid directive.
-Issue #391 is COMPLETE/REVERTED — wired the guardian into the daily morning-pipeline cron (PR #392) then reverted it (PR #393, `7b573eb`) for conflicting with #369 (no daily cron). Runtime proof obtained instead: first grounded `workday_presence_trigger` receipt (`9695a5c6`, ev_count=1) + live Slack ping via a one-time owner-go fire.
-Issue #390 is COMPLETE — owner self-review system: `docs/BRANDON.md` (avatar) + `docs/EXPERT_PANEL.md` (9-expert panel) + Bible Part IV ritual; ~29MB dead-image hygiene. Merged `8fd766b`.
-Issue #382 is LIVE (OPEN) — whole-app frontend overhaul to `docs/DESIGN_SYSTEM.md` ($500M tier): PRs #383–#388 + #389 pixel-polish (amber brand glyph — cyan killed; one-focal-point hierarchy; de-blurred float; 1240 layout; Slack-forward hero). Optional polish remains.
-Issue #378 is COMPLETE — design system locked (PR #379) + full amber landing overhaul; merged via PR #380 (`40b687a`).
-Issue #364/#366 is COMPLETE — heartbeat moved off capped GitHub Actions to a free external cron (PRs #365/#366 via #367); owner must create the external cron job for live firing.
-Issue #354 is COMPLETE — auth + state-machine integrity (F-auth/F-card/F-dismiss); PRs #357 (`ba42125`) + #358 (`4b2908b`).
-Issue #351 is COMPLETE — money-loop integrity sweep (F1-F5); PRs #352 (`b400c5d`) + #353 (`c238165`).
-Issue #348 is COMPLETE — presence receipt insert-error hotfix; PR #349 (`9377546`).
-Issue #344 is COMPLETE — workday-presence loop closure for non-owner in browser; PR #346 (`e2f7687`).
-Issue #341 is COMPLETE — runtime map + current-path Supabase receipts; PR #343 (`613296d`).
-Issue #339 is COMPLETE — frontend auth polish closeout; PR #340 (`a315394`).
-Issue #276 is COMPLETE — Command State Resolver v0; PR #279 (`e848d01`), closeout PR #280 (`13581bf`).
-Issue #262 is COMPLETE — event-driven trigger runner live; PR #273 (`d6b99f2`).
-Issue #244 is COMPLETE — Right Now cards / state-change triggers; PRs #308 (`dddece7`) + #313 (`d2bed9a`).
-Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
-`FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
+`ACTIVE_SEAM_STATE.json` is the machine-readable control plane. Between rungs, `active_issue: none` is the valid form; the owner names the next seam. Constraint everywhere: NO paid API calls — prove in the harness.
 
 ## Current slice:
 
 Issue #445 is the active firm-foundation audit seam.
+(Master Audit — anti-rediscovery; one expert pass per PR.)
 
-Master Audit (#445) — fix-in-pass. Merged to main (`27df0c2`): Pass 0 inventory; Pass 1 RLS `PASS`; Pass 2 database `PASS` + D-3; Pass 3 cost `CONCERN`; F-1 CI-on-PRs; and the **revert of gem-surfacing** (#453). #452 had promoted `relationship_risk_silence` to a winnable tier — but the top such candidate (`roman`) is a Handshake/Slack **broadcast** sender = the 95% automated noise the Bible (Part II-C) says to suppress, not surface. The original gate was right; the fix pointed the product at noise. Lesson: test against real data, not fixtures — the fixture passed while the live winner was garbage.
+**Merged to main (through `13dcf5b`):** Pass 0 inventory · Pass 1 RLS `PASS` · Pass 2 database `PASS` (+D-3) · Pass 3 cost `CONCERN` (extraction cap 4→0.25) · **Pass 4 backend/runtime `CONCERN` (#458)** · F-1 (CI-on-PRs) · gem-ranking floor #456 · lapsing-card hygiene #457 · gem-surfacing revert #453 · **LESSONS_LEARNED #19 (value-is-the-only-score) #458.**
 
-**GEM-RANKING FIX (live forensic pass on real data, no paid calls):** the engine was emitting "Nothing cleared the bar after evaluating N candidates" while real gems sat in the admitted pool (a lapsing **Rule 59(e) court motion**, a **job-offer acceptance**, a **hardship payment plan**). Root cause = scorer stakes derived almost entirely from goal-match priority (`6 - priority`), defaulting to **1.0** with no goal match → zeroed by the decision-moving (stakes ≥ 2) / lifecycle (stakes < 2 → archive_only) invariants. The commitment's own `risk_score` (used to ORDER the pool, then discarded) is the fix: `highConsequenceStakesFloor` (lib/briefing/scorer.ts) lifts stakes from risk_score (≥80→4, ≥60→3, ≥40→2), lift-only, commitments-only. Fail-safe: noise can't reach (transactional/junk excluded at admission). Trust-aware ranking was NOT the fix — the pool already filters trust_class (my first diagnosis was wrong, corrected on #445). **MERGED via PR #456 (main `8d9d099`).**
+**Pass 4 (#458) detail:** fixed B-2 — the `morning-pipeline` orchestrator had no per-stage isolation, so a thrown stage (e.g. nightly sync) silently dropped `daily_brief` (the value stage) for the whole day; `invokeStage` now isolates each stage (fails safe). C-2 root-caused: ~74% of directives pay for a second full LLM call because the first fails validation → routed to **Pass 5 + paid validation**, not shipped blind. Record: `docs/backend/RUNTIME_CORRECTNESS.md`. Verdict CONCERN — runtime is *safe* but still costs without producing value.
 
-**GEM-CARD HYGIENE (merged #457, `c686812`):** the lapsing-trigger directive (`lib/workday-presence/triggers.ts`) leaked the raw `SYNC:<category>:<slug>` dedup key (live row showed "Commitment lapsing: SYNC:payment_financial:Pay_Supabase_invoice") — #399/#400 cleaned the brief card via commitment-bridge but not this path. Fix prefers the clean `humanCommitmentTitle` when `summary` is a raw SYNC key. 134/134 workday-presence suite + typecheck green.
-
-**PASS 4 — BACKEND / RUNTIME CORRECTNESS (this slice, verdict `CONCERN`).** Read-only forensic pass over cron orchestration, the paid-LLM gate, retries, the canary/egress switches, and failure modes; cross-checked live `api_usage` (no paid calls). Canonical artifact: `docs/backend/RUNTIME_CORRECTNESS.md`. **Sound on safety:** the paid path is fail-closed and **triple-gated before any spend** (env `assertPaidLlmAllowed` + daily real-spend cap `isOverDailyLimit` $1.00/$0.25 + monthly Postgres budget RPC `ensureAnthropicBudget`); writes are idempotent so a mid-pipeline failure yields recoverable soft windows, not corruption. **Fixed in-pass (B-2):** the `morning-pipeline` orchestrator had no per-stage isolation — an uncaught throw in `nightly_ops` propagated out of the loop and silently dropped `daily_brief` (the value/delivery stage) + `daily_maintenance` for the whole day; `invokeStage` now try/catch-isolates each stage (throw → recorded 207, loop continues; fails safe). Locked by a new isolation invariant in the morning-pipeline route test (4/4) + typecheck clean. **C-2 root-caused (B-3):** `directive_retry` is a full second paid Sonnet call; live data shows **~74% of directives retry** (471/637) because the first attempt fails `validateGeneratedArtifact` (bracket placeholders / wrong artifact_type) — generation pays ~2× per draft. Bounded at 1 validation retry; the docstring (understated the worst case) was corrected. The quality fix needs paid validation → **routed to Pass 5 (AI/ML)**, NOT shipped blind. **Deferred:** B-4 (monthly budget reserves a flat unreconciled 10¢ estimate — conservative in the common case) and B-5 (retry-reason `issue_buckets` only hit console/Vercel logs, not the DB → Pass 11 observability).
+**Passes 5–12 NOT started.** Pass 5 (AI/ML grounding) owns the C-2 quality fix.
 
 ## Next exact move
 
-0. **Review + merge the Pass 4 PR** (`claude/foldera-work-qbrm4e`, DRAFT): backend/runtime audit + the B-2 stage-isolation fix (deterministic, harness-proven, fail-safe — no paid calls). After merge, the next unstarted audit pass is **Pass 5 (AI/ML grounding)**, which owns the C-2 first-pass-validation-quality fix (needs paid validation), or frontend passes 6-8.
-1. **Owner validation (TRUE wall — needs one paid generation cycle):** confirm a real gem now clears the bar (gem-ranking #456, live on main) instead of "nothing cleared the bar."
-2. **PR #454 (DRAFT) — broadcast/recruiting-sender suppression** (owner judgment, NOT auto-merged): rejects junk/transactional + automated-sender entities at the admission gate. It changes entity *admission* and can over-suppress a real human at edge cases (e.g. a `mail.` subdomain), so it needs owner eyes. Real-data validated (roman/micro1 rejected; julieta@micro1.io kept). On the divergent `claude/mvp-polish-pass-audit-sg9e4k` branch.
-3. Code follow-ups (fail-safe, harness-only, NOT done): commitments >30d overdue are dropped at scorer admission (line ~5077) so a 35-day-stale job-offer gem still dies there — a high-consequence overdue-window extension is a separate seam (needs a window-policy decision). The robust noise follow-up to #454 stays the **two-way test** (a relationship gem requires the user actually replied ≥1×). NO paid API calls from here — prove in the harness.
+1. **Owner — the value lever (TRUE wall):** one paid generation cycle to confirm a real gem now surfaces. This is the *only* move that turns "healthy" into "valuable."
+2. **Next audit pass: Pass 5 (AI/ML grounding)** — owns the C-2 first-pass-validation-quality fix (needs paid validation); or frontend passes 6–8.
+3. **PR #454 (DRAFT) — broadcast/recruiting-sender suppression** (owner judgment; changes entity admission, can over-suppress at edge cases). On `claude/mvp-polish-pass-audit-sg9e4k`.
+4. Deferred follow-ups (harness-only): B-4 budget-reservation reconciliation; B-5 persist retry reasons (Pass 11); >30d-overdue admission window for high-consequence categories; the two-way test for relationship gems.
 
-Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
+Open owner items (not active seams): configure the free external guardian cron (code shipped); landing polish (standing — obviously better each pass, not incremental).
 
-Current production truth: `Last known main SHA: 27df0c2` (verified live against Vercel — the most recent `target: production` deploy). Foundation hardened + merged (Master Audit #445 passes 0–3 + F-1): RLS/security `PASS`, data-integrity `PASS`, cost extraction-cap revert, CI-on-PRs. Whole-app amber + Bricolage type + premium chrome landing (#382, OPEN for polish); owner self-review system live (`docs/BRANDON.md` + `docs/EXPERT_PANEL.md` + Bible Part IV); guardian fires-grounded-and-pings-only-finished-work (#391/#393/#394). gitlab-handbook (1.1GB) moved out of the repo tree → `C:/Users/b-kap/foldera-reference/`.
+Current production truth: `Last known main SHA: 13dcf5b` (#458 merged). Master Audit #445 passes 0–4 + F-1 merged: RLS/security `PASS`, data-integrity `PASS`, cost `CONCERN`, runtime `CONCERN`. Guardian fires-grounded-and-pings-only-finished-work live (#391/#393/#394); owner self-review system live (`docs/BRANDON.md` + `docs/EXPERT_PANEL.md`).
 
-Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
+Safety rails: no outbound sends by default; no paid tests without naming exact cost; acquisition quarantined OFF; no fake claims; one intervention max; safe silence is a win; schema only via committed+applied+verified migrations.
 
 ## Product doctrine
 
-Foldera is a Workday Presence Layer: state + connectors + triggers + one intervention; remembers where the user was, decides when to interrupt, gives one next move, lets the user respond with one click, updates state, stays quiet otherwise. No dashboard/task-manager/inbox-summary/chatbot/surveillance drift. Issue #48 and `FOLDERA_MASTER_BIBLE.md` carry product doctrine.
+Foldera is a Workday Presence Layer: state + connectors + triggers + one intervention — remembers where the user was, decides when to interrupt, gives one next move, one click to respond, updates state, stays quiet otherwise. No dashboard / task-manager / inbox-summary / chatbot / surveillance drift. `FOLDERA_MASTER_BIBLE.md` carries doctrine; `AGENTS.md` is the agent contract.
 
 ## GitHub writeback contract
 
-- GitHub writeback before stop is mandatory.
-- Chat memory is not source of truth.
-- If work was done and not written to GitHub, the transaction is incomplete.
-- Before stopping, write one terminal GitHub comment: `PR OPENED`, `PROOF`, `MERGE READY`, `BLOCKED`, or `STOPPED`.
-- `ACTIVE_HANDOFF.md` must be updated when the active seam, proof status, next seam, or blocker changes.
-- `FOLDERA_BUILD_ORDER.yaml` must be updated when the active issue changes.
+- GitHub writeback before stop is mandatory. GitHub source truth beats chat memory; if work isn't written to GitHub, the transaction is incomplete.
+- Before stopping, post one terminal receipt: `PR OPENED`, `PROOF`, `MERGE READY`, `BLOCKED`, or `STOPPED`.
+- Update `ACTIVE_HANDOFF.md` when the seam / proof / next move / blocker changes; `FOLDERA_BUILD_ORDER.yaml` when the active issue changes.
