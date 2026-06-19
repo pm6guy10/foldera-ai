@@ -3,7 +3,7 @@
   "active_issue": "none",
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Between rungs. The NEXT_SESSION_HARDENING mission (roadmap #420) shipped as four themed PRs: #426 (dead-code deletion), #428 (typecheck + un-exclude tests/scripts, 120 tsc errors -> 0), #430 (auth PII tracing gated behind FOLDERA_DEBUG_AUTH), #433 (.env.example completeness + dead skip-branch / TODO cleanup). Batch 5 (Supabase unused-index drop) was evaluated and rejected as WRONG PATH — both indexes are intentionally retained FK-support indexes (#434). Owner-gated items remain: ANTHROPIC_API_KEY + Slack/CRON env in Vercel Production, Supabase auth toggles (leaked-password/MFA), the paid Tier-1 selection layer, stale-branch pruning. Constraint: NO paid API calls — prove in the harness.",
+  "user_system_path": "Between rungs. The NEXT_SESSION_HARDENING mission (roadmap #420) shipped as four themed PRs: #426 (dead-code deletion), #428 (typecheck + un-exclude tests/scripts, 120 tsc errors -> 0), #430 (auth PII tracing gated behind FOLDERA_DEBUG_AUTH), #433 (.env.example completeness + dead skip-branch / TODO cleanup). Since then: an owner-named maintenance seam greened the two frontend config-gate tests that were red on main (app/pricing min-h-[48px] -> 44px; dropped a stale REQUIRED_HOMEPAGE_COPY phrase removed by #414). Owner-gated items remain: ANTHROPIC_API_KEY + Slack/CRON env in Vercel Production, Supabase auth toggles (leaked-password/MFA), the paid Tier-1 selection layer, stale-branch pruning. Constraint: NO paid API calls — prove in the harness.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -31,7 +31,7 @@
     "no product/runtime files changed"
   ],
   "stop_condition": "Stop when the control plane is rolled forward to a clean between-rungs state after the hardening mission and the owner has the final scorecard.",
-  "next_command": "New session: read ACTIVE_HANDOFF.md; the owner names the next seam. The repo is hardened (typecheck clean, no dead orphans, no auth PII in prod logs, .env.example complete). The remaining unlock is owner-side: set ANTHROPIC_API_KEY in Vercel Production so daily generation produces the artifact the free trigger surfaces.",
+  "next_command": "New session: read ACTIVE_HANDOFF.md; the owner names the next seam. The repo is hardened (typecheck clean, no dead orphans, no auth PII in prod logs, .env.example complete) and the frontend config gates are green. The remaining unlock is owner-side: set ANTHROPIC_API_KEY in Vercel Production so daily generation produces the artifact the free trigger surfaces.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

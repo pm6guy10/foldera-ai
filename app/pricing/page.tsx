@@ -64,7 +64,7 @@ function ProCheckoutButton() {
         type="button"
         onClick={handleCheckout}
         disabled={loading}
-        className="inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full bg-accent px-5 text-[13px] font-semibold text-bg transition-all hover:-translate-y-px hover:bg-accent-hover hover:shadow-[0_10px_32px_-10px_rgba(245,166,35,0.5)] disabled:cursor-wait disabled:opacity-60"
+        className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-accent px-5 text-[13px] font-semibold text-bg transition-all hover:-translate-y-px hover:bg-accent-hover hover:shadow-[0_10px_32px_-10px_rgba(245,166,35,0.5)] disabled:cursor-wait disabled:opacity-60"
       >
         {loading ? 'Loading…' : 'Upgrade to Pro'}
         {!loading && <ArrowRight className="h-4 w-4" aria-hidden="true" />}
@@ -222,7 +222,7 @@ export default function PricingPage() {
                 </ul>
                 <Link
                   href="/start"
-                  className="mt-9 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-full border border-border-strong bg-transparent px-5 text-[13px] font-semibold text-text-primary transition-colors hover:border-text-muted hover:bg-white/[0.03]"
+                  className="mt-9 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full border border-border-strong bg-transparent px-5 text-[13px] font-semibold text-text-primary transition-colors hover:border-text-muted hover:bg-white/[0.03]"
                 >
                   Get started free
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />

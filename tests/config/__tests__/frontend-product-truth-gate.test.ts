@@ -52,10 +52,14 @@ const BANNED_HOMEPAGE_MARKETING_PHRASES = [
 ];
 
 const REQUIRED_HOMEPAGE_COPY = [
+  // Hero headline → hero subhead → pilot section headline. These map to live
+  // sections of components/foldera/LandingPage.tsx. The former "One trusted
+  // answer. All the context. Next move ready." line lived in the FINAL CTA
+  // section that #414 intentionally removed as a redundant stacked CTA, so it
+  // is no longer part of the approved landing direction.
   'Stop rebuilding the work.',
   'Foldera holds the thread across your apps, then pings you in Slack with the one finished move that matters — context attached, ready to approve.',
   'Stop checking nine apps.',
-  'One trusted answer. All the context. Next move ready.',
 ];
 
 const APPROVED_HOMEPAGE_DOCTRINE_COPY = [
