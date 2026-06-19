@@ -1,0 +1,74 @@
+{
+  "_comment": "Pass 1 (Master Audit #445) RLS ground-truth snapshot. Generated read-only from the live Foldera Supabase project (neydszeamsflpghtrhue) on 2026-06-19 via pg_policies + pg_tables. This is the cross-tenant-isolation CONTRACT: tests/security/rls-isolation.test.ts asserts the isolation invariants over it. Regenerate after ANY RLS migration (see docs/security/RLS_ISOLATION.md) — do not hand-edit.",
+  "generated_at": "2026-06-19",
+  "project_ref": "neydszeamsflpghtrhue",
+  "tables": [
+    { "table": "api_budget", "rls_enabled": true, "policies": [
+      { "name": "deny_all_public_api_budget", "permissive": "RESTRICTIVE", "roles": ["public"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": true } ] },
+    { "table": "api_usage", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false },
+      { "name": "Users see own usage", "permissive": "PERMISSIVE", "roles": ["public"], "cmd": "SELECT", "qual_has_auth_uid": true, "qual_is_false": false } ] },
+    { "table": "cost_events", "rls_enabled": true, "policies": [
+      { "name": "service_role_all_cost_events", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false } ] },
+    { "table": "integrations", "rls_enabled": true, "policies": [
+      { "name": "Service role has full access", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false } ] },
+    { "table": "pipeline_runs", "rls_enabled": true, "policies": [
+      { "name": "service_role_all_pipeline_runs", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false } ] },
+    { "table": "referral_accounts", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false } ] },
+    { "table": "session_state", "rls_enabled": true, "policies": [
+      { "name": "deny_all_public_session_state", "permissive": "RESTRICTIVE", "roles": ["public"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": true } ] },
+    { "table": "signal_summaries", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false },
+      { "name": "users_manage_own_summaries", "permissive": "PERMISSIVE", "roles": ["authenticated"], "cmd": "ALL", "qual_has_auth_uid": true, "qual_is_false": false } ] },
+    { "table": "system_health", "rls_enabled": true, "policies": [
+      { "name": "deny_all_public_system_health", "permissive": "RESTRICTIVE", "roles": ["public"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": true } ] },
+    { "table": "tkg_actions", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false },
+      { "name": "Users see own actions", "permissive": "PERMISSIVE", "roles": ["public"], "cmd": "SELECT", "qual_has_auth_uid": true, "qual_is_false": false },
+      { "name": "Users update own actions", "permissive": "PERMISSIVE", "roles": ["public"], "cmd": "UPDATE", "qual_has_auth_uid": true, "qual_is_false": false } ] },
+    { "table": "tkg_briefings", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false },
+      { "name": "Users can only see their own briefings", "permissive": "PERMISSIVE", "roles": ["public"], "cmd": "SELECT", "qual_has_auth_uid": true, "qual_is_false": false } ] },
+    { "table": "tkg_commitments", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false },
+      { "name": "Users can only see their own commitments", "permissive": "PERMISSIVE", "roles": ["public"], "cmd": "SELECT", "qual_has_auth_uid": true, "qual_is_false": false } ] },
+    { "table": "tkg_conflicts", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false },
+      { "name": "Users can only see their own conflicts", "permissive": "PERMISSIVE", "roles": ["public"], "cmd": "SELECT", "qual_has_auth_uid": true, "qual_is_false": false } ] },
+    { "table": "tkg_constraints", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false } ] },
+    { "table": "tkg_directive_ml_global_priors", "rls_enabled": true, "policies": [
+      { "name": "deny_all_public_ml_global_priors", "permissive": "RESTRICTIVE", "roles": ["public"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": true } ] },
+    { "table": "tkg_directive_ml_snapshots", "rls_enabled": true, "policies": [
+      { "name": "deny_all_public_ml_snapshots", "permissive": "RESTRICTIVE", "roles": ["public"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": true } ] },
+    { "table": "tkg_entities", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false },
+      { "name": "Users can only see their own entities", "permissive": "PERMISSIVE", "roles": ["public"], "cmd": "SELECT", "qual_has_auth_uid": true, "qual_is_false": false } ] },
+    { "table": "tkg_feedback", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false },
+      { "name": "Users can only see their own feedback", "permissive": "PERMISSIVE", "roles": ["public"], "cmd": "SELECT", "qual_has_auth_uid": true, "qual_is_false": false } ] },
+    { "table": "tkg_goals", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false },
+      { "name": "users_manage_own_goals", "permissive": "PERMISSIVE", "roles": ["authenticated"], "cmd": "ALL", "qual_has_auth_uid": true, "qual_is_false": false } ] },
+    { "table": "tkg_pattern_metrics", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false },
+      { "name": "users_manage_own_pattern_metrics", "permissive": "PERMISSIVE", "roles": ["authenticated"], "cmd": "ALL", "qual_has_auth_uid": true, "qual_is_false": false } ] },
+    { "table": "tkg_signals", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false },
+      { "name": "Users can only see their own signals", "permissive": "PERMISSIVE", "roles": ["public"], "cmd": "SELECT", "qual_has_auth_uid": true, "qual_is_false": false } ] },
+    { "table": "tkg_user_meta", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false },
+      { "name": "Users see own meta", "permissive": "PERMISSIVE", "roles": ["public"], "cmd": "SELECT", "qual_has_auth_uid": true, "qual_is_false": false } ] },
+    { "table": "user_brief_cycle_gates", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false } ] },
+    { "table": "user_subscriptions", "rls_enabled": true, "policies": [
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false } ] },
+    { "table": "user_tokens", "rls_enabled": true, "policies": [
+      { "name": "service_role_full_access", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false },
+      { "name": "users_read_own_tokens", "permissive": "PERMISSIVE", "roles": ["authenticated"], "cmd": "SELECT", "qual_has_auth_uid": true, "qual_is_false": false } ] },
+    { "table": "waitlist", "rls_enabled": true, "policies": [
+      { "name": "deny_all_public", "permissive": "RESTRICTIVE", "roles": ["public"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": true },
+      { "name": "service_role_all", "permissive": "PERMISSIVE", "roles": ["service_role"], "cmd": "ALL", "qual_has_auth_uid": false, "qual_is_false": false } ] }
+  ]
+}

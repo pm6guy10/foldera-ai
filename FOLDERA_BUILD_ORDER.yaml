@@ -25,8 +25,8 @@ accepted_terminal_states:
 active_issue: 445
 priority_class: PRODUCT
 work_type: CHORE
-why_this_first: "Master Audit (#445): firm-foundation review in 13 expert-led passes, anti-rediscovery (every finding logged once in #445). Pass 0 (Inventory & ground truth) ships docs/SYSTEM_INVENTORY.md — the canonical what-IS reconciled read-only against real Supabase/GitHub/Vercel state. Pass 0 first because it grounds every later pass. Headline finding F-1: governance assumes PR/CI/branch-protection but main is unprotected and ci.yml is workflow_dispatch-only (Pass 10 BLOCK candidate)."
-next_seam: "After Pass 0 merges: Pass 1 (Security & multi-tenant isolation — per-table RLS policies + cross-tenant leak test) then Pass 3 (Cost — execute docs/COST_AND_ECONOMICS_AUDIT.md), the two highest-blast-radius passes, each its own seam -> PR. Owner-side unlock unchanged: ANTHROPIC_API_KEY (+ Slack/CRON env) in Vercel Production. Constraint: NO paid API calls — prove in the harness."
+why_this_first: "Master Audit (#445): firm-foundation review in 13 expert-led passes, anti-rediscovery. Pass 0 merged (#446, 75dca52) — docs/SYSTEM_INVENTORY.md is the canonical what-IS. Pass 1 (Security & multi-tenant isolation) verdict PASS: proved read-only that all 26 tables are RLS-enabled, every tenant policy is scoped by auth.uid(), internal tables are restrictive-deny, service-role key is server-only, connector tokens encrypted at rest. Closed the one CONCERN (no regression guard) by shipping tests/security/__tests__/rls-isolation.test.ts (6 invariants over a committed live-policy snapshot) + docs/security/RLS_ISOLATION.md."
+next_seam: "After Pass 1 merges: Pass 3 (Cost & unit economics — execute docs/COST_AND_ECONOMICS_AUDIT.md) as its own seam -> PR. Owner-side: ANTHROPIC_API_KEY (+ Slack/CRON env) in Vercel Production; enable Supabase leaked-password protection + more MFA (advisor WARN, S-3). Constraint: NO paid API calls — prove in the harness."
 completed_issue_425:
   issue: 425
   pr: 426
