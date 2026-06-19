@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — Pass 0/1/2/3 merged; shipping Pass 2 D-3 index fix)
+Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — Pass 0/1/2/3 + D-3 merged; shipping F-1 CI-on-PRs)
 
 ## Boot
 
@@ -37,13 +37,13 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 Issue #445 is the active firm-foundation audit seam.
 
-Master Audit (#445) — 13 expert-led passes, anti-rediscovery, now **fix-in-pass** (fix cheap/safe findings in the same PR, don't defer). Merged: Pass 0 (#446) inventory; Pass 1 (#447) RLS `PASS`; Pass 2 (#449) database `PASS`; Pass 3 (#448) cost `CONCERN`. **Shipping the Pass 2 D-3 fix**: added `idx_cost_events_user_created (user_id, created_at DESC)` via migration `20260619190000` — applied + verified on production Supabase; guard test + snapshot updated (no index gaps remain). This is the pivot from audit-and-defer to audit-and-fix.
+Master Audit (#445) — 13 expert-led passes, anti-rediscovery, now **fix-in-pass**. Merged: Pass 0 (#446) inventory; Pass 1 (#447) RLS `PASS`; Pass 2 (#449) database `PASS` + D-3 index fix (#450); Pass 3 (#448) cost `CONCERN`. **Shipping the F-1 fix**: `ci.yml` flipped from `workflow_dispatch`-only to run on PRs (the smart way was already built — change-aware gating means docs/test PRs cost ~lint only; Playwright fires only when its routes change; + draft-skip guard). Closes the biggest "looks-legit" gap. S-3 (Supabase leaked-pw/MFA) PARKED — Pro-plan only, we're on free.
 
 ## Next exact move
 
-1. Merge the D-3 fix (index migration + updated test/doc + control-plane), update #445.
-2. Owner decisions that unblock the remaining real fixes: (a) **F-1** — turn CI on for PRs? (costs GitHub Actions minutes deliberately cut). (b) **S-3** — enable Supabase leaked-password + MFA (dashboard). (c) fund **C-2/P0.2** paid validation.
-3. Then continue passes (4 backend/runtime, 6–8 frontend), fix-in-pass. Constraint: NO paid API calls — prove in the harness.
+1. Merge the F-1 CI flip; record F-1 code-half done in #445.
+2. **Owner half of F-1:** enable GitHub branch protection on `main` → require the `ci-passed` check (dashboard; the only thing that makes CI *enforced*, not just visible).
+3. Continue fix-in-pass: Pass 4 (backend/runtime — carries C-2 directive_retry; Anthropic credits exist so paid validation is now feasible) or frontend passes 6–8.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
 

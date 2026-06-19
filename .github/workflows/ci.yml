@@ -27,7 +27,15 @@ name: CI
 # for those paths in ~10 seconds.
 # ─────────────────────────────────────────────────────────────────────────────
 
-on: [workflow_dispatch]
+# Master Audit #445, finding F-1: CI was workflow_dispatch-only (never ran on PRs),
+# leaving green-looking infra that never fired. Turned ON for pull requests — the
+# budget is protected by the change-aware gating below (docs/test PRs run only
+# lint+unit, no Playwright) + concurrency-cancel. Draft PRs are skipped (see the
+# `changes` job guard) so CI fires only when a PR is marked ready, matching our flow.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
 
 # Single active CI run per ref/PR. Newer commits cancel older runs immediately.
 concurrency:
@@ -43,6 +51,10 @@ jobs:
   # 1. Classify the diff into buckets that downstream jobs gate on.
   # ───────────────────────────────────────────────────────────────────────────
   changes:
+    # Skip the whole pipeline on draft PRs (fires when marked ready) and always
+    # allow manual dispatch. When this job is skipped, every downstream job skips
+    # and `ci-passed` (always()) aggregates skipped-as-ok, so drafts stay green/free.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 3
     outputs:
