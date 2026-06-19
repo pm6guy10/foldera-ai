@@ -99,7 +99,7 @@ export function NavPublic({
             href={primaryHref}
             className="inline-flex min-h-[38px] items-center rounded-[9px] bg-accent px-3 text-[12px] font-semibold text-slate-950 shadow-[0_0_16px_rgba(245,166,35,0.16)] sm:hidden"
           >
-            {isAuthenticated ? 'Dashboard' : 'Start'}
+            {isAuthenticated ? 'Dashboard' : 'Start free'}
           </a>
 
           <button

@@ -7,7 +7,7 @@ export default function IntegrationsPage() {
   return (
     <ProductShell
       title="Sources"
-      subtitle="Legacy integrations links now open the dashboard source controls."
+      subtitle="Manage the accounts Foldera reads for context."
     >
       <section className="rounded-card border border-border bg-panel p-6">
         <h2 className="text-2xl font-bold tracking-tight text-text-primary">Source controls live in the dashboard</h2>
