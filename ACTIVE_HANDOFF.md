@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — passes 0/1/2/3 + D-3 + F-1 merged; reverting gem-surfacing #452, roman=noise)
+Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — passes 0/1/2/3 + D-3 + F-1 + gem-surfacing revert #453 all merged to main `27df0c2`; broadcast-sender suppression staged as DRAFT PR #454 awaiting owner live validation; control-plane SHA truth corrected)
 
 ## Boot
 
@@ -12,7 +12,7 @@ Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — passes 0/1/2/3 
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
 Between rungs — `active_issue: none` is the valid control-plane form; the owner names the next seam. The NEXT_SESSION_HARDENING mission (roadmap #420) shipped as four themed PRs: #426 (dead-code deletion), #428 (typecheck — 120 tsc errors to 0), #430 (auth PII tracing gated behind FOLDERA_DEBUG_AUTH), #433 (.env.example completeness + dead skip-branch / TODO cleanup). Batch 5 (Supabase index drop) was evaluated and rejected as WRONG PATH — both indexes are intentionally retained FK-support indexes (#434). Constraint: NO paid API calls — prove in the harness. The live product thread remains the GUARDIAN (workday-presence) — see `FOLDERA_MASTER_BIBLE.md` Part II-B; the one live-readiness blocker stays owner-side (ANTHROPIC_API_KEY in Vercel Production + the free external guardian cron).
-**LIVE (production `30fbf13`):** #382 frontend overhaul · #390 owner self-review system (`docs/BRANDON.md` + `docs/EXPERT_PANEL.md` + Bible Part IV) · #391/#393 guardian fires-grounded-and-pings · #394/#395 guardian pings only finished work · #397 (PR #398) brief seeds the matched draft at generation time · #399 (PR #400) commitment-title hygiene (no SYNC: key in the card). #382 stays OPEN for optional polish.
+**LIVE (in production):** #382 frontend overhaul · #390 owner self-review system (`docs/BRANDON.md` + `docs/EXPERT_PANEL.md` + Bible Part IV) · #391/#393 guardian fires-grounded-and-pings · #394/#395 guardian pings only finished work · #397 (PR #398) brief seeds the matched draft at generation time · #399 (PR #400) commitment-title hygiene (no SYNC: key in the card). #382 stays OPEN for optional polish.
 **Standing candidates (NOT started, owner to choose):** OWNER-SIDE — configure the external 15-min cron for guardian cadence (the ongoing firing mechanism; NOT a Vercel daily cron). CODE — recolor legacy cyan favicons (`app/favicon.ico`/`public/favicon.png`, BLOCKED on image tooling — `sharp`/imagemagick absent); triage 46 stale remote branches + skipped tests. Constraint: NO paid API calls to test — prove in the harness.
 
 Issue #394 is COMPLETE — guardian pings only finished work: silent/dismissed payload → no Slack (no noise ping); draftless scored_winner recycles the latest matching daily-brief artifact into a reviewable draft (no new LLM, conservative anti-mismatch guard). Merged via PR #395 (`d235cde`); 13 fixtures + 107/107 suite; runtime proof deferred per owner no-paid directive.
@@ -37,17 +37,16 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 Issue #445 is the active firm-foundation audit seam.
 
-Master Audit (#445) — fix-in-pass. Merged: Pass 0 inventory; Pass 1 RLS `PASS`; Pass 2 database `PASS` + D-3; Pass 3 cost `CONCERN`; F-1 CI-on-PRs. **Shipping a REVERT of gem-surfacing (#452).** That change promoted `relationship_risk_silence` to a winnable tier — but the top such candidate (`roman`) is a Handshake/Slack **broadcast** sender = the 95% automated noise the Bible (Part II-C) says to suppress, not surface. The original gate was right; the fix pointed the product at noise. Reverts `lib/briefing/artifact-taste-pack.ts` to prior logic, deletes the wrong test, rewrites `docs/GEM_SURFACING.md` with the doctrine gem definition (high-consequence buried signal + right time + channel + one act). Lesson: test against real data, not fixtures — the fixture passed while the live winner was garbage.
+Master Audit (#445) — fix-in-pass. Merged to main (`27df0c2`): Pass 0 inventory; Pass 1 RLS `PASS`; Pass 2 database `PASS` + D-3; Pass 3 cost `CONCERN`; F-1 CI-on-PRs; and the **revert of gem-surfacing** (#453). #452 had promoted `relationship_risk_silence` to a winnable tier — but the top such candidate (`roman`) is a Handshake/Slack **broadcast** sender = the 95% automated noise the Bible (Part II-C) says to suppress, not surface. The original gate was right; the fix pointed the product at noise. Lesson: test against real data, not fixtures — the fixture passed while the live winner was garbage.
 
 ## Next exact move
 
-1. Merge the revert; #445 records the wrong-turn + correction.
-2. **Real forward lever:** harden transactional/broadcast suppression (`TRANSACTIONAL_SENDER_RE` only catches a few `noreply@` domains; Handshake/Slack/notification senders slip through and become relationship candidates). Pure noise reduction — the right direction.
-3. Then verify the high-consequence domains (money/legal_gov/medical/work_transition) are what rises; accept correct silence if the data is genuinely all noise + low-stakes. NO paid API calls from here — prove in the harness.
+1. **PR #454 (DRAFT) — broadcast/recruiting-sender suppression** is staged: rejects junk/transactional + automated-sender entities at the admission gate (`getEntityRejectionReasons`). Real-data validated (roman/micro1 rejected; trusted human julieta@micro1.io kept). Fail-safe — can only suppress, never surface noise. Owner gate: run one generation cycle, confirm noise gone + real contacts kept, then merge.
+2. Then verify the high-consequence domains (money/legal_gov/medical/work_transition) are what rises; accept correct silence if the data is genuinely all noise + low-stakes. The robust follow-up to #454 is the **two-way test** (a relationship gem requires the user actually replied ≥1×). NO paid API calls from here — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
 
-Current production truth: `Last known main SHA: d235cde`. Whole-app amber + Bricolage type + premium chrome + show-don't-tell landing (#382, OPEN for polish); owner self-review system live (`docs/BRANDON.md` + `docs/EXPERT_PANEL.md` + Bible Part IV); guardian fires-grounded-and-pings-only-finished-work (#391/#393/#394). gitlab-handbook (1.1GB) moved out of the repo tree → `C:/Users/b-kap/foldera-reference/`.
+Current production truth: `Last known main SHA: 27df0c2` (verified live against Vercel — the most recent `target: production` deploy). Foundation hardened + merged (Master Audit #445 passes 0–3 + F-1): RLS/security `PASS`, data-integrity `PASS`, cost extraction-cap revert, CI-on-PRs. Whole-app amber + Bricolage type + premium chrome landing (#382, OPEN for polish); owner self-review system live (`docs/BRANDON.md` + `docs/EXPERT_PANEL.md` + Bible Part IV); guardian fires-grounded-and-pings-only-finished-work (#391/#393/#394). gitlab-handbook (1.1GB) moved out of the repo tree → `C:/Users/b-kap/foldera-reference/`.
 
 Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
 
