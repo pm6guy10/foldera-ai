@@ -17,7 +17,6 @@ import {
   Settings,
   ShieldCheck,
   UserX,
-  Users,
   Workflow,
   X,
   Zap,
@@ -126,7 +125,6 @@ const trustItems = [
 const enterprise = [
   { icon: ShieldCheck, t: 'Least privilege', s: 'scoped, revocable access' },
   { icon: LockKeyhole, t: 'Read-only', s: 'connectors by default' },
-  { icon: Users, t: 'SSO / SCIM', s: 'SAML 2.0 ready' },
   { icon: ScrollText, t: 'Audit logs', s: 'every action receipted' },
   { icon: UserX, t: 'No training', s: 'on your data, ever' },
 ];
