@@ -22,11 +22,16 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 414
+active_issue: none
 priority_class: PRODUCT
 work_type: POLISH
-why_this_first: "Owner is losing confidence because basic continuity defects keep reaching him one at a time ('hey fix this, hey fix this'). #414 batches the named ones into one pass and starts a standing continuity discipline so they stop reaching him: (1) the Foldera brand wordmark linked to /dashboard in all three app shells instead of the homepage — now -> /; (2) the homepage had two stacked CTA blocks at the bottom — removed the redundant 'Restore your continuity' final-cta, kept the 'Stop checking nine apps' one. Frontend-only, deterministic, harness-proven (build/lint/tsc/gate + updated e2e specs). The point is to own quality in batches, not death-by-micro-pass."
-next_seam: "STANDING CONTINUITY AUDIT (next): unify the three different Foldera brand marks (FolderaMark vs gradient 'F' box in the two layout/* shells); sweep nav for dead/inconsistent links; consolidate the duplicate shells. OWNER-SIDE (unchanged): confirm the Sources MS email fix (#411); ALLOW_APPROVAL_EMAIL_SEND is on — confirm RESEND_API_KEY and connect a real source so a genuine move generates, then approve to validate the live attached send; configure the free external 15-min guardian cron."
+why_this_first: "Between rungs. This session shipped #402 (send), #404 (attachment rails), #407 (write_document delivery attachment), #411 (Sources MS email fix), and #414 (homepage continuity — brand wordmark -> home + removed the redundant final CTA, PR #415, a477e58). Slack delivery smoke-tested OK. The recommended next code thread is the standing CONTINUITY AUDIT (unify the three brand marks; nav/dead-link sweep; consolidate duplicate shells). The remaining money-loop moves are owner-gated. Awaiting the owner's next move."
+next_seam: "STANDING CONTINUITY AUDIT (recommended next): unify the three different Foldera brand marks (FolderaMark vs gradient 'F' box in the two layout/* shells); sweep nav for dead/inconsistent links; consolidate the duplicate shells. OWNER-SIDE: confirm #414 (homepage/brand) and #411 (Sources MS email); ALLOW_APPROVAL_EMAIL_SEND is on — confirm RESEND_API_KEY and connect a real source so a genuine move generates, then approve to validate the live attached send; configure the free external 15-min guardian cron."
+completed_issue_414:
+  issue: 414
+  pr: 415
+  pr_merge_sha: a477e58
+  summary: "Homepage continuity batch: the Foldera brand wordmark linked to /dashboard in all three app shells (ProductShell, layout/dashboard-shell, layout/sidebar) instead of the homepage — now -> /. The homepage had two stacked CTA blocks at the bottom; removed the redundant landing-final-cta ('Restore your continuity'), kept landing-pilot ('Stop checking nine apps'). Updated the three coupled e2e specs. Frontend-only; build + lint + tsc + gate green. Flippable judgment call noted: in-app brand -> marketing / vs app /dashboard. Live visual validation owner-side."
 completed_issue_411:
   issue: 411
   pr: 412
