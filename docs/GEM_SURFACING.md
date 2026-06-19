@@ -1,73 +1,60 @@
-# Gem Surfacing — why Foldera went silent, and the value-inversion behind it
+# What a Gem Is — and why "promote relationship-silence" was the wrong fix
 
-> Master Audit #445, product-quality thread. Owner directive: *"surface gems, not just
-> a calendar reminder."* This doc captures the root cause and the first fix so it's
-> never re-derived.
+> Master Audit #445, product-quality thread. This doc corrects a wrong turn and pins
+> the gem definition to doctrine (`FOLDERA_MASTER_BIBLE.md` Part II-B/II-C,
+> `docs/BRANDON.md`) so it is not re-derived.
 
-## The symptom (live, 2026-06-19)
+## The wrong turn (recorded so we don't repeat it)
 
-The daily engine fires (3× today), the API key works, signals are fresh (984/14d, 0
-unprocessed), 214 commitments are risk-scored. Yet every run ends
-`generation_failed_sentinel → do_nothing`. No card reaches the user — and it's been
-that way for 8+ days. **Not infra, not the key, not selection — a quality gate.**
+The engine fires daily but delivers nothing (`generation_failed_sentinel → do_nothing`).
+Tracing it, the top blocked candidate was *"High-value relationship at risk: roman."*
+I concluded the quality gate was too strict and shipped a change to promote
+`relationship_risk_silence` candidates to a winnable tier (#452).
 
-## The root cause: the taxonomy's value system is inverted
+**That was wrong.** `roman` is **noise** — a Handshake/Slack broadcast sender pushing
+general updates, never a 1:1. The gate that suppressed it was **correct**. The fix
+pointed the product *at the 95% automated noise it exists to filter out.* #452 was
+reverted.
 
-Generation only ships a card if a candidate clears the `positive_winner_contract`,
-which requires a **tier_1/tier_2** "artifactable" winner. Tiers are assigned by
-`artifact_family` in `lib/briefing/artifact-taste-pack.ts` (`tierFor`):
+## What a gem actually is (doctrine, verbatim intent)
 
-| Family | Tier (before fix) |
-|---|---|
-| `interview_role_fit_packet` | tier_1 |
-| `admin_deadline_decision_packet` | tier_1 |
-| `calendar_conflict_brief` | tier_1 |
-| `review_only_follow_up_draft` | tier_2 |
-| **`relationship_risk_silence`** | **tier_3** (can never win) |
+From the Bible's "What 'Magical' Means" (Part II-C):
 
-So the code's "top gems" are deadline / admin / calendar artifacts — **exactly the
-reminders the owner calls noise** — while *relationship insight* (a high-value contact
-going quiet, an unanswered thread — the non-obvious dropped ball Foldera exists to
-catch) was hardcoded `tier_3` AND additionally blocked unless its text happened to
-contain a work keyword (`relationship_silence_without_command_center_artifact`).
+> *"How did it know?"* — Foldera surfaced **the one thing the user had half-forgotten,
+> at the exact moment they needed it, in the place they already were, and they did not
+> have to ask.**
 
-**The value system was upside-down relative to the product's purpose.** When the
-current data is ordinary life (e.g. "Bible study Friday, nothing booked"), the only
-gem-shaped candidates (relationship silence) are structurally suppressed, so the
-product says nothing — looking broken when it's actually mis-prioritized.
+A gem requires **all four**, or it's not a gem:
+1. **Right signal** — a *high-consequence* buried thing (the Bible's hidden-op domains:
+   `work_transition`, `medical`, `money`, `family_baby`, `legal_gov` …), not automated exhaust.
+2. **Right time** — imminent / about to matter (the imminence multiplier).
+3. **Right channel** — where the user already is.
+4. **One clear act** — one click = done.
 
-## The fix (first cut) — discerning promotion, not a floodgate
+And the hard truth about the input (Part II-C): *"a knowledge worker has GitHub noise,
+Slack loops, PM artifacts, calendar density — **95%+ automated noise by volume**."*
+**roman is that 95%.** A calendar reminder is also not a gem (BRANDON.md §5.1, §9:
+"safe silence is a win"). A gem is the buried human-consequence obligation, surfaced
+once, at the right moment.
 
-A relationship-silence candidate is promoted to **tier_2** (a real gem) and unblocked
-**only when it is grounded**: `>= 2 source facts` from a thread **within 14 days** — a
-genuine, recent, two-way dropped ball. Vague/thin/stale "you've gone quiet" stays
-`tier_3` and suppressed. This keeps the bar high (no creepy "you haven't texted mom"
-noise) while letting the gems through.
+## The real lever (forward work, not done here)
 
-- Code: `lib/briefing/artifact-taste-pack.ts` (`evaluateCandidateArtifactability` +
-  `tierFor` promotion).
-- Proof (deterministic): `tests/briefing/__tests__/gem-tiering.test.ts` — grounded gem
-  → tier_2/artifactable/unblocked; vague → tier_3/blocked; stale → tier_3. Full
-  briefing suite (812 tests) + typecheck green, no regression.
+Not "loosen the gate." The opposite:
+1. **Harden noise suppression.** roman beat `TRANSACTIONAL_SENDER_RE`
+   (`lib/briefing/artifact-taste-pack.ts`) — that guard only catches a few literal
+   `noreply@…` domains. Broadcast/automated senders (Handshake, Slack app updates,
+   notification digests) should be classified as transactional and **never become
+   relationship candidates**. This is pure noise reduction — the right direction.
+2. **Surface the high-consequence domains.** Confirm the hidden-op detector's domains
+   (`money`/`legal_gov`/`medical`/`work_transition`/`family`) are what rises, with the
+   imminence multiplier — and that when one exists, it clears the gate with one act.
+3. **Accept correct silence.** If the connected data is genuinely all broadcast noise +
+   low-stakes personal right now, the engine *should* stay quiet. "Safe silence is a
+   win" — do not manufacture a card to look busy.
 
-## What this does NOT prove yet (owner gate)
+## Validation rule for any future gem change
 
-Whether the promoted gems actually read as *gems* (not noise) in production requires a
-**live paid generation run** — Anthropic credits exist, but the run needs the
-production env (key + Supabase), which is owner-side. **This change is
-`BLOCKED_WITH_EXACT_RECEIPT` on that validation before it should be trusted live:**
-deploy, run one generation cycle, and confirm the surfaced card is a real
-relationship gem worth the interrupt. If it reads as noise, tighten the grounding
-criteria (e.g. require a high-value/business entity via `trust_class`, or an explicit
-unanswered-inbound open loop).
-
-## The bigger decision this opens (owner)
-
-This is one family. The full "what is a gem" definition is the product's soul:
-- Should **cross-signal discrepancies** (a commitment + a contradicting email + a
-  calendar gap) outrank single-source deadline artifacts?
-- Should `tier_1` be re-ordered so *insight density* beats *artifact shape*?
-
-Those are deliberate re-tunings to do with paid validation, not blindly. This fix is
-the first, safe, reversible step that turns the lights on for the gem the data already
-contains.
+Before promoting anything: would it have surfaced **roman**? If yes, it's wrong. Test
+against the real noise in the data, not a hand-built fixture — the fixture passed while
+the live winner was garbage. Live/paid validation against actual signals is the only
+real proof here.
