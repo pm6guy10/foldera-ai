@@ -451,7 +451,7 @@ export async function runConvictionEngine(
     monthlyBurnUSD: burn,
     runwayMonths,
     primaryOutcomeProbability: prob,
-    primaryOutcomeDeadline: null, // TODO: infer from "April start" / "May start" signals
+    primaryOutcomeDeadline: null, // Deferred: infer from "April start" / "May start" signal cues — see #431
     hardDeadline: deadline,
     hardDeadlineSource: deadlineResult.source,
     modelConfidence: missingInputs.length === 0 ? 0.8 : 0.4,
