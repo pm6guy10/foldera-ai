@@ -11,8 +11,7 @@ Last updated: 2026-06-19 UTC (between rungs — shipped #402/#404/#407/#411/#414
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Issue #432 is the active repo-hardening seam.
-Executing docs/NEXT_SESSION_HARDENING.md (roadmap #420) as a sequence of themed PRs. Batches 1-3 merged (#426 c0142ab, #428 1d17160, #430 dff1ad5). Batch 4 (#432) completes .env.example (verified-real missing vars + feature-flag docs), removes the dead /pricing 404 skip branch, and tickets the lone conviction-engine TODO (#431). Batch 5 (Supabase index drop, propose-only) follows. Constraint: NO paid API calls — prove in the harness. The live product thread remains the GUARDIAN (workday-presence) — see `FOLDERA_MASTER_BIBLE.md` Part II-B; the one live-readiness blocker stays owner-side (the free external 15-min guardian cron).
+Between rungs — `active_issue: none` is the valid control-plane form; the owner names the next seam. The NEXT_SESSION_HARDENING mission (roadmap #420) shipped as four themed PRs: #426 (dead-code deletion), #428 (typecheck — 120 tsc errors to 0), #430 (auth PII tracing gated behind FOLDERA_DEBUG_AUTH), #433 (.env.example completeness + dead skip-branch / TODO cleanup). Batch 5 (Supabase index drop) was evaluated and rejected as WRONG PATH — both indexes are intentionally retained FK-support indexes (#434). Constraint: NO paid API calls — prove in the harness. The live product thread remains the GUARDIAN (workday-presence) — see `FOLDERA_MASTER_BIBLE.md` Part II-B; the one live-readiness blocker stays owner-side (ANTHROPIC_API_KEY in Vercel Production + the free external guardian cron).
 **LIVE (production `30fbf13`):** #382 frontend overhaul · #390 owner self-review system (`docs/BRANDON.md` + `docs/EXPERT_PANEL.md` + Bible Part IV) · #391/#393 guardian fires-grounded-and-pings · #394/#395 guardian pings only finished work · #397 (PR #398) brief seeds the matched draft at generation time · #399 (PR #400) commitment-title hygiene (no SYNC: key in the card). #382 stays OPEN for optional polish.
 **Standing candidates (NOT started, owner to choose):** OWNER-SIDE — configure the external 15-min cron for guardian cadence (the ongoing firing mechanism; NOT a Vercel daily cron). CODE — recolor legacy cyan favicons (`app/favicon.ico`/`public/favicon.png`, BLOCKED on image tooling — `sharp`/imagemagick absent); triage 46 stale remote branches + skipped tests. Constraint: NO paid API calls to test — prove in the harness.
 
@@ -36,12 +35,13 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 ## Current slice:
 
-Batch 4 (#432) of the hardening mission: complete .env.example (verified-real missing vars + feature-flag docs), remove the dead /pricing 404 skip branch in smoke.spec, ticket the lone conviction-engine TODO (#431). Batches 1-3 merged (c0142ab, 1d17160, dff1ad5). Proof: gate:continuity + build + lint + typecheck.
+None — between rungs after the NEXT_SESSION_HARDENING mission (#420). Shipped: #426 dead-code deletion (c0142ab), #428 typecheck/120→0 (1d17160), #430 auth-PII gating (dff1ad5), #433 .env.example + cleanup (5fed8f9). #431 ticketed (conviction-engine deadline inference); #434 closed (index drop = keep, FK-support). Awaiting the owner's next chosen seam.
 
 ## Next exact move
 
-1. Land Batch 4 (#432), then run Batch 5 — Supabase unused-index drop migration (propose-only: committed migration file for owner sign-off; NOT applied to prod).
-2. Then roll the control plane to between-rungs and report the final scorecard + what shipped vs. owner-gated (update #420).
+1. Owner names the next seam. Until then `active_issue: none` is the valid between-rungs control-plane form.
+2. Highest-leverage owner-side unlock: set `ANTHROPIC_API_KEY` (+ Slack/CRON env) in Vercel Production so daily generation produces the artifact the free event-driven trigger surfaces; plus the free external guardian cron.
+3. Standing CODE candidates (roadmap #420): the paid Tier-1 selection layer (risk scoring — needs cost ceiling), Supabase auth toggles (owner dashboard), stale-branch pruning. Constraint: NO paid API calls — prove in the harness.
 3. At session end roll the control plane forward to between-rungs. OWNER-SIDE remains: confirm `ANTHROPIC_API_KEY` in Vercel Production + the free external guardian cron. Constraint: NO paid API calls — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.

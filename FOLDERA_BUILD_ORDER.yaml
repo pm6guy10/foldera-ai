@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 432
+active_issue: none
 priority_class: PRODUCT
 work_type: CHORE
-why_this_first: "Executing docs/NEXT_SESSION_HARDENING.md (roadmap #420) as themed PRs. Batches 1-3 merged (#426 c0142ab, #428 1d17160, #430 dff1ad5). Batch 4 (#432): complete .env.example with verified-real missing vars + feature-flag docs; remove the dead /pricing 404 skip branch; ticket the lone conviction-engine TODO (#431)."
-next_seam: "After #432 merges: Batch 5 (Supabase unused-index drop migration — propose-only, committed but NOT applied to prod without owner OK). Then roll the control plane to between-rungs. Constraint: NO paid API calls — prove in the harness."
+why_this_first: "Between rungs. The NEXT_SESSION_HARDENING mission (roadmap #420) shipped as four themed PRs: #426 (dead-code deletion), #428 (typecheck, 120 tsc errors -> 0), #430 (auth PII tracing gated), #433 (.env.example + cleanup). Batch 5 (index drop) evaluated and rejected as WRONG PATH (#434 — FK-support indexes kept). Awaiting the owner's next chosen seam."
+next_seam: "Owner names the next seam. The repo is hardened; the remaining unlock is owner-side: set ANTHROPIC_API_KEY in Vercel Production (+ Slack/CRON env) so daily generation produces the artifact the free trigger surfaces; Supabase auth toggles (leaked-password/MFA); the paid Tier-1 selection layer; stale-branch pruning. Constraint: NO paid API calls — prove in the harness."
 completed_issue_425:
   issue: 425
   pr: 426
@@ -42,6 +42,15 @@ completed_issue_429:
   pr: 430
   pr_merge_sha: dff1ad5
   summary: "Batch 3 privacy/logging: gated verbose auth tracing (emails / user IDs) behind FOLDERA_DEBUG_AUTH via shared lib/auth/auth-debug.ts helper; scrubbed PII from auth error/warn diagnostics; removed debug console.log in usefulness-gate test. build + lint + typecheck + gate green."
+completed_issue_432:
+  issue: 432
+  pr: 433
+  pr_merge_sha: 5fed8f9
+  summary: "Batch 4 config/docs hygiene: completed .env.example (Slack tokens, owner identity, GitHub token, feature-flag docs); removed the dead /pricing 404 skip branch; ticketed the lone conviction-engine TODO (#431). build + lint + typecheck + gate green."
+evaluated_issue_434:
+  issue: 434
+  decision: WRONG_PATH_KEEP
+  summary: "Batch 5 proposed dropping idx_tkg_goals_entity_id + idx_ml_snapshots_user. Rejected: both are intentionally retained FK-support indexes (created for FK lint 0001 in 20260410110000; explicitly kept in 20260505083000). No migration drafted. Advisor unused_index is a low-traffic false-positive."
 completed_issue_421:
   issue: 421
   pr: 422
