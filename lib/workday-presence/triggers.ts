@@ -256,10 +256,18 @@ export function buildTriggeredWorkdayPresenceState(
   }
 
   if (context.trigger_type === 'commitment_lapsing') {
+    // `summary` is a human sentence for fixtures, but real ingestion falls back to the
+    // raw `SYNC:<category>:<slug>` dedup key (see signal-processor.ts). That machine key
+    // must never reach the user-facing directive — #399/#400 cleaned the brief card via
+    // commitment-bridge but not this lapsing path. Prefer the already-clean `title`
+    // (humanCommitmentTitle) whenever the summary is a raw SYNC key.
+    const lapsingLabel = context.commitment.summary.trimStart().startsWith('SYNC:')
+      ? context.commitment.title
+      : context.commitment.summary;
     return withStateChangeSource(
       withOverrideMove(
         state,
-        `Commitment lapsing: ${context.commitment.summary} Next move: ${state.next_move}`,
+        `Commitment lapsing: ${lapsingLabel} Next move: ${state.next_move}`,
       ),
       {
         table: 'tkg_commitments',

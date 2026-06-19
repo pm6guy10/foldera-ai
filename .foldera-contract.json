@@ -1,5 +1,5 @@
 {
-  "backlog_id": "master-audit-gem-ranking-stakes-floor",
+  "backlog_id": "master-audit-gem-card-hygiene-sync-prefix",
   "active_issue": 445,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
@@ -12,7 +12,9 @@
     "docs/**",
     "tests/**",
     "lib/briefing/scorer.ts",
-    "lib/briefing/__tests__/**"
+    "lib/briefing/__tests__/**",
+    "lib/workday-presence/triggers.ts",
+    "lib/workday-presence/__tests__/**"
   ],
   "forbidden_file_patterns": [
     "app/api/**",
@@ -25,7 +27,7 @@
   "required_local_proof": "npm run gate:continuity && npx vitest run lib/briefing && npm run typecheck",
   "required_browser_proof": "N/A — deterministic backend scoring change, exercised by unit + suite tests, not browser-observable.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "highConsequenceStakesFloor lifts a high-risk_score commitment's stakes off the 1.0 goal-match floor (lift-only, commitments-only), threaded via candidate.riskScore; new unit test green against the real risk values; full lib/briefing suite + typecheck green; gate:continuity passes; #445 updated.",
+  "acceptance_condition": "Follow-on gem-card hygiene: the commitment_lapsing directive (lib/workday-presence/triggers.ts) no longer leaks the raw SYNC:<category>:<slug> dedup key — it prefers the clean humanCommitmentTitle when summary is a raw SYNC key. Regression test green; full lib/workday-presence suite + typecheck green; gate:continuity passes; #445 updated. (Prior slice: highConsequenceStakesFloor in lib/briefing/scorer.ts shipped via PR #456.)",
   "is_user_facing": false,
   "anti_regression_checks": [
     "gate:continuity green with active seam #445",
