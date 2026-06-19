@@ -1,41 +1,41 @@
 {
-  "backlog_id": "hardening-batch-2-typecheck",
-  "active_issue": 427,
-  "base_commit": "c0142ab",
+  "backlog_id": "hardening-batch-3-auth-logging",
+  "active_issue": 429,
+  "base_commit": "1d17160",
   "money_loop_rung": "m2",
-  "user_system_path": "Repo hardening Batch 2 (#427): add a typecheck npm script, stop excluding tests/+scripts/ in tsconfig, and drive the 120 surfaced tsc errors (stale test fixtures vs evolved production types) to zero. Type-only changes; no runtime behavior change. NO paid API calls.",
+  "user_system_path": "Repo hardening Batch 3 (#429): gate verbose auth tracing (emails / user IDs) behind a FOLDERA_DEBUG_AUTH flag via a shared authDebugLog helper; scrub PII from auth error/warn diagnostics; remove debug console.log in usefulness-gate test. No behavior change for users; prod logs stop leaking PII. NO paid API calls.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
     "docs/**",
-    "package.json",
-    "tsconfig.json",
-    "lib/**",
-    "scripts/**",
-    "tests/**"
+    "lib/auth/**",
+    "lib/briefing/**",
+    "app/api/google/**",
+    "app/api/microsoft/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
-    "app/api/**",
-    "package-lock.json"
+    "package.json",
+    "package-lock.json",
+    "tsconfig.json"
   ],
-  "allowed_files_raw": "Batch 2 adds a typecheck script (package.json), un-excludes tests/scripts (tsconfig.json), and fixes type errors in lib/** + scripts/** + tests/** test fixtures (plus one export in lib/briefing/generator.ts). Control plane + docs as usual.",
-  "forbidden_files_raw": "No schema, API route, or lockfile changes in this batch.",
-  "required_local_proof": "npm run typecheck && npm run gate:continuity && npm run build && npm run lint",
-  "required_browser_proof": "N/A — type-safety + test-fixture changes, no user-facing path change.",
+  "allowed_files_raw": "Batch 3 touches lib/auth/** (auth-options, supabase-auth-user, new auth-debug helper), the two OAuth callback routes, and one test in lib/briefing/__tests__. Control plane + docs as usual.",
+  "forbidden_files_raw": "No schema, dependency, or tsconfig changes in this batch.",
+  "required_local_proof": "npm run gate:continuity && npm run build && npm run lint && npm run typecheck",
+  "required_browser_proof": "N/A — logging-hygiene change; no user-facing path change. Sign-in flow behavior is unchanged (only log verbosity is gated).",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "npm run typecheck clean (tests/+scripts/ included); gate:continuity + build + lint green; vitest unchanged except the two pre-existing reds (pricing button + homepage copy) untouched by this batch.",
+  "acceptance_condition": "Verbose auth traces (emails / user IDs) only emit when FOLDERA_DEBUG_AUTH=true; build + lint + typecheck + gate green; auth + usefulness-gate vitest green.",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "npm run typecheck exits 0 with tests/ and scripts/ type-checked",
+    "no PII (email / user id) logged on the default (flag-off) auth path",
     "npm run build green",
-    "npm run lint green",
-    "no new vitest failures vs main"
+    "npm run lint + typecheck green",
+    "auth-related vitest suites green"
   ],
-  "stop_condition": "Stop when Batch 2 is merged and the control plane is ready for Batch 3 (or rolled to between-rungs at session end).",
-  "next_command": "Proceed to Batch 3 — privacy/logging hygiene (gate auth PII tracing behind FOLDERA_DEBUG_AUTH).",
+  "stop_condition": "Stop when Batch 3 is merged and the control plane is ready for Batch 4 (or rolled to between-rungs at session end).",
+  "next_command": "Proceed to Batch 4 — config & docs hygiene (.env.example completeness + dead skip-branch / TODO cleanup).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
