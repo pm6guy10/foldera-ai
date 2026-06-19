@@ -1,9 +1,9 @@
 {
-  "backlog_id": "master-audit-revert-gem-surfacing",
+  "backlog_id": "master-audit-gem-ranking-stakes-floor",
   "active_issue": 445,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Master Audit #445 — REVERT the gem-surfacing change (#452). It promoted relationship_risk_silence candidates to a winnable tier, but the top such candidate (roman) is a Handshake/Slack BROADCAST sender — the 95% automated noise the Bible (Part II-C) says Foldera must suppress, not surface. The original gate correctly blocked it. Reverts lib/briefing/artifact-taste-pack.ts to the pre-#452 logic, deletes the wrong-premised test, and rewrites docs/GEM_SURFACING.md with the doctrine-grounded gem definition (high-consequence buried signal + right time + right channel + one act). The real forward lever is HARDENING transactional/broadcast suppression, not loosening the gate. Constraint: NO paid API calls.",
+  "user_system_path": "Master Audit #445 — gem-ranking fix. A live read-only forensic pass found the engine emits 'Nothing cleared the bar after evaluating N candidates' while real high-consequence gems sit in the admitted pool (a lapsing Rule 59(e) court motion, a job-offer acceptance, a hardship payment plan). Root cause: scorer stakes derived almost entirely from goal-match priority (6 - priority), defaulting to 1.0 with no goal match, so a genuine obligation is zeroed by the decision-moving (stakes >= 2) / lifecycle (stakes < 2 -> archive_only) invariants. Fix: highConsequenceStakesFloor in lib/briefing/scorer.ts lifts stakes from the commitment's own deterministic risk_score (>=80->4, >=60->3, >=40->2), lift-only, commitments-only. Fail-safe: noise cannot reach the floor (transactional/junk excluded at pool admission). NOT trust-aware ranking (the pool already filters trust_class — an earlier wrong diagnosis, corrected on #445). Constraint: NO paid API calls.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -11,7 +11,8 @@
     "FOLDERA_BUILD_ORDER.yaml",
     "docs/**",
     "tests/**",
-    "lib/briefing/artifact-taste-pack.ts"
+    "lib/briefing/scorer.ts",
+    "lib/briefing/__tests__/**"
   ],
   "forbidden_file_patterns": [
     "app/api/**",
@@ -19,20 +20,21 @@
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Revert: the one taste-pack file back to pre-#452 + delete the wrong test + corrected doctrine doc + control-plane.",
-  "forbidden_files_raw": "No app/api, schema, or deps. Only the named brain file revert.",
-  "required_local_proof": "npm run gate:continuity && npx vitest run lib/briefing/__tests__/ && npm run typecheck",
-  "required_browser_proof": "N/A — revert of a backend tiering change to its proven prior state.",
+  "allowed_files_raw": "The scorer stakes-floor (lib/briefing/scorer.ts) + its unit test + control-plane. No schema, no deps, no app/api.",
+  "forbidden_files_raw": "No app/api, schema, or deps. Pure deterministic scoring change.",
+  "required_local_proof": "npm run gate:continuity && npx vitest run lib/briefing && npm run typecheck",
+  "required_browser_proof": "N/A — deterministic backend scoring change, exercised by unit + suite tests, not browser-observable.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "artifact-taste-pack.ts is back to the pre-#452 gate (relationship_risk_silence not promoted), the wrong-premised gem-tiering test is removed, docs/GEM_SURFACING.md states the doctrine-correct gem definition, briefing suite + typecheck green, gate:continuity passes, #445 updated.",
+  "acceptance_condition": "highConsequenceStakesFloor lifts a high-risk_score commitment's stakes off the 1.0 goal-match floor (lift-only, commitments-only), threaded via candidate.riskScore; new unit test green against the real risk values; full lib/briefing suite + typecheck green; gate:continuity passes; #445 updated.",
   "is_user_facing": false,
   "anti_regression_checks": [
     "gate:continuity green with active seam #445",
-    "briefing suite green + typecheck clean; only artifact-taste-pack.ts reverted under lib/",
-    "no code path promotes relationship_risk_silence (roman-class noise stays suppressed)"
+    "full lib/briefing suite green + typecheck clean; change is additive (no logic deleted)",
+    "floor is lift-only and inert for signals/relationships and for fixtures without risk_score (no regression)",
+    "noise stays suppressed — transactional/junk commitments are still excluded at pool admission, untouched by this change"
   ],
-  "stop_condition": "Stop when the revert is up as a PR with proof; next lever (transactional-sender hardening) named.",
-  "next_command": "Forward lever: harden TRANSACTIONAL_SENDER_RE / broadcast detection so Handshake/Slack/notification senders never become relationship candidates (pure noise reduction). Then verify the high-consequence domains (money/legal_gov/medical/work_transition) are what rises. Accept correct silence if the data is genuinely all noise + low-stakes.",
+  "stop_condition": "Stop when the stakes-floor is up as a PR with proof; owner validates one generation cycle surfaces a real gem instead of 'nothing cleared the bar'.",
+  "next_command": "Owner: run one generation cycle and confirm a real gem clears the bar. Next seams (not done): extend the >30d-overdue admission window for high-consequence categories (so a stale-but-critical legal/work gem isn't dropped at line ~5077); the two-way test for relationship gems; merge DRAFT PR #454 (broadcast-sender suppression) after its paid validation.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
