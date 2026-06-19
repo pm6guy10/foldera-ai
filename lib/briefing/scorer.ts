@@ -490,6 +490,23 @@ export function highConsequenceStakesFloor(
   return Math.max(baseStakes, floor);
 }
 
+/**
+ * Overdue-admission window (days) for a commitment.
+ *
+ * A commitment whose deadline passed long ago is usually abandoned/handled, so the
+ * scorer drops it before scoring (a 30-day blanket cutoff). But a genuinely
+ * high-consequence obligation (high risk_score) that is still `active` is worth
+ * surfacing longer — the blanket cutoff silently drops a real overdue money/legal/
+ * work obligation (e.g. a job-offer response or a hardship payment plan that lapsed
+ * ~5 weeks ago). High-risk rows (risk_score ≥ 60, the gem band) get a 60-day window;
+ * everything else keeps 30. This only WIDENS admission — the scorer's soft
+ * staleness/timing penalty (commitment-risk `timingScore`) still discounts the very
+ * stale at ranking time, so a long-dead row can be admitted yet still lose the bar.
+ */
+export function overdueAdmissionWindowDays(riskScore: number | null | undefined): number {
+  return typeof riskScore === 'number' && !Number.isNaN(riskScore) && riskScore >= 60 ? 60 : 30;
+}
+
 const OBVIOUS_FIRST_LAYER_PATTERNS = [
   /^\s*(?:follow\s+up|check\s+in|touch\s+base|circle\s+back)\b/i,
   /\b(?:just\s+checking\s+in|just\s+reaching\s+out|quick\s+follow\s+up)\b/i,
@@ -5107,20 +5124,24 @@ export async function scoreOpenLoops(
     }
 
     // Skip expired/past-due commitments that have no valid next step.
-    // A commitment whose deadline passed more than 30 days ago is either
-    // abandoned or was handled informally. It cannot produce a valid
-    // SEND or WRITE_DOCUMENT action without a clear current trigger.
+    // A commitment whose deadline passed long ago is usually abandoned or handled
+    // informally. Default cutoff is 30 days; a high-consequence obligation
+    // (risk_score ≥ 60) that is still `active` gets a 60-day window so a real
+    // overdue money/legal/work gem isn't silently dropped here (see
+    // overdueAdmissionWindowDays). The soft staleness penalty still discounts it at
+    // ranking time, so widening admission cannot resurrect a truly dead low-value row.
     const deadlineDate = (c.due_at as string | null) || (c.implied_due_at as string | null);
     if (deadlineDate) {
       const daysOverdue = (Date.now() - new Date(deadlineDate).getTime()) / (1000 * 60 * 60 * 24);
-      if (daysOverdue > 30) {
+      const overdueWindow = overdueAdmissionWindowDays(c.risk_score as number | null);
+      if (daysOverdue > overdueWindow) {
         logStructuredEvent({
           event: 'stale_overdue_commitment_filtered',
           level: 'info',
           userId,
           artifactType: null,
           generationStatus: 'filtered',
-          details: { scope: 'scorer', commitment_id: c.id, days_overdue: Math.round(daysOverdue), description: (c.description as string).slice(0, 80) },
+          details: { scope: 'scorer', commitment_id: c.id, days_overdue: Math.round(daysOverdue), overdue_window_days: overdueWindow, risk_score: (c.risk_score as number | null) ?? null, description: (c.description as string).slice(0, 80) },
         });
         continue;
       }

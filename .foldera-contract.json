@@ -1,9 +1,9 @@
 {
-  "backlog_id": "master-audit-gem-card-hygiene-sync-prefix",
+  "backlog_id": "master-audit-overdue-window-high-consequence",
   "active_issue": 445,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Master Audit #445 — gem-ranking fix. A live read-only forensic pass found the engine emits 'Nothing cleared the bar after evaluating N candidates' while real high-consequence gems sit in the admitted pool (a lapsing Rule 59(e) court motion, a job-offer acceptance, a hardship payment plan). Root cause: scorer stakes derived almost entirely from goal-match priority (6 - priority), defaulting to 1.0 with no goal match, so a genuine obligation is zeroed by the decision-moving (stakes >= 2) / lifecycle (stakes < 2 -> archive_only) invariants. Fix: highConsequenceStakesFloor in lib/briefing/scorer.ts lifts stakes from the commitment's own deterministic risk_score (>=80->4, >=60->3, >=40->2), lift-only, commitments-only. Fail-safe: noise cannot reach the floor (transactional/junk excluded at pool admission). NOT trust-aware ranking (the pool already filters trust_class — an earlier wrong diagnosis, corrected on #445). Constraint: NO paid API calls.",
+  "user_system_path": "Master Audit #445 — gem-surfacing, slice 3: high-consequence overdue-admission window. The scorer drops commitments overdue by >30 days before scoring (lib/briefing/scorer.ts stale_overdue_commitment_filtered). That blanket cutoff silently drops a real overdue money/legal/work gem — the job-offer response that lapsed ~5 weeks ago died there even after the stakes-floor fix (#456). Fix: overdueAdmissionWindowDays widens the window to 60 days for high-consequence rows (risk_score >= 60); low/moderate-risk keep 30. Fail-safe: only widens ADMISSION — the scorer's soft staleness/timing penalty (commitment-risk timingScore) still discounts the very stale at ranking, so a truly dead low-value row cannot win. Continues PR #456 (stakes floor) + PR #457 (lapsing-card SYNC: hygiene). Constraint: NO paid API calls.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -27,7 +27,7 @@
   "required_local_proof": "npm run gate:continuity && npx vitest run lib/briefing && npm run typecheck",
   "required_browser_proof": "N/A — deterministic backend scoring change, exercised by unit + suite tests, not browser-observable.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "Follow-on gem-card hygiene: the commitment_lapsing directive (lib/workday-presence/triggers.ts) no longer leaks the raw SYNC:<category>:<slug> dedup key — it prefers the clean humanCommitmentTitle when summary is a raw SYNC key. Regression test green; full lib/workday-presence suite + typecheck green; gate:continuity passes; #445 updated. (Prior slice: highConsequenceStakesFloor in lib/briefing/scorer.ts shipped via PR #456.)",
+  "acceptance_condition": "Follow-on gem admission: overdueAdmissionWindowDays (lib/briefing/scorer.ts) widens the stale-overdue commitment cutoff from a 30-day blanket to 60 days for high-consequence rows (risk_score >= 60), so a real overdue money/legal/work gem (e.g. the job-offer response that lapsed ~5 weeks ago) survives to scoring; low/moderate-risk keep 30 days and the soft staleness penalty still discounts the very stale at ranking. Unit tests green; full lib/briefing suite + typecheck green; gate:continuity passes; #445 updated. (Prior slices: highConsequenceStakesFloor PR #456, lapsing-card SYNC: hygiene PR #457.)",
   "is_user_facing": false,
   "anti_regression_checks": [
     "gate:continuity green with active seam #445",
