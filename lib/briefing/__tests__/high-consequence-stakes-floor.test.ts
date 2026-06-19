@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { highConsequenceStakesFloor } from '../scorer';
+import { highConsequenceStakesFloor, overdueAdmissionWindowDays } from '../scorer';
 
 /**
  * Master Audit #445 — gem-surfacing.
@@ -51,5 +51,28 @@ describe('highConsequenceStakesFloor', () => {
     expect(highConsequenceStakesFloor('commitment', null, 1.0)).toBe(1.0);
     expect(highConsequenceStakesFloor('commitment', undefined, 1.0)).toBe(1.0);
     expect(highConsequenceStakesFloor('commitment', Number.NaN, 1.0)).toBe(1.0);
+  });
+});
+
+/**
+ * The scorer drops commitments overdue by more than the admission window before
+ * scoring. A 30-day blanket cutoff silently dropped the real job-offer gem (due
+ * 2026-05-15, ~5 weeks overdue). High-consequence (risk_score ≥ 60) active rows get
+ * a 60-day window so they survive to scoring; the soft staleness penalty still
+ * discounts them at ranking time.
+ */
+describe('overdueAdmissionWindowDays', () => {
+  it('extends the window to 60 days for high-consequence (risk ≥ 60) commitments', () => {
+    expect(overdueAdmissionWindowDays(68)).toBe(60); // the job-offer gem survives 35d overdue
+    expect(overdueAdmissionWindowDays(91)).toBe(60); // declined $346.61 transaction
+    expect(overdueAdmissionWindowDays(60)).toBe(60); // band edge
+  });
+
+  it('keeps the 30-day cutoff for low/moderate-risk and missing risk_score', () => {
+    expect(overdueAdmissionWindowDays(59)).toBe(30);
+    expect(overdueAdmissionWindowDays(20)).toBe(30);
+    expect(overdueAdmissionWindowDays(null)).toBe(30);
+    expect(overdueAdmissionWindowDays(undefined)).toBe(30);
+    expect(overdueAdmissionWindowDays(Number.NaN)).toBe(30);
   });
 });
