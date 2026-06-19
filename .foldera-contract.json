@@ -1,9 +1,9 @@
 {
-  "backlog_id": "master-audit-gem-card-hygiene-sync-prefix",
+  "backlog_id": "master-audit-pass4-backend-runtime-correctness",
   "active_issue": 445,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Master Audit #445 — gem-ranking fix. A live read-only forensic pass found the engine emits 'Nothing cleared the bar after evaluating N candidates' while real high-consequence gems sit in the admitted pool (a lapsing Rule 59(e) court motion, a job-offer acceptance, a hardship payment plan). Root cause: scorer stakes derived almost entirely from goal-match priority (6 - priority), defaulting to 1.0 with no goal match, so a genuine obligation is zeroed by the decision-moving (stakes >= 2) / lifecycle (stakes < 2 -> archive_only) invariants. Fix: highConsequenceStakesFloor in lib/briefing/scorer.ts lifts stakes from the commitment's own deterministic risk_score (>=80->4, >=60->3, >=40->2), lift-only, commitments-only. Fail-safe: noise cannot reach the floor (transactional/junk excluded at pool admission). NOT trust-aware ranking (the pool already filters trust_class — an earlier wrong diagnosis, corrected on #445). Constraint: NO paid API calls.",
+  "user_system_path": "Master Audit #445 — Pass 4 (Backend / runtime correctness), verdict CONCERN. Read-only forensic pass over cron orchestration, the paid-LLM gate, retries, the canary/egress switches, and failure modes; cross-checked live api_usage (no paid calls). The paid path is fail-closed and triple-gated before any spend (env assertPaidLlmAllowed + daily real-spend cap isOverDailyLimit $1.00/$0.25 + monthly Postgres budget RPC ensureAnthropicBudget); writes are idempotent so a mid-pipeline failure is recoverable, not corrupting. Fix-in-pass B-2: the morning-pipeline orchestrator (app/api/cron/morning-pipeline/route.ts) had no per-stage isolation — invokeStage called each child handler with no try/catch, so an uncaught throw in nightly_ops propagated out of the loop and silently dropped daily_brief (the value/delivery stage) and daily_maintenance for the whole day. invokeStage now wraps each handler: a throw becomes a recorded status:500/ok:false/threw:true result and the loop continues (overall 207). Fails safe — more stages run, never fewer. C-2 root-caused: directive_retry is a full second paid Sonnet call; live data shows ~74% of directives retry (471/637) from first-pass validateGeneratedArtifact failures — quality fix routed to Pass 5 + paid validation, NOT shipped blind; the generator retry docstring (understated worst case) was corrected. Constraint: NO paid API calls.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -11,32 +11,31 @@
     "FOLDERA_BUILD_ORDER.yaml",
     "docs/**",
     "tests/**",
-    "lib/briefing/scorer.ts",
-    "lib/briefing/__tests__/**",
-    "lib/workday-presence/triggers.ts",
-    "lib/workday-presence/__tests__/**"
+    "app/api/cron/morning-pipeline/**",
+    "lib/briefing/generator.ts",
+    "lib/utils/__tests__/api-tracker.test.ts",
+    "LESSONS_LEARNED.md"
   ],
   "forbidden_file_patterns": [
-    "app/api/**",
     "supabase/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "The scorer stakes-floor (lib/briefing/scorer.ts) + its unit test + control-plane. No schema, no deps, no app/api.",
-  "forbidden_files_raw": "No app/api, schema, or deps. Pure deterministic scoring change.",
-  "required_local_proof": "npm run gate:continuity && npx vitest run lib/briefing && npm run typecheck",
-  "required_browser_proof": "N/A — deterministic backend scoring change, exercised by unit + suite tests, not browser-observable.",
+  "allowed_files_raw": "The morning-pipeline orchestrator (app/api/cron/morning-pipeline/route.ts) + its route test for the B-2 stage-isolation fix, a comment-only docstring correction in lib/briefing/generator.ts, the Pass 4 audit doc (docs/backend/RUNTIME_CORRECTNESS.md), and control-plane. No schema, no deps, no other app/api routes.",
+  "forbidden_files_raw": "No schema (supabase/**), no deps (package.json/lock), no other app/api routes beyond the morning-pipeline orchestrator. The C-2 generation-quality fix is deliberately deferred to Pass 5 (needs paid validation) and not touched here.",
+  "required_local_proof": "npm run gate:continuity && npx vitest run app/api/cron/morning-pipeline && npm run typecheck && npm run lint && npm run build",
+  "required_browser_proof": "N/A — deterministic backend/runtime change (cron orchestrator isolation + docstring), exercised by the morning-pipeline route test, not browser-observable.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "Follow-on gem-card hygiene: the commitment_lapsing directive (lib/workday-presence/triggers.ts) no longer leaks the raw SYNC:<category>:<slug> dedup key — it prefers the clean humanCommitmentTitle when summary is a raw SYNC key. Regression test green; full lib/workday-presence suite + typecheck green; gate:continuity passes; #445 updated. (Prior slice: highConsequenceStakesFloor in lib/briefing/scorer.ts shipped via PR #456.)",
+  "acceptance_condition": "Pass 4 ships as a PR: morning-pipeline now isolates each stage (a throw in one stage cannot drop the rest), locked by a new isolation invariant in the route test (4/4); docs/backend/RUNTIME_CORRECTNESS.md records the verified runtime model + findings B-1..B-6; gate:continuity + typecheck + lint + build green; #445 updated with the Pass 4 findings receipt.",
   "is_user_facing": false,
   "anti_regression_checks": [
     "gate:continuity green with active seam #445",
-    "full lib/briefing suite green + typecheck clean; change is additive (no logic deleted)",
-    "floor is lift-only and inert for signals/relationships and for fixtures without risk_score (no regression)",
-    "noise stays suppressed — transactional/junk commitments are still excluded at pool admission, untouched by this change"
+    "morning-pipeline route test green (4/4), including the new throw-isolation invariant; typecheck + lint + build clean",
+    "the stage-isolation change is additive and fail-safe — it can only cause MORE stages to run, never fewer; no existing pass/fail semantics changed",
+    "no schema, no deps, no other app/api routes touched; C-2 generation-quality fix deferred to Pass 5 (not shipped blind)"
   ],
-  "stop_condition": "Stop when the stakes-floor is up as a PR with proof; owner validates one generation cycle surfaces a real gem instead of 'nothing cleared the bar'.",
-  "next_command": "Owner: run one generation cycle and confirm a real gem clears the bar. Next seams (not done): extend the >30d-overdue admission window for high-consequence categories (so a stale-but-critical legal/work gem isn't dropped at line ~5077); the two-way test for relationship gems; merge DRAFT PR #454 (broadcast-sender suppression) after its paid validation.",
+  "stop_condition": "Stop when Pass 4 is up as a PR with deterministic proof (tests + gate:continuity + lint + build) and the #445 findings receipt is posted. The remaining C-2 quality fix is Pass 5 and needs paid validation; B-4 (budget reconciliation) + B-5 (retry-reason observability) are deferred follow-ups.",
+  "next_command": "Review + merge the Pass 4 PR. Next unstarted audit pass is Pass 5 (AI/ML grounding), which owns the C-2 first-pass-validation-quality fix (needs paid validation), or frontend passes 6-8. Owner walls unchanged: live gem validation (paid), DRAFT PR #454 (broadcast-sender suppression), external guardian cron.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
