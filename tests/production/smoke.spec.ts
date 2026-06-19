@@ -466,13 +466,8 @@ test.describe('New user flow: unauthenticated simulation', () => {
       }
     });
     try {
-      const response = await page.goto('https://foldera.ai/pricing');
+      await page.goto('https://foldera.ai/pricing');
       await page.waitForLoadState('networkidle');
-
-      if (response?.status() === 404) {
-        test.skip(true, '/pricing returned 404 — page does not exist');
-        return;
-      }
 
       // Find any CTA button
       const ctaButton =

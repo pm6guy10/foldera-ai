@@ -1,41 +1,40 @@
 {
-  "backlog_id": "hardening-batch-3-auth-logging",
-  "active_issue": 429,
-  "base_commit": "1d17160",
+  "backlog_id": "hardening-batch-4-config-docs",
+  "active_issue": 432,
+  "base_commit": "dff1ad5",
   "money_loop_rung": "m2",
-  "user_system_path": "Repo hardening Batch 3 (#429): gate verbose auth tracing (emails / user IDs) behind a FOLDERA_DEBUG_AUTH flag via a shared authDebugLog helper; scrub PII from auth error/warn diagnostics; remove debug console.log in usefulness-gate test. No behavior change for users; prod logs stop leaking PII. NO paid API calls.",
+  "user_system_path": "Repo hardening Batch 4 (#432): complete .env.example with the verified-real missing vars (Slack tokens, owner identity, GitHub token) + document feature flags (ALLOW_APPROVAL_EMAIL_SEND, FOLDERA_DEBUG_AUTH); remove the dead /pricing 404 skip branch in smoke.spec; ticket the lone conviction-engine TODO (#431). Docs/test/comment hygiene; no runtime behavior change. NO paid API calls.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
     "docs/**",
-    "lib/auth/**",
-    "lib/briefing/**",
-    "app/api/google/**",
-    "app/api/microsoft/**"
+    ".env.example",
+    "tests/**",
+    "lib/briefing/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
+    "app/api/**",
     "package.json",
     "package-lock.json",
     "tsconfig.json"
   ],
-  "allowed_files_raw": "Batch 3 touches lib/auth/** (auth-options, supabase-auth-user, new auth-debug helper), the two OAuth callback routes, and one test in lib/briefing/__tests__. Control plane + docs as usual.",
-  "forbidden_files_raw": "No schema, dependency, or tsconfig changes in this batch.",
+  "allowed_files_raw": "Batch 4 edits .env.example (config docs), tests/production/smoke.spec.ts (dead skip branch), and lib/briefing/conviction-engine.ts (TODO comment → ticket ref). Control plane + docs as usual.",
+  "forbidden_files_raw": "No schema, API route, dependency, or tsconfig changes in this batch.",
   "required_local_proof": "npm run gate:continuity && npm run build && npm run lint && npm run typecheck",
-  "required_browser_proof": "N/A — logging-hygiene change; no user-facing path change. Sign-in flow behavior is unchanged (only log verbosity is gated).",
+  "required_browser_proof": "N/A — config/docs/test hygiene; no user-facing path change.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "Verbose auth traces (emails / user IDs) only emit when FOLDERA_DEBUG_AUTH=true; build + lint + typecheck + gate green; auth + usefulness-gate vitest green.",
+  "acceptance_condition": ".env.example documents all verified-real secret/required vars + feature flags; dead /pricing skip branch removed; conviction-engine TODO ticketed; build + lint + typecheck + gate green.",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "no PII (email / user id) logged on the default (flag-off) auth path",
-    "npm run build green",
-    "npm run lint + typecheck green",
-    "auth-related vitest suites green"
+    ".env.example contains the 7 previously-missing real env vars",
+    "no dead test.skip 404 branch for /pricing",
+    "npm run build + lint + typecheck green"
   ],
-  "stop_condition": "Stop when Batch 3 is merged and the control plane is ready for Batch 4 (or rolled to between-rungs at session end).",
-  "next_command": "Proceed to Batch 4 — config & docs hygiene (.env.example completeness + dead skip-branch / TODO cleanup).",
+  "stop_condition": "Stop when Batch 4 is merged and the control plane is ready for Batch 5 (or rolled to between-rungs at session end).",
+  "next_command": "Proceed to Batch 5 — Supabase unused-index drop migration (propose-only; do not apply to prod without owner OK).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
