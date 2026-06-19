@@ -3,7 +3,7 @@
   "active_issue": "none",
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Between rungs. The NEXT_SESSION_HARDENING mission (roadmap #420) shipped as four themed PRs (#426/#428/#430/#433). Since then: an owner-named seam greened the two frontend config-gate tests (PR #441), and the 4 low-risk dependabot bumps were merged (@supabase/supabase-js patch, autoprefixer, prettier, supabase CLI) with Stripe 18->22 (#437) deferred for breaking-change review. Owner-gated items remain: ANTHROPIC_API_KEY + Slack/CRON env in Vercel Production, Supabase auth toggles (leaked-password/MFA), the paid Tier-1 selection layer, the Stripe major bump. Constraint: NO paid API calls — prove in the harness.",
+  "user_system_path": "Between rungs. The NEXT_SESSION_HARDENING mission (#420) shipped as #426/#428/#430/#433. Since then: PR #441 greened the two frontend config-gate tests; PR #442 merged the 4 low-risk dependabot bumps; and the Stripe SDK was upgraded 18.5.0->22.2.2 (apiVersion intentionally held at '2025-08-27.basil' — pure library update, no API-behavior change). All dependabot PRs are now resolved. Owner-gated items remain: ANTHROPIC_API_KEY + Slack/CRON env in Vercel Production, Supabase auth toggles (leaked-password/MFA), the paid Tier-1 selection layer. Optional future seam: migrate the Stripe apiVersion basil->dahlia with live verification. Constraint: NO paid API calls — prove in the harness.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -31,7 +31,7 @@
     "no product/runtime files changed"
   ],
   "stop_condition": "Stop when the control plane is rolled forward to a clean between-rungs state and the owner has the final scorecard.",
-  "next_command": "New session: read ACTIVE_HANDOFF.md; the owner names the next seam. The repo is hardened, the frontend config gates are green, and the 4 safe dependabot bumps are in. Standing items: the Stripe 18->22 major bump (#437) needs review; the owner-side unlock is setting ANTHROPIC_API_KEY in Vercel Production.",
+  "next_command": "New session: read ACTIVE_HANDOFF.md; the owner names the next seam. Repo is hardened, config gates green, all dependabot PRs resolved (incl. Stripe 18->22). Optional future seam: Stripe apiVersion basil->dahlia migration. Owner-side unlock: set ANTHROPIC_API_KEY in Vercel Production.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
