@@ -1,9 +1,9 @@
 {
-  "backlog_id": "master-audit-overdue-window-high-consequence",
+  "backlog_id": "master-audit-pass6-frontend-perf-a11y",
   "active_issue": 445,
-  "base_commit": "HEAD",
+  "base_commit": "8f7a7c0",
   "money_loop_rung": "m2",
-  "user_system_path": "Master Audit #445 — gem-surfacing, slice 3: high-consequence overdue-admission window. The scorer drops commitments overdue by >30 days before scoring (lib/briefing/scorer.ts stale_overdue_commitment_filtered). That blanket cutoff silently drops a real overdue money/legal/work gem — the job-offer response that lapsed ~5 weeks ago died there even after the stakes-floor fix (#456). Fix: overdueAdmissionWindowDays widens the window to 60 days for high-consequence rows (risk_score >= 60); low/moderate-risk keep 30. Fail-safe: only widens ADMISSION — the scorer's soft staleness/timing penalty (commitment-risk timingScore) still discounts the very stale at ranking, so a truly dead low-value row cannot win. Continues PR #456 (stakes floor) + PR #457 (lapsing-card SYNC: hygiene). Constraint: NO paid API calls.",
+  "user_system_path": "Master Audit #445 — Pass 6 (Frontend Performance & Accessibility, EXPERT_PANEL.md §8). Read-only forensic pass over the public landing surface (components/foldera/LandingPage.tsx + app/globals.css), verified live at 375px. Verdict PASS. Posture confirmed: reduced-motion covers BOTH framer (MotionConfig reducedMotion='user') and the raw CSS keyframe animations (globals.css:3431 disables .ld-float/.ld-marquee/.ld-signal); overflow-x:hidden + max-w wrapper give zero horizontal overflow at 375 (main measured 375.33px); focus rings global + .ld-scoped; next/image with explicit dims (no CLS); semantic headings; hero LCP text animates immediately (not scroll-gated). Fixed in-pass: three sub-44px tap targets (header CTA min-h-[38px]->44px; mobile menu toggle + overlay close h-10->h-11). Constraint: NO paid API calls.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -11,13 +11,8 @@
     "FOLDERA_BUILD_ORDER.yaml",
     "docs/**",
     "tests/**",
-    "lib/briefing/scorer.ts",
-    "lib/briefing/__tests__/**",
-    "lib/workday-presence/triggers.ts",
-    "lib/workday-presence/__tests__/**",
-    "app/api/cron/morning-pipeline/**",
-    "lib/briefing/generator.ts",
-    "lib/utils/__tests__/api-tracker.test.ts",
+    "components/foldera/LandingPage.tsx",
+    "app/globals.css",
     "LESSONS_LEARNED.md"
   ],
   "forbidden_file_patterns": [
@@ -25,21 +20,21 @@
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Overdue-window scorer change (lib/briefing/scorer.ts) + unit test + control-plane. NOTE: this commit also merges Pass 4's already-merged files (morning-pipeline orchestrator + generator docstring + api-tracker test + LESSONS_LEARNED) from main — a parallel-agent collision resolution — so those are allow-listed for the merge. No schema, no deps.",
+  "allowed_files_raw": "Pass 6 frontend perf/a11y record (docs/frontend/PERF_A11Y_AUDIT.md) + three Tailwind tap-target bumps in components/foldera/LandingPage.tsx + control-plane. No schema, no deps, no CSS logic change.",
   "forbidden_files_raw": "No schema (supabase/**), no deps (package.json/lock).",
-  "required_local_proof": "npm run gate:continuity && npx vitest run lib/briefing && npm run typecheck",
-  "required_browser_proof": "N/A — deterministic backend scoring change, exercised by unit + suite tests, not browser-observable.",
-  "browser_proof_command": "N/A",
-  "acceptance_condition": "Follow-on gem admission: overdueAdmissionWindowDays (lib/briefing/scorer.ts) widens the stale-overdue commitment cutoff from a 30-day blanket to 60 days for high-consequence rows (risk_score >= 60), so a real overdue money/legal/work gem (e.g. the job-offer response that lapsed ~5 weeks ago) survives to scoring; low/moderate-risk keep 30 days and the soft staleness penalty still discounts the very stale at ranking. Unit tests green; full lib/briefing suite + typecheck green; gate:continuity passes; #445 updated. (Prior slices: highConsequenceStakesFloor PR #456, lapsing-card SYNC: hygiene PR #457.)",
-  "is_user_facing": false,
+  "required_local_proof": "npm run gate:continuity && npx vitest run tests/config/__tests__/design-system-buttons.test.ts",
+  "required_browser_proof": "Verified live at 375x812: main overflow-x:hidden width 375.33px (no overflow); nav-mobile-menu-toggle computed 44x44; landing-header-cta correctly hidden at 375 (shows >=640); no console errors; hero copy rendered (not animation-gated).",
+  "browser_proof_command": "preview_start 'Next.js Dev' -> resize mobile -> inspect main.ld + nav-mobile-menu-toggle",
+  "acceptance_condition": "Landing page passes the FE Perf/A11y kill-questions: no overflow at 375, tap targets >=44px, focus rings visible, reduced-motion honored for framer AND raw CSS animations, content not gated on animation. Three sub-44px tap targets fixed (verified 44px live). Record in docs/frontend/PERF_A11Y_AUDIT.md.",
+  "is_user_facing": true,
   "anti_regression_checks": [
     "gate:continuity green with active seam #445",
-    "full lib/briefing suite green + typecheck clean; change is additive (no logic deleted)",
-    "floor is lift-only and inert for signals/relationships and for fixtures without risk_score (no regression)",
-    "noise stays suppressed — transactional/junk commitments are still excluded at pool admission, untouched by this change"
+    "design-system-buttons config test green (no min-h-[48px]/rounded-button regressions)",
+    "tap-target changes are pure height/width utility bumps on already-styled controls — no layout reflow",
+    "no copy/claims change — frontend-product-truth-gate unaffected"
   ],
-  "stop_condition": "Stop when the stakes-floor is up as a PR with proof; owner validates one generation cycle surfaces a real gem instead of 'nothing cleared the bar'.",
-  "next_command": "Owner: run one generation cycle and confirm a real gem clears the bar. Next seams (not done): extend the >30d-overdue admission window for high-consequence categories (so a stale-but-critical legal/work gem isn't dropped at line ~5077); the two-way test for relationship gems; merge DRAFT PR #454 (broadcast-sender suppression) after its paid validation.",
+  "stop_condition": "Stop when Pass 6 is up as a PR with the record + live proof and merged; continue to the next audit pass (7 FE design/UX).",
+  "next_command": "Continue Master Audit #445: Pass 7 (Frontend Design/UX), then Pass 8 (Trust/Claims), 9 (Vercel deploy), 10 (GitHub CI), 11 (observability), 12 (governance meta).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
