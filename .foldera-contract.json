@@ -1,38 +1,38 @@
 {
-  "backlog_id": "master-audit-pass-3",
+  "backlog_id": "master-audit-pass-2",
   "active_issue": 445,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Master Audit #445, Pass 3 (Cost & unit economics). Cross-checked real spend read-only (cost_events/api_usage): actual COGS is $0.02-0.19/user/day vs $0.97/user/day revenue — healthy at current scale. Shipped P0.1: reverted EXTRACTION_DAILY_CAP default 4 -> 0.25 (lib/utils/api-tracker.ts), the un-reverted 2026-04-09 16x landmine, locked by tests/cost/__tests__/extraction-cap.test.ts. New finding C-2 (directive_retry costs more than directive) routed to Pass 4. Verdict CONCERN: bleed stopped + reality healthy, but worst-case-under-revenue + users-by-days shape need P0.2 lazy generation (deferred follow-on seam). Constraint: NO paid API calls.",
+  "user_system_path": "Master Audit #445, Pass 2 (Database & data integrity). Verdict PASS: cross-checked the live schema read-only — 21/26 tables user-scoped with user_id-leading indexes (5 non-user by design), composite hot-path indexes match query shapes, reprocessing dedupe via UNIQUE(user_id, content_hash) on tkg_signals, tkg_actions reconstructs before->verdict->after->source, all schema via committed migrations. One low gap: cost_events lacks a user_id index (D-3, tracked). Shipped tests/database/__tests__/data-integrity.test.ts (6 invariants) + docs/database/DATA_INTEGRITY.md. Tests + docs + control-plane only. Constraint: NO paid API calls.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
     "docs/**",
-    "tests/**",
-    "lib/utils/api-tracker.ts"
+    "tests/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
     "app/api/**",
+    "lib/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Pass 3 ships the safe P0.1 extraction-cap revert (lib/utils/api-tracker.ts) + its test + the live cost cross-check doc + control-plane. Only the one named lib file may change; the architectural P0.2/P0.3 are separate seams.",
-  "forbidden_files_raw": "No app/api, schema, or deps changes in Pass 3. Lazy-generation (P0.2) and selective extraction (P0.3) are deferred to their own seams with paid validation.",
-  "required_local_proof": "npm run gate:continuity && npx vitest run tests/cost/__tests__/extraction-cap.test.ts && npm run typecheck",
-  "required_browser_proof": "N/A — single cost-cap constant + test + cross-check doc; no user-facing surface changed.",
+  "allowed_files_raw": "Pass 2 is a read-only schema audit + guard test + findings doc: only docs/** and tests/** (plus control-plane) may change. The cost_events index (D-3) is a schema change deferred to its own seam.",
+  "forbidden_files_raw": "No app/api, lib, schema, or deps changes in Pass 2. Findings are logged in #445 and routed where they belong.",
+  "required_local_proof": "npm run gate:continuity && npx vitest run tests/database/__tests__/data-integrity.test.ts",
+  "required_browser_proof": "N/A — read-only schema audit + deterministic test, no user-facing surface changed.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "EXTRACTION_DAILY_CAP default is 0.25 (locked by tests/cost/__tests__/extraction-cap.test.ts, green), the live cost cross-check is recorded in docs/COST_AND_ECONOMICS_AUDIT.md, findings logged in #445, control plane names #445 consistently, gate:continuity + typecheck pass. (Full P0.2 lazy-generation is explicitly deferred.)",
+  "acceptance_condition": "Every user-scoped table's user_id + index coverage is proven (recorded in docs/database/DATA_INTEGRITY.md), idempotency dedupe + receipt reconstruction confirmed, the data-integrity contract test passes (6/6 green), findings logged in #445, control plane names #445 consistently, gate:continuity passes.",
   "is_user_facing": false,
   "anti_regression_checks": [
     "gate:continuity green with active seam #445",
-    "extraction-cap test green (default 0.25, env override honored)",
-    "typecheck clean; only lib/utils/api-tracker.ts changed under lib/"
+    "data-integrity contract test green (6/6)",
+    "no app/api/lib/schema/deps files changed (tests + docs only)"
   ],
-  "stop_condition": "Stop when Pass 3 is merged, the Pass 3 box is checked in #445, and the next seam (P0.2 lazy generation, or Pass 2 Database) is named.",
-  "next_command": "Next cost seam: P0.2 lazy/as-needed generation + P0.3 selective extraction (need design + paid validation). Or continue the audit at Pass 2 (Database & data integrity). Owner-side: enable Supabase leaked-password protection + MFA.",
+  "stop_condition": "Stop when Pass 2 is merged, the Pass 2 box is checked in #445, and the next seam is named.",
+  "next_command": "Continue the audit: Pass 4 (Backend/runtime — carries C-2 directive_retry) or the frontend passes 6-8, OR the deferred cost P0.2 lazy generation. Owner-side: enable Supabase leaked-password protection + MFA.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
