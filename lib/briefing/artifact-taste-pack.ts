@@ -372,7 +372,22 @@ export function evaluateCandidateArtifactability(
   }
   if (lowValueEventInvite.reason) blockers.push(lowValueEventInvite.reason);
   if (TRANSACTIONAL_SENDER_RE.test(searchText)) blockers.push('transactional_sender_candidate');
-  if (taste.family === 'relationship_risk_silence' && !COMMAND_CENTER_RE.test(searchText)) {
+  // A relationship-silence candidate is a GEM — not noise — when it is grounded in a
+  // real, recent, two-way thread (>=2 source facts within 14 days): a genuine dropped
+  // ball with a high-value contact, the kind of non-obvious insight Foldera exists to
+  // surface. Vague "you've gone quiet" with thin/stale evidence stays suppressed.
+  // (#445 gem-surfacing: the taxonomy previously ranked deadline/calendar reminders as
+  // tier_1 "gems" and demoted all relationship insight to tier_3 — inverted from value.)
+  const relationshipGrounded =
+    taste.family === 'relationship_risk_silence' &&
+    facts.length >= 2 &&
+    typeof currentnessDays === 'number' &&
+    currentnessDays <= 14;
+  if (
+    taste.family === 'relationship_risk_silence' &&
+    !relationshipGrounded &&
+    !COMMAND_CENTER_RE.test(searchText)
+  ) {
     blockers.push('relationship_silence_without_command_center_artifact');
   }
   if (candidate.suggestedActionType === 'send_message' && emailHits.length === 0) {
@@ -411,7 +426,10 @@ export function evaluateCandidateArtifactability(
     blockers.push('missing_schedule_resolution_context');
   }
 
-  const tier = tierFor(taste.family, facts.length);
+  let tier = tierFor(taste.family, facts.length);
+  // Promote a grounded relationship gem out of tier_3 so the positive-winner contract
+  // (which only lets tier_1/tier_2 win) can actually surface it. (#445 gem-surfacing)
+  if (relationshipGrounded && tier === 'tier_3') tier = 'tier_2';
   const artifactable = blockers.length === 0 && tier !== 'tier_4';
 
   return {

@@ -1,9 +1,9 @@
 {
-  "backlog_id": "master-audit-f1-ci-on-prs",
+  "backlog_id": "master-audit-gem-surfacing",
   "active_issue": 445,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Master Audit #445, finding F-1 fix (Pass 0/Pass 10): CI was on: [workflow_dispatch] only — green-looking infra that never ran on PRs (main also unprotected). Turned CI ON for pull requests (types incl. ready_for_review) + kept workflow_dispatch. Budget protected by the EXISTING change-aware gating (docs/test PRs run only lint+unit, Playwright fires only when its routes change) + concurrency-cancel + a draft-skip guard on the `changes` job (CI fires only when a PR is marked ready). Owner-side remaining half: enable GitHub branch protection on main pointing at the `ci-passed` check (dashboard). Constraint: NO paid API calls.",
+  "user_system_path": "Master Audit #445, gem-surfacing (the product-quality core). Diagnosed why the engine fires daily but delivers nothing: the artifactability taxonomy (lib/briefing/artifact-taste-pack.ts) ranked deadline/calendar/admin reminders as tier_1 'gems' and hardcoded relationship insight (relationship_risk_silence) to tier_3 + blocked it — inverted from the product's value (owner: 'surface gems, not a calendar reminder'). Fix: a relationship-silence candidate GROUNDED in a real recent two-way thread (>=2 source facts within 14 days) is promoted to tier_2 and unblocked; vague/stale ones stay suppressed. Deterministic proof shipped (gem-tiering.test.ts + 812-test briefing suite + typecheck green). Live/paid validation is the OWNER gate. Constraint: NO paid API calls from here.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -11,28 +11,29 @@
     "FOLDERA_BUILD_ORDER.yaml",
     "docs/**",
     "tests/**",
-    ".github/workflows/**"
+    "lib/briefing/artifact-taste-pack.ts"
   ],
   "forbidden_file_patterns": [
     "app/api/**",
-    "lib/**",
+    "supabase/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "F-1 fix: the ci.yml trigger flip (+ draft-skip guard) + control-plane + any findings doc. No product/runtime/schema/deps.",
-  "forbidden_files_raw": "No app/api, lib, or deps changes. Only the CI workflow trigger.",
-  "required_local_proof": "npm run gate:continuity (+ ci.yml YAML validated: pull_request+workflow_dispatch triggers, changes-job draft guard, ci-passed always())",
-  "required_browser_proof": "N/A — CI trigger change. Live proof is the PR itself: this PR, when marked ready, becomes the first run of the change-aware pipeline on a PR.",
+  "allowed_files_raw": "Gem-surfacing: the one taste-pack tiering file + its discernment test + the doctrine doc + control-plane.",
+  "forbidden_files_raw": "No app/api, schema, or deps. Only the named brain file; broader generator changes are separate, paid-validated seams.",
+  "required_local_proof": "npm run gate:continuity && npx vitest run tests/briefing/__tests__/gem-tiering.test.ts && npx vitest run lib/briefing/__tests__/ && npm run typecheck",
+  "required_product_proof": "OWNER live/paid validation: deploy, run one daily generation cycle with Anthropic credits, confirm the surfaced card is a real relationship gem (not noise). BLOCKED_WITH_EXACT_RECEIPT until then.",
+  "required_browser_proof": "N/A — backend selection-tier logic, not a UI surface. Product proof is the live generation run (see required_product_proof).",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "ci.yml runs on pull_request (not just workflow_dispatch), draft PRs are skipped, the change-aware gating + concurrency are preserved, gate:continuity passes, and F-1 is recorded resolved (code half) in #445 with the branch-protection half flagged owner-side.",
+  "acceptance_condition": "Grounded relationship gems are promoted to tier_2 and unblocked while vague/stale stay suppressed (gem-tiering.test.ts green), no regression in the briefing suite (812 green) or typecheck, doctrine recorded in docs/GEM_SURFACING.md, findings in #445. Live trust gated on owner paid validation.",
   "is_user_facing": false,
   "anti_regression_checks": [
     "gate:continuity green with active seam #445",
-    "ci.yml parses; triggers = pull_request + workflow_dispatch; changes job draft-guarded",
-    "no product/runtime/schema/deps files changed"
+    "gem-tiering discernment test green (grounded→tier_2, vague/stale→tier_3)",
+    "full briefing suite 812 green + typecheck clean; only artifact-taste-pack.ts changed under lib/"
   ],
-  "stop_condition": "Stop when the F-1 CI flip is merged and #445 records F-1 code-half done + branch-protection owner-half flagged.",
-  "next_command": "Owner: enable branch protection on main → require the `ci-passed` check (the other half of F-1). Then continue the audit fix-in-pass (Pass 4 backend/runtime carries C-2; or frontend passes 6-8). Anthropic credits exist, so C-2/P0.2 paid validation is now feasible.",
+  "stop_condition": "Stop when the gem-surfacing change is up as a PR with deterministic proof, marked BLOCKED_WITH_EXACT_RECEIPT on owner paid validation.",
+  "next_command": "Owner: deploy + run one generation cycle (credits exist) and confirm the surfaced card is a real gem. If noise, tighten grounding (require high-value entity / explicit open loop). Then revisit the broader tier re-ordering (insight density > artifact shape).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

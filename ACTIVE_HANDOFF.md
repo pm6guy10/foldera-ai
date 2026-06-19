@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — Pass 0/1/2/3 + D-3 merged; shipping F-1 CI-on-PRs)
+Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — passes 0/1/2/3 + D-3 + F-1 merged; shipping gem-surfacing, owner-validation-gated)
 
 ## Boot
 
@@ -37,13 +37,13 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 Issue #445 is the active firm-foundation audit seam.
 
-Master Audit (#445) — 13 expert-led passes, anti-rediscovery, now **fix-in-pass**. Merged: Pass 0 (#446) inventory; Pass 1 (#447) RLS `PASS`; Pass 2 (#449) database `PASS` + D-3 index fix (#450); Pass 3 (#448) cost `CONCERN`. **Shipping the F-1 fix**: `ci.yml` flipped from `workflow_dispatch`-only to run on PRs (the smart way was already built — change-aware gating means docs/test PRs cost ~lint only; Playwright fires only when its routes change; + draft-skip guard). Closes the biggest "looks-legit" gap. S-3 (Supabase leaked-pw/MFA) PARKED — Pro-plan only, we're on free.
+Master Audit (#445) — fix-in-pass. Merged: Pass 0 inventory; Pass 1 RLS `PASS`; Pass 2 database `PASS` + D-3 index; Pass 3 cost `CONCERN`; F-1 CI-on-PRs. **Shipping gem-surfacing** — the product-quality core. Diagnosed why the engine fires daily but delivers nothing: the artifactability taxonomy ranked deadline/calendar reminders as tier_1 "gems" and hardcoded relationship insight to tier_3 + blocked it — **inverted from value**. Fix (`lib/briefing/artifact-taste-pack.ts`): a relationship gem GROUNDED in a real recent two-way thread (≥2 facts ≤14d) is promoted to tier_2 + unblocked; vague/stale stays suppressed. Deterministic proof green (gem-tiering test + 812-test briefing suite + typecheck). **Live/paid validation = OWNER gate** (deploy + 1 generation cycle on credits, confirm gem-not-noise). Doctrine: `docs/GEM_SURFACING.md`.
 
 ## Next exact move
 
-1. Merge the F-1 CI flip; record F-1 code-half done in #445.
-2. **Owner half of F-1:** enable GitHub branch protection on `main` → require the `ci-passed` check (dashboard; the only thing that makes CI *enforced*, not just visible).
-3. Continue fix-in-pass: Pass 4 (backend/runtime — carries C-2 directive_retry; Anthropic credits exist so paid validation is now feasible) or frontend passes 6–8.
+1. PR up with deterministic proof; **BLOCKED_WITH_EXACT_RECEIPT** on owner live/paid validation (the brain's voice change needs a real generation run — credits exist, env is owner-side).
+2. Owner: deploy, run one daily generation cycle, confirm the surfaced card is a real relationship gem. If noise → tighten grounding (high-value entity / explicit open loop).
+3. Then the bigger tune: re-order tiers so insight density beats artifact shape. Constraint: NO paid API calls from here — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
 
