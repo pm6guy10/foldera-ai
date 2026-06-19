@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-19 UTC (active seam #417 — audit-driven continuity sweep; branch `claude/continuity-sweep-legendary`)
+Last updated: 2026-06-19 UTC (between rungs — shipped #402/#404/#407/#411/#414 + #417 continuity sweep; next: make the guardian fire on real sources)
 
 ## Boot
 
@@ -35,18 +35,13 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 ## Current slice:
 
-Issue #417 is the active product seam.
-
-#417 — audit-driven continuity sweep ("fix everything, be legendary, the whole app"). A read-only UI audit produced a punch list; this batch-fixes the deterministic defects: (1) deleted the entire orphaned `components/layout/` dir (dashboard-shell, sidebar, mobile-nav, top-bar — 0 importers; removes the off-brand gradient "F" marks → one consistent `FolderaMark`); (2) `type="button"` on the three `LandingPage` demo buttons; (3) removed user-visible "Legacy" labels on Signals/Sources; (4) aligned the `NavPublic` mobile CTA to "Start free". Panel-nav was a false alarm (page.tsx resolves `?panel=`). Frontend-only, deterministic.
-
-Also this session: shipped #402/#404/#407/#411/#414 — all LIVE on main. Slack delivery smoke-tested OK.
+None — between rungs. This session shipped #402 (send, `b698566`), #404 (attachment rails, `4125585`), #407 (write_document delivery attachment, `82dc104`), #411 (Sources MS email fix, `191520a`), #414 (homepage continuity, `a477e58`), and #417 (continuity sweep — deleted the dead `components/layout/` dir, unified the brand mark, `type=button` on landing buttons, dropped "Legacy" labels, aligned the CTA; PR #418, `c2088cc`). Slack delivery smoke-tested OK. The higher-leverage open thread is owner-side: make the guardian fire on the already-connected real sources. Awaiting the owner's next chosen seam.
 
 ## Next exact move
 
-1. Open the draft PR for `claude/continuity-sweep-legendary` → #417; get CI green.
-2. Proof (free): build + lint green; touched-file tsc clean (pre-existing test-type errors in `multi-user-safety` / `artifact-decision-enforcement` are out of scope). `gate:continuity` before PR.
-3. HIGHER-LEVERAGE next (owner-side) — the REAL-MOVE diagnosis: owner has 2 real sources connected (Outlook + Gmail) yet the brain is in safe-silence on a pipe-test fixture. Likely: the external 15-min guardian cron isn't firing (`/api/cron/workday-presence-trigger-runner` + `CRON_SECRET`), and/or generation needs `ANTHROPIC_API_KEY` + a ≥70 move, and/or Slack env (`SLACK_BOT_TOKEN`, `FOLDERA_SLACK_SELF_CHANNEL_ID`, `FOLDERA_SELF_USER_ID`). Connect-data playbook delivered to owner.
-4. Constraint: NO paid API calls — prove in the harness.
+1. Owner names the next seam (or pick from the candidates below). Until then `active_issue: none` is the valid between-rungs control-plane form.
+2. HIGHEST LEVERAGE (owner-side) — the REAL-MOVE diagnosis: owner has 2 real sources connected (Outlook + Gmail) yet the brain is in safe-silence on a pipe-test fixture. Make the guardian fire: configure the external 15-min cron hitting `/api/cron/workday-presence-trigger-runner` with `CRON_SECRET`; confirm `ANTHROPIC_API_KEY` + Slack env (`SLACK_BOT_TOKEN`, `FOLDERA_SLACK_SELF_CHANNEL_ID`, `FOLDERA_SELF_USER_ID`) in Vercel Production; a move needs ≥70 confidence to surface. Connect-data playbook delivered to owner.
+3. CODE candidates: continue the UI polish audit if more surfaces surface; the paid generator companion-document build (needs owner go + cost ceiling). Constraint: NO paid API calls — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
 
