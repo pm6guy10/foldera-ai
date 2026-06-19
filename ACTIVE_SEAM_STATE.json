@@ -1,9 +1,9 @@
 {
   "active_issue": 445,
-  "active_branch": "claude/cockpit-north-star",
+  "active_branch": "claude/audit-445-pass5-ai-grounding",
   "active_pr": null,
-  "deployed_commit_sha": "8654637",
+  "deployed_commit_sha": "da533fd",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-19T23:10:00Z"
+  "last_verified_at": "2026-06-19T23:30:00Z"
 }
