@@ -68,8 +68,8 @@ describe('Database data-integrity contract (Pass 2, #445)', () => {
     }
   });
 
-  it('the only known index gap is cost_events (so a new unindexed user table fails this test)', () => {
-    expect([...gapTables].sort()).toEqual(['cost_events']);
+  it('no known index gaps remain (D-3 cost_events fixed; a new unindexed user table now fails the index test above)', () => {
+    expect([...gapTables]).toEqual([]);
   });
 
   it('reprocessing dedupe exists: tkg_signals is unique on (user_id, content_hash)', () => {

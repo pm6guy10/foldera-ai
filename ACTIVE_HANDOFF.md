@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — Pass 0/1/3 merged; Pass 2 database shipping)
+Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — Pass 0/1/2/3 merged; shipping Pass 2 D-3 index fix)
 
 ## Boot
 
@@ -37,13 +37,13 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 Issue #445 is the active firm-foundation audit seam.
 
-Master Audit (#445) — 13 expert-led passes, anti-rediscovery (every finding logged once in #445). Merged: Pass 0 (#446) `docs/SYSTEM_INVENTORY.md`; Pass 1 (#447) RLS isolation `PASS`; Pass 3 (#448, `28e350a`) cost `CONCERN` (extraction cap 4→0.25). **Pass 2 (Database & data integrity) is shipping**, verdict `PASS`: cross-checked the live schema read-only — 21/26 tables user-scoped with user_id-leading indexes, composite hot-path indexes, reprocessing dedupe via `UNIQUE(user_id, content_hash)` on `tkg_signals`, `tkg_actions` reconstructs before→verdict→after→source, schema via committed migrations. One low gap: `cost_events` lacks a user_id index (D-3, tracked). Shipped `tests/database/__tests__/data-integrity.test.ts` (6) + `docs/database/DATA_INTEGRITY.md`.
+Master Audit (#445) — 13 expert-led passes, anti-rediscovery, now **fix-in-pass** (fix cheap/safe findings in the same PR, don't defer). Merged: Pass 0 (#446) inventory; Pass 1 (#447) RLS `PASS`; Pass 2 (#449) database `PASS`; Pass 3 (#448) cost `CONCERN`. **Shipping the Pass 2 D-3 fix**: added `idx_cost_events_user_created (user_id, created_at DESC)` via migration `20260619190000` — applied + verified on production Supabase; guard test + snapshot updated (no index gaps remain). This is the pivot from audit-and-defer to audit-and-fix.
 
 ## Next exact move
 
-1. Merge Pass 2 (data-integrity test + `docs/database/DATA_INTEGRITY.md` + control-plane roll), check the Pass 2 box in #445, leave findings logged there.
-2. Continue the audit — Pass 4 (Backend/runtime; carries C-2 directive_retry) or frontend passes 6–8 — OR the deferred cost P0.2 lazy generation.
-3. Owner-side unlock: set `ANTHROPIC_API_KEY` (+ Slack/CRON env) in Vercel Production; enable Supabase leaked-password protection + more MFA. Constraint: NO paid API calls — prove in the harness.
+1. Merge the D-3 fix (index migration + updated test/doc + control-plane), update #445.
+2. Owner decisions that unblock the remaining real fixes: (a) **F-1** — turn CI on for PRs? (costs GitHub Actions minutes deliberately cut). (b) **S-3** — enable Supabase leaked-password + MFA (dashboard). (c) fund **C-2/P0.2** paid validation.
+3. Then continue passes (4 backend/runtime, 6–8 frontend), fix-in-pass. Constraint: NO paid API calls — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
 

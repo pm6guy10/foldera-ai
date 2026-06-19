@@ -3,35 +3,35 @@
   "active_issue": 445,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Master Audit #445, Pass 2 (Database & data integrity). Verdict PASS: cross-checked the live schema read-only — 21/26 tables user-scoped with user_id-leading indexes (5 non-user by design), composite hot-path indexes match query shapes, reprocessing dedupe via UNIQUE(user_id, content_hash) on tkg_signals, tkg_actions reconstructs before->verdict->after->source, all schema via committed migrations. One low gap: cost_events lacks a user_id index (D-3, tracked). Shipped tests/database/__tests__/data-integrity.test.ts (6 invariants) + docs/database/DATA_INTEGRITY.md. Tests + docs + control-plane only. Constraint: NO paid API calls.",
+  "user_system_path": "Master Audit #445, Pass 2 (Database & data integrity) + D-3 fix. Verdict PASS. Cross-checked the live schema read-only; then FIXED the one gap (D-3): added idx_cost_events_user_created (user_id, created_at DESC) via migration 20260619190000_cost_events_user_index.sql — applied + verified on production Supabase. Guard test + snapshot updated (known_index_gaps now empty). This is the fix-in-pass pivot: don't just audit, fix the cheap/safe finding in the same PR. Constraint: NO paid API calls.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
     "docs/**",
-    "tests/**"
+    "tests/**",
+    "supabase/migrations/**"
   ],
   "forbidden_file_patterns": [
-    "supabase/**",
     "app/api/**",
     "lib/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Pass 2 is a read-only schema audit + guard test + findings doc: only docs/** and tests/** (plus control-plane) may change. The cost_events index (D-3) is a schema change deferred to its own seam.",
-  "forbidden_files_raw": "No app/api, lib, schema, or deps changes in Pass 2. Findings are logged in #445 and routed where they belong.",
+  "allowed_files_raw": "Pass 2 + D-3 fix: schema audit + the cost_events index migration (applied+verified) + guard test + findings doc + control-plane.",
+  "forbidden_files_raw": "No app/api, lib, or deps changes. Only the named index migration under supabase/migrations/.",
   "required_local_proof": "npm run gate:continuity && npx vitest run tests/database/__tests__/data-integrity.test.ts",
   "required_browser_proof": "N/A — read-only schema audit + deterministic test, no user-facing surface changed.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "Every user-scoped table's user_id + index coverage is proven (recorded in docs/database/DATA_INTEGRITY.md), idempotency dedupe + receipt reconstruction confirmed, the data-integrity contract test passes (6/6 green), findings logged in #445, control plane names #445 consistently, gate:continuity passes.",
+  "acceptance_condition": "D-3 fixed (idx_cost_events_user_created applied + verified on production; migration committed; snapshot known_index_gaps empty), data-integrity contract test passes (6/6 green), gate:continuity passes, findings updated in #445.",
   "is_user_facing": false,
   "anti_regression_checks": [
     "gate:continuity green with active seam #445",
-    "data-integrity contract test green (6/6)",
-    "no app/api/lib/schema/deps files changed (tests + docs only)"
+    "data-integrity contract test green (6/6); known_index_gaps empty",
+    "only the named index migration under supabase/migrations/ changed; no app/api/lib/deps"
   ],
-  "stop_condition": "Stop when Pass 2 is merged, the Pass 2 box is checked in #445, and the next seam is named.",
+  "stop_condition": "Stop when the Pass 2 D-3 fix is merged and the next seam is named.",
   "next_command": "Continue the audit: Pass 4 (Backend/runtime — carries C-2 directive_retry) or the frontend passes 6-8, OR the deferred cost P0.2 lazy generation. Owner-side: enable Supabase leaked-password protection + MFA.",
   "terminal_state_authority": {
     "allowed": [
