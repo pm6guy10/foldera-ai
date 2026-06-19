@@ -8,6 +8,7 @@ import {
   GOOGLE_ACCOUNT_CHOICE_PROMPT,
   MICROSOFT_ACCOUNT_CHOICE_PROMPT,
 } from '@/lib/auth/oauth-account-choice';
+import { authDebugLog } from '@/lib/auth/auth-debug';
 
 const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60;
 const ONE_DAY_IN_SECONDS = 24 * 60 * 60;
@@ -261,13 +262,13 @@ export function getAuthOptions(): NextAuthOptions {
     },
     callbacks: {
       async signIn({ account }) {
-        console.log(`[auth] signIn callback — provider: ${account?.provider}`);
+        authDebugLog(`[auth] signIn callback — provider: ${account?.provider}`);
         return true;
       },
       async jwt({ token, account, user }) {
         if (account && user) {
             // --- Initial sign-in: store OAuth tokens in JWT ---
-            console.log(`[auth][jwt] INITIAL SIGN-IN — provider: ${account.provider}, email: ${user.email}, has_access_token: ${!!account.access_token}, has_refresh_token: ${!!account.refresh_token}, expires_at: ${account.expires_at}, scope: ${(account as any).scope ?? 'none'}`);
+            authDebugLog(`[auth][jwt] INITIAL SIGN-IN — provider: ${account.provider}, email: ${user.email}, has_access_token: ${!!account.access_token}, has_refresh_token: ${!!account.refresh_token}, expires_at: ${account.expires_at}, scope: ${(account as any).scope ?? 'none'}`);
             token.accessToken = account.access_token;
             token.refreshToken = account.refresh_token;
             token.expiresAt = account.expires_at;
@@ -281,20 +282,20 @@ export function getAuthOptions(): NextAuthOptions {
             }
 
             // Session-backed routes rely on session.user.id being a real auth.users UUID.
-            console.log(`[auth][jwt] resolving Supabase user for ${user.email}...`);
+            authDebugLog(`[auth][jwt] resolving Supabase user for ${user.email}...`);
             const resolvedUserId = await resolveSupabaseAuthUserId(
               user.email,
               user.name,
             );
             token.userId = resolvedUserId;
-            console.log(`[auth][jwt] resolved userId: ${resolvedUserId}`);
+            authDebugLog(`[auth][jwt] resolved userId: ${resolvedUserId}`);
 
             // Persist OAuth tokens to user_tokens so background
             // cron jobs (sync-email, etc.) can retrieve them without a session.
             try {
               if (resolvedUserId && account.access_token) {
                 if (account.provider === 'google') {
-                  console.log(`[auth][jwt][google] persisting to user_tokens — userId: ${resolvedUserId}, has_refresh: ${!!account.refresh_token}`);
+                  authDebugLog(`[auth][jwt][google] persisting to user_tokens — userId: ${resolvedUserId}, has_refresh: ${!!account.refresh_token}`);
                   await saveUserTokenWithRetry(resolvedUserId, 'google', {
                     access_token: account.access_token,
                     refresh_token: account.refresh_token ?? '',
@@ -302,7 +303,7 @@ export function getAuthOptions(): NextAuthOptions {
                     email: user.email ?? undefined,
                     scopes: (account as any).scope ?? '',
                   });
-                  console.log(`[auth][jwt][google] user_tokens upsert OK`);
+                  authDebugLog(`[auth][jwt][google] user_tokens upsert OK`);
                 } else if (account.provider === 'azure-ad') {
                   const microsoftRefreshToken =
                     account.refresh_token ??
@@ -310,7 +311,7 @@ export function getAuthOptions(): NextAuthOptions {
                   if (!microsoftRefreshToken) {
                     console.warn('[auth][jwt][microsoft] missing refresh_token on sign-in; persist may not support background refresh until next consented sign-in');
                   }
-                  console.log(`[auth][jwt][microsoft] persisting to user_tokens — userId: ${resolvedUserId}, has_refresh: ${!!account.refresh_token}`);
+                  authDebugLog(`[auth][jwt][microsoft] persisting to user_tokens — userId: ${resolvedUserId}, has_refresh: ${!!account.refresh_token}`);
                   // saveUserToken performs an upsert, so soft-disconnected rows are restored
                   // in-place by writing fresh encrypted access/refresh tokens.
                   await saveUserTokenWithRetry(resolvedUserId, 'microsoft', {
@@ -320,9 +321,9 @@ export function getAuthOptions(): NextAuthOptions {
                     email: user.email ?? undefined,
                     scopes: (account as any).scope ?? '',
                   });
-                  console.log(`[auth][jwt][microsoft] user_tokens upsert OK`);
+                  authDebugLog(`[auth][jwt][microsoft] user_tokens upsert OK`);
                 }
-                console.log(`[auth][jwt] Token persist COMPLETE for ${account.provider}`);
+                authDebugLog(`[auth][jwt] Token persist COMPLETE for ${account.provider}`);
               } else {
                 console.warn(`[auth][jwt] SKIPPED token persist — missing: userId=${!!resolvedUserId} access=${!!account.access_token}`);
               }
@@ -358,7 +359,8 @@ export function getAuthOptions(): NextAuthOptions {
         (session.user as typeof session.user & { hasOnboarded?: boolean }).hasOnboarded =
           Boolean((token as JWT & { hasOnboarded?: boolean }).hasOnboarded);
         if (!session.user.id) {
-          console.error(`[auth][session] WARNING: token has no userId — email: ${token.email}, provider: ${token.provider}. User must sign out and sign back in to get a valid JWT.`);
+          console.error('[auth][session] WARNING: token has no userId. User must sign out and sign back in to get a valid JWT.');
+          authDebugLog(`[auth][session] missing-userId detail — email: ${token.email}, provider: ${token.provider}`);
         }
         return session;
       },

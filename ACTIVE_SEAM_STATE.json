@@ -1,9 +1,9 @@
 {
-  "active_issue": 427,
-  "active_branch": "claude/hardening-typecheck",
+  "active_issue": 429,
+  "active_branch": "claude/hardening-auth-logging",
   "active_pr": null,
   "deployed_commit_sha": "e300505",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-19T03:00:00Z"
+  "last_verified_at": "2026-06-19T04:00:00Z"
 }

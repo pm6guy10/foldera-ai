@@ -248,10 +248,6 @@ describe('usefulness gate — execution proof', () => {
     const { generateDirective } = await import('../generator');
     const result = await generateDirective('user-1', { dryRun: true });
 
-    console.log('BAD1 result.directive:', result.directive);
-    console.log('BAD1 result.action_type:', result.action_type);
-    console.log('BAD1 generationLog.stage:', result.generationLog?.stage);
-
     expect(result.directive).toBe(SENTINEL);
     // Caught by validateGeneratedArtifact (null artifact), NOT by usefulness gate
     expect(mockLogStructuredEvent).not.toHaveBeenCalledWith(
@@ -551,10 +547,6 @@ describe('usefulness gate — execution proof', () => {
 
     const { generateDirective } = await import('../generator');
     const result = await generateDirective('user-1', { dryRun: true });
-
-    console.log('VALID1 result.directive:', result.directive);
-    console.log('VALID1 result.action_type:', result.action_type);
-    console.log('VALID1 result.confidence:', result.confidence);
 
     expect(result.directive).not.toBe(SENTINEL);
     expect(result.action_type).toBe('send_message');

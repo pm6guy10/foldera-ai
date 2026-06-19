@@ -14,6 +14,7 @@ import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { saveUserToken } from '@/lib/auth/user-tokens';
 import { normalizeMicrosoftAccountEmail } from '@/lib/ui/provider-display';
+import { authDebugLog } from '@/lib/auth/auth-debug';
 import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
@@ -151,7 +152,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${settingsUrl}?microsoft_error=save_failed`);
   }
 
-  console.log(`[microsoft/callback] Microsoft connected for user ${userId} (${msEmail ?? 'no email'})`);
+  authDebugLog(`[microsoft/callback] Microsoft connected for user ${userId} (${msEmail ?? 'no email'})`);
 
   // 7. Redirect back to settings
   return NextResponse.redirect(`${settingsUrl}?microsoft_connected=true`);

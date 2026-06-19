@@ -13,6 +13,7 @@ import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { google } from 'googleapis';
 import { saveUserToken } from '@/lib/auth/user-tokens';
+import { authDebugLog } from '@/lib/auth/auth-debug';
 import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
@@ -116,7 +117,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${settingsUrl}?google_error=save_failed`);
   }
 
-  console.log(`[google/callback] Google connected for user ${userId} (${googleEmail ?? 'no email'})`);
+  authDebugLog(`[google/callback] Google connected for user ${userId} (${googleEmail ?? 'no email'})`);
 
   // 7. Redirect back to settings
   return NextResponse.redirect(`${settingsUrl}?google_connected=true`);

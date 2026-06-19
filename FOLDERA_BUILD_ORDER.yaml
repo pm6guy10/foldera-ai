@@ -22,16 +22,21 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 427
+active_issue: 429
 priority_class: PRODUCT
 work_type: CHORE
-why_this_first: "Executing docs/NEXT_SESSION_HARDENING.md (roadmap #420) as themed PRs. Batch 1 (#425, dead-code deletion) merged via PR #426 (c0142ab). Batch 2 (#427): add a typecheck npm script, un-exclude tests/+scripts/ in tsconfig, and drive the 120 surfaced tsc errors (stale test fixtures) to zero so type regressions are caught."
-next_seam: "After #427 merges: Batch 3 (auth PII logging behind FOLDERA_DEBUG_AUTH), Batch 4 (env/docs hygiene), Batch 5 (Supabase unused-index drop migration, propose-only). Constraint: NO paid API calls — prove in the harness."
+why_this_first: "Executing docs/NEXT_SESSION_HARDENING.md (roadmap #420) as themed PRs. Batch 1 (#425) merged via #426 (c0142ab); Batch 2 (#427, typecheck) merged via #428 (1d17160). Batch 3 (#429): gate verbose auth tracing (emails / user IDs) behind FOLDERA_DEBUG_AUTH so prod logs stop leaking PII."
+next_seam: "After #429 merges: Batch 4 (env/docs hygiene — .env.example completeness + dead skip-branch/TODO cleanup), Batch 5 (Supabase unused-index drop migration, propose-only). Constraint: NO paid API calls — prove in the harness."
 completed_issue_425:
   issue: 425
   pr: 426
   pr_merge_sha: c0142ab
   summary: "Batch 1 dead-code deletion: 29 verified zero-import orphans removed (orphaned dashboard cluster, dead foldera/ui components, dead lib modules, orphaned dashboard-page-model + its 2 tests). Meta-tests + lib/utils barrel updated. build + lint + gate green; vitest 1914 passing."
+completed_issue_427:
+  issue: 427
+  pr: 428
+  pr_merge_sha: 1d17160
+  summary: "Batch 2 type safety: added typecheck npm script (tsc --noEmit), un-excluded tests/+scripts/ in tsconfig, drove 120 tsc errors (stale test fixtures vs evolved types) to zero. build + lint + typecheck + gate green; vitest 1913 passing (2 pre-existing reds untouched)."
 completed_issue_421:
   issue: 421
   pr: 422

@@ -1,5 +1,6 @@
 import { createServerClient } from '@/lib/db/client';
 import type { SupabaseClient } from '@/lib/db/client';
+import { authDebugLog } from '@/lib/auth/auth-debug';
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -21,7 +22,7 @@ async function lookupAuthUserIdByEmail(
     });
 
     if (!error && data) {
-      console.log(`[supabase-auth] found user ${data} via RPC for ${normalizedEmail}`);
+      authDebugLog(`[supabase-auth] found user ${data} via RPC for ${normalizedEmail}`);
       return data as string;
     }
 
@@ -44,7 +45,7 @@ async function lookupAuthUserIdByEmail(
         (user) => normalizeEmail(user.email ?? '') === normalizedEmail,
       );
       if (match?.id) {
-        console.log(`[supabase-auth] found user ${match.id} via listUsers for ${normalizedEmail}`);
+        authDebugLog(`[supabase-auth] found user ${match.id} via listUsers for ${normalizedEmail}`);
         return match.id;
       }
     } else if (error) {
@@ -71,14 +72,14 @@ export async function resolveSupabaseAuthUserId(
   name?: string | null,
 ): Promise<string> {
   const normalizedEmail = normalizeEmail(email);
-  console.log(`[supabase-auth] resolving user for email: ${normalizedEmail}`);
+  authDebugLog(`[supabase-auth] resolving user for email: ${normalizedEmail}`);
   const supabase = createServerClient();
 
   const existingId = await lookupAuthUserIdByEmail(supabase, normalizedEmail);
   if (existingId) return existingId;
 
   // No existing user — create one
-  console.log(`[supabase-auth] no existing user found for ${normalizedEmail}, creating...`);
+  authDebugLog(`[supabase-auth] no existing user found for ${normalizedEmail}, creating...`);
 
   const { data, error } = await supabase.auth.admin.createUser({
     email: normalizedEmail,
@@ -90,11 +91,11 @@ export async function resolveSupabaseAuthUserId(
     if (isAlreadyRegisteredError(error)) {
       // The user exists but both lookups failed transiently. One more lookup
       // keeps an existing owner signed in instead of hard-failing the session.
-      console.warn(`[supabase-auth] createUser says ${normalizedEmail} already registered; retrying lookup`);
+      console.warn('[supabase-auth] createUser reports email already registered; retrying lookup');
       const recoveredId = await lookupAuthUserIdByEmail(supabase, normalizedEmail);
       if (recoveredId) return recoveredId;
     }
-    console.error(`[supabase-auth] createUser failed for ${normalizedEmail}:`, error.message);
+    console.error('[supabase-auth] createUser failed:', error.message);
     throw error;
   }
 
@@ -102,6 +103,6 @@ export async function resolveSupabaseAuthUserId(
     throw new Error('Failed to create Supabase auth user');
   }
 
-  console.log(`[supabase-auth] created user ${data.user.id} for ${normalizedEmail}`);
+  authDebugLog(`[supabase-auth] created user ${data.user.id} for ${normalizedEmail}`);
   return data.user.id;
 }
