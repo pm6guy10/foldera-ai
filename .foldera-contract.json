@@ -1,9 +1,9 @@
 {
-  "backlog_id": "master-audit-pass8-trust-honest-claims",
+  "backlog_id": "master-audit-pass9-vercel-deploy",
   "active_issue": 445,
-  "base_commit": "e8b4fec",
+  "base_commit": "6277f88",
   "money_loop_rung": "m2",
-  "user_system_path": "Master Audit #445 — Pass 8 (Trust, Privacy & Honest-Claims, EXPERT_PANEL.md §9). Forensic pass over public claim surfaces (landing, /pricing, /security, demo). Found a real false enterprise claim: 'SSO / SCIM' / 'SAML 2.0 ready' shown on landing + /pricing while NO SAML/SCIM/SSO is implemented (auth is consumer Google + AzureAD OAuth only). Fail-safe fix: removed the unproven claim from both surfaces (+ unused Users icon import), and hardened the forbidden-claim keep-list (scripts/continuity-gate.ts forbiddenClaimTerms) with SSO/SCIM, SCIM, SAML so it cannot regress. Bare 'SSO' deliberately NOT added (collides with 'processor'/'lesson'). Other claims verified honest (read-only, least-privilege, no-training, encryption, audit-logs=tkg_actions receipts, no surveillance, no customer-count theater). O-8.1 demo upsell copy left as forward-looking, recorded. Constraint: NO paid API calls.",
+  "user_system_path": "Master Audit #445 — Pass 9 (Vercel deploy/config). Forensic pass over vercel.json + next.config.mjs: security headers (strict CSP, X-Frame DENY, nosniff, frame-ancestors none, object-src none), single morning-pipeline cron (0 11 * * *), maxDuration set on all 4 pipeline routes (300/300/60/60), sensible marketing-alias redirects (/try,/signup,/request-access -> /start), correct HTML/session-JSON caching, Sentry wired. Header definitions cleanly split (security in vercel.json, cache/robots in next.config) — no duplication. Verdict PASS, no code change. Observations: O-9.1 legacy /try page + /api/try/analyze shadowed by redirects (routed to a guarded cleanup task, not deleted blind — e2e + unit tests exercise the boundary); O-9.2 CSP allows unsafe-inline/unsafe-eval (Next tradeoff, nonce hardening is future); O-9.3 maxDuration=300 assumes Pro tier (owner dashboard fact). Constraint: NO paid API calls.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -11,9 +11,6 @@
     "FOLDERA_BUILD_ORDER.yaml",
     "docs/**",
     "tests/**",
-    "components/foldera/LandingPage.tsx",
-    "app/pricing/page.tsx",
-    "scripts/continuity-gate.ts",
     "LESSONS_LEARNED.md"
   ],
   "forbidden_file_patterns": [
@@ -21,21 +18,20 @@
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Pass 8 trust/claims record + removal of false SSO/SCIM/SAML enterprise claim from LandingPage.tsx (+ unused Users import) and app/pricing/page.tsx, plus forbidden-claim keep-list hardening in scripts/continuity-gate.ts (a governance-gate file, exempt from product contract scope). No schema, no deps.",
+  "allowed_files_raw": "Pass 9 deploy/config record (docs/backend/VERCEL_DEPLOY_AUDIT.md) + control-plane only. Documentation pass; config verified healthy, no source change.",
   "forbidden_files_raw": "No schema (supabase/**), no deps (package.json/lock).",
   "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "gate:continuity green AFTER adding SSO/SCIM/SCIM/SAML to forbiddenClaimTerms proves no such claim remains in app/components/public; landing render already proven live (Pass 6) and the change only removes one strip item.",
-  "browser_proof_command": "npm run gate:continuity",
-  "acceptance_condition": "No public surface claims an unproven enterprise/compliance/customer capability. The SSO/SCIM/SAML claim is removed from landing + /pricing and the forbidden-claim gate now blocks its return. Record in docs/frontend/TRUST_HONEST_CLAIMS_AUDIT.md.",
-  "is_user_facing": true,
+  "required_browser_proof": "N/A — deploy-config audit; vercel.json + next.config.mjs read end-to-end, cron maxDuration confirmed on all 4 routes, header layering checked (no duplication).",
+  "browser_proof_command": "N/A",
+  "acceptance_condition": "Deploy config passes: strict CSP + security headers on all routes, single cron with maxDuration, no header duplication, sensible redirects/caching. Record in docs/backend/VERCEL_DEPLOY_AUDIT.md; /try dead-route cleanup routed to a guarded task.",
+  "is_user_facing": false,
   "anti_regression_checks": [
-    "gate:continuity green with active seam #445 AND with the 3 new forbidden terms (proves the claim is fully gone)",
-    "no remaining SSO/SCIM/SAML in app/components/public (verified by grep, false substrings excluded)",
-    "fix is removal-only on copy + an unused-import delete — no logic/behavior change",
-    "remaining 4 enterprise items + pricing line are all proven-true claims"
+    "gate:continuity green with active seam #445",
+    "documentation-only; no runtime, schema, or UI change",
+    "no security-header regression — headers untouched, only audited"
   ],
-  "stop_condition": "Stop when Pass 8 is up as a PR with proof and merged; continue to Pass 9 (Vercel deploy).",
-  "next_command": "Continue Master Audit #445: Pass 9 (Vercel deploy/config), then 10 (GitHub CI), 11 (observability), 12 (governance meta).",
+  "stop_condition": "Stop when Pass 9 record is up as a PR and merged; continue to Pass 10 (GitHub CI).",
+  "next_command": "Continue Master Audit #445: Pass 10 (GitHub CI), then 11 (observability), 12 (governance meta).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
