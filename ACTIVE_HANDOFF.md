@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — Pass 0 merged #446; Pass 1 security shipping)
+Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — Pass 0/1 merged; Pass 3 cost shipping)
 
 ## Boot
 
@@ -37,12 +37,12 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 Issue #445 is the active firm-foundation audit seam.
 
-Master Audit (#445) — 13 expert-led passes, anti-rediscovery (every finding logged once in #445). Pass 0 merged (#446, `75dca52`) — `docs/SYSTEM_INVENTORY.md` is the canonical "what IS." **Pass 1 (Security & multi-tenant isolation) is shipping**, verdict `PASS`: proved read-only that all 26 tables are RLS-enabled, every tenant policy is scoped by `auth.uid()`, internal tables are restrictive-deny, the service-role key is server-only, and connector tokens are encrypted at rest. Closed the one CONCERN (no regression guard) with `tests/security/__tests__/rls-isolation.test.ts` (6 invariants, green) + `docs/security/RLS_ISOLATION.md`. Owner-side: enable Supabase leaked-password protection + MFA (advisor WARN). Next: Pass 3 (Cost).
+Master Audit (#445) — 13 expert-led passes, anti-rediscovery (every finding logged once in #445). Pass 0 merged (#446) — `docs/SYSTEM_INVENTORY.md`. Pass 1 merged (#447, `6a3be87`) — RLS isolation `PASS` + 6-invariant contract test. **Pass 3 (Cost & unit economics) is shipping**, verdict `CONCERN`: real spend cross-checked read-only ($0.02–0.19/user/day vs $0.97 revenue — healthy now). Shipped P0.1 — reverted `EXTRACTION_DAILY_CAP` 4→0.25 (the 16× landmine), locked by `tests/cost/__tests__/extraction-cap.test.ts`. Finding C-2 (directive_retry > directive cost) → Pass 4. The structural fix (P0.2 lazy generation) is deferred — needs design + paid validation.
 
 ## Next exact move
 
-1. Merge Pass 1 (RLS isolation test + `docs/security/RLS_ISOLATION.md` + control-plane roll), check the Pass 1 box in #445, leave findings logged there.
-2. Start Pass 3 (Cost & unit economics) as its own seam → PR: execute `docs/COST_AND_ECONOMICS_AUDIT.md`.
+1. Merge Pass 3 (extraction-cap revert + test + live cost cross-check + control-plane roll), check the Pass 3 box in #445, leave findings logged there.
+2. Next cost seam: P0.2 lazy/as-needed generation + P0.3 selective extraction (design + paid validation) — OR continue the audit at Pass 2 (Database & data integrity).
 3. Owner-side unlock: set `ANTHROPIC_API_KEY` (+ Slack/CRON env) in Vercel Production; enable Supabase leaked-password protection + more MFA. Constraint: NO paid API calls — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
