@@ -1,39 +1,39 @@
 {
-  "backlog_id": "between-rungs",
-  "active_issue": "none",
+  "backlog_id": "right-away-guardian-on-open",
+  "active_issue": 421,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Between rungs. The live product thread is the GUARDIAN (workday-presence): it fires, grounds a real commitment, and pings Slack only when it has a reviewable move. Recent shipped work: #402 (send), #404 (attachment rails), #407 (write_document delivery attachment), #411 (Sources MS email fix), #414 (homepage continuity), #417 (continuity sweep — deleted the dead components/layout/ dir, unified the brand mark, type=button on landing demo buttons, dropped 'Legacy' labels, aligned the CTA). The HIGHER-LEVERAGE open thread is owner-side: the owner has 2 real sources connected (Outlook + Gmail) yet the brain is in safe-silence on a pipe-test fixture — the external 15-min guardian cron is not firing (/api/cron/workday-presence-trigger-runner + CRON_SECRET), and/or generation needs ANTHROPIC_API_KEY + a >=70 move, and/or Slack env (SLACK_BOT_TOKEN, FOLDERA_SLACK_SELF_CHANNEL_ID, FOLDERA_SELF_USER_ID). Connect-data playbook delivered to the owner. Constraint: NO paid API calls to test — prove in the harness.",
+  "user_system_path": "Seam #421 — owner direction: '15 min is too sporadic; right away; I don't want to pay [for Pro].' Replace the time-based cron plan with event-driven immediate triggering. The mechanism already exists: sync-now (Google/Microsoft) chains maybeRunWorkdayPresenceTriggerRunnerForUser, which is FREE (repackages the already-paid daily artifact into a reviewable move; a DB read, no LLM), and sync-now is server-side rate-limited (429). This wires the dashboard Today panel to fire a throttled background sync-now on app open, then re-runs loadCard() so the current move surfaces immediately — no cron, no Pro, no per-open paid generation. Constraint: NO paid API calls to test — prove in the harness.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "SESSION_HISTORY.md",
-    "LESSONS_LEARNED.md",
-    "docs/**"
+    "docs/**",
+    "app/dashboard/page.tsx"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
-    "app/api/**",
-    "lib/**",
     "package.json",
-    "package-lock.json"
+    "package-lock.json",
+    "lib/**",
+    "app/api/**"
   ],
-  "allowed_files_raw": "Between rungs — only control-plane + docs may change until the owner names the next seam (which re-scopes this contract).",
-  "forbidden_files_raw": "No product/runtime/schema/deps changes without an active seam + scoped contract.",
-  "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "N/A — between rungs.",
-  "browser_proof_command": "N/A",
-  "acceptance_condition": "Control plane is consistent in the between-rungs form (build-order active_issue: none, contract active_issue: none, no active-seam line in ACTIVE_HANDOFF) and gate:continuity passes.",
-  "is_user_facing": false,
+  "allowed_files_raw": "Seam #421: one guarded effect in app/dashboard/page.tsx (TodayPanel) + control-plane.",
+  "forbidden_files_raw": "No schema, no deps, no runtime/API logic, no lib changes — reuse the existing sync-now + trigger path.",
+  "required_local_proof": "npm run gate:continuity && npm run build && npm run lint",
+  "required_browser_proof": "Build + lint + tsc clean. Live owner validation: open the dashboard Today panel and confirm it auto-syncs and surfaces the current move without a manual sync (throttled to 5 min/session).",
+  "browser_proof_command": "npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list",
+  "acceptance_condition": "Opening the dashboard fires a throttled background sync-now for connected providers and refreshes the Right Now card so the current move appears immediately, with no new cron, no paid generation on the path, and gate:continuity + build + lint green.",
+  "is_user_facing": true,
   "anti_regression_checks": [
-    "gate:continuity green in between-rungs form",
-    "no active-seam line in ACTIVE_HANDOFF.md",
-    "no product/runtime files changed"
+    "gate:continuity green",
+    "no paid LLM on the open path (trigger runner repackages the already-paid artifact)",
+    "client throttle (5 min) on top of the route 429 rate limit",
+    "no schema/deps/lib/api changes"
   ],
-  "stop_condition": "Stop when the control plane is rolled forward to a clean between-rungs state and the owner has a boot prompt for the next session.",
-  "next_command": "OWNER-SIDE (highest leverage): make the guardian fire on the already-connected real sources — configure the external 15-min cron hitting /api/cron/workday-presence-trigger-runner with CRON_SECRET; confirm ANTHROPIC_API_KEY + Slack env (SLACK_BOT_TOKEN, FOLDERA_SLACK_SELF_CHANNEL_ID, FOLDERA_SELF_USER_ID) in Vercel Production. CODE candidates: continue UI polish if more surfaces surface; the paid generator companion-document build.",
+  "stop_condition": "Stop when the draft PR for #421 is open with CI green, or BLOCKED_WITH_EXACT_RECEIPT on owner-side dashboard validation.",
+  "next_command": "Owner: open the dashboard and confirm it auto-syncs + surfaces the current move. Then the daily generation must actually produce an artifact (ANTHROPIC_API_KEY) for the trigger to surface — confirm that env. Hygiene backlog captured in #420.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

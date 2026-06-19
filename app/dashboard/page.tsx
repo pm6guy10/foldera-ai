@@ -123,6 +123,35 @@ function TodayPanel() {
     };
   }, [status]);
 
+  // Right away, free: on app open, pull fresh source data and re-run the guardian.
+  // sync-now ingests new signals and then chains maybeRunWorkdayPresenceTriggerRunner,
+  // which repackages the already-generated (already-paid) daily artifact into a
+  // reviewable move — a DB read, no LLM. Throttled client-side to 5 min on top of the
+  // route's own 429 rate limit, then we refresh the card so the current move surfaces
+  // immediately. This is the event-driven replacement for a time-based cron.
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    if (typeof window === 'undefined') return;
+    const GUARD_KEY = 'foldera_last_autosync_at';
+    const THROTTLE_MS = 5 * 60 * 1000;
+    const now = Date.now();
+    const last = Number(window.sessionStorage.getItem(GUARD_KEY) ?? 0);
+    if (Number.isFinite(last) && now - last < THROTTLE_MS) return;
+    window.sessionStorage.setItem(GUARD_KEY, String(now));
+
+    let cancelled = false;
+    void (async () => {
+      await Promise.allSettled([
+        fetch('/api/google/sync-now', { method: 'POST' }),
+        fetch('/api/microsoft/sync-now', { method: 'POST' }),
+      ]);
+      if (!cancelled) await loadCard();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [status, loadCard]);
+
   const saveAnchor = useCallback(
     async (input: {
       current_focus: string;

@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
+active_issue: 421
 priority_class: PRODUCT
-work_type: POLISH
-why_this_first: "Between rungs. This session shipped #402 (send), #404 (attachment rails), #407 (write_document delivery attachment), #411 (Sources MS email fix), #414 (homepage continuity), and #417 (continuity sweep — deleted the dead components/layout/ dir, unified the brand mark, type=button on landing buttons, dropped 'Legacy' labels, aligned the CTA; PR #418, c2088cc). The higher-leverage open thread is owner-side: make the guardian fire on the already-connected real sources. Awaiting the owner's next move."
-next_seam: "OWNER-SIDE (highest leverage): the owner has 2 real sources connected (Outlook + Gmail) yet the brain is in safe-silence on a pipe-test fixture. Make the guardian fire — configure the external 15-min cron hitting /api/cron/workday-presence-trigger-runner with CRON_SECRET; confirm ANTHROPIC_API_KEY + Slack env (SLACK_BOT_TOKEN, FOLDERA_SLACK_SELF_CHANNEL_ID, FOLDERA_SELF_USER_ID) in Vercel Production; a move needs >=70 confidence (CONFIDENCE_SEND_THRESHOLD) to surface. Connect-data playbook delivered to the owner. CODE candidates: continue the UI polish audit if more surfaces surface; the paid generator companion-document build."
+work_type: FEATURE
+why_this_first: "Owner redirect: '15 min is too sporadic; right away; I don't want to pay [for Pro].' #421 replaces the time-based cron plan with event-driven immediate triggering — and the mechanism already exists: sync-now (Google/Microsoft) chains a FREE trigger eval (repackages the already-paid daily artifact; DB read, no LLM) and is server-side rate-limited. This wires the dashboard Today panel to fire a throttled background sync-now on app open, then refreshes the card so the current move surfaces immediately. No cron, no Pro, no per-open paid generation. The big repo+Supabase hygiene backlog is captured in the roadmap issue #420."
+next_seam: "OWNER-SIDE: open the dashboard, confirm it auto-syncs and surfaces the current move. For a move to exist, daily generation must run (ANTHROPIC_API_KEY) to produce the artifact the free trigger surfaces — confirm that env. CODE backlog (roadmap #420): repo hygiene (delete ~21 orphan components + dead lib modules; fix 103 test-file tsc errors; gate auth PII logging; document missing env vars; add a typecheck script); the paid selection-layer (risk scoring) build; the paid generator companion-document build."
 completed_issue_417:
   issue: 417
   pr: 418
