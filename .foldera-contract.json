@@ -1,15 +1,17 @@
 {
-  "backlog_id": "between-rungs",
+  "backlog_id": "fix-config-gate-reds",
   "active_issue": "none",
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Between rungs. The NEXT_SESSION_HARDENING mission (roadmap #420) shipped as four themed PRs: #426 (dead-code deletion), #428 (typecheck + un-exclude tests/scripts, 120 tsc errors -> 0), #430 (auth PII tracing gated behind FOLDERA_DEBUG_AUTH), #433 (.env.example completeness + dead skip-branch / TODO cleanup). Batch 5 (Supabase unused-index drop) was evaluated and rejected as WRONG PATH — both indexes are intentionally retained FK-support indexes (#434). Owner-gated items remain: ANTHROPIC_API_KEY + Slack/CRON env in Vercel Production, Supabase auth toggles (leaked-password/MFA), the paid Tier-1 selection layer, stale-branch pruning. Constraint: NO paid API calls — prove in the harness.",
+  "user_system_path": "Owner-named maintenance seam (no GitHub issue): green the two frontend config-gate tests that were red on main. (1) tests/config/__tests__/design-system-buttons.test.ts failed because app/pricing/page.tsx used the banned raw touch-height primitive min-h-[48px]; replaced with min-h-[44px], the app-wide standard. (2) tests/config/__tests__/frontend-product-truth-gate.test.ts failed because REQUIRED_HOMEPAGE_COPY still required a phrase that lived only in the FINAL CTA section #414 (a477e58) intentionally removed; dropped it from the required list. Scoped to allow exactly these files; the contract is restored to the between-rungs form in the same branch so main stays clean. Constraint: NO paid API calls — proven in the local harness.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "docs/**"
+    "docs/**",
+    "app/pricing/page.tsx",
+    "tests/config/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
@@ -18,20 +20,20 @@
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Between rungs — only control-plane + docs may change until the owner names the next seam (which re-scopes this contract).",
-  "forbidden_files_raw": "No product/runtime/schema/deps changes without an active seam + scoped contract.",
-  "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "N/A — between rungs.",
-  "browser_proof_command": "N/A",
-  "acceptance_condition": "Control plane is consistent in the between-rungs form (build-order active_issue: none, contract active_issue: none, no active-seam line in ACTIVE_HANDOFF) and gate:continuity passes.",
-  "is_user_facing": false,
+  "allowed_files_raw": "Owner-named maintenance seam: only the two config-gate-fix files (app/pricing/page.tsx + tests/config/**) plus control-plane + docs may change.",
+  "forbidden_files_raw": "No schema/api/lib/deps changes — this seam is a frontend config-gate fix only.",
+  "required_local_proof": "npx vitest run tests/config/__tests__/design-system-buttons.test.ts tests/config/__tests__/frontend-product-truth-gate.test.ts && npm run gate:continuity",
+  "required_browser_proof": "Load /pricing and confirm both CTAs render with min-height 44px and no console errors.",
+  "browser_proof_command": "preview_start Next.js Dev; navigate /pricing; assert both CTA buttons compute min-height: 44px",
+  "acceptance_condition": "Both named config-gate tests pass; typecheck + lint + build clean; gate:continuity green; /pricing renders correctly; contract restored to between-rungs scope before merge.",
+  "is_user_facing": true,
   "anti_regression_checks": [
-    "gate:continuity green in between-rungs form",
-    "no active-seam line in ACTIVE_HANDOFF.md",
-    "no product/runtime files changed"
+    "design-system-buttons + frontend-product-truth-gate tests green",
+    "no min-h-[48px] or rounded-button in any TSX",
+    "/pricing still renders both CTAs"
   ],
-  "stop_condition": "Stop when the control plane is rolled forward to a clean between-rungs state after the hardening mission and the owner has the final scorecard.",
-  "next_command": "New session: read ACTIVE_HANDOFF.md; the owner names the next seam. The repo is hardened (typecheck clean, no dead orphans, no auth PII in prod logs, .env.example complete). The remaining unlock is owner-side: set ANTHROPIC_API_KEY in Vercel Production so daily generation produces the artifact the free trigger surfaces.",
+  "stop_condition": "Stop when both config-gate tests are green, the fix is merged, and the control plane is rolled back to the clean between-rungs form.",
+  "next_command": "After merge, roll the control plane back to the between-rungs form (active_issue: none, contract scope = control-plane + docs only) and await the owner's next named seam.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
