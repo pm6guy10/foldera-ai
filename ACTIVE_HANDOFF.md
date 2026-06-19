@@ -35,12 +35,14 @@ Issue #445 is the active firm-foundation audit seam.
 
 **Pass 8 (trust/claims) `PASS` (fixed):** found a real false enterprise claim — "SSO / SCIM" / "SAML 2.0 ready" on landing + /pricing while NO SAML/SCIM/SSO exists (auth = Google + AzureAD OAuth only). Removed both, hardened `forbiddenClaimTerms` (SSO/SCIM, SCIM, SAML) so it can't regress. Other claims verified honest. Record: `docs/frontend/TRUST_HONEST_CLAIMS_AUDIT.md`.
 
-**Passes 9–12 NOT started.** Pass 9 (Vercel deploy/config), 10 (GitHub CI), 11 (observability), 12 (governance meta) next; or owner runs the C-2 paid-validation lever.
+**Pass 9 (Vercel deploy/config) `PASS`:** strict CSP + security headers on all routes, single morning-pipeline cron with `maxDuration` on all 4 pipeline routes, sensible redirects/caching, Sentry wired, no header duplication. Obs: O-9.1 legacy `/try` page+api shadowed by redirects (guarded cleanup task spawned), O-9.2 CSP allows unsafe-inline/eval (Next tradeoff), O-9.3 maxDuration=300 assumes Pro tier. Record: `docs/backend/VERCEL_DEPLOY_AUDIT.md`.
+
+**Passes 10–12 NOT started.** Pass 10 (GitHub CI), 11 (observability), 12 (governance meta) next; or owner runs the C-2 paid-validation lever.
 
 ## Next exact move
 
 1. **Owner — the value lever (TRUE wall):** one paid generation cycle to confirm a real gem now surfaces. This is the *only* move that turns "healthy" into "valuable."
-2. **Next audit pass: 9 (Vercel), 10 (CI), 11 (observability), 12 (governance meta)** — all harness-doable. (Passes 5–8 done; C-2 paid-validation lever is the owner item above.)
+2. **Next audit pass: 10 (CI), 11 (observability), 12 (governance meta)** — all harness-doable. (Passes 5–9 done; C-2 paid-validation lever is the owner item above.)
 3. **PR #454 (DRAFT) — broadcast/recruiting-sender suppression** (owner judgment; changes entity admission, can over-suppress at edge cases). On `claude/mvp-polish-pass-audit-sg9e4k`.
 4. Deferred follow-ups (harness-only): B-4 budget-reservation reconciliation; B-5 persist retry reasons (Pass 11); the two-way test for relationship gems (coupled to #454). [>30d-overdue admission window shipped via #460.]
 
