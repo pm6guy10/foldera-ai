@@ -695,25 +695,6 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
             </Reveal>
           </section>
 
-          {/* FINAL CTA */}
-          <section className={`${sectionWrap} py-24 lg:py-32`} data-testid="landing-final-cta">
-            <Reveal className="mx-auto max-w-3xl text-center">
-              <h2 className="ld-display text-[2.4rem] tracking-[-0.04em] text-[color:var(--ld-fg)] sm:text-[3.5rem]">
-                Restore your continuity.
-              </h2>
-              <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-[color:var(--ld-fg-muted)]">
-                Stop acting as the human integration layer. Let Foldera hold the context, so you can do the work.
-              </p>
-              <p className="ld-mono mx-auto mt-4 text-[12px] uppercase tracking-[0.16em] text-[color:var(--ld-accent)]">
-                One trusted answer. All the context. Next move ready.
-              </p>
-              <div className="mt-9 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
-                <AccessLink testId="landing-final-access-cta">Get started</AccessLink>
-                <GhostLink href={loginHref} testId="landing-final-login-cta">Sign in</GhostLink>
-              </div>
-            </Reveal>
-          </section>
-
           {/* FOOTER */}
           <footer
             data-testid="landing-footer"

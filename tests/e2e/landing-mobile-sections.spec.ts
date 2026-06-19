@@ -10,7 +10,6 @@ const orderedSections = [
   'landing-trust',
   'landing-enterprise',
   'landing-pilot',
-  'landing-final-cta',
   'landing-footer',
 ];
 
@@ -30,15 +29,13 @@ test.describe('Landing sections', () => {
       previousTop = box!.y;
     }
 
-    // Access CTAs route to /start, login CTAs route to /login.
+    // Access CTAs route to /start.
     for (const testId of [
       'landing-primary-access-cta',
       'landing-pilot-access-cta',
-      'landing-final-access-cta',
     ]) {
       await expect(page.getByTestId(testId)).toHaveAttribute('href', '/start');
     }
-    await expect(page.getByTestId('landing-final-login-cta')).toHaveAttribute('href', '/login');
   });
 
   test('has no horizontal overflow at 390x844', async ({ page }) => {

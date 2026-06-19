@@ -31,18 +31,15 @@ test.describe('Landing page visual/access QA gate', () => {
       await expect(page.getByTestId('landing-trust')).toContainText('No surveillance');
       await expect(page.getByTestId('landing-trust')).toContainText('It lives where you work');
       await expect(page.getByTestId('landing-pilot')).toContainText('Stop checking nine apps');
-      await expect(page.getByTestId('landing-final-cta')).toContainText('Restore your continuity.');
       await expect(page.getByTestId('landing-footer')).toBeVisible();
 
       for (const testId of [
         'landing-header-cta',
         'landing-primary-access-cta',
         'landing-pilot-access-cta',
-        'landing-final-access-cta',
       ]) {
         await expect(page.getByTestId(testId)).toHaveAttribute('href', '/start');
       }
-      await expect(page.getByTestId('landing-final-login-cta')).toHaveAttribute('href', '/login');
 
       const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
       expect(scrollWidth).toBeLessThanOrEqual(viewport.width + 10);

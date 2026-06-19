@@ -1,39 +1,41 @@
 {
-  "backlog_id": "between-rungs",
-  "active_issue": "none",
+  "backlog_id": "homepage-continuity-logo-cta",
+  "active_issue": 414,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Between rungs. The live product thread is the GUARDIAN (workday-presence): it fires, grounds a real commitment, and pings Slack only when it has a reviewable move. Recent shipped work: #402 (review-gated send), #404 (email draft attachments), #407 (the generator attaches its own work — write_document delivery carries the doc as a real file), #411 (Sources screen shows the real Microsoft email instead of the raw Azure guest UPN). The remaining money-loop moves are owner-gated: ALLOW_APPROVAL_EMAIL_SEND is on — confirm RESEND_API_KEY in Vercel Production and connect a real source so a genuine write_document/send_message generates (the brain is in safe-silence now, so there is nothing to approve/send); configure the free external 15-min guardian cron; and (paid, needs a cost ceiling) teach the generator to compose + attach a companion document for a send_message. Constraint: NO paid API calls to test — prove in the harness.",
+  "user_system_path": "Seam #414 — owner-reported continuity defects, batched: (1) the Foldera brand wordmark linked to /dashboard in all three app shells (ProductShell, layout/dashboard-shell, layout/sidebar) instead of the homepage; now -> /. (2) The homepage had two stacked CTA blocks at the bottom (landing-pilot 'Stop checking nine apps' + a redundant landing-final-cta 'Restore your continuity'); removed the final-cta, kept the nine-apps one. Sign-in survives in header, mobile menu, footer. Updated the three e2e specs that asserted the removed final-cta testIds. Frontend-only, deterministic, no schema/deps. Constraint: NO paid API calls to test — prove in the harness.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "SESSION_HISTORY.md",
-    "LESSONS_LEARNED.md",
-    "docs/**"
+    "docs/**",
+    "components/foldera/LandingPage.tsx",
+    "components/dashboard/ProductShell.tsx",
+    "components/layout/dashboard-shell.tsx",
+    "components/layout/sidebar.tsx",
+    "tests/e2e/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
-    "app/api/**",
-    "lib/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Between rungs — only control-plane + docs may change until the owner names the next seam (which re-scopes this contract).",
-  "forbidden_files_raw": "No product/runtime/schema/deps changes without an active seam + scoped contract.",
-  "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "N/A — between rungs.",
-  "browser_proof_command": "N/A",
-  "acceptance_condition": "Control plane is consistent in the between-rungs form (build-order active_issue: none, contract active_issue: none, no active-seam line in ACTIVE_HANDOFF) and gate:continuity passes.",
-  "is_user_facing": false,
+  "allowed_files_raw": "Seam #414: homepage final-CTA removal + brand wordmark -> / across three shells + the three coupled e2e specs + control-plane.",
+  "forbidden_files_raw": "No schema (supabase/**), no dependency changes (package.json / lock), no runtime/API logic.",
+  "required_local_proof": "npm run gate:continuity && npm run build && npm run lint",
+  "required_browser_proof": "Build + lint + tsc green; e2e specs updated to match the new single-CTA homepage and removed final-cta testIds (headless browser not runnable in this harness). Live owner validation: (a) the homepage bottom shows ONE CTA block ('Stop checking nine apps'); (b) clicking the Foldera brand in the app returns to the homepage.",
+  "browser_proof_command": "npx playwright test tests/e2e/public-routes.spec.ts tests/e2e/landing-mobile-sections.spec.ts --reporter=list",
+  "acceptance_condition": "Homepage bottom renders a single CTA section (the nine-apps pilot), the redundant final-CTA is gone with no dangling testId references, the Foldera brand links to / in all three shells, and gate:continuity + build + lint are green.",
+  "is_user_facing": true,
   "anti_regression_checks": [
-    "gate:continuity green in between-rungs form",
-    "no active-seam line in ACTIVE_HANDOFF.md",
-    "no product/runtime files changed"
+    "gate:continuity green",
+    "no dangling references to landing-final-cta / landing-final-access-cta / landing-final-login-cta",
+    "sign-in path still present (header + footer)",
+    "no schema or dependency changes"
   ],
-  "stop_condition": "Stop when the control plane is rolled forward to a clean between-rungs state and the owner has a boot prompt for the next session.",
-  "next_command": "Owner: (1) open the Sources screen and confirm the Microsoft row reads b-kapp@outlook.com (validates #411); (2) confirm RESEND_API_KEY in Vercel Production and connect a real source so a genuine move generates, then approve it to validate the live attached send (#402/#404/#407); (3) configure the free external 15-min guardian cron. CODE candidate (needs owner go + paid budget): generator composes + attaches a companion document for a send_message.",
+  "stop_condition": "Stop when the draft PR for #414 is open with CI green, or BLOCKED_WITH_EXACT_RECEIPT on owner-side visual validation.",
+  "next_command": "Owner: confirm the homepage bottom shows one CTA and the brand returns home. Then the standing continuity audit (unify the three brand marks; sweep nav/dead-links) and the live send validation continue.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

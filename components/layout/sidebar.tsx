@@ -52,7 +52,7 @@ export function Sidebar() {
     <aside className="hidden lg:block fixed left-0 top-0 h-screen w-64 border-r border-zinc-800 bg-zinc-950/80 backdrop-blur-xl">
       {/* Logo */}
       <div className="p-6 border-b border-zinc-800">
-        <Link href="/dashboard" className="flex items-center gap-3">
+        <Link href="/" aria-label="Foldera — home" className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-accent to-emerald-500 flex items-center justify-center">
             <span className="text-white font-bold text-sm">F</span>
           </div>

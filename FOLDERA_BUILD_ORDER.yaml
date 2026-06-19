@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
+active_issue: 414
 priority_class: PRODUCT
-work_type: BUGFIX
-why_this_first: "Between rungs. This session shipped #402 (review-gated send, PR #403), #404 (email draft attachments, PR #405), #407 (write_document delivery carries the doc as a real file, PR #408), and #411 (Sources screen shows the real Microsoft email instead of the raw Azure guest UPN, PR #412, 191520a). The remaining money-loop moves are owner-gated: ALLOW_APPROVAL_EMAIL_SEND is on — confirm RESEND_API_KEY and connect a real source so a genuine move generates; configure the free external 15-min guardian cron; and (paid, needs a cost ceiling) the generator companion-document build. Awaiting the owner's next move."
-next_seam: "OWNER-SIDE: (1) open the Sources screen and confirm the Microsoft row reads b-kapp@outlook.com (validates #411); (2) confirm RESEND_API_KEY in Vercel Production and connect a real source so a genuine write_document/send_message generates (brain is in safe-silence now — nothing to approve/send yet), then approve it to validate the live attached send (#402/#404/#407); (3) configure the free external 15-min guardian cron. CODE candidate (needs owner go + paid budget): teach the generator to compose + attach a companion document for a send_message."
+work_type: POLISH
+why_this_first: "Owner is losing confidence because basic continuity defects keep reaching him one at a time ('hey fix this, hey fix this'). #414 batches the named ones into one pass and starts a standing continuity discipline so they stop reaching him: (1) the Foldera brand wordmark linked to /dashboard in all three app shells instead of the homepage — now -> /; (2) the homepage had two stacked CTA blocks at the bottom — removed the redundant 'Restore your continuity' final-cta, kept the 'Stop checking nine apps' one. Frontend-only, deterministic, harness-proven (build/lint/tsc/gate + updated e2e specs). The point is to own quality in batches, not death-by-micro-pass."
+next_seam: "STANDING CONTINUITY AUDIT (next): unify the three different Foldera brand marks (FolderaMark vs gradient 'F' box in the two layout/* shells); sweep nav for dead/inconsistent links; consolidate the duplicate shells. OWNER-SIDE (unchanged): confirm the Sources MS email fix (#411); ALLOW_APPROVAL_EMAIL_SEND is on — confirm RESEND_API_KEY and connect a real source so a genuine move generates, then approve to validate the live attached send; configure the free external 15-min guardian cron."
 completed_issue_411:
   issue: 411
   pr: 412
