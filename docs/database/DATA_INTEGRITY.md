@@ -37,7 +37,7 @@
 |---|---|---|---|
 | D-1 | PASS | `user_id` + leading index on every user-scoped table; composite hot-path indexes present | guarded by the contract test |
 | D-2 | PASS | reprocessing dedupe via `UNIQUE(user_id, content_hash)` on `tkg_signals` | guarded by the contract test |
-| D-3 | **Low** | `cost_events` has `user_id` but **no `user_id` index** (its twin `api_usage` does). Low impact — it's a low-traffic operator cost table queried by time window. | tracked as the sole `known_index_gaps` entry; add `idx_cost_events_user_created` in a future schema seam and remove from the list |
+| D-3 | **FIXED** | `cost_events` had `user_id` but no `user_id` index (twin `api_usage` did). | **Resolved in this pass** — migration `20260619190000_cost_events_user_index.sql` added `idx_cost_events_user_created (user_id, created_at DESC)`, applied + verified on production. `known_index_gaps` is now empty. |
 | D-4 | Doc note | `session_state` is an ops/session ledger, not workday-presence state (that lives in `auth.users.user_metadata`). `docs/SOURCE_OF_TRUTH_MAP.md`'s runtime-table map mislabels it. | correct the table map in a later doc pass (Pass 12) |
 | D-5 | Note (by design) | `tkg_actions` receipts are lifecycle-stamped *mutable* rows, not an append-only event stream. Reconstructs the trail from the final row + timestamps + jsonb, but intermediate transitions aren't independently logged. | acceptable for MVP; an append-only event log is a future hardening option |
 
@@ -57,5 +57,7 @@ A new table forces a classification (user-scoped vs not) or the
 "classifies exactly the expected 26 tables" assertion fails by design.
 
 **Bottom line:** data integrity is sound — tenancy, indexing, idempotency, receipts,
-and migration discipline all hold. The only open item is one missing index on a
-low-traffic operator table (D-3), tracked so it can't be forgotten.
+and migration discipline all hold. The one gap found (D-3, `cost_events` index) was
+**fixed in this pass** (migration applied + verified), so no data-integrity items
+remain open. D-4 (a doc-map mislabel) and D-5 (append-only-log option) are notes for
+later, not defects.

@@ -4,7 +4,7 @@
   "project_ref": "neydszeamsflpghtrhue",
   "user_scoped_tables": [
     { "table": "api_usage", "has_user_id": true, "user_id_leading_index": "idx_api_usage_user_date" },
-    { "table": "cost_events", "has_user_id": true, "user_id_leading_index": null },
+    { "table": "cost_events", "has_user_id": true, "user_id_leading_index": "idx_cost_events_user_created" },
     { "table": "integrations", "has_user_id": true, "user_id_leading_index": "idx_integrations_user_id" },
     { "table": "pipeline_runs", "has_user_id": true, "user_id_leading_index": "idx_pipeline_runs_user_created" },
     { "table": "signal_summaries", "has_user_id": true, "user_id_leading_index": "idx_signal_summaries_user_week" },
@@ -32,9 +32,7 @@
     { "table": "tkg_directive_ml_global_priors", "reason": "global ML priors by design" },
     { "table": "waitlist", "reason": "pre-auth email signups; no user_id yet" }
   ],
-  "known_index_gaps": [
-    { "table": "cost_events", "note": "has user_id but no user_id-leading index; low-traffic operator cost table queried by time window (twin api_usage IS indexed). Add idx when convenient; remove from this list when fixed." }
-  ],
+  "known_index_gaps": [],
   "idempotency_unique_constraints": [
     { "table": "tkg_signals", "columns": ["user_id", "content_hash"], "role": "reprocessing dedupe — the double-fire guard" },
     { "table": "integrations", "columns": ["user_id", "provider"] },
