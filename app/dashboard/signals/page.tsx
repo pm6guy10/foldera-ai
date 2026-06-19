@@ -44,7 +44,7 @@ export default function SignalsPage() {
     return (
       <ProductShell
         title="Signals"
-        subtitle="Legacy route for source diagnostics."
+        subtitle="Source diagnostics and recent signal activity."
       >
         <SkeletonSignalsPage />
       </ProductShell>
@@ -75,7 +75,7 @@ export default function SignalsPage() {
       </section>
 
       <section className="mt-4 rounded-card border border-border-subtle bg-panel p-6">
-        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Legacy snapshot</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Recent snapshot</p>
         <div className="mt-4 grid gap-4 border-y border-border-subtle py-4 md:grid-cols-2">
           <article>
             <p className="text-[10px] font-black uppercase tracking-[0.12em] text-text-secondary">Connected sources</p>

@@ -1,9 +1,9 @@
 {
-  "active_issue": 414,
-  "active_branch": "claude/roll-control-plane-postmerge-414",
+  "active_issue": 417,
+  "active_branch": "claude/continuity-sweep-legendary",
   "active_pr": null,
-  "deployed_commit_sha": "a477e58",
+  "deployed_commit_sha": "cdefdf7",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-19T00:35:00Z"
+  "last_verified_at": "2026-06-19T01:00:00Z"
 }

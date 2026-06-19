@@ -1,39 +1,41 @@
 {
-  "backlog_id": "between-rungs",
-  "active_issue": "none",
+  "backlog_id": "continuity-sweep-legendary",
+  "active_issue": 417,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Between rungs. The live product thread is the GUARDIAN (workday-presence): it fires, grounds a real commitment, and pings Slack only when it has a reviewable move. Recent shipped work: #402 (review-gated send), #404 (attachment rails), #407 (write_document delivery attachment), #411 (Sources shows the real Microsoft email), #414 (homepage continuity — brand wordmark -> home + removed the redundant final CTA). Slack delivery smoke-tested OK (manual DM via workspace). The standing CONTINUITY AUDIT is the recommended next code thread (unify the three Foldera brand marks; nav/dead-link sweep; consolidate the duplicate shells). The remaining money-loop moves are owner-gated: ALLOW_APPROVAL_EMAIL_SEND is on — confirm RESEND_API_KEY and connect a real source so a genuine move generates (brain is in safe-silence now); configure the free external 15-min guardian cron; and (paid, needs a cost ceiling) the generator companion-document build. Constraint: NO paid API calls to test — prove in the harness.",
+  "user_system_path": "Seam #417 — audit-driven continuity sweep so the owner stops finding polish defects one at a time. (1) Deleted the entire orphaned components/layout/ directory (dashboard-shell, sidebar, mobile-nav, top-bar — 0 importers repo-wide); this also removes the off-brand gradient 'F' marks, leaving one consistent FolderaMark. (2) Added type='button' to the three demo buttons in LandingPage. (3) Removed user-visible 'Legacy' labels from signals + integrations pages. (4) Aligned the NavPublic mobile CTA to 'Start free'. Frontend-only, deterministic. Constraint: NO paid API calls to test — prove in the harness.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "SESSION_HISTORY.md",
-    "LESSONS_LEARNED.md",
-    "docs/**"
+    "docs/**",
+    "components/**",
+    "app/dashboard/**",
+    "tests/e2e/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
-    "app/api/**",
-    "lib/**",
     "package.json",
-    "package-lock.json"
+    "package-lock.json",
+    "lib/**",
+    "app/api/**"
   ],
-  "allowed_files_raw": "Between rungs — only control-plane + docs may change until the owner names the next seam (which re-scopes this contract).",
-  "forbidden_files_raw": "No product/runtime/schema/deps changes without an active seam + scoped contract.",
-  "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "N/A — between rungs.",
-  "browser_proof_command": "N/A",
-  "acceptance_condition": "Control plane is consistent in the between-rungs form (build-order active_issue: none, contract active_issue: none, no active-seam line in ACTIVE_HANDOFF) and gate:continuity passes.",
-  "is_user_facing": false,
+  "allowed_files_raw": "Seam #417: delete dead components/layout/*; LandingPage type=button; signals/integrations Legacy copy; NavPublic CTA label; + control-plane.",
+  "forbidden_files_raw": "No schema (supabase/**), no deps (package.json/lock), no runtime logic (lib/**, app/api/**).",
+  "required_local_proof": "npm run gate:continuity && npm run build && npm run lint",
+  "required_browser_proof": "Build + lint green; touched-file tsc clean (pre-existing test-type errors in lib/__tests__/multi-user-safety + briefing artifact-decision-enforcement are out of scope and unchanged). Live owner validation: brand mark is consistent, landing demo buttons behave, no 'Legacy' copy on Signals/Sources, mobile CTA reads 'Start free'.",
+  "browser_proof_command": "npx playwright test tests/e2e/public-routes.spec.ts --reporter=list",
+  "acceptance_condition": "The dead components/layout/ directory is gone with no broken imports, the landing demo buttons carry type=button, no user-visible 'Legacy' labels remain on Signals/Sources, the mobile CTA matches desktop ('Start free'), and gate:continuity + build + lint are green.",
+  "is_user_facing": true,
   "anti_regression_checks": [
-    "gate:continuity green in between-rungs form",
-    "no active-seam line in ACTIVE_HANDOFF.md",
-    "no product/runtime files changed"
+    "gate:continuity green",
+    "npm run build green after deleting components/layout/",
+    "no repo references to the deleted layout files",
+    "no schema/deps/runtime changes"
   ],
-  "stop_condition": "Stop when the control plane is rolled forward to a clean between-rungs state and the owner has a boot prompt for the next session.",
-  "next_command": "Next code thread (recommended): the standing CONTINUITY AUDIT — unify the three brand marks, sweep nav/dead-links, consolidate the duplicate shells. OWNER-SIDE: confirm the homepage/brand fixes (#414) and the Sources MS email fix (#411); confirm RESEND_API_KEY and connect a real source so a genuine move generates, then approve to validate the live attached send; configure the free external 15-min guardian cron.",
+  "stop_condition": "Stop when the draft PR for #417 is open with CI green, or BLOCKED_WITH_EXACT_RECEIPT on owner-side visual validation.",
+  "next_command": "Owner: skim the app for remaining inconsistencies. Then the real-move diagnosis — the brain is in safe-silence despite 2 connected sources because the external 15-min guardian cron is not firing and/or generation needs ANTHROPIC_API_KEY + a >=70 move; see the connect-data playbook.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

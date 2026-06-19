@@ -322,14 +322,14 @@ function ProductWindow() {
             </motion.div>
 
             <div className="mt-5 flex items-center gap-2.5">
-              <button className="ld-btn-primary inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 px-5 text-[13px]">
+              <button type="button" className="ld-btn-primary inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 px-5 text-[13px]">
                 Open the doc
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
-              <button className="ld-icon-btn inline-flex h-11 w-11 items-center justify-center" aria-label="Mark done">
+              <button type="button" className="ld-icon-btn inline-flex h-11 w-11 items-center justify-center" aria-label="Mark done">
                 <Check className="h-4 w-4" aria-hidden="true" />
               </button>
-              <button className="ld-icon-btn inline-flex h-11 w-11 items-center justify-center" aria-label="Snooze">
+              <button type="button" className="ld-icon-btn inline-flex h-11 w-11 items-center justify-center" aria-label="Snooze">
                 <Clock3 className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
