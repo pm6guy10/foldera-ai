@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-19 UTC (between rungs — shipped #402/#404/#407/#411/#414 + #417 continuity sweep; next: make the guardian fire on real sources)
+Last updated: 2026-06-19 UTC (active seam #421 — right-away guardian on app open; branch `claude/right-away-guardian-on-open`; hardening roadmap in #420)
 
 ## Boot
 
@@ -35,13 +35,18 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 ## Current slice:
 
-None — between rungs. This session shipped #402 (send, `b698566`), #404 (attachment rails, `4125585`), #407 (write_document delivery attachment, `82dc104`), #411 (Sources MS email fix, `191520a`), #414 (homepage continuity, `a477e58`), and #417 (continuity sweep — deleted the dead `components/layout/` dir, unified the brand mark, `type=button` on landing buttons, dropped "Legacy" labels, aligned the CTA; PR #418, `c2088cc`). Slack delivery smoke-tested OK. The higher-leverage open thread is owner-side: make the guardian fire on the already-connected real sources. Awaiting the owner's next chosen seam.
+Issue #421 is the active product seam.
+
+#421 — right-away guardian (owner redirect: "15 min is too sporadic; right away; no Pro"). Replaces the time-based cron with event-driven immediate triggering. The mechanism already existed: `sync-now` (Google/Microsoft) chains `maybeRunWorkdayPresenceTriggerRunnerForUser`, which is FREE (repackages the already-paid daily artifact into a reviewable move; DB read, no LLM) and is server-side rate-limited (429). This wires the dashboard Today panel (`app/dashboard/page.tsx`) to fire a throttled (5 min/session) background `sync-now` on app open, then re-runs `loadCard()` so the current move surfaces immediately. No cron, no Pro, no per-open paid generation.
+
+Shipped earlier this session: #402/#404/#407/#411/#414/#417 — all LIVE. The full repo + Supabase hardening audit is captured as the operating roadmap in **#420**.
 
 ## Next exact move
 
-1. Owner names the next seam (or pick from the candidates below). Until then `active_issue: none` is the valid between-rungs control-plane form.
-2. HIGHEST LEVERAGE (owner-side) — the REAL-MOVE diagnosis: owner has 2 real sources connected (Outlook + Gmail) yet the brain is in safe-silence on a pipe-test fixture. Make the guardian fire: configure the external 15-min cron hitting `/api/cron/workday-presence-trigger-runner` with `CRON_SECRET`; confirm `ANTHROPIC_API_KEY` + Slack env (`SLACK_BOT_TOKEN`, `FOLDERA_SLACK_SELF_CHANNEL_ID`, `FOLDERA_SELF_USER_ID`) in Vercel Production; a move needs ≥70 confidence to surface. Connect-data playbook delivered to owner.
-3. CODE candidates: continue the UI polish audit if more surfaces surface; the paid generator companion-document build (needs owner go + cost ceiling). Constraint: NO paid API calls — prove in the harness.
+1. Open the draft PR for `claude/right-away-guardian-on-open` → #421; get CI green.
+2. Proof (free): build + lint + tsc clean (page.tsx); `gate:continuity` before PR.
+3. Live owner validation: open the dashboard, confirm it auto-syncs and surfaces the current move without a manual sync — `BLOCKED_WITH_EXACT_RECEIPT` until then. Note: a move only exists if daily generation ran (`ANTHROPIC_API_KEY`) to produce the artifact the free trigger surfaces.
+4. CODE backlog (roadmap #420): repo hygiene (~21 orphan components + dead lib modules; 103 test-file tsc errors; auth PII logging; env docs; typecheck script); the paid selection-layer (risk scoring); the paid generator companion-document build. Constraint: NO paid API calls — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
 
