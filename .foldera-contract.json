@@ -12,7 +12,8 @@
     "docs/**",
     "tests/**",
     "app/api/cron/morning-pipeline/**",
-    "lib/briefing/generator.ts"
+    "lib/briefing/generator.ts",
+    "lib/utils/__tests__/api-tracker.test.ts"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
