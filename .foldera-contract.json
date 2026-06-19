@@ -1,15 +1,16 @@
 {
-  "backlog_id": "master-audit-pass-0",
+  "backlog_id": "master-audit-pass-1",
   "active_issue": 445,
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Master Audit #445, Pass 0 (Inventory & ground truth). Ships docs/SYSTEM_INVENTORY.md — the canonical what-IS reconciled read-only against real Supabase (26 RLS tables, live row counts), GitHub (1 branch, unprotected main; workflow triggers), and repo config (73 routes, 1-of-14 crons scheduled, 82-vs-29 env keys). Read-only inventory + control-plane roll only; no product/runtime/schema/deps changes. Five ground-truth corrections logged in #445 (F-1..F-5). Constraint: NO paid API calls.",
+  "user_system_path": "Master Audit #445, Pass 1 (Security & multi-tenant isolation). Verdict PASS: proved read-only that all 26 tables are RLS-enabled, every tenant policy is scoped by auth.uid(), internal tables are restrictive-deny, the service-role key is server-only, and connector tokens are encrypted at rest. Closed the one CONCERN (no regression guard) by shipping tests/security/__tests__/rls-isolation.test.ts (6 invariants over a committed live-policy snapshot) + docs/security/RLS_ISOLATION.md. Owner-side: enable Supabase leaked-password protection + more MFA (advisor WARN, #420 Tier 3). Tests + docs + control-plane only; no product/runtime/schema/deps changes. Constraint: NO paid API calls.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "docs/**"
+    "docs/**",
+    "tests/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
@@ -20,18 +21,18 @@
   ],
   "allowed_files_raw": "Pass 0 is a read-only inventory + control-plane roll: only docs/** and the control-plane files may change.",
   "forbidden_files_raw": "No product/runtime/schema/deps changes in Pass 0 — findings are logged in #445 and routed to later passes.",
-  "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "N/A — docs/inventory pass, no user-facing surface changed.",
+  "required_local_proof": "npm run gate:continuity && npx vitest run tests/security/__tests__/rls-isolation.test.ts",
+  "required_browser_proof": "N/A — security audit + deterministic test, no user-facing surface changed.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "docs/SYSTEM_INVENTORY.md exists as the canonical what-IS, findings F-1..F-5 are logged in #445, the control plane names #445 consistently (build-order/contract/seam-state/handoff agree), and gate:continuity passes.",
+  "acceptance_condition": "Every user-data table's RLS isolation is proven (recorded in docs/security/RLS_ISOLATION.md), the cross-tenant isolation contract test passes (tests/security/__tests__/rls-isolation.test.ts, 6/6 green), findings logged in #445, the control plane names #445 consistently, and gate:continuity passes.",
   "is_user_facing": false,
   "anti_regression_checks": [
     "gate:continuity green with active seam #445",
-    "no product/runtime/schema/deps files changed",
-    "SYSTEM_INVENTORY.md is reconciled against real services, not assumptions"
+    "rls-isolation contract test green (6/6)",
+    "no product/runtime/schema/deps files changed (tests + docs only)"
   ],
-  "stop_condition": "Stop when Pass 0 is merged, the Pass 0 box is checked in #445, and the next seam (Pass 1 Security) is named.",
-  "next_command": "Start Pass 1 (Security & multi-tenant isolation) as its own seam -> PR: per-table RLS policies + a cross-tenant leak test. Then Pass 3 (Cost). Owner-side unlock: set ANTHROPIC_API_KEY in Vercel Production.",
+  "stop_condition": "Stop when Pass 1 is merged, the Pass 1 box is checked in #445, and the next seam (Pass 3 Cost) is named.",
+  "next_command": "Start Pass 3 (Cost & unit economics) as its own seam -> PR: execute docs/COST_AND_ECONOMICS_AUDIT.md. Owner-side unlock: set ANTHROPIC_API_KEY in Vercel Production; enable Supabase leaked-password protection + MFA.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

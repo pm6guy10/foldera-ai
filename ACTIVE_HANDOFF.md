@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — Pass 0 inventory shipping)
+Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — Pass 0 merged #446; Pass 1 security shipping)
 
 ## Boot
 
@@ -37,13 +37,13 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 Issue #445 is the active firm-foundation audit seam.
 
-Master Audit (#445) — 13 expert-led passes, anti-rediscovery (every finding logged once in #445). **Pass 0 (Inventory & ground truth) is shipping** as `docs/SYSTEM_INVENTORY.md`: the canonical "what IS" reconciled read-only against real Supabase/GitHub/Vercel state (26 RLS tables, 73 routes, 1-of-14 crons scheduled, 82-vs-29 env keys, 1 branch). Five ground-truth corrections logged (F-1..F-5); headline: governance assumes PR/CI/branch-protection but `main` is unprotected and `ci.yml` is `workflow_dispatch`-only (Pass 10 BLOCK candidate). Next: Pass 1 (Security) and Pass 3 (Cost) — highest blast radius.
+Master Audit (#445) — 13 expert-led passes, anti-rediscovery (every finding logged once in #445). Pass 0 merged (#446, `75dca52`) — `docs/SYSTEM_INVENTORY.md` is the canonical "what IS." **Pass 1 (Security & multi-tenant isolation) is shipping**, verdict `PASS`: proved read-only that all 26 tables are RLS-enabled, every tenant policy is scoped by `auth.uid()`, internal tables are restrictive-deny, the service-role key is server-only, and connector tokens are encrypted at rest. Closed the one CONCERN (no regression guard) with `tests/security/__tests__/rls-isolation.test.ts` (6 invariants, green) + `docs/security/RLS_ISOLATION.md`. Owner-side: enable Supabase leaked-password protection + MFA (advisor WARN). Next: Pass 3 (Cost).
 
 ## Next exact move
 
-1. Merge Pass 0 (`docs/SYSTEM_INVENTORY.md` + this control-plane roll), check the Pass 0 box in #445, leave findings logged there.
-2. Start Pass 1 (Security & multi-tenant isolation) as its own seam → PR: prove per-table RLS policies + a cross-tenant leak test. Then Pass 3 (Cost) per `docs/COST_AND_ECONOMICS_AUDIT.md`.
-3. Owner-side unlock (unchanged): set `ANTHROPIC_API_KEY` (+ Slack/CRON env) in Vercel Production; the free external guardian cron. Constraint: NO paid API calls — prove in the harness.
+1. Merge Pass 1 (RLS isolation test + `docs/security/RLS_ISOLATION.md` + control-plane roll), check the Pass 1 box in #445, leave findings logged there.
+2. Start Pass 3 (Cost & unit economics) as its own seam → PR: execute `docs/COST_AND_ECONOMICS_AUDIT.md`.
+3. Owner-side unlock: set `ANTHROPIC_API_KEY` (+ Slack/CRON env) in Vercel Production; enable Supabase leaked-password protection + more MFA. Constraint: NO paid API calls — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
 
