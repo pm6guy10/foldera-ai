@@ -1,6 +1,6 @@
 {
   "active_issue": 421,
-  "active_branch": "claude/roll-control-plane-postmerge-421",
+  "active_branch": "claude/next-session-hardening-doc",
   "active_pr": null,
   "deployed_commit_sha": "e300505",
   "runtime_env": "production",
