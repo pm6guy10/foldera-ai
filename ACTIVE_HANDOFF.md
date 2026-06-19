@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-19 UTC (between rungs — shipped #402/#404/#407/#411/#414/#417 + #421 right-away guardian; hardening roadmap in #420)
+Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — Pass 0 inventory shipping)
 
 ## Boot
 
@@ -35,14 +35,15 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 ## Current slice:
 
-None — between rungs after the NEXT_SESSION_HARDENING mission (#420). Shipped: #426 dead-code deletion (c0142ab), #428 typecheck/120→0 (1d17160), #430 auth-PII gating (dff1ad5), #433 .env.example + cleanup (5fed8f9). #431 ticketed (conviction-engine deadline inference); #434 closed (index drop = keep, FK-support). Awaiting the owner's next chosen seam.
+Issue #445 is the active firm-foundation audit seam.
+
+Master Audit (#445) — 13 expert-led passes, anti-rediscovery (every finding logged once in #445). **Pass 0 (Inventory & ground truth) is shipping** as `docs/SYSTEM_INVENTORY.md`: the canonical "what IS" reconciled read-only against real Supabase/GitHub/Vercel state (26 RLS tables, 73 routes, 1-of-14 crons scheduled, 82-vs-29 env keys, 1 branch). Five ground-truth corrections logged (F-1..F-5); headline: governance assumes PR/CI/branch-protection but `main` is unprotected and `ci.yml` is `workflow_dispatch`-only (Pass 10 BLOCK candidate). Next: Pass 1 (Security) and Pass 3 (Cost) — highest blast radius.
 
 ## Next exact move
 
-1. Owner names the next seam. Until then `active_issue: none` is the valid between-rungs control-plane form.
-2. Highest-leverage owner-side unlock: set `ANTHROPIC_API_KEY` (+ Slack/CRON env) in Vercel Production so daily generation produces the artifact the free event-driven trigger surfaces; plus the free external guardian cron.
-3. Standing CODE candidates (roadmap #420): the paid Tier-1 selection layer (risk scoring — needs cost ceiling), Supabase auth toggles (owner dashboard), stale-branch pruning. Constraint: NO paid API calls — prove in the harness.
-3. At session end roll the control plane forward to between-rungs. OWNER-SIDE remains: confirm `ANTHROPIC_API_KEY` in Vercel Production + the free external guardian cron. Constraint: NO paid API calls — prove in the harness.
+1. Merge Pass 0 (`docs/SYSTEM_INVENTORY.md` + this control-plane roll), check the Pass 0 box in #445, leave findings logged there.
+2. Start Pass 1 (Security & multi-tenant isolation) as its own seam → PR: prove per-table RLS policies + a cross-tenant leak test. Then Pass 3 (Cost) per `docs/COST_AND_ECONOMICS_AUDIT.md`.
+3. Owner-side unlock (unchanged): set `ANTHROPIC_API_KEY` (+ Slack/CRON env) in Vercel Production; the free external guardian cron. Constraint: NO paid API calls — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
 

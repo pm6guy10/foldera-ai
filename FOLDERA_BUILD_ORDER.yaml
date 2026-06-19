@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
+active_issue: 445
 priority_class: PRODUCT
 work_type: CHORE
-why_this_first: "Between rungs. The NEXT_SESSION_HARDENING mission (roadmap #420) shipped as four themed PRs: #426 (dead-code deletion), #428 (typecheck, 120 tsc errors -> 0), #430 (auth PII tracing gated), #433 (.env.example + cleanup). Batch 5 (index drop) evaluated and rejected as WRONG PATH (#434 — FK-support indexes kept). Awaiting the owner's next chosen seam."
-next_seam: "Owner names the next seam. The repo is hardened; the remaining unlock is owner-side: set ANTHROPIC_API_KEY in Vercel Production (+ Slack/CRON env) so daily generation produces the artifact the free trigger surfaces; Supabase auth toggles (leaked-password/MFA); the paid Tier-1 selection layer; stale-branch pruning. Constraint: NO paid API calls — prove in the harness."
+why_this_first: "Master Audit (#445): firm-foundation review in 13 expert-led passes, anti-rediscovery (every finding logged once in #445). Pass 0 (Inventory & ground truth) ships docs/SYSTEM_INVENTORY.md — the canonical what-IS reconciled read-only against real Supabase/GitHub/Vercel state. Pass 0 first because it grounds every later pass. Headline finding F-1: governance assumes PR/CI/branch-protection but main is unprotected and ci.yml is workflow_dispatch-only (Pass 10 BLOCK candidate)."
+next_seam: "After Pass 0 merges: Pass 1 (Security & multi-tenant isolation — per-table RLS policies + cross-tenant leak test) then Pass 3 (Cost — execute docs/COST_AND_ECONOMICS_AUDIT.md), the two highest-blast-radius passes, each its own seam -> PR. Owner-side unlock unchanged: ANTHROPIC_API_KEY (+ Slack/CRON env) in Vercel Production. Constraint: NO paid API calls — prove in the harness."
 completed_issue_425:
   issue: 425
   pr: 426

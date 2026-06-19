@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-10 PT (issue #240 — Governance Collapse v1)
+Last updated: 2026-06-19 UTC (issue #445 — added SYSTEM_INVENTORY.md as the canonical what-IS)
 
 This is the keep-list ledger. Everything not listed here is reference, archive, or git history — never authority.
 
@@ -19,6 +19,7 @@ This is the keep-list ledger. Everything not listed here is reference, archive, 
 | `SESSION_HISTORY.md` / `LESSONS_LEARNED.md` | Append-only history. Never current control. |
 | `docs/SOURCE_OF_TRUTH_MAP.md` | This ledger. |
 | `docs/DESIGN_SYSTEM.md` | Binding design standard / quality bar for every visible surface (tokens, type, spacing, real-logos rule, product mockup, motion, responsive). Design authority, referenced by `FOLDERA_MASTER_BIBLE.md`. |
+| `docs/SYSTEM_INVENTORY.md` | Canonical "what IS" — every table, route, cron, env var, external resource, reconciled against real Supabase/GitHub/Vercel state (Pass 0 of Master Audit #445). The anti-rediscovery foundation; update it when the real system changes, never re-derive it. |
 
 ## Conflict rule
 
