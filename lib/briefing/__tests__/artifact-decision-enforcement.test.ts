@@ -397,7 +397,7 @@ describe('artifact decision enforcement', () => {
                 actionTypeRate: 0.5,
                 entityPenalty: 0,
               },
-              targetGoal: { text: 'Care Coordinator interview with Alex April 29' },
+              targetGoal: { text: 'Care Coordinator interview with Alex April 29', priority: 1, category: 'career' },
               sourceSignals: [],
               decision: 'selected' as const,
               decisionReason: '',

@@ -47,7 +47,7 @@ describe('patchUserPipelineRunOutcome', () => {
       rawExtrasPatch: { verification_stub_action_id: 'action-xyz' },
     });
     expect(updateMock).toHaveBeenCalled();
-    const payload = updateMock.mock.calls[0]?.[0] as Record<string, unknown>;
+    const payload = (updateMock.mock.calls as unknown[][])[0]?.[0] as Record<string, unknown>;
     expect(payload.outcome).toBe('verification_stub_persisted');
     expect(payload.raw_extras).toEqual({
       existing: true,
@@ -64,6 +64,7 @@ describe('buildGateFunnelFromScorerDiagnostics', () => {
 
   it('extracts rejection_filter_entities from entity_reality_gate reasons', () => {
     const diag: ScorerDiagnostics = {
+      quarantine: { goals: [], commitments: [], droppedChatAuthority: [] },
       sourceCounts: {
         commitments_raw: 0,
         commitments_after_dedup: 0,
@@ -107,6 +108,7 @@ describe('buildGateFunnelFromScorerDiagnostics', () => {
 
   it('persists bounded discrepancy observability when scorer diagnostics include detector + pool + drops', () => {
     const diag: ScorerDiagnostics = {
+      quarantine: { goals: [], commitments: [], droppedChatAuthority: [] },
       sourceCounts: {
         commitments_raw: 0,
         commitments_after_dedup: 0,
@@ -221,6 +223,7 @@ describe('buildGateFunnelFromScorerDiagnostics', () => {
 
   it('uses detector-only preview when nothing reached the injected pool', () => {
     const diag: ScorerDiagnostics = {
+      quarantine: { goals: [], commitments: [], droppedChatAuthority: [] },
       sourceCounts: {
         commitments_raw: 0,
         commitments_after_dedup: 0,

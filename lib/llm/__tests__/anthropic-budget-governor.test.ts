@@ -66,12 +66,12 @@ describe('anthropic budget governor', () => {
     } catch (error) {
       expect(isAnthropicBudgetExceededError(error)).toBe(true);
       expect(error).toBeInstanceOf(AnthropicBudgetExceededError);
-      expect((error as AnthropicBudgetExceededError).scope).toBe('test.scope');
-      expect((error as AnthropicBudgetExceededError).raw).toEqual({
+      expect((error as InstanceType<typeof AnthropicBudgetExceededError>).scope).toBe('test.scope');
+      expect((error as InstanceType<typeof AnthropicBudgetExceededError>).raw).toEqual({
         allowed: false,
         cap_cents: 3000,
       });
-      expect((error as AnthropicBudgetExceededError).rpcErrorMessage).toBe('budget cap reached');
+      expect((error as InstanceType<typeof AnthropicBudgetExceededError>).rpcErrorMessage).toBe('budget cap reached');
     }
   });
 });

@@ -27,7 +27,7 @@ function applyFilters(
       const value = row[filter.field];
       if (filter.kind === 'eq') return value === filter.value;
       if (value == null) return false;
-      return value >= filter.value;
+      return (value as number) >= (filter.value as number);
     }),
   );
 }

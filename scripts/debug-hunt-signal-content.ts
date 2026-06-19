@@ -2,7 +2,7 @@ import { OWNER_USER_ID } from '../lib/auth/constants';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
-import { decrypt } from '../lib/auth/encryption';
+import { decrypt } from '../lib/encryption';
 
 const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 const OWNER = OWNER_USER_ID;

@@ -383,7 +383,7 @@ describe('generateDirective runtime failures', () => {
       content: 'Ownership on the onboarding@resend.dev relationship still has not been resolved.',
       suggestedActionType: 'write_document',
       score: 5.2,
-      relationshipContext: null,
+      relationshipContext: undefined,
     };
     const fallbackCandidate: ScoredLoop = {
       ...buildWinner(),

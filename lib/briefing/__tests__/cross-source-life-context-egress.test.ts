@@ -57,7 +57,7 @@ describe('appendCrossSourceLifeContextSnippets query scope', () => {
   });
 
   it('limits Supabase reads to non-email life-context sources', async () => {
-    const existing = [];
+    const existing: never[] = [];
 
     const out = await appendCrossSourceLifeContextSnippets('user-1', existing);
 

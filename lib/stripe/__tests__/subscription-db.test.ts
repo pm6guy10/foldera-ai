@@ -13,7 +13,7 @@ describe('subscription-db', () => {
   });
 
   it('periodEndIsoFromSubscription uses current_period_end', () => {
-    const sub = { current_period_end: 1_700_000_000 } as Stripe.Subscription;
+    const sub = { current_period_end: 1_700_000_000 } as unknown as Stripe.Subscription;
     expect(periodEndIsoFromSubscription(sub)).toBe(new Date(1_700_000_000 * 1000).toISOString());
   });
 

@@ -645,7 +645,7 @@ If the evidence cannot support real finished output, return wait_rationale or do
 // Types
 // ---------------------------------------------------------------------------
 
-interface GeneratedDirectivePayload {
+export interface GeneratedDirectivePayload {
   /** The non-obvious finding: a contradiction, pattern shift, or timing edge */
   insight: string;
   /** Root-cause diagnosis that explains why this discrepancy exists now */

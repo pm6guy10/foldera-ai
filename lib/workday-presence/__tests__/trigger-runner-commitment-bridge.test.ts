@@ -89,7 +89,7 @@ describe('maybeRunWorkdayPresenceTriggerRunnerForUser — commitment bridge inte
     const result = await maybeRunWorkdayPresenceTriggerRunnerForUser('user-1');
 
     expect(mockFindLapsingCommitmentSignal).toHaveBeenCalledWith(mockSupabase, 'user-1', expect.any(String));
-    expect(result.outcome).toBe('intervention');
+    expect((result as { outcome?: string }).outcome).toBe('intervention');
     expect(mockInsertTriggerReceipt).toHaveBeenCalledTimes(1);
     expect(mockInsertTriggerReceipt.mock.calls[0][0]).toMatchObject({
       userId: 'user-1',
@@ -128,7 +128,7 @@ describe('maybeRunWorkdayPresenceTriggerRunnerForUser — commitment bridge inte
     const { maybeRunWorkdayPresenceTriggerRunnerForUser } = await import('../trigger-runner');
     const result = await maybeRunWorkdayPresenceTriggerRunnerForUser('user-1');
 
-    expect(result.outcome).toBe('quiet');
+    expect((result as { outcome?: string }).outcome).toBe('quiet');
     expect(mockInsertTriggerReceipt).not.toHaveBeenCalled();
   });
 });

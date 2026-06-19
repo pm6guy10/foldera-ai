@@ -32,7 +32,7 @@ describe('outcome-features', () => {
     const inputs = mlBucketInputsFromBaseCandidate({
       type: 'relationship',
       actionType: 'send_message',
-      matchedGoal: { category: 'relationship', text: 'x', priority: 3 },
+      matchedGoal: { category: 'relationship' },
       entityPatterns: {
         bx_stats: { velocity_ratio: 0.4, silence_detected: true },
       },
@@ -45,7 +45,7 @@ describe('outcome-features', () => {
     const inputs = mlBucketInputsFromDiscrepancy({
       class: 'avoidance',
       suggestedActionType: 'write_document',
-      matchedGoal: { category: 'career', text: 'job', priority: 2 },
+      matchedGoal: { category: 'career' },
     });
     expect(inputs.candidateType).toBe('discrepancy');
     expect(buildDirectiveMlBucketKey(inputs)).toContain('avoidance');

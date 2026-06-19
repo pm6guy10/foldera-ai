@@ -1,10 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
 import { filterStaleDatedEventCandidatesBeforeScoring } from '../scorer';
+import type { GenerationCandidateSource } from '../types';
 
 const nowMs = Date.parse('2026-04-30T12:00:00.000Z');
 
-function candidate(overrides: Record<string, unknown> = {}) {
+type StaleCandidate = {
+  id: string;
+  title: string;
+  content: string;
+  sourceSignals: GenerationCandidateSource[];
+  commitmentDueMs?: number;
+  calendarEventStartMs?: number;
+};
+
+function candidate(overrides: Partial<StaleCandidate> = {}): StaleCandidate {
   return {
     id: 'candidate-1',
     type: 'signal',
@@ -23,7 +33,7 @@ function candidate(overrides: Record<string, unknown> = {}) {
       },
     ],
     ...overrides,
-  };
+  } as StaleCandidate;
 }
 
 describe('filterStaleDatedEventCandidatesBeforeScoring', () => {

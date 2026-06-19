@@ -69,7 +69,7 @@ describe('multi-user safety', () => {
           }),
         }),
       }),
-    } as ReturnType<typeof dbClient.createServerClient>);
+    } as unknown as ReturnType<typeof dbClient.createServerClient>);
 
     try {
       const r = await getSubscriptionStatus(FAKE_USER_ID);
@@ -100,7 +100,7 @@ describe('multi-user safety', () => {
           }),
         }),
       }),
-    } as ReturnType<typeof dbClient.createServerClient>);
+    } as unknown as ReturnType<typeof dbClient.createServerClient>);
     try {
       const r = await getSubscriptionStatus(OWNER_USER_ID);
       expect(r.status).toBe('active');
@@ -136,7 +136,7 @@ describe('multi-user safety', () => {
           }),
         }),
       }),
-    } as ReturnType<typeof dbClient.createServerClient>);
+    } as unknown as ReturnType<typeof dbClient.createServerClient>);
     try {
       const r = await getSubscriptionStatus(FAKE_USER_ID);
       expect(r.status).toBe('active_trial');
@@ -540,7 +540,7 @@ describe('multi-user safety', () => {
     };
 
     const dbSpy = vi.spyOn(dbClient, 'createServerClient').mockReturnValue(
-      mockClient as ReturnType<typeof dbClient.createServerClient>,
+      mockClient as unknown as ReturnType<typeof dbClient.createServerClient>,
     );
     const noValid: ScorerResult = {
       outcome: 'no_valid_action',

@@ -280,7 +280,7 @@ describe('real ingested calendar signals fire pre_meeting (no flags, encrypted c
 
   it('fires pre_meeting when a freshly-synced meeting is imminent', () => {
     const override = checkFreshSignalTriggerOverride({
-      state,
+      state: state!,
       nowIso: '2026-06-12T16:00:00.000Z',
       signals: [realCalendarSignal('2026-06-12T17:00:00.000Z')], // 60 min out
     });
@@ -290,7 +290,7 @@ describe('real ingested calendar signals fire pre_meeting (no flags, encrypted c
 
   it('stays silent when the synced meeting is days away (not imminent)', () => {
     const override = checkFreshSignalTriggerOverride({
-      state,
+      state: state!,
       nowIso: '2026-06-12T16:00:00.000Z',
       signals: [realCalendarSignal('2026-06-18T17:00:00.000Z')], // 6 days out
     });
@@ -299,7 +299,7 @@ describe('real ingested calendar signals fire pre_meeting (no flags, encrypted c
 
   it('respects an explicit requires_prep=false flag so fixtures are unchanged', () => {
     const override = checkFreshSignalTriggerOverride({
-      state,
+      state: state!,
       nowIso: '2026-06-12T16:00:00.000Z',
       signals: [
         {

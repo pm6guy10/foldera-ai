@@ -193,7 +193,7 @@ describe('safety-only post-generation artifact gate', () => {
         action_type: 'write_document',
         directive: 'Save the benefits payment admin action packet.',
         reason: 'A benefits payment deadline needs tracking.',
-        evidence: [{ description: 'Source Email: benefits office requested payment verification before May 5.' }],
+        evidence: [{ type: 'signal', description:'Source Email: benefits office requested payment verification before May 5.' }],
       },
       artifact: {
         type: 'document',
@@ -216,7 +216,7 @@ describe('safety-only post-generation artifact gate', () => {
         action_type: 'write_document',
         directive: 'Create the morning summary.',
         reason: 'Daily overview.',
-        evidence: [{ description: 'Inbox summary: several unrelated messages arrived.' }],
+        evidence: [{ type: 'signal', description:'Inbox summary: several unrelated messages arrived.' }],
       },
       artifact: {
         type: 'document',
@@ -237,7 +237,7 @@ describe('safety-only post-generation artifact gate', () => {
         action_type: 'write_document',
         directive: 'Create the relationship silence decision map.',
         reason: 'Jane has not replied for 19 days.',
-        evidence: [{ description: 'Source Email: Jane has not replied for 19 days after a personal catch-up thread.' }],
+        evidence: [{ type: 'signal', description:'Source Email: Jane has not replied for 19 days after a personal catch-up thread.' }],
       },
       artifact: {
         type: 'document',
@@ -257,7 +257,7 @@ describe('safety-only post-generation artifact gate', () => {
         action_type: 'write_document',
         directive: 'Decide whether to attend the Notion Developer Platform event before May 13.',
         reason: 'The invite expires soon, but only matters if a real Foldera platform choice depends on it.',
-        evidence: [{ description: 'Source Email: Notion Developer Platform event invite for May 13.' }],
+        evidence: [{ type: 'signal', description:'Source Email: Notion Developer Platform event invite for May 13.' }],
       },
       artifact: {
         type: 'document',
@@ -284,7 +284,7 @@ describe('safety-only post-generation artifact gate', () => {
         action_type: 'write_document',
         directive: 'Create the morning summary.',
         reason: 'Daily overview.',
-        evidence: [{ description: 'Inbox summary: several unrelated messages arrived.' }],
+        evidence: [{ type: 'signal', description:'Inbox summary: several unrelated messages arrived.' }],
       },
       artifact: {
         type: 'document',

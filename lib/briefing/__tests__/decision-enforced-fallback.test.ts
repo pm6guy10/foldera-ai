@@ -36,6 +36,7 @@ describe('buildDecisionEnforcedFallbackPayload', () => {
       winner: baseWinner(),
       actionType: 'send_message' as ValidArtifactTypeCanonical,
       candidateDueDate: '2026-04-08',
+      candidateGoal: null,
       causalDiagnosis: { why_exists_now: 'Deadline pressure', mechanism: 'Implicit ownership' },
       userEmails: new Set(['owner@me.com']),
       userPromptNames: { user_full_name: 'Test User', user_first_name: 'Test' },
@@ -62,6 +63,7 @@ describe('buildDecisionEnforcedFallbackPayload', () => {
       winner: baseWinner({ title: 'Legal review blocking vendor renewal' }),
       actionType: 'write_document' as ValidArtifactTypeCanonical,
       candidateDueDate: '2026-04-09',
+      candidateGoal: null,
       causalDiagnosis: { why_exists_now: 'x', mechanism: 'y' },
       userPromptNames: { user_full_name: 'Test User', user_first_name: 'Test' },
     });
@@ -88,7 +90,7 @@ describe('buildDecisionEnforcedFallbackPayload', () => {
         title: 'Inbound email unanswered 9+ days — Deako',
         content: '3 inbound emails from same sender in 30 days — zero replies synced',
         suggestedActionType: 'send_message',
-        relationshipContext: null,
+        relationshipContext: undefined,
         relatedSignals: ['3 inbound emails from same sender in 30 days — zero replies synced'],
         sourceSignals: [
           {
