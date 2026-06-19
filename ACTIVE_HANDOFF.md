@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-19 UTC (active seam #421 — right-away guardian on app open; branch `claude/right-away-guardian-on-open`; hardening roadmap in #420)
+Last updated: 2026-06-19 UTC (between rungs — shipped #402/#404/#407/#411/#414/#417 + #421 right-away guardian; hardening roadmap in #420)
 
 ## Boot
 
@@ -35,18 +35,13 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 ## Current slice:
 
-Issue #421 is the active product seam.
-
-#421 — right-away guardian (owner redirect: "15 min is too sporadic; right away; no Pro"). Replaces the time-based cron with event-driven immediate triggering. The mechanism already existed: `sync-now` (Google/Microsoft) chains `maybeRunWorkdayPresenceTriggerRunnerForUser`, which is FREE (repackages the already-paid daily artifact into a reviewable move; DB read, no LLM) and is server-side rate-limited (429). This wires the dashboard Today panel (`app/dashboard/page.tsx`) to fire a throttled (5 min/session) background `sync-now` on app open, then re-runs `loadCard()` so the current move surfaces immediately. No cron, no Pro, no per-open paid generation.
-
-Shipped earlier this session: #402/#404/#407/#411/#414/#417 — all LIVE. The full repo + Supabase hardening audit is captured as the operating roadmap in **#420**.
+None — between rungs. This session shipped #402 (send, `b698566`), #404 (attachment rails, `4125585`), #407 (write_document delivery attachment, `82dc104`), #411 (Sources MS email fix, `191520a`), #414 (homepage continuity, `a477e58`), #417 (continuity sweep, `c2088cc`), and #421 (right-away guardian — free event-driven trigger eval on app open, replacing the 15-min cron; PR #422, `e300505`). The full repo + Supabase hardening roadmap is captured in **#420**. Awaiting the owner's next chosen seam.
 
 ## Next exact move
 
-1. Open the draft PR for `claude/right-away-guardian-on-open` → #421; get CI green.
-2. Proof (free): build + lint + tsc clean (page.tsx); `gate:continuity` before PR.
-3. Live owner validation: open the dashboard, confirm it auto-syncs and surfaces the current move without a manual sync — `BLOCKED_WITH_EXACT_RECEIPT` until then. Note: a move only exists if daily generation ran (`ANTHROPIC_API_KEY`) to produce the artifact the free trigger surfaces.
-4. CODE backlog (roadmap #420): repo hygiene (~21 orphan components + dead lib modules; 103 test-file tsc errors; auth PII logging; env docs; typecheck script); the paid selection-layer (risk scoring); the paid generator companion-document build. Constraint: NO paid API calls — prove in the harness.
+1. Owner names the next seam (or pick from the candidates below). Until then `active_issue: none` is the valid between-rungs control-plane form.
+2. OWNER-SIDE: confirm `ANTHROPIC_API_KEY` in Vercel Production so daily generation produces the artifact the now-immediate free trigger surfaces; open the dashboard to validate #421 auto-sync.
+3. CODE backlog (roadmap **#420**): the repo-hygiene batch (delete ~21 orphan components + dead lib modules; fix 103 test-file `tsc` errors; gate auth PII logging; document missing env vars; add a `typecheck` script + stop excluding `tests/`+`scripts/` from tsc); the paid selection-layer (risk scoring) build; the paid generator companion-document build; Supabase auth toggles + unused-index drop migration. Constraint: NO paid API calls — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
 

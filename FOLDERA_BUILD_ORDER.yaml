@@ -22,11 +22,16 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 421
+active_issue: none
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Owner redirect: '15 min is too sporadic; right away; I don't want to pay [for Pro].' #421 replaces the time-based cron plan with event-driven immediate triggering — and the mechanism already exists: sync-now (Google/Microsoft) chains a FREE trigger eval (repackages the already-paid daily artifact; DB read, no LLM) and is server-side rate-limited. This wires the dashboard Today panel to fire a throttled background sync-now on app open, then refreshes the card so the current move surfaces immediately. No cron, no Pro, no per-open paid generation. The big repo+Supabase hygiene backlog is captured in the roadmap issue #420."
-next_seam: "OWNER-SIDE: open the dashboard, confirm it auto-syncs and surfaces the current move. For a move to exist, daily generation must run (ANTHROPIC_API_KEY) to produce the artifact the free trigger surfaces — confirm that env. CODE backlog (roadmap #420): repo hygiene (delete ~21 orphan components + dead lib modules; fix 103 test-file tsc errors; gate auth PII logging; document missing env vars; add a typecheck script); the paid selection-layer (risk scoring) build; the paid generator companion-document build."
+why_this_first: "Between rungs. This session shipped #402 (send), #404 (attachment rails), #407 (write_document delivery attachment), #411 (Sources MS email fix), #414 (homepage continuity), #417 (continuity sweep), and #421 (right-away guardian — free event-driven trigger eval on app open, replacing the 15-min cron; PR #422, e300505). The full repo + Supabase hardening roadmap is captured in issue #420. Awaiting the owner's next move."
+next_seam: "OWNER-SIDE: confirm ANTHROPIC_API_KEY in Vercel Production so daily generation produces the artifact the now-immediate free trigger surfaces; open the dashboard to validate #421. CODE backlog (roadmap #420): repo-hygiene batch (delete ~21 orphan components + dead lib modules; fix 103 test-file tsc errors; gate auth PII logging; document missing env vars; add a typecheck script + stop excluding tests/scripts from tsc); the paid selection-layer (risk scoring) build; the paid generator companion-document build; Supabase auth toggles + unused-index drop migration."
+completed_issue_421:
+  issue: 421
+  pr: 422
+  pr_merge_sha: e300505
+  summary: "Right-away guardian. Owner redirect (15-min cron too sporadic, no Pro) -> event-driven free triggering. The sync-now -> maybeRunWorkdayPresenceTriggerRunnerForUser path already existed and is free (repackages the already-paid daily artifact; DB read, no LLM) + server-side rate-limited. Wired the dashboard Today panel to fire a throttled (5 min/session) background sync-now on app open, then re-run loadCard() so the current move surfaces immediately. No cron, no Pro, no per-open paid generation. app/dashboard/page.tsx one effect. build + lint + tsc + gate green. Live dashboard validation owner-side."
 completed_issue_417:
   issue: 417
   pr: 418

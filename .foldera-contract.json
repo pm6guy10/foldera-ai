@@ -1,39 +1,39 @@
 {
-  "backlog_id": "right-away-guardian-on-open",
-  "active_issue": 421,
+  "backlog_id": "between-rungs",
+  "active_issue": "none",
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Seam #421 — owner direction: '15 min is too sporadic; right away; I don't want to pay [for Pro].' Replace the time-based cron plan with event-driven immediate triggering. The mechanism already exists: sync-now (Google/Microsoft) chains maybeRunWorkdayPresenceTriggerRunnerForUser, which is FREE (repackages the already-paid daily artifact into a reviewable move; a DB read, no LLM), and sync-now is server-side rate-limited (429). This wires the dashboard Today panel to fire a throttled background sync-now on app open, then re-runs loadCard() so the current move surfaces immediately — no cron, no Pro, no per-open paid generation. Constraint: NO paid API calls to test — prove in the harness.",
+  "user_system_path": "Between rungs. The full repo + Supabase + product hardening roadmap is captured in issue #420. This session shipped #402 (send), #404 (attachment rails), #407 (write_document delivery attachment), #411 (Sources MS email fix), #414 (homepage continuity), #417 (continuity sweep — deleted dead components/layout/), and #421 (right-away guardian — free event-driven trigger eval on app open, replacing the 15-min cron). The engine now surfaces moves immediately and free; the remaining gap to a real move is daily generation actually running (ANTHROPIC_API_KEY) to produce the artifact the free trigger surfaces. Backlog (roadmap #420): repo hygiene (~21 orphan components + dead lib modules; 103 test-file tsc errors; auth PII logging; env docs; typecheck script); the paid selection-layer (risk scoring); the paid generator companion-document build; Supabase auth toggles + unused-index drop. Constraint: NO paid API calls to test — prove in the harness.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "docs/**",
-    "app/dashboard/page.tsx"
+    "SESSION_HISTORY.md",
+    "LESSONS_LEARNED.md",
+    "docs/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
-    "package.json",
-    "package-lock.json",
+    "app/api/**",
     "lib/**",
-    "app/api/**"
+    "package.json",
+    "package-lock.json"
   ],
-  "allowed_files_raw": "Seam #421: one guarded effect in app/dashboard/page.tsx (TodayPanel) + control-plane.",
-  "forbidden_files_raw": "No schema, no deps, no runtime/API logic, no lib changes — reuse the existing sync-now + trigger path.",
-  "required_local_proof": "npm run gate:continuity && npm run build && npm run lint",
-  "required_browser_proof": "Build + lint + tsc clean. Live owner validation: open the dashboard Today panel and confirm it auto-syncs and surfaces the current move without a manual sync (throttled to 5 min/session).",
-  "browser_proof_command": "npx playwright test tests/e2e/dashboard-navigation.spec.ts --reporter=list",
-  "acceptance_condition": "Opening the dashboard fires a throttled background sync-now for connected providers and refreshes the Right Now card so the current move appears immediately, with no new cron, no paid generation on the path, and gate:continuity + build + lint green.",
-  "is_user_facing": true,
+  "allowed_files_raw": "Between rungs — only control-plane + docs may change until the owner names the next seam (which re-scopes this contract).",
+  "forbidden_files_raw": "No product/runtime/schema/deps changes without an active seam + scoped contract.",
+  "required_local_proof": "npm run gate:continuity",
+  "required_browser_proof": "N/A — between rungs.",
+  "browser_proof_command": "N/A",
+  "acceptance_condition": "Control plane is consistent in the between-rungs form (build-order active_issue: none, contract active_issue: none, no active-seam line in ACTIVE_HANDOFF) and gate:continuity passes.",
+  "is_user_facing": false,
   "anti_regression_checks": [
-    "gate:continuity green",
-    "no paid LLM on the open path (trigger runner repackages the already-paid artifact)",
-    "client throttle (5 min) on top of the route 429 rate limit",
-    "no schema/deps/lib/api changes"
+    "gate:continuity green in between-rungs form",
+    "no active-seam line in ACTIVE_HANDOFF.md",
+    "no product/runtime files changed"
   ],
-  "stop_condition": "Stop when the draft PR for #421 is open with CI green, or BLOCKED_WITH_EXACT_RECEIPT on owner-side dashboard validation.",
-  "next_command": "Owner: open the dashboard and confirm it auto-syncs + surfaces the current move. Then the daily generation must actually produce an artifact (ANTHROPIC_API_KEY) for the trigger to surface — confirm that env. Hygiene backlog captured in #420.",
+  "stop_condition": "Stop when the control plane is rolled forward to a clean between-rungs state and the owner has a boot prompt for the next session.",
+  "next_command": "OWNER: confirm ANTHROPIC_API_KEY in Vercel Production so daily generation produces the artifact the now-immediate free trigger surfaces; open the dashboard to validate #421 auto-sync. CODE backlog from roadmap #420: pick the repo-hygiene batch (delete orphans / fix test tsc / gate auth PII logging / env docs) or the paid selection-layer build (needs cost ceiling).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
