@@ -16,6 +16,10 @@ function row(overrides: Partial<HealthTokenRow>): HealthTokenRow {
     disconnected_at: null,
     access_token: 'access',
     refresh_token: 'refresh',
+    email: null,
+    scopes: null,
+    expires_at: null,
+    oauth_reauth_required_at: null,
     ...overrides,
   };
 }

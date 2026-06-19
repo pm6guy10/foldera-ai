@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { runBriefLifecycle } from '../brief-service';
 import { runDailyBrief, runDailySend } from '../daily-brief';
+import type { DailyBriefUserResult, DailyBriefOrchestrationResult } from '../daily-brief-types';
 
 vi.mock('../daily-brief', () => ({
   runDailyBrief: vi.fn(),
@@ -13,7 +14,7 @@ function makeGenerateResult(code: string, success = true) {
   return {
     date: '2026-03-24',
     message: 'generate message',
-    results: [{ code, success, userId: USER_ID }],
+    results: [{ code: code as DailyBriefUserResult['code'], success, userId: USER_ID }],
     succeeded: success ? 1 : 0,
     total: 1,
     signalProcessing: {
@@ -30,7 +31,7 @@ function makeSendResult(code: string, success = true) {
   return {
     date: '2026-03-24',
     message: 'send message',
-    results: [{ code, success, userId: USER_ID }],
+    results: [{ code: code as DailyBriefUserResult['code'], success, userId: USER_ID }],
     succeeded: success ? 1 : 0,
     total: 1,
   };
@@ -45,7 +46,7 @@ function makeBriefResult(generateCode: string, sendCode: string) {
     generate: generateWithoutSignal,
     send: makeSendResult(sendCode),
     signal_processing: signalProcessing,
-  };
+  } as DailyBriefOrchestrationResult;
 }
 
 describe('runBriefLifecycle', () => {

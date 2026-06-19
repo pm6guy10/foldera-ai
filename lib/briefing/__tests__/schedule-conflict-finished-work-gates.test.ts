@@ -158,7 +158,7 @@ describe('schedule_conflict finished-work gates (aligned)', () => {
           topCandidates: [
             {
               ...discoveryWithScheduleConflictClass().topCandidates[0],
-              targetGoal: { text: 'Interview confirmation draft for Alex Crisler (PM candidate)' },
+              targetGoal: { text: 'Interview confirmation draft for Alex Crisler (PM candidate)', priority: 1, category: 'career' },
             },
           ],
         },

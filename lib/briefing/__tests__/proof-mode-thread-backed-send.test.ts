@@ -14,6 +14,8 @@ const BASE_WINNER: ScoredLoop = {
   title: 'Follow up on Q2 deliverable',
   content: 'Thread shows open ask; peer owes a reply.',
   suggestedActionType: 'send_message',
+  matchedGoal: null,
+  confidence_prior: 70,
   score: 4.2,
   breakdown: {
     stakes: 3,
@@ -158,7 +160,7 @@ describe('proofModeThreadBackedSendEnforcementApplies', () => {
     expect(
       proofModeThreadBackedSendEnforcementApplies(
         { type: 'discrepancy' },
-        'make_decision',
+        'make_decision' as Parameters<typeof proofModeThreadBackedSendEnforcementApplies>[1],
       ),
     ).toBe(false);
   });

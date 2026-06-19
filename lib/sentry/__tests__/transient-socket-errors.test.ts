@@ -77,7 +77,7 @@ describe('isNonProductionLocalNoiseEvent', () => {
       request: {
         headers: { 'user-agent': 'Mozilla/5.0 HeadlessChrome/123.0.0.0' },
       },
-    } as Parameters<typeof isNonProductionLocalNoiseEvent>[0];
+    } as unknown as Parameters<typeof isNonProductionLocalNoiseEvent>[0];
     expect(isNonProductionLocalNoiseEvent(ev)).toBe(true);
   });
 
@@ -87,7 +87,7 @@ describe('isNonProductionLocalNoiseEvent', () => {
       process.env.VERCEL_ENV = 'production';
       const ev = {
         request: { url: 'http://127.0.0.1:3000/api/source-readiness' },
-      } as Parameters<typeof isNonProductionLocalNoiseEvent>[0];
+      } as unknown as Parameters<typeof isNonProductionLocalNoiseEvent>[0];
       expect(isNonProductionLocalNoiseEvent(ev)).toBe(false);
     } finally {
       if (previous === undefined) {

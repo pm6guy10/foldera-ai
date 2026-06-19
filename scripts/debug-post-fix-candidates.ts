@@ -20,7 +20,7 @@ async function main() {
   console.log('\n=== SCORER RESULT ===');
   console.log('winner type:', result.winner?.type);
   console.log('winner entity:', result.winner?.entityName);
-  console.log('winner candidate_id:', result.winner?.candidate_id);
+  console.log('winner candidate_id:', (result.winner as { candidate_id?: string } | null)?.candidate_id);
   console.log('winner score:', result.winner ? (result.winner as any).score : null);
   console.log('winner scorer_ev:', (result as any).scorer_ev);
   

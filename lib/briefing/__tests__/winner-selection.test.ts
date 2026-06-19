@@ -23,7 +23,6 @@ function makeCandidate(overrides: Partial<ScoredLoop> & { score: number }): Scor
     content: overrides.content ?? 'Some content about the candidate.',
     suggestedActionType: overrides.suggestedActionType ?? 'write_document',
     matchedGoal: overrides.matchedGoal ?? null,
-    score: overrides.score,
     breakdown: overrides.breakdown ?? BASE_BREAKDOWN,
     relatedSignals: overrides.relatedSignals ?? [],
     sourceSignals: overrides.sourceSignals ?? [
@@ -34,8 +33,9 @@ function makeCandidate(overrides: Partial<ScoredLoop> & { score: number }): Scor
         occurredAt: new Date().toISOString(),
       },
     ],
+    confidence_prior: overrides.confidence_prior ?? 70,
     ...overrides,
-  };
+  } as ScoredLoop;
 }
 
 const NO_GUARDRAILS = { approvedRecently: [], skippedRecently: [] };

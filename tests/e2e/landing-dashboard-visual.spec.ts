@@ -197,7 +197,7 @@ describeWithAuth('Visual system dashboard screenshots', () => {
       const rightRailLabel = page
         .getByRole('heading', { name: /Context behind the current move|Evidence behind today's move/i })
         .first();
-      if (capture.rightRailVisible === false) {
+      if ((capture as { rightRailVisible?: boolean }).rightRailVisible === false) {
         await expect(rightRailLabel).not.toBeVisible();
       } else {
         await expect(rightRailLabel).toBeVisible();

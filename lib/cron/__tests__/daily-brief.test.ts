@@ -472,6 +472,8 @@ function buildGenerationLog(overrides: Partial<GenerationRunLog> = {}): Generati
             urgency: 0.9,
             tractability: 0.8,
             freshness: 0.95,
+            actionTypeRate: 0.5,
+            entityPenalty: 0,
           },
           targetGoal: {
             text: 'Advance MAS3 hiring process',
@@ -501,6 +503,8 @@ function buildGenerationLog(overrides: Partial<GenerationRunLog> = {}): Generati
             urgency: 0.6,
             tractability: 0.7,
             freshness: 0.88,
+            actionTypeRate: 0.5,
+            entityPenalty: 0,
           },
           targetGoal: {
             text: 'Advance MAS3 hiring process',
@@ -529,6 +533,8 @@ function buildGenerationLog(overrides: Partial<GenerationRunLog> = {}): Generati
             urgency: 0.55,
             tractability: 0.5,
             freshness: 0.85,
+            actionTypeRate: 0.5,
+            entityPenalty: 0,
           },
           targetGoal: {
             text: 'Advance MAS3 hiring process',
@@ -819,6 +825,8 @@ describe('runDailyGenerate candidate logging', () => {
                 urgency: 0.75,
                 tractability: 0.7,
                 freshness: 1,
+                actionTypeRate: 0.5,
+                entityPenalty: 0,
               },
               targetGoal: null,
               sourceSignals: [],
@@ -837,6 +845,8 @@ describe('runDailyGenerate candidate logging', () => {
                 urgency: 0.9,
                 tractability: 0.7,
                 freshness: 1,
+                actionTypeRate: 0.5,
+                entityPenalty: 0,
               },
               targetGoal: {
                 text: 'Land MAS3 Management Analyst Supervisor position at HCA and establish 12-month tenure with clean supervisor reference',
@@ -879,7 +889,7 @@ describe('runDailyGenerate candidate logging', () => {
         success: true,
       }),
     ]);
-    const saved = mockSupabase.insertedActions.at(-1);
+    const saved = mockSupabase.insertedActions.at(-1)!;
     expect(saved.status).toBe('pending_approval');
     expect((saved.execution_result as Record<string, any>).outcome_receipt.winner).toEqual(
       expect.objectContaining({
@@ -928,6 +938,8 @@ describe('runDailyGenerate candidate logging', () => {
                 urgency: 0.9,
                 tractability: 0.8,
                 freshness: 0.95,
+                actionTypeRate: 0.5,
+                entityPenalty: 0,
               },
               targetGoal: null,
               sourceSignals: [],
@@ -945,6 +957,8 @@ describe('runDailyGenerate candidate logging', () => {
                 urgency: 0.85,
                 tractability: 0.75,
                 freshness: 0.9,
+                actionTypeRate: 0.5,
+                entityPenalty: 0,
               },
               targetGoal: {
                 text: 'Advance MAS3 hiring process',
@@ -1273,8 +1287,6 @@ describe('runDailyGenerate candidate logging', () => {
         '',
         'Consequence: if unresolved by end of day PT on 2026-04-26, the execution window closes before owners can act.',
       ].join('\n'),
-      document_purpose: 'proposal',
-      target_reader: 'decision owner',
     });
     vi.mocked(validateDirectiveForPersistence).mockReturnValue([
       'decision_enforcement:recursive_directive_template_sludge',

@@ -137,12 +137,12 @@ class SelectQuery {
     };
   }
 
-  eq(field: string, value: unknown) {
+  eq(field: string, value: any) {
     this.state.filters.push((row) => row[field] === value);
     return this;
   }
 
-  neq(field: string, value: unknown) {
+  neq(field: string, value: any) {
     this.state.filters.push((row) => row[field] !== value);
     return this;
   }
@@ -152,27 +152,27 @@ class SelectQuery {
     return this;
   }
 
-  gte(field: string, value: unknown) {
+  gte(field: string, value: any) {
     this.state.filters.push((row) => row[field] >= value);
     return this;
   }
 
-  lte(field: string, value: unknown) {
+  lte(field: string, value: any) {
     this.state.filters.push((row) => row[field] <= value);
     return this;
   }
 
-  lt(field: string, value: unknown) {
+  lt(field: string, value: any) {
     this.state.filters.push((row) => row[field] < value);
     return this;
   }
 
-  gt(field: string, value: unknown) {
+  gt(field: string, value: any) {
     this.state.filters.push((row) => row[field] > value);
     return this;
   }
 
-  is(field: string, value: unknown) {
+  is(field: string, value: any) {
     this.state.filters.push((row) => row[field] === value);
     return this;
   }
@@ -261,7 +261,7 @@ class UpdateQuery {
     private readonly payload: Row,
   ) {}
 
-  eq(field: string, value: unknown) {
+  eq(field: string, value: any) {
     this.filters.push((row) => row[field] === value);
     return this;
   }
@@ -271,7 +271,7 @@ class UpdateQuery {
     return this;
   }
 
-  lte(field: string, value: unknown) {
+  lte(field: string, value: any) {
     this.filters.push((row) => row[field] <= value);
     return this;
   }
@@ -817,7 +817,7 @@ describe('briefing pipeline receipt', () => {
     runtime.signalSelectColumns = [];
     const scored = await scoreOpenLoops(TEST_USER_ID);
     expect(scored?.winner).toBeTruthy();
-    expect(scored?.winner.score ?? 0).toBeGreaterThan(0);
+    expect(scored?.winner?.score ?? 0).toBeGreaterThan(0);
     expect(runtime.signalSelectColumns.some((columns) => isContentSelectingColumns(columns))).toBe(false);
 
     runtime.signalSelectColumns = [];

@@ -11,8 +11,8 @@ Last updated: 2026-06-19 UTC (between rungs — shipped #402/#404/#407/#411/#414
 ## Active command gate
 
 ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Issue #425 is the active repo-hardening seam.
-Executing docs/NEXT_SESSION_HARDENING.md (roadmap #420) as a sequence of themed PRs. Batch 1 (#425) deletes verified zero-import dead code (components/layout/ was already removed by #417). Batches 2-5 follow (type safety, auth-PII logging, env/docs hygiene, Supabase index drop). Constraint: NO paid API calls — prove in the harness. The live product thread remains the GUARDIAN (workday-presence) — see `FOLDERA_MASTER_BIBLE.md` Part II-B; the one live-readiness blocker stays owner-side (the free external 15-min guardian cron).
+Issue #427 is the active repo-hardening seam.
+Executing docs/NEXT_SESSION_HARDENING.md (roadmap #420) as a sequence of themed PRs. Batch 1 (#425, dead-code deletion) merged via PR #426 (c0142ab). Batch 2 (#427) adds a typecheck npm script, un-excludes tests/+scripts/ in tsconfig, and drives the 120 surfaced tsc errors to zero. Batches 3-5 follow (auth-PII logging, env/docs hygiene, Supabase index drop). Constraint: NO paid API calls — prove in the harness. The live product thread remains the GUARDIAN (workday-presence) — see `FOLDERA_MASTER_BIBLE.md` Part II-B; the one live-readiness blocker stays owner-side (the free external 15-min guardian cron).
 **LIVE (production `30fbf13`):** #382 frontend overhaul · #390 owner self-review system (`docs/BRANDON.md` + `docs/EXPERT_PANEL.md` + Bible Part IV) · #391/#393 guardian fires-grounded-and-pings · #394/#395 guardian pings only finished work · #397 (PR #398) brief seeds the matched draft at generation time · #399 (PR #400) commitment-title hygiene (no SYNC: key in the card). #382 stays OPEN for optional polish.
 **Standing candidates (NOT started, owner to choose):** OWNER-SIDE — configure the external 15-min cron for guardian cadence (the ongoing firing mechanism; NOT a Vercel daily cron). CODE — recolor legacy cyan favicons (`app/favicon.ico`/`public/favicon.png`, BLOCKED on image tooling — `sharp`/imagemagick absent); triage 46 stale remote branches + skipped tests. Constraint: NO paid API calls to test — prove in the harness.
 
@@ -36,12 +36,12 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 ## Current slice:
 
-Batch 1 (#425, PR #426) of the hardening mission: delete verified zero-import dead code (orphaned dashboard cluster, dead foldera/ui components, dead lib modules, orphaned dashboard-page-model + its tests). Proof: gate:continuity + build + lint + vitest.
+Batch 2 (#427) of the hardening mission: add a typecheck npm script, un-exclude tests/+scripts/ in tsconfig, and drive the 120 surfaced tsc errors (stale test fixtures vs evolved types) to zero. Batch 1 (#425/PR #426) is merged (c0142ab). Proof: typecheck + gate:continuity + build + lint + vitest.
 
 ## Next exact move
 
-1. Land Batch 1 (#425/PR #426), then run Batch 2 — type safety (#420 Tier 2): typecheck npm script + un-exclude tests/scripts in tsconfig + drive ~103 test-file tsc errors to zero.
-2. Then Batch 3 (gate auth PII logging behind FOLDERA_DEBUG_AUTH), Batch 4 (env/docs hygiene), Batch 5 (Supabase unused-index drop migration — propose-only, no apply).
+1. Land Batch 2 (#427), then run Batch 3 — gate auth PII logging behind FOLDERA_DEBUG_AUTH.
+2. Then Batch 4 (env/docs hygiene), Batch 5 (Supabase unused-index drop migration — propose-only, no apply).
 3. At session end roll the control plane forward to between-rungs. OWNER-SIDE remains: confirm `ANTHROPIC_API_KEY` in Vercel Production + the free external guardian cron. Constraint: NO paid API calls — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.

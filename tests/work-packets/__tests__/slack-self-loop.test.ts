@@ -38,9 +38,9 @@ describe('slack self-loop deterministic red gate', () => {
       channel: 'CSELF',
       blocks: expect.any(Array),
     });
-    expect(JSON.stringify(result.slack.blocks)).not.toContain('<');
-    expect(JSON.stringify(result.slack.blocks)).not.toContain('<div');
-    expect(JSON.stringify(result.slack.blocks)).not.toContain('custom HTML');
+    expect(JSON.stringify(result.slack!.blocks)).not.toContain('<');
+    expect(JSON.stringify(result.slack!.blocks)).not.toContain('<div');
+    expect(JSON.stringify(result.slack!.blocks)).not.toContain('custom HTML');
   });
 
   it('Constraint 3: does not leak user_tokens while deriving the payload', async () => {

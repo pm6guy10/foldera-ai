@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "cross-env ESLINT_USE_FLAT_CONFIG=true eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:briefing-runtime-gate": "npm run test:critical-ci-contracts",
     "test:critical-ci-contracts": "npx vitest run lib/briefing/__tests__/generator-runtime.test.ts app/api/settings/run-brief/__tests__/route.test.ts app/api/cron/nightly-ops/__tests__/route.test.ts",

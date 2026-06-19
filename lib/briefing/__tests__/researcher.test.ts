@@ -110,8 +110,9 @@ function buildWinner(overrides: Partial<ScoredLoop> = {}): ScoredLoop {
     breakdown: { stakes: 4.0, urgency: 0.85, tractability: 0.9, freshness: 0.8, actionTypeRate: 0.5, entityPenalty: 0 },
     relatedSignals: ['Hiring manager mentioned March deadline'],
     sourceSignals: [{ kind: 'commitment', id: 'sig-1' }],
+    confidence_prior: overrides.confidence_prior ?? 70,
     ...overrides,
-  };
+  } as ScoredLoop;
 }
 
 function seedSignals(signals: typeof mockSignals): void {

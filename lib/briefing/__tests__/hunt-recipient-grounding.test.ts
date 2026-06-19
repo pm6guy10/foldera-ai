@@ -7,6 +7,7 @@ import {
 } from '../generator';
 import { getArtifactPersistenceIssues } from '@/lib/conviction/artifact-generator';
 import type { ConvictionDirective } from '../types';
+import type { GeneratedDirectivePayload } from '../generator';
 import type { ScoredLoop } from '../scorer';
 
 const emptyGuard = { approvedRecently: [] as never[], skippedRecently: [] as never[] };
@@ -361,14 +362,14 @@ describe('hunt send_message artifact.to validation (collectHuntSendMessageToVali
       collectHuntSendMessageToValidationIssues(ctx, 'send_message', 'alex.rivera@example.com').length,
     ).toBeGreaterThan(0);
 
-    const did = applyHuntSendMessageRecipientCoercion(parsed, ctx, 'send_message');
+    const did = applyHuntSendMessageRecipientCoercion(parsed as unknown as GeneratedDirectivePayload, ctx, 'send_message');
     expect(did).toBe(true);
-    expect((parsed.artifact as { to: string }).to).toBe('alex@clientco.com');
+    expect((parsed.artifact as unknown as { to: string }).to).toBe('alex@clientco.com');
     expect(
       collectHuntSendMessageToValidationIssues(
         ctx,
         'send_message',
-        (parsed.artifact as { to: string }).to,
+        (parsed.artifact as unknown as { to: string }).to,
       ).length,
     ).toBe(0);
   });
@@ -438,14 +439,14 @@ describe('hunt send_message artifact.to validation (collectHuntSendMessageToVali
       collectHuntSendMessageToValidationIssues(ctx, 'send_message', undefined).length,
     ).toBeGreaterThan(0);
 
-    const did = applyHuntSendMessageRecipientCoercion(parsed, ctx, 'send_message');
+    const did = applyHuntSendMessageRecipientCoercion(parsed as unknown as GeneratedDirectivePayload, ctx, 'send_message');
     expect(did).toBe(true);
-    expect((parsed.artifact as { to: string }).to).toBe('alex@clientco.com');
+    expect((parsed.artifact as unknown as { to: string }).to).toBe('alex@clientco.com');
     expect(
       collectHuntSendMessageToValidationIssues(
         ctx,
         'send_message',
-        (parsed.artifact as { to: string }).to,
+        (parsed.artifact as unknown as { to: string }).to,
       ).length,
     ).toBe(0);
   });

@@ -87,7 +87,7 @@ describe('replay harness — stale_date_in_directive', () => {
 
 describe('replay harness — hunt recipient allowlist / coercion', () => {
   it('coerces singleton allowlist when model invents an address', () => {
-    const parsed = structuredClone(HUNT_FAKE_TO_BEFORE_COERCION) as Parameters<
+    const parsed = structuredClone(HUNT_FAKE_TO_BEFORE_COERCION) as unknown as Parameters<
       typeof applyHuntSendMessageRecipientCoercion
     >[0];
     const ctx = {
@@ -102,7 +102,7 @@ describe('replay harness — hunt recipient allowlist / coercion', () => {
   });
 
   it('coerces to the first grounded allowlist entry when multiple hunt recipients are grounded', () => {
-    const parsed = structuredClone(HUNT_FAKE_TO_BEFORE_COERCION) as Parameters<
+    const parsed = structuredClone(HUNT_FAKE_TO_BEFORE_COERCION) as unknown as Parameters<
       typeof applyHuntSendMessageRecipientCoercion
     >[0];
     const ctx = {

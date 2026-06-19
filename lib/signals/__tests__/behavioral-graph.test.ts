@@ -101,7 +101,7 @@ describe('behavioral graph', () => {
     expect(result.signals_scanned).toBe(1001);
     expect(result.pages_fetched).toBe(2);
     expect(supabase.entityUpdates).toHaveLength(1);
-    expect(supabase.entityUpdates[0]?.payload.patterns.bx_stats).toMatchObject({
+    expect((supabase.entityUpdates[0]?.payload as Record<string, Record<string, unknown>>)?.patterns.bx_stats).toMatchObject({
       signal_count_14d: 1001,
       signal_count_30d: 1001,
       signal_count_90d: 1001,

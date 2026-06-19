@@ -17,13 +17,11 @@ const BASE_BREAKDOWN = {
 
 function candidate(overrides: Partial<ScoredLoop> & { id: string; score: number }): ScoredLoop {
   return {
-    id: overrides.id,
     type: overrides.type ?? 'signal',
     title: overrides.title ?? 'Candidate',
     content: overrides.content ?? 'Candidate content with concrete detail.',
     suggestedActionType: overrides.suggestedActionType ?? 'send_message',
     matchedGoal: overrides.matchedGoal ?? { text: 'Land role offer by May', priority: 1, category: 'career' },
-    score: overrides.score,
     breakdown: overrides.breakdown ?? BASE_BREAKDOWN,
     relatedSignals: overrides.relatedSignals ?? ['Signal with outcome evidence'],
     sourceSignals: overrides.sourceSignals ?? [{ kind: 'signal', summary: 'Signal with outcome evidence' }],

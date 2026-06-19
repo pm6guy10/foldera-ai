@@ -743,7 +743,7 @@ export async function gatherReleaseGateEvidence(
     ),
     nonOwnerHarnessProof: proofIf(
       /mock harness map only/i.test(harnessMap) &&
-        /NON_OWNER_BETA_USER_ID.*33333333-3333-4333-8333-333333333333/s.test(harnessSpec),
+        /NON_OWNER_BETA_USER_ID[\s\S]*33333333-3333-4333-8333-333333333333/.test(harnessSpec),
       'NON_OWNER_BETA_HARNESS_MAP.md labels mock-only proof; harness uses a reserved-safe non-owner mock identity.',
     ),
     realNonOwnerProof: realNonOwnerHandoffProof,

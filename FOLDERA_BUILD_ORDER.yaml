@@ -22,11 +22,16 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 425
+active_issue: 427
 priority_class: PRODUCT
 work_type: CHORE
-why_this_first: "Executing docs/NEXT_SESSION_HARDENING.md (roadmap #420) as a sequence of themed PRs. Batch 1 (#425): delete verified zero-import dead code so the codebase stops carrying orphaned components/lib/app modules. (components/layout/ was already removed by #417, so it is not in this batch.)"
-next_seam: "After #425 merges: Batch 2 — type safety (#420 Tier 2): add a typecheck npm script, stop excluding tests/+scripts/ in tsconfig, drive the ~103 test-file tsc errors to zero. Then Batch 3 (auth PII logging behind FOLDERA_DEBUG_AUTH), Batch 4 (env/docs hygiene), Batch 5 (Supabase unused-index drop migration, propose-only). Constraint: NO paid API calls — prove in the harness."
+why_this_first: "Executing docs/NEXT_SESSION_HARDENING.md (roadmap #420) as themed PRs. Batch 1 (#425, dead-code deletion) merged via PR #426 (c0142ab). Batch 2 (#427): add a typecheck npm script, un-exclude tests/+scripts/ in tsconfig, and drive the 120 surfaced tsc errors (stale test fixtures) to zero so type regressions are caught."
+next_seam: "After #427 merges: Batch 3 (auth PII logging behind FOLDERA_DEBUG_AUTH), Batch 4 (env/docs hygiene), Batch 5 (Supabase unused-index drop migration, propose-only). Constraint: NO paid API calls — prove in the harness."
+completed_issue_425:
+  issue: 425
+  pr: 426
+  pr_merge_sha: c0142ab
+  summary: "Batch 1 dead-code deletion: 29 verified zero-import orphans removed (orphaned dashboard cluster, dead foldera/ui components, dead lib modules, orphaned dashboard-page-model + its 2 tests). Meta-tests + lib/utils barrel updated. build + lint + gate green; vitest 1914 passing."
 completed_issue_421:
   issue: 421
   pr: 422

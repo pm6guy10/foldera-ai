@@ -15,11 +15,14 @@ function baseBreakdown() {
     urgency: 3,
     freshness: 3,
     tractability: 3,
+    actionTypeRate: 0.5,
+    entityPenalty: 0,
   };
 }
 
 function signal(summary: string, occurredAt = now.toISOString()) {
   return {
+    kind: 'signal' as const,
     id: `signal-${summary.slice(0, 12)}`,
     summary,
     occurredAt,
@@ -28,9 +31,7 @@ function signal(summary: string, occurredAt = now.toISOString()) {
 
 function makeCandidate(partial: Partial<ScoredLoop> & Pick<ScoredLoop, 'id' | 'title'>): ScoredLoop {
   return {
-    id: partial.id,
     type: partial.type ?? 'commitment',
-    title: partial.title,
     content: partial.content ?? partial.title,
     score: partial.score ?? 1,
     breakdown: partial.breakdown ?? baseBreakdown(),
@@ -67,7 +68,7 @@ describe('positive winner contract', () => {
       content:
         'Write a Resend relationship status and interview decision map because onboarding@resend.dev has not replied in 36 days.',
       score: 999,
-      breakdown: { stakes: 5, urgency: 5, freshness: 5, tractability: 5 },
+      breakdown: { stakes: 5, urgency: 5, freshness: 5, tractability: 5, actionTypeRate: 0.5, entityPenalty: 0 },
       suggestedActionType: 'write_document',
       relationshipContext: 'Entity: onboarding@resend.dev\nEmail: onboarding@resend.dev',
       sourceSignals: [
@@ -84,9 +85,9 @@ describe('positive winner contract', () => {
       score: 1.7,
       suggestedActionType: 'write_document',
       matchedGoal: {
-        id: 'career-goal',
         text: 'Win the CWU/ESB/MAS3 interview loop.',
         priority: 1,
+        category: 'career',
       },
       sourceSignals: [
         signal('CWU interview #2 is scheduled this week and needs ESB/MAS3 role-fit prep.'),
@@ -150,9 +151,9 @@ describe('positive winner contract', () => {
       content: 'Build Foldera into a revenue-generating product.',
       suggestedActionType: 'make_decision',
       matchedGoal: {
-        id: 'goal-foldera',
         text: 'Build Foldera into a revenue-generating product.',
         priority: 1,
+        category: 'project',
       },
       sourceSignals: [],
       relatedSignals: [],
@@ -199,7 +200,6 @@ describe('positive winner contract', () => {
       score: 25,
       suggestedActionType: 'write_document',
       matchedGoal: {
-        id: 'goal-foldera',
         text: 'Build Foldera into a revenue-generating product. First paid user, then scale to replace employment income.',
         priority: 1,
         category: 'project',
@@ -414,9 +414,9 @@ describe('positive winner contract', () => {
           score: 999,
           suggestedActionType: 'make_decision',
           matchedGoal: {
-            id: 'goal-foldera',
             text: 'Build Foldera into a revenue-generating product.',
             priority: 1,
+            category: 'project',
           },
           sourceSignals: [],
           relatedSignals: [],
