@@ -23,18 +23,22 @@ Keep this cockpit short and value-first. Completed-issue history lives in `SESSI
 Issue #445 is the active firm-foundation audit seam.
 (Master Audit — anti-rediscovery; one expert pass per PR.)
 
-**Merged to main (through `8654637`):** Pass 0 inventory · Pass 1 RLS `PASS` · Pass 2 database `PASS` (+D-3) · Pass 3 cost `CONCERN` (extraction cap 4→0.25) · **Pass 4 backend/runtime `CONCERN` (#458)** · **Pass 5 AI/ML grounding `PASS`** · F-1 (CI-on-PRs) · gem-ranking floor #456 · lapsing-card hygiene #457 · **overdue-admission window #460 (60d for risk≥60)** · gem-surfacing revert #453 · **LESSONS_LEARNED #19 (value-is-the-only-score) #458.**
+**Merged to main (through `8654637`):** Pass 0 inventory · Pass 1 RLS `PASS` · Pass 2 database `PASS` (+D-3) · Pass 3 cost `CONCERN` (extraction cap 4→0.25) · **Pass 4 backend/runtime `CONCERN` (#458)** · **Pass 5 AI/ML grounding `PASS` (#461)** · **Pass 6 FE perf/a11y `PASS` +3 tap-target fixes (#463)** · **Pass 7 FE design/UX `PASS`** · F-1 (CI-on-PRs) · gem-ranking floor #456 · lapsing-card hygiene #457 · **overdue-admission window #460 (60d for risk≥60)** · gem-surfacing revert #453 · **LESSONS_LEARNED #19 (value-is-the-only-score) #458.**
 
 **Pass 4 (#458) detail:** fixed B-2 — the `morning-pipeline` orchestrator had no per-stage isolation, so a thrown stage (e.g. nightly sync) silently dropped `daily_brief` (the value stage) for the whole day; `invokeStage` now isolates each stage (fails safe). C-2 root-caused: ~74% of directives pay for a second full LLM call because the first fails validation → routed to **Pass 5 + paid validation**, not shipped blind. Record: `docs/backend/RUNTIME_CORRECTNESS.md`. Verdict CONCERN — runtime is *safe* but still costs without producing value.
 
-**Pass 5 (AI/ML grounding) `PASS`:** read-only forensic pass over the grounding chain (scorer → evidence resolution → worthiness gate → quality gate → send), mapped to the AI/ML kill-questions. All 4 answered affirmative: hard `no_evidence` rejection ("must be grounded in real context"), `fabricated_claim` hard block, scored ranking with freshness *penalizing* recency (magic invariant), 37 grounding/invariant tests green. One soft-by-design observation (O-5.1: `no_source_grounding` is a logged send-receipt warning, not a hard blocker — acceptable because the hard evidence gate already ran). C-2 (first-pass validation quality, ~74% retry) is the AI/ML lever but **needs a paid generation cycle → owner wall**, not shipped blind. Record: `docs/backend/AI_GROUNDING_FAITHFULNESS.md`.
+**Pass 5 (AI/ML grounding) `PASS` (#461):** grounding chain is fail-closed — hard `no_evidence` rejection, `fabricated_claim` block, freshness penalizes recency (magic invariant), 37 tests green. O-5.1 `no_source_grounding` soft-by-design. C-2 first-pass-quality fix → owner paid wall. Record: `docs/backend/AI_GROUNDING_FAITHFULNESS.md`.
 
-**Passes 6–12 NOT started.** Frontend passes 6 (perf/a11y), 7 (design/UX), 8 (trust/claims) next; or owner runs the C-2 paid-validation lever.
+**Pass 6 (FE perf/a11y) `PASS` (#463):** verified live at 375px — no overflow, reduced-motion covers framer+CSS, focus rings, no-CLS images. Fixed 3 sub-44px tap targets in `LandingPage.tsx`. Record: `docs/frontend/PERF_A11Y_AUDIT.md`.
+
+**Pass 7 (FE design/UX) `PASS`:** single dominant CTA, logo→home, all 9 routes resolve (no dead links), amber restrained (7×), no AI-cliché icons, one-click controls + evidence (recognition-over-recall). O-7.2 enterprise SSO/SCIM claims handed to Pass 8. Record: `docs/frontend/DESIGN_UX_AUDIT.md`.
+
+**Passes 8–12 NOT started.** Pass 8 (trust/claims — owns O-7.2), 9 (Vercel deploy), 10 (GitHub CI), 11 (observability), 12 (governance meta) next; or owner runs the C-2 paid-validation lever.
 
 ## Next exact move
 
 1. **Owner — the value lever (TRUE wall):** one paid generation cycle to confirm a real gem now surfaces. This is the *only* move that turns "healthy" into "valuable."
-2. **Next audit pass: frontend 6 (perf/a11y), 7 (design/UX), or 8 (trust/claims)** — all harness-doable. (Pass 5 done; its C-2 paid-validation lever is the owner item above.)
+2. **Next audit pass: 8 (trust/claims), then 9 (Vercel), 10 (CI), 11 (observability), 12 (governance meta)** — all harness-doable. (Passes 5–7 done; C-2 paid-validation lever is the owner item above.)
 3. **PR #454 (DRAFT) — broadcast/recruiting-sender suppression** (owner judgment; changes entity admission, can over-suppress at edge cases). On `claude/mvp-polish-pass-audit-sg9e4k`.
 4. Deferred follow-ups (harness-only): B-4 budget-reservation reconciliation; B-5 persist retry reasons (Pass 11); the two-way test for relationship gems (coupled to #454). [>30d-overdue admission window shipped via #460.]
 
