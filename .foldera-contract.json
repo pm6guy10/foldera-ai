@@ -13,7 +13,8 @@
     "tests/**",
     "app/api/cron/morning-pipeline/**",
     "lib/briefing/generator.ts",
-    "lib/utils/__tests__/api-tracker.test.ts"
+    "lib/utils/__tests__/api-tracker.test.ts",
+    "LESSONS_LEARNED.md"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
