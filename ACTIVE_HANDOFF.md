@@ -1,6 +1,6 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — passes 0/1/2/3 + D-3 + F-1 merged; shipping gem-surfacing, owner-validation-gated)
+Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — passes 0/1/2/3 + D-3 + F-1 merged; reverting gem-surfacing #452, roman=noise)
 
 ## Boot
 
@@ -37,13 +37,13 @@ Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
 
 Issue #445 is the active firm-foundation audit seam.
 
-Master Audit (#445) — fix-in-pass. Merged: Pass 0 inventory; Pass 1 RLS `PASS`; Pass 2 database `PASS` + D-3 index; Pass 3 cost `CONCERN`; F-1 CI-on-PRs. **Shipping gem-surfacing** — the product-quality core. Diagnosed why the engine fires daily but delivers nothing: the artifactability taxonomy ranked deadline/calendar reminders as tier_1 "gems" and hardcoded relationship insight to tier_3 + blocked it — **inverted from value**. Fix (`lib/briefing/artifact-taste-pack.ts`): a relationship gem GROUNDED in a real recent two-way thread (≥2 facts ≤14d) is promoted to tier_2 + unblocked; vague/stale stays suppressed. Deterministic proof green (gem-tiering test + 812-test briefing suite + typecheck). **Live/paid validation = OWNER gate** (deploy + 1 generation cycle on credits, confirm gem-not-noise). Doctrine: `docs/GEM_SURFACING.md`.
+Master Audit (#445) — fix-in-pass. Merged: Pass 0 inventory; Pass 1 RLS `PASS`; Pass 2 database `PASS` + D-3; Pass 3 cost `CONCERN`; F-1 CI-on-PRs. **Shipping a REVERT of gem-surfacing (#452).** That change promoted `relationship_risk_silence` to a winnable tier — but the top such candidate (`roman`) is a Handshake/Slack **broadcast** sender = the 95% automated noise the Bible (Part II-C) says to suppress, not surface. The original gate was right; the fix pointed the product at noise. Reverts `lib/briefing/artifact-taste-pack.ts` to prior logic, deletes the wrong test, rewrites `docs/GEM_SURFACING.md` with the doctrine gem definition (high-consequence buried signal + right time + channel + one act). Lesson: test against real data, not fixtures — the fixture passed while the live winner was garbage.
 
 ## Next exact move
 
-1. PR up with deterministic proof; **BLOCKED_WITH_EXACT_RECEIPT** on owner live/paid validation (the brain's voice change needs a real generation run — credits exist, env is owner-side).
-2. Owner: deploy, run one daily generation cycle, confirm the surfaced card is a real relationship gem. If noise → tighten grounding (high-value entity / explicit open loop).
-3. Then the bigger tune: re-order tiers so insight density beats artifact shape. Constraint: NO paid API calls from here — prove in the harness.
+1. Merge the revert; #445 records the wrong-turn + correction.
+2. **Real forward lever:** harden transactional/broadcast suppression (`TRANSACTIONAL_SENDER_RE` only catches a few `noreply@` domains; Handshake/Slack/notification senders slip through and become relationship candidates). Pure noise reduction — the right direction.
+3. Then verify the high-consequence domains (money/legal_gov/medical/work_transition) are what rises; accept correct silence if the data is genuinely all noise + low-stakes. NO paid API calls from here — prove in the harness.
 
 Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
 
