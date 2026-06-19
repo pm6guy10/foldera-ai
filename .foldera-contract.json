@@ -1,9 +1,9 @@
 {
-  "backlog_id": "master-audit-pass7-frontend-design-ux",
+  "backlog_id": "master-audit-pass8-trust-honest-claims",
   "active_issue": 445,
-  "base_commit": "b167fc8",
+  "base_commit": "e8b4fec",
   "money_loop_rung": "m2",
-  "user_system_path": "Master Audit #445 — Pass 7 (Frontend Design & UX, EXPERT_PANEL.md §1/§2/§3). Read-only forensic pass over landing (components/foldera/LandingPage.tsx) + dashboard (components/dashboard/MorningAnchorCard.tsx). Verdict PASS: one dominant CTA repeated, logo returns home, all 9 referenced routes resolve (no dead links), amber accent used 7x across the whole page (restrained), no Sparkles/magic-wand clichés, real brand logos, consistent lucide icon set; dashboard honors one-click View Draft/Dismiss + shows next move WITH evidence (recognition over recall). No code change. Two observations recorded: O-7.1 'Workday Presence Layer' eyebrow jargon (acceptable, translated by subhead); O-7.2 enterprise SSO/SCIM claims routed to Pass 8. Constraint: NO paid API calls.",
+  "user_system_path": "Master Audit #445 — Pass 8 (Trust, Privacy & Honest-Claims, EXPERT_PANEL.md §9). Forensic pass over public claim surfaces (landing, /pricing, /security, demo). Found a real false enterprise claim: 'SSO / SCIM' / 'SAML 2.0 ready' shown on landing + /pricing while NO SAML/SCIM/SSO is implemented (auth is consumer Google + AzureAD OAuth only). Fail-safe fix: removed the unproven claim from both surfaces (+ unused Users icon import), and hardened the forbidden-claim keep-list (scripts/continuity-gate.ts forbiddenClaimTerms) with SSO/SCIM, SCIM, SAML so it cannot regress. Bare 'SSO' deliberately NOT added (collides with 'processor'/'lesson'). Other claims verified honest (read-only, least-privilege, no-training, encryption, audit-logs=tkg_actions receipts, no surveillance, no customer-count theater). O-8.1 demo upsell copy left as forward-looking, recorded. Constraint: NO paid API calls.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -11,6 +11,9 @@
     "FOLDERA_BUILD_ORDER.yaml",
     "docs/**",
     "tests/**",
+    "components/foldera/LandingPage.tsx",
+    "app/pricing/page.tsx",
+    "scripts/continuity-gate.ts",
     "LESSONS_LEARNED.md"
   ],
   "forbidden_file_patterns": [
@@ -18,20 +21,21 @@
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Pass 7 design/UX record (docs/frontend/DESIGN_UX_AUDIT.md) + control-plane only. Documentation pass; no source change.",
+  "allowed_files_raw": "Pass 8 trust/claims record + removal of false SSO/SCIM/SAML enterprise claim from LandingPage.tsx (+ unused Users import) and app/pricing/page.tsx, plus forbidden-claim keep-list hardening in scripts/continuity-gate.ts (a governance-gate file, exempt from product contract scope). No schema, no deps.",
   "forbidden_files_raw": "No schema (supabase/**), no deps (package.json/lock).",
   "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "N/A — documentation pass; route existence verified statically (all 9 landing/footer hrefs map to app/<route>/page.*); design restraint verified by grep (amber=7, cheap-tell icons=0). Landing render already proven live in Pass 6.",
-  "browser_proof_command": "N/A",
-  "acceptance_condition": "Landing + dashboard pass the Product Designer / UX / Growth kill-questions: single dominant CTA, logo home, no dead links, restrained amber, no AI-cliche icons, real logos, one-click controls, recognition-over-recall. Record in docs/frontend/DESIGN_UX_AUDIT.md; enterprise-claim check handed to Pass 8.",
-  "is_user_facing": false,
+  "required_browser_proof": "gate:continuity green AFTER adding SSO/SCIM/SCIM/SAML to forbiddenClaimTerms proves no such claim remains in app/components/public; landing render already proven live (Pass 6) and the change only removes one strip item.",
+  "browser_proof_command": "npm run gate:continuity",
+  "acceptance_condition": "No public surface claims an unproven enterprise/compliance/customer capability. The SSO/SCIM/SAML claim is removed from landing + /pricing and the forbidden-claim gate now blocks its return. Record in docs/frontend/TRUST_HONEST_CLAIMS_AUDIT.md.",
+  "is_user_facing": true,
   "anti_regression_checks": [
-    "gate:continuity green with active seam #445",
-    "documentation-only; no runtime, schema, or UI change",
-    "all 9 landing/footer routes confirmed present (no dead links introduced)"
+    "gate:continuity green with active seam #445 AND with the 3 new forbidden terms (proves the claim is fully gone)",
+    "no remaining SSO/SCIM/SAML in app/components/public (verified by grep, false substrings excluded)",
+    "fix is removal-only on copy + an unused-import delete — no logic/behavior change",
+    "remaining 4 enterprise items + pricing line are all proven-true claims"
   ],
-  "stop_condition": "Stop when Pass 7 record is up as a PR and merged; continue to Pass 8 (Trust & Honest-Claims).",
-  "next_command": "Continue Master Audit #445: Pass 8 (Trust/Claims) — owns the enterprise SSO/SCIM claim verification (O-7.2), then 9 (Vercel), 10 (CI), 11 (observability), 12 (governance meta).",
+  "stop_condition": "Stop when Pass 8 is up as a PR with proof and merged; continue to Pass 9 (Vercel deploy).",
+  "next_command": "Continue Master Audit #445: Pass 9 (Vercel deploy/config), then 10 (GitHub CI), 11 (observability), 12 (governance meta).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

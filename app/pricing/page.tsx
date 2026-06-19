@@ -235,7 +235,7 @@ export default function PricingPage() {
               <div className="flex items-center gap-3">
                 <ShieldCheck className="h-5 w-5 text-accent" strokeWidth={1.5} aria-hidden="true" />
                 <p className="text-[15px] text-text-muted">
-                  <span className="text-text-secondary">Need team or enterprise?</span> Read-only, SSO/SCIM, audit logs.
+                  <span className="text-text-secondary">Need team or enterprise?</span> Read-only connectors, least-privilege access, audit logs.
                 </p>
               </div>
               <Link
