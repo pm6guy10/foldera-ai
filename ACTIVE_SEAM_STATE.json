@@ -1,9 +1,9 @@
 {
-  "active_issue": 421,
-  "active_branch": "claude/next-session-hardening-doc",
-  "active_pr": null,
+  "active_issue": 425,
+  "active_branch": "claude/hardening-dead-code",
+  "active_pr": 426,
   "deployed_commit_sha": "e300505",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-19T01:40:00Z"
+  "last_verified_at": "2026-06-19T02:00:00Z"
 }

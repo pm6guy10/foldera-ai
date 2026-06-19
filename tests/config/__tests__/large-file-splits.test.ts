@@ -12,7 +12,9 @@ function lineCount(relativePath: string): number {
 describe('large-file split seams', () => {
   it('keeps the dashboard route below the audit complexity threshold', () => {
     expect(lineCount('app/dashboard/page.tsx')).toBeLessThanOrEqual(1000);
-    expect(existsSync(path.join(repoRoot, 'app/dashboard/dashboard-page-model.tsx'))).toBe(true);
-    expect(existsSync(path.join(repoRoot, 'components/dashboard/DashboardSecondaryPanel.tsx'))).toBe(true);
+    // The old dashboard-page-model + DashboardSecondaryPanel split files were dead (the live
+    // route renders ProductShell/MorningAnchorCard); deleted as zero-import orphans in #425.
+    expect(existsSync(path.join(repoRoot, 'app/dashboard/dashboard-page-model.tsx'))).toBe(false);
+    expect(existsSync(path.join(repoRoot, 'components/dashboard/DashboardSecondaryPanel.tsx'))).toBe(false);
   });
 });

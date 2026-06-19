@@ -1,39 +1,43 @@
 {
-  "backlog_id": "between-rungs",
-  "active_issue": "none",
-  "base_commit": "HEAD",
+  "backlog_id": "hardening-batch-1-dead-code",
+  "active_issue": 425,
+  "base_commit": "e141201",
   "money_loop_rung": "m2",
-  "user_system_path": "Between rungs. The full repo + Supabase + product hardening roadmap is captured in issue #420. This session shipped #402 (send), #404 (attachment rails), #407 (write_document delivery attachment), #411 (Sources MS email fix), #414 (homepage continuity), #417 (continuity sweep — deleted dead components/layout/), and #421 (right-away guardian — free event-driven trigger eval on app open, replacing the 15-min cron). The engine now surfaces moves immediately and free; the remaining gap to a real move is daily generation actually running (ANTHROPIC_API_KEY) to produce the artifact the free trigger surfaces. Backlog (roadmap #420): repo hygiene (~21 orphan components + dead lib modules; 103 test-file tsc errors; auth PII logging; env docs; typecheck script); the paid selection-layer (risk scoring); the paid generator companion-document build; Supabase auth toggles + unused-index drop. Constraint: NO paid API calls to test — prove in the harness.",
+  "user_system_path": "Repo hardening Batch 1 (#425): delete verified zero-import dead code — the orphaned dashboard component cluster, dead foldera/ui components, dead lib modules (cold-read, utils/request-ip, utils/retry re-export, agents barrel), the orphaned dashboard-page-model + its tests. Pure cleanup; no runtime/user-path behavior changes. NO paid API calls.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "SESSION_HISTORY.md",
-    "LESSONS_LEARNED.md",
-    "docs/**"
+    "docs/**",
+    "components/**",
+    "app/dashboard/**",
+    "lib/cold-read.ts",
+    "lib/utils/**",
+    "lib/agents/**",
+    "tests/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
     "app/api/**",
-    "lib/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Between rungs — only control-plane + docs may change until the owner names the next seam (which re-scopes this contract).",
-  "forbidden_files_raw": "No product/runtime/schema/deps changes without an active seam + scoped contract.",
-  "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "N/A — between rungs.",
+  "allowed_files_raw": "Batch 1 deletes dead components/lib/app modules + their tests, and edits lib/utils/index.ts barrel + two tests/config meta-tests. Deletions are diff-filter-exempt; modifications stay within components/**, app/dashboard/**, lib/**, tests/** + control plane.",
+  "forbidden_files_raw": "No schema, API route, or dependency changes in this batch.",
+  "required_local_proof": "npm run gate:continuity && npm run build && npm run lint",
+  "required_browser_proof": "N/A — dead-code deletion, no user-facing path change.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "Control plane is consistent in the between-rungs form (build-order active_issue: none, contract active_issue: none, no active-seam line in ACTIVE_HANDOFF) and gate:continuity passes.",
+  "acceptance_condition": "All listed orphans deleted, zero dangling references (npm run build green = no missing-import errors), lib/utils barrel + affected meta-tests updated, vitest green, gate:continuity green.",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "gate:continuity green in between-rungs form",
-    "no active-seam line in ACTIVE_HANDOFF.md",
-    "no product/runtime files changed"
+    "npm run build green (catches any dangling import to a deleted module)",
+    "npm run lint green",
+    "affected vitest suites green",
+    "no live route or component still imports a deleted module"
   ],
-  "stop_condition": "Stop when the control plane is rolled forward to a clean between-rungs state and the owner has a boot prompt for the next session.",
-  "next_command": "OWNER: confirm ANTHROPIC_API_KEY in Vercel Production so daily generation produces the artifact the now-immediate free trigger surfaces; open the dashboard to validate #421 auto-sync. CODE backlog from roadmap #420: pick the repo-hygiene batch (delete orphans / fix test tsc / gate auth PII logging / env docs) or the paid selection-layer build (needs cost ceiling).",
+  "stop_condition": "Stop when Batch 1 is merged and the control plane is ready for Batch 2 (or rolled to between-rungs at session end).",
+  "next_command": "Proceed to Batch 2 — type safety (typecheck npm script, un-exclude tests/scripts in tsconfig, drive tsc errors to zero).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
