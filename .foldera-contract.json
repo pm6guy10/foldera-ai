@@ -1,37 +1,37 @@
 {
-  "backlog_id": "between-rungs",
+  "backlog_id": "stripe-v22-upgrade",
   "active_issue": "none",
   "base_commit": "HEAD",
   "money_loop_rung": "m2",
-  "user_system_path": "Between rungs. The NEXT_SESSION_HARDENING mission (roadmap #420) shipped as four themed PRs (#426/#428/#430/#433). Since then: an owner-named seam greened the two frontend config-gate tests (PR #441), and the 4 low-risk dependabot bumps were merged (@supabase/supabase-js patch, autoprefixer, prettier, supabase CLI) with Stripe 18->22 (#437) deferred for breaking-change review. Owner-gated items remain: ANTHROPIC_API_KEY + Slack/CRON env in Vercel Production, Supabase auth toggles (leaked-password/MFA), the paid Tier-1 selection layer, the Stripe major bump. Constraint: NO paid API calls — prove in the harness.",
+  "user_system_path": "Owner-named seam: upgrade the Stripe Node SDK 18.5.0 -> 22.2.2 (dependabot #437), a 4-major jump on the live payments SDK. Review finding: the 3 API routes (checkout/portal/webhook) pin apiVersion: '2025-08-27.basil' as any and lib/stripe/subscription-db.ts uses defensive `as unknown as` casts for current_period_end, so the code already absorbs SDK type drift. Decision: KEEP the pinned apiVersion at '2025-08-27.basil' so this is a pure library update with ZERO runtime API-behavior change (Stripe honors the pinned version even though stripe@22 bundles types for '2026-05-27.dahlia'). Migrating basil->dahlia is deferred to a separate seam needing live verification. No source changes required — only package.json + package-lock.json. Constraint: NO paid API calls — proven in the local harness.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "docs/**"
+    "docs/**",
+    "package.json",
+    "package-lock.json"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
     "app/api/**",
-    "lib/**",
-    "package.json",
-    "package-lock.json"
+    "lib/**"
   ],
-  "allowed_files_raw": "Between rungs — only control-plane + docs may change until the owner names the next seam (which re-scopes this contract).",
-  "forbidden_files_raw": "No product/runtime/schema/deps changes without an active seam + scoped contract.",
-  "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "N/A — between rungs.",
-  "browser_proof_command": "N/A",
-  "acceptance_condition": "Control plane is consistent in the between-rungs form (build-order active_issue: none, contract active_issue: none, no active-seam line in ACTIVE_HANDOFF) and gate:continuity passes.",
+  "allowed_files_raw": "Stripe SDK bump seam: only package.json + package-lock.json plus control-plane + docs may change (the SDK bump needs no source edits; apiVersion stays pinned).",
+  "forbidden_files_raw": "No runtime/schema/api source changes — this seam is the Stripe SDK version bump only, apiVersion intentionally unchanged.",
+  "required_local_proof": "npm run typecheck && npm run build && npx vitest run app/api/stripe lib/stripe && npm run gate:continuity",
+  "required_browser_proof": "Pre-push public-routes Playwright smoke green (covers /pricing checkout-redirect path).",
+  "browser_proof_command": "git push (pre-push hook runs build + public-routes e2e smoke)",
+  "acceptance_condition": "stripe at ^22.2.2; apiVersion still '2025-08-27.basil'; typecheck + build + Stripe unit tests + gate:continuity green; pre-push smoke green; contract restored to between-rungs scope before merge.",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "gate:continuity green in between-rungs form",
-    "no active-seam line in ACTIVE_HANDOFF.md",
-    "no product/runtime files changed"
+    "apiVersion stays '2025-08-27.basil' (no API-behavior change)",
+    "Stripe unit tests (checkout/portal/webhook/subscription-db) green",
+    "typecheck + build clean with stripe@22"
   ],
-  "stop_condition": "Stop when the control plane is rolled forward to a clean between-rungs state and the owner has the final scorecard.",
-  "next_command": "New session: read ACTIVE_HANDOFF.md; the owner names the next seam. The repo is hardened, the frontend config gates are green, and the 4 safe dependabot bumps are in. Standing items: the Stripe 18->22 major bump (#437) needs review; the owner-side unlock is setting ANTHROPIC_API_KEY in Vercel Production.",
+  "stop_condition": "Stop when the Stripe SDK bump is merged, #437 is closed, and the control plane is rolled back to between-rungs.",
+  "next_command": "After merge, roll the control plane back to between-rungs. Future optional seam: migrate the pinned Stripe apiVersion basil -> dahlia with live verification.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
