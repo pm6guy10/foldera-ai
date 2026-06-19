@@ -22,11 +22,16 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 417
+active_issue: none
 priority_class: PRODUCT
 work_type: POLISH
-why_this_first: "Owner: 'fix everything, be legendary, the whole app.' #417 is the audit-driven continuity sweep — a read-only UI audit produced a punch list; this batch-fixes the deterministic defects so they stop reaching the owner one at a time: (1) deleted the entire orphaned components/layout/ directory (dashboard-shell, sidebar, mobile-nav, top-bar — 0 importers; also removes the off-brand gradient 'F' marks); (2) type='button' on the three LandingPage demo buttons; (3) removed user-visible 'Legacy' labels on Signals/Sources; (4) aligned the NavPublic mobile CTA to 'Start free'. Frontend-only, deterministic, harness-proven. The audit's panel-nav 'defect' was a false alarm (page.tsx resolves ?panel=)."
-next_seam: "REAL-MOVE DIAGNOSIS (owner-side, higher leverage than more UI): the owner has 2 real sources connected (Outlook + Gmail syncing) yet the brain is in safe-silence on a pipe-test fixture. Likely causes: the external 15-min guardian cron is not firing (/api/cron/workday-presence-trigger-runner needs an owner-configured external scheduler + CRON_SECRET); and/or generation needs ANTHROPIC_API_KEY and a >=70-confidence move (CONFIDENCE_SEND_THRESHOLD). Plus Slack env (SLACK_BOT_TOKEN, FOLDERA_SLACK_SELF_CHANNEL_ID, FOLDERA_SELF_USER_ID). See the connect-data playbook delivered to the owner. CODE follow-ons: continue UI polish audit if more surfaces; the paid generator companion-document build."
+why_this_first: "Between rungs. This session shipped #402 (send), #404 (attachment rails), #407 (write_document delivery attachment), #411 (Sources MS email fix), #414 (homepage continuity), and #417 (continuity sweep — deleted the dead components/layout/ dir, unified the brand mark, type=button on landing buttons, dropped 'Legacy' labels, aligned the CTA; PR #418, c2088cc). The higher-leverage open thread is owner-side: make the guardian fire on the already-connected real sources. Awaiting the owner's next move."
+next_seam: "OWNER-SIDE (highest leverage): the owner has 2 real sources connected (Outlook + Gmail) yet the brain is in safe-silence on a pipe-test fixture. Make the guardian fire — configure the external 15-min cron hitting /api/cron/workday-presence-trigger-runner with CRON_SECRET; confirm ANTHROPIC_API_KEY + Slack env (SLACK_BOT_TOKEN, FOLDERA_SLACK_SELF_CHANNEL_ID, FOLDERA_SELF_USER_ID) in Vercel Production; a move needs >=70 confidence (CONFIDENCE_SEND_THRESHOLD) to surface. Connect-data playbook delivered to the owner. CODE candidates: continue the UI polish audit if more surfaces surface; the paid generator companion-document build."
+completed_issue_417:
+  issue: 417
+  pr: 418
+  pr_merge_sha: c2088cc
+  summary: "Audit-driven continuity sweep. Deleted the entire orphaned components/layout/ directory (dashboard-shell, sidebar, mobile-nav, top-bar — 0 importers; removed the off-brand gradient 'F' marks, leaving one consistent FolderaMark). type=button on the three LandingPage demo buttons. Removed user-visible 'Legacy' labels from Signals + integrations pages. Aligned the NavPublic mobile CTA to 'Start free'. Frontend-only; build + lint + gate green; touched-file tsc clean. Live visual validation owner-side."
 completed_issue_414:
   issue: 414
   pr: 415
