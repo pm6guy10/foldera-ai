@@ -1,9 +1,9 @@
 {
-  "backlog_id": "conviction-engine-primary-outcome-deadline-431",
-  "active_issue": 431,
-  "base_commit": "5412b06",
+  "backlog_id": "between-rungs",
+  "active_issue": "none",
+  "base_commit": "da176fb",
   "money_loop_rung": "m2",
-  "user_system_path": "#431: the conviction engine left primaryOutcomeDeadline null behind an inline TODO. Infer a SOFT outcome deadline from natural-language month/start cues in the same supporting signals already fetched by runConvictionEngine ('April start', 'starts in May', 'April/May start') — distinct from inferHardDeadline (baby/lease, a date that cannot move). Pure deterministic extractor + earliest-month resolution + safe-silence on the modal 'may start'. No DB, no paid calls; proven in the harness.",
+  "user_system_path": "Between rungs — no active seam. Cleanup pass merged #431 (PR #473, soft primaryOutcomeDeadline inference) and #454 (broadcast/recruiting-sender suppression at the entity admission gate) and closed #445 (Master Audit COMPLETE, passes 0-12). Owner names the next seam; the TRUE wall is the owner-side paid value-lever generation cycle.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",

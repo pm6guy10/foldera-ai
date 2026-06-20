@@ -20,8 +20,7 @@ Keep this cockpit short and value-first. Completed-issue history lives in `SESSI
 
 ## Current slice:
 
-Issue #431 is the active conviction-engine seam.
-(Soft primaryOutcomeDeadline inference from month/start signal cues — small free harness seam. #445 Master Audit is COMPLETE below.)
+Between rungs — no active seam. `active_issue: none`; the owner names the next seam. Recently merged: #431 soft `primaryOutcomeDeadline` inference (PR #473); #454 broadcast/recruiting-sender suppression at the entity admission gate. #445 Master Audit is COMPLETE below.
 
 **Merged to main (through `8654637`):** Pass 0 inventory · Pass 1 RLS `PASS` · Pass 2 database `PASS` (+D-3) · Pass 3 cost `CONCERN` (extraction cap 4→0.25) · **Pass 4 backend/runtime `CONCERN` (#458)** · **Pass 5 AI/ML grounding `PASS` (#461)** · **Pass 6 FE perf/a11y `PASS` +3 tap-target fixes (#463)** · **Pass 7 FE design/UX `PASS`** · **Pass 8 trust/claims `PASS` (fixed false SSO/SCIM/SAML claim + gate-hardened)** · F-1 (CI-on-PRs) · gem-ranking floor #456 · lapsing-card hygiene #457 · **overdue-admission window #460 (60d for risk≥60)** · gem-surfacing revert #453 · **LESSONS_LEARNED #19 (value-is-the-only-score) #458.**
 
@@ -45,10 +44,10 @@ Issue #431 is the active conviction-engine seam.
 
 ## Next exact move
 
-0. **Active seam #431 (free harness):** review/merge the conviction-engine soft-deadline PR. Between-rungs after it merges.
+0. **Between rungs** — #431 (PR #473) and #454 (broadcast-sender suppression) both merged; owner names the next seam.
 1. **Owner — the value lever (TRUE wall):** one paid generation cycle to confirm a real gem now surfaces. This is the *only* move that turns "healthy" into "valuable."
 2. **Master Audit #445 is COMPLETE (passes 0–12 all merged).** No audit passes remain. The only open items are the owner paid wall (item 1) — C-2 first-pass validation quality + the value-lever generation cycle. Between-rungs after this merges; owner names the next seam.
-3. **PR #454 (DRAFT) — broadcast/recruiting-sender suppression** (owner judgment; changes entity admission, can over-suppress at edge cases). On `claude/mvp-polish-pass-audit-sg9e4k`.
+3. **#454 broadcast/recruiting-sender suppression MERGED** — the entity admission gate now rejects junk/transactional + recruiting/automated senders (fail-safe; real human `julieta@micro1.io` preserved). Owner: confirm live that a real contact still surfaces.
 4. Deferred follow-ups (harness-only): B-4 budget-reservation reconciliation; B-5 persist retry reasons (Pass 11); the two-way test for relationship gems (coupled to #454). [>30d-overdue admission window shipped via #460.]
 
 Open owner items (not active seams): configure the free external guardian cron (code shipped); landing polish (standing — obviously better each pass, not incremental).

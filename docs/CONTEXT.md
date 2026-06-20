@@ -1,5 +1,41 @@
 # CONTEXT.md — Foldera from inception to now
 
+---
+
+# 🟢 NEW SESSION — START HERE (snapshot 2026-06-19, end of MVP-polish/audit session)
+
+**Boot order:** `ACTIVE_HANDOFF.md` → `AGENTS.md` → GitHub issue **#445** (the Master Audit, the live thread) → `ACTIVE_SEAM_STATE.json`. Then read the rest of this file for depth.
+
+## One-paragraph state
+The **foundation is hardened and proven** (security/RLS, data integrity, cost, CI — audited + guarded with tests, all merged to `main`). The **engine runs daily** but delivers nothing because its candidate pool is ~95% automated/broadcast noise (recruiting platforms, app updates) + low-stakes personal — so its silence is largely *correct* ("safe silence is a win"). The frontier is **noise suppression** so a real gem can surface. One brain fix is staged awaiting owner live validation (PR #454).
+
+## What a GEM is (pin this — it drove the whole session; Bible Part II-B/II-C, `docs/GEM_SURFACING.md`)
+The one **high-consequence** thing the user half-forgot (money / legal_gov / medical / work_transition / a real promise to a real person), at the **right time**, in the **right channel**, with **one act**. **NOT** a broadcast sender, **NOT** a calendar reminder. "roman" (`roman@expert.micro1.ai`, an AI-recruiting platform) is the canonical *noise* example — suppressing it is correct.
+
+## Shipped to `main` this session
+Pass 0 inventory (`docs/SYSTEM_INVENTORY.md`, #446) · Pass 1 security/RLS PASS + contract test (#447) · Pass 2 data-integrity PASS + test (#449) + the `cost_events` index D-3 (#450) · Pass 3 cost: reverted `EXTRACTION_DAILY_CAP` 4→0.25 + live cross-check (#448) · **F-1: CI now runs on PRs** (change-aware, draft-skipped, #451) · gem-surfacing shipped **then reverted** (#452→#453, it surfaced noise). Docs added: `RLS_ISOLATION.md`, `DATA_INTEGRITY.md`, `GEM_SURFACING.md`, `COST_AND_ECONOMICS_AUDIT.md §9`.
+
+## 🔴 OPEN THREADS
+1. **PR #454 — broadcast-sender suppression** (DRAFT, fail-safe, NOT self-merged). Rejects junk/transactional + recruiting/automated senders at the entity admission gate (`getEntityRejectionReasons`). Real-data validated (roman/micro1 rejected; trusted human `julieta@micro1.io` preserved). **Owner gate:** run one generation cycle, confirm noise gone + real contacts kept, then merge.
+2. **Owner-side — branch protection on `main` → require the `ci-passed` check.** F-1 made CI *run*; this makes it *enforced*. ~30 sec in repo Settings → Branches.
+3. **Owner-side — confirm `ANTHROPIC_API_KEY` (+ Slack/CRON) in Vercel Production.**
+4. **Deferred lever — the two-way test:** a relationship gem requires the user actually *replied* once. More robust than any domain list; the real follow-up to #454.
+5. **Deferred (cost) — P0.2 lazy/as-needed generation + P0.3 selective extraction.** Needs design + paid validation (Anthropic credits exist). Current real spend is fine ($0.02–0.19/user/day); worst-case isn't under revenue without this.
+6. **Deferred — C-2:** `directive_retry` costs ~2× `directive` (retries doubling gen spend) → Pass 4 (runtime) investigation.
+7. **Audit passes PAUSED (hygiene, low priority):** 4, 5, 9, 10, 11, 12. Pass 10 owns F-1's branch-protection half; Pass 12 owns D-4 (`SOURCE_OF_TRUTH_MAP` mislabels `session_state` as workday-presence; it's an ops ledger).
+8. **PARKED — S-3:** Supabase leaked-password + MFA are Pro-plan only; project is on free. Not actionable.
+9. **Re-answer after #454 merges:** with noise suppressed, does a *real* gem surface? Yes → go polish (frontend passes 6–8, the "looks-legit" work). Still silent → it's honestly quiet; build the two-way test / verify high-consequence domains rise.
+
+## Operating notes / gotchas for the next agent
+- **Fix-in-pass:** fix cheap/safe findings in the same PR — don't file them under a "later" that never comes (the original frustration).
+- **Fail-safe direction:** *suppress* noise (fails toward silence). Do NOT loosen gates to "surface more" — that surfaces noise (the #452 mistake). Before promoting anything: *would this have surfaced roman?*
+- **Test against REAL data, not fixtures.** #452's fixture passed while the live winner was garbage. Verify with Supabase MCP (read-only) before trusting a brain change.
+- **No paid API calls from the harness.** Live/paid validation of brain changes is owner-side.
+- **This remote container can't run the pre-push gate** (needs owner Supabase secrets + Playwright). Pushes used owner-authorized `HUSKY=0`; deterministic proof (`gate:continuity` + targeted vitest + `typecheck`) substitutes. CI-on-PRs (F-1) is the real gate going forward.
+- **Git gotcha:** this one long-lived branch (`claude/mvp-polish-pass-audit-sg9e4k`) diverges from `main` after every squash-merge; resolved each time with `git fetch` + `git merge -s ours origin/<branch>` then push. A fresh branch per seam avoids the dance. Repo otherwise clean (synced to `main`, no uncommitted, gate green).
+
+---
+
 The big picture is: Foldera started as "AI that finds the important work," but it
 has matured into a Workday Presence Layer whose real product is one safe
 re-entry point, with proof, without Brandon being the router.

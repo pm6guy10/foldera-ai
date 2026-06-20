@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 431
+active_issue: none
 priority_class: PRODUCT
 work_type: CHORE
-why_this_first: "Owner directive: pull open issues and bang them out. Triage of the 6 open issues: #445 Master Audit is COMPLETE (passes 0-12 merged per ACTIVE_HANDOFF); #420 roadmap, #402 indispensability, #382 frontend epic are owner-gated (env vars / paid budget / owner-reviewed phases); #165 is the raw-input inbox, not a seam. The one clean, free, harness-provable seam is #431: conviction-engine left primaryOutcomeDeadline null behind an inline TODO. New pure inferPrimaryOutcomeDeadline extracts month/start cues ('April start', 'starts in May', 'April/May start') from the signals runConvictionEngine already fetches, resolves the earliest future month-start, and stays quiet on the modal 'may start'. Wired into SituationModel; 8 new fixtures."
-next_seam: "Between-rungs after #431 merges. Owner names the next seam. Remaining open issues are owner-decision-gated (#420/#402/#382) or non-seam (#165); #445 is complete with only the owner paid value-lever run outstanding."
+why_this_first: "Between rungs — no active seam. Cleanup pass merged two ready PRs and closed the completed audit: #431 soft primaryOutcomeDeadline inference (PR #473) and #454 broadcast/recruiting-sender suppression at the entity admission gate (getEntityRejectionReasons rejects junk/transactional + automated/recruiting-domain senders; fail-safe, real human julieta@micro1.io preserved). #445 Master Audit closed COMPLETE (passes 0-12). Owner names the next seam."
+next_seam: "Owner names it. The TRUE wall is owner-side: one paid generation cycle to confirm a real gem clears the bar. Remaining open issues are owner-decision-gated (#420 roadmap / #402 indispensability / #382 frontend epic) or non-seam (#165 inbox). Follow-up lever for #454: the two-way test (require the user replied at least once)."
 completed_issue_425:
   issue: 425
   pr: 426
