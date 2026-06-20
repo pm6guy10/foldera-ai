@@ -5,7 +5,8 @@
  * and proposes one finished action. The Scout loop is PROACTIVE: it starts from
  * the user's own stated goals, goes looking for a genuine opportunity, and — when
  * one exists — produces a finished, review-gated artifact the user could use
- * immediately (a tailored cover letter, a drafted application, an outreach note).
+ * immediately (a ready-to-send message, a short decision memo, a drafted
+ * application or filing) for the single highest-consequence, money-moving move.
  *
  * Pipeline per goal:
  *   infer goal (tkg_goals)
@@ -54,7 +55,7 @@ const SYSTEM_INTROSPECTION_RE =
   /\b(tkg_signals?|tkg_actions?|orchestrator|data\s*pipeline|sync\s*(?:health|error|failure|status)|foldera\s*(?:system|health|error|log|directive|infrastructure)|decrypt\s*(?:fail|error)|cron\s*(?:job|run|fail)|api\s*(?:usage|spend|rate\s*limit))\b/i;
 
 const SCOUT_WRITER_SYSTEM_PROMPT =
-  'You are a proactive scout working for one person. You are given their stated goal, real public information found on the web, and material drawn from their own files. Decide whether there is a genuine, specific, time-relevant opportunity worth bringing to them. If there is, produce ONE finished artifact they could use immediately — a tailored cover letter, a drafted application, or an outreach message — grounded only in the web facts and their files. Never invent openings, employers, names, dates, or facts that are not in the provided context. If there is no specific opportunity worth their attention, say so plainly: silence is better than a weak suggestion. You only propose finished work for their review — you never send anything. Do not mention internal systems, data pipelines, or how this information was gathered.';
+  'You are a proactive guardian working for one person. Your job is to reduce their mental load — to notice the one thing they would have wanted handled and bring it to them already done. You have their stated goal, real public information found on the web, and material drawn from their own files. Find the single highest-consequence, time-relevant move worth their attention right now: a funding, grant, or RFP opportunity; an approaching deadline or filing; a policy or regulatory change that affects their work; a relationship or introduction worth making; or a decision that is now ripe. Weigh consequence and timing — prefer the one move with real money or real stakes behind it. If such a thing exists, produce ONE finished artifact they could use immediately (e.g. a ready-to-send message, a short decision memo, a drafted application or filing), grounded only in the web facts and their files. Never invent opportunities, employers, names, numbers, deadlines, or facts that are not in the provided context. If nothing clears the bar, say so plainly: silence is better than a weak suggestion. You only propose finished work for their review — you never send anything. Do not mention internal systems, data pipelines, or how this information was gathered.';
 
 export interface ScoutGoal {
   text: string;
@@ -155,9 +156,9 @@ export async function loadScoutGoals(
   }
 }
 
-/** Build the natural-language web query that looks for an opportunity for a goal. */
+/** Build the natural-language web query that looks for a high-consequence move for a goal. */
 function buildScoutWebQuery(goal: ScoutGoal): string {
-  return `A person has this active goal: "${goal.text}" (domain: ${goal.category}). Find current, specific, real public opportunities that directly advance this goal right now — for example open postings, programs, deadlines, or openings — and report the concrete details with the source for each.`;
+  return `A person has this active goal: "${goal.text}" (domain: ${goal.category}). Find the most consequential, specific, time-relevant real opportunities or risks that advance or protect this goal right now — for example funding, grants, RFPs, deadlines, filings, regulatory or policy changes, partnerships, or a specific opening — and report the concrete details with the source for each.`;
 }
 
 /** Flatten retrieved Drive chunks into a bounded, labelled context block. */
@@ -188,15 +189,15 @@ ${webContext ?? 'None found.'}
 MATERIAL FROM THE PERSON'S OWN FILES:
 ${driveBlock ?? 'None retrieved.'}
 
-Using only the goal, the web facts, and their files above, decide whether there is a genuine, specific opportunity worth bringing to this person right now, and if so write the finished artifact.
+Using only the goal, the web facts, and their files above, decide whether there is a single genuine, specific, high-consequence move worth bringing to this person right now, and if so write the finished artifact they could act on.
 
 Return strict JSON only:
 {
   "worth_surfacing": true or false,
-  "headline": "One line naming the specific opportunity you found",
-  "rationale": "Why this matters now — the deadline, window, or fit. One or two sentences.",
+  "headline": "One line naming the specific, high-consequence opportunity or risk you found",
+  "rationale": "Why this matters now — the stakes, deadline, or window. One or two sentences.",
   "artifact_title": "A short title for the finished artifact",
-  "artifact_body": "The complete, ready-to-use artifact, grounded in the web facts and their files",
+  "artifact_body": "The complete, ready-to-use artifact (message, memo, application, or filing), grounded in the web facts and their files",
   "confidence": 0-100
 }
 

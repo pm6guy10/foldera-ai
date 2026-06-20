@@ -83,10 +83,11 @@ export function isScoutWebEnabled(): boolean {
 }
 
 /**
- * Phone-first delivery of finished Scout proposals (Stage 4). When off, the scout
- * loop still only RETURNS proposals — nothing is surfaced anywhere. When on, the
- * delivery layer notifies the owner on their own rails (SMS nudge + Slack/email
- * for review). It never auto-sends an artifact to a third party. Defaults OFF.
+ * Slack-first delivery of finished Scout proposals. When off, the scout loop still
+ * only RETURNS proposals — nothing is surfaced anywhere. When on, the delivery
+ * layer notifies the owner on their own rails (the full proposal as a Slack card,
+ * with email as an opt-in fallback). It never auto-sends an artifact to a third
+ * party. Defaults OFF.
  */
 export function isScoutDeliveryEnabled(): boolean {
   return isScoutEnabled() && process.env.SCOUT_DELIVERY_ENABLED === 'true';

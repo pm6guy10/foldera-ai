@@ -3,11 +3,12 @@
   "active_issue": 486,
   "base_commit": "508ebb9",
   "money_loop_rung": "m2",
-  "user_system_path": "SCOUT seam (#486) opened 2026-06-20 by owner mandate. Build the additive, flag-gated proactive Scout lane (Drive-as-searchable-brain + real web access + opportunity discovery) without touching the always-on Workday Presence default. Stage 0: governance unblock + feature flags + embeddings schema (no behavior change, all flags off, migration not yet applied).",
+  "user_system_path": "SCOUT seam (#486), additive flag-gated proactive Scout lane (Drive-as-searchable-brain + real web access + opportunity discovery) atop the untouched Workday Presence default. Stages 0-4 merged. Stage 5 (this PR): owner decision — delivery is Slack-first, NO texts (Twilio/SMS rail removed); plus tighten the proof contract to require real product proof (a live Slack card) every phase or NO PASS.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
+    "AGENTS.md",
     "FOLDERA_BUILD_ORDER.yaml",
     "FOLDERA_MASTER_BIBLE.md",
     "docs/**",
@@ -36,9 +37,9 @@
   "allowed_files_raw": "SCOUT seam #486: scout engine (lib/scout/**), shared Drive extractor + crawl (lib/sync/**), researcher web-access swap, generator writer reuse, scout cron routes, embeddings schema (supabase/migrations/**), feature flags (lib/config/prelaunch-spend.ts), deps (package.json), and Scout docs. Control-plane + Bible governance edits permitted.",
   "forbidden_files_raw": "No dashboard or visual redesign, no components/** changes, no Stripe, no secrets/.env. Scout proposes review-gated artifacts only — never auto-send.",
   "required_local_proof": "npm run gate:continuity && npm run typecheck && npm run build",
-  "required_browser_proof": "N/A for Stage 0 (no behavior change; all SCOUT_* flags off, migration not applied). Live/product proof is owner-gated and deferred to Stage 1+.",
-  "browser_proof_command": "N/A",
-  "acceptance_condition": "Stage 0: SCOUT seam open and consistent across control plane; additive Bible Part V; feature flags default-off; embeddings migration committed (not applied); gate:continuity + typecheck + build green; zero behavior change with flags off.",
+  "required_browser_proof": "Real product proof every phase or NO PASS (AGENTS.md Proof Doctrine, Scout lane): a live Scout card the owner can see — a Slack permalink or screenshot — built by the actual delivery builder. Hygiene (mocked tests, typecheck, lint, gate:continuity, build, green preview deploy) is necessary but never a pass on its own. Absent real proof, the phase is BLOCKED_WITH_EXACT_RECEIPT.",
+  "browser_proof_command": "Free real proof: render buildScoutSlackMessage() for a fixture proposal and post it to the owner Slack (#foldera-self-loop) — a real card, no paid loop. The app's own live adapter path (POST-trigger GET /api/cron/scout/deliver with SLACK_BOT_TOKEN set) is owner-gated.",
+  "acceptance_condition": "Each Scout phase: code lands additive + flag-gated (zero behavior change with SCOUT_* flags off); gate:continuity + typecheck + lint(0) + build green; AND a real Scout card is shown (live Slack permalink/screenshot) or an exact owner-gated BLOCKED receipt is posted. Hygiene-only is NO PASS.",
   "is_user_facing": false,
   "anti_regression_checks": [
     "gate:continuity green with active_issue #486",
@@ -46,8 +47,8 @@
     "no auto-send / no new outbound path introduced",
     "no forbidden public-facing claim terms in app/components/public"
   ],
-  "stop_condition": "Stage 0 lands as a draft PR for owner review. Owner-gated next steps before Stage 1+: authorize VOYAGE_API_KEY, apply the migration to production Supabase, and approve any paid validation cycle.",
-  "next_command": "Owner: review the Stage 0 draft PR, then authorize the Voyage key + production migration apply so Stage 1 (Drive full-index + retrieval) can proceed.",
+  "stop_condition": "Stage 5 lands as a draft PR for owner review, with a real Scout Slack card posted as free proof (per the tightened proof contract). The app's own live-adapter delivery + paid scout loop remain owner-gated (SLACK_BOT_TOKEN already in prod; SCOUT_*/Voyage/ALLOW_PAID_LLM owner-set).",
+  "next_command": "Owner: review the Stage 5 draft PR. To run the real app delivery path, set SCOUT_DELIVERY_ENABLED + FOLDERA_SLACK_SELF_CHANNEL_ID (already set) atop the Stage 1-3 flags, then trigger GET /api/cron/scout/deliver (CRON_SECRET bearer).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
