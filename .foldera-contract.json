@@ -1,35 +1,53 @@
 {
-  "backlog_id": "between-rungs",
-  "active_issue": "none",
+  "backlog_id": "scout-486",
+  "active_issue": 486,
   "base_commit": "508ebb9",
   "money_loop_rung": "m2",
-  "user_system_path": "Between rungs. #481 grounding work shipped this session: swoop landed on real owner data → DON'T GIVE UP (PR #482); decrypt-failure classifier split the 35% grounding drop into FORMAT GAP + KEY GAP (PR #483); FORMAT GAP FIXED (PR #484) — readable plaintext source (357 uploaded_document + 276 AI-conversation rows) no longer dropped from grounding via the looksLikeEncryptedPayload discriminator. Remaining #481 seams are owner-gated or need a paid validation.",
+  "user_system_path": "SCOUT seam (#486) opened 2026-06-20 by owner mandate. Build the additive, flag-gated proactive Scout lane (Drive-as-searchable-brain + real web access + opportunity discovery) without touching the always-on Workday Presence default. Stage 0: governance unblock + feature flags + embeddings schema (no behavior change, all flags off, migration not yet applied).",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "docs/**"
-  ],
-  "forbidden_file_patterns": [
-    "supabase/**",
+    "FOLDERA_MASTER_BIBLE.md",
+    "docs/**",
+    "lib/scout/**",
+    "lib/config/prelaunch-spend.ts",
+    "lib/sync/**",
+    "lib/briefing/researcher.ts",
+    "lib/briefing/generator.ts",
+    "lib/encryption.ts",
+    "app/api/cron/scout/**",
+    "app/api/scout/**",
+    "supabase/migrations/**",
+    "public/**",
+    "vercel.json",
     "package.json",
     "package-lock.json",
-    "lib/**",
-    "app/**"
+    "tests/**"
   ],
-  "allowed_files_raw": "Control-plane reset to between-rungs after #481 FORMAT GAP fix (PR #484) merged. No code.",
-  "forbidden_files_raw": "No code, no schema, no deps.",
-  "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "N/A",
+  "forbidden_file_patterns": [
+    "app/dashboard/**",
+    "components/**",
+    "app/api/stripe/**",
+    ".env",
+    ".env.local"
+  ],
+  "allowed_files_raw": "SCOUT seam #486: scout engine (lib/scout/**), shared Drive extractor + crawl (lib/sync/**), researcher web-access swap, generator writer reuse, scout cron routes, embeddings schema (supabase/migrations/**), feature flags (lib/config/prelaunch-spend.ts), deps (package.json), and Scout docs. Control-plane + Bible governance edits permitted.",
+  "forbidden_files_raw": "No dashboard or visual redesign, no components/** changes, no Stripe, no secrets/.env. Scout proposes review-gated artifacts only — never auto-send.",
+  "required_local_proof": "npm run gate:continuity && npm run typecheck && npm run build",
+  "required_browser_proof": "N/A for Stage 0 (no behavior change; all SCOUT_* flags off, migration not applied). Live/product proof is owner-gated and deferred to Stage 1+.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "Control plane between-rungs; gate:continuity green.",
+  "acceptance_condition": "Stage 0: SCOUT seam open and consistent across control plane; additive Bible Part V; feature flags default-off; embeddings migration committed (not applied); gate:continuity + typecheck + build green; zero behavior change with flags off.",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "gate:continuity green in between-rungs form"
+    "gate:continuity green with active_issue #486",
+    "Workday Presence pipeline unchanged with all SCOUT_* flags off",
+    "no auto-send / no new outbound path introduced",
+    "no forbidden public-facing claim terms in app/components/public"
   ],
-  "stop_condition": "Between-rungs. Owner names the next seam. Remaining #481 seams: (c) generalize full-body hydration beyond interview-class (needs fixture coherence + paid validation); (a) verify prod ENCRYPTION_KEY_LEGACY (24% key gap); (d) one paid gen cycle now that grounding inputs are un-starved.",
-  "next_command": "Owner: name the next seam, or run a paid gen cycle to validate end-to-end value now that grounding is un-starved.",
+  "stop_condition": "Stage 0 lands as a draft PR for owner review. Owner-gated next steps before Stage 1+: authorize VOYAGE_API_KEY, apply the migration to production Supabase, and approve any paid validation cycle.",
+  "next_command": "Owner: review the Stage 0 draft PR, then authorize the Voyage key + production migration apply so Stage 1 (Drive full-index + retrieval) can proceed.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

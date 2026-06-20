@@ -58,3 +58,40 @@ export function resolveSettingsRunBriefPipelineDryRun(params: {
     paidLlmEffective: true, // legacy prod: real directive path unless dry_run=true
   };
 }
+
+/**
+ * SCOUT lane flags (issue #486). The proactive Scout is an additive, opt-in,
+ * owner-first lane (see FOLDERA_MASTER_BIBLE.md Part V). Every flag is env-driven
+ * and defaults OFF, so the Workday Presence Layer is the unchanged default until
+ * the owner explicitly enables a lane. All Scout entry points must fail-closed
+ * (no-op) when their flag is off, mirroring isAllowProdPaidLlmEnabled().
+ */
+
+/** Master switch for the entire Scout lane. When false, all Scout work no-ops. */
+export function isScoutEnabled(): boolean {
+  return process.env.SCOUT_ENABLED === 'true';
+}
+
+/** Drive full-index + RAG retrieval (the searchable second brain). */
+export function isScoutRagEnabled(): boolean {
+  return isScoutEnabled() && process.env.SCOUT_RAG_ENABLED === 'true';
+}
+
+/** Real web access (native server-side web_search) in the brief/scout path. */
+export function isScoutWebEnabled(): boolean {
+  return isScoutEnabled() && process.env.SCOUT_WEB_ENABLED === 'true';
+}
+
+/** Embeddings provider for Scout RAG. Voyage is Anthropic's recommended partner. */
+export function getEmbeddingsProvider(): 'voyage' {
+  const provider = process.env.EMBEDDINGS_PROVIDER?.trim().toLowerCase();
+  return provider === 'voyage' ? 'voyage' : 'voyage';
+}
+
+/**
+ * Whether Scout embeddings can run: RAG flag on AND a Voyage key is present.
+ * The key itself is an owner-gated secret and is never read at module top level.
+ */
+export function isScoutEmbeddingsConfigured(): boolean {
+  return isScoutRagEnabled() && Boolean(process.env.VOYAGE_API_KEY?.trim());
+}
