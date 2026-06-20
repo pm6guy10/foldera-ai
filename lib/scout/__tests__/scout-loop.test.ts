@@ -48,7 +48,7 @@ vi.mock('@/lib/scout/retrieval', () => ({
 // ---------------------------------------------------------------------------
 
 const USER_ID = '44444444-4444-4444-4444-444444444444';
-const GOAL = { text: 'Land a senior backend engineering role', category: 'career', priority: 1 };
+const GOAL = { text: 'Stay on top of my state benefits overpayment waiver', category: 'personal_admin', priority: 1 };
 
 function writerResponse(payload: Record<string, unknown>): MockResponse {
   return {
@@ -70,10 +70,10 @@ function disableScout(): void {
 
 const GOOD_ARTIFACT = {
   worth_surfacing: true,
-  headline: 'Acme is hiring a Senior Backend Engineer (closes Friday)',
-  rationale: 'Direct match to your goal and the posting closes this week.',
-  artifact_title: 'Cover letter — Acme Senior Backend Engineer',
-  artifact_body: 'Dear Acme team, with eight years building distributed systems...',
+  headline: 'Your overpayment waiver response is due this week',
+  rationale: 'The appeal window closes in three days and the form is half-finished in your files.',
+  artifact_title: 'Ready-to-send waiver response',
+  artifact_body: 'To the Benefits office: I am responding to the overpayment determination on my account...',
   confidence: 82,
 };
 
@@ -123,9 +123,9 @@ describe('runScoutLoop', () => {
 
   it('produces a finished proposal from web + Drive context on Sonnet 4.6', async () => {
     enableScout();
-    searchWebForEnrichment.mockResolvedValue('Acme posted a Senior Backend Engineer role (source: acme.com/careers).');
+    searchWebForEnrichment.mockResolvedValue('Overpayment waiver appeals must be filed within 30 days (source: esd.wa.gov).');
     retrieveDriveContext.mockResolvedValue([
-      { fileId: 'f1', fileName: 'resume.docx', webViewLink: 'http://x/1', modifiedTime: null, content: '8 years distributed systems', similarity: 0.9 },
+      { fileId: 'f1', fileName: 'waiver-form.docx', webViewLink: 'http://x/1', modifiedTime: null, content: 'partially completed waiver form', similarity: 0.9 },
     ]);
     responseQueue = [writerResponse(GOOD_ARTIFACT)];
     const { runScoutLoop } = await import('../scout-loop');
@@ -135,11 +135,29 @@ describe('runScoutLoop', () => {
     expect(rest).toHaveLength(0);
     expect(createCallCount).toBe(1);
     expect(createRequests[0]?.model).toBe('claude-sonnet-4-6');
-    expect(proposal.headline).toContain('Acme');
-    expect(proposal.artifactBody).toContain('Acme team');
+    expect(proposal.headline).toContain('waiver');
+    expect(proposal.artifactBody).toContain('overpayment');
     expect(proposal.confidence).toBe(82);
-    expect(proposal.webContext).toContain('acme.com');
-    expect(proposal.driveSources).toEqual([{ fileName: 'resume.docx', webViewLink: 'http://x/1' }]);
+    expect(proposal.webContext).toContain('esd.wa.gov');
+    expect(proposal.driveSources).toEqual([{ fileName: 'waiver-form.docx', webViewLink: 'http://x/1' }]);
+  });
+
+  it('instructs the writer to watch the person\\'s own world and never hunt opportunities or fabricate', async () => {
+    enableScout();
+    retrieveDriveContext.mockResolvedValue([
+      { fileId: 'f1', fileName: 'waiver-form.docx', webViewLink: null, modifiedTime: null, content: 'partially completed waiver form', similarity: 0.8 },
+    ]);
+    responseQueue = [writerResponse(GOOD_ARTIFACT)];
+    const { runScoutLoop } = await import('../scout-loop');
+
+    await runScoutLoop(USER_ID, { goal: GOAL });
+
+    const system = String(createRequests[0]?.system ?? '');
+    // Inward Guardian frame (issue #492): watch their own world, not the open web.
+    expect(system).toMatch(/their own world/i);
+    expect(system).toMatch(/no (job openings|grants)|do not go looking for new external opportunities/i);
+    // Anti-fabrication: must never invent credentials/experience (the live Watershed defect).
+    expect(system).toMatch(/never invent[^.]*credentials|experience that are not present/i);
   });
 
   it('runs the writer when only Drive context exists (web lane off)', async () => {

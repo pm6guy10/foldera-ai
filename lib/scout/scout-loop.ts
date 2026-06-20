@@ -2,11 +2,13 @@
  * Proactive Scout loop (issue #486, Stage 3).
  *
  * The presence-layer pipeline is REACTIVE: it waits for an inbox/calendar signal
- * and proposes one finished action. The Scout loop is PROACTIVE: it starts from
- * the user's own stated goals, goes looking for a genuine opportunity, and — when
- * one exists — produces a finished, review-gated artifact the user could use
- * immediately (a ready-to-send message, a short decision memo, a drafted
- * application or filing) for the single highest-consequence, money-moving move.
+ * and proposes one finished action. The Scout loop is PROACTIVE but INWARD: it
+ * watches the user's OWN world — the commitments they made, the replies they owe,
+ * the deadlines and filings sitting in their own files — and, when one of those is
+ * about to slip, produces a finished, review-gated artifact the user could use
+ * immediately (a ready-to-send reply, a short decision memo, a completed form) to
+ * handle it. It does NOT fish the open web for external opportunities (jobs,
+ * grants, RFPs, people to pitch) — that is outside-in and tone-deaf (issue #492).
  *
  * Pipeline per goal:
  *   infer goal (tkg_goals)
@@ -55,7 +57,7 @@ const SYSTEM_INTROSPECTION_RE =
   /\b(tkg_signals?|tkg_actions?|orchestrator|data\s*pipeline|sync\s*(?:health|error|failure|status)|foldera\s*(?:system|health|error|log|directive|infrastructure)|decrypt\s*(?:fail|error)|cron\s*(?:job|run|fail)|api\s*(?:usage|spend|rate\s*limit))\b/i;
 
 const SCOUT_WRITER_SYSTEM_PROMPT =
-  'You are a proactive guardian working for one person. Your job is to reduce their mental load — to notice the one thing they would have wanted handled and bring it to them already done. You have their stated goal, real public information found on the web, and material drawn from their own files. Find the single highest-consequence, time-relevant move worth their attention right now: a funding, grant, or RFP opportunity; an approaching deadline or filing; a policy or regulatory change that affects their work; a relationship or introduction worth making; or a decision that is now ripe. Weigh consequence and timing — prefer the one move with real money or real stakes behind it. If such a thing exists, produce ONE finished artifact they could use immediately (e.g. a ready-to-send message, a short decision memo, a drafted application or filing), grounded only in the web facts and their files. Never invent opportunities, employers, names, numbers, deadlines, or facts that are not in the provided context. If nothing clears the bar, say so plainly: silence is better than a weak suggestion. You only propose finished work for their review — you never send anything. Do not mention internal systems, data pipelines, or how this information was gathered.';
+  "You are a quiet guardian working for one person. Your only job is to reduce their mental load by watching THEIR OWN world — the commitments they have already made, the replies they owe, the deadlines and filings sitting in their own files and threads — and to catch the one thing they are about to drop. You are given their own stated goal or obligation, material drawn from their own files, and (only where it helps) verified public facts that clarify a requirement, deadline, or next step for something they ALREADY need to handle. You do NOT go looking for new external opportunities to send them on: no job openings, no grants, no RFPs, no funding to chase, no people to pitch. That is not your job and it is tone-deaf. Find the single highest-consequence thing in THEIR OWN world that is time-sensitive and would cost them if it slipped, and produce ONE finished artifact they could use immediately to handle it (a ready-to-send reply, a short decision memo, a completed form or filing), grounded only in their files and the verified facts provided. Never invent facts, employers, names, numbers, deadlines, credentials, or experience that are not present in the provided context — if their files do not support a claim, do not make it. If nothing in their own world clears the bar right now, say so plainly: silence is far better than a manufactured or outward-looking suggestion. You only propose finished work for their review — you never send anything. Do not mention internal systems, data pipelines, or how this information was gathered.";
 
 export interface ScoutGoal {
   text: string;
@@ -75,17 +77,17 @@ export interface ScoutDriveSource {
  */
 export interface ScoutArtifactProposal {
   goal: ScoutGoal;
-  /** One-line description of the opportunity the scout found. */
+  /** One-line description of the thing in the person's own world about to need attention. */
   headline: string;
   /** Why this matters now — the deadline, decay, or window. */
   rationale: string;
   /** Title of the finished artifact. */
   artifactTitle: string;
-  /** The finished, review-gated artifact body (e.g. the tailored cover letter). */
+  /** The finished, review-gated artifact body (e.g. a ready-to-send reply or completed form). */
   artifactBody: string;
   /** Model-reported confidence, 0-100. */
   confidence: number;
-  /** Real public context found via web search, or null. */
+  /** Verified public facts used to act on the person's own obligation, or null. */
   webContext: string | null;
   /** Drive files that grounded the artifact. */
   driveSources: ScoutDriveSource[];
@@ -156,9 +158,13 @@ export async function loadScoutGoals(
   }
 }
 
-/** Build the natural-language web query that looks for a high-consequence move for a goal. */
+/**
+ * Build the web query. INWARD: the web is used only to verify concrete facts the
+ * person needs to act on something that is ALREADY theirs to handle — never to
+ * discover new external opportunities to send them on (issue #492).
+ */
 function buildScoutWebQuery(goal: ScoutGoal): string {
-  return `A person has this active goal: "${goal.text}" (domain: ${goal.category}). Find the most consequential, specific, time-relevant real opportunities or risks that advance or protect this goal right now — for example funding, grants, RFPs, deadlines, filings, regulatory or policy changes, partnerships, or a specific opening — and report the concrete details with the source for each.`;
+  return `A person needs to handle this in their own world: "${goal.text}" (domain: ${goal.category}). Find only the concrete public facts that help them complete or protect THIS specific obligation — the real requirements, official deadline, form, contact, or procedure for the thing they already need to do — and report each detail with its source. Do not look for new opportunities, job openings, grants, RFPs, or things to pitch; only verify the facts they need to act on what is already theirs.`;
 }
 
 /** Flatten retrieved Drive chunks into a bounded, labelled context block. */
@@ -180,28 +186,28 @@ function buildScoutWriterPrompt(
   webContext: string | null,
   driveBlock: string | null,
 ): string {
-  return `GOAL: ${goal.text}
+  return `THEIR OWN GOAL / OBLIGATION: ${goal.text}
 DOMAIN: ${goal.category}
 
-REAL PUBLIC INFORMATION FOUND ON THE WEB:
+VERIFIED PUBLIC FACTS (only for acting on what is already theirs):
 ${webContext ?? 'None found.'}
 
 MATERIAL FROM THE PERSON'S OWN FILES:
 ${driveBlock ?? 'None retrieved.'}
 
-Using only the goal, the web facts, and their files above, decide whether there is a single genuine, specific, high-consequence move worth bringing to this person right now, and if so write the finished artifact they could act on.
+Using only their goal/obligation, the verified facts, and their own files above, decide whether there is a single thing in THIS PERSON'S OWN WORLD that is time-sensitive and about to slip — something they have already taken on, not a new external opportunity. If so, write the finished artifact they could use immediately to handle it.
 
 Return strict JSON only:
 {
   "worth_surfacing": true or false,
-  "headline": "One line naming the specific, high-consequence opportunity or risk you found",
+  "headline": "One line naming the thing in their own world that is about to need attention",
   "rationale": "Why this matters now — the stakes, deadline, or window. One or two sentences.",
   "artifact_title": "A short title for the finished artifact",
-  "artifact_body": "The complete, ready-to-use artifact (message, memo, application, or filing), grounded in the web facts and their files",
+  "artifact_body": "The complete, ready-to-use artifact (reply, memo, form, or filing), grounded only in the verified facts and their files — invent nothing",
   "confidence": 0-100
 }
 
-If there is no specific, real opportunity worth their attention, return exactly:
+If nothing in their own world clears the bar, return exactly:
 {"worth_surfacing": false}`;
 }
 
@@ -269,7 +275,7 @@ async function scoutGoal(userId: string, goal: ScoutGoal): Promise<ScoutArtifact
   return {
     goal,
     headline,
-    rationale: (parsed.rationale ?? '').trim() || 'Time-relevant opportunity matched to an active goal.',
+    rationale: (parsed.rationale ?? '').trim() || 'Time-sensitive obligation in your own world about to slip.',
     artifactTitle: artifactTitle || headline,
     artifactBody,
     confidence,
