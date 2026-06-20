@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-20 UTC (issue #486 — SCOUT seam Stage 0: registered the additive Proactive Scout lane (Bible Part V) and the embeddings schema; flags default off, migration not yet applied)
+Last updated: 2026-06-20 UTC (issue #494 — SCOUT §3 promoted from compass #492, supersedes the build umbrella #486; control plane repointed to the active seam #494. The Scout build is done and inward (Stages 0-5 + inward retarget #493 merged); the remaining money-move is owner-gated runtime activation — turn the hands on for ONE real inward loop on REAL data)
 
 This is the keep-list ledger. Everything not listed here is reference, archive, or git history — never authority.
 

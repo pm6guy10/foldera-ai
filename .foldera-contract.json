@@ -1,9 +1,9 @@
 {
-  "backlog_id": "scout-486",
-  "active_issue": 486,
-  "base_commit": "508ebb9",
+  "backlog_id": "scout-494",
+  "active_issue": 494,
+  "base_commit": "f0a03a1",
   "money_loop_rung": "m2",
-  "user_system_path": "SCOUT seam (#486), additive flag-gated proactive Scout lane (Drive-as-searchable-brain + real web access + opportunity discovery) atop the untouched Workday Presence default. Stages 0-4 merged. Stage 5 (this PR): owner decision — delivery is Slack-first, NO texts (Twilio/SMS rail removed); plus tighten the proof contract to require real product proof (a live Slack card) every phase or NO PASS.",
+  "user_system_path": "SCOUT §3 (#494), promoted from compass #492, supersedes the build umbrella #486. The build is done and inward (Stages 0-5 #487/#488/#490/#491 + inward retarget #493 all merged; the deployed Scout watches the user's own world and never hunts the open web or fabricates credentials). The remaining money-move is owner-gated runtime activation: turn the hands on for ONE real inward loop on REAL data. This PR is a control-plane reconciliation only (repoint source truth 486 -> 494); it is NOT a Scout phase and claims no product proof.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -42,13 +42,13 @@
   "acceptance_condition": "Each Scout phase: code lands additive + flag-gated (zero behavior change with SCOUT_* flags off); gate:continuity + typecheck + lint(0) + build green; AND a real Scout card is shown (live Slack permalink/screenshot) or an exact owner-gated BLOCKED receipt is posted. Hygiene-only is NO PASS.",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "gate:continuity green with active_issue #486",
+    "gate:continuity green with active_issue #494",
     "Workday Presence pipeline unchanged with all SCOUT_* flags off",
     "no auto-send / no new outbound path introduced",
     "no forbidden public-facing claim terms in app/components/public"
   ],
-  "stop_condition": "Stage 5 lands as a draft PR for owner review, with a real Scout Slack card posted as free proof (per the tightened proof contract). The app's own live-adapter delivery + paid scout loop remain owner-gated (SLACK_BOT_TOKEN already in prod; SCOUT_*/Voyage/ALLOW_PAID_LLM owner-set).",
-  "next_command": "Owner: review the Stage 5 draft PR. To run the real app delivery path, set SCOUT_DELIVERY_ENABLED + FOLDERA_SLACK_SELF_CHANNEL_ID (already set) atop the Stage 1-3 flags, then trigger GET /api/cron/scout/deliver (CRON_SECRET bearer).",
+  "stop_condition": "Control-plane reconciliation lands as a draft PR repointing source truth from #486 to the active seam #494; gate:continuity green at #494. The real money-move (#494: one real inward loop on REAL data) stays BLOCKED_WITH_EXACT_RECEIPT — owner-gated runtime activation the sandbox cannot perform (Voyage key, SCOUT_*/ALLOW_PAID_LLM flags, CRON_SECRET cron triggers, ENCRYPTION_KEY_LEGACY decrypt).",
+  "next_command": "Owner: activate #494. (1) Set VOYAGE_API_KEY + flip SCOUT_ENABLED/SCOUT_RAG_ENABLED/SCOUT_WEB_ENABLED/ALLOW_PAID_LLM/SCOUT_DELIVERY_ENABLED in Vercel prod, redeploy. (2) Confirm ENCRYPTION_KEY_LEGACY covers all historical keys (#481). (3) GET /api/cron/scout/index-drive (CRON_SECRET) for the paid first index. (4) GET /api/cron/scout/deliver (CRON_SECRET) for one real inward Slack card. (5) Judge by gut >=3x/week, labeled owner-only.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
