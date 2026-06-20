@@ -1,38 +1,38 @@
 {
-  "backlog_id": "between-rungs",
-  "active_issue": "none",
-  "base_commit": "da176fb",
+  "backlog_id": "consequence-scoring-magnitude-474",
+  "active_issue": 474,
+  "base_commit": "690d3ea",
   "money_loop_rung": "m2",
-  "user_system_path": "Between rungs — no active seam. Cleanup pass merged #431 (PR #473, soft primaryOutcomeDeadline inference) and #454 (broadcast/recruiting-sender suppression at the entity admission gate) and closed #445 (Master Audit COMPLETE, passes 0-12). Owner names the next seam; the TRUE wall is the owner-side paid value-lever generation cycle.",
+  "user_system_path": "#474: the commitment risk scorer awarded a flat +15 for the mere presence of a '$', so a $2.71 statement credit (risk 87) outranked a $7,199.50 ESD statutory hardship waiver (risk 85) and barely beat a $6.50 milk-frother choice. Magnitude was ignored and informational money movement (statement credits, subscription receipts, scheduled autopay) was scored as real obligations. This is the root cause of 'the engine never surfaces anything impressive': noise and the one real obligation are indistinguishable to the scorer. Fix: magnitude-scaled money signal + informational-financial detection in lib/signals/commitment-risk.ts (deterministic, no LLM, no network). Proven on real production rows: the $7,199.50 waiver moves to 100 (gem band), the receipts/autopay collapse to 22.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
     "docs/**",
-    "tests/**",
-    "lib/**",
-    "LESSONS_LEARNED.md"
+    "lib/signals/commitment-risk.ts",
+    "lib/signals/__tests__/commitment-risk.test.ts"
   ],
   "forbidden_file_patterns": [
+    "app/api/**",
     "supabase/**",
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "lib/briefing/conviction-engine.ts (new pure inferPrimaryOutcomeDeadline + wired into the situation model) + lib/briefing/__tests__/conviction-engine-ce.test.ts (8 new fixtures) + control-plane. No schema, no deps, no paid calls.",
-  "forbidden_files_raw": "No schema (supabase/**), no deps (package.json/lock).",
-  "required_local_proof": "npx vitest run lib/briefing/__tests__/conviction-engine-ce.test.ts && npm run gate:continuity && npm run lint && npm run build",
-  "required_browser_proof": "N/A — deterministic harness change to a pure inference function; primaryOutcomeDeadline is written into SituationModel and has no downstream consumer/UI, so a unit-tested extractor is the closure standard.",
+  "allowed_files_raw": "The deterministic commitment risk scorer (lib/signals/commitment-risk.ts) + its real-data regression test + control-plane. No schema, no deps, no paid calls.",
+  "forbidden_files_raw": "No app/api, no schema (supabase/**), no deps (package.json/lock).",
+  "required_local_proof": "npx vitest run lib/signals/__tests__/commitment-risk.test.ts && npx vitest run lib/signals/ && npm run gate:continuity && npm run typecheck && npm run build",
+  "required_browser_proof": "N/A — deterministic, free scoring function; verified by recomputing real production tkg_commitments rows (the $7,199.50 waiver rises to the gem band; $2.71 credit / $21.66 subscription / $198 autopay collapse to 22). A backfill of stored risk_score applies it to the live pool owner-side.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "inferPrimaryOutcomeDeadline extracts month/start cues from supporting signals and populates SituationModel.primaryOutcomeDeadline, with test fixtures proving the inference (and quiet on the modal 'may start'). Issue #431 acceptance met.",
+  "acceptance_condition": "computeCommitmentRisk scales the money signal by magnitude and collapses informational money movement, so a $7,199.50 statutory waiver structurally outranks a $2.71 statement credit / $6.50 milk frother / $21.66 subscription; real-data regression test green; lib/signals suite + typecheck + gate:continuity green.",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "gate:continuity green with active seam #431",
-    "deterministic; no runtime/schema change; primaryOutcomeDeadline was previously always null so populating it is purely additive",
-    "modal 'may start' must not fabricate a May deadline (safe-silence)"
+    "gate:continuity green with active seam #474",
+    "lib/signals suite green; only lib/signals/commitment-risk.ts changed under lib/",
+    "informational receipts (statement credit / subscription / scheduled autopay) stay in the noise tier (<40); a real declined-payment obligation stays high"
   ],
-  "stop_condition": "Stop when the PR is merged. Between-rungs after; owner names the next seam.",
-  "next_command": "Owner: review/merge the #431 PR. Remaining open issues (#420/#402/#382 owner-gated, #445 complete, #165 inbox) are not agent-bangable without owner decisions.",
+  "stop_condition": "Stop when the PR is open with deterministic + real-data proof. Owner-side: run the backfill to apply the recomputed risk_score to the live commitment pool.",
+  "next_command": "Owner: merge, then run scripts/backfill-commitment-risk.ts to re-score stored commitments so the live generation pool reflects the fix. Follow-up lever: carry the same magnitude/consequence principle into the signal-side stakes scoring and the generator's positive_winner_contract so the surfaced winner is the high-consequence obligation, not a recycled do_nothing.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

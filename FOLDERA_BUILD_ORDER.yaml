@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
+active_issue: 474
 priority_class: PRODUCT
-work_type: CHORE
-why_this_first: "Between rungs — no active seam. Cleanup pass merged two ready PRs and closed the completed audit: #431 soft primaryOutcomeDeadline inference (PR #473) and #454 broadcast/recruiting-sender suppression at the entity admission gate (getEntityRejectionReasons rejects junk/transactional + automated/recruiting-domain senders; fail-safe, real human julieta@micro1.io preserved). #445 Master Audit closed COMPLETE (passes 0-12). Owner names the next seam."
-next_seam: "Owner names it. The TRUE wall is owner-side: one paid generation cycle to confirm a real gem clears the bar. Remaining open issues are owner-decision-gated (#420 roadmap / #402 indispensability / #382 frontend epic) or non-seam (#165 inbox). Follow-up lever for #454: the two-way test (require the user replied at least once)."
+work_type: FEATURE
+why_this_first: "#474 consequence scoring — the root cause of 'the engine never surfaces anything impressive.' Live production diagnosis: computeCommitmentRisk gave a flat +15 for any '$', so a $2.71 statement credit (risk 87) outranked a $7,199.50 ESD statutory hardship waiver (risk 85) and a $6.50 milk-frother choice scored 75. Noise and the one real obligation were indistinguishable, so every selected winner was hollow and died at the positive_winner_contract gate (100% do_nothing across daily runs). Fix: magnitude-scaled money signal + informational-financial collapse in lib/signals/commitment-risk.ts. Proven on real rows: waiver -> 100 (gem band), receipts/autopay -> 22."
+next_seam: "Owner: merge + run scripts/backfill-commitment-risk.ts to apply recomputed risk_score to the live pool. Then carry the same magnitude/consequence principle UP into (a) the signal-side stakes scoring and (b) the generator positive_winner_contract, so the surfaced winner is the high-consequence obligation rather than a recycled do_nothing. The owner paid value-lever run validates end-to-end."
 completed_issue_425:
   issue: 425
   pr: 426
