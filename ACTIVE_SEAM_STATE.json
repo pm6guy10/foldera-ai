@@ -1,9 +1,9 @@
 {
   "active_issue": 445,
-  "active_branch": "claude/audit-445-pass12-governance-meta",
+  "active_branch": "main",
   "active_pr": null,
-  "deployed_commit_sha": "86fe627",
+  "deployed_commit_sha": "c7492ba",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-20T02:00:00Z"
+  "last_verified_at": "2026-06-20T02:15:00Z"
 }
