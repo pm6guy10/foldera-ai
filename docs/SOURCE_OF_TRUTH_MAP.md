@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-20 UTC (issue #445 — Pass 12 registered the full Master Audit pass-record ledger so findings are discoverable, never re-derived)
+Last updated: 2026-06-20 UTC (issue #486 — SCOUT seam Stage 0: registered the additive Proactive Scout lane (Bible Part V) and the embeddings schema; flags default off, migration not yet applied)
 
 This is the keep-list ledger. Everything not listed here is reference, archive, or git history — never authority.
 
@@ -75,6 +75,8 @@ A new governance rule may only be added by editing an existing keep-list file, n
 | `tkg_commitments` | **Authoritative** | Used during `seed-from-scorer` generation to fetch/evaluate user obligations. |
 | `tkg_entities` | **Authoritative** | Used during `seed-from-scorer` generation to filter and check entity trust. |
 | `api_usage` / `api_budget` | **Authoritative** | Budgets and costs tracking for model calls. |
+| `scout_drive_chunks` | **Provisioned (Scout lane #486; inert until SCOUT_RAG_ENABLED)** | Chunked + embedded Google Drive content (`vector(1024)`, Voyage voyage-3.5; `content` encrypted at rest) for the proactive Scout's retrieval. Read via the `match_scout_chunks` RPC. Migration `20260620120000` committed Stage 0; **not yet applied** to production. |
+| `scout_drive_index_state` | **Provisioned (Scout lane #486; inert until SCOUT_RAG_ENABLED)** | Resumable full-Drive crawl cursor, one row per user. Migration `20260620120000`; not yet applied. |
 | `tkg_briefings` | **Legacy (Deprecated)** | Legacy chief-of-staff caching. Not used; endpoint `/api/briefing/latest` returns 501. |
 | `user_brief_cycle_gates` | **Legacy (Deprecated)** | Legacy daily brief 20-hour cycle cooldown. Ignored by trigger runner. |
 | `signal_summaries` | **Legacy (Deprecated)** | Legacy daily briefing summarizations. Ignored by trigger runner. |

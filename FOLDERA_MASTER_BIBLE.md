@@ -1152,3 +1152,30 @@ If the work would not survive the avatar or the panel, **fix it before reporting
 ## Authority
 
 `docs/BRANDON.md` and `docs/EXPERT_PANEL.md` are subordinate to this Bible and to one active GitHub issue at a time, but any user-facing or product PR should be self-reviewed against them. They are taste/review authority, not execution authority — they do not select the active seam or authorize implementation. Keep them current: when Brandon gives new taste, a new recurring critique, or a new expert lens, update these files in the same spirit as updating this Bible — so he never has to say it twice.
+
+---
+
+# PART V — PROACTIVE SCOUT LANE (added 2026-06-20 by owner mandate, issue #486)
+
+## Why this exists
+
+The Guardian Vision (Part II-B) states the soul of the product: *"a guy that's watching out for you… total-context → look out for you."* The Workday Presence Layer is the **first, narrow** expression of that soul — it reconstructs the user's own workday and hands over one finished re-entry move. The owner's 2026-06-20 brainstorm named the missing half: the Guardian should also **go out and find things the user would have found themselves** — surface a hidden connection across the user's own brain plus the outside world, and arrive with the finished work. That is the Scout.
+
+## The Scout, additively
+
+The Scout is an **additive, opt-in, owner-first lane**, not a replacement.
+
+- The **Workday Presence Layer remains the always-on default.** It is untouched; with every `SCOUT_*` flag off the product behaves exactly as before.
+- The Scout is a **separate, flag-gated lane** that: (1) treats the user's whole Google Drive as a **searchable second brain** (full index + retrieval), not a recent-activity feed; (2) has **real web access** (the native server-side search tool), replacing recalled-from-memory enrichment with grounded, cited facts; (3) **proactively discovers opportunities** against inferred goals — e.g. a matching role plus a tailored resume and cover letter assembled from the user's own Drive materials.
+- The Scout **proposes finished artifacts for the user to approve. It never sends on its own.** The review-gated, no-auto-send invariant from the Privacy and Safety Rails and Forbidden Product Drift sections applies to the Scout in full.
+
+## What the Scout does not change
+
+- It does not weaken safe silence: no opportunity worth surfacing → stay quiet.
+- It does not make the product a dashboard, a task manager, an inbox summary, a chatbot, or a surveillance tool.
+- It introduces no auto-send, no automatic outbound action, and no claim the product does work the user did not approve.
+- It reuses the existing grounding, citation, scoring, generation, and delivery discipline — Scout output is held to the same source-grounded bar as presence-layer output.
+
+## Sequencing
+
+Scout ships behind feature flags, owner-first (one user: the owner), proven free in the harness before any paid validation. New external dependencies (embeddings provider, SMS), production schema application, and any paid generation cycle are owner-gated and require explicit authorization per `AGENTS.md` — they are never agent self-unblocks.
