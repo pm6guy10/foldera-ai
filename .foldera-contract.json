@@ -1,15 +1,16 @@
 {
-  "backlog_id": "between-rungs",
-  "active_issue": "none",
+  "backlog_id": "commitment-date-anchoring-478",
+  "active_issue": 478,
   "base_commit": "81c8a5e",
   "money_loop_rung": "m2",
-  "user_system_path": "Between rungs — no active seam. #474 consequence scoring merged (PR #475) AND backfilled live this session: all 214 active tkg_commitments re-scored via MCP using validated SQL==TS — the $7,199.50 ESD waiver now leads at 92, $2.71 credit / $21.66 subscription / $198 autopay collapsed to 22. The live pool now leads with real consequence. NEXT LEVER (the real value-blocker): the generator's positive_winner_contract gate still recycles ~100% of selected winners to do_nothing; carry consequence/grounding into the contract so a high-consequence obligation ships a real artifact (do NOT just loosen it). ANTHROPIC_API_KEY is enabled; the owner paid run validates end-to-end.",
+  "user_system_path": "#478: commitment age was anchored on extraction time, not the real event date. insertCommitment set made_at = now() instead of the source signal's occurred_at, so a year-old 'send filings to counsel' (source 2025-06) got a fabricated 'due in 7 days' and ranked 74-82. Fix: thread signal.occurred_at into insertCommitment as madeAtIso (fallback now() only when undated); the deterministic scorer then derives implied deadline + staleness from the real date. Backfilled live (made_at corrected to occurred_at; pool re-scored): recent real obligations lead (declined payment $346.61 @ 2026-06-17 = 88 #1), year-old legal filings collapse to 17-25. Builds on #474 consequence scoring.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
     "docs/**",
+    "lib/signals/signal-processor.ts",
     "lib/signals/commitment-risk.ts",
     "lib/signals/__tests__/commitment-risk.test.ts"
   ],

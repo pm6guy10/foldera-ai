@@ -20,7 +20,8 @@ Keep this cockpit short and value-first. Completed-issue history lives in `SESSI
 
 ## Current slice:
 
-Between rungs — no active seam. `active_issue: none`; the owner names the next seam.
+Issue #478 is the active commitment-date-anchoring seam.
+(`insertCommitment` set `made_at = now()` instead of the source signal's `occurred_at`, so a year-old "send filings to counsel" got a fabricated fresh deadline and ranked 74-82. Fixed: thread `signal.occurred_at` into `insertCommitment`. Backfilled live — recent real obligations lead (declined payment $346.61 @ 2026-06-17 = 88 #1); year-old legal filings collapse to 17-25.)
 **Merged + LIVE — #474 consequence scoring (PR #475):** `computeCommitmentRisk` gave a flat +15 for any `$`, so a $2.71 statement credit (risk 87) outranked a $7,199.50 ESD statutory waiver (85) and a $6.50 milk frother scored 75 — the root cause of "nothing impresses." Fix = magnitude-scaled money + informational-financial collapse in `lib/signals/commitment-risk.ts`. **Backfilled to the live `tkg_commitments` pool this session** (all 214 active rows re-scored via MCP using validated SQL==TS): waiver now **92 (#1)**, declined-payment 88, overpayment plan 76, legal filings 74; $2.71 credit / $21.66 subscription / $198 autopay → 22; milk frother 75 → 47.
 **NEXT LEVER (the real value-blocker): the `positive_winner_contract` gate** — even with the right candidate ranked #1, the generator recycles ~100% of winners to `do_nothing`. Carry consequence/grounding into the contract so a high-consequence obligation ships a real artifact. Also merged: #431 (PR #473); #454 broadcast-sender suppression. #445 Master Audit COMPLETE below.
 
