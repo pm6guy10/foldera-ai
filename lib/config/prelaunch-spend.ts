@@ -82,6 +82,16 @@ export function isScoutWebEnabled(): boolean {
   return isScoutEnabled() && process.env.SCOUT_WEB_ENABLED === 'true';
 }
 
+/**
+ * Phone-first delivery of finished Scout proposals (Stage 4). When off, the scout
+ * loop still only RETURNS proposals — nothing is surfaced anywhere. When on, the
+ * delivery layer notifies the owner on their own rails (SMS nudge + Slack/email
+ * for review). It never auto-sends an artifact to a third party. Defaults OFF.
+ */
+export function isScoutDeliveryEnabled(): boolean {
+  return isScoutEnabled() && process.env.SCOUT_DELIVERY_ENABLED === 'true';
+}
+
 /** Embeddings provider for Scout RAG. Voyage is Anthropic's recommended partner. */
 export function getEmbeddingsProvider(): 'voyage' {
   const provider = process.env.EMBEDDINGS_PROVIDER?.trim().toLowerCase();
