@@ -39,12 +39,14 @@ Issue #445 is the active firm-foundation audit seam.
 
 **Pass 10 (GitHub CI) `PASS`:** ci.yml on PRs (F-1), change-aware, draft-skip, ci-passed aggregator; ZERO `schedule:` crons (billing-safe). F-10.1 ground-truth correction: growth agents (`lib/agents/*`) are NOT deleted — they're quarantined default-OFF behind `areAgentsEnabled` (#231) + budget guard, reachable only via dispatch-only workflows; corrected the `project_growth_layer_deleted` memory. Owner item: branch protection on main still OFF. Record: `docs/backend/GITHUB_CI_AUDIT.md`.
 
-**Passes 11–12 NOT started.** Pass 11 (observability), 12 (governance meta) next; or owner runs the C-2 paid-validation lever.
+**Pass 11 (observability) `PASS`:** structured logging hashes userId (no raw PII), Sentry wired (instrumentation.ts), durable tkg_actions receipts, scoring hot path proven metadata-only (egress tests green), no committed .env secrets. Obs: O-11.1 `details` is caller-sanitized not logger-sanitized (no leak found); O-11.2 stale local gitignored .env clutter. Record: `docs/backend/OBSERVABILITY_AUDIT.md`.
+
+**Pass 12 (governance/memory meta) NOT started** — the final audit pass; then post the Master Audit completion summary on #445.
 
 ## Next exact move
 
 1. **Owner — the value lever (TRUE wall):** one paid generation cycle to confirm a real gem now surfaces. This is the *only* move that turns "healthy" into "valuable."
-2. **Next audit pass: 11 (observability), 12 (governance meta)** — all harness-doable. (Passes 5–10 done; C-2 paid-validation lever is the owner item above.)
+2. **Next audit pass: 12 (governance/memory meta)** — final pass, harness-doable. (Passes 5–11 done; C-2 paid-validation lever is the owner item above.)
 3. **PR #454 (DRAFT) — broadcast/recruiting-sender suppression** (owner judgment; changes entity admission, can over-suppress at edge cases). On `claude/mvp-polish-pass-audit-sg9e4k`.
 4. Deferred follow-ups (harness-only): B-4 budget-reservation reconciliation; B-5 persist retry reasons (Pass 11); the two-way test for relationship gems (coupled to #454). [>30d-overdue admission window shipped via #460.]
 
