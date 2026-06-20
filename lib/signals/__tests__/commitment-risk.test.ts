@@ -221,6 +221,39 @@ describe('computeCommitmentRisk — due resolution', () => {
   });
 });
 
+describe('computeCommitmentRisk — obligation age is anchored on the real event date', () => {
+  // The scorer derives implied deadline + staleness from madeAtIso. The write path
+  // must pass the source signal's occurred_at (the real email date), NOT extraction
+  // time. Proven here at the scoring layer: the SAME undated "send filings to counsel"
+  // obligation collapses to the noise tier when it is genuinely a year old, and only
+  // ranks high when it is genuinely recent. (Live bug: a 2025-06 legal filing was
+  // extracted in 2026-06 with made_at=now → a fabricated "due in 7 days" → risk 74.)
+  const TODAY = '2026-06-20T12:00:00.000Z';
+  function filing(madeAtIso: string) {
+    return computeCommitmentRisk({
+      category: 'deliver_document',
+      description: 'Send filings directly to counsel',
+      dueAt: null,
+      promisorIsSelf: true,
+      promiseeIsSelf: false,
+      madeAtIso,
+      nowIso: TODAY,
+    }).risk_score;
+  }
+
+  it('collapses a year-old obligation to the noise tier', () => {
+    expect(filing('2025-06-12T00:00:00.000Z')).toBeLessThan(40);
+  });
+
+  it('keeps the same obligation high when it is genuinely recent', () => {
+    expect(filing('2026-06-15T00:00:00.000Z')).toBeGreaterThan(60);
+  });
+
+  it('ranks the recent instance far above the year-old one', () => {
+    expect(filing('2026-06-15T00:00:00.000Z') - filing('2025-06-12T00:00:00.000Z')).toBeGreaterThanOrEqual(30);
+  });
+});
+
 describe('computeCommitmentRisk — bounds', () => {
   it('always returns an integer in [0, 100]', () => {
     const samples = [

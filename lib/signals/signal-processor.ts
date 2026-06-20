@@ -1485,7 +1485,7 @@ async function processSingleExtractedSignal(args: {
           const commitmentId = dryRun
             ? `dry-run-commitment-${commitmentIds.length + 1}`
             : await insertCommitment(
-              supabase, userId, selfId, commitment, signal.id, entityIds, signalTrustClass,
+              supabase, userId, selfId, commitment, signal.id, entityIds, signalTrustClass, signal.occurred_at,
             );
           if (commitmentId) {
             commitmentIds.push(commitmentId);
@@ -1840,6 +1840,7 @@ async function insertCommitment(
   signalId: string,
   entityIds: string[],
   signalTrustClass: TrustClass,
+  sourceOccurredAt: string | null,
 ): Promise<string | null> {
   // Try to find the promisor entity; fall back to self
   let promisorId = selfId ?? null;
@@ -1886,7 +1887,11 @@ async function insertCommitment(
 
   if (existingCommitmentResult.data) return existingCommitmentResult.data.id;
 
-  const madeAtIso = new Date().toISOString();
+  // Anchor the obligation's age on the REAL source-event date (the email/signal
+  // occurred_at), NOT extraction time. Anchoring on now() gave a year-old "send
+  // filings to counsel" (source 2025-06) a fresh implied "due in 7 days", floating
+  // a moot obligation to the top. Falls back to now() only when the source is undated.
+  const madeAtIso = sourceOccurredAt ?? new Date().toISOString();
   const dueAt = normalizeInteractionTimestamp(commitment.due);
   // Deterministic, free risk + due resolution so the Right Now scorer has real
   // signal to rank on instead of a uniform risk_score:0 / due_confidence:0.5.
