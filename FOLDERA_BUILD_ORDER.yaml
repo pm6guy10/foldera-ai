@@ -26,7 +26,7 @@ active_issue: none
 priority_class: PRODUCT
 work_type: FEATURE
 why_this_first: "Between rungs — no active seam. #474 consequence scoring merged (PR #475, 81c8a5e): computeCommitmentRisk now scales money by magnitude and collapses informational money movement, so a $7,199.50 statutory waiver structurally outranks a $2.71 statement credit / $6.50 milk frother. Proven on real production rows (waiver -> 100, receipts/autopay -> 22)."
-next_seam: "OWNER NEXT: run scripts/backfill-commitment-risk.ts to apply the recomputed risk_score to the live tkg_commitments pool so the next generation reflects the fix (stored scores were written at extraction time). Then carry the same magnitude/consequence principle UP into (a) the signal-side stakes scoring and (b) the generator positive_winner_contract, so the surfaced winner is the high-consequence obligation rather than a recycled do_nothing. The owner paid value-lever run validates end-to-end."
+next_seam: "Live pool already backfilled this session (214 active commitments re-scored via MCP, validated SQL==TS; waiver -> 92 #1, receipts -> 22). THE NEXT LEVER is the generator positive_winner_contract gate: even with the right candidate ranked #1, ~100% of selected winners recycle to do_nothing. Carry consequence/grounding into the contract so a high-consequence obligation ships a real artifact (NOT loosening the gate -> hollow drafts). Then mirror the magnitude principle into the signal-side stakes scoring. ANTHROPIC_API_KEY enabled; owner paid run validates end-to-end."
 completed_issue_425:
   issue: 425
   pr: 426

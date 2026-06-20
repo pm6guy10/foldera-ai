@@ -2,37 +2,34 @@
 
 ---
 
-# 🟢 NEW SESSION — START HERE (snapshot 2026-06-19, end of MVP-polish/audit session)
+# 🟢 NEW SESSION — START HERE (snapshot 2026-06-20, consequence-scoring session)
 
-**Boot order:** `ACTIVE_HANDOFF.md` → `AGENTS.md` → GitHub issue **#445** (the Master Audit, the live thread) → `ACTIVE_SEAM_STATE.json`. Then read the rest of this file for depth.
+**Boot order:** `ACTIVE_HANDOFF.md` → `AGENTS.md` → `ACTIVE_SEAM_STATE.json` (currently between-rungs). Then read the rest of this file for depth.
 
 ## One-paragraph state
-The **foundation is hardened and proven** (security/RLS, data integrity, cost, CI — audited + guarded with tests, all merged to `main`). The **engine runs daily** but delivers nothing because its candidate pool is ~95% automated/broadcast noise (recruiting platforms, app updates) + low-stakes personal — so its silence is largely *correct* ("safe silence is a win"). The frontier is **noise suppression** so a real gem can surface. One brain fix is staged awaiting owner live validation (PR #454).
+The **foundation is hardened** (security/RLS, data integrity, cost, CI — audited + guarded, all merged) and the **Master Audit #445 is COMPLETE** (passes 0–12). The engine runs daily on real data and was producing **100% `do_nothing`** — not because the inbox is quiet, but because **the scorer couldn't tell consequence from noise**: a flat "+15 if a `$` appears" let a **$2.71 statement credit (risk 87)** and a **$6.50 milk-frother choice (75)** outrank a **$7,199.50 ESD statutory hardship waiver (85)**. Fixed this session (#474/PR #475): magnitude-scaled money + informational-financial collapse in `lib/signals/commitment-risk.ts`, **and backfilled to the live `tkg_commitments` pool** (validated SQL==TS to the integer before writing). The real consequence layer now leads: waiver 92, declined-payment 88, overpayment plan 76, legal filings 74; receipts/subscriptions/autopay → 22.
 
-## What a GEM is (pin this — it drove the whole session; Bible Part II-B/II-C, `docs/GEM_SURFACING.md`)
-The one **high-consequence** thing the user half-forgot (money / legal_gov / medical / work_transition / a real promise to a real person), at the **right time**, in the **right channel**, with **one act**. **NOT** a broadcast sender, **NOT** a calendar reminder. "roman" (`roman@expert.micro1.ai`, an AI-recruiting platform) is the canonical *noise* example — suppressing it is correct.
+## What a GEM is (pin this; Bible Part II-B/II-C, `docs/GEM_SURFACING.md`)
+The one **high-consequence** thing the user half-forgot (money / legal_gov / medical / work_transition / a real promise to a real person), at the **right time**, in the **right channel**, with **one act**. **NOT** a broadcast sender (roman@expert.micro1.ai = canonical noise), **NOT** a calendar reminder, **NOT** a $2.71 receipt.
 
-## Shipped to `main` this session
-Pass 0 inventory (`docs/SYSTEM_INVENTORY.md`, #446) · Pass 1 security/RLS PASS + contract test (#447) · Pass 2 data-integrity PASS + test (#449) + the `cost_events` index D-3 (#450) · Pass 3 cost: reverted `EXTRACTION_DAILY_CAP` 4→0.25 + live cross-check (#448) · **F-1: CI now runs on PRs** (change-aware, draft-skipped, #451) · gem-surfacing shipped **then reverted** (#452→#453, it surfaced noise). Docs added: `RLS_ISOLATION.md`, `DATA_INTEGRITY.md`, `GEM_SURFACING.md`, `COST_AND_ECONOMICS_AUDIT.md §9`.
+## Shipped to `main` (recent)
+Master Audit #445 passes 0–12 (security/RLS, data integrity, cost, runtime, AI grounding, FE perf/a11y/UX, trust/claims, Vercel, CI, observability, governance) · #431 soft `primaryOutcomeDeadline` (PR #473) · **#454 broadcast/recruiting-sender suppression** at the entity admission gate (PR #454) · **#474 consequence scoring — magnitude over a flat $-bump (PR #475), backfilled live.**
 
-## 🔴 OPEN THREADS
-1. **PR #454 — broadcast-sender suppression** (DRAFT, fail-safe, NOT self-merged). Rejects junk/transactional + recruiting/automated senders at the entity admission gate (`getEntityRejectionReasons`). Real-data validated (roman/micro1 rejected; trusted human `julieta@micro1.io` preserved). **Owner gate:** run one generation cycle, confirm noise gone + real contacts kept, then merge.
-2. **Owner-side — branch protection on `main` → require the `ci-passed` check.** F-1 made CI *run*; this makes it *enforced*. ~30 sec in repo Settings → Branches.
-3. **Owner-side — confirm `ANTHROPIC_API_KEY` (+ Slack/CRON) in Vercel Production.**
-4. **Deferred lever — the two-way test:** a relationship gem requires the user actually *replied* once. More robust than any domain list; the real follow-up to #454.
-5. **Deferred (cost) — P0.2 lazy/as-needed generation + P0.3 selective extraction.** Needs design + paid validation (Anthropic credits exist). Current real spend is fine ($0.02–0.19/user/day); worst-case isn't under revenue without this.
-6. **Deferred — C-2:** `directive_retry` costs ~2× `directive` (retries doubling gen spend) → Pass 4 (runtime) investigation.
-7. **Audit passes PAUSED (hygiene, low priority):** 4, 5, 9, 10, 11, 12. Pass 10 owns F-1's branch-protection half; Pass 12 owns D-4 (`SOURCE_OF_TRUTH_MAP` mislabels `session_state` as workday-presence; it's an ops ledger).
-8. **PARKED — S-3:** Supabase leaked-password + MFA are Pro-plan only; project is on free. Not actionable.
-9. **Re-answer after #454 merges:** with noise suppressed, does a *real* gem surface? Yes → go polish (frontend passes 6–8, the "looks-legit" work). Still silent → it's honestly quiet; build the two-way test / verify high-consequence domains rise.
+## 🔴 OPEN THREADS (in priority order)
+1. **THE NEXT LEVER — the `positive_winner_contract` gate.** Even with the right thing ranked #1, the generator was killing ~100% of selected winners at this gate (`missing_schedule_resolution_context`, `stale_status_without_current_artifact_facts`, `missing_current_artifact_anchor`) → `do_nothing`. Ranking fixes *which* candidate leads; this gate decides whether it **ships**. Carry the magnitude/consequence principle up into the contract so a genuine high-consequence obligation produces a real artifact instead of recycling. **Do NOT just loosen it** — that ships hollow drafts (the #452 mistake). The honest fix is grounding the artifact in real source material.
+2. **Owner — the value-lever paid run.** `ANTHROPIC_API_KEY` is ENABLED in Vercel (confirmed by owner). With the pool now corrected, the open question is whether a real winner clears the contract gate end-to-end. `docs/OWNER_PAID_VALUE_LEVER_RUNBOOK.md`.
+3. **Owner-side** — branch protection on `main` (require CI); confirm Slack/CRON env.
+4. **Deferred lever — the two-way test** (a relationship gem requires the user actually replied once); follow-up to #454.
+5. **Carry consequence up into the signal-side stakes scoring** (`stakes-gate.ts` / scorer) and dedup, mirroring the commitment-risk fix.
 
 ## Operating notes / gotchas for the next agent
-- **Fix-in-pass:** fix cheap/safe findings in the same PR — don't file them under a "later" that never comes (the original frustration).
-- **Fail-safe direction:** *suppress* noise (fails toward silence). Do NOT loosen gates to "surface more" — that surfaces noise (the #452 mistake). Before promoting anything: *would this have surfaced roman?*
-- **Test against REAL data, not fixtures.** #452's fixture passed while the live winner was garbage. Verify with Supabase MCP (read-only) before trusting a brain change.
-- **No paid API calls from the harness.** Live/paid validation of brain changes is owner-side.
-- **This remote container can't run the pre-push gate** (needs owner Supabase secrets + Playwright). Pushes used owner-authorized `HUSKY=0`; deterministic proof (`gate:continuity` + targeted vitest + `typecheck`) substitutes. CI-on-PRs (F-1) is the real gate going forward.
-- **Git gotcha:** this one long-lived branch (`claude/mvp-polish-pass-audit-sg9e4k`) diverges from `main` after every squash-merge; resolved each time with `git fetch` + `git merge -s ours origin/<branch>` then push. A fresh branch per seam avoids the dance. Repo otherwise clean (synced to `main`, no uncommitted, gate green).
+- **Consequence, not keywords.** Stakes scale with *magnitude × irreversibility × who-it-affects*, never the presence of a `$`/number. A $2.71 credit and a $7,199 waiver are not the same. (`commitment-risk.ts` is the reference implementation.)
+- **DON'T FRONT-LOAD. Pick and execute, report after.** The owner does not want a menu of choices before work starts — make the highest-leverage call, do it, bring the result + reasoning. (`LESSONS_LEARNED.md` #20.)
+- **Value is the only score.** Green CI / clean repo / merged PRs are hygiene, not value (Bible II-B, `LESSONS_LEARNED.md` #19). "Healthy but producing nothing" is still failing.
+- **Test against REAL data, and you can re-score it.** Verify brain changes with Supabase MCP. A derived field (`risk_score`) can be backfilled via MCP using validated SQL that mirrors the TS function — validate SQL==TS on known rows before writing.
+- **Fail-safe direction:** suppress noise (fails toward silence). Do NOT loosen gates to "surface more" — that surfaces noise.
+- **This remote container can't run the pre-push gate** (needs owner Supabase secrets + Playwright). Pushes use owner-authorized `HUSKY=0`; deterministic proof (`gate:continuity` + targeted vitest + `typecheck` + `build`) substitutes.
+- **Fresh branch per seam** (avoids the long-lived-branch merge dance). Reset control plane to between-rungs after a merge so the next gate isn't stale.
 
 ---
 
