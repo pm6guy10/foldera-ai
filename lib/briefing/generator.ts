@@ -4652,6 +4652,9 @@ export function buildPromptFromStructuredContext(
     if (ctx.researcher_insight.external_context) {
       sections.push(`EXTERNAL_CONTEXT:\n${ctx.researcher_insight.external_context}`);
     }
+    if (ctx.researcher_insight.drive_context) {
+      sections.push(`DRIVE_CONTEXT:\n${ctx.researcher_insight.drive_context}`);
+    }
     sections.push(`ARTIFACT_GUIDANCE:\n${ctx.researcher_insight.artifact_instructions}`);
   }
 

@@ -15,6 +15,9 @@ import Anthropic from '@anthropic-ai/sdk';
 import { createServerClient } from '@/lib/db/client';
 import { buildPromptCachedSystem } from '@/lib/llm/anthropic-prompt-cache';
 import { isPaidLlmAllowed } from '@/lib/llm/paid-llm-gate';
+import { isScoutWebEnabled, isScoutRagEnabled } from '@/lib/config/prelaunch-spend';
+import { retrieveDriveContext } from '@/lib/scout/retrieval';
+import { searchWebForEnrichment } from '@/lib/scout/web-search';
 import { trackApiCall } from '@/lib/utils/api-tracker';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { SIGNAL_CONTEXT_LIMIT, SIGNAL_CONTEXT_SELECT } from '@/lib/utils/signal-egress';
@@ -39,6 +42,8 @@ export interface ResearchInsight {
   supporting_signals: string[];
   /** Public info the user doesn't have (from web search or knowledge), or null */
   external_context: string | null;
+  /** Relevant material retrieved from the user's whole Drive (Scout RAG), or null */
+  drive_context?: string | null;
   /** Why this matters NOW — deadline or decay */
   window: string | null;
   /** What the writer should produce and why */
@@ -230,6 +235,37 @@ If no relevant public information exists, return:
 {"external_context": null}`;
 }
 
+/**
+ * Build a natural-language query for the native web_search tool (Stage 2).
+ * Unlike the recall-from-memory enrichment prompt, this asks for real lookups
+ * and source citations rather than strict JSON.
+ */
+function buildWebSearchQuery(winner: ScoredLoop, synthesis: string): string {
+  const domain = winner.matchedGoal?.category ?? 'general';
+  const searchFocus = domain === 'career'
+    ? 'official policies, salary schedules, benefits eligibility, agency rules, or hiring-process timelines'
+    : 'statutes, deadlines, program eligibility rules, or tax implications';
+
+  return `Situation: ${synthesis}
+
+Domain: ${domain}
+Find current, verifiable public information directly relevant to this situation — ${searchFocus}. Report the specific facts you find and cite each source.`;
+}
+
+/** Flatten retrieved Drive chunks into a bounded, labelled context block. */
+function formatDriveContext(
+  chunks: Awaited<ReturnType<typeof retrieveDriveContext>>,
+): string | null {
+  if (chunks.length === 0) return null;
+  return chunks
+    .map((chunk) => {
+      const label = chunk.fileName?.trim() || 'Drive document';
+      return `From "${label}": ${chunk.content.trim()}`;
+    })
+    .join('\n\n')
+    .slice(0, 2000);
+}
+
 // ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
@@ -350,11 +386,38 @@ export async function researchWinner(
         (id): id is string => typeof id === 'string' && id.length > 0,
       ),
       external_context: null,
+      drive_context: null,
       window: typeof synthesisResult.window === 'string' ? synthesisResult.window : null,
       artifact_instructions: typeof synthesisResult.artifact_instructions === 'string'
         ? synthesisResult.artifact_instructions
         : 'Draft the artifact around the insight synthesis.',
     };
+
+    // Scout RAG (Stage 2): retrieve relevant material from the user's whole Drive.
+    // No-ops (returns []) when SCOUT_RAG_ENABLED is off, so default behavior is
+    // unchanged. Failure here is non-fatal — the internal synthesis still stands.
+    if (isScoutRagEnabled()) {
+      try {
+        const driveChunks = await retrieveDriveContext(
+          userId,
+          `${winner.title}\n${insight.synthesis}`,
+          5,
+        );
+        const driveContext = formatDriveContext(driveChunks);
+        if (driveContext && !SYSTEM_INTROSPECTION_RE.test(driveContext)) {
+          insight.drive_context = driveContext;
+        }
+      } catch {
+        logStructuredEvent({
+          event: 'researcher_drive_rag_error',
+          level: 'warn',
+          userId,
+          artifactType: null,
+          generationStatus: 'drive_rag_error',
+          details: { scope: 'researcher' },
+        });
+      }
+    }
 
     // Check time budget before Pass 2
     const elapsed = Date.now() - startTime;
@@ -373,6 +436,22 @@ export async function researchWinner(
     // Pass 2: External enrichment (career/financial only)
     const goalCategory = winner.matchedGoal?.category;
     if (goalCategory === 'career' || goalCategory === 'financial') {
+      // Stage 2: when the Scout web lane is on, use REAL web access via the
+      // native web_search tool instead of the recall-from-memory enrichment.
+      // searchWebForEnrichment is self-gated and returns null on any failure,
+      // so the brief is never blocked by this.
+      if (isScoutWebEnabled()) {
+        const webContext = await searchWebForEnrichment(
+          buildWebSearchQuery(winner, insight.synthesis),
+          userId,
+        );
+        if (webContext && !SYSTEM_INTROSPECTION_RE.test(webContext)) {
+          insight.external_context = webContext;
+        }
+        logResearcherTiming(userId, startTime);
+        return insight;
+      }
+
       try {
         const enrichmentPrompt = buildExternalEnrichmentPrompt(winner, insight.synthesis);
 
