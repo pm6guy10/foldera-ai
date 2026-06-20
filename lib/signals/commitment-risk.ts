@@ -13,7 +13,15 @@
  *   calendar attendance and scheduling chatter.
  * - direction: a commitment the user owes (promisor = self) outranks one the user
  *   is merely waiting on, because the user's own action is the unblock.
- * - money: an explicit dollar amount in the description is a hard stakes signal.
+ * - money: scaled by MAGNITUDE, not mere presence. A $2.71 statement credit and a
+ *   $7,199.50 statutory hardship waiver are not the same stakes; the old flat
+ *   "+15 if a $ appears" treated them identically, which is exactly what let a
+ *   $6.50 milk-frother choice outrank the waiver. Bands are roughly log-scaled.
+ * - informational financial noise: a "statement credit", "subscription payment",
+ *   or "automatic payment scheduled to be debited" is a STATUS NOTIFICATION, not an
+ *   obligation the user must act on. These are collapsed (unless the magnitude is
+ *   large enough to be a real cash-flow heads-up) so receipts stop drowning the one
+ *   real obligation.
  * - timing: an imminent or recently-lapsed deadline raises risk; a deadline months
  *   in the past collapses it (the obligation is almost certainly moot), which is
  *   what finally drowns the stale calendar rows.
@@ -74,11 +82,44 @@ function parseTime(iso: string | null | undefined): number | null {
   return Number.isNaN(t) ? null : t;
 }
 
-function hasDollarAmount(description: string | null | undefined): boolean {
-  if (!description) return false;
-  // $21.66, $1,200, $ 50 — a currency-prefixed number.
-  return /\$\s?\d[\d,]*(\.\d+)?/.test(description);
+/** Largest explicit dollar amount in the text, or null when none is named. */
+function largestDollarAmount(description: string | null | undefined): number | null {
+  if (!description) return null;
+  // $21.66, $1,200, $ 50 — currency-prefixed numbers; take the biggest.
+  const matches = description.match(/\$\s?\d[\d,]*(?:\.\d+)?/g);
+  if (!matches) return null;
+  let max = 0;
+  for (const raw of matches) {
+    const n = Number.parseFloat(raw.replace(/[$,\s]/g, ''));
+    if (!Number.isNaN(n) && n > max) max = n;
+  }
+  return max > 0 ? max : null;
 }
+
+/**
+ * Money contribution scaled by magnitude. Presence of a "$" is nearly worthless as
+ * a stakes signal on its own — almost every receipt has one. What matters is the
+ * size: trivial consumer amounts contribute almost nothing; four- and five-figure
+ * obligations dominate.
+ */
+function moneyScore(amount: number | null): number {
+  if (amount === null) return 0;
+  if (amount < 20) return 1; // $2.71 credit, $6.50 frother — noise
+  if (amount < 100) return 5;
+  if (amount < 1_000) return 12;
+  if (amount < 10_000) return 22; // a $7,199.50 hardship waiver lands here
+  return 30; // five figures and up
+}
+
+/**
+ * Status notifications about money that is moving on its own — not an obligation the
+ * user must act on. "Statement credit of $2.71 being processed", "subscription
+ * payment of $21.66", "automatic payment scheduled to be debited" are FYIs, not the
+ * one next move. Deliberately does NOT match action language like "make a payment to
+ * cover the declined transaction", which is a real obligation.
+ */
+const INFORMATIONAL_FINANCIAL_RE =
+  /\b(?:statement credit|credit of \$|subscription payment|automatic payment|auto[-\s]?pay\b|scheduled to be (?:debited|charged|paid)|being processed|has been processed|will (?:appear|post|be (?:posted|credited|issued|paid out|reflected|debited|processed))|reconciliation payments?|payments? expected to be paid)\b/i;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -144,11 +185,21 @@ export function computeCommitmentRisk(input: CommitmentRiskInput): CommitmentRis
 
   const effectiveDueMs = dueMs ?? parseTime(impliedDueAt);
 
+  const amount = largestDollarAmount(input.description);
+
   let score = base;
   score += directionScore(input.promisorIsSelf, input.promiseeIsSelf);
-  if (hasDollarAmount(input.description)) score += 15;
+  score += moneyScore(amount);
   score += timingScore(effectiveDueMs, nowMs);
   if (dueMs === null) score += undatedStalenessScore(madeMs, nowMs);
+
+  // Informational money movement (receipts, scheduled autopay, statement credits)
+  // is a notification, not an obligation. Collapse it — unless the amount is large
+  // enough ($500+) that a heads-up about the cash leaving the account is itself
+  // worth one move.
+  if (input.description && INFORMATIONAL_FINANCIAL_RE.test(input.description)) {
+    score = amount !== null && amount >= 500 ? score - 25 : Math.min(score, 22);
+  }
 
   const risk_score = Math.round(clamp(score, 0, 100));
 

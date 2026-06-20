@@ -45,11 +45,30 @@ describe('computeCommitmentRisk — direction', () => {
   });
 });
 
-describe('computeCommitmentRisk — money signal', () => {
-  it('raises risk when an explicit dollar amount is present', () => {
-    const withMoney = risk({ description: 'Claude Pro subscription payment of $21.66' }).risk_score;
-    const without = risk({ description: 'Reply to the thread' }).risk_score;
-    expect(withMoney).toBeGreaterThan(without);
+describe('computeCommitmentRisk — money signal scales with magnitude', () => {
+  it('raises risk for a large, actionable dollar amount', () => {
+    const big = risk({ description: 'Wire $7,200 to settle the balance' }).risk_score;
+    const none = risk({ description: 'Reply to the thread' }).risk_score;
+    expect(big).toBeGreaterThan(none);
+  });
+
+  it('does NOT treat a trivial amount the same as a four-figure one', () => {
+    const trivial = risk({ description: 'Refund $2.71 to the card' }).risk_score;
+    const large = risk({ description: 'Transfer $7,200 to the account' }).risk_score;
+    expect(large).toBeGreaterThan(trivial);
+  });
+
+  it('collapses informational money movement — a receipt is not an obligation', () => {
+    const receipt = risk({
+      category: 'payment_financial',
+      description: 'Statement credit of $2.71 being processed and will appear within 3 days',
+    }).risk_score;
+    const realObligation = risk({
+      category: 'payment_financial',
+      description: 'Make a payment to cover the declined transaction of $346.61 at the store',
+    }).risk_score;
+    expect(realObligation).toBeGreaterThan(receipt);
+    expect(receipt).toBeLessThan(40); // noise tier — must not float to the top
   });
 
   it('matches comma-grouped and spaced dollar amounts', () => {
@@ -59,6 +78,86 @@ describe('computeCommitmentRisk — money signal', () => {
     expect(risk({ description: 'wire $ 50 today' }).risk_score).toBeGreaterThan(
       risk({ description: 'no amount here' }).risk_score,
     );
+  });
+});
+
+/**
+ * Real-data regression — these are verbatim rows from the production `tkg_commitments`
+ * table on 2026-06-20. Before this fix the scorer ranked the $2.71 statement credit
+ * (risk 87) and the $6.50 milk-frother choice (risk 75) at or ABOVE the $7,199.50
+ * statutory hardship waiver (risk 85): anything with a "$" scored the same flat bump,
+ * so the one real obligation drowned under receipts. This locks the corrected order.
+ */
+describe('computeCommitmentRisk — real production rows (consequence over noise)', () => {
+  const TODAY = '2026-06-20T12:00:00.000Z';
+
+  const waiver = computeCommitmentRisk({
+    category: 'make_decision',
+    description: 'Review hardship waiver request for overpayment balance of $7,199.50 under RCW 50.20.190',
+    dueAt: null,
+    promisorIsSelf: true,
+    promiseeIsSelf: false,
+    madeAtIso: '2026-06-16T12:00:00.000Z', // implies a ~06-23 deadline
+    nowIso: TODAY,
+  }).risk_score;
+
+  const statementCredit = computeCommitmentRisk({
+    category: 'payment_financial',
+    description: 'Statement credit of $2.71 being processed and will appear on account within 3 days',
+    dueAt: '2026-06-18T00:00:00.000Z',
+    promisorIsSelf: false,
+    promiseeIsSelf: true,
+    madeAtIso: '2026-06-15T12:00:00.000Z',
+    nowIso: TODAY,
+  }).risk_score;
+
+  const milkFrother = computeCommitmentRisk({
+    category: 'make_decision',
+    description:
+      'Choose a replacement milk frother color (Silver, Titanium Silver, Matte Black, or Marble) and complete $6.50 shipping',
+    dueAt: null,
+    promisorIsSelf: true,
+    promiseeIsSelf: false,
+    madeAtIso: '2026-05-09T12:00:00.000Z',
+    nowIso: TODAY,
+  }).risk_score;
+
+  const subscription = computeCommitmentRisk({
+    category: 'payment_financial',
+    description: 'Claude Pro subscription payment of $21.66',
+    dueAt: '2026-06-08T00:00:00.000Z',
+    promisorIsSelf: false,
+    promiseeIsSelf: true,
+    madeAtIso: '2026-06-07T12:00:00.000Z',
+    nowIso: TODAY,
+  }).risk_score;
+
+  const autopay = computeCommitmentRisk({
+    category: 'payment_financial',
+    description: 'Automatic payment of $198.00 scheduled to be debited from bank account',
+    dueAt: '2026-06-11T00:00:00.000Z',
+    promisorIsSelf: true,
+    promiseeIsSelf: false,
+    madeAtIso: '2026-06-10T12:00:00.000Z',
+    nowIso: TODAY,
+  }).risk_score;
+
+  it('puts the $7,199.50 hardship waiver in the gem band (stakes floor 4)', () => {
+    expect(waiver).toBeGreaterThanOrEqual(80);
+  });
+
+  it('ranks the waiver decisively above every transactional/informational row', () => {
+    expect(waiver).toBeGreaterThan(statementCredit);
+    expect(waiver).toBeGreaterThan(milkFrother);
+    expect(waiver).toBeGreaterThan(subscription);
+    expect(waiver).toBeGreaterThan(autopay);
+    expect(waiver - milkFrother).toBeGreaterThanOrEqual(30); // not a photo-finish
+  });
+
+  it('drives the receipts/autopay into the noise tier they belong in', () => {
+    expect(statementCredit).toBeLessThan(40);
+    expect(subscription).toBeLessThan(40);
+    expect(autopay).toBeLessThan(40);
   });
 });
 
