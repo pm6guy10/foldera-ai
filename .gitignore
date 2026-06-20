@@ -38,3 +38,4 @@ brain_receipt_raw.json
 brain_receipt_v*.json
 tsconfig.tsbuildinfo
 .codex-devserver.pid
+.swoop-481/

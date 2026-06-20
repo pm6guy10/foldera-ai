@@ -1,39 +1,40 @@
 {
-  "backlog_id": "between-rungs",
-  "active_issue": "none",
-  "base_commit": "81c8a5e",
+  "backlog_id": "swoop-481-grounding-forensics",
+  "active_issue": 481,
+  "base_commit": "87dc284",
   "money_loop_rung": "m2",
-  "user_system_path": "#478: commitment age was anchored on extraction time, not the real event date. insertCommitment set made_at = now() instead of the source signal's occurred_at, so a year-old 'send filings to counsel' (source 2025-06) got a fabricated 'due in 7 days' and ranked 74-82. Fix: thread signal.occurred_at into insertCommitment as madeAtIso (fallback now() only when undated); the deterministic scorer then derives implied deadline + staleness from the real date. Backfilled live (made_at corrected to occurred_at; pool re-scored): recent real obligations lead (declined payment $346.61 @ 2026-06-17 = 88 #1), year-old legal filings collapse to 17-25. Builds on #474 consequence scoring.",
+  "user_system_path": "#481 hail-mary: build the single end-to-end swoop on real owner data (the go/no-go), then root-cause the grounding blocker. Outcome: swoop landed (don't give up); blocker is two concrete layers — (1) full-body source hydration is interview-class-only so other high-consequence winners ground on ~160-char summaries; (2) ~35% of signals / 96% of uploaded_document fail to decrypt and are silently dropped from grounding (usedFallback -> continue), source/format skewed. This refines the known positive_winner_contract blocker. Both fixes are owner/paid walls. This seam commits the forensic tooling only.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "docs/**",
-    "lib/signals/signal-processor.ts",
-    "lib/signals/commitment-risk.ts",
-    "lib/signals/__tests__/commitment-risk.test.ts"
+    "LESSONS_LEARNED.md",
+    ".gitignore",
+    "scripts/**",
+    "docs/**"
   ],
   "forbidden_file_patterns": [
-    "app/api/**",
     "supabase/**",
     "package.json",
-    "package-lock.json"
+    "package-lock.json",
+    "lib/**",
+    "app/**"
   ],
-  "allowed_files_raw": "The deterministic commitment risk scorer (lib/signals/commitment-risk.ts) + its real-data regression test + control-plane. No schema, no deps, no paid calls.",
-  "forbidden_files_raw": "No app/api, no schema (supabase/**), no deps (package.json/lock).",
-  "required_local_proof": "npx vitest run lib/signals/__tests__/commitment-risk.test.ts && npx vitest run lib/signals/ && npm run gate:continuity && npm run typecheck && npm run build",
-  "required_browser_proof": "N/A — deterministic, free scoring function; verified by recomputing real production tkg_commitments rows (the $7,199.50 waiver rises to the gem band; $2.71 credit / $21.66 subscription / $198 autopay collapse to 22). A backfill of stored risk_score applies it to the live pool owner-side.",
+  "allowed_files_raw": "Forensic tooling only: scripts/swoop-481-find-esd.ts (high-consequence thread finder) + scripts/swoop-481-decrypt-health.ts (decrypt rate by month/source) + .gitignore entry for .swoop-481/ (gitignored PII output). No product-code change: the hydration generalization was built, unit-proven, then reverted (flips a 12-case runtime contract; quality proof needs a paid gen run).",
+  "forbidden_files_raw": "No source (lib/**, app/**) in this commit, no schema, no deps. The grounding fixes are owner/paid walls, not shipped here.",
+  "required_local_proof": "npm run gate:continuity",
+  "required_browser_proof": "N/A — forensic scripts + diagnosis; the real swoop artifact was delivered to the owner as a local file.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "computeCommitmentRisk scales the money signal by magnitude and collapses informational money movement, so a $7,199.50 statutory waiver structurally outranks a $2.71 statement credit / $6.50 milk frother / $21.66 subscription; real-data regression test green; lib/signals suite + typecheck + gate:continuity green.",
+  "acceptance_condition": "Forensic scripts committed; #481 diagnosis recorded (two-layer grounding blocker + go/no-go=keep going); generator-runtime suite green (39/39) with no product-code change; PII never enters the repo (.swoop-481/ gitignored).",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "gate:continuity green with active seam #474",
-    "lib/signals suite green; only lib/signals/commitment-risk.ts changed under lib/",
-    "informational receipts (statement credit / subscription / scheduled autopay) stay in the noise tier (<40); a real declined-payment obligation stays high"
+    "no lib/** or app/** change in this commit (hydration generalization reverted)",
+    "generator-runtime.test.ts green 39/39 on reverted code",
+    "no PII committed — .swoop-481/ gitignored"
   ],
-  "stop_condition": "Stop when the PR is open with deterministic + real-data proof. Owner-side: run the backfill to apply the recomputed risk_score to the live commitment pool.",
-  "next_command": "Owner: merge, then run scripts/backfill-commitment-risk.ts to re-score stored commitments so the live generation pool reflects the fix. Follow-up lever: carry the same magnitude/consequence principle into the signal-side stakes scoring and the generator's positive_winner_contract so the surfaced winner is the high-consequence obligation, not a recycled do_nothing.",
+  "stop_condition": "Stop after the forensics PR merges; reset control plane to between-rungs. Owner-gated next: (a) verify decrypt gap in prod, (b) one paid gen cycle on the generalized-hydration change.",
+  "next_command": "Owner: (a) verify the prod decrypt gap (ENCRYPTION_KEY_LEGACY coverage; uploaded_document/chatgpt encoding), (b) authorize the paid hydration validation run.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

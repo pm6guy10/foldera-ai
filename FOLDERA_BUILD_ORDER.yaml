@@ -22,10 +22,10 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
+active_issue: 481
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Between rungs. Merged this session: #474 consequence scoring (money by magnitude, informational collapse) + #478 commitment date anchoring (made_at = source occurred_at, not extraction time). Both backfilled live: the pool now leads with RECENT, real obligations (declined payment $346.61 @ 2026-06-17 = 88 #1); year-old legal filings collapsed 74->17, transactional receipts -> 22."
+why_this_first: "#481 (exec-function go/no-go). Hail-mary: built the single end-to-end swoop on real owner data (delivered as a local file) → DON'T GIVE UP. Root-caused the grounding blocker (which refines the known positive_winner_contract blocker below) to two concrete layers: (1) full-body source hydration is interview-class-only so other high-consequence winners ground on ~160-char summaries; (2) ~35% of signals / 96% of uploaded_document fail to decrypt and are silently dropped from grounding (usedFallback -> continue), source/format skewed not a date key-rotation. This seam commits forensic tooling only (scripts/swoop-481-*.ts); the hydration generalization was built + unit-proven then reverted (flips a 12-case runtime contract; quality proof needs a paid gen run). Prior context: merged #474 consequence scoring + #478 commitment date anchoring, both backfilled live (pool leads with recent real obligations)."
 next_seam: "Live pool already backfilled this session (214 active commitments re-scored via MCP, validated SQL==TS; waiver -> 92 #1, receipts -> 22). THE NEXT LEVER is the generator positive_winner_contract gate: even with the right candidate ranked #1, ~100% of selected winners recycle to do_nothing. Carry consequence/grounding into the contract so a high-consequence obligation ships a real artifact (NOT loosening the gate -> hollow drafts). Then mirror the magnitude principle into the signal-side stakes scoring. ANTHROPIC_API_KEY enabled; owner paid run validates end-to-end."
 completed_issue_425:
   issue: 425
