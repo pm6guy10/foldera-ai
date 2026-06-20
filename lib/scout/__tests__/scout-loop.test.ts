@@ -142,7 +142,7 @@ describe('runScoutLoop', () => {
     expect(proposal.driveSources).toEqual([{ fileName: 'waiver-form.docx', webViewLink: 'http://x/1' }]);
   });
 
-  it('instructs the writer to watch the person\\'s own world and never hunt opportunities or fabricate', async () => {
+  it('instructs the writer to watch the person own world, never hunt opportunities, and never fabricate', async () => {
     enableScout();
     retrieveDriveContext.mockResolvedValue([
       { fileId: 'f1', fileName: 'waiver-form.docx', webViewLink: null, modifiedTime: null, content: 'partially completed waiver form', similarity: 0.8 },
