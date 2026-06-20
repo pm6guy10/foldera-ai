@@ -1,10 +1,10 @@
 {
   "active_issue": 486,
-  "active_branch": "claude/pr-487-stage-1-activation-mpjdiz",
-  "active_pr": 488,
+  "active_branch": "claude/scout-stages-1-2-closeout-3yapon",
+  "active_pr": null,
   "deployed_commit_sha": "508ebb9",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-20T17:05:00Z",
-  "notes": "PR #487 merged; migration 20260620120000_scout_drive_chunks applied to prod Supabase (pgvector re-installed). Stage 2 BUILT on PR #488 (native web_search + Drive RAG into the brief), inert behind SCOUT_WEB_ENABLED/SCOUT_RAG_ENABLED — vitest 1990 + gate + typecheck + lint + build green. Activation remaining (owner-gated): VOYAGE_API_KEY + SCOUT_* flags + ALLOW_PAID_LLM in Vercel + paid index cycle."
+  "last_verified_at": "2026-06-20T17:18:00Z",
+  "notes": "PRs #487 + #488 merged (Stages 0-2). Stage 3 BUILT on this branch: lib/scout/scout-loop.ts (proactive loop — infer goal from tkg_goals -> Stage 2 web search -> Stage 1 Drive RAG -> Sonnet 4.6 writer -> finished review-gated artifact proposals; never auto-sends), inert behind SCOUT_ENABLED + isPaidLlmAllowed() — zero behavior change. Proof: 11 new mocked scout-loop tests (no paid calls) + typecheck + lint(0) + gate + build. Activation remaining (owner-gated): VOYAGE_API_KEY + SCOUT_* flags + ALLOW_PAID_LLM in Vercel + paid index cycle. Next seam: Stage 4 (phone-first delivery)."
 }
