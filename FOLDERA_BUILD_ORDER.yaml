@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 445
+active_issue: 431
 priority_class: PRODUCT
 work_type: CHORE
-why_this_first: "Master Audit (#445): firm-foundation review in 13 expert-led passes, anti-rediscovery. Merged: Pass 0 (#446) SYSTEM_INVENTORY; Pass 1 (#447) RLS isolation PASS; Pass 3 (#448, 28e350a) cost CONCERN (extraction cap 4->0.25). Pass 2 (Database & data integrity) verdict PASS: cross-checked live schema read-only — 21/26 tables user-scoped with user_id-leading indexes, composite hot-path indexes, reprocessing dedupe via UNIQUE(user_id, content_hash) on tkg_signals, tkg_actions reconstructs before->verdict->after->source, schema via committed migrations. One low gap: cost_events lacks a user_id index (D-3, tracked). Shipped tests/database/__tests__/data-integrity.test.ts (6) + docs/database/DATA_INTEGRITY.md."
-next_seam: "Pass 4 (Backend/runtime) DONE — verdict CONCERN (docs/backend/RUNTIME_CORRECTNESS.md): paid path fail-closed + triple-gated before spend; FIXED B-2 (morning-pipeline stage isolation — a thrown early stage no longer drops daily_brief/maintenance); C-2 root-caused (~74% directive retry from first-pass validation failures → Pass 5 + paid validation); B-4 flat budget reservation + B-5 retry-reason observability deferred. Next: Pass 5 (AI/ML grounding, owns C-2 quality fix) or frontend passes 6-8 — OR deferred cost P0.2 lazy generation. Owner-side: ANTHROPIC_API_KEY in Vercel Production; configure the external guardian cron. Constraint: NO paid API calls — prove in the harness."
+why_this_first: "Owner directive: pull open issues and bang them out. Triage of the 6 open issues: #445 Master Audit is COMPLETE (passes 0-12 merged per ACTIVE_HANDOFF); #420 roadmap, #402 indispensability, #382 frontend epic are owner-gated (env vars / paid budget / owner-reviewed phases); #165 is the raw-input inbox, not a seam. The one clean, free, harness-provable seam is #431: conviction-engine left primaryOutcomeDeadline null behind an inline TODO. New pure inferPrimaryOutcomeDeadline extracts month/start cues ('April start', 'starts in May', 'April/May start') from the signals runConvictionEngine already fetches, resolves the earliest future month-start, and stays quiet on the modal 'may start'. Wired into SituationModel; 8 new fixtures."
+next_seam: "Between-rungs after #431 merges. Owner names the next seam. Remaining open issues are owner-decision-gated (#420/#402/#382) or non-seam (#165); #445 is complete with only the owner paid value-lever run outstanding."
 completed_issue_425:
   issue: 425
   pr: 426

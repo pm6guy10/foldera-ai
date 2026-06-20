@@ -1,9 +1,9 @@
 {
-  "backlog_id": "owner-paid-value-lever-runbook",
-  "active_issue": 445,
-  "base_commit": "218a161",
+  "backlog_id": "conviction-engine-primary-outcome-deadline-431",
+  "active_issue": 431,
+  "base_commit": "5412b06",
   "money_loop_rung": "m2",
-  "user_system_path": "Post-audit #445: write the exact owner runbook for the paid value-lever run — the one test the audit cannot answer (does a real paid generation cycle surface a genuine gem, or still 'nothing cleared the bar'). Grounded in the verified code path: POST /api/settings/run-brief?use_llm=true gated by resolveSettingsRunBriefPipelineDryRun (PROD_DEFAULT_PIPELINE_DRY_RUN + ALLOW_PROD_PAID_LLM), bounded by hard caps (DAILY_SPEND_CAP_USD $1, MAX_MANUAL_DIRECTIVE_CALLS_PER_DAY 3, EXTRACTION_DAILY_CAP $0.25). Doc + ledger pointer only. Constraint: NO paid API calls (this just documents how the owner runs one).",
+  "user_system_path": "#431: the conviction engine left primaryOutcomeDeadline null behind an inline TODO. Infer a SOFT outcome deadline from natural-language month/start cues in the same supporting signals already fetched by runConvictionEngine ('April start', 'starts in May', 'April/May start') — distinct from inferHardDeadline (baby/lease, a date that cannot move). Pure deterministic extractor + earliest-month resolution + safe-silence on the modal 'may start'. No DB, no paid calls; proven in the harness.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -11,6 +11,7 @@
     "FOLDERA_BUILD_ORDER.yaml",
     "docs/**",
     "tests/**",
+    "lib/**",
     "LESSONS_LEARNED.md"
   ],
   "forbidden_file_patterns": [
@@ -18,20 +19,20 @@
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "New owner runbook docs/OWNER_PAID_VALUE_LEVER_RUNBOOK.md + a one-line pointer in the keep-list ledger docs/SOURCE_OF_TRUTH_MAP.md + control-plane. Documentation only; no source change, no paid calls.",
+  "allowed_files_raw": "lib/briefing/conviction-engine.ts (new pure inferPrimaryOutcomeDeadline + wired into the situation model) + lib/briefing/__tests__/conviction-engine-ce.test.ts (8 new fixtures) + control-plane. No schema, no deps, no paid calls.",
   "forbidden_files_raw": "No schema (supabase/**), no deps (package.json/lock).",
-  "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "N/A — documentation; the run path (settings/run-brief + prelaunch-spend + api-tracker caps) was read end-to-end to ground every step and flag.",
+  "required_local_proof": "npx vitest run lib/briefing/__tests__/conviction-engine-ce.test.ts && npm run gate:continuity && npm run lint && npm run build",
+  "required_browser_proof": "N/A — deterministic harness change to a pure inference function; primaryOutcomeDeadline is written into SituationModel and has no downstream consumer/UI, so a unit-tested extractor is the closure standard.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "docs/OWNER_PAID_VALUE_LEVER_RUNBOOK.md gives an accurate, code-grounded, 6-step owner procedure to run one paid generation cycle with confirmation of paid_llm_effective, cost caps, kill switch, and the value verdict. Linked from the keep-list ledger.",
+  "acceptance_condition": "inferPrimaryOutcomeDeadline extracts month/start cues from supporting signals and populates SituationModel.primaryOutcomeDeadline, with test fixtures proving the inference (and quiet on the modal 'may start'). Issue #431 acceptance met.",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "gate:continuity green with active seam #445",
-    "documentation-only; no runtime/schema change",
-    "every flag/cap/endpoint in the runbook verified against current code (prelaunch-spend.ts, settings/run-brief/route.ts, api-tracker.ts)"
+    "gate:continuity green with active seam #431",
+    "deterministic; no runtime/schema change; primaryOutcomeDeadline was previously always null so populating it is purely additive",
+    "modal 'may start' must not fabricate a May deadline (safe-silence)"
   ],
-  "stop_condition": "Stop when the runbook is merged. Then the value lever is a clean owner action; between-rungs until the owner runs it or names the next seam.",
-  "next_command": "Owner: run docs/OWNER_PAID_VALUE_LEVER_RUNBOOK.md (one paid generation cycle) and record in #445 whether a real gem cleared the bar.",
+  "stop_condition": "Stop when the PR is merged. Between-rungs after; owner names the next seam.",
+  "next_command": "Owner: review/merge the #431 PR. Remaining open issues (#420/#402/#382 owner-gated, #445 complete, #165 inbox) are not agent-bangable without owner decisions.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
