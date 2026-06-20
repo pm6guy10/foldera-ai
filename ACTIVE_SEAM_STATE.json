@@ -1,9 +1,9 @@
 {
   "active_issue": 478,
-  "active_branch": "claude/commitment-date-anchoring",
+  "active_branch": "claude/control-plane-reset-478",
   "active_pr": null,
-  "deployed_commit_sha": "243fc69",
+  "deployed_commit_sha": "7ed701c",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-20T04:25:00Z"
+  "last_verified_at": "2026-06-20T04:30:00Z"
 }

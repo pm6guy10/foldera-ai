@@ -22,10 +22,10 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 478
+active_issue: none
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "#478 commitment date anchoring — follow-on to #474. insertCommitment set made_at = now() (extraction time) instead of the source signal's occurred_at, so the implied deadline + staleness were computed from the wrong date and a year-old 'send filings to counsel' (source 2025-06) ranked 74-82 as if urgent. Fix: thread signal.occurred_at into insertCommitment. Backfilled live: recent real obligations lead (declined payment $346.61 @ 2026-06-17 = 88 #1); year-old legal filings collapse to 17-25."
+why_this_first: "Between rungs. Merged this session: #474 consequence scoring (money by magnitude, informational collapse) + #478 commitment date anchoring (made_at = source occurred_at, not extraction time). Both backfilled live: the pool now leads with RECENT, real obligations (declined payment $346.61 @ 2026-06-17 = 88 #1); year-old legal filings collapsed 74->17, transactional receipts -> 22."
 next_seam: "Live pool already backfilled this session (214 active commitments re-scored via MCP, validated SQL==TS; waiver -> 92 #1, receipts -> 22). THE NEXT LEVER is the generator positive_winner_contract gate: even with the right candidate ranked #1, ~100% of selected winners recycle to do_nothing. Carry consequence/grounding into the contract so a high-consequence obligation ships a real artifact (NOT loosening the gate -> hollow drafts). Then mirror the magnitude principle into the signal-side stakes scoring. ANTHROPIC_API_KEY enabled; owner paid run validates end-to-end."
 completed_issue_425:
   issue: 425
