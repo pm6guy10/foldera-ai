@@ -47,7 +47,8 @@ it from scratch.
 Open carry-forwards (owner wall, not re-litigation): **C-2** first-pass directive
 validation quality (~74% retry → ~2× cost; needs a paid generation cycle to verify a
 fix — see RUNTIME_CORRECTNESS + AI_GROUNDING_FAITHFULNESS) and the **value lever**
-(one paid generation cycle to confirm a real gem surfaces).
+(one paid generation cycle to confirm a real gem surfaces). The exact owner steps
+for the value-lever run are in `docs/OWNER_PAID_VALUE_LEVER_RUNBOOK.md`.
 
 ## Conflict rule
 

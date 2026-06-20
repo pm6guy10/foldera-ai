@@ -1,9 +1,9 @@
 {
   "active_issue": 445,
-  "active_branch": "main",
+  "active_branch": "claude/owner-paid-value-lever-runbook",
   "active_pr": null,
-  "deployed_commit_sha": "c7492ba",
+  "deployed_commit_sha": "218a161",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-20T02:15:00Z"
+  "last_verified_at": "2026-06-20T02:40:00Z"
 }
