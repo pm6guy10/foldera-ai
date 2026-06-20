@@ -44,7 +44,7 @@ import {
 } from './pinned-constraints';
 import { researchWinner } from './researcher';
 import type { ResearchInsight } from './researcher';
-import { decryptWithStatus } from '@/lib/encryption';
+import { decryptWithStatus, looksLikeEncryptedPayload } from '@/lib/encryption';
 import { getSendMessageRecipientGroundingIssues } from '@/lib/conviction/artifact-generator';
 import {
   APPROVAL_LOOKBACK_MS,
@@ -6566,8 +6566,11 @@ async function fetchWinnerSignalEvidence(
       if (snippets.length >= SNIPPET_CAP) break;
       if (String(row.source ?? '').trim() === 'user_feedback') continue;
       if (isBlockedSender(row.author as string)) { senderBlockedCount++; continue; }
-      const decrypted = decryptWithStatus(row.content as string ?? '');
-      if (decrypted.usedFallback) continue;
+      const rawContent = row.content as string ?? '';
+      const decrypted = decryptWithStatus(rawContent);
+      // #481 FORMAT GAP: skip only genuinely-unreadable ciphertext; keep legacy
+      // plaintext rows (their readable content rides through decrypted.plaintext).
+      if (decrypted.usedFallback && looksLikeEncryptedPayload(rawContent)) continue;
       const parsed = parseSignalSnippet(decrypted.plaintext, row);
       if (!parsed) continue;
       const dedupeKey = parsed.snippet.slice(0, 60);
@@ -6870,8 +6873,11 @@ async function hydrateInterviewWriteDocumentWinnerEvidence(
       if (!row) continue;
       if (String(row.source ?? '').trim() === 'user_feedback') continue;
       if (isBlockedSender(row.author as string)) continue;
-      const decrypted = decryptWithStatus(row.content as string ?? '');
-      if (decrypted.usedFallback) continue;
+      const rawFullBody = row.content as string ?? '';
+      const decrypted = decryptWithStatus(rawFullBody);
+      // #481 FORMAT GAP: keep readable plaintext (uploaded docs/AI exports);
+      // skip only genuinely-unreadable ciphertext.
+      if (decrypted.usedFallback && looksLikeEncryptedPayload(rawFullBody)) continue;
       const parsed = parseSignalSnippetWithFullBody(
         decrypted.plaintext,
         row as Record<string, unknown>,
