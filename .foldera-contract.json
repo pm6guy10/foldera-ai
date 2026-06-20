@@ -1,9 +1,9 @@
 {
-  "backlog_id": "swoop-481-grounding-forensics",
-  "active_issue": 481,
-  "base_commit": "87dc284",
+  "backlog_id": "between-rungs",
+  "active_issue": "none",
+  "base_commit": "bb8ce5e",
   "money_loop_rung": "m2",
-  "user_system_path": "#481 hail-mary: build the single end-to-end swoop on real owner data (the go/no-go), then root-cause the grounding blocker. Outcome: swoop landed (don't give up); blocker is two concrete layers — (1) full-body source hydration is interview-class-only so other high-consequence winners ground on ~160-char summaries; (2) ~35% of signals / 96% of uploaded_document fail to decrypt and are silently dropped from grounding (usedFallback -> continue), source/format skewed. This refines the known positive_winner_contract blocker. Both fixes are owner/paid walls. This seam commits the forensic tooling only.",
+  "user_system_path": "#481 forensics merged (PR #482). This commit lands the third forensic tool (decrypt failure classifier) and resets the control plane to between-rungs. #481 crack: swoop landed (don't give up); the grounding blocker splits into two measured layers — KEY GAP (24% of signals are valid AES-GCM my local key can't auth → verify prod ENCRYPTION_KEY_LEGACY) and FORMAT GAP (11%, incl. 357 uploaded_document rows stored as PLAINTEXT, dropped by usedFallback->continue — a prod-real, code-fixable bug). Plus hydration is interview-class-only. Remaining work is owner-gated.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -21,20 +21,20 @@
     "lib/**",
     "app/**"
   ],
-  "allowed_files_raw": "Forensic tooling only: scripts/swoop-481-find-esd.ts (high-consequence thread finder) + scripts/swoop-481-decrypt-health.ts (decrypt rate by month/source) + .gitignore entry for .swoop-481/ (gitignored PII output). No product-code change: the hydration generalization was built, unit-proven, then reverted (flips a 12-case runtime contract; quality proof needs a paid gen run).",
-  "forbidden_files_raw": "No source (lib/**, app/**) in this commit, no schema, no deps. The grounding fixes are owner/paid walls, not shipped here.",
+  "allowed_files_raw": "Forensic tool scripts/swoop-481-decrypt-classify.ts (classifies decrypt failures: valid_gcm_authfail vs not_base64) + control-plane reset to between-rungs. No product code, no schema, no deps.",
+  "forbidden_files_raw": "No source (lib/**, app/**), no schema, no deps.",
   "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "N/A — forensic scripts + diagnosis; the real swoop artifact was delivered to the owner as a local file.",
+  "required_browser_proof": "N/A — forensic tooling + control-plane reset.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "Forensic scripts committed; #481 diagnosis recorded (two-layer grounding blocker + go/no-go=keep going); generator-runtime suite green (39/39) with no product-code change; PII never enters the repo (.swoop-481/ gitignored).",
+  "acceptance_condition": "Classifier committed; control plane between-rungs; gate:continuity green; no PII in repo.",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "no lib/** or app/** change in this commit (hydration generalization reverted)",
-    "generator-runtime.test.ts green 39/39 on reverted code",
-    "no PII committed — .swoop-481/ gitignored"
+    "no lib/** or app/** change",
+    "gate:continuity green in between-rungs form (active_issue none)",
+    "no PII committed"
   ],
-  "stop_condition": "Stop after the forensics PR merges; reset control plane to between-rungs. Owner-gated next: (a) verify decrypt gap in prod, (b) one paid gen cycle on the generalized-hydration change.",
-  "next_command": "Owner: (a) verify the prod decrypt gap (ENCRYPTION_KEY_LEGACY coverage; uploaded_document/chatgpt encoding), (b) authorize the paid hydration validation run.",
+  "stop_condition": "Between-rungs. Owner names the next seam. Owner-gated #481 follow-ups: (a) verify prod ENCRYPTION_KEY_LEGACY (24% key gap); (b) CODE fix the format gap — stop dropping legitimate plaintext rows from grounding (highest-leverage, harness-testable); (c) generalize full-body hydration; (d) one paid gen cycle AFTER (a)/(b) so validation runs on an un-starved corpus.",
+  "next_command": "Owner: pick the next seam. Recommended order: (b) format-gap code fix → (a) prod key verification → (c) hydration generalization → (d) paid validation run.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
