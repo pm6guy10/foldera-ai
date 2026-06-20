@@ -1,10 +1,10 @@
 {
   "active_issue": 486,
-  "active_branch": "claude/scout-stages-1-2-closeout-3yapon",
-  "active_pr": 489,
+  "active_branch": "claude/stage-4-phone-first-ivrxd9",
+  "active_pr": 490,
   "deployed_commit_sha": "508ebb9",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-20T17:18:00Z",
-  "notes": "PRs #487 + #488 merged (Stages 0-2). Stage 3 BUILT on this branch: lib/scout/scout-loop.ts (proactive loop — infer goal from tkg_goals -> Stage 2 web search -> Stage 1 Drive RAG -> Sonnet 4.6 writer -> finished review-gated artifact proposals; never auto-sends), inert behind SCOUT_ENABLED + isPaidLlmAllowed() — zero behavior change. Proof: 11 new mocked scout-loop tests (no paid calls) + typecheck + lint(0) + gate + build. Activation remaining (owner-gated): VOYAGE_API_KEY + SCOUT_* flags + ALLOW_PAID_LLM in Vercel + paid index cycle. Next seam: Stage 4 (phone-first delivery)."
+  "last_verified_at": "2026-06-20T18:00:00Z",
+  "notes": "PRs #487 + #488 + #489 merged (Stages 0-3). Stage 4 BUILT on this branch: phone-first delivery of Stage 3 proposals. New flag isScoutDeliveryEnabled() (SCOUT_DELIVERY_ENABLED, requires Scout master flag; default off). lib/scout/sms.ts = Twilio SMS adapter (test-safe by default; live only on Vercel prod with all TWILIO_* secrets). lib/scout/delivery.ts = phone-first fan-out (SMS nudge + deep link, then Slack/email carry the full review-gated artifact); never auto-sends to a third party; each channel self-skips when its owner-gated target env is unset. app/api/cron/scout/deliver/route.ts = owner-triggered (CRON_SECRET bearer; not a scheduled vercel.json cron), inert unless flag on. Proof: 19 new mocked tests (delivery + sms, no paid/network calls) + full scout suite 52 + typecheck + lint(0) + gate:continuity + build. Activation remaining (owner-gated): TWILIO_* secrets + SCOUT_DELIVERY_ENABLED + SCOUT_DELIVERY_SMS_TO/EMAIL_TO + the Stage 1-3 Voyage/SCOUT_*/ALLOW_PAID_LLM flags. Next seam: Stage 5 (hardening: budgets, dedup, delta re-index, fixture tests)."
 }
