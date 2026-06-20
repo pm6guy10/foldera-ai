@@ -1,9 +1,9 @@
 {
-  "active_issue": 478,
-  "active_branch": "claude/control-plane-reset-478",
-  "active_pr": null,
+  "active_issue": 481,
+  "active_branch": "claude/swoop-481-grounding-forensics",
+  "active_pr": 482,
   "deployed_commit_sha": "7ed701c",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-20T04:30:00Z"
+  "last_verified_at": "2026-06-20T06:10:00Z"
 }
