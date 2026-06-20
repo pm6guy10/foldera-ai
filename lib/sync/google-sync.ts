@@ -15,7 +15,11 @@ import { getUserToken, updateSyncTimestamp, saveUserToken } from '@/lib/auth/use
 import { encrypt } from '@/lib/encryption';
 import { truncateSignalContent } from '@/lib/utils/signal-egress';
 import { createHash } from 'crypto';
-import mammoth from 'mammoth';
+import {
+  DRIVE_MIME_QUERIES,
+  DEFAULT_DRIVE_SNIPPET_CHARS,
+  downloadDriveFileText,
+} from '@/lib/sync/drive-extract';
 import {
   FIRST_SYNC_LOOKBACK_MS,
   MAIL_SYNC_BODY_TEXT_MAX_CHARS,
@@ -33,7 +37,7 @@ function hash(content: string): string {
   return createHash('sha256').update(content).digest('hex');
 }
 
-function getOAuth2Client(
+export function getOAuth2Client(
   userId: string,
   tokens: { access_token: string; refresh_token: string; expires_at: number },
 ) {
@@ -520,26 +524,12 @@ async function syncCalendar(
  * For native Google formats we use the export endpoint; for binary uploads
  * stored in Drive (.docx, .txt, .md, .pdf) we download the raw content.
  */
-const GOOGLE_NATIVE_MIME_MAP: Record<string, string> = {
-  'application/vnd.google-apps.document': 'text/plain',
-  'application/vnd.google-apps.spreadsheet': 'text/csv',
-};
-
-const DRIVE_TEXT_EXTENSIONS = new Set(['.txt', '.md']);
-
-function getDriveFileExtension(name: string): string {
-  const dot = name.lastIndexOf('.');
-  return dot >= 0 ? name.slice(dot).toLowerCase() : '';
-}
-
 /**
- * Download text content for a Google Drive file.
- * - Google Docs/Sheets: export as plain text via the export endpoint.
- * - .txt, .md: download raw content.
- * - .docx, .pdf: metadata only (binary parsing not available).
+ * Download a short text snippet for a Drive file. Thin wrapper over the shared
+ * extractor (lib/sync/drive-extract) — keeps the 1500-char snippet cap the
+ * Workday Presence sync has always used. The Scout full-Drive index calls
+ * downloadDriveFileText directly with a larger cap.
  */
-const DOCX_MAX_PARSE_BYTES = 500 * 1024; // 500KB — skip larger files to avoid mammoth latency
-
 async function downloadDriveFileContent(
   oauth2: ReturnType<typeof getOAuth2Client>,
   fileId: string,
@@ -548,48 +538,10 @@ async function downloadDriveFileContent(
   fileSize?: number,
 ): Promise<string | null> {
   const drive = google.drive({ version: 'v3', auth: oauth2 });
-
-  try {
-    // Google native format — export as text
-    const exportMime = GOOGLE_NATIVE_MIME_MAP[mimeType];
-    if (exportMime) {
-      const res = await drive.files.export(
-        { fileId, mimeType: exportMime },
-        { responseType: 'text' },
-      );
-      const text = typeof res.data === 'string' ? res.data : String(res.data ?? '');
-      return text.slice(0, 1500);
-    }
-
-    const ext = getDriveFileExtension(fileName);
-
-    // Word documents — download binary and extract text with mammoth
-    // Skip large files to prevent blocking sync for 30+ seconds
-    if (ext === '.docx') {
-      if (fileSize && fileSize > DOCX_MAX_PARSE_BYTES) return null;
-      const res = await drive.files.get(
-        { fileId, alt: 'media' },
-        { responseType: 'arraybuffer' },
-      );
-      const buffer = Buffer.from(res.data as ArrayBuffer);
-      const result = await mammoth.extractRawText({ buffer });
-      return result.value.trim().slice(0, 1500);
-    }
-
-    // Plain text files stored in Drive — download directly
-    if (DRIVE_TEXT_EXTENSIONS.has(ext)) {
-      const res = await drive.files.get(
-        { fileId, alt: 'media' },
-        { responseType: 'text' },
-      );
-      const text = typeof res.data === 'string' ? res.data : String(res.data ?? '');
-      return text.slice(0, 1500);
-    }
-  } catch {
-    // Content download failed — fall through to metadata-only
-  }
-
-  return null;
+  return downloadDriveFileText(drive, fileId, mimeType, fileName, {
+    maxChars: DEFAULT_DRIVE_SNIPPET_CHARS,
+    fileSize,
+  });
 }
 
 /**
@@ -604,17 +556,8 @@ async function syncDrive(
   const drive = google.drive({ version: 'v3', auth: oauth2 });
   const sinceIso = new Date(sinceMs).toISOString();
 
-  // Query for Google Docs, Sheets, and supported binary uploads
-  const mimeQueries = [
-    "mimeType = 'application/vnd.google-apps.document'",
-    "mimeType = 'application/vnd.google-apps.spreadsheet'",
-    "mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'",
-    "mimeType = 'text/plain'",
-    "mimeType = 'text/markdown'",
-    "mimeType = 'application/pdf'",
-  ];
-
-  const query = `(${mimeQueries.join(' or ')}) and modifiedTime >= '${sinceIso}' and trashed = false`;
+  // Query for Google Docs, Sheets, and supported binary uploads (shared filter).
+  const query = `(${DRIVE_MIME_QUERIES.join(' or ')}) and modifiedTime >= '${sinceIso}' and trashed = false`;
 
   let allFiles: any[] = [];
   let pageToken: string | undefined;
