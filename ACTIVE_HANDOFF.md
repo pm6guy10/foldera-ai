@@ -20,8 +20,9 @@ Keep this cockpit short and value-first. Completed-issue history lives in `SESSI
 
 ## Current slice:
 
-Issue #474 is the active consequence-scoring seam.
-(Root cause of "nothing impresses": `computeCommitmentRisk` gave a flat +15 for any `$`, so a $2.71 statement credit (risk 87) outranked a $7,199.50 ESD statutory waiver (85) and a $6.50 milk frother scored 75. Fix = magnitude-scaled money + informational-financial collapse in `lib/signals/commitment-risk.ts`. Proven on real rows: waiver → 100 gem band, receipts/autopay → 22. Recently merged: #431 PR #473; #454 broadcast-sender suppression. #445 Master Audit COMPLETE below.)
+Between rungs — no active seam. `active_issue: none`; the owner names the next seam.
+**Just merged — #474 consequence scoring (PR #475, `81c8a5e`):** `computeCommitmentRisk` gave a flat +15 for any `$`, so a $2.71 statement credit (risk 87) outranked a $7,199.50 ESD statutory waiver (85) and a $6.50 milk frother scored 75 — the root cause of "nothing impresses." Fix = magnitude-scaled money + informational-financial collapse in `lib/signals/commitment-risk.ts`. Proven on real rows: waiver → 100 (gem band), receipts/autopay → 22.
+**OWNER NEXT (lights up live data):** run `scripts/backfill-commitment-risk.ts` to re-score the stored `tkg_commitments` pool — stored `risk_score` was written at extraction time, so the live generation won't reflect the fix until backfilled. Also recently merged: #431 (PR #473); #454 broadcast-sender suppression. #445 Master Audit COMPLETE below.
 
 **Merged to main (through `8654637`):** Pass 0 inventory · Pass 1 RLS `PASS` · Pass 2 database `PASS` (+D-3) · Pass 3 cost `CONCERN` (extraction cap 4→0.25) · **Pass 4 backend/runtime `CONCERN` (#458)** · **Pass 5 AI/ML grounding `PASS` (#461)** · **Pass 6 FE perf/a11y `PASS` +3 tap-target fixes (#463)** · **Pass 7 FE design/UX `PASS`** · **Pass 8 trust/claims `PASS` (fixed false SSO/SCIM/SAML claim + gate-hardened)** · F-1 (CI-on-PRs) · gem-ranking floor #456 · lapsing-card hygiene #457 · **overdue-admission window #460 (60d for risk≥60)** · gem-surfacing revert #453 · **LESSONS_LEARNED #19 (value-is-the-only-score) #458.**
 
