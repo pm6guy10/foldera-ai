@@ -1,9 +1,9 @@
 {
-  "backlog_id": "master-audit-pass11-observability",
+  "backlog_id": "master-audit-pass12-governance-memory-meta",
   "active_issue": 445,
-  "base_commit": "2d613df",
+  "base_commit": "86fe627",
   "money_loop_rung": "m2",
-  "user_system_path": "Master Audit #445 — Pass 11 (Observability & logging). Forensic pass over structured logging, Sentry, PII discipline in logs, durable receipts, env-secret exposure. Verdict PASS, no code change. logStructuredEvent (lib/utils/structured-logger.ts) hashes userId (sha256/12) so no raw id reaches logs; Sentry wired via instrumentation.ts + instrumentation-client.ts (DSN in env); durable tkg_actions receipts; scoring hot path proven metadata-only by scorer-metadata-egress + cross-source-life-context-egress tests (both green); only .env.example + .env.local.example are git-tracked (all real env files gitignored — no secret leak). Observations: O-11.1 logStructuredEvent does not recursively sanitize the free-form details object (208 call sites, caller-disciplined; no leak found, future redaction-lint suggested); O-11.2 stale local .env.pr142.preview*/.env.production.truth clutter the repo root but are gitignored (local hygiene only). Constraint: NO paid API calls.",
+  "user_system_path": "Master Audit #445 — Pass 12 (Governance / memory meta-fix), the FINAL pass. Audits the deterministic governance layer (gate:continuity, per-seam contract, keep-list/anti-regrowth) — verdict PASS, machinery is sound. Applies the anti-rediscovery meta-fix: registers every Master Audit pass record (0-12) in the keep-list ledger docs/SOURCE_OF_TRUTH_MAP.md (before: only Pass 0's SYSTEM_INVENTORY was indexed; Passes 3-11 had canonical docs nothing pointed to — the exact rediscovery trap). Memory correction (from Pass 10) noted. This closes the audit's loop: findings are now durably discoverable, not re-derived. Constraint: NO paid API calls.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -18,20 +18,20 @@
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Pass 11 observability record (docs/backend/OBSERVABILITY_AUDIT.md) + control-plane only. Documentation pass; observability verified healthy, no source change.",
+  "allowed_files_raw": "Pass 12 governance/memory record (docs/GOVERNANCE_MEMORY_AUDIT.md) + ledger registration (docs/SOURCE_OF_TRUTH_MAP.md, an existing keep-list file — anti-regrowth compliant) + control-plane. No source change.",
   "forbidden_files_raw": "No schema (supabase/**), no deps (package.json/lock).",
-  "required_local_proof": "npm run gate:continuity && npx vitest run lib/briefing/__tests__/scorer-metadata-egress.test.ts lib/briefing/__tests__/cross-source-life-context-egress.test.ts",
-  "required_browser_proof": "N/A — observability/logging audit; structured-logger read (userId hashed), Sentry init files confirmed, egress tests green, git ls-files shows no tracked .env secrets.",
+  "required_local_proof": "npm run gate:continuity",
+  "required_browser_proof": "N/A — governance/docs audit; gate:continuity exercises the governance machinery; SOURCE_OF_TRUTH_MAP now indexes all 13 pass records.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "Observability passes: structured queryable events with hashed userId (no raw PII), Sentry wired, durable receipts, hot path metadata-only (egress tests green), no committed secrets. Record in docs/backend/OBSERVABILITY_AUDIT.md.",
+  "acceptance_condition": "Governance machinery verified sound; every Master Audit #445 pass record registered in the keep-list ledger so findings are discoverable not re-derived; stale growth-layer memory corrected. Record in docs/GOVERNANCE_MEMORY_AUDIT.md. Master Audit complete — post completion summary on #445.",
   "is_user_facing": false,
   "anti_regression_checks": [
     "gate:continuity green with active seam #445",
-    "documentation-only; no runtime/schema change",
-    "egress guard tests (scorer-metadata-egress, cross-source-life-context-egress) green"
+    "ledger registration edits an EXISTING keep-list file (SOURCE_OF_TRUTH_MAP.md) — no new governance file (anti-regrowth compliant)",
+    "documentation-only; no runtime/schema change"
   ],
-  "stop_condition": "Stop when Pass 11 record is up as a PR and merged; continue to Pass 12 (governance/memory meta-fix) — the final audit pass.",
-  "next_command": "Continue Master Audit #445: Pass 12 (governance/memory meta-fix) — final pass; then post the Master Audit completion summary on #445.",
+  "stop_condition": "Stop when Pass 12 is merged and the Master Audit #445 completion summary is posted on the issue. Audit complete; remaining items are the owner paid wall (C-2 + value lever).",
+  "next_command": "Post Master Audit #445 completion summary on the issue. Then between-rungs: owner runs the paid value lever / C-2 fix, or names the next seam.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

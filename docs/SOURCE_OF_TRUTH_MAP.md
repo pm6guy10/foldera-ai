@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-19 UTC (issue #445 — added SYSTEM_INVENTORY.md as the canonical what-IS)
+Last updated: 2026-06-20 UTC (issue #445 — Pass 12 registered the full Master Audit pass-record ledger so findings are discoverable, never re-derived)
 
 This is the keep-list ledger. Everything not listed here is reference, archive, or git history — never authority.
 
@@ -20,6 +20,34 @@ This is the keep-list ledger. Everything not listed here is reference, archive, 
 | `docs/SOURCE_OF_TRUTH_MAP.md` | This ledger. |
 | `docs/DESIGN_SYSTEM.md` | Binding design standard / quality bar for every visible surface (tokens, type, spacing, real-logos rule, product mockup, motion, responsive). Design authority, referenced by `FOLDERA_MASTER_BIBLE.md`. |
 | `docs/SYSTEM_INVENTORY.md` | Canonical "what IS" — every table, route, cron, env var, external resource, reconciled against real Supabase/GitHub/Vercel state (Pass 0 of Master Audit #445). The anti-rediscovery foundation; update it when the real system changes, never re-derive it. |
+
+## Master Audit #445 — canonical pass records (anti-rediscovery ledger)
+
+Each pass of the firm-foundation audit produced a canonical record. **Read the
+relevant record before re-investigating its domain — these are the answer, not a
+starting point.** Update a record when its domain genuinely changes; never re-derive
+it from scratch.
+
+| Pass | Domain | Verdict | Canonical record |
+| --- | --- | --- | --- |
+| 0 | Inventory / ground-truth | — | `docs/SYSTEM_INVENTORY.md` |
+| 1 | Security / RLS | `PASS` | issue #445 (#447) |
+| 2 | DB integrity | `PASS` | issue #445 (#449/#450) |
+| 3 | Cost / economics | `CONCERN` | `docs/COST_AND_ECONOMICS_AUDIT.md` |
+| 4 | Backend / runtime correctness | `CONCERN` | `docs/backend/RUNTIME_CORRECTNESS.md` |
+| 5 | AI/ML grounding & faithfulness | `PASS` | `docs/backend/AI_GROUNDING_FAITHFULNESS.md` |
+| 6 | Frontend perf / a11y | `PASS` | `docs/frontend/PERF_A11Y_AUDIT.md` |
+| 7 | Frontend design / UX | `PASS` | `docs/frontend/DESIGN_UX_AUDIT.md` |
+| 8 | Trust / honest-claims | `PASS` | `docs/frontend/TRUST_HONEST_CLAIMS_AUDIT.md` |
+| 9 | Vercel deploy / config | `PASS` | `docs/backend/VERCEL_DEPLOY_AUDIT.md` |
+| 10 | GitHub CI / workflows | `PASS` | `docs/backend/GITHUB_CI_AUDIT.md` |
+| 11 | Observability / logging | `PASS` | `docs/backend/OBSERVABILITY_AUDIT.md` |
+| 12 | Governance / memory meta-fix | `PASS` | this section + the meta-fix below |
+
+Open carry-forwards (owner wall, not re-litigation): **C-2** first-pass directive
+validation quality (~74% retry → ~2× cost; needs a paid generation cycle to verify a
+fix — see RUNTIME_CORRECTNESS + AI_GROUNDING_FAITHFULNESS) and the **value lever**
+(one paid generation cycle to confirm a real gem surfaces).
 
 ## Conflict rule
 
