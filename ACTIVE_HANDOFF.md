@@ -26,17 +26,17 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 **SCOUT lane (#486) — butler → scout.** Owner brainstorm (2026-06-20) named the missing half of the Guardian Vision (Bible Part II-B): a proactive Scout that treats the whole Google Drive as a *searchable* brain (today it is read but never searched), has *real* web access (today's enrichment is recalled-from-memory, not real), and proactively surfaces opportunities with finished, review-gated artifacts (e.g. a matching role + tailored resume + cover letter built from Drive). Built additively behind feature flags; the presence-layer default is untouched.
 
-**Stage 0 (this PR) — foundation, zero behavior change:** additive Bible Part V (Proactive Scout Lane); feature flags in `lib/config/prelaunch-spend.ts` (`SCOUT_ENABLED`, `SCOUT_RAG_ENABLED`, `SCOUT_WEB_ENABLED`, default off); embeddings schema migration `supabase/migrations/20260620120000_scout_drive_chunks.sql` (`scout_drive_chunks` vector(1024) + `scout_drive_index_state` + `match_scout_chunks` RPC) — committed, **not yet applied**. `.foldera-contract.json` widened to the Scout surface.
+**Stages 0–1 landed on PR #487 (draft), inert behind flags, zero behavior change.** Stage 0: Bible Part V; flags (`SCOUT_ENABLED`/`SCOUT_RAG_ENABLED`/`SCOUT_WEB_ENABLED`, default off); migration `20260620120000_scout_drive_chunks.sql` (committed, **not applied**). Stage 1: shared Drive extractor (`lib/sync/drive-extract.ts`; `google-sync.ts` delegates, butler path unchanged), `lib/scout/{chunker,embeddings,retrieval,drive-index}.ts`, `app/api/cron/scout/index-drive/route.ts`. Proof: full vitest 1984 + gate + typecheck + lint(0) + build green; 16 mocked Scout tests, no paid calls.
 
 **Verified facts:** pgvector already enabled; no Anthropic embeddings API → Voyage `voyage-3.5` (1024-dim); real web access ships natively (`web_search_20260209`/`web_search_20250305`) in the Claude API — no separate vendor; model split = Haiku 4.5 for bulk extraction, Sonnet 4.6 for the scout loop.
 
 ## Next exact move
 
-1. **Stage 0:** land as a draft PR; prove `gate:continuity` + `typecheck` + `build` green; owner reviews.
-2. **Owner-gated before Stage 1:** authorize `VOYAGE_API_KEY`, apply `20260620120000_scout_drive_chunks.sql` to production Supabase, approve any paid/embeddings validation cycle. These are not agent self-unblocks (AGENTS.md).
-3. **Stage 1 (same seam):** `lib/sync/drive-extract.ts` (shared extractor), `lib/scout/drive-index.ts` (full crawl), `chunker.ts`, `embeddings.ts` (Voyage), `retrieval.ts` (`retrieveDriveContext`), `app/api/cron/scout/index-drive/route.ts`.
+1. **Owner — review PR #487** (draft); mark ready → full CI runs.
+2. **Owner-gated to ACTIVATE Stage 1:** authorize `VOYAGE_API_KEY`, apply `20260620120000_scout_drive_chunks.sql` to production Supabase, approve a paid embeddings cycle. Not agent self-unblocks (AGENTS.md).
+3. **Stage 2 (same seam, next, buildable free):** replace the recalled-from-memory enrichment in `lib/briefing/researcher.ts` with the native `web_search` tool and feed `retrieveDriveContext()` into the brief.
 
-Full staged design: GitHub issue #486 and the approved session plan. Stages 2–5 (real web swap, scout loop, phone-first delivery, hardening) follow on the same seam.
+Full staged design: GitHub issue #486 and the approved session plan. Stages 3–5 (scout loop, phone-first delivery, hardening) follow on the same seam.
 
 ## Product doctrine
 
