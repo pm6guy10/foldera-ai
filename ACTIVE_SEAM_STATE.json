@@ -1,7 +1,7 @@
 {
   "active_issue": 486,
   "active_branch": "claude/scout-stages-1-2-closeout-3yapon",
-  "active_pr": null,
+  "active_pr": 489,
   "deployed_commit_sha": "508ebb9",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
