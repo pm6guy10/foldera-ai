@@ -1,6 +1,6 @@
 {
-  "backlog_id": "commitment-date-anchoring-478",
-  "active_issue": 478,
+  "backlog_id": "between-rungs",
+  "active_issue": "none",
   "base_commit": "81c8a5e",
   "money_loop_rung": "m2",
   "user_system_path": "#478: commitment age was anchored on extraction time, not the real event date. insertCommitment set made_at = now() instead of the source signal's occurred_at, so a year-old 'send filings to counsel' (source 2025-06) got a fabricated 'due in 7 days' and ranked 74-82. Fix: thread signal.occurred_at into insertCommitment as madeAtIso (fallback now() only when undated); the deterministic scorer then derives implied deadline + staleness from the real date. Backfilled live (made_at corrected to occurred_at; pool re-scored): recent real obligations lead (declined payment $346.61 @ 2026-06-17 = 88 #1), year-old legal filings collapse to 17-25. Builds on #474 consequence scoring.",
