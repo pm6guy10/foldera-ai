@@ -41,12 +41,12 @@ Issue #445 is the active firm-foundation audit seam.
 
 **Pass 11 (observability) `PASS`:** structured logging hashes userId (no raw PII), Sentry wired (instrumentation.ts), durable tkg_actions receipts, scoring hot path proven metadata-only (egress tests green), no committed .env secrets. Obs: O-11.1 `details` is caller-sanitized not logger-sanitized (no leak found); O-11.2 stale local gitignored .env clutter. Record: `docs/backend/OBSERVABILITY_AUDIT.md`.
 
-**Pass 12 (governance/memory meta) NOT started** — the final audit pass; then post the Master Audit completion summary on #445.
+**Pass 12 (governance/memory meta) `PASS` — FINAL pass:** governance machinery sound (gate:continuity + per-seam contract + keep-list/anti-regrowth). Meta-fix applied: registered all 13 pass records in the keep-list ledger `docs/SOURCE_OF_TRUTH_MAP.md` (was the rediscovery gap — Passes 3–11 docs were unindexed); growth-layer memory corrected. **Master Audit #445 COMPLETE (passes 0–12).** Record: `docs/GOVERNANCE_MEMORY_AUDIT.md`.
 
 ## Next exact move
 
 1. **Owner — the value lever (TRUE wall):** one paid generation cycle to confirm a real gem now surfaces. This is the *only* move that turns "healthy" into "valuable."
-2. **Next audit pass: 12 (governance/memory meta)** — final pass, harness-doable. (Passes 5–11 done; C-2 paid-validation lever is the owner item above.)
+2. **Master Audit #445 is COMPLETE (passes 0–12 all merged).** No audit passes remain. The only open items are the owner paid wall (item 1) — C-2 first-pass validation quality + the value-lever generation cycle. Between-rungs after this merges; owner names the next seam.
 3. **PR #454 (DRAFT) — broadcast/recruiting-sender suppression** (owner judgment; changes entity admission, can over-suppress at edge cases). On `claude/mvp-polish-pass-audit-sg9e4k`.
 4. Deferred follow-ups (harness-only): B-4 budget-reservation reconciliation; B-5 persist retry reasons (Pass 11); the two-way test for relationship gems (coupled to #454). [>30d-overdue admission window shipped via #460.]
 
