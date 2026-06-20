@@ -1,10 +1,10 @@
 /**
  * GET /api/cron/scout/deliver
  *
- * Scout lane (issue #486, Stage 4): run the proactive scout loop for the
- * background user and deliver any finished, review-gated proposals phone-first
- * (SMS nudge + Slack/email for review). Never auto-sends an artifact to a third
- * party — it only notifies the owner on their own rails.
+ * Scout lane (issue #486): run the proactive scout loop for the background user
+ * and deliver any finished, review-gated proposals Slack-first (the full proposal
+ * as a Slack card, with email as an opt-in fallback). Never auto-sends an artifact
+ * to a third party — it only notifies the owner on their own rails.
  *
  * Inert unless SCOUT_DELIVERY_ENABLED (which requires the Scout master flag) —
  * returns a skipped response otherwise, so this route is safe to ship before the

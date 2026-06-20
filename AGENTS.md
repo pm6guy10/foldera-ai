@@ -152,6 +152,7 @@ Proof must include the affected CI lane. Local proof that omits the CI check cap
 - Deterministic/harness changes: focused tests, replay fixtures, `npm run gate:continuity`, `npm run lint`, `npm run build` are sufficient when the active issue says so.
 - Live-path or user-facing changes: require deployed verification, persisted row, or real route/user-journey proof. A build pass is necessary, not sufficient.
 - Schema work is forbidden unless the active issue explicitly authorizes it; when authorized, the migration must be committed, applied to production Supabase, and verified, or the exact blocker stated.
+- Scout lane (issue #486) — real proof every phase or NO PASS: every Scout phase must show real product proof — a live Scout card the owner can see (a Slack permalink or screenshot) — before it can pass. Hygiene (mocked tests, typecheck, lint, `gate:continuity`, `build`, a green preview deploy) is necessary but is NEVER a pass on its own. Absent real proof, the phase is `BLOCKED_WITH_EXACT_RECEIPT` naming the exact owner-gated step. A free real proof (a real Slack card built by the actual delivery builder, no paid loop) satisfies this; a paid live run is not required just to prove the card renders.
 
 For dashboard/UI work, the permanent proof gate is:
 - `npm run build`

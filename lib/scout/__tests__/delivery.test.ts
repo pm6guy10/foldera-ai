@@ -4,18 +4,14 @@ import type { ScoutArtifactProposal } from '../scout-loop';
 
 // ---------------------------------------------------------------------------
 // Mocks — the rails are exercised by their own tests; here we stub them so the
-// delivery layer's gating, phone-first fan-out, and channel skipping are what's
-// under test. No real SMS / Slack / email is ever sent.
+// delivery layer's gating, Slack-first fan-out, and channel skipping are what's
+// under test. No real Slack / email is ever sent.
 // ---------------------------------------------------------------------------
 
-const smsSend = vi.fn();
 const slackPost = vi.fn();
 const sendResendEmail = vi.fn();
 const renderDarkTransactionalEmailHtml = vi.fn((..._args: unknown[]) => '<html>scout-email</html>');
 
-vi.mock('@/lib/scout/sms', () => ({
-  resolveSmsAdapterFromEnv: () => ({ send: smsSend }),
-}));
 vi.mock('@/lib/slack/right-now', () => ({
   resolveSlackAdapterFromEnv: () => ({ postMessage: slackPost }),
 }));
@@ -29,7 +25,6 @@ import {
   buildScoutEmailSubject,
   buildScoutReviewLink,
   buildScoutSlackMessage,
-  buildScoutSmsBody,
   deliverScoutProposals,
 } from '../delivery';
 
@@ -56,7 +51,6 @@ const PROPOSAL: ScoutArtifactProposal = {
 const DELIVERY_ENV_KEYS = [
   'SCOUT_ENABLED',
   'SCOUT_DELIVERY_ENABLED',
-  'SCOUT_DELIVERY_SMS_TO',
   'SCOUT_DELIVERY_EMAIL_TO',
   'FOLDERA_SLACK_SELF_CHANNEL_ID',
   'RESEND_API_KEY',
@@ -73,7 +67,6 @@ function enableDelivery(): void {
 }
 
 function configureAllChannels(): void {
-  process.env.SCOUT_DELIVERY_SMS_TO = '+15551234567';
   process.env.FOLDERA_SLACK_SELF_CHANNEL_ID = 'C0SCOUT';
   process.env.SCOUT_DELIVERY_EMAIL_TO = 'owner@example.com';
   process.env.RESEND_API_KEY = 're_test';
@@ -85,7 +78,6 @@ function statusFor(channels: Array<{ channel: string; status: string }>, channel
 
 beforeEach(() => {
   clearDeliveryEnv();
-  smsSend.mockReset().mockResolvedValue({ ok: true, mode: 'test_safe', to: '+1', sid: null });
   slackPost.mockReset().mockResolvedValue({ ok: true, mode: 'test_safe', channel: 'C0SCOUT', message_ts: '1', response: {} });
   sendResendEmail.mockReset().mockResolvedValue({ id: 'e1' });
   renderDarkTransactionalEmailHtml.mockClear();
@@ -103,7 +95,6 @@ describe('deliverScoutProposals — gating', () => {
     const result = await deliverScoutProposals(USER_ID, [PROPOSAL]);
 
     expect(result).toEqual({ delivered: false, proposals: 1, channels: [] });
-    expect(smsSend).not.toHaveBeenCalled();
     expect(slackPost).not.toHaveBeenCalled();
     expect(sendResendEmail).not.toHaveBeenCalled();
   });
@@ -114,7 +105,7 @@ describe('deliverScoutProposals — gating', () => {
     const result = await deliverScoutProposals(USER_ID, []);
 
     expect(result).toEqual({ delivered: false, proposals: 0, channels: [] });
-    expect(smsSend).not.toHaveBeenCalled();
+    expect(slackPost).not.toHaveBeenCalled();
   });
 });
 
@@ -122,8 +113,8 @@ describe('deliverScoutProposals — gating', () => {
 // Fan-out
 // ---------------------------------------------------------------------------
 
-describe('deliverScoutProposals — phone-first fan-out', () => {
-  it('delivers across SMS, Slack and email when all are configured', async () => {
+describe('deliverScoutProposals — Slack-first fan-out', () => {
+  it('delivers to Slack and email when both are configured', async () => {
     enableDelivery();
     configureAllChannels();
 
@@ -131,15 +122,13 @@ describe('deliverScoutProposals — phone-first fan-out', () => {
 
     expect(result.delivered).toBe(true);
     expect(result.proposals).toBe(1);
-    expect(statusFor(result.channels, 'sms')).toBe('test_safe');
     expect(statusFor(result.channels, 'slack')).toBe('test_safe');
     expect(statusFor(result.channels, 'email')).toBe('sent');
 
-    // SMS is phone-first: it is attempted before Slack/email.
-    expect(result.channels[0].channel).toBe('sms');
+    // Slack-first: it is attempted before email. (The SMS channel was removed;
+    // ScoutDeliveryChannel no longer includes it, enforced at the type level.)
+    expect(result.channels[0].channel).toBe('slack');
 
-    expect(smsSend).toHaveBeenCalledTimes(1);
-    expect(smsSend.mock.calls[0][0].to).toBe('+15551234567');
     expect(slackPost).toHaveBeenCalledTimes(1);
     expect(slackPost.mock.calls[0][0].channel).toBe('C0SCOUT');
     expect(sendResendEmail).toHaveBeenCalledTimes(1);
@@ -149,23 +138,35 @@ describe('deliverScoutProposals — phone-first fan-out', () => {
     expect(emailArg.tags).toContainEqual({ name: 'user_id', value: USER_ID });
   });
 
-  it('skips a channel whose target env is not set, without failing the rest', async () => {
+  it('skips email (target unset) but still delivers the Slack card', async () => {
     enableDelivery();
-    process.env.SCOUT_DELIVERY_SMS_TO = '+15551234567';
-    // Slack channel + email target intentionally unset.
+    process.env.FOLDERA_SLACK_SELF_CHANNEL_ID = 'C0SCOUT';
+    // Email target intentionally unset.
 
     const result = await deliverScoutProposals(USER_ID, [PROPOSAL]);
 
-    expect(statusFor(result.channels, 'sms')).toBe('test_safe');
-    expect(statusFor(result.channels, 'slack')).toBe('skipped');
+    expect(statusFor(result.channels, 'slack')).toBe('test_safe');
     expect(statusFor(result.channels, 'email')).toBe('skipped');
     expect(result.delivered).toBe(true);
-    expect(slackPost).not.toHaveBeenCalled();
     expect(sendResendEmail).not.toHaveBeenCalled();
+  });
+
+  it('skips Slack when the channel is unset', async () => {
+    enableDelivery();
+    process.env.SCOUT_DELIVERY_EMAIL_TO = 'owner@example.com';
+    process.env.RESEND_API_KEY = 're_test';
+    // Slack channel intentionally unset.
+
+    const result = await deliverScoutProposals(USER_ID, [PROPOSAL]);
+
+    expect(statusFor(result.channels, 'slack')).toBe('skipped');
+    expect(statusFor(result.channels, 'email')).toBe('sent');
+    expect(slackPost).not.toHaveBeenCalled();
   });
 
   it('skips email when RESEND_API_KEY is missing even if the target is set', async () => {
     enableDelivery();
+    process.env.FOLDERA_SLACK_SELF_CHANNEL_ID = 'C0SCOUT';
     process.env.SCOUT_DELIVERY_EMAIL_TO = 'owner@example.com';
     // RESEND_API_KEY unset.
 
@@ -175,27 +176,26 @@ describe('deliverScoutProposals — phone-first fan-out', () => {
     expect(sendResendEmail).not.toHaveBeenCalled();
   });
 
-  it('records an error on one channel without sinking the others', async () => {
+  it('records an error on Slack without sinking email', async () => {
     enableDelivery();
     configureAllChannels();
-    smsSend.mockRejectedValueOnce(new Error('twilio down'));
+    slackPost.mockRejectedValueOnce(new Error('slack down'));
 
     const result = await deliverScoutProposals(USER_ID, [PROPOSAL]);
 
-    expect(statusFor(result.channels, 'sms')).toBe('error');
-    expect(result.channels.find((c) => c.channel === 'sms')?.detail).toContain('twilio down');
-    expect(statusFor(result.channels, 'slack')).toBe('test_safe');
+    expect(statusFor(result.channels, 'slack')).toBe('error');
+    expect(result.channels.find((c) => c.channel === 'slack')?.detail).toContain('slack down');
     expect(statusFor(result.channels, 'email')).toBe('sent');
-    expect(result.delivered).toBe(true); // slack/email still ran
+    expect(result.delivered).toBe(true); // email still ran
   });
 
-  it('reports a live SMS send as sent', async () => {
+  it('reports a live Slack send as sent', async () => {
     enableDelivery();
-    process.env.SCOUT_DELIVERY_SMS_TO = '+15551234567';
-    smsSend.mockResolvedValue({ ok: true, mode: 'live', to: '+15551234567', sid: 'SM1' });
+    process.env.FOLDERA_SLACK_SELF_CHANNEL_ID = 'C0SCOUT';
+    slackPost.mockResolvedValue({ ok: true, mode: 'live', channel: 'C0SCOUT', message_ts: '1', response: {} });
 
     const result = await deliverScoutProposals(USER_ID, [PROPOSAL]);
-    expect(statusFor(result.channels, 'sms')).toBe('sent');
+    expect(statusFor(result.channels, 'slack')).toBe('sent');
   });
 });
 
@@ -209,25 +209,6 @@ describe('scout delivery content builders', () => {
     expect(buildScoutReviewLink()).toBe('https://app.foldera.ai/dashboard');
   });
 
-  it('the SMS body is a nudge (headline + link), never the artifact body', () => {
-    const link = 'https://foldera.ai/dashboard';
-    const body = buildScoutSmsBody(PROPOSAL, link);
-
-    expect(body).toContain('Acme is hiring');
-    expect(body).toContain(`Review: ${link}`);
-    expect(body).not.toContain('Dear Acme team'); // artifact body never goes over SMS
-    expect(body.length).toBeLessThanOrEqual(320);
-  });
-
-  it('clips a very long headline but always keeps the review link intact', () => {
-    const link = 'https://foldera.ai/dashboard';
-    const longProposal = { ...PROPOSAL, headline: 'x'.repeat(500) };
-    const body = buildScoutSmsBody(longProposal, link);
-
-    expect(body.length).toBeLessThanOrEqual(320);
-    expect(body).toContain(`Review: ${link}`);
-  });
-
   it('the Slack message carries the full proposal + review link within the section limit', () => {
     const link = 'https://foldera.ai/dashboard';
     const msg = buildScoutSlackMessage(PROPOSAL, 'C0SCOUT', link);
@@ -236,8 +217,17 @@ describe('scout delivery content builders', () => {
     const sectionText = (msg.blocks[0] as { text: { text: string } }).text.text;
     expect(sectionText).toContain('Acme is hiring');
     expect(sectionText).toContain('Cover letter — Acme Senior Backend Engineer');
+    expect(sectionText).toContain('Dear Acme team'); // the full artifact rides Slack
     expect(sectionText).toContain('Grounded in: resume.docx');
     expect(sectionText).toContain(`Review in Foldera: ${link}`);
+    expect(sectionText.length).toBeLessThanOrEqual(2900);
+  });
+
+  it('clips an oversized artifact body but keeps the section under the Slack limit', () => {
+    const link = 'https://foldera.ai/dashboard';
+    const huge = { ...PROPOSAL, artifactBody: 'x'.repeat(5000) };
+    const msg = buildScoutSlackMessage(huge, 'C0SCOUT', link);
+    const sectionText = (msg.blocks[0] as { text: { text: string } }).text.text;
     expect(sectionText.length).toBeLessThanOrEqual(2900);
   });
 

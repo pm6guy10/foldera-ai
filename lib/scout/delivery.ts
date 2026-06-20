@@ -1,40 +1,38 @@
 /**
- * Phone-first delivery of finished Scout proposals (issue #486, Stage 4).
+ * Slack-first delivery of finished Scout proposals (issue #486, Stage 5).
  *
  * Stage 3 (lib/scout/scout-loop.ts) produces finished, review-gated artifact
- * proposals and RETURNS them — it never surfaces anything. Stage 4 is the surface:
- * it notifies the owner, phone-first, that finished work is waiting for review.
+ * proposals and RETURNS them — it never surfaces anything. This is the surface:
+ * it notifies the owner that finished work is waiting for review.
  *
  * Doctrine (ACTIVE_HANDOFF.md / Bible Part V):
  * - Additive and flag-gated: the whole layer no-ops when SCOUT_DELIVERY_ENABLED is
  *   off (which itself requires the Scout master flag), so the Workday Presence Layer
  *   is the unchanged default.
- * - Never auto-sends: delivery only notifies the OWNER on their OWN rails (an SMS
- *   nudge with a deep link, plus the full proposal on Slack/email for review). The
- *   artifact is never auto-sent to a third party — the owner reviews, then acts.
- * - Phone-first: SMS goes first (the nudge + deep link); Slack and email carry the
- *   full finished artifact for review. Each channel self-skips when its target is
- *   not configured, so partial setups degrade gracefully instead of throwing.
+ * - Never auto-sends: delivery only notifies the OWNER on their OWN rails (the full
+ *   proposal as a Slack card, with email as an opt-in fallback). The artifact is
+ *   never auto-sent to a third party — the owner reviews, then acts.
+ * - Slack-first: Slack carries the full finished artifact for review. Email is an
+ *   opt-in second rail. Each channel self-skips when its target is not configured,
+ *   so partial setups degrade gracefully instead of throwing. (Owner decision
+ *   2026-06-20: no SMS/texts — the Twilio rail was removed.)
  *
- * All rails are reused as-is (lib/scout/sms.ts, lib/slack/right-now.ts,
- * lib/email/resend.ts). All targets and secrets are owner-gated env and are read
- * only inside functions, never at module top level.
+ * The Slack (lib/slack/right-now.ts) and email (lib/email/resend.ts) rails are
+ * reused as-is. All targets and secrets are owner-gated env, read only inside
+ * functions, never at module top level.
  */
 
 import { isScoutDeliveryEnabled } from '@/lib/config/prelaunch-spend';
 import { sendResendEmail, renderDarkTransactionalEmailHtml } from '@/lib/email/resend';
 import { resolveSlackAdapterFromEnv, type SlackRightNowMessage } from '@/lib/slack/right-now';
-import { resolveSmsAdapterFromEnv } from '@/lib/scout/sms';
 import type { ScoutArtifactProposal } from '@/lib/scout/scout-loop';
 
-/** SMS is a nudge, not the artifact — keep it inside two GSM segments. */
-const SMS_MAX_CHARS = 320;
 /** Slack section text hard limit is 3000 chars; stay comfortably under it. */
 const SLACK_SECTION_MAX = 2900;
 const SLACK_ARTIFACT_MAX = 2400;
 const EMAIL_SUBJECT_MAX = 70;
 
-export type ScoutDeliveryChannel = 'sms' | 'slack' | 'email';
+export type ScoutDeliveryChannel = 'slack' | 'email';
 
 export type ScoutDeliveryChannelResult = {
   channel: ScoutDeliveryChannel;
@@ -54,7 +52,7 @@ function resolveBaseUrl(): string {
   return (process.env.NEXTAUTH_URL ?? 'https://foldera.ai').replace(/\/$/, '');
 }
 
-/** The deep link the phone nudge points at — the existing dashboard review surface. */
+/** The deep link the review card points at — the existing dashboard review surface. */
 export function buildScoutReviewLink(): string {
   return `${resolveBaseUrl()}/dashboard`;
 }
@@ -63,14 +61,6 @@ function clip(value: string, limit: number): string {
   const trimmed = value.trim();
   if (trimmed.length <= limit) return trimmed;
   return `${trimmed.slice(0, Math.max(0, limit - 1)).trimEnd()}…`;
-}
-
-/** One-line phone nudge: headline + deep link, never the artifact body. */
-export function buildScoutSmsBody(proposal: ScoutArtifactProposal, link: string): string {
-  const tail = `\nReview: ${link}`;
-  const room = Math.max(0, SMS_MAX_CHARS - tail.length);
-  const lead = clip(`Foldera Scout found something for you: ${proposal.headline}`, room);
-  return `${lead}${tail}`;
 }
 
 /** Subject for the review email — headline-led, clipped. */
@@ -86,7 +76,7 @@ function driveSourceNames(proposal: ScoutArtifactProposal): string[] {
     .slice(0, 5);
 }
 
-/** Full review-gated proposal as a single Slack section (with the deep link). */
+/** Full review-gated proposal as a single Slack section (with the review link). */
 export function buildScoutSlackMessage(
   proposal: ScoutArtifactProposal,
   channel: string,
@@ -148,23 +138,7 @@ async function deliverOneProposal(
 ): Promise<ScoutDeliveryChannelResult[]> {
   const results: ScoutDeliveryChannelResult[] = [];
 
-  // 1) Phone-first: the SMS nudge.
-  const smsTo = process.env.SCOUT_DELIVERY_SMS_TO?.trim();
-  if (!smsTo) {
-    results.push({ channel: 'sms', status: 'skipped', detail: 'SCOUT_DELIVERY_SMS_TO not set' });
-  } else {
-    try {
-      const res = await resolveSmsAdapterFromEnv().send({
-        to: smsTo,
-        body: buildScoutSmsBody(proposal, link),
-      });
-      results.push({ channel: 'sms', status: res.mode === 'live' ? 'sent' : 'test_safe' });
-    } catch (err) {
-      results.push({ channel: 'sms', status: 'error', detail: errorMessage(err) });
-    }
-  }
-
-  // 2) Slack: the full proposal for review (reuses the self-loop channel).
+  // 1) Slack-first: the full proposal for review (reuses the self-loop channel).
   const slackChannel = process.env.FOLDERA_SLACK_SELF_CHANNEL_ID?.trim();
   if (!slackChannel) {
     results.push({ channel: 'slack', status: 'skipped', detail: 'FOLDERA_SLACK_SELF_CHANNEL_ID not set' });
@@ -179,7 +153,7 @@ async function deliverOneProposal(
     }
   }
 
-  // 3) Email: the full proposal for review (reuses the Resend rail).
+  // 2) Email: opt-in second rail for the same review-gated proposal (Resend rail).
   const emailTo = process.env.SCOUT_DELIVERY_EMAIL_TO?.trim();
   if (!emailTo) {
     results.push({ channel: 'email', status: 'skipped', detail: 'SCOUT_DELIVERY_EMAIL_TO not set' });
@@ -206,7 +180,7 @@ async function deliverOneProposal(
 }
 
 /**
- * Deliver finished Scout proposals to the owner, phone-first. No-ops (returns
+ * Deliver finished Scout proposals to the owner, Slack-first. No-ops (returns
  * delivered=false, no outbound) when SCOUT_DELIVERY_ENABLED is off or there is
  * nothing to deliver, so default behavior is unchanged. Never auto-sends an
  * artifact to a third party — it only notifies the owner on their own rails.
