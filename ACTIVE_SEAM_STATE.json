@@ -1,6 +1,6 @@
 {
   "active_issue": 474,
-  "active_branch": "claude/control-plane-reset-474",
+  "active_branch": "claude/docs-consequence-writeback",
   "active_pr": null,
   "deployed_commit_sha": "81c8a5e",
   "runtime_env": "production",
