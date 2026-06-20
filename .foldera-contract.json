@@ -1,43 +1,35 @@
 {
-  "backlog_id": "481-format-gap-grounding-fix",
-  "active_issue": 481,
-  "base_commit": "b4ea062",
+  "backlog_id": "between-rungs",
+  "active_issue": "none",
+  "base_commit": "508ebb9",
   "money_loop_rung": "m2",
-  "user_system_path": "#481 FORMAT GAP fix: grounding silently dropped readable plaintext source. decryptWithStatus returns usedFallback=true for BOTH undecryptable ciphertext AND legacy plaintext rows; every evidence loader dropped on usedFallback alone, discarding 633 readable rows (11%) incl. 357 of 390 uploaded_document rows (resumes/packets/filings — richest source). Fix: shared looksLikeEncryptedPayload discriminator gates the drop so only true ciphertext is skipped; readable plaintext flows into grounding. Applied at fetchWinnerSignalEvidence + full-body hydration (generator.ts) + entity-trust-repair.ts. Additive — can only add real source, never remove. This is the highest-leverage grounding fix and needs NO paid run / NO prod access.",
+  "user_system_path": "Between rungs. #481 grounding work shipped this session: swoop landed on real owner data → DON'T GIVE UP (PR #482); decrypt-failure classifier split the 35% grounding drop into FORMAT GAP + KEY GAP (PR #483); FORMAT GAP FIXED (PR #484) — readable plaintext source (357 uploaded_document + 276 AI-conversation rows) no longer dropped from grounding via the looksLikeEncryptedPayload discriminator. Remaining #481 seams are owner-gated or need a paid validation.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
     "ACTIVE_HANDOFF.md",
     "FOLDERA_BUILD_ORDER.yaml",
-    "LESSONS_LEARNED.md",
-    "docs/**",
-    "lib/encryption.ts",
-    "lib/briefing/generator.ts",
-    "lib/signals/entity-trust-repair.ts",
-    "lib/__tests__/**",
-    "lib/briefing/__tests__/**"
+    "docs/**"
   ],
   "forbidden_file_patterns": [
     "supabase/**",
     "package.json",
     "package-lock.json",
+    "lib/**",
     "app/**"
   ],
-  "allowed_files_raw": "lib/encryption.ts (new exported looksLikeEncryptedPayload), lib/briefing/generator.ts + lib/signals/entity-trust-repair.ts (gate the usedFallback drop on the discriminator), lib/__tests__/encryption.test.ts (new), generator-runtime mock export, docs/backend/AI_GROUNDING_FAITHFULNESS.md, control plane. No schema, no deps, no app/**.",
-  "forbidden_files_raw": "No schema (supabase/**), no deps (package.json/lock), no app/**.",
-  "required_local_proof": "npx vitest run lib/__tests__/encryption.test.ts lib/briefing/ lib/signals/ lib/outcome-autopsy/ && npm run typecheck && npm run gate:continuity && npm run build",
-  "required_browser_proof": "N/A — backend grounding fix; the value path is the daily generation pipeline (verified by the unit suites + the live decrypt-rate measurement). A paid gen cycle confirms end-to-end, owner-side.",
+  "allowed_files_raw": "Control-plane reset to between-rungs after #481 FORMAT GAP fix (PR #484) merged. No code.",
+  "forbidden_files_raw": "No code, no schema, no deps.",
+  "required_local_proof": "npm run gate:continuity",
+  "required_browser_proof": "N/A",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "Readable plaintext signals (uploaded_document, AI-conversation exports) are no longer dropped from grounding; only true ciphertext is skipped; looksLikeEncryptedPayload unit-proven; full briefing+signals+autopsy suites + typecheck + build + gate:continuity green; additive (no row that previously grounded stops grounding).",
+  "acceptance_condition": "Control plane between-rungs; gate:continuity green.",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "looksLikeEncryptedPayload true for long pure-base64, false for plaintext/empty/short",
-    "989 briefing+signals+autopsy tests green; generator-runtime 39/39 unchanged",
-    "additive: encrypted-and-decryptable + previously-kept rows still ground; only adds plaintext rows",
-    "no app/**, no schema, no deps"
+    "gate:continuity green in between-rungs form"
   ],
-  "stop_condition": "Merge when green. Then between-rungs. Separate seams remain: generalize full-body hydration (needs fixture coherence + paid validation); verify prod ENCRYPTION_KEY_LEGACY (24% key gap).",
-  "next_command": "Owner: next seam options — (c) generalize full-body hydration; (a) prod ENCRYPTION_KEY_LEGACY check; (d) one paid gen cycle now that grounding inputs are un-starved.",
+  "stop_condition": "Between-rungs. Owner names the next seam. Remaining #481 seams: (c) generalize full-body hydration beyond interview-class (needs fixture coherence + paid validation); (a) verify prod ENCRYPTION_KEY_LEGACY (24% key gap); (d) one paid gen cycle now that grounding inputs are un-starved.",
+  "next_command": "Owner: name the next seam, or run a paid gen cycle to validate end-to-end value now that grounding is un-starved.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
