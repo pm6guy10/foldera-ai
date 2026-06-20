@@ -1,9 +1,9 @@
 {
-  "active_issue": 445,
-  "active_branch": "main",
-  "active_pr": null,
+  "active_issue": 431,
+  "active_branch": "claude/open-issues-2rvkor",
+  "active_pr": 473,
   "deployed_commit_sha": "0ed8359",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-20T02:55:00Z"
+  "last_verified_at": "2026-06-20T01:00:00Z"
 }

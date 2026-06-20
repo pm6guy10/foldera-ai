@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   detectReferenceRiskBlindspot,
   hiringFunnelTierFromPlaintext,
+  inferPrimaryOutcomeDeadline,
 } from '../conviction-engine';
 
 describe('hiringFunnelTierFromPlaintext (CE-4)', () => {
@@ -40,5 +41,68 @@ describe('detectReferenceRiskBlindspot (CE-6)', () => {
     ]);
     expect(note).toContain('REFERENCE_RISK');
     expect(note).toContain('WA');
+  });
+});
+
+describe('inferPrimaryOutcomeDeadline (#431)', () => {
+  // Anchor "now" to Feb 2026 so month-rolling is deterministic regardless of run date.
+  const NOW = new Date(Date.UTC(2026, 1, 15)); // 2026-02-15
+
+  it('extracts "<month> start" → 1st of that month', () => {
+    const { date, source } = inferPrimaryOutcomeDeadline(
+      ['Welcome aboard — your April start is confirmed with HR.'],
+      NOW,
+    );
+    expect(date?.toISOString().slice(0, 10)).toBe('2026-04-01');
+    expect(source).toContain('April start');
+  });
+
+  it('extracts "starts in <month>" phrasing', () => {
+    const { date } = inferPrimaryOutcomeDeadline(
+      ['The role starts in May once onboarding clears.'],
+      NOW,
+    );
+    expect(date?.toISOString().slice(0, 10)).toBe('2026-05-01');
+  });
+
+  it('extracts "start date <month>" phrasing', () => {
+    const { date } = inferPrimaryOutcomeDeadline(['Proposed start date June, pending references.'], NOW);
+    expect(date?.toISOString().slice(0, 10)).toBe('2026-06-01');
+  });
+
+  it('picks the EARLIEST month when a range is given ("April/May start")', () => {
+    const { date } = inferPrimaryOutcomeDeadline(['Targeting an April/May start for the new analyst.'], NOW);
+    expect(date?.toISOString().slice(0, 10)).toBe('2026-04-01');
+  });
+
+  it('picks the earliest cue across multiple signals', () => {
+    const { date } = inferPrimaryOutcomeDeadline(
+      ['They mentioned a June start.', 'Actually onboarding starts in April.'],
+      NOW,
+    );
+    expect(date?.toISOString().slice(0, 10)).toBe('2026-04-01');
+  });
+
+  it('rolls a past month to next year', () => {
+    const { date } = inferPrimaryOutcomeDeadline(['Your January start is locked in.'], NOW);
+    expect(date?.toISOString().slice(0, 10)).toBe('2027-01-01');
+  });
+
+  it('stays quiet on the modal "may start" (no fabricated deadline)', () => {
+    const { date, source } = inferPrimaryOutcomeDeadline(
+      ['Once paperwork clears you may start the onboarding modules.'],
+      NOW,
+    );
+    expect(date).toBeNull();
+    expect(source).toBeNull();
+  });
+
+  it('returns null when no start/month cue is present', () => {
+    const { date, source } = inferPrimaryOutcomeDeadline(
+      ['Thanks for the update on the Q2 budget review.'],
+      NOW,
+    );
+    expect(date).toBeNull();
+    expect(source).toBeNull();
   });
 });
