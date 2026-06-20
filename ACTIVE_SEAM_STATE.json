@@ -1,9 +1,10 @@
 {
   "active_issue": 486,
-  "active_branch": "claude/foldera-vision-brainstorm-chnsht",
-  "active_pr": 487,
+  "active_branch": "claude/pr-487-stage-1-activation-mpjdiz",
+  "active_pr": 488,
   "deployed_commit_sha": "508ebb9",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-20T14:30:00Z"
+  "last_verified_at": "2026-06-20T17:05:00Z",
+  "notes": "PR #487 merged; migration 20260620120000_scout_drive_chunks applied to prod Supabase (pgvector re-installed). Stage 2 BUILT on PR #488 (native web_search + Drive RAG into the brief), inert behind SCOUT_WEB_ENABLED/SCOUT_RAG_ENABLED — vitest 1990 + gate + typecheck + lint + build green. Activation remaining (owner-gated): VOYAGE_API_KEY + SCOUT_* flags + ALLOW_PAID_LLM in Vercel + paid index cycle."
 }
