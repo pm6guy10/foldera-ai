@@ -105,6 +105,23 @@ export function decrypt(ciphertext: string): string {
   return decryptWithStatus(ciphertext).plaintext;
 }
 
+/**
+ * Heuristic: does this raw value look like AES-GCM ciphertext we simply could
+ * not decrypt (the right key is absent), as opposed to a legacy/plaintext row
+ * stored unencrypted? Long + pure base64 ⇒ almost certainly ciphertext; real
+ * plaintext (spaces, punctuation, newlines) fails the base64 test.
+ *
+ * #481 FORMAT GAP: `decryptWithStatus` returns `usedFallback: true` for BOTH
+ * undecryptable ciphertext AND legacy plaintext. Callers that drop on
+ * `usedFallback` alone silently discard readable plaintext rows (uploaded
+ * documents, AI-conversation exports) from grounding. Gate the drop on this
+ * helper so only genuinely-unreadable ciphertext is skipped.
+ */
+export function looksLikeEncryptedPayload(value: string | null | undefined): boolean {
+  const trimmed = (value ?? '').trim();
+  return trimmed.length > 80 && /^[A-Za-z0-9+/=]+$/.test(trimmed);
+}
+
 export function decryptWithStatus(ciphertext: string): DecryptResult {
   try {
     const buf = Buffer.from(ciphertext, 'base64');

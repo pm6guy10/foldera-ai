@@ -1,5 +1,5 @@
 import { createServerClient } from '@/lib/db/client';
-import { decryptWithStatus } from '@/lib/encryption';
+import { decryptWithStatus, looksLikeEncryptedPayload } from '@/lib/encryption';
 import {
   detectSystemSenderReason,
   type TrustClass,
@@ -192,8 +192,10 @@ export async function demoteUnprovenTrustedEntities(
 
   const outboundRecipients = new Set<string>();
   for (const row of sentSignals.data ?? []) {
-    const { plaintext, usedFallback } = decryptWithStatus(row.content as string);
-    if (usedFallback) continue;
+    const rawContent = row.content as string;
+    const { plaintext, usedFallback } = decryptWithStatus(rawContent);
+    // #481 FORMAT GAP: keep readable plaintext sent rows; skip only ciphertext.
+    if (usedFallback && looksLikeEncryptedPayload(rawContent)) continue;
     for (const email of extractRecipientEmails(plaintext)) {
       outboundRecipients.add(email);
     }

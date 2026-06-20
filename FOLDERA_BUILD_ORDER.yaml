@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: none
+active_issue: 481
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Between rungs. #481 (exec-function go/no-go) cracked + merged (PR #482): swoop landed on real owner data → DON'T GIVE UP. The grounding blocker is now MEASURED into two layers (refining the positive_winner_contract lever): KEY GAP = 24% of signals are valid AES-GCM the local key can't auth (verify prod ENCRYPTION_KEY_LEGACY); FORMAT GAP = 11% (incl. 357 uploaded_document) are stored PLAINTEXT and dropped by usedFallback->continue (prod-real, code-fixable). Plus full-body hydration is interview-class-only. Prior: #474 consequence scoring + #478 date anchoring merged + backfilled live."
-next_seam: "Owner picks. Recommended order (the positive_winner_contract gate is starved at the INPUT, not just the gate): (b) CODE-fix the FORMAT GAP — stop dropping legitimate plaintext rows from grounding (harness-testable, highest leverage, un-starves uploaded docs); (a) verify+fix prod ENCRYPTION_KEY_LEGACY (24% key gap); (c) generalize full-body hydration beyond interview-class (winnerWarrantsFullBodyHydration; flips a 12-case runtime contract — rewrite it deliberately); (d) ONE paid gen cycle AFTER (a)/(b) so validation runs on an un-starved corpus, not before. ANTHROPIC_API_KEY enabled."
+why_this_first: "#481 FORMAT GAP fix (the highest-leverage grounding lever, NO paid run / NO prod access needed). decryptWithStatus returns usedFallback=true for BOTH undecryptable ciphertext AND legacy plaintext; every grounding evidence loader dropped on usedFallback alone, silently discarding 633 readable rows (11%) incl. 357 of 390 uploaded_document rows (resumes/packets/filings). Fix: shared looksLikeEncryptedPayload discriminator gates the drop (only true ciphertext skipped; plaintext flows in). Applied at fetchWinnerSignalEvidence + full-body hydration (generator.ts) + entity-trust-repair.ts. Additive. Prior #481: swoop landed → DON'T GIVE UP (PR #482); classifier (PR #483) split the 35% decrypt drop into FORMAT GAP (this fix) + KEY GAP (24%, prod env)."
+next_seam: "After this merges → between-rungs. Remaining #481 seams: (c) generalize full-body hydration beyond interview-class (winnerWarrantsFullBodyHydration; deferred — runtime fixtures are incoherent + needs a paid validation cycle); (a) verify prod ENCRYPTION_KEY_LEGACY (24% key gap); (d) one paid gen cycle now that grounding inputs are un-starved. ANTHROPIC_API_KEY enabled."
 completed_issue_425:
   issue: 425
   pr: 426

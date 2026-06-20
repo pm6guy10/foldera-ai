@@ -130,3 +130,49 @@ blind. Tracked as the Pass 5 → paid-validation handoff.
   `artifact-quality-gate`, `resolve-evidence-signal-ids` — **37 passed (4 files)**,
   2026-06-19.
 - No paid LLM calls made in this pass.
+
+---
+
+## #481 FORMAT GAP — grounding was silently dropping readable source (FIXED, 2026-06-20)
+
+**The bug class.** `decryptWithStatus` returns `usedFallback: true` for **two
+different** conditions: (a) AES-GCM ciphertext it could not decrypt (wrong/missing
+key), and (b) a legacy row stored as **plaintext** (never encrypted). Every grounding
+evidence loader dropped rows on `usedFallback` alone:
+
+```ts
+const decrypted = decryptWithStatus(row.content);
+if (decrypted.usedFallback) continue;   // ← also discards readable plaintext
+```
+
+**Measured impact (owner's live signals, `scripts/swoop-481-decrypt-classify.ts`):**
+of 5,594 signals, 633 (11%) are `not_base64` — stored plaintext — and were being
+silently excluded from grounding. The worst-hit source is **`uploaded_document`:
+357 of 390 rows** (resumes, packets, filings — the richest grounding material the
+brain has), plus 239 `claude_conversation` and 37 `chatgpt_conversation` rows.
+(A separate 24% `valid_gcm_authfail` band is a real key gap — verify prod
+`ENCRYPTION_KEY_LEGACY`; that is config, not code.)
+
+**The fix class.** A shared discriminator `looksLikeEncryptedPayload(raw)` (long +
+pure base64 ⇒ ciphertext; plaintext fails the base64 test) gates the drop:
+
+```ts
+if (decrypted.usedFallback && looksLikeEncryptedPayload(rawContent)) continue;
+```
+
+So only genuinely-unreadable ciphertext is skipped; readable plaintext flows into
+grounding via `decrypted.plaintext`. Applied at every grounding drop site:
+`lib/briefing/generator.ts` (`fetchWinnerSignalEvidence` + the full-body hydration
+loop) and `lib/signals/entity-trust-repair.ts`. `outcome-autopsy.ts` already did the
+right thing with a local copy of the same heuristic.
+
+**Proof.** `lib/__tests__/encryption.test.ts` (round-trip + discriminator + the
+"plaintext uploaded document is kept" case); full `lib/briefing/` + `lib/signals/` +
+`lib/outcome-autopsy/` suites green (989 tests); typecheck + build green. No paid
+LLM calls. Additive by construction — it can only *add* real source to grounding,
+never remove it.
+
+**Still open (separate seams, not shipped here):** (1) generalize full-body
+hydration beyond interview-class winners (`winnerWarrantsFullBodyHydration` —
+deferred: needs runtime-fixture coherence + a paid validation cycle); (2) verify the
+24% key gap in prod (`ENCRYPTION_KEY_LEGACY`).

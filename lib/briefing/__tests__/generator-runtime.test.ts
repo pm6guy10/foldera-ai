@@ -199,6 +199,10 @@ vi.mock('@/lib/llm/anthropic-budget-governor', () => ({
 // Return correct shape { plaintext, usedFallback } so the no-reply observer works.
 vi.mock('@/lib/encryption', () => ({
   decryptWithStatus: mockDecryptWithStatus,
+  looksLikeEncryptedPayload: (v: string | null | undefined) => {
+    const t = (v ?? '').trim();
+    return t.length > 80 && /^[A-Za-z0-9+/=]+$/.test(t);
+  },
 }));
 
 const anthropicCreate = vi.fn();
