@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 474
+active_issue: none
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "#474 consequence scoring — the root cause of 'the engine never surfaces anything impressive.' Live production diagnosis: computeCommitmentRisk gave a flat +15 for any '$', so a $2.71 statement credit (risk 87) outranked a $7,199.50 ESD statutory hardship waiver (risk 85) and a $6.50 milk-frother choice scored 75. Noise and the one real obligation were indistinguishable, so every selected winner was hollow and died at the positive_winner_contract gate (100% do_nothing across daily runs). Fix: magnitude-scaled money signal + informational-financial collapse in lib/signals/commitment-risk.ts. Proven on real rows: waiver -> 100 (gem band), receipts/autopay -> 22."
-next_seam: "Owner: merge + run scripts/backfill-commitment-risk.ts to apply recomputed risk_score to the live pool. Then carry the same magnitude/consequence principle UP into (a) the signal-side stakes scoring and (b) the generator positive_winner_contract, so the surfaced winner is the high-consequence obligation rather than a recycled do_nothing. The owner paid value-lever run validates end-to-end."
+why_this_first: "Between rungs — no active seam. #474 consequence scoring merged (PR #475, 81c8a5e): computeCommitmentRisk now scales money by magnitude and collapses informational money movement, so a $7,199.50 statutory waiver structurally outranks a $2.71 statement credit / $6.50 milk frother. Proven on real production rows (waiver -> 100, receipts/autopay -> 22)."
+next_seam: "OWNER NEXT: run scripts/backfill-commitment-risk.ts to apply the recomputed risk_score to the live tkg_commitments pool so the next generation reflects the fix (stored scores were written at extraction time). Then carry the same magnitude/consequence principle UP into (a) the signal-side stakes scoring and (b) the generator positive_winner_contract, so the surfaced winner is the high-consequence obligation rather than a recycled do_nothing. The owner paid value-lever run validates end-to-end."
 completed_issue_425:
   issue: 425
   pr: 426

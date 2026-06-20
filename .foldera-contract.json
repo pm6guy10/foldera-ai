@@ -1,9 +1,9 @@
 {
-  "backlog_id": "consequence-scoring-magnitude-474",
-  "active_issue": 474,
-  "base_commit": "690d3ea",
+  "backlog_id": "between-rungs",
+  "active_issue": "none",
+  "base_commit": "81c8a5e",
   "money_loop_rung": "m2",
-  "user_system_path": "#474: the commitment risk scorer awarded a flat +15 for the mere presence of a '$', so a $2.71 statement credit (risk 87) outranked a $7,199.50 ESD statutory hardship waiver (risk 85) and barely beat a $6.50 milk-frother choice. Magnitude was ignored and informational money movement (statement credits, subscription receipts, scheduled autopay) was scored as real obligations. This is the root cause of 'the engine never surfaces anything impressive': noise and the one real obligation are indistinguishable to the scorer. Fix: magnitude-scaled money signal + informational-financial detection in lib/signals/commitment-risk.ts (deterministic, no LLM, no network). Proven on real production rows: the $7,199.50 waiver moves to 100 (gem band), the receipts/autopay collapse to 22.",
+  "user_system_path": "Between rungs — no active seam. #474 consequence scoring merged (PR #475, 81c8a5e): magnitude-scaled money + informational-financial collapse in lib/signals/commitment-risk.ts, proven on real rows ($7,199.50 waiver -> 100, receipts/autopay -> 22). OWNER NEXT: run scripts/backfill-commitment-risk.ts to apply the recomputed risk_score to the live tkg_commitments pool so the next generation reflects the fix. Named follow-up lever: carry the same magnitude/consequence principle up into the signal-side stakes scoring and the generator positive_winner_contract.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
