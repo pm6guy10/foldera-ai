@@ -17,7 +17,6 @@ import {
   Settings,
   ShieldCheck,
   UserX,
-  Users,
   Workflow,
   X,
   Zap,
@@ -126,7 +125,6 @@ const trustItems = [
 const enterprise = [
   { icon: ShieldCheck, t: 'Least privilege', s: 'scoped, revocable access' },
   { icon: LockKeyhole, t: 'Read-only', s: 'connectors by default' },
-  { icon: Users, t: 'SSO / SCIM', s: 'SAML 2.0 ready' },
   { icon: ScrollText, t: 'Audit logs', s: 'every action receipted' },
   { icon: UserX, t: 'No training', s: 'on your data, ever' },
 ];
@@ -389,7 +387,7 @@ function Header() {
           <a
             href={accessHref}
             data-testid="landing-header-cta"
-            className="ld-btn-primary hidden min-h-[38px] items-center gap-2 px-4 text-[12px] sm:inline-flex"
+            className="ld-btn-primary hidden min-h-[44px] items-center gap-2 px-4 text-[12px] sm:inline-flex"
           >
             Start free
             <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -400,7 +398,7 @@ function Header() {
             aria-label={open ? 'Close menu (toggle)' : 'Open menu'}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
-            className="ld-icon-btn inline-flex h-10 w-10 items-center justify-center md:hidden"
+            className="ld-icon-btn inline-flex h-11 w-11 items-center justify-center md:hidden"
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
@@ -421,7 +419,7 @@ function Header() {
               type="button"
               data-testid="nav-mobile-overlay-close"
               onClick={() => setOpen(false)}
-              className="ld-icon-btn absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center"
+              className="ld-icon-btn absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center"
               aria-label="Close menu"
             >
               <X className="h-4 w-4" aria-hidden="true" />

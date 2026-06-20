@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 445
+active_issue: none
 priority_class: PRODUCT
 work_type: CHORE
-why_this_first: "Master Audit (#445): firm-foundation review in 13 expert-led passes, anti-rediscovery. Merged: Pass 0 (#446) SYSTEM_INVENTORY; Pass 1 (#447) RLS isolation PASS; Pass 3 (#448, 28e350a) cost CONCERN (extraction cap 4->0.25). Pass 2 (Database & data integrity) verdict PASS: cross-checked live schema read-only — 21/26 tables user-scoped with user_id-leading indexes, composite hot-path indexes, reprocessing dedupe via UNIQUE(user_id, content_hash) on tkg_signals, tkg_actions reconstructs before->verdict->after->source, schema via committed migrations. One low gap: cost_events lacks a user_id index (D-3, tracked). Shipped tests/database/__tests__/data-integrity.test.ts (6) + docs/database/DATA_INTEGRITY.md."
-next_seam: "After Pass 2 merges: continue the audit — Pass 4 (Backend/runtime, carries C-2 directive_retry) or frontend passes 6-8 — OR the deferred cost P0.2 lazy generation. Owner-side: ANTHROPIC_API_KEY (+ Slack/CRON env) in Vercel Production; enable Supabase leaked-password protection + more MFA. Constraint: NO paid API calls — prove in the harness."
+why_this_first: "Between rungs — no active seam. Cleanup pass merged two ready PRs and closed the completed audit: #431 soft primaryOutcomeDeadline inference (PR #473) and #454 broadcast/recruiting-sender suppression at the entity admission gate (getEntityRejectionReasons rejects junk/transactional + automated/recruiting-domain senders; fail-safe, real human julieta@micro1.io preserved). #445 Master Audit closed COMPLETE (passes 0-12). Owner names the next seam."
+next_seam: "Owner names it. The TRUE wall is owner-side: one paid generation cycle to confirm a real gem clears the bar. Remaining open issues are owner-decision-gated (#420 roadmap / #402 indispensability / #382 frontend epic) or non-seam (#165 inbox). Follow-up lever for #454: the two-way test (require the user replied at least once)."
 completed_issue_425:
   issue: 425
   pr: 426

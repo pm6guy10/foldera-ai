@@ -1,65 +1,67 @@
 # ACTIVE HANDOFF - FOLDERA
 
-Last updated: 2026-06-19 UTC (active seam: #445 Master Audit — gem-surfacing reverted; shipping broadcast-sender suppression, PR for owner validation)
+## DON'T FORGET — read first, every boot
+
+1. **Value is the only score.** Foldera exists to produce one act the user wouldn't have done. Green CI, audits, clean code, merged PRs are *hygiene* — not value. "Healthy but not producing value" = still failing. (Bible II-B; `LESSONS_LEARNED.md` #19.)
+2. **Safe silence beats a fake card.** Never manufacture a verdict; quiet on weak evidence.
+3. **No "done" without live product proof.** Build/tests/CI green is necessary, never sufficient.
+4. **Don't make Brandon the router/tester/merger.** Encode the decision; bring the result + reasoning, not the question. (BRANDON.md.)
+5. **The ONE value-blocker right now (owner-side):** run a single paid generation cycle and confirm a real gem clears the bar (gem-ranking #456 is live) instead of "nothing cleared the bar." Everything else is secondary to this.
+
+Keep this cockpit short and value-first. Completed-issue history lives in `SESSION_HISTORY.md` + git, never here.
 
 ## Boot
 
-1. Read this file.
-2. Read the next active issue (see below).
-3. Check issue #136 for recent INTERRUPT receipts.
+1. Read this file. 2. Read the active issue. 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
-ACTIVE_SEAM_STATE.json is the machine-readable control plane.
-Between rungs — `active_issue: none` is the valid control-plane form; the owner names the next seam. The NEXT_SESSION_HARDENING mission (roadmap #420) shipped as four themed PRs: #426 (dead-code deletion), #428 (typecheck — 120 tsc errors to 0), #430 (auth PII tracing gated behind FOLDERA_DEBUG_AUTH), #433 (.env.example completeness + dead skip-branch / TODO cleanup). Batch 5 (Supabase index drop) was evaluated and rejected as WRONG PATH — both indexes are intentionally retained FK-support indexes (#434). Constraint: NO paid API calls — prove in the harness. The live product thread remains the GUARDIAN (workday-presence) — see `FOLDERA_MASTER_BIBLE.md` Part II-B; the one live-readiness blocker stays owner-side (ANTHROPIC_API_KEY in Vercel Production + the free external guardian cron).
-**LIVE (production `30fbf13`):** #382 frontend overhaul · #390 owner self-review system (`docs/BRANDON.md` + `docs/EXPERT_PANEL.md` + Bible Part IV) · #391/#393 guardian fires-grounded-and-pings · #394/#395 guardian pings only finished work · #397 (PR #398) brief seeds the matched draft at generation time · #399 (PR #400) commitment-title hygiene (no SYNC: key in the card). #382 stays OPEN for optional polish.
-**Standing candidates (NOT started, owner to choose):** OWNER-SIDE — configure the external 15-min cron for guardian cadence (the ongoing firing mechanism; NOT a Vercel daily cron). CODE — recolor legacy cyan favicons (`app/favicon.ico`/`public/favicon.png`, BLOCKED on image tooling — `sharp`/imagemagick absent); triage 46 stale remote branches + skipped tests. Constraint: NO paid API calls to test — prove in the harness.
-
-Issue #394 is COMPLETE — guardian pings only finished work: silent/dismissed payload → no Slack (no noise ping); draftless scored_winner recycles the latest matching daily-brief artifact into a reviewable draft (no new LLM, conservative anti-mismatch guard). Merged via PR #395 (`d235cde`); 13 fixtures + 107/107 suite; runtime proof deferred per owner no-paid directive.
-Issue #391 is COMPLETE/REVERTED — wired the guardian into the daily morning-pipeline cron (PR #392) then reverted it (PR #393, `7b573eb`) for conflicting with #369 (no daily cron). Runtime proof obtained instead: first grounded `workday_presence_trigger` receipt (`9695a5c6`, ev_count=1) + live Slack ping via a one-time owner-go fire.
-Issue #390 is COMPLETE — owner self-review system: `docs/BRANDON.md` (avatar) + `docs/EXPERT_PANEL.md` (9-expert panel) + Bible Part IV ritual; ~29MB dead-image hygiene. Merged `8fd766b`.
-Issue #382 is LIVE (OPEN) — whole-app frontend overhaul to `docs/DESIGN_SYSTEM.md` ($500M tier): PRs #383–#388 + #389 pixel-polish (amber brand glyph — cyan killed; one-focal-point hierarchy; de-blurred float; 1240 layout; Slack-forward hero). Optional polish remains.
-Issue #378 is COMPLETE — design system locked (PR #379) + full amber landing overhaul; merged via PR #380 (`40b687a`).
-Issue #364/#366 is COMPLETE — heartbeat moved off capped GitHub Actions to a free external cron (PRs #365/#366 via #367); owner must create the external cron job for live firing.
-Issue #354 is COMPLETE — auth + state-machine integrity (F-auth/F-card/F-dismiss); PRs #357 (`ba42125`) + #358 (`4b2908b`).
-Issue #351 is COMPLETE — money-loop integrity sweep (F1-F5); PRs #352 (`b400c5d`) + #353 (`c238165`).
-Issue #348 is COMPLETE — presence receipt insert-error hotfix; PR #349 (`9377546`).
-Issue #344 is COMPLETE — workday-presence loop closure for non-owner in browser; PR #346 (`e2f7687`).
-Issue #341 is COMPLETE — runtime map + current-path Supabase receipts; PR #343 (`613296d`).
-Issue #339 is COMPLETE — frontend auth polish closeout; PR #340 (`a315394`).
-Issue #276 is COMPLETE — Command State Resolver v0; PR #279 (`e848d01`), closeout PR #280 (`13581bf`).
-Issue #262 is COMPLETE — event-driven trigger runner live; PR #273 (`d6b99f2`).
-Issue #244 is COMPLETE — Right Now cards / state-change triggers; PRs #308 (`dddece7`) + #313 (`d2bed9a`).
-Issue #136 is COMPLETE — Run Ledger rule installed; PR #319 (`d1291ff`).
-`FOLDERA_MASTER_BIBLE.md` is the single doctrine file. `AGENTS.md` is the single agent contract.
+`ACTIVE_SEAM_STATE.json` is the machine-readable control plane. Between rungs, `active_issue: none` is the valid form; the owner names the next seam. Constraint everywhere: NO paid API calls — prove in the harness.
 
 ## Current slice:
 
-Issue #445 is the active firm-foundation audit seam.
+Between rungs — no active seam. `active_issue: none`; the owner names the next seam. Recently merged: #431 soft `primaryOutcomeDeadline` inference (PR #473); #454 broadcast/recruiting-sender suppression at the entity admission gate. #445 Master Audit is COMPLETE below.
 
-Master Audit (#445) — fix-in-pass. Merged: Pass 0 inventory; Pass 1 RLS `PASS`; Pass 2 database `PASS` + D-3; Pass 3 cost `CONCERN`; F-1 CI-on-PRs; gem-surfacing reverted (#453, roman=noise). **Shipping broadcast-sender suppression** — the correct, fail-safe noise-reduction direction. Recruiting/automated senders (roman@expert.micro1.ai; trust_class junk/transactional) were becoming "High-value relationship at risk" candidates = the 95% noise the Bible says to suppress. Fix: `getEntityRejectionReasons` (`lib/briefing/discrepancy-detector.ts`) rejects junk/transactional entities + automated/recruiting/marketing-domain senders. Real-data validated: roman(junk)+support@micro1.ai+rahul@micro1.ai rejected, **julieta@micro1.io(trusted) preserved** — discerning, not a blanket ban. Fails safe (worst case = more silence). Deterministic test green (5) + discrepancy suite 111 + typecheck. PR open, NOT self-merged.
+**Merged to main (through `8654637`):** Pass 0 inventory · Pass 1 RLS `PASS` · Pass 2 database `PASS` (+D-3) · Pass 3 cost `CONCERN` (extraction cap 4→0.25) · **Pass 4 backend/runtime `CONCERN` (#458)** · **Pass 5 AI/ML grounding `PASS` (#461)** · **Pass 6 FE perf/a11y `PASS` +3 tap-target fixes (#463)** · **Pass 7 FE design/UX `PASS`** · **Pass 8 trust/claims `PASS` (fixed false SSO/SCIM/SAML claim + gate-hardened)** · F-1 (CI-on-PRs) · gem-ranking floor #456 · lapsing-card hygiene #457 · **overdue-admission window #460 (60d for risk≥60)** · gem-surfacing revert #453 · **LESSONS_LEARNED #19 (value-is-the-only-score) #458.**
+
+**Pass 4 (#458) detail:** fixed B-2 — the `morning-pipeline` orchestrator had no per-stage isolation, so a thrown stage (e.g. nightly sync) silently dropped `daily_brief` (the value stage) for the whole day; `invokeStage` now isolates each stage (fails safe). C-2 root-caused: ~74% of directives pay for a second full LLM call because the first fails validation → routed to **Pass 5 + paid validation**, not shipped blind. Record: `docs/backend/RUNTIME_CORRECTNESS.md`. Verdict CONCERN — runtime is *safe* but still costs without producing value.
+
+**Pass 5 (AI/ML grounding) `PASS` (#461):** grounding chain is fail-closed — hard `no_evidence` rejection, `fabricated_claim` block, freshness penalizes recency (magic invariant), 37 tests green. O-5.1 `no_source_grounding` soft-by-design. C-2 first-pass-quality fix → owner paid wall. Record: `docs/backend/AI_GROUNDING_FAITHFULNESS.md`.
+
+**Pass 6 (FE perf/a11y) `PASS` (#463):** verified live at 375px — no overflow, reduced-motion covers framer+CSS, focus rings, no-CLS images. Fixed 3 sub-44px tap targets in `LandingPage.tsx`. Record: `docs/frontend/PERF_A11Y_AUDIT.md`.
+
+**Pass 7 (FE design/UX) `PASS`:** single dominant CTA, logo→home, all 9 routes resolve (no dead links), amber restrained (7×), no AI-cliché icons, one-click controls + evidence (recognition-over-recall). O-7.2 enterprise SSO/SCIM claims handed to Pass 8. Record: `docs/frontend/DESIGN_UX_AUDIT.md`.
+
+**Pass 8 (trust/claims) `PASS` (fixed):** found a real false enterprise claim — "SSO / SCIM" / "SAML 2.0 ready" on landing + /pricing while NO SAML/SCIM/SSO exists (auth = Google + AzureAD OAuth only). Removed both, hardened `forbiddenClaimTerms` (SSO/SCIM, SCIM, SAML) so it can't regress. Other claims verified honest. Record: `docs/frontend/TRUST_HONEST_CLAIMS_AUDIT.md`.
+
+**Pass 9 (Vercel deploy/config) `PASS`:** strict CSP + security headers on all routes, single morning-pipeline cron with `maxDuration` on all 4 pipeline routes, sensible redirects/caching, Sentry wired, no header duplication. Obs: O-9.1 legacy `/try` page+api shadowed by redirects (guarded cleanup task spawned), O-9.2 CSP allows unsafe-inline/eval (Next tradeoff), O-9.3 maxDuration=300 assumes Pro tier. Record: `docs/backend/VERCEL_DEPLOY_AUDIT.md`.
+
+**Pass 10 (GitHub CI) `PASS`:** ci.yml on PRs (F-1), change-aware, draft-skip, ci-passed aggregator; ZERO `schedule:` crons (billing-safe). F-10.1 ground-truth correction: growth agents (`lib/agents/*`) are NOT deleted — they're quarantined default-OFF behind `areAgentsEnabled` (#231) + budget guard, reachable only via dispatch-only workflows; corrected the `project_growth_layer_deleted` memory. Owner item: branch protection on main still OFF. Record: `docs/backend/GITHUB_CI_AUDIT.md`.
+
+**Pass 11 (observability) `PASS`:** structured logging hashes userId (no raw PII), Sentry wired (instrumentation.ts), durable tkg_actions receipts, scoring hot path proven metadata-only (egress tests green), no committed .env secrets. Obs: O-11.1 `details` is caller-sanitized not logger-sanitized (no leak found); O-11.2 stale local gitignored .env clutter. Record: `docs/backend/OBSERVABILITY_AUDIT.md`.
+
+**Pass 12 (governance/memory meta) `PASS` — FINAL pass:** governance machinery sound (gate:continuity + per-seam contract + keep-list/anti-regrowth). Meta-fix applied: registered all 13 pass records in the keep-list ledger `docs/SOURCE_OF_TRUTH_MAP.md` (was the rediscovery gap — Passes 3–11 docs were unindexed); growth-layer memory corrected. **Master Audit #445 COMPLETE (passes 0–12).** Record: `docs/GOVERNANCE_MEMORY_AUDIT.md`.
 
 ## Next exact move
 
-1. **Owner: validate live** — run a generation cycle; confirm recruiting/broadcast senders gone from candidates, real contacts kept; then merge the PR.
-2. Follow-up lever: the **two-way test** (require the user actually replied at least once) for an even more robust relationship filter.
-3. NO paid API calls from here — prove in the harness.
+0. **Between rungs** — #431 (PR #473) and #454 (broadcast-sender suppression) both merged; owner names the next seam.
+1. **Owner — the value lever (TRUE wall):** one paid generation cycle to confirm a real gem now surfaces. This is the *only* move that turns "healthy" into "valuable."
+2. **Master Audit #445 is COMPLETE (passes 0–12 all merged).** No audit passes remain. The only open items are the owner paid wall (item 1) — C-2 first-pass validation quality + the value-lever generation cycle. Between-rungs after this merges; owner names the next seam.
+3. **#454 broadcast/recruiting-sender suppression MERGED** — the entity admission gate now rejects junk/transactional + recruiting/automated senders (fail-safe; real human `julieta@micro1.io` preserved). Owner: confirm live that a real contact still surfaces.
+4. Deferred follow-ups (harness-only): B-4 budget-reservation reconciliation; B-5 persist retry reasons (Pass 11); the two-way test for relationship gems (coupled to #454). [>30d-overdue admission window shipped via #460.]
 
-Open owner items (not active seams): (1) configure the free external cron for the workday-presence guardian (code shipped; owner creates the cron job for live cadence); (2) landing polish is an open standing goal — each pass obviously better, not incremental.
+Open owner items (not active seams): configure the free external guardian cron (code shipped); landing polish (standing — obviously better each pass, not incremental).
 
-Current production truth: `Last known main SHA: d235cde`. Whole-app amber + Bricolage type + premium chrome + show-don't-tell landing (#382, OPEN for polish); owner self-review system live (`docs/BRANDON.md` + `docs/EXPERT_PANEL.md` + Bible Part IV); guardian fires-grounded-and-pings-only-finished-work (#391/#393/#394). gitlab-handbook (1.1GB) moved out of the repo tree → `C:/Users/b-kap/foldera-reference/`.
+Current production truth: `Last known main SHA: 8654637` (#460 merged — gem-surfacing slices #456/#457/#460 all live). Master Audit #445 passes 0–4 + F-1 merged: RLS/security `PASS`, data-integrity `PASS`, cost `CONCERN`, runtime `CONCERN`. Guardian fires-grounded-and-pings-only-finished-work live (#391/#393/#394); owner self-review system live (`docs/BRANDON.md` + `docs/EXPERT_PANEL.md`).
 
-Safety rails unchanged: no outbound sends by default, no paid tests without naming exact cost, acquisition stays quarantined OFF, no fake claims, one intervention max, safe silence is a win, schema changes only via committed+applied+verified migrations.
+Safety rails: no outbound sends by default; no paid tests without naming exact cost; acquisition quarantined OFF; no fake claims; one intervention max; safe silence is a win; schema only via committed+applied+verified migrations.
 
 ## Product doctrine
 
-Foldera is a Workday Presence Layer: state + connectors + triggers + one intervention; remembers where the user was, decides when to interrupt, gives one next move, lets the user respond with one click, updates state, stays quiet otherwise. No dashboard/task-manager/inbox-summary/chatbot/surveillance drift. Issue #48 and `FOLDERA_MASTER_BIBLE.md` carry product doctrine.
+Foldera is a Workday Presence Layer: state + connectors + triggers + one intervention — remembers where the user was, decides when to interrupt, gives one next move, one click to respond, updates state, stays quiet otherwise. No dashboard / task-manager / inbox-summary / chatbot / surveillance drift. `FOLDERA_MASTER_BIBLE.md` carries doctrine; `AGENTS.md` is the agent contract.
 
 ## GitHub writeback contract
 
-- GitHub writeback before stop is mandatory.
-- Chat memory is not source of truth.
-- If work was done and not written to GitHub, the transaction is incomplete.
-- Before stopping, write one terminal GitHub comment: `PR OPENED`, `PROOF`, `MERGE READY`, `BLOCKED`, or `STOPPED`.
-- `ACTIVE_HANDOFF.md` must be updated when the active seam, proof status, next seam, or blocker changes.
-- `FOLDERA_BUILD_ORDER.yaml` must be updated when the active issue changes.
+- GitHub writeback before stop is mandatory. GitHub source truth beats chat memory; if work isn't written to GitHub, the transaction is incomplete.
+- Before stopping, post one terminal receipt: `PR OPENED`, `PROOF`, `MERGE READY`, `BLOCKED`, or `STOPPED`.
+- Update `ACTIVE_HANDOFF.md` when the seam / proof / next move / blocker changes; `FOLDERA_BUILD_ORDER.yaml` when the active issue changes.

@@ -199,6 +199,27 @@ describe('workday presence trigger evaluation', () => {
     }
   });
 
+  it('commitment_lapsing never leaks the raw SYNC: dedup key into the directive (#445)', () => {
+    const result = evaluateWorkdayPresenceTrigger(
+      {
+        trigger_type: 'commitment_lapsing',
+        commitment: {
+          title: 'Pay the Supabase invoice',
+          due_at_iso: '2026-05-20T16:00:00.000Z',
+          // Real ingestion falls back to the raw SYNC:<category>:<slug> dedup key here
+          // (fixtures use clean prose). The directive must show the human title instead.
+          summary: 'SYNC:payment_financial:Pay_the_Supabase_invoice',
+        },
+      },
+      baseState,
+    );
+    expect(result.outcome).toBe('intervention');
+    if (result.outcome === 'intervention') {
+      expect(result.payload.text).not.toContain('SYNC:');
+      expect(result.payload.text).toContain('Pay the Supabase invoice');
+    }
+  });
+
   it('owed_thread_gone_cold intervenes only when the active waiting-on thread is the one that went cold', () => {
     const result = evaluateWorkdayPresenceTrigger(
       {

@@ -233,6 +233,77 @@ export async function inferPrimaryOutcomeProbability(
   };
 }
 
+const MONTH_NAMES = [
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december',
+];
+// All twelve, for unambiguous "start <month>" phrasing.
+const MONTH_ALT_ALL = MONTH_NAMES.join('|');
+// Excludes bare "may" for "<month> start" phrasing — "may start" is overwhelmingly
+// the modal verb ("you may start"), so reading it as the month would fabricate a
+// deadline. Safe-silence beats a fake card; legit "May start" still surfaces via the
+// "April/May start" range form or the unambiguous "starts in May" form.
+const MONTH_ALT_NOMODAL = MONTH_NAMES.filter((m) => m !== 'may').join('|');
+
+/** Resolve a 0-indexed month to the 1st of its next future occurrence (UTC, deterministic). */
+function resolveFutureMonthStart(monthIdx: number, now: Date): Date {
+  const year = monthIdx < now.getUTCMonth() ? now.getUTCFullYear() + 1 : now.getUTCFullYear();
+  return new Date(Date.UTC(year, monthIdx, 1));
+}
+
+/**
+ * #431: Infer a soft primary-outcome deadline from natural-language month/start cues
+ * in supporting signals — e.g. "April start", "starts in May", "April/May start".
+ *
+ * Unlike `inferHardDeadline` (baby/lease — a date that cannot move) this is a softer,
+ * signal-derived expectation: the 1st of the named start month, rolled to next year if
+ * that month has already passed. When multiple cues appear, the EARLIEST resolved month
+ * wins (the nearest expected resolution). Returns null when no cue is found — quiet on
+ * weak evidence rather than guessing.
+ */
+export function inferPrimaryOutcomeDeadline(
+  signalTexts: string[],
+  now: Date = new Date(),
+): { date: Date | null; source: string | null } {
+  // "<month> start" / "<month>/<month> start" (first month captured; bare "may" excluded).
+  const monthBeforeStart = new RegExp(
+    `\\b(${MONTH_ALT_NOMODAL})\\b(?:\\s*/\\s*(?:${MONTH_ALT_ALL}))?\\s+start\\b`,
+    'i',
+  );
+  // "start"/"starts"/"starting"/"start date" then a month: "starts in May", "start date April".
+  const startBeforeMonth = new RegExp(
+    `\\bstart(?:s|ing|\\s+date)?\\b(?:\\s+(?:in|of|by|around|on|the))?\\s+(${MONTH_ALT_ALL})\\b`,
+    'i',
+  );
+
+  const candidates: { date: Date; matched: string }[] = [];
+  for (const text of signalTexts) {
+    for (const re of [monthBeforeStart, startBeforeMonth]) {
+      const m = re.exec(text);
+      if (!m) continue;
+      const monthIdx = MONTH_NAMES.indexOf(m[1].toLowerCase());
+      if (monthIdx < 0) continue;
+      candidates.push({ date: resolveFutureMonthStart(monthIdx, now), matched: m[0].trim() });
+    }
+  }
+
+  if (candidates.length === 0) return { date: null, source: null };
+
+  candidates.sort((a, b) => a.date.getTime() - b.date.getTime());
+  const chosen = candidates[0];
+  return { date: chosen.date, source: `Start cue: "${chosen.matched}"` };
+}
+
 /** CE-3: Calendar / task-style deadline language (complements baby/lease patterns). */
 const CALENDAR_DEADLINE_PATTERNS: { pattern: RegExp; label: string }[] = [
   { pattern: /\b(?:due|deadline)\s*(?:date|on)?\s*[:\s].{0,80}(?:deliverable|delivery|filing|review|close|project)\b/i, label: 'Task due date' },
@@ -445,13 +516,16 @@ export async function runConvictionEngine(
   const refBlind = detectReferenceRiskBlindspot(topGoalText, signalTexts);
   const referenceRiskNotes = refBlind ? [refBlind] : [];
 
+  // #431: soft outcome deadline inferred from month/start cues in the same signals.
+  const outcomeDeadline = inferPrimaryOutcomeDeadline(signalTexts);
+
   // Build situation model
   const runwayMonths = manualOverrides?.runwayMonths ?? null;
   const situation: SituationModel = {
     monthlyBurnUSD: burn,
     runwayMonths,
     primaryOutcomeProbability: prob,
-    primaryOutcomeDeadline: null, // Deferred: infer from "April start" / "May start" signal cues — see #431
+    primaryOutcomeDeadline: outcomeDeadline.date, // #431: soft deadline from month/start signal cues
     hardDeadline: deadline,
     hardDeadlineSource: deadlineResult.source,
     modelConfidence: missingInputs.length === 0 ? 0.8 : 0.4,

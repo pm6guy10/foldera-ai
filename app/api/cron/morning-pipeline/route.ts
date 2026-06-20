@@ -93,22 +93,42 @@ async function invokeStage(
     method: stage.method,
     headers: makeForwardHeaders(request),
   });
-  const response = await stage.handler(stageRequest);
 
-  let body: unknown = null;
+  // Per-stage isolation: a single stage that throws (rather than returning an
+  // error Response) must NOT abort the sequential chain. Without this guard an
+  // uncaught throw in nightly_ops would propagate out of the loop and silently
+  // drop daily_brief (the value/delivery stage) and daily_maintenance for the
+  // whole day. Catch here so each stage is recorded and the loop continues;
+  // overall ok still goes false → 207. Fails safe: more stages run, never fewer.
   try {
-    body = await response.json();
-  } catch {
-    body = { error: 'Non-JSON cron response' };
-  }
+    const response = await stage.handler(stageRequest);
 
-  return {
-    stage: stage.name,
-    path: stage.path,
-    status: response.status,
-    ok: deriveStageOk(response, body),
-    body,
-  };
+    let body: unknown = null;
+    try {
+      body = await response.json();
+    } catch {
+      body = { error: 'Non-JSON cron response' };
+    }
+
+    return {
+      stage: stage.name,
+      path: stage.path,
+      status: response.status,
+      ok: deriveStageOk(response, body),
+      body,
+    };
+  } catch (error) {
+    return {
+      stage: stage.name,
+      path: stage.path,
+      status: 500,
+      ok: false,
+      body: {
+        error: error instanceof Error ? error.message : String(error),
+        threw: true,
+      },
+    };
+  }
 }
 
 async function handler(request: NextRequest) {

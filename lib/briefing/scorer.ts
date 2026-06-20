@@ -461,6 +461,52 @@ export function isExecutableCommitment(
   return true;
 }
 
+/**
+ * High-consequence commitment stakes floor.
+ *
+ * Stakes are normally derived from goal-match priority (`6 - priority`) and fall to
+ * 1.0 when a commitment matches no stated goal. But a commitment's own deterministic
+ * `risk_score` (lib/signals/commitment-risk.ts) already encodes category weight +
+ * money + timing + direction. A genuinely high-risk obligation — a lapsing court
+ * filing, an overdue payment, a job-offer response — is high-stakes even with no goal
+ * match. Without a floor it collapses to stakes 1.0 and is zeroed by the
+ * decision-moving (stakes ≥ 2) and lifecycle (stakes < 2 → archive_only) gates,
+ * producing "nothing cleared the bar" silence even though the gem is real.
+ *
+ * Lift-only (never lowers the goal-derived stakes). Applies to commitments only.
+ * Fail-safe: noise cannot reach this point — transactional/junk commitments are
+ * excluded at pool admission, trivial ones by isExecutableCommitment, and
+ * >30d-stale ones are dropped before scoring.
+ */
+export function highConsequenceStakesFloor(
+  type: 'commitment' | 'signal' | 'relationship',
+  riskScore: number | null | undefined,
+  baseStakes: number,
+): number {
+  if (type !== 'commitment' || typeof riskScore !== 'number' || Number.isNaN(riskScore)) {
+    return baseStakes;
+  }
+  const floor = riskScore >= 80 ? 4 : riskScore >= 60 ? 3 : riskScore >= 40 ? 2 : 1;
+  return Math.max(baseStakes, floor);
+}
+
+/**
+ * Overdue-admission window (days) for a commitment.
+ *
+ * A commitment whose deadline passed long ago is usually abandoned/handled, so the
+ * scorer drops it before scoring (a 30-day blanket cutoff). But a genuinely
+ * high-consequence obligation (high risk_score) that is still `active` is worth
+ * surfacing longer — the blanket cutoff silently drops a real overdue money/legal/
+ * work obligation (e.g. a job-offer response or a hardship payment plan that lapsed
+ * ~5 weeks ago). High-risk rows (risk_score ≥ 60, the gem band) get a 60-day window;
+ * everything else keeps 30. This only WIDENS admission — the scorer's soft
+ * staleness/timing penalty (commitment-risk `timingScore`) still discounts the very
+ * stale at ranking time, so a long-dead row can be admitted yet still lose the bar.
+ */
+export function overdueAdmissionWindowDays(riskScore: number | null | undefined): number {
+  return typeof riskScore === 'number' && !Number.isNaN(riskScore) && riskScore >= 60 ? 60 : 30;
+}
+
 const OBVIOUS_FIRST_LAYER_PATTERNS = [
   /^\s*(?:follow\s+up|check\s+in|touch\s+base|circle\s+back)\b/i,
   /\b(?:just\s+checking\s+in|just\s+reaching\s+out|quick\s+follow\s+up)\b/i,
@@ -1117,6 +1163,14 @@ type ScorerBaseCandidate = {
   author?: string;
   commitmentDueMs?: number;
   calendarEventStartMs?: number;
+  /**
+   * Commitment-only: the row's own deterministic risk_score (0–100) from
+   * lib/signals/commitment-risk.ts. It already encodes category weight + money +
+   * timing + direction. Threaded through so the stakes derivation can floor a
+   * genuinely high-consequence obligation that matches no stated goal, instead of
+   * collapsing it to stakes 1.0 and zeroing it. Absent for signals/relationships.
+   */
+  riskScore?: number | null;
 };
 
 type DatedEventKind = 'interview' | 'meeting' | 'deadline';
@@ -4947,6 +5001,8 @@ export async function scoreOpenLoops(
     calendarEventStartMs?: number;
     /** True when commitment.source_id resolves to a gmail/outlook signal row (real thread). */
     mailThreadAnchored?: boolean;
+    /** Commitment-only: the row's own deterministic risk_score (0–100). See ScorerBaseCandidate.riskScore. */
+    riskScore?: number | null;
   }> = [];
   let suppressedCandidates = 0;
 
@@ -5068,20 +5124,24 @@ export async function scoreOpenLoops(
     }
 
     // Skip expired/past-due commitments that have no valid next step.
-    // A commitment whose deadline passed more than 30 days ago is either
-    // abandoned or was handled informally. It cannot produce a valid
-    // SEND or WRITE_DOCUMENT action without a clear current trigger.
+    // A commitment whose deadline passed long ago is usually abandoned or handled
+    // informally. Default cutoff is 30 days; a high-consequence obligation
+    // (risk_score ≥ 60) that is still `active` gets a 60-day window so a real
+    // overdue money/legal/work gem isn't silently dropped here (see
+    // overdueAdmissionWindowDays). The soft staleness penalty still discounts it at
+    // ranking time, so widening admission cannot resurrect a truly dead low-value row.
     const deadlineDate = (c.due_at as string | null) || (c.implied_due_at as string | null);
     if (deadlineDate) {
       const daysOverdue = (Date.now() - new Date(deadlineDate).getTime()) / (1000 * 60 * 60 * 24);
-      if (daysOverdue > 30) {
+      const overdueWindow = overdueAdmissionWindowDays(c.risk_score as number | null);
+      if (daysOverdue > overdueWindow) {
         logStructuredEvent({
           event: 'stale_overdue_commitment_filtered',
           level: 'info',
           userId,
           artifactType: null,
           generationStatus: 'filtered',
-          details: { scope: 'scorer', commitment_id: c.id, days_overdue: Math.round(daysOverdue), description: (c.description as string).slice(0, 80) },
+          details: { scope: 'scorer', commitment_id: c.id, days_overdue: Math.round(daysOverdue), overdue_window_days: overdueWindow, risk_score: (c.risk_score as number | null) ?? null, description: (c.description as string).slice(0, 80) },
         });
         continue;
       }
@@ -5148,6 +5208,7 @@ export async function scoreOpenLoops(
       entityName: commitEntityName,
       commitmentDueMs,
       mailThreadAnchored,
+      riskScore: (c.risk_score as number | null) ?? null,
     });
   }
 
@@ -5969,6 +6030,28 @@ export async function scoreOpenLoops(
         },
       });
       stakes = 3;
+    }
+
+    // High-consequence commitment floor — lift stakes from the commitment's own
+    // risk_score so a real high-stakes obligation that matches no stated goal can
+    // clear the decision-moving / lifecycle gates instead of being zeroed.
+    const riskFlooredStakes = highConsequenceStakesFloor(c.type, c.riskScore, stakes);
+    if (riskFlooredStakes > stakes) {
+      logStructuredEvent({
+        event: 'high_consequence_commitment_stakes_floor',
+        level: 'info',
+        userId,
+        artifactType: null,
+        generationStatus: 'scoring',
+        details: {
+          scope: 'scorer',
+          candidate_title: c.title.slice(0, 100),
+          risk_score: c.riskScore ?? null,
+          raw_stakes: stakes,
+          floored_stakes: riskFlooredStakes,
+        },
+      });
+      stakes = riskFlooredStakes;
     }
 
     let specificityAdjustedStakes = stakes;
