@@ -1,9 +1,9 @@
 {
-  "backlog_id": "master-audit-pass10-github-ci",
+  "backlog_id": "master-audit-pass11-observability",
   "active_issue": 445,
-  "base_commit": "efb45cc",
+  "base_commit": "2d613df",
   "money_loop_rung": "m2",
-  "user_system_path": "Master Audit #445 — Pass 10 (GitHub CI/workflows). Forensic pass over .github/workflows/* (18 workflows). Verdict PASS, no code change. ci.yml runs on pull_request + workflow_dispatch (F-1 live), change-aware (dorny/paths-filter), draft-skip, concurrency-cancel, build-once-reuse, ci-passed aggregator. ZERO schedule: crons across all workflows (billing-cap safe). Cross-cutting finding F-10.1 (ground-truth correction): the 6 agent-*.yml workflows are dispatch-only manual levers into a LIVE agent-runner endpoint + rebuilt lib/agents/* DraftQueue system — NOT orphaned. Growth agents (gtm/distribution/retention/self-optimizer) are gated default-OFF by areAgentsEnabled (#231) across all agents except zero-LLM health_watchdog, plus a budget guard, so the runtime posture matches 'acquisition quarantined OFF' — but the code was retained behind a switch, NOT deleted. The project_growth_layer_deleted memory note (claimed lib/agents deleted) was corrected. Owner item: branch protection on main still OFF (require ci-passed). Constraint: NO paid API calls.",
+  "user_system_path": "Master Audit #445 — Pass 11 (Observability & logging). Forensic pass over structured logging, Sentry, PII discipline in logs, durable receipts, env-secret exposure. Verdict PASS, no code change. logStructuredEvent (lib/utils/structured-logger.ts) hashes userId (sha256/12) so no raw id reaches logs; Sentry wired via instrumentation.ts + instrumentation-client.ts (DSN in env); durable tkg_actions receipts; scoring hot path proven metadata-only by scorer-metadata-egress + cross-source-life-context-egress tests (both green); only .env.example + .env.local.example are git-tracked (all real env files gitignored — no secret leak). Observations: O-11.1 logStructuredEvent does not recursively sanitize the free-form details object (208 call sites, caller-disciplined; no leak found, future redaction-lint suggested); O-11.2 stale local .env.pr142.preview*/.env.production.truth clutter the repo root but are gitignored (local hygiene only). Constraint: NO paid API calls.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -18,20 +18,20 @@
     "package.json",
     "package-lock.json"
   ],
-  "allowed_files_raw": "Pass 10 CI record (docs/backend/GITHUB_CI_AUDIT.md) + control-plane only. Documentation pass; CI verified healthy, no source change. (Memory note corrected out-of-band, outside the repo.)",
+  "allowed_files_raw": "Pass 11 observability record (docs/backend/OBSERVABILITY_AUDIT.md) + control-plane only. Documentation pass; observability verified healthy, no source change.",
   "forbidden_files_raw": "No schema (supabase/**), no deps (package.json/lock).",
-  "required_local_proof": "npm run gate:continuity",
-  "required_browser_proof": "N/A — CI/workflow audit; all 18 workflow trigger blocks read; schedule:/cron: grep returns zero non-comment hits; agent-runner + lib/agents + areAgentsEnabled read to establish quarantine-not-deletion ground truth.",
+  "required_local_proof": "npm run gate:continuity && npx vitest run lib/briefing/__tests__/scorer-metadata-egress.test.ts lib/briefing/__tests__/cross-source-life-context-egress.test.ts",
+  "required_browser_proof": "N/A — observability/logging audit; structured-logger read (userId hashed), Sentry init files confirmed, egress tests green, git ls-files shows no tracked .env secrets.",
   "browser_proof_command": "N/A",
-  "acceptance_condition": "CI posture passes: runs on PRs (F-1), change-aware, draft-skip, no schedule crons (billing-safe), single ci-passed aggregator. Agent workflows confirmed dispatch-only + kill-switch-gated (safe). Record in docs/backend/GITHUB_CI_AUDIT.md; growth-layer memory corrected.",
+  "acceptance_condition": "Observability passes: structured queryable events with hashed userId (no raw PII), Sentry wired, durable receipts, hot path metadata-only (egress tests green), no committed secrets. Record in docs/backend/OBSERVABILITY_AUDIT.md.",
   "is_user_facing": false,
   "anti_regression_checks": [
     "gate:continuity green with active seam #445",
-    "documentation-only; no workflow/runtime/schema change",
-    "no workflow edited — CI behavior unchanged, only audited"
+    "documentation-only; no runtime/schema change",
+    "egress guard tests (scorer-metadata-egress, cross-source-life-context-egress) green"
   ],
-  "stop_condition": "Stop when Pass 10 record is up as a PR and merged; continue to Pass 11 (observability).",
-  "next_command": "Continue Master Audit #445: Pass 11 (observability/logging/Sentry), then 12 (governance meta).",
+  "stop_condition": "Stop when Pass 11 record is up as a PR and merged; continue to Pass 12 (governance/memory meta-fix) — the final audit pass.",
+  "next_command": "Continue Master Audit #445: Pass 12 (governance/memory meta-fix) — final pass; then post the Master Audit completion summary on #445.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
