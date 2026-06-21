@@ -1,10 +1,10 @@
 {
-  "active_issue": 486,
-  "active_branch": "claude/stage-5-slack-real-proof-iod794",
-  "active_pr": 491,
-  "deployed_commit_sha": "0a276ce",
+  "active_issue": 494,
+  "active_branch": "claude/next-up-open-issues-8coe11",
+  "active_pr": 495,
+  "deployed_commit_sha": "f0a03a1",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-20T21:50:00Z",
-  "notes": "Stages 0-5 MERGED (#487/#488/#490/#491). #491 promoted to prod 2026-06-20 (0a276ce): Slack-first delivery (Twilio/SMS removed), proof contract tightened (real Slack card every phase or NO PASS). FOLLOW-UP on this branch (-iod794): #491 retargeted the Scout's WORDS but left the MECHANISM outward — the deployed scout-loop.ts still fished the open web for funding/grants/RFPs/openings. Live evidence: the owner's #foldera-self-loop channel received two outside-in cards on 2026-06-20 (a $181M grant chase + a Watershed platform-engineer cover letter with FABRICATED credentials), the exact tone-deaf failure #492/#481 condemn. This branch finishes the inward retarget in CODE: scout-loop.ts writer/web-query/artifact framing now watches the person's OWN world (commitments owed, replies due, deadlines/filings in their own files), never hunts external opportunities, and never invents credentials/experience. Deterministic proof only (scout suite 47 + new inward-frame assertion + typecheck + lint0 + gate + build); Scout stays flag-OFF in prod, so this is doctrine-alignment of inert code — the real money-move (§3: flip the hands on ONE real inward loop on REAL data) is still owner-gated (Voyage key + decrypt key + paid pipeline; agent has none). COMPASS #492 unchanged (DO NOT RUN; promote before §3 work). #486 remains the active seam."
+  "last_verified_at": "2026-06-20T23:45:00Z",
+  "notes": "SCOUT §3 (#494) promoted from compass #492 at owner request 2026-06-20; supersedes the build umbrella #486. The build is DONE and inward: Stages 0-5 (#487/#488/#490/#491) + the inward retarget (#493, 0a276ce..f0a03a1) are all merged. The deployed Scout watches the user's OWN world (commitments owed, replies due, deadlines/filings in their own files), never hunts external grants/jobs/RFPs, never fabricates credentials, and stays flag-OFF in prod. The hands have NEVER gripped real data (verified live 2026-06-20: scout_drive_chunks empty, tkg_signals bodies encrypted). This PR is a CONTROL-PLANE RECONCILIATION ONLY: it repoints source truth from #486 to the active seam #494 (handoff/build-order/contract/seam-state) so the next boot reads the live seam, not the superseded umbrella. It is NOT a Scout phase and claims no product proof. The real money-move (#494: ONE real inward loop on REAL data) is owner-gated runtime activation the agent sandbox cannot perform (no VOYAGE_API_KEY, no CRON_SECRET, no decrypt key, no Vercel env-write tool) -> BLOCKED_WITH_EXACT_RECEIPT. COMPASS #492 is now executed via #494; #486 is closed out as the build umbrella."
 }
