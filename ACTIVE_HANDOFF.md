@@ -13,34 +13,33 @@ Keep this cockpit short and value-first. Completed-issue history lives in `SESSI
 
 ## Boot
 
-1. Read this file. 2. Read the active issue (#496). 3. Check issue #136 for recent INTERRUPT receipts.
+1. Read this file. 2. Read the active issue (#494). 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #496 is the active LANDING seam.
+Issue #494 is the active SCOUT seam.
 
-Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness. Scout seam #494 is PAUSED (not abandoned) for this owner-directed UI pass; resume it once #496 lands.
+Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
 ## Current slice:
 
-**LANDING design pass (#496) — sharpen hierarchy + a connected how-it-works flow.** Promoted to the active seam at owner request (2026-06-21), pausing the Scout seam (#494) as the active one. Owner-directed landing-page craft pass under the binding bar in `docs/DESIGN_SYSTEM.md`, on the dedicated branch `claude/landing-page-design-fixes-wub5aj`. Lead surface: `components/foldera/LandingPage.tsx` via the token-driven `.ld` layer.
+**SCOUT §3 (#494) — turn the hands on: ONE real inward loop on REAL data (the money-move).** Promoted from compass #492 at owner request (2026-06-20); supersedes the build umbrella #486. **The build is done and inward:** Stages 0–5 (#487/#488/#490/#491) + the inward retarget (#493) are all merged. The deployed Scout watches the user's *own* world (commitments owed, replies due, deadlines/filings in their own files), never hunts external grants/jobs/RFPs, and never fabricates credentials. It is flag-OFF in prod and **has never gripped real data** (verified live 2026-06-20: `scout_drive_chunks` empty, `tkg_signals` bodies encrypted).
 
-- Hero trust line → icon pill badges (Consent-first / No surveillance / Quiet by design).
-- Stats → framed with an eyebrow + display heading and per-stat amber accent ticks.
-- How it works → floating numbers replaced with a connected flow (numbered dots on a gradient thread, final "then quiet" step accented).
-- Latent-bug fix: Tailwind bare opacity modifiers on `var()` colors (e.g. `accent/60`) resolve to transparent here, so new decorative elements use inline `color-mix()`.
-
-Preserves every landing `data-testid`, the asserted copy, the section order, and the CTA href contract. **NOT in scope:** dashboard, `app/api/**`, Stripe, DB migrations, secrets, new public-facing claim terms, auto-send, or any section-order / `data-testid` / asserted-copy removal.
+**The remaining move is owner-gated runtime activation — the agent sandbox cannot do it** (no `VOYAGE_API_KEY`, no `CRON_SECRET`, no decrypt key, no Vercel env-write tool). Value bar (#492 §5): a real inward act on real connected data the user didn't have to do, landed in Slack, **≥3×/week**, that they'd genuinely miss if it stopped. No fixtures / hygiene-as-proof. **NOT in scope:** external opportunity-hunting (grants/jobs/customers), any new detector/score/channel without a live runtime consumer in the same change, more "Stage N+1" breadth.
 
 ## Next exact move
 
-1. **Owner review** of the #496 landing draft PR against owner taste + the `docs/DESIGN_SYSTEM.md` §12 quality bar.
-2. **CI:** the standard Playwright landing lane (`public-routes` + `landing-hero-visual-qa` + `landing-mobile-sections`) runs on CI — the sandbox's Playwright browser CDN is blocked by network egress, so the contract was verified here with a cached Chromium build (section order, locked copy, CTA hrefs → /start, zero horizontal overflow at 390/768/1440).
-3. **On merge:** repoint the control plane back to **#494** and resume owner-gated Scout activation (`BLOCKED_WITH_EXACT_RECEIPT`: `VOYAGE_API_KEY`, `SCOUT_*`/`ALLOW_PAID_LLM` flags, `CRON_SECRET` cron triggers, `ENCRYPTION_KEY_LEGACY` decrypt).
+**Owner-gated activation — `BLOCKED_WITH_EXACT_RECEIPT` (the agent cannot execute these):**
 
-Full design: issue #496 (landing) + `docs/DESIGN_SYSTEM.md` (binding bar). Scout context: #494 (+ #486 umbrella, #492 compass, #481 go/no-go).
+1. **Vercel prod secrets/flags:** set `VOYAGE_API_KEY`; flip `SCOUT_ENABLED=true`, `SCOUT_RAG_ENABLED=true`, `SCOUT_WEB_ENABLED=true`, `ALLOW_PAID_LLM=true`, `SCOUT_DELIVERY_ENABLED=true` (`FOLDERA_SLACK_SELF_CHANNEL_ID` already set). Redeploy.
+2. **Decrypt prerequisite (#481):** confirm `ENCRYPTION_KEY_LEGACY` covers all historical keys (~24% of signals fail to decrypt) so the inward loop grounds on the full corpus, not a starved third.
+3. **Paid first index:** `GET /api/cron/scout/index-drive` (CRON_SECRET bearer) → populates `scout_drive_chunks`.
+4. **One real loop + delivery:** `GET /api/cron/scout/deliver` (CRON_SECRET bearer) → a real, inward, review-gated Slack card grounded in the owner's own data.
+5. **Judge by gut, ≥3×/week** (the Bible bar), labeled owner-only.
+
+Full design: issue #494 (+ #486 umbrella, #492 compass, #481 go/no-go).
 
 ## Product doctrine
 
