@@ -3695,3 +3695,77 @@
   .fd .prow .pn{font-family:var(--mono);font-size:12px;color:var(--cyan)}
   .fd .prow h4{font-family:var(--disp);font-size:1.15rem;font-weight:600;letter-spacing:-0.02em}
   .fd .prow p{margin-top:8px;font-size:14px;line-height:1.55;color:var(--fg3)}
+
+
+/* ============================================================
+   FOLDERA LANDING — ClickUp-style overhaul (issue #500)
+   Multi-color accents, crisper cards, animated bands + flow.
+   All .fd-scoped; dark canvas; brand palette already on .fd.
+   ============================================================ */
+
+/* multi-color accent labels (violet/emerald already defined above) */
+.fd .lbl.cyan{color:var(--cyan)}
+.fd .lbl.magenta{color:var(--magenta)}
+.fd .lbl.amber{color:var(--amber)}
+
+/* bracketed mono kicker */
+.fd .eyerule .lbl .br{color:var(--fg5);font-weight:500}
+
+/* colored icon chip (shared by feature blocks + flow nodes) */
+.fd .chip{width:50px;height:50px;border-radius:15px;display:inline-flex;align-items:center;justify-content:center;border:1px solid;position:relative}
+.fd .chip svg{width:24px;height:24px}
+.fd .chip.cyan{color:var(--cyan);border-color:var(--cyan-line);background:rgba(34,211,238,0.10);box-shadow:0 0 32px -10px rgba(34,211,238,0.65)}
+.fd .chip.violet{color:var(--violet);border-color:rgba(168,85,247,0.32);background:rgba(168,85,247,0.10);box-shadow:0 0 32px -10px rgba(168,85,247,0.65)}
+.fd .chip.emerald{color:var(--emerald);border-color:rgba(52,211,153,0.32);background:rgba(52,211,153,0.10);box-shadow:0 0 32px -10px rgba(52,211,153,0.65)}
+.fd .chip.magenta{color:var(--magenta);border-color:rgba(232,53,200,0.32);background:rgba(232,53,200,0.10);box-shadow:0 0 32px -10px rgba(232,53,200,0.65)}
+.fd .chip.amber{color:var(--amber);border-color:rgba(251,191,36,0.32);background:rgba(251,191,36,0.10);box-shadow:0 0 32px -10px rgba(251,191,36,0.65)}
+.fd .feat-ic{margin-bottom:22px}
+
+/* crisper cards — hover lift */
+.fd .taxcell,.fd .prow{transition:background .3s,transform .3s,box-shadow .3s}
+.fd .taxcell:hover,.fd .prow:hover{transform:translateY(-2px)}
+.fd .mock{transition:transform .45s cubic-bezier(.16,1,.3,1),box-shadow .45s ease}
+.fd .feat:hover .mock{transform:translateY(-4px)}
+
+/* gradient callout pill (ClickUp purple register) */
+.fd .callout{margin-top:18px;display:flex;align-items:flex-start;gap:10px;padding:13px 15px;border-radius:13px;font-size:13px;line-height:1.5;color:#fff;background:linear-gradient(100deg,rgba(168,85,247,0.95),rgba(232,53,200,0.88));box-shadow:0 16px 44px -16px rgba(168,85,247,0.75)}
+.fd .callout svg{width:16px;height:16px;flex-shrink:0;margin-top:1px}
+
+/* ===== LIVE INTELLIGENCE band ===== */
+.fd .live{padding:96px 0;border-top:1px solid var(--border)}
+@media(min-width:960px){.fd .live{padding:120px 0}}
+.fd .live-panel{position:relative;border:1px solid var(--border-2);border-radius:24px;overflow:hidden;background:linear-gradient(180deg,var(--bg-2),var(--bg));padding:40px 26px}
+@media(min-width:768px){.fd .live-panel{padding:54px 48px}}
+.fd .live-panel::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(60% 80% at 82% 0%,rgba(52,211,153,0.14),transparent 64%),radial-gradient(50% 60% at 10% 100%,rgba(34,211,238,0.10),transparent 62%)}
+.fd .live-grid{position:relative;display:grid;gap:38px;align-items:center}
+@media(min-width:880px){.fd .live-grid{grid-template-columns:0.85fr 1.15fr;gap:56px}}
+.fd .live-num{font-family:var(--disp);font-size:clamp(3.6rem,9vw,5.6rem);font-weight:600;letter-spacing:-0.045em;line-height:0.9;color:var(--fg1)}
+.fd .live-num .u{color:var(--emerald);font-size:0.38em;margin-left:6px;letter-spacing:0;vertical-align:0.2em}
+.fd .live-cap{margin-top:16px;font-size:1.05rem;color:var(--fg3);max-width:24rem;line-height:1.55}
+.fd .live-bars{margin-top:28px;display:flex;flex-direction:column;gap:12px}
+.fd .live-bar{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:11px;letter-spacing:0.04em;color:var(--fg4)}
+.fd .live-bar .bl{width:96px;flex-shrink:0;text-transform:uppercase}
+.fd .live-bar .track{flex:1;height:8px;border-radius:6px;background:rgba(255,255,255,0.05);overflow:hidden}
+.fd .live-bar .fill{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--emerald),var(--cyan));width:0;transition:width 1.2s cubic-bezier(.16,1,.3,1)}
+.fd .live.in .live-bar .fill{width:var(--w,60%)}
+.fd .live-bar.muted .fill{background:rgba(255,255,255,0.16)}
+.fd .live-chart{position:relative;border:1px solid var(--border);border-radius:18px;background:var(--card-2);padding:18px 18px 8px}
+.fd .live-chart .ct{font-family:var(--mono);font-size:10.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--fg5);margin-bottom:10px}
+.fd .live-chart svg{display:block;width:100%;height:auto}
+.fd .spark-fill{fill:url(#sparkgrad);opacity:0;transition:opacity 1s ease .4s}
+.fd .live.in .spark-fill{opacity:1}
+.fd .spark-line{fill:none;stroke:var(--emerald);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 6px rgba(52,211,153,0.55));stroke-dasharray:900;stroke-dashoffset:900;transition:stroke-dashoffset 1.7s ease}
+.fd .live.in .spark-line{stroke-dashoffset:0}
+
+/* ===== PROCESS FLOW (Watch → Weigh → Surface) ===== */
+.fd .flow-wrap{position:relative;margin-top:60px}
+.fd .flow-line{display:none}
+@media(min-width:760px){.fd .flow-line{display:block;position:absolute;left:17%;right:17%;top:27px;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--magenta));opacity:0;transform:scaleX(0);transform-origin:left;transition:opacity .5s ease,transform 1.5s cubic-bezier(.16,1,.3,1)}}
+.fd .flow-wrap.in .flow-line{opacity:0.65;transform:scaleX(1)}
+.fd .flow{position:relative;display:grid;gap:34px;grid-template-columns:1fr}
+@media(min-width:760px){.fd .flow{grid-template-columns:repeat(3,1fr);gap:24px}}
+.fd .flow-step{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px}
+.fd .flow-step .chip{width:56px;height:56px;border-radius:17px;background:var(--bg)}
+.fd .flow-step h4{font-family:var(--disp);font-size:1.18rem;font-weight:600;letter-spacing:-0.02em;color:var(--fg1)}
+.fd .flow-step p{font-size:13.5px;line-height:1.55;color:var(--fg3);max-width:18rem}
+.fd .flow-step .sn{font-family:var(--mono);font-size:10.5px;letter-spacing:0.16em;color:var(--fg5)}
