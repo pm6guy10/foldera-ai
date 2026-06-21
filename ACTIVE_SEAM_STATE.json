@@ -1,7 +1,7 @@
 {
   "active_issue": 494,
   "active_branch": "claude/repoint-500-to-494",
-  "active_pr": null,
+  "active_pr": 502,
   "deployed_commit_sha": "b00be1a",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
