@@ -11,6 +11,7 @@
     "AGENTS.md",
     "FOLDERA_BUILD_ORDER.yaml",
     "FOLDERA_MASTER_BIBLE.md",
+    "SESSION_HISTORY.md",
     "docs/**",
     "lib/scout/**",
     "lib/config/prelaunch-spend.ts",
