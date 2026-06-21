@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 500
+active_issue: 494
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Owner-directed LANDING seam (#500): import + implement the Claude-Design 'Foldera Landing' (dark cyan/magenta presence-layer redesign) on the public landing. Temporary authorized detour off the active Scout seam (#494), mirroring the prior landing pass (#496 -> repointed back to #494 after merge). The landing is the first user-facing surface; this pass replaces the marketing landing with the imported design while preserving the real auth/route wiring (/start, /login, /demo) and the isAuthenticated contract. Scout (#494) is untouched: build DONE + inward, flag-OFF in prod, hands never gripped real data; its money-move stays owner-gated runtime activation."
-next_seam: "After the landing PR merges, repoint source truth back from #500 to the Scout seam #494 and resume owner-gated runtime activation: (1) set VOYAGE_API_KEY + flip SCOUT_ENABLED/SCOUT_RAG_ENABLED/SCOUT_WEB_ENABLED/ALLOW_PAID_LLM/SCOUT_DELIVERY_ENABLED in Vercel prod, redeploy; (2) confirm ENCRYPTION_KEY_LEGACY covers all historical keys (#481); (3) GET /api/cron/scout/index-drive (CRON_SECRET) for the paid first index; (4) GET /api/cron/scout/deliver (CRON_SECRET) for one real inward Slack card; (5) judge by gut >=3x/week, labeled owner-only."
+why_this_first: "SCOUT §3 (#494) promoted from compass #492 at owner request 2026-06-20; supersedes the build umbrella #486. The build is done and inward: Stages 0-5 (#487/#488/#490/#491) + the inward retarget (#493) are all merged, the deployed Scout watches the user's own world (commitments owed, replies due, deadlines/filings in their own files), never hunts external grants/jobs/RFPs, never fabricates credentials. The single money-move now is to turn the hands on for ONE real inward loop on REAL data (#492 value bar: a real inward act the user didn't have to do, landed in Slack, >=3x/week, that they'd miss if it stopped). Not breadth, not a sixth thing."
+next_seam: "Same seam #494 — owner-gated runtime activation (the agent sandbox cannot do it: no VOYAGE_API_KEY, no CRON_SECRET, no decrypt key, no Vercel env-write tool). Owner steps: (1) set VOYAGE_API_KEY + flip SCOUT_ENABLED/SCOUT_RAG_ENABLED/SCOUT_WEB_ENABLED/ALLOW_PAID_LLM/SCOUT_DELIVERY_ENABLED in Vercel prod, redeploy; (2) confirm ENCRYPTION_KEY_LEGACY covers all historical keys (#481); (3) GET /api/cron/scout/index-drive (CRON_SECRET) for the paid first index; (4) GET /api/cron/scout/deliver (CRON_SECRET) for one real inward Slack card; (5) judge by gut >=3x/week, labeled owner-only."
 completed_issue_425:
   issue: 425
   pr: 426

@@ -4,6 +4,16 @@
 
 Operating doctrine pointer: see [FOLDERA_OPERATING_DOCTRINE.md](/C:/Users/b-kap/foldera-ai/FOLDERA_OPERATING_DOCTRINE.md) for the durable owner/operator seam order and current stop condition.
 
+## 2026-06-21 — Landing redesign: imported the Claude-Design "Foldera Landing" (#500 / PR #501)
+
+- MODE: Owner-directed landing pass off the active Scout seam (#494), mirroring the prior #496 detour. Opened landing issue #500, repointed the control plane to it, implemented, merged, then repointed back to #494 (this entry's PR).
+- Files changed (product): `components/foldera/LandingPage.tsx` (rebuilt to the design), `app/globals.css` (design CSS ported, fully scoped under `.fd` so the dashboard + `.ld` palettes are untouched), `app/layout.js` (Space Grotesk via next/font); coupled specs refreshed (`tests/e2e/landing-mobile-sections`, `landing-hero-visual-qa`, `public-routes`, `tests/config/__tests__/frontend-product-truth-gate`, `tests/production/mobile-journey`); control plane (`ACTIVE_HANDOFF.md`, `ACTIVE_SEAM_STATE.json`, `FOLDERA_BUILD_ORDER.yaml`, `.foldera-contract.json`).
+- What changed: replaced the public landing with the imported Claude-Design "Foldera Landing" — a dark cyan/magenta presence-layer design (Space Grotesk + Inter + JetBrains Mono): sticky header, hero, integration wall, the "Right Now" product card, reconstruction-tax stats, three alternating presence-layer feature blocks, architectural trust principles, closing CTA, footer. Delivered as an offline bundle (the `claude_design` MCP connector was unreachable in the remote session; owner pasted the HTML).
+- Real auth/route wiring preserved: primary CTAs → `/start`, Sign in → `/login`, See the demo → `/demo`; `isAuthenticated` routes signed-in visitors to `/dashboard`; no dead anchors; no forbidden public-facing claim terms; dashboard palette untouched.
+- Palette note: returns to cyan, superseding the #378 amber-over-cyan choice for the landing (owner supplied the cyan design directly).
+- Verification: `npm run typecheck` + `lint` (0 warnings) + `build` + `gate:continuity` green; vitest `frontend-product-truth-gate` + `large-file-splits` green; render proof of `/` at HTTP 200 with all testids/copy/route wiring and zero forbidden claim terms; Vercel preview deployed (live owner visual validation). Browser e2e is CI-gated (no Playwright browsers in the sandbox). Pushed with owner-authorized `--no-verify` (pre-push infra-health stage needs prod secrets absent in the sandbox; contract preflight passed).
+- Closeout: #500 closed; control plane repointed #500 → #494; Scout (#494) resumes — build DONE + inward, flag-OFF in prod, hands never gripped real data; money-move stays owner-gated runtime activation (BLOCKED_WITH_EXACT_RECEIPT).
+
 ## 2026-06-18 — Act-on-it loop: review-gated send + attachments shipped (#402 / #404 / #407)
 
 - MODE: Three product seams, each issue → harness proof → draft PR → squash-merge → control-plane roll. No paid LLM calls; all proven in the harness. Source docs rolled forward; merged remote/local session branches cleaned (local pruned to `main`; remote delete blocked by the git proxy 403 / no MCP delete-branch tool — 50 historical remote branches flagged for owner pruning).

@@ -19,25 +19,27 @@ Keep this cockpit short and value-first. Completed-issue history lives in `SESSI
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #500 is the active LANDING seam.
+Issue #494 is the active SCOUT seam.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
 ## Current slice:
 
-**LANDING (#500) — implement the imported Claude-Design "Foldera Landing".** Owner-directed landing pass: replace the public marketing landing with the imported design (dark cyan/magenta presence-layer system; Space Grotesk + Inter + JetBrains Mono). Temporary authorized detour off the Scout seam (#494), mirroring the prior landing pass (#496 → repointed back to #494 after merge). Real auth/route wiring is preserved: primary CTAs → `/start`, Sign in → `/login`, See the demo → `/demo`; `isAuthenticated` contract intact; no dead anchors; no forbidden public-facing claim terms; dashboard palette untouched.
+**SCOUT §3 (#494) — turn the hands on: ONE real inward loop on REAL data (the money-move).** Promoted from compass #492 at owner request (2026-06-20); supersedes the build umbrella #486. **The build is done and inward:** Stages 0–5 (#487/#488/#490/#491) + the inward retarget (#493) are all merged. The deployed Scout watches the user's *own* world (commitments owed, replies due, deadlines/filings in their own files), never hunts external grants/jobs/RFPs, and never fabricates credentials. It is flag-OFF in prod and **has never gripped real data** (verified live 2026-06-20: `scout_drive_chunks` empty, `tkg_signals` bodies encrypted).
 
-**Scout (#494) is untouched** and resumes after merge: build DONE + inward, flag-OFF in prod, hands never gripped real data; its money-move (one real inward loop on REAL data) stays owner-gated runtime activation (`BLOCKED_WITH_EXACT_RECEIPT`).
+**The remaining move is owner-gated runtime activation — the agent sandbox cannot do it** (no `VOYAGE_API_KEY`, no `CRON_SECRET`, no decrypt key, no Vercel env-write tool). Value bar (#492 §5): a real inward act on real connected data the user didn't have to do, landed in Slack, **≥3×/week**, that they'd genuinely miss if it stopped. No fixtures / hygiene-as-proof. **NOT in scope:** external opportunity-hunting (grants/jobs/customers), any new detector/score/channel without a live runtime consumer in the same change, more "Stage N+1" breadth.
 
 ## Next exact move
 
-1. Implement the design in `components/foldera/LandingPage.tsx` (lucide-react icons, real `/logos/*.svg`, `/foldera-glyph.svg` mark); add Space Grotesk in `app/layout.js`.
-2. Refresh the three coupled landing e2e specs to the new structure/copy, preserving invariants (CTA hrefs → `/start`, no 390px overflow, headline + "The Workday Presence Layer" + footer present).
-3. Proof: `npm run gate:continuity && npm run typecheck && npm run lint && npm run build` green; landing e2e green in CI (sandbox has no Playwright browsers); live visual validation owner-side.
-4. Open the draft PR on `claude/landing-page-auth-01b7vj` targeting #500; set `ACTIVE_SEAM_STATE.active_pr`.
-5. After merge: repoint source truth back from #500 to the Scout seam #494.
+**Owner-gated activation — `BLOCKED_WITH_EXACT_RECEIPT` (the agent cannot execute these):**
 
-Full design: issue #500.
+1. **Vercel prod secrets/flags:** set `VOYAGE_API_KEY`; flip `SCOUT_ENABLED=true`, `SCOUT_RAG_ENABLED=true`, `SCOUT_WEB_ENABLED=true`, `ALLOW_PAID_LLM=true`, `SCOUT_DELIVERY_ENABLED=true` (`FOLDERA_SLACK_SELF_CHANNEL_ID` already set). Redeploy.
+2. **Decrypt prerequisite (#481):** confirm `ENCRYPTION_KEY_LEGACY` covers all historical keys (~24% of signals fail to decrypt) so the inward loop grounds on the full corpus, not a starved third.
+3. **Paid first index:** `GET /api/cron/scout/index-drive` (CRON_SECRET bearer) → populates `scout_drive_chunks`.
+4. **One real loop + delivery:** `GET /api/cron/scout/deliver` (CRON_SECRET bearer) → a real, inward, review-gated Slack card grounded in the owner's own data.
+5. **Judge by gut, ≥3×/week** (the Bible bar), labeled owner-only.
+
+Full design: issue #494 (+ #486 umbrella, #492 compass, #481 go/no-go).
 
 ## Product doctrine
 
