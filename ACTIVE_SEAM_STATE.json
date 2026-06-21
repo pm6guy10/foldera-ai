@@ -1,7 +1,7 @@
 {
   "active_issue": 500,
   "active_branch": "claude/landing-clickup-overhaul",
-  "active_pr": null,
+  "active_pr": 504,
   "deployed_commit_sha": "3a82b13",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
