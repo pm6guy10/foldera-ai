@@ -90,8 +90,14 @@ function BrandLogo({ brand, size = 20 }: { brand: Brand; size?: number }) {
 
 const painPoints = [
   { title: 'The reconstruction tax.', body: 'Every tool switch leaks context.' },
-  { title: 'Every app, its own slice', body: 'Microsoft remembers Microsoft. Google, Google.' },
-  { title: 'You are the glue', body: 'A person doing a system’s job.' },
+  { title: 'Every app, its own slice.', body: 'Microsoft remembers Microsoft. Google, Google.' },
+  { title: 'You are the glue.', body: 'A person doing a system’s job.' },
+];
+
+const heroTrust = [
+  { icon: ShieldCheck, label: 'Consent-first' },
+  { icon: LockKeyhole, label: 'No surveillance' },
+  { icon: BellOff, label: 'Quiet by design' },
 ];
 
 const stats = [
@@ -488,15 +494,17 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
                   Foldera holds the thread across your apps, then pings you in Slack with the one finished move that matters — context attached, ready to approve.
                 </motion.p>
 
-                <motion.div
-                  variants={fadeUp}
-                  className="ld-mono mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-[12px] uppercase tracking-[0.14em] text-[color:var(--ld-fg-dim)]"
-                >
-                  <span>Consent-first</span>
-                  <span className="text-white/15">/</span>
-                  <span>No surveillance</span>
-                  <span className="text-white/15">/</span>
-                  <span>Quiet by design</span>
+                <motion.div variants={fadeUp} className="mt-8 flex flex-wrap items-center gap-2.5">
+                  {heroTrust.map(({ icon: Icon, label }) => (
+                    <span key={label} className="ld-badge">
+                      <Icon
+                        className="h-3.5 w-3.5 text-[color:var(--ld-accent)]"
+                        strokeWidth={1.75}
+                        aria-hidden="true"
+                      />
+                      {label}
+                    </span>
+                  ))}
                 </motion.div>
 
                 <motion.div variants={fadeUp} className="mt-9 flex flex-col gap-2.5 sm:flex-row sm:items-center">
@@ -530,10 +538,16 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
             </div>
           </section>
 
-          {/* STATS — big numerals, few words, no lines */}
+          {/* STATS — big numerals, few words, framed for hierarchy */}
           <section className={`${sectionWrap} py-24 lg:py-28`} data-testid="landing-stats">
+            <Reveal className="max-w-2xl">
+              <p className="ld-eyebrow">The reconstruction tax</p>
+              <h2 className="ld-display mt-5 text-[clamp(1.9rem,1.35rem+2.1vw,2.9rem)] tracking-[-0.035em] text-[color:var(--ld-fg)]">
+                What the gaps cost.
+              </h2>
+            </Reveal>
             <motion.div
-              className="grid grid-cols-2 gap-x-8 gap-y-16 lg:grid-cols-4"
+              className="mt-16 grid grid-cols-2 gap-x-8 gap-y-14 lg:mt-20 lg:grid-cols-4"
               variants={stagger}
               initial="hidden"
               whileInView="show"
@@ -541,6 +555,11 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
             >
               {stats.map((s) => (
                 <motion.div key={s.n} variants={fadeUp}>
+                  <span
+                    className="mb-5 block h-px w-10"
+                    style={{ background: 'color-mix(in srgb, var(--ld-accent) 65%, transparent)' }}
+                    aria-hidden="true"
+                  />
                   <div className="ld-display flex items-baseline text-[color:var(--ld-fg)]">
                     <span className="text-[3.25rem] leading-none sm:text-[4.25rem]">{s.n}</span>
                     <span className="ml-1 text-[1.6rem] text-[color:var(--ld-accent)] sm:text-[2rem]">{s.u}</span>
@@ -622,21 +641,55 @@ export function LandingPage({ isAuthenticated: _isAuthenticated = false }: Landi
                 ))}
               </motion.div>
 
-              <motion.ol
-                className="mx-auto mt-24 flex max-w-4xl flex-col gap-y-8 sm:flex-row sm:items-start sm:justify-between sm:gap-x-6"
-                data-testid="landing-workflow"
-                variants={stagger}
-                initial="hidden"
-                whileInView="show"
-                viewport={{ once: true, margin: '-80px' }}
-              >
-                {howItWorks.map((step, index) => (
-                  <motion.li key={step} variants={fadeUp} className="flex items-start gap-3 sm:flex-1 sm:flex-col sm:items-center sm:text-center">
-                    <span className="ld-mono text-[20px] leading-none text-[color:var(--ld-accent)]">{String(index + 1).padStart(2, '0')}</span>
-                    <span className="text-[15px] leading-6 text-[color:var(--ld-fg-soft)]">{step}</span>
-                  </motion.li>
-                ))}
-              </motion.ol>
+              <div className="relative mx-auto mt-24 max-w-4xl">
+                {/* connecting thread — chaos resolves into one quiet move */}
+                <span
+                  aria-hidden="true"
+                  className="absolute left-[8%] right-[8%] top-[19px] hidden h-px sm:block"
+                  style={{
+                    background:
+                      'linear-gradient(to right, transparent, color-mix(in srgb, var(--ld-fg) 14%, transparent) 38%, color-mix(in srgb, var(--ld-accent) 45%, transparent))',
+                  }}
+                />
+                <motion.ol
+                  className="relative flex flex-col gap-y-8 sm:flex-row sm:items-start sm:justify-between sm:gap-x-6"
+                  data-testid="landing-workflow"
+                  variants={stagger}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={{ once: true, margin: '-80px' }}
+                >
+                  {howItWorks.map((step, index) => {
+                    const isLast = index === howItWorks.length - 1;
+                    return (
+                      <motion.li
+                        key={step}
+                        variants={fadeUp}
+                        className="flex items-start gap-4 sm:flex-1 sm:flex-col sm:items-center sm:text-center"
+                      >
+                        <span
+                          className={`ld-mono flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-[13px] ${
+                            isLast
+                              ? 'text-[color:var(--ld-accent)]'
+                              : 'border-white/10 bg-[#101015] text-[color:var(--ld-fg-soft)]'
+                          }`}
+                          style={
+                            isLast
+                              ? {
+                                  borderColor: 'color-mix(in srgb, var(--ld-accent) 45%, transparent)',
+                                  background: 'color-mix(in srgb, var(--ld-accent) 12%, transparent)',
+                                }
+                              : undefined
+                          }
+                        >
+                          {String(index + 1).padStart(2, '0')}
+                        </span>
+                        <span className="text-[15px] leading-6 text-[color:var(--ld-fg-soft)] sm:mt-4">{step}</span>
+                      </motion.li>
+                    );
+                  })}
+                </motion.ol>
+              </div>
             </div>
           </section>
 
