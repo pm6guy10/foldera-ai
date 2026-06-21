@@ -316,9 +316,15 @@ export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) 
                 </span>
                 <h1 className="reveal pre">
                   Stop rebuilding the work.
-                  <span className="dim">Foldera holds the thread.</span>
+                  <span className="dim">
+                    Foldera holds <span className="em">the thread.</span>
+                  </span>
                 </h1>
-                <p className="hero-tag reveal pre">Your work. One thread. One move.</p>
+                <p className="hero-tag reveal pre">
+                  All your context.
+                  <br />
+                  Every app. One move.
+                </p>
                 <p className="hero-sub reveal pre">
                   The problem isn’t a lack of AI — it’s broken continuity. Foldera keeps your workday state attached
                   across every consented system, then returns one trusted next move. Quiet otherwise.

@@ -3466,10 +3466,10 @@
   .fd .eyebrow{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:0.26em;text-transform:uppercase;color:var(--cyan)}
   
   .fd .btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;cursor:pointer;border-radius:13px;font-family:var(--body);font-weight:600;font-size:15px;letter-spacing:-0.01em;line-height:1;transition:background .16s,color .16s,border-color .16s,box-shadow .16s,transform .16s;white-space:nowrap}
-  .fd .btn-primary{background:var(--cyan);color:#06141a;border:1px solid transparent;padding:0 26px;height:54px;box-shadow:0 1px 0 rgba(255,255,255,0.25) inset,0 8px 30px -8px rgba(34,211,238,0.55)}
-  .fd .btn-primary:hover{background:var(--cyan-bri);box-shadow:0 1px 0 rgba(255,255,255,0.3) inset,0 10px 38px -6px rgba(34,211,238,0.75);transform:translateY(-1px)}
-  .fd .btn-ghost{background:rgba(255,255,255,0.04);color:var(--fg1);border:1px solid var(--border-2);padding:0 26px;height:54px}
-  .fd .btn-ghost:hover{background:rgba(255,255,255,0.08);border-color:var(--cyan-line)}
+  .fd .btn-primary{background:#ffffff;color:#0a0a0c;border:1px solid transparent;padding:0 26px;height:54px;box-shadow:0 1px 0 rgba(255,255,255,0.7) inset,0 10px 34px -12px rgba(255,255,255,0.4)}
+  .fd .btn-primary:hover{background:#ededf0;box-shadow:0 1px 0 rgba(255,255,255,0.8) inset,0 14px 44px -10px rgba(255,255,255,0.55);transform:translateY(-1px)}
+  .fd .btn-ghost{background:rgba(255,255,255,0.05);color:var(--fg1);border:1px solid var(--border-2);padding:0 26px;height:54px}
+  .fd .btn-ghost:hover{background:rgba(255,255,255,0.09);border-color:var(--border-2)}
   .fd .btn-sm{height:44px;padding:0 18px;border-radius:11px;font-size:13.5px}
   .fd :focus-visible{outline:none;box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--cyan)}
   .fd .shell{width:100%;max-width:1200px;margin:0 auto;padding:0 24px}
@@ -3514,8 +3514,9 @@
   
   .fd .hero h1{margin-top:24px;font-family:var(--disp);font-size:clamp(3.6rem,13vw,6.4rem);line-height:0.94;letter-spacing:-0.05em;font-weight:700}
   .fd .hero h1 .dim{color:var(--fg3);display:block}
-  
-  .fd .hero-tag{margin-top:24px;font-family:var(--mono);font-size:clamp(11.5px,1.7vw,13px);letter-spacing:0.2em;text-transform:uppercase;color:var(--cyan);line-height:1.7}
+  .fd .hero h1 .em{font-style:italic;font-weight:600}
+
+  .fd .hero-tag{margin-top:22px;font-family:var(--mono);font-size:clamp(11.5px,1.7vw,13px);font-weight:500;letter-spacing:0.18em;text-transform:uppercase;color:var(--violet);line-height:1.85}
   .fd .hero-sub{margin-top:18px;font-size:1.08rem;line-height:1.65;color:var(--fg3);max-width:32rem}
   .fd .hero-cta{margin-top:34px;display:flex;flex-wrap:wrap;gap:12px}
   @media(max-width:560px){.fd .hero-cta{flex-direction:column}.fd .hero-cta .btn{width:100%;height:58px;font-size:15.5px}}
