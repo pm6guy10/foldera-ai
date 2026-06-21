@@ -1,8 +1,22 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import Image from 'next/image';
-import { ArrowRight, Check, Circle, Globe, Menu, Search, X, Zap } from 'lucide-react';
+import {
+  Activity,
+  ArrowRight,
+  Check,
+  Circle,
+  Eye,
+  Globe,
+  Layers,
+  Menu,
+  Scale,
+  Search,
+  Sparkles,
+  X,
+  Zap,
+} from 'lucide-react';
 
 type LandingPageProps = {
   isAuthenticated?: boolean;
@@ -26,6 +40,66 @@ function Logo({ name, size = 16, className }: { name: string; size?: number; cla
   );
 }
 
+/* ----------------------------------------------------- count-up (crisp, on-view) */
+
+function CountUp({
+  end,
+  decimals = 0,
+  prefix = '',
+  suffix = '',
+  duration = 1500,
+}: {
+  end: number;
+  decimals?: number;
+  prefix?: string;
+  suffix?: string;
+  duration?: number;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [value, setValue] = useState(0);
+  const started = useRef(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setValue(end);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && !started.current) {
+            started.current = true;
+            const start = performance.now();
+            const step = (now: number) => {
+              const p = Math.min(1, (now - start) / duration);
+              const eased = 1 - Math.pow(1 - p, 3);
+              setValue(end * eased);
+              if (p < 1) requestAnimationFrame(step);
+              else setValue(end);
+            };
+            requestAnimationFrame(step);
+            io.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.4 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [end, duration]);
+
+  const shown = decimals > 0 ? value.toFixed(decimals) : Math.round(value).toLocaleString('en-US');
+  return (
+    <span ref={ref}>
+      {prefix}
+      {shown}
+      {suffix}
+    </span>
+  );
+}
+
 /* ----------------------------------------------------- content */
 
 const navLinks = [
@@ -41,11 +115,11 @@ const rightNowSources: Array<{ logo: string; title: string; detail: string; meta
   { logo: 'google-calendar', title: 'Google Calendar', detail: 'Budget review · Today 4:00', meta: 'hold', hot: false },
 ];
 
-const taxCells: Array<{ n: string; u: string; lab: string; src: string }> = [
-  { n: '9.4', u: 'hrs', lab: 'Lost every week to context switching.', src: 'Workplace research' },
-  { n: '2.7', u: '×', lab: 'Slower to refocus after each interruption.', src: 'Attention studies' },
-  { n: '31', u: '%', lab: 'Of knowledge work is rework.', src: 'Industry survey' },
-  { n: '$37', u: 'B+', lab: 'The annual tax across the Fortune 500.', src: 'Aggregate estimate' },
+const taxCells: Array<{ value: number; decimals: number; prefix: string; u: string; lab: string; src: string }> = [
+  { value: 9.4, decimals: 1, prefix: '', u: 'hrs', lab: 'Lost every week to context switching.', src: 'Workplace research' },
+  { value: 2.7, decimals: 1, prefix: '', u: '×', lab: 'Slower to refocus after each interruption.', src: 'Attention studies' },
+  { value: 31, decimals: 0, prefix: '', u: '%', lab: 'Of knowledge work is rework.', src: 'Industry survey' },
+  { value: 37, decimals: 0, prefix: '$', u: 'B+', lab: 'The annual tax across the Fortune 500.', src: 'Aggregate estimate' },
 ];
 
 const integrationApps = ['gmail', 'slack', 'notion', 'linear', 'google-calendar', 'github', 'google-drive', 'outlook'];
@@ -70,9 +144,12 @@ const searchRows: Array<{ logo: string; text: string; meta: string }> = [
   { logo: 'google-drive', text: 'Q2_Headcount_v7.xlsx', meta: 'Drive' },
 ];
 
+type FeatureColor = 'cyan' | 'violet' | 'emerald' | 'magenta' | 'amber';
+
 const features: Array<{
   flip: boolean;
-  labelClass: string;
+  color: FeatureColor;
+  icon: ReactNode;
   eyebrow: string;
   title: string;
   body: string;
@@ -82,8 +159,9 @@ const features: Array<{
 }> = [
   {
     flip: false,
-    labelClass: 'violet',
-    eyebrow: '01 · Attached state',
+    color: 'violet',
+    icon: <Layers aria-hidden="true" />,
+    eyebrow: '[ 01 · Attached state ]',
     title: 'Your context follows you everywhere.',
     body: 'The thread of what you’re working on stays attached across every consented system — so nothing has to be rebuilt when you switch tools.',
     bullets: [
@@ -107,8 +185,9 @@ const features: Array<{
   },
   {
     flip: true,
-    labelClass: '',
-    eyebrow: '02 · Meaningful change',
+    color: 'cyan',
+    icon: <Activity aria-hidden="true" />,
+    eyebrow: '[ 02 · Meaningful change ]',
     title: 'It notices what actually moved.',
     body: 'Foldera watches every connected source for the changes that matter, weighs them against your day, and ranks the one thing worth your attention now.',
     bullets: [
@@ -140,8 +219,9 @@ const features: Array<{
   },
   {
     flip: false,
-    labelClass: 'emerald',
-    eyebrow: '03 · Universal recall',
+    color: 'emerald',
+    icon: <Search aria-hidden="true" />,
+    eyebrow: '[ 03 · Universal recall ]',
     title: 'Find anything, across every app.',
     body: 'Ask in plain language. Foldera searches across all your connected tools at once and answers from the source — buried files, lost threads, half-remembered decisions.',
     bullets: [
@@ -172,6 +252,18 @@ const features: Array<{
       </div>
     ),
   },
+];
+
+const flowSteps: Array<{ n: string; color: FeatureColor; icon: ReactNode; title: string; body: string }> = [
+  { n: '01', color: 'cyan', icon: <Eye aria-hidden="true" />, title: 'Watch', body: 'Foldera keeps state attached across every consented source — quietly, in the background.' },
+  { n: '02', color: 'violet', icon: <Scale aria-hidden="true" />, title: 'Weigh', body: 'It ranks what actually moved against your day — deadlines, mentions, blockers.' },
+  { n: '03', color: 'magenta', icon: <Sparkles aria-hidden="true" />, title: 'Surface', body: 'One trusted move arrives, context attached and ready to approve. Then silence.' },
+];
+
+const liveBars: Array<{ label: string; width: string; muted: boolean }> = [
+  { label: 'Gmail', width: '88%', muted: false },
+  { label: 'Slack', width: '64%', muted: false },
+  { label: 'Drive', width: '41%', muted: true },
 ];
 
 const principles: Array<[string, string, string]> = [
@@ -207,11 +299,12 @@ export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) 
   const accessHref = isAuthenticated ? '/dashboard' : '/start';
   const loginHref = isAuthenticated ? '/dashboard' : '/login';
 
-  // Scroll-reveal: add `.in` once each `.reveal.pre` enters the viewport.
+  // Scroll-reveal + section "in" toggles (bars, sparkline, flow line).
   useEffect(() => {
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const nodes = Array.from(document.querySelectorAll<HTMLElement>('.fd .reveal.pre'));
-    if (reduce || !('IntersectionObserver' in window)) {
+    const nodes = Array.from(
+      document.querySelectorAll<HTMLElement>('.fd .reveal.pre, .fd .live, .fd .flow-wrap'),
+    );
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
       nodes.forEach((el) => el.classList.add('in'));
       return;
     }
@@ -224,7 +317,7 @@ export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) 
           }
         });
       },
-      { threshold: 0.12, rootMargin: '0px 0px -6% 0px' },
+      { threshold: 0.16, rootMargin: '0px 0px -6% 0px' },
     );
     nodes.forEach((el) => io.observe(el));
     return () => io.disconnect();
@@ -374,7 +467,7 @@ export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) 
             <div className="center-head reveal pre">
               <div className="eyerule" style={{ justifyContent: 'center' }}>
                 <span className="ln" />
-                <span className="lbl">One move at a time</span>
+                <span className="lbl cyan">[ One move at a time ]</span>
                 <span className="ln" />
               </div>
               <h2>
@@ -398,6 +491,10 @@ export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) 
                     <b>Sarah</b> updated the doc, Finance commented, and you were mentioned in Slack. Approving now
                     unblocks the budget timeline.
                   </p>
+                  <div className="callout">
+                    <Sparkles aria-hidden="true" />
+                    Draft reply ready — approve to send, or open the doc first.
+                  </div>
                   <div className="rn-srcs">
                     {rightNowSources.map((s) => (
                       <div className="rn-src" key={s.detail}>
@@ -434,7 +531,7 @@ export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) 
           <div className="shell">
             <div className="sec-head reveal pre">
               <div className="eyerule">
-                <span className="lbl">The reconstruction tax</span>
+                <span className="lbl magenta">[ The reconstruction tax ]</span>
                 <span className="ln" />
               </div>
               <h2>
@@ -458,7 +555,7 @@ export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) 
               {taxCells.map((cell) => (
                 <div className="taxcell" key={cell.lab}>
                   <div className="num">
-                    {cell.n}
+                    <CountUp end={cell.value} decimals={cell.decimals} prefix={cell.prefix} />
                     <span className="u">{cell.u}</span>
                   </div>
                   <div className="lab">{cell.lab}</div>
@@ -469,12 +566,68 @@ export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) 
           </div>
         </section>
 
+        {/* LIVE INTELLIGENCE */}
+        <section className="live" data-testid="landing-live">
+          <div className="shell">
+            <div className="sec-head reveal pre" style={{ marginBottom: 36 }}>
+              <div className="eyerule">
+                <span className="lbl emerald">[ Live intelligence ]</span>
+                <span className="ln" />
+              </div>
+              <h2>
+                It watches so <span className="dim">you don’t have to.</span>
+              </h2>
+            </div>
+            <div className="live-panel reveal pre">
+              <div className="live-grid">
+                <div>
+                  <div className="live-num">
+                    <CountUp end={1240} suffix="" /> <span className="u">signals</span>
+                  </div>
+                  <p className="live-cap">
+                    Reconnected across your tools in an example workday — held as one thread, surfaced as a single move.
+                  </p>
+                  <div className="live-bars">
+                    {liveBars.map((bar) => (
+                      <div className={`live-bar ${bar.muted ? 'muted' : ''}`} key={bar.label}>
+                        <span className="bl">{bar.label}</span>
+                        <span className="track">
+                          <span className="fill" style={{ '--w': bar.width } as CSSProperties} />
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="live-chart">
+                  <div className="ct">Attention reclaimed · example</div>
+                  <svg viewBox="0 0 320 120" preserveAspectRatio="none" role="img" aria-label="Illustrative trend">
+                    <defs>
+                      <linearGradient id="sparkgrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="rgba(52,211,153,0.35)" />
+                        <stop offset="100%" stopColor="rgba(52,211,153,0)" />
+                      </linearGradient>
+                    </defs>
+                    <path
+                      className="spark-fill"
+                      d="M0,96 L26,84 L52,90 L78,66 L104,72 L130,50 L156,58 L182,38 L208,46 L234,26 L260,34 L286,16 L320,22 L320,120 L0,120 Z"
+                    />
+                    <path
+                      className="spark-line"
+                      d="M0,96 L26,84 L52,90 L78,66 L104,72 L130,50 L156,58 L182,38 L208,46 L234,26 L260,34 L286,16 L320,22"
+                    />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* PRESENCE LAYER — feature blocks */}
         <section className="sec" id="how" style={{ paddingBottom: 0 }} data-testid="landing-presence">
           <div className="shell">
             <div className="sec-head reveal pre">
               <div className="eyerule">
-                <span className="lbl">The presence layer</span>
+                <span className="lbl cyan">[ The presence layer ]</span>
                 <span className="ln" />
               </div>
               <h2>
@@ -487,8 +640,9 @@ export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) 
             <div className="shell" key={feature.eyebrow}>
               <div className={`feat ${feature.flip ? 'flip' : ''}`}>
                 <div className="feat-copy reveal pre">
+                  <span className={`chip feat-ic ${feature.color}`}>{feature.icon}</span>
                   <div className="eyerule">
-                    <span className={`lbl ${feature.labelClass}`}>{feature.eyebrow}</span>
+                    <span className={`lbl ${feature.color}`}>{feature.eyebrow}</span>
                     <span className="ln" />
                   </div>
                   <h3>{feature.title}</h3>
@@ -519,12 +673,41 @@ export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) 
           ))}
         </section>
 
+        {/* PROCESS FLOW */}
+        <section className="sec" data-testid="landing-flow">
+          <div className="shell">
+            <div className="sec-head reveal pre" style={{ marginInline: 'auto', textAlign: 'center' }}>
+              <div className="eyerule" style={{ justifyContent: 'center' }}>
+                <span className="ln" />
+                <span className="lbl cyan">[ How the presence layer works ]</span>
+                <span className="ln" />
+              </div>
+              <h2>
+                Three steps. <span className="dim">Then it’s quiet.</span>
+              </h2>
+            </div>
+            <div className="flow-wrap reveal pre">
+              <span className="flow-line" aria-hidden="true" />
+              <div className="flow">
+                {flowSteps.map((step) => (
+                  <div className="flow-step" key={step.n}>
+                    <span className={`chip ${step.color}`}>{step.icon}</span>
+                    <span className="sn">{step.n}</span>
+                    <h4>{step.title}</h4>
+                    <p>{step.body}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* TRUST */}
         <section className="sec" id="trust" data-testid="landing-trust">
           <div className="shell">
             <div className="sec-head reveal pre">
               <div className="eyerule">
-                <span className="lbl">Trust by architecture</span>
+                <span className="lbl amber">[ Trust by architecture ]</span>
                 <span className="ln" />
               </div>
               <h2>
