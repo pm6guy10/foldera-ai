@@ -1,816 +1,616 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Image from 'next/image';
-import {
-  Activity,
-  ArrowRight,
-  BellOff,
-  Check,
-  Clock3,
-  Inbox,
-  Layers,
-  LockKeyhole,
-  Menu,
-  MousePointerClick,
-  ScrollText,
-  Settings,
-  ShieldCheck,
-  UserX,
-  Workflow,
-  X,
-  Zap,
-} from 'lucide-react';
-import { MotionConfig, motion, type Variants } from 'framer-motion';
-import { FolderaMark } from '@/components/nav/FolderaMark';
+import { ArrowRight, Check, Circle, Globe, Menu, Search, X, Zap } from 'lucide-react';
 
 type LandingPageProps = {
   isAuthenticated?: boolean;
 };
 
-const accessHref = '/start';
-const loginHref = '/login';
+/* ----------------------------------------------------- connector logos */
 
-const EASE = [0.16, 1, 0.3, 1] as const;
+const logoSrc = (name: string) => `/logos/${name}.svg`;
 
-const fadeUp: Variants = {
-  hidden: { opacity: 0, y: 22 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE } },
-};
-const stagger: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
-};
-
-function Reveal({ children, className }: { children: ReactNode; className?: string }) {
-  return (
-    <motion.div
-      className={className}
-      variants={fadeUp}
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, margin: '-80px' }}
-    >
-      {children}
-    </motion.div>
-  );
-}
-
-/* ----------------------------------------------------- real brand logos */
-
-type Brand = { name: string; src: string };
-
-const connectors: Brand[] = [
-  { name: 'Gmail', src: '/logos/gmail.svg' },
-  { name: 'Slack', src: '/logos/slack.svg' },
-  { name: 'Notion', src: '/logos/notion.svg' },
-  { name: 'Linear', src: '/logos/linear.svg' },
-  { name: 'Google Calendar', src: '/logos/google-calendar.svg' },
-  { name: 'GitHub', src: '/logos/github.svg' },
-  { name: 'Microsoft Outlook', src: '/logos/outlook.svg' },
-  { name: 'Google Drive', src: '/logos/google-drive.svg' },
-];
-
-function BrandLogo({ brand, size = 20 }: { brand: Brand; size?: number }) {
+function Logo({ name, size = 16, className }: { name: string; size?: number; className?: string }) {
   return (
     <Image
-      src={brand.src}
-      alt={brand.name}
-      title={brand.name}
+      src={logoSrc(name)}
+      alt=""
       width={size}
       height={size}
       unoptimized
-      className="object-contain"
+      className={className}
       style={{ width: size, height: size }}
     />
   );
 }
 
-/* ----------------------------------------------------- copy / content */
-
-const painPoints = [
-  { title: 'The reconstruction tax.', body: 'Every tool switch leaks context.' },
-  { title: 'Every app, its own slice.', body: 'Microsoft remembers Microsoft. Google, Google.' },
-  { title: 'You are the glue.', body: 'A person doing a system’s job.' },
-];
-
-const heroTrust = [
-  { icon: ShieldCheck, label: 'Consent-first' },
-  { icon: LockKeyhole, label: 'No surveillance' },
-  { icon: BellOff, label: 'Quiet by design' },
-];
-
-const stats = [
-  { n: '9.4', u: 'hrs', l: 'lost every week' },
-  { n: '2.7', u: '×', l: 'slower to refocus' },
-  { n: '31', u: '%', l: 'of work is rework' },
-  { n: '$37', u: 'B+', l: 'a year, Fortune 500' },
-];
-
-const doctrine = [
-  { label: 'State', icon: Layers, body: 'Where you left off.' },
-  { label: 'Connectors', icon: Workflow, body: 'Only what you consent to.' },
-  { label: 'Triggers', icon: Zap, body: 'When it’s worth a nudge.' },
-  { label: 'One move', icon: MousePointerClick, body: 'A single next step.' },
-];
-
-const howItWorks = [
-  'Work scatters across your tools.',
-  'Foldera holds the thread.',
-  'One card when it matters.',
-  'You click once — then quiet.',
-];
-
-const trustItems = [
-  { icon: ShieldCheck, title: 'Consent first', body: 'You choose what connects.' },
-  { icon: LockKeyhole, title: 'No surveillance', body: 'No screen-reading. Ever.' },
-  { icon: BellOff, title: 'Quiet by design', body: 'Not another inbox to babysit.' },
-  { icon: Clock3, title: 'Honest pilot', body: 'Staged access. No fake claims.' },
-];
-
-const enterprise = [
-  { icon: ShieldCheck, t: 'Least privilege', s: 'scoped, revocable access' },
-  { icon: LockKeyhole, t: 'Read-only', s: 'connectors by default' },
-  { icon: ScrollText, t: 'Audit logs', s: 'every action receipted' },
-  { icon: UserX, t: 'No training', s: 'on your data, ever' },
-];
-
-const evidenceRows: Array<{ brand: Brand; label: string; meta: string }> = [
-  { brand: connectors[1], label: '#q2-planning — mentioned you', meta: '3 new' },
-  { brand: connectors[0], label: 'Re: Headcount — Finance', meta: '2:14 PM' },
-  { brand: connectors[4], label: 'Budget review · Today 4:00', meta: '' },
-];
-
-/* ----------------------------------------------------- small primitives */
-
-function AccessLink({
-  children,
-  className = '',
-  testId,
-}: {
-  children: ReactNode;
-  className?: string;
-  testId?: string;
-}) {
-  return (
-    <a
-      href={accessHref}
-      data-testid={testId}
-      className={`ld-btn-primary inline-flex min-h-[46px] items-center justify-center gap-2 px-6 text-sm ${className}`}
-    >
-      {children}
-      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-    </a>
-  );
-}
-
-function GhostLink({
-  href,
-  children,
-  testId,
-}: {
-  href: string;
-  children: ReactNode;
-  testId?: string;
-}) {
-  return (
-    <a
-      href={href}
-      data-testid={testId}
-      className="ld-btn-ghost inline-flex min-h-[46px] items-center justify-center gap-2 px-6 text-sm"
-    >
-      {children}
-    </a>
-  );
-}
-
-/* ----------------------------------------------------- scattered apps (the chaos) */
-
-const scatterCards: Array<{ brand: Brand; label: string; meta: string; x: string; y: string; r: number }> = [
-  { brand: connectors[0], label: 'Re: Contract v4', meta: '2:14', x: '2%', y: '4%', r: -5 },
-  { brand: connectors[1], label: 'DM from Sarah', meta: '2:06', x: '50%', y: '0%', r: 4 },
-  { brand: connectors[3], label: 'PROJ-4821 · blocked', meta: '', x: '54%', y: '30%', r: -3 },
-  { brand: connectors[4], label: 'Stakeholder sync', meta: '3:00', x: '6%', y: '38%', r: 5 },
-  { brand: connectors[2], label: 'Launch plan · v7', meta: '', x: '34%', y: '60%', r: -4 },
-  { brand: connectors[5], label: 'PR #128 · review', meta: '', x: '0%', y: '72%', r: 3 },
-  { brand: connectors[6], label: 'Budget update', meta: '12:24', x: '52%', y: '74%', r: 5 },
-];
-
-function ScatteredApps() {
-  return (
-    <div aria-hidden="true" className="relative h-[340px] w-full overflow-hidden sm:h-[420px]">
-      <div
-        className="absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{ background: 'radial-gradient(circle, rgba(245,166,35,0.20), transparent 70%)', filter: 'blur(10px)' }}
-      />
-      {scatterCards.map((c, i) => (
-        <div
-          key={c.label}
-          className="ld-float absolute"
-          style={{ left: c.x, top: c.y, animationDelay: `${(i % 4) * 0.6}s`, animationDuration: `${6 + (i % 3)}s` }}
-        >
-          <div className="flex items-center gap-2.5 rounded-xl border border-white/[0.07] bg-[#15151b] px-3.5 py-2.5 shadow-[0_18px_40px_-16px_rgba(0,0,0,0.9)]">
-            <BrandLogo brand={c.brand} size={16} />
-            <span className="whitespace-nowrap text-[12.5px] text-[color:var(--ld-fg-soft)]">{c.label}</span>
-            {c.meta ? <span className="ld-mono text-[10px] text-[color:var(--ld-fg-dim)]">{c.meta}</span> : null}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ----------------------------------------------------- the product window */
-
-function ProductWindow() {
-  const rail = [
-    { icon: Inbox, label: 'Today', active: true },
-    { icon: Activity, label: 'Signals' },
-    { icon: Layers, label: 'State' },
-    { icon: Zap, label: 'Moves' },
-  ];
-  return (
-    <motion.div
-      className="relative"
-      initial={{ opacity: 0, y: 26, scale: 0.985 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.85, delay: 0.15, ease: EASE }}
-    >
-      <div data-testid="landing-right-now-card" className="ld-panel overflow-hidden">
-        {/* window chrome */}
-        <div className="flex items-center gap-3 border-b border-white/[0.07] px-4 py-3">
-          <div className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-white/12" />
-            <span className="h-2.5 w-2.5 rounded-full bg-white/12" />
-            <span className="h-2.5 w-2.5 rounded-full bg-white/12" />
-          </div>
-          <div className="ld-mono mx-auto flex items-center gap-2 text-[10px] uppercase tracking-[0.22em] text-[color:var(--ld-fg-dim)]">
-            <span className="relative flex h-2 w-2">
-              <span className="ld-signal absolute inline-flex h-full w-full rounded-full bg-[color:var(--ld-green)]" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-[color:var(--ld-green)]" />
-            </span>
-            foldera · watching
-          </div>
-          <span className="w-[34px]" />
-        </div>
-
-        <div className="flex">
-          {/* left rail */}
-          <nav
-            aria-hidden="true"
-            className="hidden shrink-0 flex-col items-center gap-1 border-r border-white/[0.06] py-4 sm:flex"
-          >
-            {rail.map(({ icon: Icon, label, active }) => (
-              <span
-                key={label}
-                title={label}
-                className={`flex h-9 w-9 items-center justify-center rounded-[10px] ${
-                  active
-                    ? 'ld-accent-soft'
-                    : 'text-[color:var(--ld-fg-dim)]'
-                }`}
-              >
-                <Icon className="h-[18px] w-[18px]" strokeWidth={1.75} />
-              </span>
-            ))}
-            <span className="mt-auto flex h-9 w-9 items-center justify-center rounded-[10px] text-[color:var(--ld-fg-dim)]">
-              <Settings className="h-[18px] w-[18px]" strokeWidth={1.75} />
-            </span>
-          </nav>
-
-          {/* main */}
-          <div className="min-w-0 flex-1 p-5 sm:p-6">
-            <div className="flex items-center justify-between">
-              <span className="ld-mono text-[10px] uppercase tracking-[0.24em] text-[color:var(--ld-accent)]">
-                Right Now
-              </span>
-              <div className="flex items-center gap-2">
-                {connectors.slice(0, 5).map((c) => (
-                  <BrandLogo key={c.name} brand={c} size={17} />
-                ))}
-                <span className="ld-mono text-[10px] text-[color:var(--ld-fg-dim)]">9:42 AM</span>
-              </div>
-            </div>
-
-            <h2 className="ld-display mt-4 text-[22px] tracking-[-0.025em] text-[color:var(--ld-fg)] sm:text-[26px]">
-              Review the Q2 headcount plan.
-            </h2>
-            <p className="mt-3 text-[14px] leading-6 text-[color:var(--ld-fg-muted)]">
-              Sarah updated the doc. Finance commented. You were mentioned in Slack. Approval now unlocks the budget timeline.
-            </p>
-
-            <motion.div
-              className="mt-5 overflow-hidden rounded-xl border border-white/[0.07]"
-              variants={stagger}
-              initial="hidden"
-              animate="show"
-            >
-              {evidenceRows.map((row, i) => (
-                <motion.div
-                  key={row.label}
-                  variants={fadeUp}
-                  className={`flex items-center gap-3 bg-white/[0.015] px-4 py-3 ${
-                    i > 0 ? 'border-t border-white/[0.06]' : ''
-                  }`}
-                >
-                  <BrandLogo brand={row.brand} size={16} />
-                  <span className="min-w-0 flex-1 truncate text-[13px] text-[color:var(--ld-fg-soft)]">
-                    {row.label}
-                  </span>
-                  <Check className="h-3.5 w-3.5 shrink-0 text-[color:var(--ld-green)]" aria-hidden="true" />
-                  {row.meta ? (
-                    <span className="ld-mono shrink-0 text-[10px] text-[color:var(--ld-fg-dim)]">{row.meta}</span>
-                  ) : null}
-                </motion.div>
-              ))}
-            </motion.div>
-
-            <div className="mt-5 flex items-center gap-2.5">
-              <button type="button" className="ld-btn-primary inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 px-5 text-[13px]">
-                Open the doc
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </button>
-              <button type="button" className="ld-icon-btn inline-flex h-11 w-11 items-center justify-center" aria-label="Mark done">
-                <Check className="h-4 w-4" aria-hidden="true" />
-              </button>
-              <button type="button" className="ld-icon-btn inline-flex h-11 w-11 items-center justify-center" aria-label="Snooze">
-                <Clock3 className="h-4 w-4" aria-hidden="true" />
-              </button>
-            </div>
-
-            <p className="ld-mono mt-5 text-[10px] uppercase tracking-[0.18em] text-[color:var(--ld-fg-dim)]">
-              State attached · context private
-            </p>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-/* ----------------------------------------------------- header */
+/* ----------------------------------------------------- content */
 
 const navLinks = [
-  { href: '#how-foldera-works', label: 'How it works' },
-  { href: '/security', label: 'Security' },
-  { href: '/pricing', label: 'Pricing' },
-  { href: '/try', label: 'Try it' },
+  { href: '#how', label: 'Presence Layer' },
+  { href: '#tax', label: 'The tax' },
+  { href: '#trust', label: 'Trust' },
+  { href: '#cta', label: 'Pilot' },
 ];
 
-function Header() {
-  const [open, setOpen] = useState(false);
-  return (
-    <header
-      data-testid="landing-header"
-      className="sticky top-0 z-[60] border-b border-white/[0.06] bg-[#0a0a0c]/85 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl"
-    >
-      <div className="mx-auto flex h-16 w-full max-w-[1240px] items-center justify-between gap-5 px-5 sm:px-8 lg:px-10">
-        <a
-          href="/"
-          aria-label="Foldera"
-          className="inline-flex min-h-[44px] items-center gap-2.5 rounded-[12px] px-1"
-        >
-          <FolderaMark size="sm" decorative />
-          <span className="text-[16px] font-semibold tracking-[-0.025em] text-[color:var(--ld-fg)]">Foldera</span>
-        </a>
+const rightNowSources: Array<{ logo: string; title: string; detail: string; meta: string; hot: boolean }> = [
+  { logo: 'slack', title: 'Slack', detail: '#q2-planning — mentioned you', meta: '3 new', hot: true },
+  { logo: 'gmail', title: 'Gmail', detail: 'Re: Headcount — Finance', meta: '2:14', hot: false },
+  { logo: 'google-calendar', title: 'Google Calendar', detail: 'Budget review · Today 4:00', meta: 'hold', hot: false },
+];
 
-        <nav aria-label="Landing navigation" className="hidden items-center gap-8 text-[13px] font-medium md:flex">
-          {navLinks.map((l) => (
-            <a key={l.href} href={l.href} className="ld-nav-link">
-              {l.label}
-            </a>
+const taxCells: Array<{ n: string; u: string; lab: string; src: string }> = [
+  { n: '9.4', u: 'hrs', lab: 'Lost every week to context switching.', src: 'Workplace research' },
+  { n: '2.7', u: '×', lab: 'Slower to refocus after each interruption.', src: 'Attention studies' },
+  { n: '31', u: '%', lab: 'Of knowledge work is rework.', src: 'Industry survey' },
+  { n: '$37', u: 'B+', lab: 'The annual tax across the Fortune 500.', src: 'Aggregate estimate' },
+];
+
+const integrationApps = ['gmail', 'slack', 'notion', 'linear', 'google-calendar', 'github', 'google-drive', 'outlook'];
+
+const memoryRows: Array<[string, string]> = [
+  ['working_on', '"Q2 headcount plan"'],
+  ['waiting_on', '"Finance sign-off"'],
+  ['last_touched', '"renewal brief · 2d ago"'],
+  ['blocked_by', '"budget review @ 4:00"'],
+  ['next_move', '"reply to Sarah"'],
+];
+
+const rankedRows: Array<{ title: string; priority: string; lead: boolean; detail: string }> = [
+  { title: 'Follow up with Sarah', priority: 'Do first', lead: true, detail: 'Mentioned you · deadline today' },
+  { title: 'Review the renewal brief', priority: 'Later', lead: false, detail: 'No pressure until Thursday' },
+  { title: 'Reply in #deals', priority: 'Later', lead: false, detail: 'FYI — no decision needed' },
+];
+
+const searchRows: Array<{ logo: string; text: string; meta: string }> = [
+  { logo: 'notion', text: 'Renewal brief · final terms', meta: 'Notion' },
+  { logo: 'slack', text: '#deals — "agreed on $48k" (Sarah)', meta: 'Slack' },
+  { logo: 'google-drive', text: 'Q2_Headcount_v7.xlsx', meta: 'Drive' },
+];
+
+const features: Array<{
+  flip: boolean;
+  labelClass: string;
+  eyebrow: string;
+  title: string;
+  body: string;
+  bullets: string[];
+  mockTitle: string;
+  mock: ReactNode;
+}> = [
+  {
+    flip: false,
+    labelClass: 'violet',
+    eyebrow: '01 · Attached state',
+    title: 'Your context follows you everywhere.',
+    body: 'The thread of what you’re working on stays attached across every consented system — so nothing has to be rebuilt when you switch tools.',
+    bullets: [
+      'One continuous state across mail, docs, tickets and chat',
+      'No re-reading, no reconstructing where you left off',
+      'Private to you — context never leaves your control',
+    ],
+    mockTitle: 'foldera · attached state',
+    mock: (
+      <div className="mock-body">
+        <div className="mem">
+          {memoryRows.map(([k, v]) => (
+            <div className="kv" key={k}>
+              <span className="k">{k}</span>
+              <span className="v">{v}</span>
+            </div>
           ))}
-        </nav>
-
-        <div className="flex items-center gap-3">
-          <a
-            href={loginHref}
-            data-testid="landing-login-cta"
-            className="ld-nav-link hidden text-[13px] font-medium sm:inline-flex"
-          >
-            Sign in
-          </a>
-          <a
-            href={accessHref}
-            data-testid="landing-header-cta"
-            className="ld-btn-primary hidden min-h-[44px] items-center gap-2 px-4 text-[12px] sm:inline-flex"
-          >
-            Start free
-            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-          </a>
-          <button
-            type="button"
-            data-testid="nav-mobile-menu-toggle"
-            aria-label={open ? 'Close menu (toggle)' : 'Open menu'}
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
-            className="ld-icon-btn inline-flex h-11 w-11 items-center justify-center md:hidden"
-          >
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
         </div>
       </div>
-
-      {open ? (
-        <div className="fixed inset-0 z-[70] md:hidden" role="dialog" aria-modal="true" aria-label="Site menu">
-          <button
-            type="button"
-            className="absolute inset-0 bg-[#0a0a0c]/95 backdrop-blur-xl"
-            role="presentation"
-            onClick={() => setOpen(false)}
-            aria-label="Dismiss overlay"
-          />
-          <div className="relative mx-4 mt-[calc(4rem+env(safe-area-inset-top,0px))] overflow-hidden rounded-[18px] border border-white/10 bg-[color:var(--ld-bg-2)] p-5 shadow-[0_24px_90px_rgba(0,0,0,0.72)]">
-            <button
-              type="button"
-              data-testid="nav-mobile-overlay-close"
-              onClick={() => setOpen(false)}
-              className="ld-icon-btn absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center"
-              aria-label="Close menu"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </button>
-            <nav className="mt-12 flex flex-col gap-1">
-              {navLinks.map((l) => (
-                <a
-                  key={l.href}
-                  href={l.href}
-                  onClick={() => setOpen(false)}
-                  className="flex min-h-[44px] items-center rounded-[10px] px-3 text-[15px] text-[color:var(--ld-fg-soft)] transition-colors hover:bg-white/[0.045]"
-                >
-                  {l.label}
-                </a>
-              ))}
-              <a
-                href={loginHref}
-                onClick={() => setOpen(false)}
-                className="flex min-h-[44px] items-center rounded-[10px] px-3 text-[15px] text-[color:var(--ld-fg-soft)] transition-colors hover:bg-white/[0.045]"
-              >
-                Sign in
-              </a>
-              <a
-                href={accessHref}
-                onClick={() => setOpen(false)}
-                className="ld-btn-primary mt-2 inline-flex min-h-[46px] items-center justify-center gap-2 px-5 text-sm"
-              >
-                Start free
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </a>
-            </nav>
+    ),
+  },
+  {
+    flip: true,
+    labelClass: '',
+    eyebrow: '02 · Meaningful change',
+    title: 'It notices what actually moved.',
+    body: 'Foldera watches every connected source for the changes that matter, weighs them against your day, and ranks the one thing worth your attention now.',
+    bullets: [
+      'Signal separated from noise, automatically',
+      'Priority based on deadlines, mentions and blockers',
+      'Grounded in the exact sources behind it',
+    ],
+    mockTitle: 'foldera · ranked today',
+    mock: (
+      <div className="mock-body">
+        {rankedRows.map((row) => (
+          <div className={`qrow ${row.lead ? 'lead' : ''}`} key={row.title}>
+            <span className="qi">
+              {row.lead ? (
+                <Zap style={{ width: 13, height: 13, color: 'var(--cyan)' }} aria-hidden="true" />
+              ) : (
+                <Circle style={{ width: 13, height: 13, color: 'var(--fg5)' }} aria-hidden="true" />
+              )}
+            </span>
+            <span className="qt">
+              {row.title}
+              <div style={{ fontSize: '11.5px', color: 'var(--fg5)', marginTop: 3 }}>{row.detail}</div>
+            </span>
+            <span className="qm">{row.priority}</span>
           </div>
+        ))}
+      </div>
+    ),
+  },
+  {
+    flip: false,
+    labelClass: 'emerald',
+    eyebrow: '03 · Universal recall',
+    title: 'Find anything, across every app.',
+    body: 'Ask in plain language. Foldera searches across all your connected tools at once and answers from the source — buried files, lost threads, half-remembered decisions.',
+    bullets: [
+      'One query spans every connected system',
+      'Answers cite the file, message or doc they came from',
+      'Read-only — nothing changes without you',
+    ],
+    mockTitle: 'foldera · universal search',
+    mock: (
+      <div className="mock-body">
+        <div className="qrow lead">
+          <span className="qi">
+            <Search style={{ width: 13, height: 13, color: 'var(--cyan)' }} aria-hidden="true" />
+          </span>
+          <span className="qt" style={{ color: 'var(--fg1)' }}>
+            Where did we land on the renewal price?
+          </span>
         </div>
-      ) : null}
-    </header>
+        {searchRows.map((row) => (
+          <div className="qrow" key={row.text}>
+            <span className="qi">
+              <Logo name={row.logo} size={14} />
+            </span>
+            <span className="qt">{row.text}</span>
+            <span className="qm">{row.meta}</span>
+          </div>
+        ))}
+      </div>
+    ),
+  },
+];
+
+const principles: Array<[string, string, string]> = [
+  ['01', 'Consent-based access', 'You choose exactly what connects. Nothing is read without an explicit, revocable grant.'],
+  ['02', 'Read-only by default', 'Foldera observes and drafts. It never acts on your accounts unless you approve the move.'],
+  ['03', 'Never trained on', 'Your content is yours. It is never used to train models, and is encrypted in transit and at rest.'],
+  ['04', 'Audit & revoke', 'Every access is logged and visible. Disconnect any source and its state leaves with it.'],
+];
+
+const footerCols: Array<{ title: string; links: string[] }> = [
+  { title: 'Product', links: ['Presence Layer', 'How it works', 'Security', 'Pricing'] },
+  { title: 'Company', links: ['About', 'Pilot', 'Careers', 'Contact'] },
+  { title: 'Legal', links: ['Privacy', 'Terms', 'Data processing', 'Trust center'] },
+];
+
+/* ----------------------------------------------------- primitives */
+
+function BrandLockup({ extraClass = '' }: { extraClass?: string }) {
+  return (
+    <a href="#top" className={`brand ${extraClass}`} aria-label="Foldera home">
+      <Image className="mark mk" src="/foldera-glyph.svg" alt="" width={26} height={26} unoptimized />
+      <span className="wm">Foldera</span>
+    </a>
   );
 }
 
 /* ----------------------------------------------------- page */
 
-const sectionWrap = 'mx-auto w-full max-w-[1240px] px-5 sm:px-8 lg:px-10';
+export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) {
+  const [menuOpen, setMenuOpen] = useState(false);
 
-export function LandingPage({ isAuthenticated: _isAuthenticated = false }: LandingPageProps = {}) {
+  // Authenticated visitors go straight to the app; everyone else enters the funnel.
+  const accessHref = isAuthenticated ? '/dashboard' : '/start';
+  const loginHref = isAuthenticated ? '/dashboard' : '/login';
+
+  // Scroll-reveal: add `.in` once each `.reveal.pre` enters the viewport.
+  useEffect(() => {
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const nodes = Array.from(document.querySelectorAll<HTMLElement>('.fd .reveal.pre'));
+    if (reduce || !('IntersectionObserver' in window)) {
+      nodes.forEach((el) => el.classList.add('in'));
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('in');
+            io.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -6% 0px' },
+    );
+    nodes.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
   return (
-    <MotionConfig reducedMotion="user">
-      <main className="ld relative min-h-[100dvh] overflow-x-hidden">
-        <div className="ld-aurora" aria-hidden="true" />
-        <div className="relative z-10">
-          <Header />
-
-          {/* HERO */}
-          <section className="ld-gridlines relative border-b border-white/[0.07]" data-testid="landing-hero">
-            <div className={`${sectionWrap} grid items-center gap-12 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-16 lg:py-24`}>
-              <motion.div variants={stagger} initial="hidden" animate="show">
-                <motion.p variants={fadeUp} className="ld-eyebrow">
-                  The Workday Presence Layer
-                </motion.p>
-                <motion.h1
-                  variants={fadeUp}
-                  className="ld-display mt-6 max-w-2xl text-[2.9rem] tracking-[-0.045em] text-[color:var(--ld-fg)] sm:text-6xl lg:text-[4.3rem]"
-                >
-                  Stop rebuilding the work.
-                  <span className="ld-text-fade block">The reconstruction tax ends here.</span>
-                </motion.h1>
-                <motion.p variants={fadeUp} className="mt-7 max-w-[34rem] text-xl leading-[1.55] text-[color:var(--ld-fg-soft)]">
-                  Foldera holds the thread across your apps, then pings you in Slack with the one finished move that matters — context attached, ready to approve.
-                </motion.p>
-
-                <motion.div variants={fadeUp} className="mt-8 flex flex-wrap items-center gap-2.5">
-                  {heroTrust.map(({ icon: Icon, label }) => (
-                    <span key={label} className="ld-badge">
-                      <Icon
-                        className="h-3.5 w-3.5 text-[color:var(--ld-accent)]"
-                        strokeWidth={1.75}
-                        aria-hidden="true"
-                      />
-                      {label}
-                    </span>
-                  ))}
-                </motion.div>
-
-                <motion.div variants={fadeUp} className="mt-9 flex flex-col gap-2.5 sm:flex-row sm:items-center">
-                  <AccessLink testId="landing-primary-access-cta">Start free</AccessLink>
-                  <GhostLink href="#how-foldera-works">See how it works</GhostLink>
-                </motion.div>
-              </motion.div>
-
-              <ProductWindow />
-            </div>
-          </section>
-
-          {/* CONNECTOR STRIP — real logos in clean chips */}
-          <section className="pt-14 pb-6" data-testid="landing-connectors">
-            <div className={`${sectionWrap} flex flex-col items-center gap-8`}>
-              <p className="ld-mono text-[11px] uppercase tracking-[0.3em] text-[color:var(--ld-fg-dim)]">
-                Works where you already work
-              </p>
-              <div className="flex flex-wrap items-center justify-center gap-3.5">
-                {connectors.map((c) => (
-                  <span
-                    key={c.name}
-                    title={c.name}
-                    aria-label={c.name}
-                    className="ld-conn-chip transition-colors duration-300 hover:border-white/20"
-                  >
-                    <BrandLogo brand={c} size={24} />
-                  </span>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {/* STATS — big numerals, few words, framed for hierarchy */}
-          <section className={`${sectionWrap} py-24 lg:py-28`} data-testid="landing-stats">
-            <Reveal className="max-w-2xl">
-              <p className="ld-eyebrow">The reconstruction tax</p>
-              <h2 className="ld-display mt-5 text-[clamp(1.9rem,1.35rem+2.1vw,2.9rem)] tracking-[-0.035em] text-[color:var(--ld-fg)]">
-                What the gaps cost.
-              </h2>
-            </Reveal>
-            <motion.div
-              className="mt-16 grid grid-cols-2 gap-x-8 gap-y-14 lg:mt-20 lg:grid-cols-4"
-              variants={stagger}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true, margin: '-80px' }}
-            >
-              {stats.map((s) => (
-                <motion.div key={s.n} variants={fadeUp}>
-                  <span
-                    className="mb-5 block h-px w-10"
-                    style={{ background: 'color-mix(in srgb, var(--ld-accent) 65%, transparent)' }}
-                    aria-hidden="true"
-                  />
-                  <div className="ld-display flex items-baseline text-[color:var(--ld-fg)]">
-                    <span className="text-[3.25rem] leading-none sm:text-[4.25rem]">{s.n}</span>
-                    <span className="ml-1 text-[1.6rem] text-[color:var(--ld-accent)] sm:text-[2rem]">{s.u}</span>
-                  </div>
-                  <p className="mt-3 text-[14px] uppercase tracking-[0.06em] text-[color:var(--ld-fg-dim)]">{s.l}</p>
-                </motion.div>
-              ))}
-            </motion.div>
-          </section>
-
-          {/* PAIN — show the chaos: real apps scattered, one big line */}
-          <section className={`${sectionWrap} py-24 lg:py-28`} data-testid="landing-pain">
-            <div className="grid items-center gap-14 lg:grid-cols-2 lg:gap-20">
-              <div>
-                <Reveal>
-                  <h2 className="ld-display max-w-xl text-[clamp(2.4rem,1.6rem+3.2vw,4rem)] leading-[1.02] tracking-[-0.04em] text-[color:var(--ld-fg)]">
-                    You are a high-paid <span className="text-[color:var(--ld-accent)]">filing clerk.</span>
-                  </h2>
-                </Reveal>
-                <motion.div
-                  className="mt-12 space-y-8"
-                  variants={stagger}
-                  initial="hidden"
-                  whileInView="show"
-                  viewport={{ once: true, margin: '-80px' }}
-                >
-                  {painPoints.map((item, i) => (
-                    <motion.div key={item.title} variants={fadeUp} className="flex gap-4">
-                      <span className="ld-mono mt-1 text-[12px] text-[color:var(--ld-accent)]">{String(i + 1).padStart(2, '0')}</span>
-                      <div>
-                        <h3 className="ld-display text-[1.25rem] tracking-[-0.02em] text-[color:var(--ld-fg)]">{item.title}</h3>
-                        <p className="mt-1 text-[15px] leading-6 text-[color:var(--ld-fg-dim)]">{item.body}</p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              </div>
-              <ScatteredApps />
-            </div>
-          </section>
-
-          {/* DOCTRINE / HOW IT WORKS — open concept, soft seam, no boxes */}
-          <section
-            id="how-foldera-works"
-            className="relative"
-            data-testid="landing-doctrine"
-            style={{ background: 'radial-gradient(80% 60% at 50% 0%, rgba(245,166,35,0.05), transparent 70%)' }}
-          >
-            <div className={`${sectionWrap} py-24 lg:py-28`}>
-              <Reveal className="mx-auto max-w-3xl text-center">
-                <h2 className="ld-display text-[clamp(2rem,1.4rem+2.4vw,3.25rem)] leading-[1.05] tracking-[-0.035em] text-[color:var(--ld-fg)]">
-                  Not a lack of AI.{' '}
-                  <span className="text-[color:var(--ld-fg-dim)]">A lack of continuity.</span>
-                </h2>
-                <p className="sr-only">The problem is broken continuity.</p>
-              </Reveal>
-
-              <motion.div
-                className="mx-auto mt-20 grid max-w-5xl gap-x-10 gap-y-14 sm:grid-cols-2 lg:grid-cols-4"
-                variants={stagger}
-                initial="hidden"
-                whileInView="show"
-                viewport={{ once: true, margin: '-80px' }}
-              >
-                {doctrine.map(({ label, icon: Icon, body }, i) => (
-                  <motion.div key={label} variants={fadeUp} className="flex flex-col items-center text-center">
-                    <span
-                      className={`flex h-14 w-14 items-center justify-center rounded-2xl border ${
-                        i === 3
-                          ? 'border-[color:var(--ld-accent)]/30 bg-[color:var(--ld-accent)]/[0.08] text-[color:var(--ld-accent)]'
-                          : 'border-white/[0.07] bg-white/[0.025] text-[color:var(--ld-fg-soft)]'
-                      }`}
-                    >
-                      <Icon className="h-[26px] w-[26px]" strokeWidth={1.5} aria-hidden="true" />
-                    </span>
-                    <p className="ld-display mt-5 text-[1.15rem] tracking-[-0.01em] text-[color:var(--ld-fg)]">{label}</p>
-                    <p className="mt-1.5 text-[14.5px] text-[color:var(--ld-fg-muted)]">{body}</p>
-                  </motion.div>
-                ))}
-              </motion.div>
-
-              <div className="relative mx-auto mt-24 max-w-4xl">
-                {/* connecting thread — chaos resolves into one quiet move */}
-                <span
-                  aria-hidden="true"
-                  className="absolute left-[8%] right-[8%] top-[19px] hidden h-px sm:block"
-                  style={{
-                    background:
-                      'linear-gradient(to right, transparent, color-mix(in srgb, var(--ld-fg) 14%, transparent) 38%, color-mix(in srgb, var(--ld-accent) 45%, transparent))',
-                  }}
-                />
-                <motion.ol
-                  className="relative flex flex-col gap-y-8 sm:flex-row sm:items-start sm:justify-between sm:gap-x-6"
-                  data-testid="landing-workflow"
-                  variants={stagger}
-                  initial="hidden"
-                  whileInView="show"
-                  viewport={{ once: true, margin: '-80px' }}
-                >
-                  {howItWorks.map((step, index) => {
-                    const isLast = index === howItWorks.length - 1;
-                    return (
-                      <motion.li
-                        key={step}
-                        variants={fadeUp}
-                        className="flex items-start gap-4 sm:flex-1 sm:flex-col sm:items-center sm:text-center"
-                      >
-                        <span
-                          className={`ld-mono flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-[13px] ${
-                            isLast
-                              ? 'text-[color:var(--ld-accent)]'
-                              : 'border-white/10 bg-[#101015] text-[color:var(--ld-fg-soft)]'
-                          }`}
-                          style={
-                            isLast
-                              ? {
-                                  borderColor: 'color-mix(in srgb, var(--ld-accent) 45%, transparent)',
-                                  background: 'color-mix(in srgb, var(--ld-accent) 12%, transparent)',
-                                }
-                              : undefined
-                          }
-                        >
-                          {String(index + 1).padStart(2, '0')}
-                        </span>
-                        <span className="text-[15px] leading-6 text-[color:var(--ld-fg-soft)] sm:mt-4">{step}</span>
-                      </motion.li>
-                    );
-                  })}
-                </motion.ol>
-              </div>
-            </div>
-          </section>
-
-          {/* TRUST — icon-led, no card boxes */}
-          <section id="trust" className={`${sectionWrap} py-24 lg:py-28`} data-testid="landing-trust">
-            <Reveal>
-              <h2 className="ld-display max-w-3xl text-[clamp(2rem,1.4rem+2.4vw,3.25rem)] leading-[1.05] tracking-[-0.035em] text-[color:var(--ld-fg)]">
-                It lives where you work.{' '}
-                <span className="text-[color:var(--ld-fg-dim)]">And stays quiet.</span>
-              </h2>
-            </Reveal>
-            <motion.div
-              className="mt-20 grid gap-x-12 gap-y-14 sm:grid-cols-2 lg:grid-cols-4"
-              variants={stagger}
-              initial="hidden"
-              whileInView="show"
-              viewport={{ once: true, margin: '-80px' }}
-            >
-              {trustItems.map(({ icon: Icon, title, body }) => (
-                <motion.div key={title} variants={fadeUp}>
-                  <Icon className="h-7 w-7 text-[color:var(--ld-fg-soft)]" strokeWidth={1.5} aria-hidden="true" />
-                  <h3 className="ld-display mt-5 text-[1.2rem] tracking-[-0.01em] text-[color:var(--ld-fg)]">{title}</h3>
-                  <p className="mt-1.5 text-[15px] leading-6 text-[color:var(--ld-fg-muted)]">{body}</p>
-                </motion.div>
-              ))}
-            </motion.div>
-          </section>
-
-          {/* ENTERPRISE STRIP — quiet single row */}
-          <section data-testid="landing-enterprise">
-            <div className={`${sectionWrap} flex flex-wrap items-center justify-center gap-x-10 gap-y-5 pb-8`}>
-              {enterprise.map(({ icon: Icon, t }) => (
-                <span key={t} className="inline-flex items-center gap-2.5 text-[13px] text-[color:var(--ld-fg-muted)]">
-                  <Icon className="h-4 w-4 text-[color:var(--ld-fg-dim)]" strokeWidth={1.75} aria-hidden="true" />
-                  {t}
-                </span>
-              ))}
-            </div>
-          </section>
-
-          {/* PILOT — product-led, minimal words */}
-          <section className={`${sectionWrap} py-24 lg:py-28`} data-testid="landing-pilot">
-            <Reveal className="mx-auto max-w-3xl text-center">
-              <h2 className="ld-display text-[clamp(2rem,1.4rem+2.4vw,3.25rem)] leading-[1.04] tracking-[-0.035em] text-[color:var(--ld-fg)]">
-                Stop checking nine apps.
-              </h2>
-              <p className="mx-auto mt-5 max-w-lg text-lg leading-8 text-[color:var(--ld-fg-muted)]">
-                Foldera keeps track, and shows you the one thing that matters.
-              </p>
-              <div className="mt-9 flex flex-col items-center justify-center gap-2.5 sm:flex-row">
-                <AccessLink testId="landing-pilot-access-cta">Join pilot</AccessLink>
-                <GhostLink href="/demo" testId="landing-demo-link">See the demo</GhostLink>
-              </div>
-            </Reveal>
-          </section>
-
-          {/* FOOTER */}
-          <footer
-            data-testid="landing-footer"
-            className="border-t border-white/[0.07] px-5 py-14 sm:px-6 lg:px-8"
-          >
-            <div className="mx-auto grid w-full max-w-6xl gap-10 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr]">
-              <div>
-                <a href="/" aria-label="Foldera" className="inline-flex items-center gap-2.5">
-                  <FolderaMark size="sm" decorative />
-                  <span className="text-[16px] font-semibold tracking-[-0.025em] text-[color:var(--ld-fg)]">Foldera</span>
+    <div className="fd">
+      <header className="hdr" data-testid="landing-header">
+        <div className="shell">
+          <div className="hdr-in">
+            <BrandLockup />
+            <nav className="nav" aria-label="Primary">
+              {navLinks.map((l) => (
+                <a key={l.href} href={l.href}>
+                  {l.label}
                 </a>
-                <p className="ld-mono mt-4 max-w-xs text-[12px] uppercase leading-5 tracking-[0.14em] text-[color:var(--ld-fg-dim)]">
-                  The Workday Presence Layer.
-                </p>
-              </div>
-              <FooterCol
-                title="Product"
-                links={[
-                  { href: '#how-foldera-works', label: 'How it works' },
-                  { href: '/pricing', label: 'Pricing' },
-                  { href: '/try', label: 'Try it' },
-                  { href: '/demo', label: 'Demo' },
-                ]}
-              />
-              <FooterCol
-                title="Company"
-                links={[
-                  { href: '/about', label: 'About' },
-                  { href: '/security', label: 'Security' },
-                  { href: loginHref, label: 'Sign in' },
-                  { href: accessHref, label: 'Start free' },
-                ]}
-              />
-              <FooterCol
-                title="Legal"
-                links={[
-                  { href: '/privacy', label: 'Privacy' },
-                  { href: '/terms', label: 'Terms' },
-                ]}
-              />
+              ))}
+            </nav>
+            <div className="hdr-r">
+              <a href={loginHref} className="signin" data-testid="landing-login-cta">
+                Sign in
+              </a>
+              <a href={accessHref} className="btn btn-ghost btn-sm req-pill" data-testid="landing-header-cta">
+                Request access
+              </a>
+              <button
+                type="button"
+                className="menu-btn"
+                aria-label="Open menu"
+                aria-expanded={menuOpen}
+                data-testid="nav-mobile-menu-toggle"
+                onClick={() => setMenuOpen(true)}
+              >
+                <Menu style={{ width: 22, height: 22 }} aria-hidden="true" />
+              </button>
             </div>
-            <div className="mx-auto mt-12 flex w-full max-w-6xl flex-col gap-2 border-t border-white/[0.06] pt-6 text-[12px] text-[color:var(--ld-fg-dim)] sm:flex-row sm:items-center sm:justify-between">
-              <span>© {new Date().getFullYear()} Foldera. All rights reserved.</span>
-              <span className="ld-mono uppercase tracking-[0.14em]">Consent-first · No surveillance · Quiet by design</span>
-            </div>
-          </footer>
+          </div>
         </div>
-      </main>
-    </MotionConfig>
-  );
-}
+      </header>
 
-function FooterCol({ title, links }: { title: string; links: Array<{ href: string; label: string }> }) {
-  return (
-    <div>
-      <p className="ld-mono text-[11px] uppercase tracking-[0.2em] text-[color:var(--ld-fg-dim)]">{title}</p>
-      <ul className="mt-4 space-y-2.5">
-        {links.map((l) => (
-          <li key={l.label}>
-            <a href={l.href} className="text-[14px] text-[color:var(--ld-fg-muted)] transition-colors hover:text-[color:var(--ld-fg)]">
-              {l.label}
+      <div className={`mobile ${menuOpen ? 'open' : ''}`} role="dialog" aria-modal="true" aria-label="Site menu">
+        <div className="shell">
+          <div className="mobile-top">
+            <BrandLockup />
+            <button
+              type="button"
+              className="menu-btn"
+              aria-label="Close menu"
+              data-testid="nav-mobile-overlay-close"
+              style={{ display: 'inline-flex' }}
+              onClick={() => setMenuOpen(false)}
+            >
+              <X style={{ width: 22, height: 22 }} aria-hidden="true" />
+            </button>
+          </div>
+          <nav className="mobile-list" aria-label="Mobile">
+            {navLinks.map((l) => (
+              <a key={l.href} href={l.href} onClick={() => setMenuOpen(false)}>
+                {l.label}
+              </a>
+            ))}
+            <div className="mobile-grp">Account</div>
+            <a href={loginHref} style={{ fontSize: 18, color: 'var(--fg3)' }} onClick={() => setMenuOpen(false)}>
+              Sign in
             </a>
-          </li>
-        ))}
-      </ul>
+            <a
+              href={accessHref}
+              className="btn btn-primary"
+              style={{ marginTop: 18, alignSelf: 'flex-start' }}
+              onClick={() => setMenuOpen(false)}
+            >
+              Request access
+            </a>
+          </nav>
+        </div>
+      </div>
+
+      <main id="main">
+        <span id="top" />
+
+        {/* HERO */}
+        <section className="hero" data-testid="landing-hero">
+          <div className="hero-bloom" aria-hidden="true" />
+          <div className="shell">
+            <div className="hero-grid">
+              <div>
+                <span className="gpill reveal pre">
+                  <span className="tag">New</span> The Workday Presence Layer
+                </span>
+                <h1 className="reveal pre">
+                  Stop rebuilding the work.
+                  <span className="dim">Foldera holds the thread.</span>
+                </h1>
+                <p className="hero-tag reveal pre">Your work. One thread. One move.</p>
+                <p className="hero-sub reveal pre">
+                  The problem isn’t a lack of AI — it’s broken continuity. Foldera keeps your workday state attached
+                  across every consented system, then returns one trusted next move. Quiet otherwise.
+                </p>
+                <div className="hero-cta reveal pre">
+                  <a href={accessHref} className="btn btn-primary" data-testid="landing-primary-access-cta">
+                    Request access <ArrowRight style={{ width: 15, height: 15 }} aria-hidden="true" />
+                  </a>
+                  <a href="#how" className="btn btn-ghost">
+                    See how it works
+                  </a>
+                </div>
+              </div>
+              <div className="hero-mark-wrap reveal pre">
+                <div className="hero-mark-glow" aria-hidden="true" />
+                <Image
+                  className="mark hero-mark"
+                  src="/foldera-glyph.svg"
+                  alt="Foldera mark"
+                  width={500}
+                  height={500}
+                  unoptimized
+                  priority
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* INTEGRATION WALL */}
+        <section className="iwall" data-testid="landing-connectors">
+          <div className="shell">
+            <p className="cap reveal pre">Connects to the tools your work already lives in</p>
+            <div className="iwall-grid reveal pre">
+              {integrationApps.map((app) => (
+                <div className="iwall-cell" key={app}>
+                  <Logo name={app} size={30} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* PRODUCT CENTERPIECE */}
+        <section className="center" id="product" data-testid="landing-product">
+          <div className="shell">
+            <div className="center-head reveal pre">
+              <div className="eyerule" style={{ justifyContent: 'center' }}>
+                <span className="ln" />
+                <span className="lbl">One move at a time</span>
+                <span className="ln" />
+              </div>
+              <h2>
+                Nine apps go quiet. <span className="dim">One trusted move appears.</span>
+              </h2>
+            </div>
+            <div className="stage reveal pre">
+              <div className="stage-glow" aria-hidden="true" />
+              <div className="rn" data-testid="landing-right-now-card">
+                <div className="rn-scan" aria-hidden="true" />
+                <div className="rn-top">
+                  <span className="rn-live">
+                    <span className="dot" /> Right Now
+                  </span>
+                  <span className="rn-stamp">09:42</span>
+                </div>
+                <div className="rn-main">
+                  <div className="rn-kicker">Your next move</div>
+                  <div className="rn-directive">Review the Q2 headcount plan.</div>
+                  <p className="rn-why">
+                    <b>Sarah</b> updated the doc, Finance commented, and you were mentioned in Slack. Approving now
+                    unblocks the budget timeline.
+                  </p>
+                  <div className="rn-srcs">
+                    {rightNowSources.map((s) => (
+                      <div className="rn-src" key={s.detail}>
+                        <span className="ic">
+                          <Logo name={s.logo} size={15} />
+                        </span>
+                        <span className="tx">
+                          <b>{s.title}</b>
+                          <s>{s.detail}</s>
+                        </span>
+                        <span className={`m ${s.hot ? 'hot' : ''}`}>{s.meta}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="rn-foot">
+                    <span className="note">State attached · context private</span>
+                    <span className="rn-acts">
+                      <button type="button" className="btn btn-ghost btn-sm">
+                        Snooze
+                      </button>
+                      <a href={accessHref} className="btn btn-primary btn-sm">
+                        Open the doc
+                      </a>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* RECONSTRUCTION TAX */}
+        <section className="sec" id="tax" data-testid="landing-tax">
+          <div className="shell">
+            <div className="sec-head reveal pre">
+              <div className="eyerule">
+                <span className="lbl">The reconstruction tax</span>
+                <span className="ln" />
+              </div>
+              <h2>
+                You’re a high-paid <span className="dim">filing clerk.</span>
+              </h2>
+              <p>
+                Every tool switch leaks context. Every app remembers only its own slice. You’re the glue — and it costs
+                more than you think.
+              </p>
+            </div>
+            <div className="fstat reveal pre" style={{ marginTop: 48 }}>
+              <div className="big">
+                1 day<span className="u">a week</span>
+              </div>
+              <p className="cap">
+                That’s how much of your week disappears into <b>rebuilding context</b> — switching tabs, re-reading
+                threads, reconstructing where you left off.
+              </p>
+            </div>
+            <div className="tax reveal pre" style={{ marginTop: 16 }}>
+              {taxCells.map((cell) => (
+                <div className="taxcell" key={cell.lab}>
+                  <div className="num">
+                    {cell.n}
+                    <span className="u">{cell.u}</span>
+                  </div>
+                  <div className="lab">{cell.lab}</div>
+                  <div className="src">{cell.src}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* PRESENCE LAYER — feature blocks */}
+        <section className="sec" id="how" style={{ paddingBottom: 0 }} data-testid="landing-presence">
+          <div className="shell">
+            <div className="sec-head reveal pre">
+              <div className="eyerule">
+                <span className="lbl">The presence layer</span>
+                <span className="ln" />
+              </div>
+              <h2>
+                Not another inbox. <span className="dim">A layer of continuity.</span>
+              </h2>
+            </div>
+          </div>
+
+          {features.map((feature) => (
+            <div className="shell" key={feature.eyebrow}>
+              <div className={`feat ${feature.flip ? 'flip' : ''}`}>
+                <div className="feat-copy reveal pre">
+                  <div className="eyerule">
+                    <span className={`lbl ${feature.labelClass}`}>{feature.eyebrow}</span>
+                    <span className="ln" />
+                  </div>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.body}</p>
+                  <ul className="feat-list">
+                    {feature.bullets.map((b) => (
+                      <li key={b}>
+                        <Check aria-hidden="true" /> {b}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="reveal pre">
+                  <div className="mock">
+                    <div className="mock-in">
+                      <div className="mock-bar">
+                        <span className="d" />
+                        <span className="d" />
+                        <span className="d" />
+                        <span className="t">{feature.mockTitle}</span>
+                      </div>
+                      {feature.mock}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </section>
+
+        {/* TRUST */}
+        <section className="sec" id="trust" data-testid="landing-trust">
+          <div className="shell">
+            <div className="sec-head reveal pre">
+              <div className="eyerule">
+                <span className="lbl">Trust by architecture</span>
+                <span className="ln" />
+              </div>
+              <h2>
+                It lives where you work. <span className="dim">And stays quiet.</span>
+              </h2>
+              <p>
+                Foldera is built to earn access, not assume it. Every guarantee below is structural — not a promise, but
+                how the system is designed to work.
+              </p>
+            </div>
+            <div className="princ reveal pre">
+              {principles.map(([n, h, p]) => (
+                <div className="prow" key={n}>
+                  <span className="pn">{n}</span>
+                  <div>
+                    <h4>{h}</h4>
+                    <p>{p}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* CLOSING */}
+        <section className="closing" id="cta" data-testid="landing-pilot">
+          <Image
+            className="mark closing-mark"
+            src="/foldera-glyph.svg"
+            alt=""
+            width={300}
+            height={300}
+            unoptimized
+            aria-hidden="true"
+          />
+          <div className="closing-glow" aria-hidden="true" />
+          <div className="shell">
+            <h2 className="reveal pre">
+              Restore your continuity.<span className="dim">Get your day back.</span>
+            </h2>
+            <p className="reveal pre">
+              Stop checking nine apps. Foldera keeps the thread and returns the one move that matters.
+            </p>
+            <div className="closing-cta reveal pre">
+              <a href={accessHref} className="btn btn-primary" data-testid="landing-pilot-access-cta">
+                Request access <ArrowRight style={{ width: 15, height: 15 }} aria-hidden="true" />
+              </a>
+              <a href="/demo" className="btn btn-ghost" data-testid="landing-demo-link">
+                See the demo
+              </a>
+            </div>
+          </div>
+        </section>
+
+        {/* FOOTER */}
+        <footer className="ftr" data-testid="landing-footer">
+          <div className="shell">
+            <div className="ftr-grid">
+              <div className="ftr-brand">
+                <BrandLockup />
+                <p>The Workday Presence Layer.</p>
+                <div className="ftr-social">
+                  <a href="/" aria-label="X">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                    </svg>
+                  </a>
+                  <a href="/" aria-label="LinkedIn">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true">
+                      <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0z" />
+                    </svg>
+                  </a>
+                  <a href="/" aria-label="Website">
+                    <Globe style={{ width: 16, height: 16 }} aria-hidden="true" />
+                  </a>
+                </div>
+              </div>
+              {footerCols.map((col) => (
+                <div className="ftr-col" key={col.title}>
+                  <h4>{col.title}</h4>
+                  {col.links.map((link) => (
+                    <a href="#top" key={link}>
+                      {link}
+                    </a>
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div className="ftr-bot">© 2026 Foldera · The Workday Presence Layer</div>
+          </div>
+        </footer>
+      </main>
     </div>
   );
 }

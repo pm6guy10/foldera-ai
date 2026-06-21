@@ -121,17 +121,17 @@ test.describe('Landing page /', () => {
     await expect(page.getByTestId('landing-hero')).toBeVisible();
     await expect(page.getByRole('heading', { name: /stop rebuilding the work/i })).toBeVisible();
     await expect(page.getByTestId('landing-right-now-card')).toBeVisible();
-    await expect(page.getByTestId('landing-pain')).toContainText('You are a high-paid filing clerk.');
-    await expect(page.getByTestId('landing-pain')).toContainText('The reconstruction tax.');
-    await expect(page.getByTestId('landing-doctrine')).toContainText('broken continuity');
-    await expect(page.getByTestId('landing-trust')).toContainText('No surveillance');
+    await expect(page.getByTestId('landing-tax')).toContainText('filing clerk.');
+    await expect(page.getByTestId('landing-tax')).toContainText('reconstruction tax');
+    await expect(page.getByTestId('landing-hero')).toContainText('broken continuity');
+    await expect(page.getByTestId('landing-trust')).toContainText('Read-only by default');
     await expect(page.getByTestId('landing-trust')).toContainText('It lives where you work');
     await expect(page.getByTestId('landing-pilot')).toContainText('Stop checking nine apps');
     await expect(page.getByTestId('landing-header-cta')).toHaveAttribute('href', '/start');
     await expect(page.getByTestId('landing-primary-access-cta')).toHaveAttribute('href', '/start');
     await expect(page.getByTestId('landing-login-cta')).toHaveAttribute('href', '/login');
     await expect(page.getByTestId('landing-header')).toBeVisible();
-    await expect(page.getByTestId('landing-header').getByRole('link', { name: 'How it works' })).toBeVisible();
+    await expect(page.getByTestId('landing-header').getByRole('link', { name: 'Presence Layer' })).toBeVisible();
     await expect(page.getByTestId('landing-footer')).toBeVisible();
   });
 
@@ -165,7 +165,7 @@ test.describe('Landing page /', () => {
     await page.goto('/');
     await expect(page.getByTestId('landing-header')).toBeVisible();
     await expect(page.getByTestId('landing-footer')).toBeVisible();
-    await expect(page.getByRole('link', { name: /start free/i }).first()).toHaveAttribute('href', '/start');
+    await expect(page.getByRole('link', { name: /request access/i }).first()).toHaveAttribute('href', '/start');
     await expect(page.getByText(/waitlist/i)).toHaveCount(0);
     await expect(page.getByText(/email\/password|password/i)).toHaveCount(0);
   });
@@ -182,11 +182,10 @@ test.describe('Landing page /', () => {
     await page.goto('/');
     await expect(page.getByText('The Workday Presence Layer').first()).toBeVisible();
     await expect(page.getByText('Stop rebuilding the work.').first()).toBeVisible();
-    await expect(page.getByText('Foldera holds the thread across your apps, then pings you in Slack with the one finished move that matters — context attached, ready to approve.')).toBeVisible();
-    await expect(page.getByTestId('landing-doctrine')).toContainText('State');
-    await expect(page.getByTestId('landing-doctrine')).toContainText('Connectors');
-    await expect(page.getByTestId('landing-doctrine')).toContainText('Triggers');
-    await expect(page.getByTestId('landing-doctrine')).toContainText('One move');
+    await expect(page.getByTestId('landing-presence')).toContainText('A layer of continuity.');
+    await expect(page.getByTestId('landing-presence')).toContainText('Attached state');
+    await expect(page.getByTestId('landing-presence')).toContainText('Meaningful change');
+    await expect(page.getByTestId('landing-presence')).toContainText('Universal recall');
   });
   test('no actionable console errors — desktop', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
