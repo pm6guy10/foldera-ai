@@ -1,10 +1,10 @@
 {
-  "active_issue": 496,
-  "active_branch": "claude/landing-page-design-fixes-wub5aj",
-  "active_pr": 497,
-  "deployed_commit_sha": "514bab0",
+  "active_issue": 494,
+  "active_branch": "claude/repoint-control-plane-494",
+  "active_pr": 498,
+  "deployed_commit_sha": "5c2f43d",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
   "last_verified_at": "2026-06-21T00:00:00Z",
-  "notes": "LANDING design pass (#496) promoted to the active seam at owner request 2026-06-21, pausing the Scout seam (#494) as the active one. Owner-directed landing-page craft pass under the binding bar in docs/DESIGN_SYSTEM.md, on the dedicated branch claude/landing-page-design-fixes-wub5aj. Lead surface: components/foldera/LandingPage.tsx via the token-driven .ld layer — hero trust badges, framed stats, and a connected how-it-works flow replacing the floating numbers; plus a latent-bug fix (Tailwind bare opacity on var() colors resolves to transparent here, so new decorative elements use inline color-mix()). Preserves every landing data-testid, the asserted copy, the section order, and the CTA href contract. Proof: build + lint + typecheck green; landing contract (section order, locked copy, CTA hrefs -> /start, zero horizontal overflow) verified at 390/768/1440 (cached Chromium via executablePath since the Playwright CDN is blocked by network egress here; the standard e2e lane runs on CI). active_pr is set once the draft PR is opened. The Scout seam (#494) is untouched and resumes when this lands; its runtime activation stays owner-gated (VOYAGE_API_KEY, SCOUT_*/ALLOW_PAID_LLM flags, CRON_SECRET, ENCRYPTION_KEY_LEGACY) -> BLOCKED_WITH_EXACT_RECEIPT."
+  "notes": "Control-plane reconciliation: repoint source truth back from the LANDING seam (#496) to the active Scout seam (#494) now that the owner-directed landing design pass merged to main (PR #497, squash 5c2f43d, 2026-06-21) and #496 is closed. The landing seam was a temporary owner-authorized detour; #494 resumes as the one active seam. The Scout build is DONE and inward: Stages 0-5 (#487/#488/#490/#491) + the inward retarget (#493) are all merged; the deployed Scout watches the user's OWN world, never hunts external grants/jobs/RFPs, never fabricates credentials, and stays flag-OFF in prod. The hands have NEVER gripped real data. The real money-move (#494: ONE real inward loop on REAL data) is owner-gated runtime activation the agent sandbox cannot perform (no VOYAGE_API_KEY, no CRON_SECRET, no decrypt key, no Vercel env-write tool) -> BLOCKED_WITH_EXACT_RECEIPT. active_pr is set once this repoint PR is opened."
 }

@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-21 UTC (issue #496 — LANDING design pass promoted to the active seam at owner request; control plane repointed 494 → 496, pausing the Scout seam #494 as the active one. Owner-directed landing-page craft pass under the binding bar in `docs/DESIGN_SYSTEM.md`, scoped to the marketing surface (`components/**`, `app/page.tsx`, `app/globals.css`). Scout #494 is untouched and resumes once #496 lands; its runtime activation stays owner-gated. Prior: 2026-06-20 issue #494 — SCOUT §3 promoted from compass #492, supersedes the build umbrella #486.)
+Last updated: 2026-06-21 UTC (control plane repointed back to the Scout seam #494 after the owner-directed LANDING design pass #496 merged to main, PR #497 squash 5c2f43d, and #496 closed. The landing detour was a temporary owner-authorized seam; #494 resumes as the one active seam — its money-move is owner-gated runtime activation, BLOCKED_WITH_EXACT_RECEIPT. Prior: 2026-06-20 issue #494 — SCOUT §3 promoted from compass #492, supersedes the build umbrella #486.)
 
 This is the keep-list ledger. Everything not listed here is reference, archive, or git history — never authority.
 

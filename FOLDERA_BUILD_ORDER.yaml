@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 496
+active_issue: 494
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "LANDING design pass (#496) promoted to the active seam at owner request 2026-06-21, pausing the Scout seam (#494) as the active one. Owner-directed landing-page craft pass under the binding bar in docs/DESIGN_SYSTEM.md: sharpen hierarchy and replace the floating how-it-works numbers with a connected flow, on the dedicated landing branch. The Scout build stays merged and inward; its runtime activation remains owner-gated and is unaffected by this UI seam (resume #494 when this lands)."
-next_seam: "Resume #494 (Scout runtime activation — owner-gated: VOYAGE_API_KEY, SCOUT_*/ALLOW_PAID_LLM flags, CRON_SECRET cron triggers, ENCRYPTION_KEY_LEGACY decrypt) once the #496 landing pass merges. The agent sandbox cannot perform the Scout activation; that remains BLOCKED_WITH_EXACT_RECEIPT."
+why_this_first: "SCOUT §3 (#494) promoted from compass #492 at owner request 2026-06-20; supersedes the build umbrella #486. The build is done and inward: Stages 0-5 (#487/#488/#490/#491) + the inward retarget (#493) are all merged, the deployed Scout watches the user's own world (commitments owed, replies due, deadlines/filings in their own files), never hunts external grants/jobs/RFPs, never fabricates credentials. The single money-move now is to turn the hands on for ONE real inward loop on REAL data (#492 value bar: a real inward act the user didn't have to do, landed in Slack, >=3x/week, that they'd miss if it stopped). Not breadth, not a sixth thing."
+next_seam: "Same seam #494 — owner-gated runtime activation (the agent sandbox cannot do it: no VOYAGE_API_KEY, no CRON_SECRET, no decrypt key, no Vercel env-write tool). Owner steps: (1) set VOYAGE_API_KEY + flip SCOUT_ENABLED/SCOUT_RAG_ENABLED/SCOUT_WEB_ENABLED/ALLOW_PAID_LLM/SCOUT_DELIVERY_ENABLED in Vercel prod, redeploy; (2) confirm ENCRYPTION_KEY_LEGACY covers all historical keys (#481); (3) GET /api/cron/scout/index-drive (CRON_SECRET) for the paid first index; (4) GET /api/cron/scout/deliver (CRON_SECRET) for one real inward Slack card; (5) judge by gut >=3x/week, labeled owner-only."
 completed_issue_425:
   issue: 425
   pr: 426
