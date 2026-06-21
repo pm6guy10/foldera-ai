@@ -15,7 +15,7 @@ function ensureOutDir() {
 }
 
 test.describe('Landing page visual/access QA gate', () => {
-  test('renders the code-native public shell across mobile, tablet, and desktop', async ({ page }) => {
+  test('renders the imported presence-layer landing across mobile, tablet, and desktop', async ({ page }) => {
     ensureOutDir();
 
     for (const viewport of VIEWPORTS) {
@@ -23,21 +23,19 @@ test.describe('Landing page visual/access QA gate', () => {
       await page.goto('/');
 
       await expect(page.getByTestId('landing-hero')).toBeVisible();
-      await expect(page.getByRole('heading', { name: /stop rebuilding the work/i })).toBeVisible();
+      await expect(page.getByRole('heading', { name: /stop rebuilding the work\./i })).toBeVisible();
+      await expect(page.getByTestId('landing-hero')).toContainText('The Workday Presence Layer');
+      await expect(page.getByTestId('landing-hero')).toContainText('broken continuity');
       await expect(page.getByTestId('landing-right-now-card')).toBeVisible();
-      await expect(page.getByTestId('landing-pain')).toContainText('You are a high-paid filing clerk.');
-      await expect(page.getByTestId('landing-pain')).toContainText('The reconstruction tax.');
-      await expect(page.getByTestId('landing-doctrine')).toContainText('broken continuity');
-      await expect(page.getByTestId('landing-trust')).toContainText('No surveillance');
+      await expect(page.getByTestId('landing-tax')).toContainText('filing clerk.');
+      await expect(page.getByTestId('landing-tax')).toContainText('reconstruction tax');
+      await expect(page.getByTestId('landing-presence')).toContainText('A layer of continuity.');
       await expect(page.getByTestId('landing-trust')).toContainText('It lives where you work');
+      await expect(page.getByTestId('landing-trust')).toContainText('Read-only by default');
       await expect(page.getByTestId('landing-pilot')).toContainText('Stop checking nine apps');
       await expect(page.getByTestId('landing-footer')).toBeVisible();
 
-      for (const testId of [
-        'landing-header-cta',
-        'landing-primary-access-cta',
-        'landing-pilot-access-cta',
-      ]) {
+      for (const testId of ['landing-header-cta', 'landing-primary-access-cta', 'landing-pilot-access-cta']) {
         await expect(page.getByTestId(testId)).toHaveAttribute('href', '/start');
       }
 

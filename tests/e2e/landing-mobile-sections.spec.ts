@@ -1,20 +1,19 @@
 import { expect, test } from '@playwright/test';
 
-// Section order for the product-led landing (issue #378 amber overhaul).
+// Section order for the imported "Foldera Landing" design (issue #500).
 const orderedSections = [
   'landing-hero',
   'landing-connectors',
-  'landing-stats',
-  'landing-pain',
-  'landing-doctrine',
+  'landing-product',
+  'landing-tax',
+  'landing-presence',
   'landing-trust',
-  'landing-enterprise',
   'landing-pilot',
   'landing-footer',
 ];
 
 test.describe('Landing sections', () => {
-  test('renders the product-led sections in order with the access/login CTA contract', async ({ page }) => {
+  test('renders the presence-layer sections in order with the access/login CTA contract', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/');
 
@@ -29,13 +28,13 @@ test.describe('Landing sections', () => {
       previousTop = box!.y;
     }
 
-    // Access CTAs route to /start.
-    for (const testId of [
-      'landing-primary-access-cta',
-      'landing-pilot-access-cta',
-    ]) {
+    // Access CTAs route to /start (unauthenticated funnel entry).
+    for (const testId of ['landing-header-cta', 'landing-primary-access-cta', 'landing-pilot-access-cta']) {
       await expect(page.getByTestId(testId)).toHaveAttribute('href', '/start');
     }
+    // Sign-in routes to /login; demo routes to /demo.
+    await expect(page.getByTestId('landing-login-cta')).toHaveAttribute('href', '/login');
+    await expect(page.getByTestId('landing-demo-link')).toHaveAttribute('href', '/demo');
   });
 
   test('has no horizontal overflow at 390x844', async ({ page }) => {

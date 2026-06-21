@@ -1,7 +1,7 @@
 // File: app/layout.js
 
 import "./globals.css";
-import { Inter, Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
+import { Inter, Bricolage_Grotesque, JetBrains_Mono, Space_Grotesk } from "next/font/google";
 import { resolveCanonicalSiteOrigin } from "@/lib/site-canonical";
 
 // Body / UI — Inter (clean, proven).
@@ -27,7 +27,15 @@ const mono = JetBrains_Mono({
   display: "swap",
 });
 
-const fontVars = `${inter.variable} ${display.variable} ${mono.variable}`;
+// Landing display — Space Grotesk (the imported "Foldera Landing" design face; scoped to the .fd landing layer).
+const grotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-grotesk",
+  display: "swap",
+  weight: ["400", "500", "600", "700"],
+});
+
+const fontVars = `${inter.variable} ${display.variable} ${mono.variable} ${grotesk.variable}`;
 
 const siteOrigin = resolveCanonicalSiteOrigin();
 
