@@ -1,7 +1,7 @@
 {
   "active_issue": 494,
   "active_branch": "claude/next-up-open-issues-8coe11",
-  "active_pr": null,
+  "active_pr": 495,
   "deployed_commit_sha": "f0a03a1",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
