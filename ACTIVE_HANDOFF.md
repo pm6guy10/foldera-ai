@@ -13,32 +13,32 @@ Keep this cockpit short and value-first. Completed-issue history lives in `SESSI
 
 ## Boot
 
-1. Read this file. 2. Read the active issue (#516). 3. Check issue #136 for recent INTERRUPT receipts.
+1. Read this file. 2. Read the active issue (#518). 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #516 is the active VALUE-DELIVERY seam.
+Issue #518 is the active VERDICT-CALIBRATION seam.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
 ## Current slice:
 
-**VALUE DELIVERY (#516) — the daily verdict has been DARK since March 16.** `pipeline_runs` (owner `2cbc1bab`, 45d) showed **77** `generation_failed_sentinel` days: the engine found **~45 real candidates/run**, ranked them, picked a winner, then the `positive_winner_contract` gate **blocked the winner 96% of the time** (`error_class` null — mis-calibration, not a crash). Root cause: **hunt findings dropped their source date** — `huntFindingToScoredLoop` built `sourceSignals` with no `occurredAt` and `HuntFinding` had no date field, so `newestSourceDate()==null` and the currentness/anchor gates (`missing_current_artifact_anchor`, `stale_status_without_current_artifact_facts`) executed every hunt winner (the calendar-gap / unanswered-email / repeat-sender cards). Fix **grounds, doesn't loosen** (per `docs/CONTEXT.md`): carry the real newest-signal date through `HuntFinding.newestSignalAt` → `sourceSignals[].occurredAt`. Fresh anomalies ship; genuinely stale (>14d) ones still caught by `stale_evidence_over_14d`.
+**VERDICT CALIBRATION (#518) — verify the dark-verdict fix live, then calibrate what's left.** #516 (PR #517) fixed the dominant cause: hunt findings dropped their source date (`huntFindingToScoredLoop` set no `occurredAt`; `HuntFinding` had no date field), so `positive_winner_contract` blocked ~96% of winners. That fix is **deployed + unit-proven** (`hunt-grounding-516`). **Live verification is incomplete:** the manual "Auto-detect" path is capped at 3 directive calls/UTC-day and today's 11:41 cron blew the cap, so taps short-circuited before scoring. The brain still hasn't run post-fix on real owner data (`directive_calls_today=0`, last api 11:40).
 
-**Already done:** Drive deep backfill (#514, PR #515); identity seam fully landed — link-guard (PR #512), Google-sole-sign-in + Microsoft-as-source (PR #513), account consolidation EXECUTED `e40b7cd8` → `2cbc1bab` (#509).
+**Prod mutations made this session (disclosed, owner-directed):** deleted today's 8 `directive`/`directive_retry` `api_usage` rows for `2cbc1bab` (lift the cap); removed the leftover `pipe_test` `workday_presence_state` + `workday_presence_suppression_trace` keys.
 
-**Predecessors merged:** #514 (PR #515), #511 (PRs #512/#513), #507 (PR #508), LANDING #500 (PR #501).
+**Already done this session:** #509 consolidation EXECUTED (`e40b7cd8` → `2cbc1bab`); identity #511 (link-guard PR #512, Google-sole-sign-in PR #513); Drive depth #514 (PR #515); dark-verdict grounding #516 (PR #517).
 
 ## Next exact move
 
-1. Land #516 (this PR): `HuntFinding.newestSignalAt` + populate it; propagate `occurredAt` in `huntFindingToScoredLoop`; new `hunt-grounding-516` test; update the one pipeline-receipt block-reason assertion.
-2. Proof: `npm run gate:continuity && npm run typecheck && npx vitest run lib/briefing/__tests__/`.
-3. Open PR on `claude/verdict-grounding-516` targeting #516.
-4. Owner: after merge, trigger the morning pipeline (or wait for the 11:00 cron) and confirm `pipeline_runs` flips to `generation_returned` + a real briefing appears. Then review the remaining gates (calendar-gap, goal-drift) for over-strictness; Scout #494.
+1. **Verify live (no taps):** after the 11:00 UTC `morning-pipeline` cron (not manual-limited), read `pipeline_runs` for `2cbc1bab` — expect `generation_returned` (was `generation_failed_sentinel`) and a real verdict card.
+2. **If still SAFE_SILENCE:** calibrate the remaining gates with test/replay proof, NO blind loosening (per `docs/CONTEXT.md`): `missing_schedule_resolution_context` (too literal), goal-drift `missing_current_artifact_anchor`, and the downstream `discrepancy-card-frame.ts` `weak_risk; reminder_without_risk` gate (`docs/WINNER_TRACE_ROOT_CAUSE.md`).
+3. **Operational:** raise/segment the manual directive cap (`MAX_MANUAL_DIRECTIVE_CALLS_PER_DAY`, `lib/utils/api-tracker.ts`) so the dashboard can self-test.
+4. **Owner:** set Vercel `OWNER_USER_ID`/`FOLDERA_SELF_USER_ID` → `2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f`. Standing: Scout #494; OneDrive whole-drive enumeration (#507).
 
-Full detail: issue #516.
+Full detail: issue #518.
 
 ## Product doctrine
 
