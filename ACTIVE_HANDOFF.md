@@ -13,31 +13,34 @@ Keep this cockpit short and value-first. Completed-issue history lives in `SESSI
 
 ## Boot
 
-1. Read this file. 2. Read the active issue (#507). 3. Check issue #136 for recent INTERRUPT receipts.
+1. Read this file. 2. Read the active issue (#494). 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #507 is the active CONNECTOR-FRESHNESS seam.
+Issue #494 is the active SCOUT money-move seam.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
 ## Current slice:
 
-**CONNECTOR-FRESHNESS (#507) — fix OneDrive (zero signals ever) + Google Calendar (perpetually stale).** Backend-only fix in `lib/sync/**`, proven against live `tkg_signals`. OneDrive: `microsoft-sync.ts` `syncFiles` used `search(q='')?$filter=…`, which Graph rejects, so it always 400'd to a `/recent` fallback that never backfilled history (`Files.Read` IS granted — re-consent does not fix it). Google Calendar: `google-sync.ts` `syncCalendar` set `timeMax = now`, never looking ahead, so upcoming meetings were never synced. The connector-health stale-source email (the original symptom) is intentionally left untouched — it reported truthfully.
+**SCOUT money-move (#494) — turn the hands on for ONE real inward loop on REAL data.** The build is DONE and inward (stages 0-5 + inward retarget merged); the hands have never gripped real data (`scout_drive_chunks` empty, deployed flag-OFF). What remains is **owner-gated runtime activation the agent sandbox cannot do** → `BLOCKED_WITH_EXACT_RECEIPT`. Value = frequency of real acts that landed × load removed per act; owner-first is fine if labeled owner-only; no fixtures/hygiene-as-proof.
 
-**LANDING (#500) is PAUSED, not abandoned** — its work stays on `claude/landing-hero-constellation` (PR #505). After #507 merges, repoint the control plane back to #500, then the Scout seam #494 (owner-gated runtime activation, `BLOCKED_WITH_EXACT_RECEIPT`).
+**Predecessors complete:** connector-freshness #507 merged (PR #508, sha `9bdf478`); LANDING #500 shipped (PR #501). This PR is the control-plane repoint to #494 after #507 auto-closed (a closed active_issue would red the continuity gate).
 
 ## Next exact move
 
-1. OneDrive: enumerate the drive via the `delta` endpoint (recursive, paged), filter by modified date client-side, sort newest-first, cap the batch; keep `/recent` as a fallback. (`lib/sync/microsoft-sync.ts`)
-2. Google Calendar: add a +14-day lookahead (`timeMax = now + 14d`), mirroring the Microsoft side. (`lib/sync/google-sync.ts`)
-3. Proof: `npm run gate:continuity && npm run typecheck && npx vitest run lib/sync/__tests__/{microsoft,google}-sync.test.ts` green. Live backfill is owner-gated runtime proof (`BLOCKED_WITH_EXACT_RECEIPT`).
-4. Open the draft PR on `claude/new-session-0r1iqf` targeting #507; set `ACTIVE_SEAM_STATE.active_pr`.
-5. After merge: repoint source truth back from #507 to the paused LANDING seam #500, then #494.
+Owner-gated activation (the agent sandbox cannot perform these):
+1. Vercel prod: set `VOYAGE_API_KEY`, flip `SCOUT_ENABLED`/`SCOUT_RAG_ENABLED`/`SCOUT_WEB_ENABLED`/`ALLOW_PAID_LLM`/`SCOUT_DELIVERY_ENABLED`, redeploy.
+2. Confirm `ENCRYPTION_KEY_LEGACY` covers all historical keys (#481) so grounding uses the full corpus.
+3. `GET /api/cron/scout/index-drive` (CRON_SECRET) — paid first index → populates `scout_drive_chunks`.
+4. `GET /api/cron/scout/deliver` (CRON_SECRET) — one real inward review-gated Slack card.
+5. Judge by gut ≥3×/week, labeled owner-only.
 
-Full detail: issue #507.
+Also open (separate): re-consent Google on owner account `e40b7cd8` to restore the sync the non-owner test persona was rotating away (#509).
+
+Full detail: issue #494.
 
 ## Product doctrine
 
