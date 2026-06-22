@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 511
+active_issue: 514
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Identity-architecture seam (#511), Stage 1: a link-guard that refuses to connect a Google/Microsoft account already linked (not disconnected) to a DIFFERENT Foldera user. This kills the root cause of the recurring 'constant Google reconnect' (the same external account linked under two identities makes the provider revoke the first identity's refresh token, silently killing sync) and the split-brain accounts (#509). Owner-directed. Backend-only: lib/auth + the two OAuth connect callbacks + a settings error message. The bigger Stage 2-4 (Google as sole sign-in, Microsoft demoted to a linkable surface, migrate the existing Microsoft-identity owner account) is captured in #511 for a careful owner-gated follow-up. Predecessors complete: #507 (PR #508), LANDING #500 (PR #501), control-plane repoint (PR #510)."
-next_seam: "Stage 2-4 of #511 (owner-gated, needs migration): make Microsoft an in-app 'link a surface' action (not a sign-in), migrate existing Microsoft-sign-in users (incl. the owner's primary e40b7cd8) to their Google identity across the ~23 user-scoped tables, repoint OWNER_USER_ID/FOLDERA_SELF_USER_ID, then remove AzureADProvider from NextAuth. Also: Scout money-move #494 activation (Vercel secrets/flags -> paid Drive index -> one real inward Slack card)."
+why_this_first: "Connector depth (#514): Google Drive deep backfill. syncDrive only pulled files modified within the lookback window (1y on first sync, then incremental), so old documents were never indexed and already-synced accounts never deepened. Observed live on the owner account (2cbc1bab) after the #509 merge: drive had only 186 signals, 7 in 14d, while mail was live. Fix mirrors the OneDrive intent (#507): enumerate the whole Drive newest-first with no modifiedTime floor, skip already-stored files by content_hash (self-heals existing accounts, stays cheap), and bound per-run work so a large backfill spreads over runs. Backend-only: lib/sync/google-sync.ts + its test. No schema change, no new sign-in surface, no auto-send. Predecessors complete: identity seam #511 (PRs #512/#513), #507 (PR #508), LANDING #500 (PR #501)."
+next_seam: "Scout money-move #494 activation (Vercel secrets/flags -> paid Drive index -> one real inward Slack card). Also possible: apply the same whole-drive enumeration to OneDrive (#507) so it backfills history beyond the modified-since window."
 completed_issue_425:
   issue: 425
   pr: 426

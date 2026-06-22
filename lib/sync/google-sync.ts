@@ -79,6 +79,27 @@ const GMAIL_THREAD_FETCH_CAP = 300;
 /** Sync upcoming calendar events, not just past ones, so future meetings are known. */
 const UPCOMING_CALENDAR_LOOKAHEAD_DAYS = 14;
 
+/**
+ * Drive is enumerated whole (newest-modified first) rather than only within a
+ * modified-since window, so historical documents are backfilled. We cap how many
+ * file metadata rows we page through, and — separately — how many *new* files we
+ * download + persist per run, so a large first backfill spreads over several
+ * runs instead of timing out (mirrors the OneDrive item cap in microsoft-sync).
+ */
+const DRIVE_MAX_FILES = 1500;
+const DRIVE_MAX_NEW_PER_RUN = 300;
+
+/**
+ * Build the Drive enumeration query. Intentionally has NO `modifiedTime` floor:
+ * the previous `modifiedTime >= sinceIso` clause meant files not touched within
+ * the lookback window were never indexed and already-synced accounts never
+ * deepened. We list every supported, non-trashed file (newest first, capped) and
+ * skip already-stored revisions by content_hash instead.
+ */
+export function buildDriveBackfillQuery(mimeQueries: readonly string[]): string {
+  return `(${mimeQueries.join(' or ')}) and trashed = false`;
+}
+
 function getGmailHeader(
   headers: gmail_v1.Schema$MessagePartHeader[] | undefined,
   name: string,
@@ -495,13 +516,14 @@ async function downloadDriveFileContent(
 async function syncDrive(
   userId: string,
   oauth2: ReturnType<typeof getOAuth2Client>,
-  sinceMs: number,
 ): Promise<number> {
   const drive = google.drive({ version: 'v3', auth: oauth2 });
-  const sinceIso = new Date(sinceMs).toISOString();
 
-  // Query for Google Docs, Sheets, and supported binary uploads (shared filter).
-  const query = `(${DRIVE_MIME_QUERIES.join(' or ')}) and modifiedTime >= '${sinceIso}' and trashed = false`;
+  // Enumerate the whole Drive (newest-modified first), not just a recent window,
+  // so historical documents are backfilled. Already-stored revisions are skipped
+  // by content_hash below, so the first run after deploy backfills history and
+  // later runs stay cheap (no re-download) and self-heal existing accounts.
+  const query = buildDriveBackfillQuery(DRIVE_MIME_QUERIES);
 
   let allFiles: any[] = [];
   let pageToken: string | undefined;
@@ -520,7 +542,10 @@ async function syncDrive(
       allFiles.push(...files);
       pageToken = res.data.nextPageToken ?? undefined;
 
-      if (allFiles.length >= 500) break; // cap
+      if (allFiles.length >= DRIVE_MAX_FILES) {
+        allFiles = allFiles.slice(0, DRIVE_MAX_FILES);
+        break;
+      }
     } while (pageToken);
   } catch (err: any) {
     // drive.readonly may not be granted yet — non-fatal
@@ -534,10 +559,29 @@ async function syncDrive(
   if (allFiles.length === 0) return 0;
 
   const supabase = createServerClient();
+
+  // Whole-drive enumeration returns every file each run; skip revisions already
+  // stored (by content_hash) so we don't re-download content for unchanged files.
+  const { data: existingRows } = await supabase
+    .from('tkg_signals')
+    .select('content_hash')
+    .eq('user_id', userId)
+    .eq('source', 'drive');
+  const knownHashes = new Set<string>(
+    (existingRows ?? []).map((r: any) => r.content_hash).filter(Boolean),
+  );
+
   let inserted = 0;
 
   for (const file of allFiles) {
     if (!file.id) continue;
+
+    // Cap new files processed per run so a large backfill spreads across runs
+    // (each new file may trigger a content download) instead of timing out.
+    if (inserted >= DRIVE_MAX_NEW_PER_RUN) break;
+
+    const contentHash = hash(`gdrive:${file.id}:${file.modifiedTime}`);
+    if (knownHashes.has(contentHash)) continue; // unchanged since a prior sync
 
     try {
       const owner = file.owners?.[0]?.displayName ?? 'self';
@@ -561,8 +605,6 @@ async function syncDrive(
       ]
         .filter(Boolean)
         .join('\n') + fileContentSnippet;
-
-      const contentHash = hash(`gdrive:${file.id}:${file.modifiedTime}`);
 
       const { error } = await supabase.from('tkg_signals').upsert({
         user_id: userId,
@@ -681,7 +723,7 @@ export async function syncGoogle(userId: string, options?: { maxLookbackMs?: num
   }
 
   try {
-    driveSignals = await syncDrive(userId, oauth2, sinceMs);
+    driveSignals = await syncDrive(userId, oauth2);
   } catch (err: any) {
     console.error('[google-sync] Drive sync failed:', err.message);
     errors.push(`drive: ${err.message}`);

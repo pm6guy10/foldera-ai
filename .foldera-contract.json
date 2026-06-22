@@ -1,9 +1,9 @@
 {
-  "backlog_id": "identity-stage3-511",
-  "active_issue": 511,
-  "base_commit": "302e8b4",
+  "backlog_id": "drive-backfill-514",
+  "active_issue": 514,
+  "base_commit": "a2d2584",
   "money_loop_rung": "m2",
-  "user_system_path": "Identity-architecture seam (#511), Stage 3: make Google the sole sign-in identity and demote Microsoft to a connectable data surface. Removes AzureADProvider from NextAuth (lib/auth/auth-options.ts) and the 'Continue with Microsoft' button from /login and /start, so one person maps to one Foldera account (prevents the split-brain from re-forming). Microsoft stays linkable as a SOURCE via the existing /api/microsoft/connect + callback flow for a signed-in Google user (untouched). Stage 1 link-guard already merged (PR #512); the account consolidation was executed (e40b7cd8 -> 2cbc1bab, see #509 receipt).",
+  "user_system_path": "Connector depth (#514): make Google Drive actually deep. lib/sync/google-sync.ts:syncDrive enumerates the whole Drive (newest-modified first, no modifiedTime floor) instead of only files modified within the lookback window, skips files already stored by content_hash so it self-heals existing accounts without re-downloading, and bounds new-file work per run so a large backfill spreads across runs. Mirrors the OneDrive depth fix (#507).",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -13,12 +13,8 @@
     "FOLDERA_MASTER_BIBLE.md",
     "SESSION_HISTORY.md",
     "docs/**",
-    "lib/auth/**",
-    "app/api/google/**",
-    "app/api/microsoft/**",
-    "app/dashboard/settings/**",
-    "app/login/**",
-    "app/start/**",
+    "lib/sync/**",
+    "lib/config/**",
     "tests/**"
   ],
   "forbidden_file_patterns": [
@@ -28,23 +24,23 @@
     ".env",
     ".env.local"
   ],
-  "allowed_files_raw": "Stage 3: lib/auth/auth-options.ts (drop AzureADProvider + its orphaned imports; keep azure-ad jwt-callback branches harmless); app/login/login-inner.tsx and app/start/page.tsx (remove the Continue with Microsoft sign-in button + copy); lib/auth/__tests__/auth-options.test.ts (assert Google is the only sign-in provider, azure-ad absent). Control-plane governance files. The Microsoft surface-linking flow (app/api/microsoft/connect + callback) and the dashboard connect button are intentionally UNTOUCHED.",
-  "forbidden_files_raw": "No Stripe, Scout, schema/migration, or secrets changes. Do NOT remove or alter the /api/microsoft/connect surface-linking flow (Microsoft must stay connectable as a source). No auto-send.",
-  "required_local_proof": "npm run gate:continuity && npm run typecheck && npx vitest run lib/auth/__tests__/auth-options.test.ts app/api/microsoft/callback/__tests__/route.test.ts app/api/google/callback/__tests__/route.test.ts",
-  "required_browser_proof": "Live: /login and /start show only 'Continue with Google' (no Microsoft sign-in); a signed-in Google user can still connect Microsoft as a source from settings. Owner-side validation.",
-  "browser_proof_command": "manual: load /login and /start (only Google sign-in present); from dashboard settings, connect Microsoft as a source and confirm it links to the same account.",
-  "acceptance_condition": "AzureADProvider removed from NextAuth providers; /login and /start expose only Google sign-in; the Microsoft connect-a-source flow (/api/microsoft/connect + callback) is unchanged; gate:continuity + typecheck green; auth-options + both callback test suites green.",
+  "allowed_files_raw": "lib/sync/google-sync.ts (syncDrive: drop the modifiedTime floor, enumerate full Drive newest-first capped at DRIVE_MAX_FILES, skip already-stored files by content_hash, cap new files per run at DRIVE_MAX_NEW_PER_RUN; new exported buildDriveBackfillQuery helper; drop the now-unused sinceMs arg from the syncDrive call) + lib/sync/__tests__/google-sync.test.ts (assert the query enumerates trashed=false with no modifiedTime clause). Control-plane governance files.",
+  "forbidden_files_raw": "No Stripe, Scout, schema/migration, or secrets changes. No new sign-in surface. No auto-send. Do not touch the Gmail or Calendar sync paths.",
+  "required_local_proof": "npm run gate:continuity && npm run typecheck && npx vitest run lib/sync/__tests__/google-sync.test.ts",
+  "required_browser_proof": "Live (owner): after the next full Google sync, the drive signal count climbs well past 186 and includes files older than the previous 1-year window.",
+  "browser_proof_command": "manual: after a full sync runs, re-run the per-source freshness query and confirm drive total > 186 with older occurred_at values present.",
+  "acceptance_condition": "syncDrive enumerates all supported non-trashed Drive files newest-first with no modifiedTime floor, skips files already stored by content_hash, and caps new files per run; buildDriveBackfillQuery contains no modifiedTime clause; gate:continuity + typecheck green; the google-sync test suite green incl. the new query assertion.",
   "is_user_facing": true,
   "anti_regression_checks": [
-    "gate:continuity green with active_issue #511",
-    "active_issue #511 is OPEN on GitHub",
-    "auth-options test asserts providers include google and NOT azure-ad",
-    "microsoft + google callback (connect-a-source) tests still green",
-    "no edits under app/api/stripe, lib/scout, supabase/migrations",
-    "/api/microsoft/connect + callback routes unchanged (Microsoft still linkable as a source)"
+    "gate:continuity green with active_issue #514",
+    "active_issue #514 is OPEN on GitHub",
+    "buildDriveBackfillQuery has no modifiedTime clause and filters trashed=false",
+    "syncDrive skips files already stored (content_hash) so it does not re-download every run",
+    "google-sync existing tests still green",
+    "no edits under app/api/stripe, lib/scout, supabase/migrations; Gmail/Calendar paths untouched"
   ],
-  "stop_condition": "Stage 3 lands as a PR on claude/identity-stage3-511 targeting #511; gate:continuity + typecheck + the named test suites green. Live login-screen validation is owner-side. Remaining owner action: set Vercel OWNER_USER_ID/FOLDERA_SELF_USER_ID to 2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f.",
-  "next_command": "Owner: merge Stage 3. Set Vercel OWNER_USER_ID/FOLDERA_SELF_USER_ID to the surviving account (2cbc1bab-...). Sign in with Google to confirm the full merged account. Optional next: Scout #494 activation.",
+  "stop_condition": "Drive deep backfill lands as a PR on claude/drive-backfill-514 targeting #514; gate:continuity + typecheck + the google-sync suite green. Live backfill (drive count climbing past 186) is owner-validated after the next full sync.",
+  "next_command": "Owner: merge #514, then let the nightly full sync run (or trigger it) and re-check Drive freshness. Optional next: same whole-drive enumeration for OneDrive (#507); Scout #494 activation.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
