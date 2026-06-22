@@ -14,7 +14,10 @@ import { createServerClient } from "@/lib/db/client";
 import { getUserToken, updateSyncTimestamp } from "@/lib/auth/user-tokens";
 import { getMicrosoftTokens, forceRefreshMicrosoftTokens } from "@/lib/auth/token-store";
 import { encrypt } from "@/lib/encryption";
-import { normalizeMicrosoftAccountEmail } from "@/lib/ui/provider-display";
+import {
+  normalizeMicrosoftAccountEmail,
+  shouldUpdateStoredMicrosoftEmail,
+} from "@/lib/ui/provider-display";
 import { truncateSignalContent } from "@/lib/utils/signal-egress";
 import { createHash } from "crypto";
 import mammoth from 'mammoth';
@@ -926,17 +929,22 @@ export async function syncMicrosoft(
     /* optional */
   }
 
-  if (graphSelfEmail && !tokenMeta?.email) {
+  // Self-heal the stored account email: backfill a null AND correct a stale
+  // guest #EXT# UPN that an earlier path (e.g. the #509 token consolidation copy)
+  // persisted raw. The previous null-only backfill could never repair a non-null
+  // wonky value, so it stuck (b-kapp_outlook.com#EXT#@…onmicrosoft.com). Writing
+  // the normalized address whenever it differs makes the row self-correct on the
+  // next sync. Idempotent — a healthy row is left untouched.
+  if (shouldUpdateStoredMicrosoftEmail(tokenMeta?.email, graphSelfEmail)) {
     const supabaseMs = createServerClient();
     const { error: msEmailPatchErr } = await supabaseMs
       .from("user_tokens")
       .update({ email: graphSelfEmail, updated_at: new Date().toISOString() })
       .eq("user_id", userId)
-      .eq("provider", "microsoft")
-      .is("email", null);
+      .eq("provider", "microsoft");
     if (msEmailPatchErr) {
       console.warn(
-        `[microsoft-sync] user_tokens email backfill skipped:`,
+        `[microsoft-sync] user_tokens email self-heal skipped:`,
         msEmailPatchErr.message,
       );
     }

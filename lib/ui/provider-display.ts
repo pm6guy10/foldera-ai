@@ -31,6 +31,28 @@ export function normalizeMicrosoftAccountEmail(raw: string | null | undefined): 
   return `${prefix.slice(0, lastUnderscore)}@${prefix.slice(lastUnderscore + 1)}`;
 }
 
+/**
+ * Decide whether a stored Microsoft account email should be rewritten with the
+ * freshly resolved address. `resolved` is the already-normalized, lowercased
+ * email from Graph (`normalizeMicrosoftAccountEmail(...).toLowerCase()`).
+ *
+ * Returns true when:
+ *  - the row has no email yet (backfill), or
+ *  - the stored value differs from the resolved address — e.g. a stale guest
+ *    `#EXT#` UPN that an earlier path persisted raw and the previous
+ *    null-only backfill could never correct.
+ *
+ * Idempotent: equal values return false, so a healthy row is never rewritten.
+ * Empty `resolved` returns false so a failed Graph lookup never wipes the email.
+ */
+export function shouldUpdateStoredMicrosoftEmail(
+  stored: string | null | undefined,
+  resolved: string,
+): boolean {
+  if (!resolved) return false;
+  return (stored ?? '').trim().toLowerCase() !== resolved;
+}
+
 export function providerDisplayName(provider: string | null | undefined): string {
   if (!provider) return 'Unknown source';
   const normalized = provider.trim().toLowerCase();
