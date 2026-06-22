@@ -634,27 +634,30 @@ async function syncFiles(
   accessToken: string,
   sinceIso: string,
 ): Promise<number> {
-  // Search by last modified date — covers history, not just recently accessed files.
-  // Falls back to /recent if search returns 400 (some tenant configs block it).
+  // Enumerate the whole drive via the delta endpoint (recursive, paged) and
+  // filter by modified date client-side. The previous `search(q='')?$filter=...`
+  // form was rejected by Graph (empty query + unsupported $filter on search),
+  // so it always 400'd and silently fell back to /recent — meaning OneDrive
+  // history was never backfilled. Delta returns every item, so historical files
+  // modified since `sinceIso` are picked up.
+  // Falls back to /recent if delta is unavailable on the tenant.
   const select =
     "id,name,lastModifiedDateTime,lastModifiedBy,size,webUrl,file,folder";
   const sinceDate = new Date(sinceIso).getTime();
 
   let files: any[];
   try {
-    // Microsoft Graph search by modified date with file type filter
-    const filter = encodeURIComponent(
-      `lastModifiedDateTime ge ${sinceIso} and file ne null`,
-    );
-    const searchUrl = `${GRAPH_BASE}/me/drive/root/search(q='')?\$filter=${filter}&\$select=${select}&\$top=${FILE_PAGE_SIZE}`;
-    files = await graphFetchAll<any>(userId, accessToken, searchUrl, {
-      maxItems: FILE_MAX_ITEMS,
+    const deltaUrl = `${GRAPH_BASE}/me/drive/root/delta?$select=${select}&$top=${FILE_PAGE_SIZE}`;
+    files = await graphFetchAll<any>(userId, accessToken, deltaUrl, {
+      // Scan up to GRAPH_MAX_PAGES of items so recent files on later pages are
+      // not missed; supported files are filtered and capped below.
+      maxPages: GRAPH_MAX_PAGES,
     });
-  } catch (searchErr: any) {
-    // Fall back to /recent if search fails
+  } catch (deltaErr: any) {
+    // Fall back to /recent if delta fails
     if (
-      searchErr.message?.includes("400") ||
-      searchErr.message?.includes("501")
+      deltaErr.message?.includes("400") ||
+      deltaErr.message?.includes("501")
     ) {
       try {
         const recentUrl = `${GRAPH_BASE}/me/drive/recent?$select=${select}&$top=${FILE_PAGE_SIZE}`;
@@ -675,28 +678,37 @@ async function syncFiles(
         throw recentErr;
       }
     } else if (
-      searchErr.message?.includes("403") ||
-      searchErr.message?.includes("Forbidden")
+      deltaErr.message?.includes("403") ||
+      deltaErr.message?.includes("Forbidden")
     ) {
       console.warn(
         "[microsoft-sync] Files.Read scope not granted, skipping file sync",
       );
       return 0;
     } else {
-      throw searchErr;
+      throw deltaErr;
     }
   }
 
-  // Filter to supported file types modified since the sync window
-  const fileItems = files.filter((f: any) => {
-    if (!f.file) return false; // skip folders
-    const ext = getFileExtension(f.name ?? "");
-    if (!SUPPORTED_FILE_EXTENSIONS.has(ext)) return false;
-    const modified = f.lastModifiedDateTime
-      ? new Date(f.lastModifiedDateTime).getTime()
-      : 0;
-    return modified >= sinceDate;
-  });
+  // Filter to supported file types modified since the sync window, newest first,
+  // and cap the batch (delta returns the whole drive unordered and each file may
+  // trigger a content download).
+  const fileItems = files
+    .filter((f: any) => {
+      if (!f.file) return false; // skip folders
+      const ext = getFileExtension(f.name ?? "");
+      if (!SUPPORTED_FILE_EXTENSIONS.has(ext)) return false;
+      const modified = f.lastModifiedDateTime
+        ? new Date(f.lastModifiedDateTime).getTime()
+        : 0;
+      return modified >= sinceDate;
+    })
+    .sort(
+      (a: any, b: any) =>
+        new Date(b.lastModifiedDateTime ?? 0).getTime() -
+        new Date(a.lastModifiedDateTime ?? 0).getTime(),
+    )
+    .slice(0, FILE_MAX_ITEMS);
   if (fileItems.length === 0) return 0;
 
   const supabase = createServerClient();

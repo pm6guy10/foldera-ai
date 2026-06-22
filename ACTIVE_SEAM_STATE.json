@@ -1,10 +1,10 @@
 {
-  "active_issue": 500,
-  "active_branch": "claude/landing-hero-constellation",
-  "active_pr": 505,
+  "active_issue": 507,
+  "active_branch": "claude/new-session-0r1iqf",
+  "active_pr": null,
   "deployed_commit_sha": "26592d2",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-21T00:00:00Z",
-  "notes": "Owner-directed LANDING seam (#500): import + implement the Claude-Design 'Foldera Landing' (dark cyan/magenta presence-layer redesign) on the public landing. Temporary authorized detour off the active Scout seam (#494), mirroring the prior landing pass (#496 -> repointed back to #494 after merge). Control plane is repointed to #500 for the duration; repoint back to #494 after this PR merges. The Scout build remains DONE and inward, flag-OFF in prod, hands never gripped real data; the real Scout money-move (#494: one real inward loop on REAL data) stays owner-gated runtime activation (BLOCKED_WITH_EXACT_RECEIPT) and is untouched by this landing pass. active_pr is set once the landing PR is opened."
+  "last_verified_at": "2026-06-22T00:00:00Z",
+  "notes": "Owner-directed repoint from the LANDING seam (#500) to the CONNECTOR-FRESHNESS seam (#507). #500 is PAUSED, not abandoned — its landing work stays on claude/landing-hero-constellation (PR #505) and the control plane repoints back to #500, then the Scout seam #494, after this merges. #507 fixes two real sync defects proven against live tkg_signals: OneDrive produced zero signals ever (microsoft-sync syncFiles used an invalid search(q='')+$filter Graph call that always 400'd to a /recent fallback that never backfilled history; Files.Read IS granted, so re-consent does not fix it), and google_calendar went perpetually stale (google-sync syncCalendar set timeMax=now, never looking ahead, unlike the Microsoft +14d lookahead). Fix is backend-only in lib/sync/**. Live OneDrive/Calendar backfill needs a real Graph cron run on prod tokens (owner-gated; no paid/prod mutation from the harness) -> BLOCKED_WITH_EXACT_RECEIPT for the live freshness claim."
 }

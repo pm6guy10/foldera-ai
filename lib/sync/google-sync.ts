@@ -76,6 +76,8 @@ export function getOAuth2Client(
 const GMAIL_PAGE_SIZE = 500;
 const GMAIL_MAX_MESSAGES = 5000; // ~2-5 years depending on volume
 const GMAIL_THREAD_FETCH_CAP = 300;
+/** Sync upcoming calendar events, not just past ones, so future meetings are known. */
+const UPCOMING_CALENDAR_LOOKAHEAD_DAYS = 14;
 /** Debug: compare inbox message age vs `newer_than:1h` window (ms). */
 const GMAIL_DEBUG_NEWER_THAN_MS = 3600000;
 
@@ -408,8 +410,13 @@ async function syncCalendar(
 ): Promise<number> {
   const calendar = google.calendar({ version: 'v3', auth: oauth2 });
 
+  // Look ahead so upcoming meetings are captured — `new Date()` (now) only ever
+  // pulls events that already happened in the incremental window, which leaves
+  // google_calendar perpetually stale. Mirror the Microsoft calendar lookahead.
   const timeMin = new Date(sinceMs).toISOString();
-  const timeMax = new Date().toISOString();
+  const timeMax = new Date(
+    Date.now() + UPCOMING_CALENDAR_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
 
   const res = await calendar.events.list({
     calendarId: 'primary',
