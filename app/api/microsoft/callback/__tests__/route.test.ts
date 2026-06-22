@@ -4,12 +4,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const getServerSession = vi.fn();
 const getAuthOptions = vi.fn(() => ({}));
 const saveUserToken = vi.fn();
+const findCrossUserTokenConflict = vi.fn();
 const cookieGet = vi.fn();
 const cookieDelete = vi.fn();
 
 vi.mock('next-auth', () => ({ getServerSession }));
 vi.mock('@/lib/auth/auth-options', () => ({ getAuthOptions }));
-vi.mock('@/lib/auth/user-tokens', () => ({ saveUserToken }));
+vi.mock('@/lib/auth/user-tokens', () => ({ saveUserToken, findCrossUserTokenConflict }));
 vi.mock('next/headers', () => ({
   cookies: vi.fn(async () => ({
     get: cookieGet,
@@ -29,6 +30,7 @@ describe('GET /api/microsoft/callback', () => {
     getServerSession.mockResolvedValue({ user: { id: 'user-123' } });
     cookieGet.mockReturnValue({ value: 'state-123' });
     saveUserToken.mockResolvedValue(undefined);
+    findCrossUserTokenConflict.mockResolvedValue(null);
     vi.stubGlobal(
       'fetch',
       vi.fn()
@@ -82,6 +84,21 @@ describe('GET /api/microsoft/callback', () => {
     );
     expect(response.headers.get('location')).toBe(
       'https://foldera.ai/dashboard/settings?microsoft_connected=true',
+    );
+  });
+
+  it('refuses to link a Microsoft account already connected to another Foldera user', async () => {
+    findCrossUserTokenConflict.mockResolvedValueOnce('other-user-999');
+
+    const { GET } = await import('../route');
+    const response = await GET(
+      new NextRequest('https://foldera.ai/api/microsoft/callback?code=code-123&state=state-123'),
+    );
+
+    expect(findCrossUserTokenConflict).toHaveBeenCalledWith('microsoft', 'user@example.com', 'user-123');
+    expect(saveUserToken).not.toHaveBeenCalled();
+    expect(response.headers.get('location')).toBe(
+      'https://foldera.ai/dashboard/settings?microsoft_error=already_linked_elsewhere',
     );
   });
 

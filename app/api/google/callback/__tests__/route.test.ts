@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const getServerSession = vi.fn();
 const getAuthOptions = vi.fn(() => ({}));
 const saveUserToken = vi.fn();
+const findCrossUserTokenConflict = vi.fn();
 const cookieGet = vi.fn();
 const cookieDelete = vi.fn();
 const oauth2Constructor = vi.fn();
@@ -13,7 +14,7 @@ const userInfoGet = vi.fn();
 
 vi.mock('next-auth', () => ({ getServerSession }));
 vi.mock('@/lib/auth/auth-options', () => ({ getAuthOptions }));
-vi.mock('@/lib/auth/user-tokens', () => ({ saveUserToken }));
+vi.mock('@/lib/auth/user-tokens', () => ({ saveUserToken, findCrossUserTokenConflict }));
 vi.mock('next/headers', () => ({
   cookies: vi.fn(async () => ({
     get: cookieGet,
@@ -61,6 +62,7 @@ describe('GET /api/google/callback', () => {
       data: { email: 'user@example.com' },
     });
     saveUserToken.mockResolvedValue(undefined);
+    findCrossUserTokenConflict.mockResolvedValue(null);
   });
 
   it('uses the registered callback URL when exchanging the Google authorization code', async () => {
@@ -86,6 +88,21 @@ describe('GET /api/google/callback', () => {
     );
     expect(response.headers.get('location')).toBe(
       'https://foldera.ai/dashboard/settings?google_connected=true',
+    );
+  });
+
+  it('refuses to link a Google account already connected to another Foldera user', async () => {
+    findCrossUserTokenConflict.mockResolvedValueOnce('other-user-999');
+
+    const { GET } = await import('../route');
+    const response = await GET(
+      new NextRequest('https://foldera.ai/api/google/callback?code=code-123&state=state-123'),
+    );
+
+    expect(findCrossUserTokenConflict).toHaveBeenCalledWith('google', 'user@example.com', 'user-123');
+    expect(saveUserToken).not.toHaveBeenCalled();
+    expect(response.headers.get('location')).toBe(
+      'https://foldera.ai/dashboard/settings?google_error=already_linked_elsewhere',
     );
   });
 

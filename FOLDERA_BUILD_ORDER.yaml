@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 494
+active_issue: 511
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Scout money-move seam (#494): turn the hands on for ONE real inward loop on REAL data (Value = frequency of real acts that landed x load removed per act). The build is DONE and inward (stages 0-5 + inward retarget merged); the hands have never gripped real data (scout_drive_chunks empty, deployed flag-OFF). Activation is owner-gated runtime work the agent sandbox cannot perform (Vercel secrets + flags, paid Drive index, real delivery). Predecessor seams complete: connector-freshness #507 merged (PR #508, sha 9bdf478), LANDING #500 shipped (PR #501). This is the standing money-move seam per #494/#492/#481."
-next_seam: "Owner-gated activation (agent sandbox cannot do these): (1) set VOYAGE_API_KEY + flip SCOUT_ENABLED/SCOUT_RAG_ENABLED/SCOUT_WEB_ENABLED/ALLOW_PAID_LLM/SCOUT_DELIVERY_ENABLED in Vercel prod, redeploy; (2) confirm ENCRYPTION_KEY_LEGACY covers all historical keys (#481); (3) GET /api/cron/scout/index-drive (CRON_SECRET) for the paid first index; (4) GET /api/cron/scout/deliver (CRON_SECRET) for one real inward Slack card; (5) judge by gut >=3x/week, labeled owner-only."
+why_this_first: "Identity-architecture seam (#511), Stage 1: a link-guard that refuses to connect a Google/Microsoft account already linked (not disconnected) to a DIFFERENT Foldera user. This kills the root cause of the recurring 'constant Google reconnect' (the same external account linked under two identities makes the provider revoke the first identity's refresh token, silently killing sync) and the split-brain accounts (#509). Owner-directed. Backend-only: lib/auth + the two OAuth connect callbacks + a settings error message. The bigger Stage 2-4 (Google as sole sign-in, Microsoft demoted to a linkable surface, migrate the existing Microsoft-identity owner account) is captured in #511 for a careful owner-gated follow-up. Predecessors complete: #507 (PR #508), LANDING #500 (PR #501), control-plane repoint (PR #510)."
+next_seam: "Stage 2-4 of #511 (owner-gated, needs migration): make Microsoft an in-app 'link a surface' action (not a sign-in), migrate existing Microsoft-sign-in users (incl. the owner's primary e40b7cd8) to their Google identity across the ~23 user-scoped tables, repoint OWNER_USER_ID/FOLDERA_SELF_USER_ID, then remove AzureADProvider from NextAuth. Also: Scout money-move #494 activation (Vercel secrets/flags -> paid Drive index -> one real inward Slack card)."
 completed_issue_425:
   issue: 425
   pr: 426

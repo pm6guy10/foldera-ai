@@ -12,7 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
-import { saveUserToken } from '@/lib/auth/user-tokens';
+import { saveUserToken, findCrossUserTokenConflict } from '@/lib/auth/user-tokens';
 import { normalizeMicrosoftAccountEmail } from '@/lib/ui/provider-display';
 import { authDebugLog } from '@/lib/auth/auth-debug';
 import { cookies } from 'next/headers';
@@ -137,6 +137,18 @@ export async function GET(request: NextRequest) {
   }
 
   const expiresAt = Math.floor(Date.now() / 1000) + (tokenData.expires_in ?? 3600);
+
+  // 5b. Guard: refuse to link a Microsoft account already connected to a
+  //     different Foldera user. Linking the same external account under two
+  //     identities revokes the other login's refresh token and silently kills
+  //     its sync. One external account maps to one identity. See #511.
+  const msConflictUserId = await findCrossUserTokenConflict('microsoft', msEmail, userId);
+  if (msConflictUserId) {
+    console.warn(
+      `[microsoft/callback] ${msEmail ?? 'account'} is already linked to another Foldera user; refusing cross-account link`,
+    );
+    return NextResponse.redirect(`${settingsUrl}?microsoft_error=already_linked_elsewhere`);
+  }
 
   // 6. Save to user_tokens table (single source of truth for OAuth tokens)
   try {

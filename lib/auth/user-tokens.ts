@@ -114,6 +114,49 @@ export async function saveUserToken(
 }
 
 /**
+ * Returns the user_id of a DIFFERENT Foldera user that already has this external
+ * (provider, email) linked and active (not disconnected), or null if none.
+ *
+ * Guards account linking: the same external account must map to one Foldera
+ * identity. Linking it under a second identity makes the provider rotate/revoke
+ * the first identity's OAuth refresh token, which silently kills background sync
+ * (the "constant reconnect" failure). See issue #511.
+ *
+ * Fails open (returns null) on a transient query error so a DB blip never blocks
+ * a legitimate connect.
+ */
+export async function findCrossUserTokenConflict(
+  provider: 'google' | 'microsoft',
+  email: string | null | undefined,
+  currentUserId: string,
+): Promise<string | null> {
+  const target = (email ?? '').trim().toLowerCase();
+  if (!target) return null;
+
+  const supabase = createServerClient();
+  const { data, error } = await supabase
+    .from('user_tokens')
+    .select('user_id, email')
+    .eq('provider', provider)
+    .is('disconnected_at', null);
+
+  if (error) {
+    console.warn(`[user-tokens] findCrossUserTokenConflict(${provider}) failed:`, error.message);
+    return null;
+  }
+
+  const conflict = (data ?? []).find(
+    (row: { user_id?: string | null; email?: string | null }) =>
+      row.user_id != null &&
+      row.user_id !== currentUserId &&
+      typeof row.email === 'string' &&
+      row.email.trim().toLowerCase() === target,
+  );
+
+  return conflict?.user_id ?? null;
+}
+
+/**
  * Get a user's token from user_tokens, decrypting the stored values.
  */
 export async function getUserToken(

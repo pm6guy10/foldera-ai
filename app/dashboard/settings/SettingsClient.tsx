@@ -814,6 +814,10 @@ function formatProviderOAuthError(providerName: 'Google' | 'Microsoft', code: st
     return `${providerName} did not grant background access. Try connecting again so Foldera can keep reading your sources.`;
   }
 
+  if (code === 'already_linked_elsewhere') {
+    return `That ${providerName} account is already connected to a different Foldera login. Sign in with that login, or disconnect it there first — one ${providerName} account can only be linked to one Foldera account.`;
+  }
+
   return `Connection failed (${code.replace(/_/g, ' ')}).`;
 }
 

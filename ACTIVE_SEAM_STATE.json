@@ -1,10 +1,10 @@
 {
-  "active_issue": 494,
-  "active_branch": "claude/repoint-control-plane-494",
+  "active_issue": 511,
+  "active_branch": "claude/identity-link-guard-511",
   "active_pr": null,
-  "deployed_commit_sha": "9bdf478",
+  "deployed_commit_sha": "fdaf52f",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-22T16:00:00Z",
-  "notes": "Control-plane repoint after the connector-freshness seam (#507) merged via PR #508 (squash 9bdf478) and auto-closed. #507 left the control plane pointing at a closed issue, which would red the continuity gate on the next PR; this PR repoints to the standing Scout money-move seam #494 (open). Predecessors complete: #507 merged (PR #508), LANDING #500 shipped (PR #501). #494 is the money-move: turn the hands on for ONE real inward loop on REAL data. Build is DONE + inward (stages 0-5 + inward retarget merged); the hands have never gripped real data (scout_drive_chunks empty, deployed flag-OFF). Activation is owner-gated runtime work the agent sandbox cannot do (Vercel secrets + flags, paid Drive index, real Slack delivery) -> BLOCKED_WITH_EXACT_RECEIPT. Also note (separate, issue #509): the non-owner test persona 2cbc1bab was disconnected (user_tokens.disconnected_at set, reversible) because it was rotating away the owner account's Google refresh token; owner must re-consent Google on e40b7cd8 to restore that sync."
+  "last_verified_at": "2026-06-22T16:30:00Z",
+  "notes": "Identity-architecture seam (#511), Stage 1: link-guard. Refuses to connect a Google/Microsoft account already linked (not disconnected) to a different Foldera user, in both OAuth connect callbacks; new helper findCrossUserTokenConflict in lib/auth/user-tokens.ts; friendly settings error (already_linked_elsewhere). This is the durable fix for the recurring Google reconnect (root cause: same external account linked under two identities -> provider revokes the first identity's refresh token) and the split-brain (#509). Confirmed against live data: owner Gmail synced daily Apr 8-Jun 11 then died exactly when the +nonowner test account linked the same Gmail Jun 12. Stage 2-4 (Google sole sign-in, Microsoft as a linkable surface, migrate the Microsoft-identity owner account e40b7cd8, remove AzureADProvider) are owner-gated follow-ups captured in #511. Predecessors merged: #507 (PR #508 / 9bdf478), LANDING #500 (PR #501), repoint (PR #510 / fdaf52f)."
 }
