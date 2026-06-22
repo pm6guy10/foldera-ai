@@ -144,6 +144,16 @@ const searchRows: Array<{ logo: string; text: string; meta: string }> = [
   { logo: 'google-drive', text: 'Q2_Headcount_v7.xlsx', meta: 'Drive' },
 ];
 
+// Hero constellation — scattered real work, collapsing toward one move.
+const constellationChips: Array<{ logo: string; title: string; meta: string; top: string; left: string; delay: string }> = [
+  { logo: 'gmail', title: 'Re: Contract v4', meta: '2:14', top: '3%', left: '-2%', delay: '0s' },
+  { logo: 'slack', title: 'DM · Sarah', meta: 'now', top: '-1%', left: '56%', delay: '0.8s' },
+  { logo: 'linear', title: 'PROJ-4821', meta: 'blocked', top: '31%', left: '70%', delay: '1.6s' },
+  { logo: 'google-calendar', title: 'Budget · 4:00', meta: 'hold', top: '63%', left: '-3%', delay: '0.4s' },
+  { logo: 'notion', title: 'Launch plan v7', meta: '', top: '80%', left: '26%', delay: '1.2s' },
+  { logo: 'google-drive', title: 'Q2_Headcount', meta: '', top: '72%', left: '62%', delay: '2s' },
+];
+
 type FeatureColor = 'cyan' | 'violet' | 'emerald' | 'magenta' | 'amber';
 
 const features: Array<{
@@ -432,6 +442,21 @@ export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) 
                 </div>
               </div>
               <div className="hero-mark-wrap reveal pre">
+                <div className="con" aria-hidden="true">
+                  <span className="con-ring r2" />
+                  <span className="con-ring r1" />
+                  {constellationChips.map((chip) => (
+                    <span
+                      key={chip.title}
+                      className="con-chip"
+                      style={{ top: chip.top, left: chip.left, animationDelay: chip.delay }}
+                    >
+                      <Logo name={chip.logo} size={16} />
+                      <span className="ct">{chip.title}</span>
+                      {chip.meta ? <span className="cm">{chip.meta}</span> : null}
+                    </span>
+                  ))}
+                </div>
                 <div className="hero-mark-glow" aria-hidden="true" />
                 <Image
                   className="mark hero-mark"
