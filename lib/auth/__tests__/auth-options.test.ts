@@ -171,10 +171,11 @@ describe('auth session refresh', () => {
     expect(prompt?.split(/\s+/)).toEqual(expect.arrayContaining(['consent', 'select_account']));
   });
 
-  it('asks Microsoft sign-in to show account choice', async () => {
+  it('exposes Google as the only sign-in provider (Microsoft is a connectable surface, not a login) — #511', async () => {
     const { getAuthOptions } = await import('../auth-options');
-    const provider = getAuthOptions().providers.find((candidate) => candidate.id === 'azure-ad') as any;
+    const ids = getAuthOptions().providers.map((candidate) => candidate.id);
 
-    expect(getAuthorizationPrompt(provider)).toBe('select_account');
+    expect(ids).toContain('google');
+    expect(ids).not.toContain('azure-ad');
   });
 });

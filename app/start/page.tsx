@@ -78,12 +78,6 @@ function StartContent() {
               loadingProvider={loadingProvider}
               onClick={handleSignIn}
             />
-            <OAuthConnectButton
-              label="Continue with Microsoft"
-              provider="azure-ad"
-              loadingProvider={loadingProvider}
-              onClick={handleSignIn}
-            />
           </div>
 
           <AuthTrustPills />

@@ -25,18 +25,18 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Current slice:
 
-**IDENTITY (#511) Stage 1 — link-guard so one external account ↔ one Foldera identity.** Both OAuth connect callbacks now refuse to link a Google/Microsoft account already linked (not disconnected) to a *different* Foldera user, redirecting with a clear `already_linked_elsewhere` message instead of silently stealing the refresh token. New helper `lib/auth/user-tokens.ts:findCrossUserTokenConflict` (case-insensitive, self-reconnect allowed, fails open on query error). This is the **durable fix for the recurring Google reconnect** (root cause: same account linked under two identities → provider revokes the first's refresh token) and the split-brain (#509). Confirmed on live data: owner Gmail synced daily Apr 8–Jun 11, died exactly when the `+nonowner` account linked the same Gmail Jun 12.
+**IDENTITY (#511) Stage 3 — Google is the sole sign-in; Microsoft is a connectable surface only.** Removed `AzureADProvider` from NextAuth and the "Continue with Microsoft" button from `/login` + `/start`, so one person maps to one Foldera account and the split-brain can't re-form. Microsoft stays linkable as a *source* via the untouched `/api/microsoft/connect` flow for a signed-in Google user.
 
-**Stage 2-4 (owner-gated, in #511):** Google as sole sign-in; Microsoft demoted to an in-app linkable surface; migrate the Microsoft-identity owner account `e40b7cd8` to its Google identity; remove `AzureADProvider`. Needs a data migration, so it is NOT in this PR.
+**Already done:** Stage 1 link-guard merged (PR #512). The account consolidation was EXECUTED — `e40b7cd8` → `2cbc1bab` (see #509 receipt): the Google-login account now holds all history (5,736 signals / 1,222 actions), both syncing tokens, and the paid Stripe sub.
 
-**Predecessors merged:** #507 (PR #508), LANDING #500 (PR #501), control-plane repoint (PR #510).
+**Predecessors merged:** #507 (PR #508), LANDING #500 (PR #501), repoint (PR #510), Stage 1 (PR #512).
 
 ## Next exact move
 
-1. Land Stage 1 (this PR): `findCrossUserTokenConflict` + guard in both callbacks + settings copy + tests.
-2. Proof: `npm run gate:continuity && npm run typecheck && npx vitest run lib/auth/__tests__/user-tokens.test.ts app/api/google/callback/__tests__/route.test.ts app/api/microsoft/callback/__tests__/route.test.ts`.
-3. Open PR on `claude/identity-link-guard-511` targeting #511.
-4. Owner-gated follow-ups: Stage 2-4 of #511; re-consent Google on `e40b7cd8` (#509); Scout #494 activation.
+1. Land Stage 3 (this PR): drop `AzureADProvider` + the Microsoft sign-in buttons; keep the Microsoft connect-a-source flow; update auth-options test.
+2. Proof: `npm run gate:continuity && npm run typecheck && npx vitest run lib/auth/__tests__/auth-options.test.ts app/api/microsoft/callback/__tests__/route.test.ts app/api/google/callback/__tests__/route.test.ts`.
+3. Open PR on `claude/identity-stage3-511` targeting #511.
+4. Owner: set Vercel `OWNER_USER_ID`/`FOLDERA_SELF_USER_ID` → `2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f`. Sign in with Google. Optional next: Scout #494 activation.
 
 Full detail: issue #511.
 
