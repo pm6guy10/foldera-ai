@@ -23,15 +23,13 @@ labels: []
 
 ## Proof required
 
-<!-- Exact proof that closes this seam. Per AGENTS.md Proof Doctrine:
-     deterministic seams list the commands; live-path seams require deployed
-     verification, persisted row, or real user-journey proof. -->
+<!-- Exact proof that closes this issue. -->
 
-- [ ] `npm run gate:continuity`
-- [ ] <!-- focused tests / browser proof / production verification -->
+- [ ] `npm run build`
+- [ ] `npm run lint`
+- [ ] `npm run test`
+- [ ] For UI / live-path changes: verified the actual user path
 
-## Stop condition
+## Done when
 
-<!-- When to stop: the terminal state (MERGED_AND_CLOSED / BLOCKED_WITH_EXACT_RECEIPT /
-     HUMAN_REVIEW_REQUIRED_WITH_REASON / STOPPED_WITH_AUTHORIZED_REASON) and the
-     receipt that must exist. -->
+<!-- The terminal state and the proof that must exist. -->

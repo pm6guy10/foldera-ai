@@ -35,7 +35,7 @@ body:
     attributes:
       label: Source truth checked
       description: Name the files, issue comments, PRs, or runtime evidence checked before routing.
-      placeholder: "ACTIVE_HANDOFF.md; FOLDERA_BUILD_ORDER.yaml; issue #..."
+      placeholder: "README.md; AGENTS.md; issue #..."
     validations:
       required: true
   - type: textarea

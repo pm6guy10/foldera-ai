@@ -1,40 +1,18 @@
-# Pull Request Receipt
-
-## Receipt summary
-
-- Active issue:
-- Next authorized move:
-- Forbidden work touched: YES/NO
-- Proof run:
-- Checks passed: YES/NO
-- Terminal state: MERGED_AND_CLOSED / BLOCKED_WITH_EXACT_RECEIPT / HUMAN_REVIEW_REQUIRED_WITH_REASON / STOPPED_WITH_AUTHORIZED_REASON
-- Source-truth closeout status:
-- Stop condition:
-- Run Ledger ID:
-
 ## What changed
 
 
-## What did not change
 
-One issue only. One branch. No unrelated cleanup.
-
-If product/business/UX/runtime direction is implicated, cite `FOLDERA_MASTER_BIBLE.md`.
-
-## Proof run
+## Why
 
 
-## Next seam
 
-- Next seam:
-- Status: named / blocked - reason
+## Proof
 
-## Source-truth closeout
+- [ ] `npm run build`
+- [ ] `npm run lint`
+- [ ] `npm run test`
+- [ ] For UI / live-path changes: verified the actual user path
 
-Each line must be filled with exactly one of: `updated`, `unchanged - reason`, `not applicable - reason`.
+## Scope
 
-- `ACTIVE_HANDOFF.md`:
-- `ACTIVE_SEAM_STATE.json`:
-- `FOLDERA_BUILD_ORDER.yaml`:
-- `.foldera-contract.json`:
-- `docs/SOURCE_OF_TRUTH_MAP.md`:
+One issue, one branch. No unrelated cleanup.

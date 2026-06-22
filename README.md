@@ -1,25 +1,29 @@
 # Foldera
 
-Foldera is a Workday Presence Layer: state + connectors + triggers + one intervention, quiet otherwise.
+Autonomous personal agent. Connects to your email/calendar/drive, infers what you
+need, and delivers one finished act to Slack. You approve or you don't.
 
-## Start Here
-
-1. Read `ACTIVE_HANDOFF.md` — current command state and next exact move.
-2. Read the active GitHub issue it names.
-
-`AGENTS.md` is the single agent execution contract. `FOLDERA_MASTER_BIBLE.md` carries product doctrine. `docs/SOURCE_OF_TRUTH_MAP.md` is the keep-list ledger — everything not on it is reference or archive.
-
-## Local Commands
+## Run locally
 
 ```bash
-npm run health
-npm run gate:continuity
-npm run lint
-npm run build
+npm install && cp .env.required .env.local && npm run dev
 ```
 
-Run only the proof that matches the active issue. No paid/model-backed routes, outbound sends, schema changes, or live provider actions unless the active issue requires them and Brandon approves.
+Fill in the values in `.env.local` (see `.env.required` for the list).
 
-## Delivery Contract
+## Deploy
 
-One assigned GitHub issue. One clean branch or worktree. One pull request with the required proof. Source-truth closeout and a GitHub receipt before stop.
+```bash
+vercel deploy --prod
+```
+
+## The loop
+
+1. Sources sync (Gmail, Calendar, Drive, Microsoft).
+2. The brain scores what changed.
+3. The brain decides: act, or stay quiet.
+4. If it acts: draft → Slack card → you approve → it sends.
+5. Receipt logged. Quiet until the next trigger.
+
+See `VISION.md` for what Foldera is (and isn't), and `docs/SYSTEM_INVENTORY.md`
+for the architecture.

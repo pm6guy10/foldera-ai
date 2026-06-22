@@ -61,7 +61,7 @@ export function resolveSettingsRunBriefPipelineDryRun(params: {
 
 /**
  * SCOUT lane flags (issue #486). The proactive Scout is an additive, opt-in,
- * owner-first lane (see FOLDERA_MASTER_BIBLE.md Part V). Every flag is env-driven
+ * owner-first lane (see VISION.md). Every flag is env-driven
  * and defaults OFF, so the Workday Presence Layer is the unchanged default until
  * the owner explicitly enables a lane. All Scout entry points must fail-closed
  * (no-op) when their flag is off, mirroring isAllowProdPaidLlmEnabled().
