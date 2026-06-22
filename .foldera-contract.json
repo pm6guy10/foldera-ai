@@ -1,9 +1,9 @@
 {
-  "backlog_id": "connector-freshness-507",
-  "active_issue": 507,
-  "base_commit": "2ca323c",
+  "backlog_id": "scout-money-move-494",
+  "active_issue": 494,
+  "base_commit": "9bdf478",
   "money_loop_rung": "m2",
-  "user_system_path": "Owner-directed CONNECTOR-FRESHNESS seam (#507): fix two real connector sync defects proven against live tkg_signals. (1) OneDrive produced zero signals ever — microsoft-sync syncFiles queried /me/drive/root/search(q='')?$filter=... which Graph rejects (empty search query + unsupported $filter on search), so it always 400'd and silently fell back to /recent, which only sees recently-accessed files in the tiny incremental window and never backfills history; Files.Read IS granted, so re-consent does not fix it. (2) google_calendar goes perpetually stale — google-sync syncCalendar set timeMax=now so it only ever fetched already-past events and never upcoming meetings, unlike the Microsoft +14d lookahead. Backend-only fix in lib/sync/**; the connector-health stale-source email (the original symptom) is left as-is because it was reporting truthfully. Repointed from the paused LANDING seam (#500); repoint back to #500 then Scout #494 after merge.",
+  "user_system_path": "Scout money-move seam (#494): turn the hands on for ONE real inward loop on REAL data. Value = frequency of real acts that landed x load removed per act. The Scout build is DONE and inward (stages 0-5 + the inward retarget are merged); the hands have never gripped real data (scout_drive_chunks empty, tkg_signals encrypted, deployed flag-OFF). The remaining work is owner-gated runtime activation the agent sandbox cannot perform: set Vercel prod secrets/flags, run the paid Drive index, run one real review-gated Slack delivery grounded in the owner's own data, judged by gut >=3x/week and labeled owner-only. This control-plane PR repoints source truth to #494 after the connector-freshness seam (#507) merged via PR #508 (squash 9bdf478) and auto-closed, which would otherwise red the continuity gate (active_issue pointed at a closed issue). LANDING #500 already shipped (PR #501).",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -13,33 +13,33 @@
     "FOLDERA_MASTER_BIBLE.md",
     "SESSION_HISTORY.md",
     "docs/**",
-    "lib/sync/**",
+    "lib/scout/**",
+    "app/api/cron/scout/**",
     "tests/**"
   ],
   "forbidden_file_patterns": [
     "app/dashboard/**",
     "app/api/stripe/**",
-    "lib/scout/**",
     "supabase/migrations/**",
     ".env",
     ".env.local"
   ],
-  "allowed_files_raw": "CONNECTOR-FRESHNESS seam #507: the fix lives in lib/sync/** (microsoft-sync.ts syncFiles -> drive delta enumeration with /recent fallback; google-sync.ts syncCalendar -> +14d lookahead). Coupled sync unit tests under lib/sync/__tests__/** (within lib/sync/**) and tests/** if needed. Control-plane + Bible governance edits permitted.",
-  "forbidden_files_raw": "No dashboard, Stripe, Scout, schema/migration, or secrets changes. No new connectors and no auto-send. The connector-health email path is intentionally untouched.",
-  "required_local_proof": "npm run gate:continuity && npm run typecheck && npx vitest run lib/sync/__tests__/microsoft-sync.test.ts lib/sync/__tests__/google-sync.test.ts",
-  "required_browser_proof": "Live OneDrive + Google Calendar backfill requires a real Microsoft Graph / Google API cron run against production OAuth tokens (GET /api/cron/sync-microsoft and /api/cron/sync-google with CRON_SECRET), then re-querying tkg_signals for non-zero onedrive and fresh google_calendar rows. This is owner-gated runtime truth (no paid/prod mutation from the harness). Absent that run the live freshness claim is BLOCKED_WITH_EXACT_RECEIPT.",
-  "browser_proof_command": "curl -fsS -H \"Authorization: Bearer $CRON_SECRET\" https://foldera.ai/api/cron/sync-microsoft && curl -fsS -H \"Authorization: Bearer $CRON_SECRET\" https://foldera.ai/api/cron/sync-google",
-  "acceptance_condition": "lib/sync syncFiles enumerates OneDrive via the drive delta endpoint (with /recent fallback) and syncCalendar uses a +14d lookahead; gate:continuity + typecheck green; sync unit tests green; no dashboard/Stripe/Scout/schema/secret changes; the connector-health email path unchanged. Live non-zero onedrive + fresh google_calendar signals are owner-gated runtime proof.",
+  "allowed_files_raw": "This PR is a governance-only control-plane repoint touching ACTIVE_HANDOFF.md, ACTIVE_SEAM_STATE.json, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json. The #494 seam itself, once activated, lives in lib/scout/** and app/api/cron/scout/** with coupled tests; activation proper is owner-gated runtime (no repo change).",
+  "forbidden_files_raw": "No dashboard, Stripe, schema/migration, or secrets changes. No external opportunity-hunting, no new detector/score/channel without a real runtime consumer in the same change, no auto-send.",
+  "required_local_proof": "npm run gate:continuity && npm run typecheck",
+  "required_browser_proof": "Scout activation is owner-gated runtime truth the agent sandbox cannot reach: set VOYAGE_API_KEY + flip SCOUT_ENABLED/SCOUT_RAG_ENABLED/SCOUT_WEB_ENABLED/ALLOW_PAID_LLM/SCOUT_DELIVERY_ENABLED in Vercel prod and redeploy; GET /api/cron/scout/index-drive then /api/cron/scout/deliver (CRON_SECRET bearer); judge >=3x/week. Absent owner activation the live money-move claim is BLOCKED_WITH_EXACT_RECEIPT.",
+  "browser_proof_command": "curl -fsS -H \"Authorization: Bearer $CRON_SECRET\" https://foldera.ai/api/cron/scout/index-drive && curl -fsS -H \"Authorization: Bearer $CRON_SECRET\" https://foldera.ai/api/cron/scout/deliver",
+  "acceptance_condition": "Control plane points at the open Scout seam #494 consistently across ACTIVE_HANDOFF.md, FOLDERA_BUILD_ORDER.yaml, .foldera-contract.json, ACTIVE_SEAM_STATE.json; gate:continuity green with active_issue #494. The Scout money-move itself is proven only by owner-gated runtime activation (one real inward loop on real data), not by this repoint.",
   "is_user_facing": false,
   "anti_regression_checks": [
-    "gate:continuity green with active_issue #507",
-    "microsoft-sync + google-sync unit tests green",
-    "no edits under app/dashboard, app/api/stripe, lib/scout, supabase/migrations",
-    "connector-health.ts email logic unchanged",
-    "mail sync (outlook/gmail) and its timestamp-advance behavior unchanged"
+    "gate:continuity green with active_issue #494",
+    "active_issue #494 is OPEN on GitHub",
+    "no edits under app/dashboard, app/api/stripe, supabase/migrations",
+    "Scout flags remain OFF in prod until owner activation",
+    "no external opportunity-hunting or auto-send introduced"
   ],
-  "stop_condition": "Fix lands as a draft PR on claude/new-session-0r1iqf targeting #507; gate:continuity + typecheck + sync unit tests green. Live OneDrive/Calendar backfill is owner-gated (BLOCKED_WITH_EXACT_RECEIPT). After merge, repoint control plane back to the paused LANDING seam #500, then the Scout seam #494.",
-  "next_command": "Owner: review + merge the #507 sync fix, then run the sync crons (or wait for the schedule) and confirm non-zero onedrive + fresh google_calendar in tkg_signals. After merge, repoint source truth back from #507 to #500, then #494.",
+  "stop_condition": "Repoint lands as a draft PR on claude/repoint-control-plane-494 targeting #494; gate:continuity + typecheck green. Scout activation remains owner-gated (BLOCKED_WITH_EXACT_RECEIPT). Separately tracked: #509 account split-brain (owner decision) and the owner Google re-consent.",
+  "next_command": "Owner: merge this repoint, then run the #494 owner-gated activation checklist (Vercel secrets/flags -> paid Drive index -> one real Slack delivery). Also re-consent Google on the owner account to restore the sync the test persona was rotating away (#509).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

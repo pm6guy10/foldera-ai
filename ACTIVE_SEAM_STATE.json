@@ -1,10 +1,10 @@
 {
-  "active_issue": 507,
-  "active_branch": "claude/new-session-0r1iqf",
+  "active_issue": 494,
+  "active_branch": "claude/repoint-control-plane-494",
   "active_pr": null,
-  "deployed_commit_sha": "26592d2",
+  "deployed_commit_sha": "9bdf478",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-22T00:00:00Z",
-  "notes": "Owner-directed repoint from the LANDING seam (#500) to the CONNECTOR-FRESHNESS seam (#507). #500 is PAUSED, not abandoned — its landing work stays on claude/landing-hero-constellation (PR #505) and the control plane repoints back to #500, then the Scout seam #494, after this merges. #507 fixes two real sync defects proven against live tkg_signals: OneDrive produced zero signals ever (microsoft-sync syncFiles used an invalid search(q='')+$filter Graph call that always 400'd to a /recent fallback that never backfilled history; Files.Read IS granted, so re-consent does not fix it), and google_calendar went perpetually stale (google-sync syncCalendar set timeMax=now, never looking ahead, unlike the Microsoft +14d lookahead). Fix is backend-only in lib/sync/**. Live OneDrive/Calendar backfill needs a real Graph cron run on prod tokens (owner-gated; no paid/prod mutation from the harness) -> BLOCKED_WITH_EXACT_RECEIPT for the live freshness claim."
+  "last_verified_at": "2026-06-22T16:00:00Z",
+  "notes": "Control-plane repoint after the connector-freshness seam (#507) merged via PR #508 (squash 9bdf478) and auto-closed. #507 left the control plane pointing at a closed issue, which would red the continuity gate on the next PR; this PR repoints to the standing Scout money-move seam #494 (open). Predecessors complete: #507 merged (PR #508), LANDING #500 shipped (PR #501). #494 is the money-move: turn the hands on for ONE real inward loop on REAL data. Build is DONE + inward (stages 0-5 + inward retarget merged); the hands have never gripped real data (scout_drive_chunks empty, deployed flag-OFF). Activation is owner-gated runtime work the agent sandbox cannot do (Vercel secrets + flags, paid Drive index, real Slack delivery) -> BLOCKED_WITH_EXACT_RECEIPT. Also note (separate, issue #509): the non-owner test persona 2cbc1bab was disconnected (user_tokens.disconnected_at set, reversible) because it was rotating away the owner account's Google refresh token; owner must re-consent Google on e40b7cd8 to restore that sync."
 }

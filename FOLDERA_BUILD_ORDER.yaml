@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 507
+active_issue: 494
 priority_class: PRODUCT
-work_type: BUGFIX
-why_this_first: "Owner-directed CONNECTOR-FRESHNESS seam (#507): fix two real connector sync defects proven against live tkg_signals. OneDrive produced zero signals ever (microsoft-sync syncFiles used an invalid search(q='')+$filter Graph call that always 400'd to a /recent fallback that never backfilled history; Files.Read IS granted, so re-consent does not fix it), and google_calendar goes perpetually stale (google-sync syncCalendar set timeMax=now, never looking ahead, unlike the Microsoft +14d lookahead). Backend-only fix in lib/sync/**. Repointed from the PAUSED LANDING seam (#500) per owner instruction; #500 landing work stays on claude/landing-hero-constellation (PR #505). The connector-health email path is left as-is (it reported truthfully). Live backfill is owner-gated runtime proof (no paid/prod mutation from the harness)."
-next_seam: "After the #507 fix merges, repoint source truth back to the PAUSED LANDING seam #500 (PR #505), then to the Scout seam #494. Owner runtime confirmation for #507: run GET /api/cron/sync-microsoft and /api/cron/sync-google (CRON_SECRET), then re-query tkg_signals for non-zero onedrive and fresh google_calendar rows."
+work_type: FEATURE
+why_this_first: "Scout money-move seam (#494): turn the hands on for ONE real inward loop on REAL data (Value = frequency of real acts that landed x load removed per act). The build is DONE and inward (stages 0-5 + inward retarget merged); the hands have never gripped real data (scout_drive_chunks empty, deployed flag-OFF). Activation is owner-gated runtime work the agent sandbox cannot perform (Vercel secrets + flags, paid Drive index, real delivery). Predecessor seams complete: connector-freshness #507 merged (PR #508, sha 9bdf478), LANDING #500 shipped (PR #501). This is the standing money-move seam per #494/#492/#481."
+next_seam: "Owner-gated activation (agent sandbox cannot do these): (1) set VOYAGE_API_KEY + flip SCOUT_ENABLED/SCOUT_RAG_ENABLED/SCOUT_WEB_ENABLED/ALLOW_PAID_LLM/SCOUT_DELIVERY_ENABLED in Vercel prod, redeploy; (2) confirm ENCRYPTION_KEY_LEGACY covers all historical keys (#481); (3) GET /api/cron/scout/index-drive (CRON_SECRET) for the paid first index; (4) GET /api/cron/scout/deliver (CRON_SECRET) for one real inward Slack card; (5) judge by gut >=3x/week, labeled owner-only."
 completed_issue_425:
   issue: 425
   pr: 426
