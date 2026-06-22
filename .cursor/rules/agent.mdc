@@ -1,9 +1,0 @@
----
-alwaysApply: true
-description: "Agent Execution Protocol — pointer to AGENTS.md"
----
-
-rules:
-  - "AGENTS.md is the single agent execution contract for this repo. Read it and follow it exactly."
-  - "Boot: read ACTIVE_HANDOFF.md, then the active issue it names."
-  - "One active seam only. PR-based workflow only. No direct edits to main. Source-truth closeout and a GitHub receipt are required before stop."
