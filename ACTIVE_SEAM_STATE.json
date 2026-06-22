@@ -1,10 +1,10 @@
 {
-  "active_issue": 514,
-  "active_branch": "claude/drive-backfill-514",
+  "active_issue": 516,
+  "active_branch": "claude/verdict-grounding-516",
   "active_pr": null,
-  "deployed_commit_sha": "a2d2584",
+  "deployed_commit_sha": "a2c29b9",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-22T18:30:00Z",
-  "notes": "Connector depth (#514): Google Drive deep backfill. lib/sync/google-sync.ts:syncDrive previously queried modifiedTime >= sinceIso (1y on first sync, then incremental), so files not modified within the window were never indexed and already-synced accounts never deepened. Live evidence on owner account 2cbc1bab after the #509 merge: drive source = 186 signals, 7 in 14d, newest 06-16, while Gmail/Outlook are live. Fix mirrors the OneDrive intent (#507): enumerate the whole Drive newest-first with NO modifiedTime floor (cap DRIVE_MAX_FILES), skip files already stored by content_hash (gdrive:{id}:{modifiedTime}) so the first run backfills history and later runs stay cheap and self-heal existing accounts, and bound per-run new-file work (DRIVE_MAX_NEW_PER_RUN) so a big backfill spreads across runs. Backend-only, no schema change, no new sign-in surface, no auto-send. Identity seam fully landed first: link-guard (PR #512), Google-sole-sign-in/Microsoft-as-source (PR #513), account consolidation executed (e40b7cd8 -> 2cbc1bab, #509). Predecessors merged: #507 (PR #508), LANDING #500 (PR #501)."
+  "last_verified_at": "2026-06-22T19:10:00Z",
+  "notes": "Value-delivery fix (#516): the daily verdict had been dark since 2026-03-16. pipeline_runs (owner 2cbc1bab, 45d) showed 77 generation_failed_sentinel days, ~45 real candidates found per run, and the positive_winner_contract gate blocking the winner 96% of the time (74/77) with error_class null (mis-calibration, not a crash). Root cause: hunt-finding -> candidate builder dropped the source date. lib/briefing/scorer.ts:huntFindingToScoredLoop built sourceSignals as {kind,id,summary} with no occurredAt, and HuntFinding (lib/briefing/hunt-anomalies.ts) had no date field, so newestSourceDate() returned null and the currentness/anchor gates (missing_current_artifact_anchor, stale_status_without_current_artifact_facts) executed every hunt winner (the calendar-gap / unanswered-email / repeat-sender cards that dominated the suppressed list). Fix grounds, does not loosen (per docs/CONTEXT.md): HuntFinding.newestSignalAt added + populated from each finding's newest supporting signal occurred_at; propagated to sourceSignals[].occurredAt. Fresh real anomalies now ship; genuinely stale (>14d) ones are still caught by the existing stale_evidence_over_14d blocker. Proven: new hunt-grounding-516 suite (undated->blocked, dated->ships, 30d->still blocked) + full briefing suite (827) green; one pipeline-receipt assertion updated (90d email now blocked as stale_evidence_over_14d, a more accurate reason, still do_nothing/no-spend). Predecessors merged: Drive backfill #514 (PR #515), identity #511 (PRs #512/#513), #507 (PR #508)."
 }
