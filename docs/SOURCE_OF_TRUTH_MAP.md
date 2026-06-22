@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-21 UTC (control plane repointed back to the Scout seam #494 after the owner-directed LANDING design pass #496 merged to main, PR #497 squash 5c2f43d, and #496 closed. The landing detour was a temporary owner-authorized seam; #494 resumes as the one active seam — its money-move is owner-gated runtime activation, BLOCKED_WITH_EXACT_RECEIPT. Prior: 2026-06-20 issue #494 — SCOUT §3 promoted from compass #492, supersedes the build umbrella #486.)
+Last updated: 2026-06-22 UTC (active seam is **#518** — verdict calibration; live-verified still dark, gate calibration shipped in PR #520. Standing/next, not active: Scout money-move #494, OneDrive whole-drive enumeration #507. Prior: 2026-06-21 control plane was on Scout #494 after the LANDING pass #496/PR #497.)
 
 This is the keep-list ledger. Everything not listed here is reference, archive, or git history — never authority.
 
