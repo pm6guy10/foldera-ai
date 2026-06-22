@@ -2,34 +2,37 @@
 
 ---
 
-# 🟢 NEW SESSION — START HERE (snapshot 2026-06-20, consequence-scoring session)
+# 🟢 NEW SESSION — START HERE (snapshot 2026-06-22, identity + dark-verdict session)
 
-**Boot order:** `ACTIVE_HANDOFF.md` → `AGENTS.md` → `ACTIVE_SEAM_STATE.json` (currently between-rungs). Then read the rest of this file for depth.
+**Boot order:** `ACTIVE_HANDOFF.md` → `AGENTS.md` → `ACTIVE_SEAM_STATE.json` (active seam: **#518**). Then read the rest of this file for depth.
 
 ## One-paragraph state
-The **foundation is hardened** (security/RLS, data integrity, cost, CI — audited + guarded, all merged) and the **Master Audit #445 is COMPLETE** (passes 0–12). The engine runs daily on real data and was producing **100% `do_nothing`** — not because the inbox is quiet, but because **the scorer couldn't tell consequence from noise**: a flat "+15 if a `$` appears" let a **$2.71 statement credit (risk 87)** and a **$6.50 milk-frother choice (75)** outrank a **$7,199.50 ESD statutory hardship waiver (85)**. Fixed this session (#474/PR #475): magnitude-scaled money + informational-financial collapse in `lib/signals/commitment-risk.ts`, **and backfilled to the live `tkg_commitments` pool** (validated SQL==TS to the integer before writing). The real consequence layer now leads: waiver 92, declined-payment 88, overpayment plan 76, legal filings 74; receipts/subscriptions/autopay → 22.
+The big discovery this session: the daily verdict had been **DARK since 2026-03-16**. `pipeline_runs` (owner `2cbc1bab`, 45d) showed **77 `generation_failed_sentinel` days** — the engine found **~45 real candidates/run**, ranked them, picked a winner, then the **`positive_winner_contract` gate blocked the winner ~96% of the time** with `error_class` null (mis-calibration, not a crash). **Root cause (fixed, #516/PR #517):** hunt findings dropped their source date — `huntFindingToScoredLoop` built `sourceSignals` with no `occurredAt` and `HuntFinding` had no date field, so `newestSourceDate()==null` and the currentness/anchor gates (`missing_current_artifact_anchor`, `stale_status_without_current_artifact_facts`) executed every hunt winner. Fix **grounds, doesn't loosen** (carry `HuntFinding.newestSignalAt` → `sourceSignals[].occurredAt`); unit-proven, deployed. **Still UNVERIFIED live** (the cause is fixed but no real verdict has been observed shipping yet — see Open Threads).
 
 ## What a GEM is (pin this; Bible Part II-B/II-C, `docs/GEM_SURFACING.md`)
 The one **high-consequence** thing the user half-forgot (money / legal_gov / medical / work_transition / a real promise to a real person), at the **right time**, in the **right channel**, with **one act**. **NOT** a broadcast sender (roman@expert.micro1.ai = canonical noise), **NOT** a calendar reminder, **NOT** a $2.71 receipt.
 
-## Shipped to `main` (recent)
-Master Audit #445 passes 0–12 (security/RLS, data integrity, cost, runtime, AI grounding, FE perf/a11y/UX, trust/claims, Vercel, CI, observability, governance) · #431 soft `primaryOutcomeDeadline` (PR #473) · **#454 broadcast/recruiting-sender suppression** at the entity admission gate (PR #454) · **#474 consequence scoring — magnitude over a flat $-bump (PR #475), backfilled live.**
+## Shipped to `main` this session
+- **#509 (executed on live data)** — consolidated the owner's split-brain accounts: drained Microsoft-login `e40b7cd8` → Google-login `2cbc1bab` (all signals/actions/commitments, both tokens, the paid Stripe sub).
+- **#511 identity** — link-guard `findCrossUserTokenConflict` (PR #512); Google sole sign-in + Microsoft demoted to a connectable source, AzureADProvider removed (PR #513).
+- **#514 Drive depth** (PR #515) — `syncDrive` enumerates the whole Drive (no `modifiedTime` floor), skip-known by `content_hash`, per-run cap.
+- **#516 dark-verdict root cause** (PR #517) — hunt-finding date grounding (above).
 
 ## 🔴 OPEN THREADS (in priority order)
-1. **THE NEXT LEVER — the `positive_winner_contract` gate.** Even with the right thing ranked #1, the generator was killing ~100% of selected winners at this gate (`missing_schedule_resolution_context`, `stale_status_without_current_artifact_facts`, `missing_current_artifact_anchor`) → `do_nothing`. Ranking fixes *which* candidate leads; this gate decides whether it **ships**. Carry the magnitude/consequence principle up into the contract so a genuine high-consequence obligation produces a real artifact instead of recycling. **Do NOT just loosen it** — that ships hollow drafts (the #452 mistake). The honest fix is grounding the artifact in real source material.
-2. **Owner — the value-lever paid run.** `ANTHROPIC_API_KEY` is ENABLED in Vercel (confirmed by owner). With the pool now corrected, the open question is whether a real winner clears the contract gate end-to-end. `docs/OWNER_PAID_VALUE_LEVER_RUNBOOK.md`.
-3. **Owner-side** — branch protection on `main` (require CI); confirm Slack/CRON env.
-4. **Deferred lever — the two-way test** (a relationship gem requires the user actually replied once); follow-up to #454.
-5. **Carry consequence up into the signal-side stakes scoring** (`stakes-gate.ts` / scorer) and dedup, mirroring the commitment-risk fix.
+1. **#518 — VERIFY the verdict ships live, then calibrate what's left.** The #516 fix is deployed + unit-proven but NOT yet observed producing a real verdict. Live attempts hit the **manual directive cap** (`MAX_MANUAL_DIRECTIVE_CALLS_PER_DAY=3`, `lib/utils/api-tracker.ts`; today's cron blew it). **Verify via the 11:00 UTC `morning-pipeline` cron** (not manual-limited) → expect `pipeline_runs.outcome=generation_returned`. If it still SAFE_SILENCEs, calibrate the remaining gates with test/replay proof (NOT blind loosening, the #452 mistake): `missing_schedule_resolution_context` (too literal), goal-drift `missing_current_artifact_anchor`, and the downstream `discrepancy-card-frame.ts` `weak_risk; reminder_without_risk` gate (`docs/WINNER_TRACE_ROOT_CAUSE.md`).
+2. **Owner — Vercel env.** Set `OWNER_USER_ID`/`FOLDERA_SELF_USER_ID` → `2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f` so owner-gated features follow the surviving account.
+3. **Operational** — raise/segment the manual directive cap so the dashboard "Auto-detect" can self-test; surface a re-generate affordance once a card already exists (today it's hidden behind Dismiss). Also: branch protection on `main`.
+4. **Consequence scoring (prior session, shipped #474/PR #475)** — magnitude-scaled commitment risk landed + backfilled; carry it up into signal-side stakes (`stakes-gate.ts`) next.
+5. **Standing** — Scout money-move #494 activation; apply the whole-drive enumeration to OneDrive (#507).
 
 ## Operating notes / gotchas for the next agent
-- **Consequence, not keywords.** Stakes scale with *magnitude × irreversibility × who-it-affects*, never the presence of a `$`/number. A $2.71 credit and a $7,199 waiver are not the same. (`commitment-risk.ts` is the reference implementation.)
-- **DON'T FRONT-LOAD. Pick and execute, report after.** The owner does not want a menu of choices before work starts — make the highest-leverage call, do it, bring the result + reasoning. (`LESSONS_LEARNED.md` #20.)
-- **Value is the only score.** Green CI / clean repo / merged PRs are hygiene, not value (Bible II-B, `LESSONS_LEARNED.md` #19). "Healthy but producing nothing" is still failing.
-- **Test against REAL data, and you can re-score it.** Verify brain changes with Supabase MCP. A derived field (`risk_score`) can be backfilled via MCP using validated SQL that mirrors the TS function — validate SQL==TS on known rows before writing.
-- **Fail-safe direction:** suppress noise (fails toward silence). Do NOT loosen gates to "surface more" — that surfaces noise.
-- **This remote container can't run the pre-push gate** (needs owner Supabase secrets + Playwright). Pushes use owner-authorized `HUSKY=0`; deterministic proof (`gate:continuity` + targeted vitest + `typecheck` + `build`) substitutes.
-- **Fresh branch per seam** (avoids the long-lived-branch merge dance). Reset control plane to between-rungs after a merge so the next gate isn't stale.
+- **Consequence, not keywords.** Stakes scale with *magnitude × irreversibility × who-it-affects*, never the presence of a `$`/number. (`commitment-risk.ts` is the reference implementation.)
+- **Ground, don't loosen.** When a gate over-blocks, first check whether the candidate is missing real data it should have (the #516 lesson: the date was being dropped). Loosening the gate ships hollow drafts (#452).
+- **DON'T FRONT-LOAD. Pick and execute, report after.** The owner does not want a menu before work starts — make the highest-leverage call, do it, bring the result + reasoning. (`LESSONS_LEARNED.md` #20.)
+- **Value is the only score.** Green CI / clean repo / merged PRs are hygiene, not value. "Healthy but producing nothing" is still failing — exactly what #516 caught (ingestion looked healthy; output was dark for 3 months).
+- **Verify against REAL data via Supabase MCP**, and you can read/repair derived state. `pipeline_runs` is the verdict telemetry; `auth.users.raw_user_meta_data->'workday_presence_state'` is the live card; the manual cap counts `api_usage` rows with `endpoint in (directive, directive_retry)` since UTC midnight.
+- **This remote container can't trigger the prod brain** (no `CRON_SECRET`, no user session; foldera.ai returns 403 to the sandbox). Verify via the scheduled cron + `pipeline_runs`, or have the owner tap/curl.
+- **Fresh branch per seam**; roll the control plane forward after each merge so the next gate isn't stale.
 
 ---
 

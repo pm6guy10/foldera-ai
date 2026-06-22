@@ -1,9 +1,9 @@
 {
-  "backlog_id": "verdict-grounding-516",
-  "active_issue": 516,
-  "base_commit": "a2c29b9",
+  "backlog_id": "verdict-calibration-518",
+  "active_issue": 518,
+  "base_commit": "7e2f972",
   "money_loop_rung": "m2",
-  "user_system_path": "Value-delivery fix (#516): the daily verdict has been dark since March because hunt candidates dropped their source date, so the positive_winner_contract currentness/anchor gates blocked ~96% of winners. Ground the findings (carry the real newest-signal date through HuntFinding.newestSignalAt -> sourceSignals[].occurredAt) so fresh, real anomalies ship while genuinely stale evidence (>14d) is still correctly blocked. No gate is loosened (per docs/CONTEXT.md).",
+  "user_system_path": "Verdict calibration (#518): finish making the daily verdict ship live. #516 grounded hunt findings (unit-proven, deployed) but live verification on the owner is incomplete (manual call cap + stale fixture got in the way). Verify via the 11:00 UTC cron; if the brain still SAFE_SILENCEs, calibrate the remaining over-strict gates (schedule-resolution, goal-drift anchor, discrepancy-card-frame weak_risk) with test/replay proof, never blind loosening.",
   "allowed_file_patterns": [
     ".foldera-contract.json",
     "ACTIVE_SEAM_STATE.json",
@@ -14,6 +14,7 @@
     "SESSION_HISTORY.md",
     "docs/**",
     "lib/briefing/**",
+    "lib/utils/api-tracker.ts",
     "tests/**"
   ],
   "forbidden_file_patterns": [
@@ -23,23 +24,22 @@
     ".env",
     ".env.local"
   ],
-  "allowed_files_raw": "lib/briefing/hunt-anomalies.ts (add HuntFinding.newestSignalAt + populate from newest supporting signal occurred_at); lib/briefing/scorer.ts (huntFindingToScoredLoop: propagate occurredAt: f.newestSignalAt onto sourceSignals; export it for testing); lib/briefing/__tests__/hunt-grounding-516.test.ts (new: grounding + propagation + gate-flip incl. no-loosening guard); lib/briefing/__tests__/pipeline-receipt.test.ts (update the 90d-email block reason to stale_evidence_over_14d, the now-accurate reason). Control-plane governance files.",
-  "forbidden_files_raw": "No Stripe, Scout, schema/migration, or secrets changes. No auto-send. Do NOT loosen positive_winner_contract thresholds or touch the deliberate goal-drift missing_current_artifact_anchor behavior; this is a grounding fix only.",
-  "required_local_proof": "npm run gate:continuity && npm run typecheck && npx vitest run lib/briefing/__tests__/",
-  "required_browser_proof": "Live (owner): after the next pipeline run, pipeline_runs shows generation_returned instead of generation_failed_sentinel for the owner, and a real briefing appears on the dashboard (/api/briefing/latest).",
-  "browser_proof_command": "manual: trigger the morning pipeline (or wait for cron), then query pipeline_runs for outcome=generation_returned and confirm a new tkg_briefings row / dashboard verdict.",
-  "acceptance_condition": "Hunt findings carry their real newest-signal date through to sourceSignals[].occurredAt; a fresh hunt candidate is no longer blocked by missing_current_artifact_anchor / stale_status_without_current_artifact_facts, while >14d evidence is still blocked by stale_evidence_over_14d; gate:continuity + typecheck green; full briefing suite (incl. new hunt-grounding-516) green.",
+  "allowed_files_raw": "This roll-forward PR is governance-only (control-plane docs + SESSION_HISTORY). The #518 work itself, when picked up: lib/briefing/** (artifact-taste-pack.ts gate calibration, discrepancy-card-frame.ts), lib/utils/api-tracker.ts (manual call cap segmentation), and tests. Verification is primarily live (cron -> pipeline_runs) plus unit/replay proof for any gate change.",
+  "forbidden_files_raw": "No Stripe, Scout, schema/migration, or secrets changes. No auto-send. No BLIND loosening of positive_winner_contract or the discrepancy-card quality gate (the #452 'hollow drafts' mistake) — every gate change carries a test + before/after read.",
+  "required_local_proof": "npm run gate:continuity && npm run typecheck (roll-forward); for #518 code work additionally: npx vitest run lib/briefing/__tests__/",
+  "required_browser_proof": "Live (owner): after the 11:00 UTC morning-pipeline cron, pipeline_runs.outcome flips from generation_failed_sentinel to generation_returned for 2cbc1bab, and a real (non-fixture) verdict card appears on the dashboard.",
+  "browser_proof_command": "manual: wait for / trigger the morning-pipeline cron, then query pipeline_runs for outcome=generation_returned and confirm the dashboard verdict is a real grounded move (not pipe_test, not an anchor hold).",
+  "acceptance_condition": "Control-plane rolled to #518 with gate:continuity green; the next session can confirm the live verdict via cron and, if needed, calibrate the remaining gates with proof. No blind loosening.",
   "is_user_facing": true,
   "anti_regression_checks": [
-    "gate:continuity green with active_issue #516",
-    "active_issue #516 is OPEN on GitHub",
-    "hunt-grounding-516 suite: undated blocked, dated ships, 30d still blocked",
-    "full lib/briefing/__tests__ suite green (no positive_winner_contract / winner-selection regression)",
-    "no loosening of positive_winner_contract thresholds; goal-drift anchor behavior unchanged",
-    "no edits under app/api/stripe, lib/scout, supabase/migrations"
+    "gate:continuity green with active_issue #518",
+    "active_issue #518 is OPEN on GitHub",
+    "no edits under app/api/stripe, lib/scout, supabase/migrations",
+    "#516 hunt-grounding tests remain green",
+    "any positive_winner_contract / discrepancy-card change carries a unit test + before/after read"
   ],
-  "stop_condition": "Grounding fix lands as a PR on claude/verdict-grounding-516 targeting #516; gate:continuity + typecheck + the briefing suite green. Live confirmation (pipeline_runs flips to generation_returned, a real briefing appears) is owner-validated after the next pipeline run.",
-  "next_command": "Owner: merge #516, then trigger the morning pipeline (or wait for the 11:00 cron) and confirm a real daily verdict appears. Optional next: review whether the remaining gates (missing_schedule_resolution_context on real calendar-gap cards, goal-drift anchor) are still too strict; Scout #494 activation.",
+  "stop_condition": "Session-closeout roll-forward lands on claude/verdict-calibration-518 -> main; #518 captures the live-verification + gate-calibration work. gate:continuity + typecheck green.",
+  "next_command": "Next session: read #518. Check pipeline_runs for the owner after the 11:00 UTC cron (expect generation_returned). If still SAFE_SILENCE, calibrate missing_schedule_resolution_context / goal-drift anchor / discrepancy-card-frame weak_risk with test+replay proof. Owner: set Vercel OWNER_USER_ID/FOLDERA_SELF_USER_ID -> 2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f; consider raising/segmenting the manual directive cap. Also standing: Scout #494 activation; OneDrive whole-drive enumeration (#507).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

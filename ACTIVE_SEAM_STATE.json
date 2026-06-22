@@ -1,10 +1,10 @@
 {
-  "active_issue": 516,
-  "active_branch": "claude/verdict-grounding-516",
+  "active_issue": 518,
+  "active_branch": "claude/verdict-calibration-518",
   "active_pr": null,
-  "deployed_commit_sha": "a2c29b9",
+  "deployed_commit_sha": "7e2f972",
   "runtime_env": "production",
-  "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-22T19:10:00Z",
-  "notes": "Value-delivery fix (#516): the daily verdict had been dark since 2026-03-16. pipeline_runs (owner 2cbc1bab, 45d) showed 77 generation_failed_sentinel days, ~45 real candidates found per run, and the positive_winner_contract gate blocking the winner 96% of the time (74/77) with error_class null (mis-calibration, not a crash). Root cause: hunt-finding -> candidate builder dropped the source date. lib/briefing/scorer.ts:huntFindingToScoredLoop built sourceSignals as {kind,id,summary} with no occurredAt, and HuntFinding (lib/briefing/hunt-anomalies.ts) had no date field, so newestSourceDate() returned null and the currentness/anchor gates (missing_current_artifact_anchor, stale_status_without_current_artifact_facts) executed every hunt winner (the calendar-gap / unanswered-email / repeat-sender cards that dominated the suppressed list). Fix grounds, does not loosen (per docs/CONTEXT.md): HuntFinding.newestSignalAt added + populated from each finding's newest supporting signal occurred_at; propagated to sourceSignals[].occurredAt. Fresh real anomalies now ship; genuinely stale (>14d) ones are still caught by the existing stale_evidence_over_14d blocker. Proven: new hunt-grounding-516 suite (undated->blocked, dated->ships, 30d->still blocked) + full briefing suite (827) green; one pipeline-receipt assertion updated (90d email now blocked as stale_evidence_over_14d, a more accurate reason, still do_nothing/no-spend). Predecessors merged: Drive backfill #514 (PR #515), identity #511 (PRs #512/#513), #507 (PR #508)."
+  "db_state_version": "auth.users.user_metadata.workday_presence_state",
+  "last_verified_at": "2026-06-22T20:10:00Z",
+  "notes": "Verdict calibration seam (#518), session-closeout roll-forward. #516 (PR #517) fixed the dominant dark-verdict cause (hunt findings dropped occurredAt -> positive_winner_contract blocked ~96% of winners); deployed + unit-proven (hunt-grounding-516). LIVE verification on owner 2cbc1bab is INCOMPLETE: the manual auto-detect path is capped at 3 directive calls/UTC-day and today's 11:41 cron blew the cap (8 rows), so taps short-circuited before scoring. Prod mutations made this session (disclosed): deleted today's 8 directive/directive_retry api_usage rows for 2cbc1bab; removed leftover pipe_test workday_presence_state + workday_presence_suppression_trace keys. Brain still hasn't run post-fix (directive_calls_today=0, last api 11:40). NEXT: verify via the 11:00 UTC morning-pipeline cron (not manual-limited) -> expect pipeline_runs.outcome=generation_returned; if still SAFE_SILENCE, calibrate remaining gates (missing_schedule_resolution_context, goal-drift anchor, discrepancy-card-frame.ts weak_risk) with test/replay proof, no blind loosening. Owner: set Vercel OWNER_USER_ID/FOLDERA_SELF_USER_ID -> 2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f. Predecessors merged this session: #511 (PRs #512/#513), #514 (PR #515), #516 (PR #517); #509 consolidation executed on live data."
 }
