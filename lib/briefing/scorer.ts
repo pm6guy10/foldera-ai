@@ -4515,7 +4515,7 @@ function huntFindingBlockedByLock(f: HuntFinding, locked: Set<string>): boolean 
   return false;
 }
 
-function huntFindingToScoredLoop(f: HuntFinding): ScoredLoop {
+export function huntFindingToScoredLoop(f: HuntFinding): ScoredLoop {
   return {
     id: f.id,
     type: 'hunt',
@@ -4538,6 +4538,9 @@ function huntFindingToScoredLoop(f: HuntFinding): ScoredLoop {
       kind: 'signal' as const,
       id,
       summary: f.title.slice(0, 160),
+      // Carry the real signal date so the artifactability gate treats the
+      // finding as current instead of undated (see #516).
+      occurredAt: f.newestSignalAt,
     })),
     entityName: f.entityName,
     confidence_prior: 82,

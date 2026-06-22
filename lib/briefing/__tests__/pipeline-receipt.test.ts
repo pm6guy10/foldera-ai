@@ -823,7 +823,11 @@ describe('briefing pipeline receipt', () => {
     runtime.signalSelectColumns = [];
     const directive = await generateDirective(TEST_USER_ID);
     expect(directive.action_type).toBe('do_nothing');
-    expect(directive.reason).toContain('positive_winner_contract:stale_status_without_current_artifact_facts');
+    // #516: the finding now carries its real source date, so a 90-day-old unanswered
+    // email is correctly blocked as stale *evidence* (>14d) rather than as
+    // "stale status without current facts" (which only fired when the date was missing).
+    // Still do_nothing, still no artifact, still no LLM spend — just a more accurate reason.
+    expect(directive.reason).toContain('positive_winner_contract:stale_evidence_over_14d');
     expect((directive as Row).embeddedArtifact).toBeUndefined();
     const directiveUsageRows = runtime.apiUsage.filter((row) =>
       row.endpoint === 'directive' || row.endpoint === 'directive_retry',
@@ -839,7 +843,7 @@ describe('briefing pipeline receipt', () => {
 
     const generateResult = await runDailyGenerate({ userIds: [TEST_USER_ID] });
     const expectedPublicNoSendDetail = 'Nothing cleared the bar today after evaluating 1 candidate.';
-    const expectedInternalBlockedReason = 'positive_winner_contract:stale_status_without_current_artifact_facts';
+    const expectedInternalBlockedReason = 'positive_winner_contract:stale_evidence_over_14d';
     expect(generateResult.results).toEqual([
       expect.objectContaining({
         code: 'no_send_persisted',

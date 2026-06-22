@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 514
+active_issue: 516
 priority_class: PRODUCT
-work_type: FEATURE
-why_this_first: "Connector depth (#514): Google Drive deep backfill. syncDrive only pulled files modified within the lookback window (1y on first sync, then incremental), so old documents were never indexed and already-synced accounts never deepened. Observed live on the owner account (2cbc1bab) after the #509 merge: drive had only 186 signals, 7 in 14d, while mail was live. Fix mirrors the OneDrive intent (#507): enumerate the whole Drive newest-first with no modifiedTime floor, skip already-stored files by content_hash (self-heals existing accounts, stays cheap), and bound per-run work so a large backfill spreads over runs. Backend-only: lib/sync/google-sync.ts + its test. No schema change, no new sign-in surface, no auto-send. Predecessors complete: identity seam #511 (PRs #512/#513), #507 (PR #508), LANDING #500 (PR #501)."
-next_seam: "Scout money-move #494 activation (Vercel secrets/flags -> paid Drive index -> one real inward Slack card). Also possible: apply the same whole-drive enumeration to OneDrive (#507) so it backfills history beyond the modified-since window."
+work_type: FIX
+why_this_first: "Value-delivery fix (#516): the daily verdict has been DARK since 2026-03-16. pipeline_runs (owner 2cbc1bab, 45d) showed 77 generation_failed_sentinel days while the engine found ~45 real candidates/run, ranked them, picked a winner, then the positive_winner_contract gate blocked the winner 96% of the time (74/77) with error_class null -- mis-calibration, not a crash. Root cause: hunt findings dropped their source date (huntFindingToScoredLoop built sourceSignals with no occurredAt; HuntFinding had no date field), so newestSourceDate()==null and the currentness/anchor gates executed every hunt winner (calendar-gap / unanswered-email / repeat-sender). Fix grounds, does not loosen (docs/CONTEXT.md): carry the real newest-signal date through HuntFinding.newestSignalAt -> sourceSignals[].occurredAt; fresh anomalies ship, >14d ones still blocked by stale_evidence_over_14d. Backend-only: lib/briefing/hunt-anomalies.ts + scorer.ts + tests. Predecessors complete: Drive backfill #514 (PR #515), identity #511 (PRs #512/#513), #507 (PR #508)."
+next_seam: "Confirm live: after a pipeline run the owner gets a real daily verdict (pipeline_runs generation_returned + a tkg_briefings row). Then review whether the remaining gates are still too strict on legitimate cards (missing_schedule_resolution_context on real 'commitment due, no calendar block' cards; goal-drift missing_current_artifact_anchor). Also: Scout money-move #494 activation; apply whole-drive enumeration to OneDrive (#507)."
 completed_issue_425:
   issue: 425
   pr: 426

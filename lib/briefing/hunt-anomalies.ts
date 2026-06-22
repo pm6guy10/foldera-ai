@@ -41,6 +41,13 @@ export interface HuntFinding {
   supportingSignalIds: string[];
   evidenceLines: string[];
   severity: number;
+  /**
+   * ISO date of the newest supporting signal. Carried so the downstream
+   * artifactability gate can see the finding is *current* (it reads
+   * sourceSignals[].occurredAt). Without it, hunt candidates look undated and
+   * get blocked by missing_current_artifact_anchor / stale_status gates.
+   */
+  newestSignalAt?: string;
 }
 
 const MAIL_SOURCES = new Set(['gmail', 'outlook']);
@@ -670,6 +677,24 @@ export function runHuntAnomalies(args: {
       evidenceLines: recent.map((x) => `${x.subject} (${new Date(x.occurredMs).toISOString().slice(0, 10)})`).slice(0, 5),
       severity: 85 + recent.length,
     });
+  }
+
+  // Ground each finding in the real date of its newest supporting signal so the
+  // artifactability gate sees it as current instead of undated (undated hunt
+  // candidates were silently blocked by the currentness/anchor gates).
+  const occurredAtById = new Map(args.signals.map((s) => [s.id, s.occurred_at]));
+  for (const f of rawFindings) {
+    let newestMs = -Infinity;
+    let newestIso: string | undefined;
+    for (const id of f.supportingSignalIds) {
+      const iso = occurredAtById.get(id);
+      const ms = iso ? new Date(iso).getTime() : NaN;
+      if (!Number.isNaN(ms) && ms > newestMs) {
+        newestMs = ms;
+        newestIso = iso;
+      }
+    }
+    if (newestIso) f.newestSignalAt = newestIso;
   }
 
   rawFindings.sort((a, b) => b.severity - a.severity);
