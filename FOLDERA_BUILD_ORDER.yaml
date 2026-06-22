@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 500
+active_issue: 507
 priority_class: PRODUCT
-work_type: FEATURE
-why_this_first: "Owner-directed LANDING seam (#500): import + implement the Claude-Design 'Foldera Landing' (dark cyan/magenta presence-layer redesign) on the public landing. Temporary authorized detour off the active Scout seam (#494), mirroring the prior landing pass (#496 -> repointed back to #494 after merge). The landing is the first user-facing surface; this pass replaces the marketing landing with the imported design while preserving the real auth/route wiring (/start, /login, /demo) and the isAuthenticated contract. Scout (#494) is untouched: build DONE + inward, flag-OFF in prod, hands never gripped real data; its money-move stays owner-gated runtime activation."
-next_seam: "After the landing PR merges, repoint source truth back from #500 to the Scout seam #494 and resume owner-gated runtime activation: (1) set VOYAGE_API_KEY + flip SCOUT_ENABLED/SCOUT_RAG_ENABLED/SCOUT_WEB_ENABLED/ALLOW_PAID_LLM/SCOUT_DELIVERY_ENABLED in Vercel prod, redeploy; (2) confirm ENCRYPTION_KEY_LEGACY covers all historical keys (#481); (3) GET /api/cron/scout/index-drive (CRON_SECRET) for the paid first index; (4) GET /api/cron/scout/deliver (CRON_SECRET) for one real inward Slack card; (5) judge by gut >=3x/week, labeled owner-only."
+work_type: BUGFIX
+why_this_first: "Owner-directed CONNECTOR-FRESHNESS seam (#507): fix two real connector sync defects proven against live tkg_signals. OneDrive produced zero signals ever (microsoft-sync syncFiles used an invalid search(q='')+$filter Graph call that always 400'd to a /recent fallback that never backfilled history; Files.Read IS granted, so re-consent does not fix it), and google_calendar goes perpetually stale (google-sync syncCalendar set timeMax=now, never looking ahead, unlike the Microsoft +14d lookahead). Backend-only fix in lib/sync/**. Repointed from the PAUSED LANDING seam (#500) per owner instruction; #500 landing work stays on claude/landing-hero-constellation (PR #505). The connector-health email path is left as-is (it reported truthfully). Live backfill is owner-gated runtime proof (no paid/prod mutation from the harness)."
+next_seam: "After the #507 fix merges, repoint source truth back to the PAUSED LANDING seam #500 (PR #505), then to the Scout seam #494. Owner runtime confirmation for #507: run GET /api/cron/sync-microsoft and /api/cron/sync-google (CRON_SECRET), then re-query tkg_signals for non-zero onedrive and fresh google_calendar rows."
 completed_issue_425:
   issue: 425
   pr: 426

@@ -13,31 +13,31 @@ Keep this cockpit short and value-first. Completed-issue history lives in `SESSI
 
 ## Boot
 
-1. Read this file. 2. Read the active issue (#494). 3. Check issue #136 for recent INTERRUPT receipts.
+1. Read this file. 2. Read the active issue (#507). 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #500 is the active LANDING seam.
+Issue #507 is the active CONNECTOR-FRESHNESS seam.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
 ## Current slice:
 
-**LANDING (#500) — implement the imported Claude-Design "Foldera Landing".** Owner-directed landing pass: replace the public marketing landing with the imported design (dark cyan/magenta presence-layer system; Space Grotesk + Inter + JetBrains Mono). Temporary authorized detour off the Scout seam (#494), mirroring the prior landing pass (#496 → repointed back to #494 after merge). Real auth/route wiring is preserved: primary CTAs → `/start`, Sign in → `/login`, See the demo → `/demo`; `isAuthenticated` contract intact; no dead anchors; no forbidden public-facing claim terms; dashboard palette untouched.
+**CONNECTOR-FRESHNESS (#507) — fix OneDrive (zero signals ever) + Google Calendar (perpetually stale).** Backend-only fix in `lib/sync/**`, proven against live `tkg_signals`. OneDrive: `microsoft-sync.ts` `syncFiles` used `search(q='')?$filter=…`, which Graph rejects, so it always 400'd to a `/recent` fallback that never backfilled history (`Files.Read` IS granted — re-consent does not fix it). Google Calendar: `google-sync.ts` `syncCalendar` set `timeMax = now`, never looking ahead, so upcoming meetings were never synced. The connector-health stale-source email (the original symptom) is intentionally left untouched — it reported truthfully.
 
-**Scout (#494) is untouched** and resumes after merge: build DONE + inward, flag-OFF in prod, hands never gripped real data; its money-move (one real inward loop on REAL data) stays owner-gated runtime activation (`BLOCKED_WITH_EXACT_RECEIPT`).
+**LANDING (#500) is PAUSED, not abandoned** — its work stays on `claude/landing-hero-constellation` (PR #505). After #507 merges, repoint the control plane back to #500, then the Scout seam #494 (owner-gated runtime activation, `BLOCKED_WITH_EXACT_RECEIPT`).
 
 ## Next exact move
 
-1. Implement the design in `components/foldera/LandingPage.tsx` (lucide-react icons, real `/logos/*.svg`, `/foldera-glyph.svg` mark); add Space Grotesk in `app/layout.js`.
-2. Refresh the three coupled landing e2e specs to the new structure/copy, preserving invariants (CTA hrefs → `/start`, no 390px overflow, headline + "The Workday Presence Layer" + footer present).
-3. Proof: `npm run gate:continuity && npm run typecheck && npm run lint && npm run build` green; landing e2e green in CI (sandbox has no Playwright browsers); live visual validation owner-side.
-4. Open the draft PR on `claude/landing-page-auth-01b7vj` targeting #500; set `ACTIVE_SEAM_STATE.active_pr`.
-5. After merge: repoint source truth back from #500 to the Scout seam #494.
+1. OneDrive: enumerate the drive via the `delta` endpoint (recursive, paged), filter by modified date client-side, sort newest-first, cap the batch; keep `/recent` as a fallback. (`lib/sync/microsoft-sync.ts`)
+2. Google Calendar: add a +14-day lookahead (`timeMax = now + 14d`), mirroring the Microsoft side. (`lib/sync/google-sync.ts`)
+3. Proof: `npm run gate:continuity && npm run typecheck && npx vitest run lib/sync/__tests__/{microsoft,google}-sync.test.ts` green. Live backfill is owner-gated runtime proof (`BLOCKED_WITH_EXACT_RECEIPT`).
+4. Open the draft PR on `claude/new-session-0r1iqf` targeting #507; set `ACTIVE_SEAM_STATE.active_pr`.
+5. After merge: repoint source truth back from #507 to the paused LANDING seam #500, then #494.
 
-Full design: issue #500.
+Full detail: issue #507.
 
 ## Product doctrine
 
