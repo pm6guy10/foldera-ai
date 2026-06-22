@@ -48,7 +48,7 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
           <p className="text-[10px] font-black uppercase tracking-[0.18em] text-accent/80">Finished work when it is safe</p>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-4xl">Sign in</h1>
           <p className="mt-3 text-sm leading-relaxed text-white/60">
-            Continue with Google or Microsoft to open your dashboard.
+            Continue with Google to open your dashboard.
           </p>
           <p className="mt-2 text-[11px] leading-relaxed text-white/40">
             Using a different account? Sign out first, then your provider will ask you to choose.
@@ -64,12 +64,6 @@ export function LoginInner({ errorParam, callbackUrl }: { errorParam: string | n
             <OAuthConnectButton
               label="Continue with Google"
               provider="google"
-              loadingProvider={loadingProvider}
-              onClick={handleSignIn}
-            />
-            <OAuthConnectButton
-              label="Continue with Microsoft"
-              provider="azure-ad"
               loadingProvider={loadingProvider}
               onClick={handleSignIn}
             />

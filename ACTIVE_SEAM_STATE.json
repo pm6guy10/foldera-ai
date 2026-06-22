@@ -1,10 +1,10 @@
 {
   "active_issue": 511,
-  "active_branch": "claude/identity-link-guard-511",
+  "active_branch": "claude/identity-stage3-511",
   "active_pr": null,
-  "deployed_commit_sha": "fdaf52f",
+  "deployed_commit_sha": "302e8b4",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state_v1",
-  "last_verified_at": "2026-06-22T16:30:00Z",
-  "notes": "Identity-architecture seam (#511), Stage 1: link-guard. Refuses to connect a Google/Microsoft account already linked (not disconnected) to a different Foldera user, in both OAuth connect callbacks; new helper findCrossUserTokenConflict in lib/auth/user-tokens.ts; friendly settings error (already_linked_elsewhere). This is the durable fix for the recurring Google reconnect (root cause: same external account linked under two identities -> provider revokes the first identity's refresh token) and the split-brain (#509). Confirmed against live data: owner Gmail synced daily Apr 8-Jun 11 then died exactly when the +nonowner test account linked the same Gmail Jun 12. Stage 2-4 (Google sole sign-in, Microsoft as a linkable surface, migrate the Microsoft-identity owner account e40b7cd8, remove AzureADProvider) are owner-gated follow-ups captured in #511. Predecessors merged: #507 (PR #508 / 9bdf478), LANDING #500 (PR #501), repoint (PR #510 / fdaf52f)."
+  "last_verified_at": "2026-06-22T18:00:00Z",
+  "notes": "Identity-architecture seam (#511), Stage 3: Google is the sole sign-in identity; Microsoft is demoted to a connectable data surface only. Removed AzureADProvider from NextAuth (lib/auth/auth-options.ts) and the 'Continue with Microsoft' button from the /login and /start pages; the /api/microsoft/connect + callback surface-linking flow is untouched so a signed-in Google user can still link Microsoft as a source. Prevents the dual-identity (split-brain) from re-forming. Stage 1 link-guard already merged (PR #512). The account consolidation was EXECUTED (see #509 receipt): e40b7cd8 -> 2cbc1bab; the Google-login account now holds all history + both syncing tokens + the paid Stripe sub. Remaining owner action: set Vercel OWNER_USER_ID/FOLDERA_SELF_USER_ID to 2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f. Predecessors merged: #507 (PR #508), LANDING #500 (PR #501), repoint (PR #510), Stage 1 (PR #512)."
 }

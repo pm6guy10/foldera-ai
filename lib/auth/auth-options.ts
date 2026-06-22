@@ -1,13 +1,9 @@
 import { NextAuthOptions } from 'next-auth';
 import type { JWT } from 'next-auth/jwt';
 import GoogleProvider from 'next-auth/providers/google';
-import AzureADProvider from 'next-auth/providers/azure-ad';
 import { resolveSupabaseAuthUserId } from '@/lib/auth/supabase-auth-user';
 import { hasCompletedOnboarding } from '@/lib/auth/onboarding-state';
-import {
-  GOOGLE_ACCOUNT_CHOICE_PROMPT,
-  MICROSOFT_ACCOUNT_CHOICE_PROMPT,
-} from '@/lib/auth/oauth-account-choice';
+import { GOOGLE_ACCOUNT_CHOICE_PROMPT } from '@/lib/auth/oauth-account-choice';
 import { authDebugLog } from '@/lib/auth/auth-debug';
 
 const THIRTY_DAYS_IN_SECONDS = 30 * 24 * 60 * 60;
@@ -229,21 +225,10 @@ export function getAuthOptions(): NextAuthOptions {
     }),
   ];
 
-  if (process.env.AZURE_AD_CLIENT_ID && process.env.AZURE_AD_CLIENT_SECRET) {
-    providers.push(
-      AzureADProvider({
-        clientId: process.env.AZURE_AD_CLIENT_ID,
-        clientSecret: process.env.AZURE_AD_CLIENT_SECRET,
-        tenantId: process.env.AZURE_AD_TENANT_ID || 'common',
-        authorization: {
-          params: {
-            scope: 'openid profile email User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Tasks.Read offline_access',
-            prompt: MICROSOFT_ACCOUNT_CHOICE_PROMPT,
-          },
-        },
-      })
-    );
-  }
+  // Microsoft is a connectable data surface (see /api/microsoft/connect), NOT a
+  // sign-in identity. Google is the single sign-in provider so one person maps
+  // to one Foldera account. See issue #511. (Linking Microsoft as a source still
+  // works for a signed-in Google user.)
 
   return {
     providers,
