@@ -189,6 +189,52 @@ describe('positive winner contract', () => {
     expect(evaluateCandidateArtifactability(fakeCalendarConflict, { now }).blockers).toContain('missing_schedule_resolution_context');
   });
 
+  it('ships a grounded commitment_calendar_gap (#518): undated blocked, dated current finding clears missing_schedule_resolution_context', () => {
+    // Same calendar-gap shape, differing only in grounding. This is the #516
+    // grounding doctrine applied to the schedule-resolution gate: the gap text is
+    // identical; the only difference is whether the finding carries a real, recent
+    // source date. Undated -> hollow -> blocked. Grounded/current -> shippable.
+    const calendarGapText =
+      'Commitment due 2026-05-06 with no matching calendar block. Commitment id 41a7: Columbia Motors will contact regarding 2017 Toyota Sienna service appointment. Nearest calendar event keyword overlap with commitment was only 0.';
+    const relatedSignals = [
+      'Commitment due 2026-05-06 with no matching calendar block',
+      'Commitment id 41a7: Columbia Motors will contact regarding 2017 Toyota Sienna service appointment',
+      'Nearest calendar event (by time): "Metadata only" — keyword overlap with commitment was only 0',
+    ];
+
+    const undatedGap = makeCandidate({
+      id: 'calendar-gap-undated',
+      type: 'hunt',
+      title: 'Commitment due 2026-05-06 with no matching calendar block',
+      content: calendarGapText,
+      suggestedActionType: 'schedule',
+      sourceSignals: [],
+      relatedSignals,
+    });
+
+    const groundedGap = makeCandidate({
+      id: 'calendar-gap-grounded',
+      type: 'hunt',
+      title: 'Commitment due 2026-05-06 with no matching calendar block',
+      content: calendarGapText,
+      suggestedActionType: 'schedule',
+      // Carries its real source date (the #516 grounding fix), one day before `now`.
+      sourceSignals: [signal('Columbia Motors service-appointment commitment thread.', '2026-05-04T16:00:00.000Z')],
+      relatedSignals,
+    });
+
+    // Before: identical text, no date -> still correctly blocked (no blind loosening).
+    expect(evaluateCandidateArtifactability(undatedGap, { now }).blockers).toContain(
+      'missing_schedule_resolution_context',
+    );
+
+    // After: the same finding, grounded with a current date -> the gate no longer
+    // fires, so the timely "due, nothing scheduled" gap can ship.
+    const groundedReceipt = evaluateCandidateArtifactability(groundedGap, { now });
+    expect(groundedReceipt.blockers).not.toContain('missing_schedule_resolution_context');
+    expect(groundedReceipt.newest_source_at).not.toBeNull();
+  });
+
   it('blocks low-value platform invites and calendar-gap invites without a direct dependency fact', () => {
     const notionExposure = makeCandidate({
       id: 'notion-platform-exposure',
