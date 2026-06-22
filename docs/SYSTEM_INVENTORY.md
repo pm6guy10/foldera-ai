@@ -10,6 +10,14 @@
 > **Reconciliation method:** Supabase MCP (`list_tables`, read-only), GitHub MCP
 > (`list_branches`, workflow files), repo source (`process.env` reads, `vercel.json`,
 > `app/api/**`, `supabase/migrations/**`). No paid API calls.
+>
+> **Update (PR #506, safe cleanup):** Since this snapshot, the governance
+> apparatus, 13 dispatch-only workflows, and several orphaned routes were
+> removed. Counts and lists below predate that — notably the gate scripts
+> (`gate:continuity` et al.), the `command-os` / `repo-intake-governor`
+> subsystem, the `dev/*`, `ingest/conversation`, `briefing/latest`, and
+> `slack/command` routes no longer exist. The working core (cron chain,
+> `generator.ts`, Scout, OAuth, Stripe, Slack delivery) is unchanged.
 
 ---
 

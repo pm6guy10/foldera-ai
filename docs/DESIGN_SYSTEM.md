@@ -1,6 +1,6 @@
 # Foldera Design System & Quality Bar (BINDING)
 
-This is the durable design truth for every visible Foldera surface (landing, dashboard, Slack card, emails). It encodes **what we DO want** so no one has to re-explain it. If a surface does not meet this bar, it is not done. `FOLDERA_MASTER_BIBLE.md` points here as the design authority.
+This is the durable design truth for every visible Foldera surface (landing, dashboard, Slack card, emails). It encodes **what we DO want** so no one has to re-explain it. If a surface does not meet this bar, it is not done. `VISION.md` points here as the design authority.
 
 > Owner direction (2026-06-17): "Every pass must be OBVIOUSLY better, not incremental. It should look like a $500M company — Linear / Vercel / Notion tier. Someone sees it and can't believe a small team made it. Smooth, clean, adaptive (great on desktop AND mobile), professional end to end."
 
