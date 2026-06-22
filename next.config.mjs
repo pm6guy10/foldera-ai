@@ -16,9 +16,6 @@ const nextConfig = {
       'gray-matter', 'remark', 'remark-gfm', 'remark-html',
       'unified', 'vfile', 'esprima', 'js-yaml',
     ],
-    outputFileTracingIncludes: {
-      '/api/slack/command': ['ACTIVE_HANDOFF.md', 'ACTIVE_SEAM_STATE.json', 'FOLDERA_BUILD_ORDER.yaml'],
-    },
   },
   async redirects() {
     return [
