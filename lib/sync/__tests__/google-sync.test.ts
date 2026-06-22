@@ -111,3 +111,20 @@ describe('syncGoogle', () => {
     expect(extracted.length).toBeGreaterThan(4_000);
   });
 });
+
+describe('buildDriveBackfillQuery', () => {
+  it('enumerates non-trashed files with no modifiedTime floor (deep backfill, not incremental-only)', async () => {
+    const { buildDriveBackfillQuery } = await import('../google-sync');
+    const mimeQueries = ["mimeType = 'application/vnd.google-apps.document'", "mimeType = 'text/plain'"];
+
+    const query = buildDriveBackfillQuery(mimeQueries);
+
+    // The whole point of #514: never reintroduce a modifiedTime window that
+    // would skip historical files and stop already-synced accounts deepening.
+    expect(query).not.toContain('modifiedTime');
+    expect(query).toContain('trashed = false');
+    for (const clause of mimeQueries) {
+      expect(query).toContain(clause);
+    }
+  });
+});

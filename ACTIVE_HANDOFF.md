@@ -13,32 +13,32 @@ Keep this cockpit short and value-first. Completed-issue history lives in `SESSI
 
 ## Boot
 
-1. Read this file. 2. Read the active issue (#511). 3. Check issue #136 for recent INTERRUPT receipts.
+1. Read this file. 2. Read the active issue (#514). 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #511 is the active IDENTITY-ARCHITECTURE seam.
+Issue #514 is the active CONNECTOR-DEPTH seam.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
 ## Current slice:
 
-**IDENTITY (#511) Stage 3 — Google is the sole sign-in; Microsoft is a connectable surface only.** Removed `AzureADProvider` from NextAuth and the "Continue with Microsoft" button from `/login` + `/start`, so one person maps to one Foldera account and the split-brain can't re-form. Microsoft stays linkable as a *source* via the untouched `/api/microsoft/connect` flow for a signed-in Google user.
+**CONNECTOR DEPTH (#514) — Google Drive deep backfill.** `lib/sync/google-sync.ts:syncDrive` only pulled files *modified within the lookback window* (1y on first sync, then incremental), so old documents were never indexed and already-synced accounts never deepened. Live: owner `2cbc1bab` drive = 186 signals, 7 in 14d, while mail is live. Fix mirrors the OneDrive intent (#507): enumerate the whole Drive newest-first with **no `modifiedTime` floor** (cap `DRIVE_MAX_FILES`), **skip files already stored by `content_hash`** (self-heals existing accounts, no re-download), and **bound new files per run** (`DRIVE_MAX_NEW_PER_RUN`) so a big backfill spreads across runs. Backend-only; no schema change, no new sign-in surface, no auto-send.
 
-**Already done:** Stage 1 link-guard merged (PR #512). The account consolidation was EXECUTED — `e40b7cd8` → `2cbc1bab` (see #509 receipt): the Google-login account now holds all history (5,736 signals / 1,222 actions), both syncing tokens, and the paid Stripe sub.
+**Already done (identity seam, fully landed):** link-guard (PR #512); Google-sole-sign-in + Microsoft-as-source (PR #513); account consolidation EXECUTED `e40b7cd8` → `2cbc1bab` (#509) — the Google-login account holds all history, both syncing tokens, and the paid Stripe sub.
 
-**Predecessors merged:** #507 (PR #508), LANDING #500 (PR #501), repoint (PR #510), Stage 1 (PR #512).
+**Predecessors merged:** #511 (PRs #512/#513), #507 (PR #508), LANDING #500 (PR #501), repoint (PR #510).
 
 ## Next exact move
 
-1. Land Stage 3 (this PR): drop `AzureADProvider` + the Microsoft sign-in buttons; keep the Microsoft connect-a-source flow; update auth-options test.
-2. Proof: `npm run gate:continuity && npm run typecheck && npx vitest run lib/auth/__tests__/auth-options.test.ts app/api/microsoft/callback/__tests__/route.test.ts app/api/google/callback/__tests__/route.test.ts`.
-3. Open PR on `claude/identity-stage3-511` targeting #511.
-4. Owner: set Vercel `OWNER_USER_ID`/`FOLDERA_SELF_USER_ID` → `2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f`. Sign in with Google. Optional next: Scout #494 activation.
+1. Land #514 (this PR): rewrite `syncDrive` to deep-enumerate + skip-known + per-run cap; add `buildDriveBackfillQuery`; update the google-sync test.
+2. Proof: `npm run gate:continuity && npm run typecheck && npx vitest run lib/sync/__tests__/google-sync.test.ts`.
+3. Open PR on `claude/drive-backfill-514` targeting #514.
+4. Owner: after merge, let the nightly full sync run (or trigger it) and re-check Drive freshness (count climbs past 186). Optional next: same enumeration for OneDrive (#507); Scout #494 activation.
 
-Full detail: issue #511.
+Full detail: issue #514.
 
 ## Product doctrine
 
