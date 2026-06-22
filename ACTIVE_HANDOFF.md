@@ -13,34 +13,32 @@ Keep this cockpit short and value-first. Completed-issue history lives in `SESSI
 
 ## Boot
 
-1. Read this file. 2. Read the active issue (#494). 3. Check issue #136 for recent INTERRUPT receipts.
+1. Read this file. 2. Read the active issue (#511). 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #494 is the active SCOUT money-move seam.
+Issue #511 is the active IDENTITY-ARCHITECTURE seam.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
 ## Current slice:
 
-**SCOUT money-move (#494) — turn the hands on for ONE real inward loop on REAL data.** The build is DONE and inward (stages 0-5 + inward retarget merged); the hands have never gripped real data (`scout_drive_chunks` empty, deployed flag-OFF). What remains is **owner-gated runtime activation the agent sandbox cannot do** → `BLOCKED_WITH_EXACT_RECEIPT`. Value = frequency of real acts that landed × load removed per act; owner-first is fine if labeled owner-only; no fixtures/hygiene-as-proof.
+**IDENTITY (#511) Stage 1 — link-guard so one external account ↔ one Foldera identity.** Both OAuth connect callbacks now refuse to link a Google/Microsoft account already linked (not disconnected) to a *different* Foldera user, redirecting with a clear `already_linked_elsewhere` message instead of silently stealing the refresh token. New helper `lib/auth/user-tokens.ts:findCrossUserTokenConflict` (case-insensitive, self-reconnect allowed, fails open on query error). This is the **durable fix for the recurring Google reconnect** (root cause: same account linked under two identities → provider revokes the first's refresh token) and the split-brain (#509). Confirmed on live data: owner Gmail synced daily Apr 8–Jun 11, died exactly when the `+nonowner` account linked the same Gmail Jun 12.
 
-**Predecessors complete:** connector-freshness #507 merged (PR #508, sha `9bdf478`); LANDING #500 shipped (PR #501). This PR is the control-plane repoint to #494 after #507 auto-closed (a closed active_issue would red the continuity gate).
+**Stage 2-4 (owner-gated, in #511):** Google as sole sign-in; Microsoft demoted to an in-app linkable surface; migrate the Microsoft-identity owner account `e40b7cd8` to its Google identity; remove `AzureADProvider`. Needs a data migration, so it is NOT in this PR.
+
+**Predecessors merged:** #507 (PR #508), LANDING #500 (PR #501), control-plane repoint (PR #510).
 
 ## Next exact move
 
-Owner-gated activation (the agent sandbox cannot perform these):
-1. Vercel prod: set `VOYAGE_API_KEY`, flip `SCOUT_ENABLED`/`SCOUT_RAG_ENABLED`/`SCOUT_WEB_ENABLED`/`ALLOW_PAID_LLM`/`SCOUT_DELIVERY_ENABLED`, redeploy.
-2. Confirm `ENCRYPTION_KEY_LEGACY` covers all historical keys (#481) so grounding uses the full corpus.
-3. `GET /api/cron/scout/index-drive` (CRON_SECRET) — paid first index → populates `scout_drive_chunks`.
-4. `GET /api/cron/scout/deliver` (CRON_SECRET) — one real inward review-gated Slack card.
-5. Judge by gut ≥3×/week, labeled owner-only.
+1. Land Stage 1 (this PR): `findCrossUserTokenConflict` + guard in both callbacks + settings copy + tests.
+2. Proof: `npm run gate:continuity && npm run typecheck && npx vitest run lib/auth/__tests__/user-tokens.test.ts app/api/google/callback/__tests__/route.test.ts app/api/microsoft/callback/__tests__/route.test.ts`.
+3. Open PR on `claude/identity-link-guard-511` targeting #511.
+4. Owner-gated follow-ups: Stage 2-4 of #511; re-consent Google on `e40b7cd8` (#509); Scout #494 activation.
 
-Also open (separate): re-consent Google on owner account `e40b7cd8` to restore the sync the non-owner test persona was rotating away (#509).
-
-Full detail: issue #494.
+Full detail: issue #511.
 
 ## Product doctrine
 

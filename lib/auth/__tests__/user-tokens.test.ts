@@ -278,3 +278,54 @@ describe('getAllUsersWithProvider', () => {
     expect(selectIsSpy).toHaveBeenCalledWith('disconnected_at', null);
   });
 });
+
+describe('findCrossUserTokenConflict', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    selectEqSpy.mockReset();
+    selectIsSpy.mockReset();
+    selectEqSpy.mockReturnValue(selectChain);
+    selectIsSpy.mockResolvedValue({ data: [], error: null });
+  });
+
+  it('returns null without querying when the email is empty', async () => {
+    const { findCrossUserTokenConflict } = await import('../user-tokens');
+    await expect(findCrossUserTokenConflict('google', '', 'user-1')).resolves.toBeNull();
+    await expect(findCrossUserTokenConflict('google', null, 'user-1')).resolves.toBeNull();
+    expect(selectEqSpy).not.toHaveBeenCalled();
+  });
+
+  it('returns the other user_id when the same email is active under a different user (case-insensitive)', async () => {
+    selectIsSpy.mockResolvedValueOnce({
+      data: [{ user_id: 'other-user', email: 'Shared@Example.com' }],
+      error: null,
+    });
+    const { findCrossUserTokenConflict } = await import('../user-tokens');
+    await expect(
+      findCrossUserTokenConflict('google', 'shared@example.com', 'user-1'),
+    ).resolves.toBe('other-user');
+    expect(selectEqSpy).toHaveBeenCalledWith('provider', 'google');
+    expect(selectIsSpy).toHaveBeenCalledWith('disconnected_at', null);
+  });
+
+  it('returns null when only the same user has the email linked (self-reconnect is allowed)', async () => {
+    selectIsSpy.mockResolvedValueOnce({
+      data: [{ user_id: 'user-1', email: 'shared@example.com' }],
+      error: null,
+    });
+    const { findCrossUserTokenConflict } = await import('../user-tokens');
+    await expect(
+      findCrossUserTokenConflict('google', 'shared@example.com', 'user-1'),
+    ).resolves.toBeNull();
+  });
+
+  it('fails open (returns null) on a query error so a DB blip never blocks linking', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    selectIsSpy.mockResolvedValueOnce({ data: null, error: { message: 'boom' } });
+    const { findCrossUserTokenConflict } = await import('../user-tokens');
+    await expect(
+      findCrossUserTokenConflict('microsoft', 'a@b.com', 'user-1'),
+    ).resolves.toBeNull();
+    warnSpy.mockRestore();
+  });
+});

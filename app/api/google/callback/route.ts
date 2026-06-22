@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { google } from 'googleapis';
-import { saveUserToken } from '@/lib/auth/user-tokens';
+import { saveUserToken, findCrossUserTokenConflict } from '@/lib/auth/user-tokens';
 import { authDebugLog } from '@/lib/auth/auth-debug';
 import { cookies } from 'next/headers';
 
@@ -101,6 +101,18 @@ export async function GET(request: NextRequest) {
     googleEmail = userInfo.data.email ?? undefined;
   } catch (err: any) {
     console.warn('[google/callback] Failed to fetch user email:', err.message);
+  }
+
+  // 5b. Guard: refuse to link a Google account already connected to a different
+  //     Foldera user. Linking it twice makes Google rotate/revoke the other
+  //     login's refresh token, silently killing its sync (the "constant
+  //     reconnect" bug). One external account maps to one identity. See #511.
+  const googleConflictUserId = await findCrossUserTokenConflict('google', googleEmail, userId);
+  if (googleConflictUserId) {
+    console.warn(
+      `[google/callback] ${googleEmail ?? 'account'} is already linked to another Foldera user; refusing cross-account link`,
+    );
+    return NextResponse.redirect(`${settingsUrl}?google_error=already_linked_elsewhere`);
   }
 
   // 6. Save to user_tokens table (single source of truth for OAuth tokens)
