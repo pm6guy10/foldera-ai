@@ -78,8 +78,6 @@ const GMAIL_MAX_MESSAGES = 5000; // ~2-5 years depending on volume
 const GMAIL_THREAD_FETCH_CAP = 300;
 /** Sync upcoming calendar events, not just past ones, so future meetings are known. */
 const UPCOMING_CALENDAR_LOOKAHEAD_DAYS = 14;
-/** Debug: compare inbox message age vs `newer_than:1h` window (ms). */
-const GMAIL_DEBUG_NEWER_THAN_MS = 3600000;
 
 function getGmailHeader(
   headers: gmail_v1.Schema$MessagePartHeader[] | undefined,
@@ -119,31 +117,14 @@ async function syncGmail(
 ): Promise<number> {
   const gmail = google.gmail({ version: 'v1', auth: oauth2 });
   const nowMs = Date.now();
-  const diffMs = Math.max(0, nowMs - sinceMs);
   const listQ = buildGmailIncrementalListQuery(sinceMs, nowMs);
   const afterDateUtc = gmailSearchAfterDateClause(sinceMs);
   console.log(
     `[google-sync] Gmail incremental q=${listQ} (ref after:${afterDateUtc} UTC calendar) sinceMs=${sinceMs} iso=${new Date(sinceMs).toISOString()}`,
   );
-  // #region agent log
-  fetch('http://127.0.0.1:7508/ingest/a02deda0-381a-4b07-9c04-bb4d95536617', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '263f2d' },
-    body: JSON.stringify({
-      sessionId: '263f2d',
-      runId: 'pre-fix',
-      hypothesisId: 'H2',
-      location: 'lib/sync/google-sync.ts:syncGmail:entry',
-      message: 'gmail incremental window',
-      data: { diffMs, listQ, sinceMs, nowMs },
-      timestamp: Date.now(),
-    }),
-  }).catch(() => {});
-  // #endregion
 
   const messageRefs: Array<{ id?: string | null; threadId?: string | null }> = [];
   let pageToken: string | undefined;
-  let firstListResultSizeEstimate: number | undefined;
   do {
     const list = await gmail.users.messages.list({
       userId: 'me',
@@ -153,9 +134,6 @@ async function syncGmail(
       maxResults: GMAIL_PAGE_SIZE,
       pageToken,
     });
-    if (firstListResultSizeEstimate === undefined && typeof list.data.resultSizeEstimate === 'number') {
-      firstListResultSizeEstimate = list.data.resultSizeEstimate;
-    }
     if (
       pageToken === undefined &&
       (list.data.messages ?? []).length === 0 &&
@@ -180,47 +158,6 @@ async function syncGmail(
         maxResults: 3,
       });
       const probeCount = (probe.data.messages ?? []).length;
-      let newestInboxAgeMs: number | null = null;
-      const probeFirstId = probe.data.messages?.[0]?.id;
-      if (probeFirstId) {
-        try {
-          const meta = await gmail.users.messages.get({
-            userId: 'me',
-            id: probeFirstId,
-            format: 'metadata',
-            metadataHeaders: [],
-          });
-          const internal = meta.data.internalDate;
-          if (internal) {
-            newestInboxAgeMs = nowMs - Number.parseInt(String(internal), 10);
-          }
-        } catch {
-          /* probe metadata optional */
-        }
-      }
-      // #region agent log
-      fetch('http://127.0.0.1:7508/ingest/a02deda0-381a-4b07-9c04-bb4d95536617', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '263f2d' },
-        body: JSON.stringify({
-          sessionId: '263f2d',
-          runId: 'pre-fix',
-          hypothesisId: 'H1',
-          location: 'lib/sync/google-sync.ts:syncGmail:incremental-empty',
-          message: 'incremental 0 vs inbox probe',
-          data: {
-            firstListResultSizeEstimate,
-            probeCount,
-            probeResultSizeEstimate: probe.data.resultSizeEstimate ?? null,
-            newestInboxAgeMs,
-            newestInboxYoungerThan1h:
-              newestInboxAgeMs !== null && newestInboxAgeMs < GMAIL_DEBUG_NEWER_THAN_MS,
-            listQ,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
       console.warn(
         `[google-sync] Gmail incremental returned 0 message ids (q=${listQ}); probe in:inbox idCount=${probeCount} resultSizeEstimate=${probe.data.resultSizeEstimate ?? 'n/a'}`,
       );
