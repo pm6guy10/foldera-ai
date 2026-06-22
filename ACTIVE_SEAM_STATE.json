@@ -1,7 +1,7 @@
 {
   "active_issue": 518,
   "active_branch": "claude/verify-516-verdict-fix-3jqye5",
-  "active_pr": null,
+  "active_pr": 520,
   "deployed_commit_sha": "7e2f972",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
