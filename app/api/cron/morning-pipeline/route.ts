@@ -4,10 +4,12 @@
  * Single scheduled morning cron entrypoint. Orchestrates the existing cron routes
  * in order so Vercel only needs one production cron definition:
  *   1. nightly-ops
- *   2. daily-brief
+ *   2. seed-from-scorer  (Slack Right Now card seed — replaces email daily-brief)
  *   3. daily-maintenance
  *
  * The underlying routes remain callable directly for manual/operator use.
+ * daily-brief/route.ts is preserved for manual operator use but is no longer
+ * scheduled — the Slack card (seed-from-scorer) is the primary delivery surface.
  *
  * Auth: CRON_SECRET Bearer token.
  * Schedule: 0 11 * * * (4am PT / 11:00 UTC)
@@ -17,13 +19,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateCronAuth } from '@/lib/auth/resolve-user';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { GET as runNightlyOps } from '@/app/api/cron/nightly-ops/route';
-import { GET as runDailyBrief } from '@/app/api/cron/daily-brief/route';
+import { POST as runSeedFromScorer } from '@/app/api/workday-presence/seed-from-scorer/route';
 import { GET as runDailyMaintenance } from '@/app/api/cron/daily-maintenance/route';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-type StageName = 'nightly_ops' | 'daily_brief' | 'daily_maintenance';
+type StageName = 'nightly_ops' | 'seed_from_scorer' | 'daily_maintenance';
 
 type StageInvocation = {
   name: StageName;
@@ -48,10 +50,10 @@ const STAGE_INVOCATIONS: StageInvocation[] = [
     handler: runNightlyOps,
   },
   {
-    name: 'daily_brief',
-    path: '/api/cron/daily-brief',
+    name: 'seed_from_scorer',
+    path: '/api/workday-presence/seed-from-scorer',
     method: 'POST',
-    handler: runDailyBrief,
+    handler: runSeedFromScorer,
   },
   {
     name: 'daily_maintenance',

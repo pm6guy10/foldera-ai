@@ -2,9 +2,9 @@
 
 ## TL;DR
 
-- **Seam #518 (verdict calibration):** PR #536 (`claude/seam-518-verdict-calibration-t30jwq`) pending merge — stale gate 10→250, blocked_gate diagnostic truncation 240→2000. All three code fixes in flight (#526 directive salvage + #528 manual cap already on main).
-- **Commitment pool hygiene (#537, new issue):** 9 zombie commitments manually suppressed this session (ClickUp year-old interview ×2, Data License ×2, Columbia Motors ×2, Project Hydra ×3). Structural fix needed: external-promisor staleness gate + marketing-sender extraction filter + fuzzy dedup.
-- **Current honest verdict:** SAFE_SILENCE is correct today — after cleanup, no high-quality candidate in the pool. Professional signal (HCA MAS3, job search) has aged out of 14d window; remaining pool is bills/gig tasks/personal logistics.
+- **Seam #518 (verdict calibration):** PR #536 (`claude/seam-518-verdict-calibration-t30jwq`) pending merge — stale gate 10→250, blocked_gate diagnostic truncation 240→2000, + daily_brief→seed_from_scorer swap in morning-pipeline (email brief killed).
+- **Commitment pool hygiene (#537, new issue):** 9 zombie commitments manually suppressed. Structural fix needed: external-promisor staleness gate + marketing-sender extraction filter + fuzzy dedup.
+- **Current honest verdict:** SAFE_SILENCE is correct today — after cleanup, no high-quality candidate in the pool. Professional signal has aged out of 14d window.
 - **Still owner-only:** confirm Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab`.
 
 ## DON'T FORGET — read first, every boot
@@ -47,11 +47,11 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Next exact move
 
-1. **Merge PR #536** (stale gate + diagnostic truncation) — correct infrastructure regardless of today's winner quality.
-2. **Start #537 Fix A** (external-promisor staleness gate in `daily-brief-generate.ts`): kill discrepancy_exposure candidates where the promisor is external + thread signal is stale + implied_due passed. This auto-suppresses the Columbia Motors pattern structurally — no more manual whack-a-mole.
-3. **Live confirmation:** after #536 merges + deploys, check tomorrow's cron (June 24 ~11:00 UTC). `pipeline_runs.outcome` for `2cbc1bab` — expect `generation_returned` IF fresh professional signal came in overnight, else `safe_silence_no_candidates` (correct). SAFE_SILENCE is acceptable; a bad card is not.
+1. **Merge PR #536** — stale gate 10→250, blocked_gate truncation fix, + morning-pipeline now runs seed_from_scorer (Slack card) instead of daily_brief (email).
+2. **Start #537 Fix A** (external-promisor staleness gate in `daily-brief-generate.ts`): kill discrepancy_exposure candidates where the promisor is external + thread signal stale + implied_due passed. Auto-suppresses Columbia Motors pattern structurally.
+3. **Live confirmation:** after #536 deploys, check next cron run. Metric to watch: `workday_presence_suppression_trace.trace_type` in `auth.users.user_metadata` for `2cbc1bab` (NOT `pipeline_runs.outcome` — that was the wrong surface).
 4. **Owner-env confirm:** Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab`.
-5. Already done: #526 (directive salvage), #528 (manual cap), #533 (continuity infra), #534 (OWNER_USER_ID constant fix), 9 zombie suppressions (this session). Standing: Scout #494; OneDrive #507.
+5. Done this session: email daily brief killed from morning-pipeline, 9 zombie suppressions, #526/#528 merged. Standing: Scout #494; OneDrive #507.
 
 Full detail: issue #518 (gate fixes), issue #537 (commitment hygiene).
 
