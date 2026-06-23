@@ -309,7 +309,6 @@ describe('POST /api/settings/run-brief', () => {
     expect(mockRunBriefLifecycle).toHaveBeenCalledWith(
       expect.objectContaining({
         userIds: [userId],
-        ensureSend: true,
         briefInvocationSource: 'settings_run_brief',
         skipStaleGate: true,
         skipSpendCap: false,
@@ -415,7 +414,6 @@ describe('POST /api/settings/run-brief', () => {
         userIds: [userId],
         forceFreshRun: true,
         briefInvocationSource: 'settings_run_brief',
-        ensureSend: true,
         skipStaleGate: true,
         skipSpendCap: false,
         skipManualCallLimit: false,

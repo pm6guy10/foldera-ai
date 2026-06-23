@@ -9,7 +9,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { validateCronAuth } from '@/lib/auth/resolve-user';
-import { runDailyGenerate, toSafeDailyBriefStageStatus } from '@/lib/cron/daily-brief';
+import { runDailyGenerate } from '@/lib/cron/daily-brief';
+import { toSafeDailyBriefStageStatus } from '@/lib/cron/daily-brief-status';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
