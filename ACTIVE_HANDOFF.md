@@ -2,10 +2,10 @@
 
 ## TL;DR
 
-- **Seam #537 (commitment pool hygiene):** shipping **Fix A** — external-promisor staleness gate. `detectDiscrepancies()` now drops counterparty-as-subject commitments ("X will contact you…") that are past-due AND stale (>21d no fresh touch) before any extractor runs, so the Columbia Motors zombie can't win or burn a retry. Pure chokepoint in `lib/briefing/discrepancy-detector.ts`; `canonical_form` added to the scorer commitment fetch. lib/briefing 846 green (13 new), typecheck clean.
+- **Seam #537 (commitment pool hygiene) — Fix A SHIPPED, PR #539 open (draft).** External-promisor staleness gate: `detectDiscrepancies()` drops counterparty-as-subject commitments ("X will contact you…") that are past-due AND stale (>21d no fresh touch) before any extractor runs, so the Columbia Motors zombie can't win or burn a retry. Pure chokepoint in `lib/briefing/discrepancy-detector.ts`; `canonical_form` added to the scorer fetch. lib/briefing 846 green (+13), typecheck + gate:continuity clean.
 - **Predecessor #518 DONE:** PR #536 merged (`aba6877`) — stale gate 10→250, morning-pipeline daily_brief→seed_from_scorer, email send surface deleted.
-- **#537 remaining:** Fix B (marketing-sender extraction filter) + Fix C (fuzzy dedup).
-- **Still owner-only:** set Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` so Slack cards fire.
+- **#537 next:** Fix B (marketing-sender extraction filter) + Fix C (fuzzy dedup) — the same hygiene seam at the creation boundary.
+- **Owner-gated:** (1) live confirm — next cron's `discrepancy_candidates_preview` for `2cbc1bab` has no stale external-promisor candidate; (2) set Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` so Slack cards fire.
 
 ## DON'T FORGET — read first, every boot
 
@@ -33,7 +33,7 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Current slice:
 
-**COMMITMENT POOL HYGIENE (#537) — Fix A shipped: external-promisor staleness gate.** When professional signal is thin, stale/misextracted commitments float to the top of the discrepancy ranking and win a weak card. Observed 2026-06-23: "Columbia Motors will contact you regarding the 2017 Toyota Sienna" — a passive counterparty callback with no actionable move for Brandon. Manual suppression (`suppressed_at`/`suppressed_reason`) is whack-a-mole; the extractor keeps minting zombies.
+**COMMITMENT POOL HYGIENE (#537) — Fix A shipped (PR #539, draft, `1c7a25c`): external-promisor staleness gate.** When professional signal is thin, stale/misextracted commitments float to the top of the discrepancy ranking and win a weak card. Observed 2026-06-23: "Columbia Motors will contact you regarding the 2017 Toyota Sienna" — a passive counterparty callback with no actionable move for Brandon. Manual suppression (`suppressed_at`/`suppressed_reason`) is whack-a-mole; the extractor keeps minting zombies.
 
 **Fix A (this branch).** `lib/briefing/discrepancy-detector.ts` → new `isStaleExternalPromisorCommitment()` / `hasExternalPromisorPhrasing()`, applied as a pre-filter in `detectDiscrepancies()` right after the `trust_class` filter. It drops a commitment from the pool **before any extractor runs** when all three hold: (1) counterparty-as-subject phrasing ("X will…", "X to provide…", "X is responsible for…" — not the user's own imperatives or first-person promises), (2) `due_at`/`implied_due_at` in the **past**, (3) no fresh extraction touch in **21+ days** (`updated_at`). So the zombie never becomes a candidate and never burns a retry. `canonical_form` added to the scorer commitment fetch (`lib/briefing/scorer.ts`) so the gate sees the normalized form. **Chosen location:** the detector, not `daily-brief-generate.ts` as the issue text guessed — that file calls the opaque `generateDirective()` and never sees individual candidates; the detector is the real, pure, unit-testable chokepoint into `gate_funnel.discrepancy_candidates_preview`.
 
