@@ -2,11 +2,11 @@
 
 ## TL;DR
 
-- **Seam #518 (verdict calibration):** the daily verdict is still **dark** (SAFE_SILENCE) on live owner data — but NOT data-starved: `2cbc1bab` has 1,227 actions / 1,010 signals/14d. It's gate calibration, not missing data.
-- **Owner-identity bug FIXED (this branch):** `OWNER_USER_ID` constant pointed at the retired/EMPTY `e40b7cd8`; #509 migrated everything to `2cbc1bab`. Repointed the constant + boundary test + 4 debug scripts. This was mis-filed as "owner-only env work" — it was a code bug.
-- **Still owner-only:** confirm Vercel `FOLDERA_SELF_USER_ID` (drives the self-loop cron) = `2cbc1bab` (set Jun 11, pre-consolidation — may still point at the empty account).
-- **Durable infra (merged #533):** `gate:continuity` runs on every PR; `npm run roll --cron-outcome` stamps cron health; Stop hook names `npm run roll`.
-- **Branch:** `claude/continue-work-bo69h2` · **deployed:** 4c443db.
+- **Seam #518 (verdict calibration) — the ONLY score left:** daily verdict is still **dark** (SAFE_SILENCE) on live owner data, but NOT data-starved (`2cbc1bab`: 1,227 actions / 1,010 signals/14d). Gate calibration, not missing data. This container can't flip it (no `CRON_SECRET`/paid LLM); next 11:00 UTC `morning-pipeline` cron is the proof.
+- **Owner identity = FULLY CONSOLIDATED (code + env, done this session):** `OWNER_USER_ID` constant repointed EMPTY `e40b7cd8` → live `2cbc1bab` and **merged** (#534, `5b8f991`); Vercel `FOLDERA_SELF_USER_ID` set to `2cbc1bab` + redeployed (READY). Both halves live. Don't reopen.
+- **Open caveat (separate from identity):** the self-loop cron looked **dormant** (`last_run_at` null both accounts) — verify the external **cron-job.org** job hits `/api/cron/workday-presence-trigger-runner` q15m. That's "is it scheduled," not "is it pointed right."
+- **Durable infra (merged #533):** `gate:continuity` runs on every PR; `npm run roll [-- --cron-outcome]` stamps state/cron health; Stop hook names `npm run roll`.
+- **Branch:** `claude/continue-work-bo69h2` · no open PRs.
 
 ## DON'T FORGET — read first, every boot
 
@@ -51,7 +51,7 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 1. **Live confirmation (owner/next cron) — the only score left:** this container CANNOT flip the verdict (no `CRON_SECRET`, no paid LLM calls; foldera.ai 403s the sandbox). Both code blockers (#526 salvage, #528 cap) are now on main (53de5b6); the next 11:00 UTC `morning-pipeline` cron should show `pipeline_runs.outcome=generation_returned` on a day a grounded candidate ranks top.
 2. **Next gate (DONE, PR #526):** generator multi-sentence directives (`directive must be exactly one sentence`) on commitment-exposure candidates are now deterministically salvaged to one sentence. Owner-verifiable on the next cron.
 3. **Operational (DONE, PR #528):** manual directive cap segmented to interactive-only (`pipeline_run_id IS NULL`) so cron no longer blows it and the dashboard can self-test.
-4. **Owner identity (FIXED in code, this branch):** `OWNER_USER_ID` constant repointed `e40b7cd8` (empty) → `2cbc1bab` (the live consolidated account). The only true owner-env step left: confirm Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (it drives the self-loop cron and was set pre-consolidation). Standing: Scout #494; OneDrive whole-drive enumeration (#507).
+4. **Owner identity (DONE — code + env, merged #534 `5b8f991`):** `OWNER_USER_ID` constant repointed `e40b7cd8`→`2cbc1bab`; Vercel `FOLDERA_SELF_USER_ID`=`2cbc1bab` set + redeployed. Both halves live; do not reopen. **Residual check:** confirm the external cron-job.org schedule is actually firing the self-loop runner (looked dormant). Standing: Scout #494; OneDrive whole-drive enumeration (#507).
 
 Full detail: issue #518.
 
