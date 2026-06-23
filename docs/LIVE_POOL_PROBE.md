@@ -112,10 +112,17 @@ WHERE user_id = '2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f'
   AND id IN ('<uuid>', '<uuid>');
 ```
 
-## Doctrine reminder (so the next session doesn't panic-loosen a gate)
+## Doctrine reminder
 
-- **SAFE_SILENCE is a valid SUCCESS** when the pool genuinely has no high-quality
-  candidate. Run Probe 3: if `fresh_14d` is low and `trusted`/`high_risk` are weak,
-  silence is correct — do NOT loosen a gate to force a card.
-- The recurring root cause is **zombie commitments with no expiry** (issue #537), not
-  the gates. Fix structurally there; don't re-diagnose from scratch.
+- **Empty is not a product. Silence is the FAILURE signal, not an acceptable rest
+  state** (owner directive 2026-06-23, issue **#538**). When no high-stakes Tier-1
+  discrepancy survives, the answer is to **degrade gracefully to the best real act**
+  (a due commitment teed up, an owed reply drafted, a goal-advancing follow-up),
+  honestly framed by stakes — NOT to go dark.
+- The one hard line that stays: **never fabricate stakes** or post a fixture as real,
+  and ship an **act, not a list/inbox-summary**. Lower-stakes-but-true beats
+  invented-urgency, and both beat silence. (Loosening a gate to force a *fake* card is
+  still forbidden; surfacing a *real* lower-tier act is the goal.)
+- Use Probe 3 to judge *which tier* to descend to, not whether to stay quiet.
+- Keep the pool clean so tier-descent surfaces good acts, not garbage: **zombie
+  commitments with no expiry** (issue **#537**) are the upstream hygiene fix.

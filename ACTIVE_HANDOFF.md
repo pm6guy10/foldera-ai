@@ -10,7 +10,7 @@
 ## DON'T FORGET — read first, every boot
 
 1. **Value is the only score.** Foldera exists to produce one act the user wouldn't have done. Green CI, audits, clean code, merged PRs are *hygiene* — not value.
-2. **Safe silence beats a fake card.** Never manufacture a verdict; quiet on weak evidence. The Scout obeys this too: no opportunity worth surfacing → stay quiet.
+2. **Always ship one real act — never go dark. Empty is not a product.** When no high-stakes discrepancy clears the bar, degrade gracefully to the best *real* available act (a due commitment teed up, an owed reply drafted, a goal-advancing follow-up), honestly framed by stakes. The one hard line that stays: never *fabricate* stakes or post a fixture as real — lower-stakes-but-true beats invented-urgency, and both beat silence. It must be an ACT, not a list/inbox-summary. `do_nothing` is a rare last resort, not a default. (Owner directive 2026-06-23; see #538.)
 3. **No "done" without live product proof.** Build/tests/CI green is necessary, never sufficient.
 4. **Don't make Brandon the router/tester/merger.** Pick the highest-leverage move, do it end-to-end, bring the result + reasoning.
 5. **Scout is additive and never auto-sends.** It proposes finished, review-gated artifacts. The Workday Presence Layer stays the always-on default; every `SCOUT_*` flag defaults off.
