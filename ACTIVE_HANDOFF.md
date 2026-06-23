@@ -2,10 +2,10 @@
 
 ## TL;DR
 
-- **Seam #518 (verdict calibration):** June 23 cron blocked by `stale_signal_backlog_remaining` — 219 Drive signals (bulk-imported June 22) exceeded threshold=10. **This branch (PR pending):** threshold raised 10→250 (`STALE_SIGNAL_BACKLOG_GATE_THRESHOLD`), 168 tests green.
-- **All three code fixes now in flight:** #526 (directive salvage) + #528 (manual cap) merged to main; stale gate fix on this branch pending merge.
-- **Still owner-only:** confirm Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (drives self-loop cron; set pre-consolidation).
-- **Branch:** `claude/seam-518-verdict-calibration-t30jwq` · **deployed:** 4c443db (pre-this-branch).
+- **Seam #518 (verdict calibration):** PR #536 (`claude/seam-518-verdict-calibration-t30jwq`) pending merge — stale gate 10→250, blocked_gate diagnostic truncation 240→2000. All three code fixes in flight (#526 directive salvage + #528 manual cap already on main).
+- **Commitment pool hygiene (#537, new issue):** 9 zombie commitments manually suppressed this session (ClickUp year-old interview ×2, Data License ×2, Columbia Motors ×2, Project Hydra ×3). Structural fix needed: external-promisor staleness gate + marketing-sender extraction filter + fuzzy dedup.
+- **Current honest verdict:** SAFE_SILENCE is correct today — after cleanup, no high-quality candidate in the pool. Professional signal (HCA MAS3, job search) has aged out of 14d window; remaining pool is bills/gig tasks/personal logistics.
+- **Still owner-only:** confirm Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab`.
 
 ## DON'T FORGET — read first, every boot
 
@@ -47,12 +47,13 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Next exact move
 
-1. **Merge this branch:** stale gate threshold 10→250 (`STALE_SIGNAL_BACKLOG_GATE_THRESHOLD`) — unblocks June 24+ crons that still see leftover Drive signals from June 22 bulk import. PR pending on `claude/seam-518-verdict-calibration-t30jwq`.
-2. **Live confirmation (owner/next cron) — the only score left:** all three code fixes (#526, #528, this branch) must be deployed before the next 11:00 UTC cron. Check `pipeline_runs.outcome` for `2cbc1bab` — should be `generation_returned` (not `stale_signal_backlog_remaining` or `generation_failed_sentinel`).
-3. **Owner-env confirm:** Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (set pre-consolidation, may still point at empty account).
-4. Already done: #526 (directive salvage), #528 (manual cap), #533 (continuity infra), #534 (OWNER_USER_ID constant fix). Standing: Scout #494; OneDrive whole-drive enumeration (#507).
+1. **Merge PR #536** (stale gate + diagnostic truncation) — correct infrastructure regardless of today's winner quality.
+2. **Start #537 Fix A** (external-promisor staleness gate in `daily-brief-generate.ts`): kill discrepancy_exposure candidates where the promisor is external + thread signal is stale + implied_due passed. This auto-suppresses the Columbia Motors pattern structurally — no more manual whack-a-mole.
+3. **Live confirmation:** after #536 merges + deploys, check tomorrow's cron (June 24 ~11:00 UTC). `pipeline_runs.outcome` for `2cbc1bab` — expect `generation_returned` IF fresh professional signal came in overnight, else `safe_silence_no_candidates` (correct). SAFE_SILENCE is acceptable; a bad card is not.
+4. **Owner-env confirm:** Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab`.
+5. Already done: #526 (directive salvage), #528 (manual cap), #533 (continuity infra), #534 (OWNER_USER_ID constant fix), 9 zombie suppressions (this session). Standing: Scout #494; OneDrive #507.
 
-Full detail: issue #518.
+Full detail: issue #518 (gate fixes), issue #537 (commitment hygiene).
 
 ## Product doctrine
 
