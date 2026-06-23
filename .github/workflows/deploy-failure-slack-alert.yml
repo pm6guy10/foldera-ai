@@ -1,0 +1,64 @@
+name: Deploy Failure Slack Alert
+
+# Errors-only Slack alert (owner-directed 2026-06-22).
+#
+# The Vercel Slack app is all-or-nothing per project — no native "errors-only"
+# filter — so #all-foldera-dev was unsubscribed from the Vercel deploy firehose
+# (/vercel unsubscribe brandons-projects-5552f226/foldera-ai). That left no way to
+# hear about FAILED deploys. This workflow restores exactly that one signal:
+# it pings the channel ONLY when a deployment reports failure/error. Quiet on
+# green, loud on red — which is the point of the channel.
+#
+# Mechanism: Vercel-for-GitHub creates GitHub Deployments and updates their
+# status, which fires the `deployment_status` event. We post to Slack only on the
+# failure/error states.
+#
+# Requirements:
+#   - secrets.SLACK_BOT_TOKEN (already configured for the self-loop)
+#   - The Foldera Slack bot must be a MEMBER of the target channel — invite it
+#     once in Slack: `/invite @Foldera` in #all-foldera-dev. Otherwise Slack
+#     returns not_in_channel (logged; the workflow still exits 0).
+#   - Optional secret FOLDERA_DEPLOY_ALERT_CHANNEL_ID overrides the channel;
+#     defaults to #all-foldera-dev (C0B7G34PRT8).
+#
+# NOTE: `deployment_status` workflows run from the default branch, so this takes
+# effect once it lands on main.
+
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  alert-on-failure:
+    if: ${{ github.event.deployment_status.state == 'failure' || github.event.deployment_status.state == 'error' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Post deploy failure to Slack
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          CHANNEL_ID: ${{ secrets.FOLDERA_DEPLOY_ALERT_CHANNEL_ID || 'C0B7G34PRT8' }}
+          DEPLOY_STATE: ${{ github.event.deployment_status.state }}
+          DEPLOY_ENV: ${{ github.event.deployment_status.environment }}
+          DEPLOY_DESC: ${{ github.event.deployment_status.description }}
+          DEPLOY_URL: ${{ github.event.deployment_status.target_url }}
+          DEPLOY_SHA: ${{ github.event.deployment.sha }}
+          DEPLOY_REF: ${{ github.event.deployment.ref }}
+        run: |
+          if [ -z "$SLACK_BOT_TOKEN" ]; then
+            echo "SLACK_BOT_TOKEN not set; nothing to post."
+            exit 0
+          fi
+          TEXT=$(printf ':red_circle: *Deployment %s* — foldera-ai (%s)\n%s\nref: %s @ %s\n%s' \
+            "$DEPLOY_STATE" "${DEPLOY_ENV:-unknown}" "${DEPLOY_DESC:-no description}" \
+            "${DEPLOY_REF:-?}" "${DEPLOY_SHA:0:7}" "${DEPLOY_URL:-}")
+          RESPONSE=$(curl -sS -X POST https://slack.com/api/chat.postMessage \
+            -H "Authorization: Bearer ${SLACK_BOT_TOKEN}" \
+            -H "Content-type: application/json; charset=utf-8" \
+            -d "$(jq -n --arg c "$CHANNEL_ID" --arg t "$TEXT" '{channel:$c, text:$t}')")
+          echo "Slack response: $RESPONSE"
+          if [ "$(echo "$RESPONSE" | jq -r '.ok')" != "true" ]; then
+            echo "::warning::Slack post failed: $(echo "$RESPONSE" | jq -r '.error // "unknown"'). If 'not_in_channel', invite the Foldera bot to the channel."
+          fi
