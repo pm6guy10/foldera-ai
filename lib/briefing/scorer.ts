@@ -4630,7 +4630,7 @@ export async function scoreOpenLoops(
     supabase
       .from('tkg_commitments')
       .select(
-        'id, description, category, status, risk_score, due_at, implied_due_at, source_context, updated_at, trust_class, promisor_id, promisee_id, source, source_id',
+        'id, description, canonical_form, category, status, risk_score, due_at, implied_due_at, source_context, updated_at, trust_class, promisor_id, promisee_id, source, source_id',
       )
       .eq('user_id', userId)
       .in('trust_class', ['trusted', 'unclassified'])
