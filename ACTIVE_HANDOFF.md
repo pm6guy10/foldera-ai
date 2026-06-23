@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-- **Seam #518 (verdict calibration):** PR #536 (`claude/seam-518-verdict-calibration-t30jwq`) pending merge — stale gate 10→250, blocked_gate diagnostic truncation 240→2000, + daily_brief→seed_from_scorer swap in morning-pipeline (email brief killed).
+- **Seam #518 (verdict calibration):** PR #536 (`claude/seam-518-verdict-calibration-t30jwq`) pending merge — stale gate 10→250, blocked_gate truncation fix, morning-pipeline daily_brief→seed_from_scorer swap, + full email send surface deleted (daily-brief-send.ts ~865 lines + 3 routes removed, lifecycle generate-only).
 - **Commitment pool hygiene (#537, new issue):** 9 zombie commitments manually suppressed. Structural fix needed: external-promisor staleness gate + marketing-sender extraction filter + fuzzy dedup.
 - **Current honest verdict:** SAFE_SILENCE is correct today — after cleanup, no high-quality candidate in the pool. Professional signal has aged out of 14d window.
 - **Still owner-only:** confirm Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab`.
@@ -47,11 +47,11 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Next exact move
 
-1. **Merge PR #536** — stale gate 10→250, blocked_gate truncation fix, + morning-pipeline now runs seed_from_scorer (Slack card) instead of daily_brief (email).
+1. **Merge PR #536** — all changes pushed (commit `de2af17`). Build + gate:continuity green. Ready to merge.
 2. **Start #537 Fix A** (external-promisor staleness gate in `daily-brief-generate.ts`): kill discrepancy_exposure candidates where the promisor is external + thread signal stale + implied_due passed. Auto-suppresses Columbia Motors pattern structurally.
-3. **Live confirmation:** after #536 deploys, check next cron run. Metric to watch: `workday_presence_suppression_trace.trace_type` in `auth.users.user_metadata` for `2cbc1bab` (NOT `pipeline_runs.outcome` — that was the wrong surface).
-4. **Owner-env confirm:** Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab`.
-5. Done this session: email daily brief killed from morning-pipeline, 9 zombie suppressions, #526/#528 merged. Standing: Scout #494; OneDrive #507.
+3. **Live confirmation:** after #536 deploys, check next cron run. Metric to watch: `workday_presence_suppression_trace.trace_type` in `auth.users.user_metadata` for `2cbc1bab`.
+4. **Owner-env confirm:** Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (Slack cards need this to fire).
+5. Done this session: email send surface fully deleted, lifecycle generate-only, 263 tests green, build clean. Standing: Scout #494; OneDrive #507.
 
 Full detail: issue #518 (gate fixes), issue #537 (commitment hygiene).
 
