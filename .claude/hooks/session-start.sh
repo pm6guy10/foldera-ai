@@ -3,15 +3,26 @@
 # EVERY session, before the first action. The harness injects this stdout into
 # the session context, so it CANNOT be skipped the way a doc-you-choose-to-read
 # can. This is the locked, fluid contextual continuity: wherever the session
-# runs, the brain is already here. Pure read-only — never edits, never networks.
+# runs, the brain is already here. Read-only EXCEPT a one-time deps self-heal below
+# (runs `npm ci` only when node_modules is absent; fail-soft, idempotent).
 # Keep it short and high-signal. Wired via .claude/settings.json (SessionStart).
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
 cd "$ROOT" 2>/dev/null || true
 
-# Read-only setup guard: a fresh container has no node_modules and `npx` will fetch the
-# wrong tool versions. Warn (never install — this hook must stay side-effect-free).
-[ -d node_modules ] || echo "# SETUP: node_modules missing — run 'npm ci' (or 'npm run setup') before tests/lint."
+# Setup self-heal — a fresh/ephemeral container has no node_modules and `npx` would then
+# fetch the wrong tool versions. Install the declared lockfile deps once, so no owner
+# web-UI setup script and no manual `npm ci` is ever needed. Idempotent (only when
+# node_modules is absent → no-op on warm containers and human machines). Fail soft: a
+# failed install warns but never blocks the session; npm output goes to a log, not here.
+if [ ! -d node_modules ] && command -v npm >/dev/null 2>&1; then
+  echo "# SETUP: node_modules missing — running 'npm ci' once (this can take ~1 min)…"
+  if npm ci --no-audit --no-fund >/tmp/foldera-npm-ci.log 2>&1; then
+    echo "# SETUP: dependencies installed."
+  else
+    echo "# SETUP: 'npm ci' failed (see /tmp/foldera-npm-ci.log) — run 'npm ci' manually before tests/lint."
+  fi
+fi
 
 echo "=== FOLDERA BRAIN — auto-loaded, read before acting ==="
 echo "Boot order: ACTIVE_HANDOFF.md -> active issue -> Issue #136 (Run Ledger)."

@@ -155,7 +155,7 @@ Encoded from a friction audit (2026-06-23) so no session relearns them:
 - **Pointer = one command.** Stamp the control plane with `npm run roll` (e.g. `npm run roll -- --pr 526`, or `npm run roll -- --no-pr` post-merge) — it sets `active_branch`/`active_pr`/`deployed_commit_sha`/`last_verified_at` and self-validates with the continuity gate. Don't hand-edit `ACTIVE_SEAM_STATE.json`.
 - **`active_pr` is not a CI gate.** The PR gate `ci.yml` does **not** run the continuity gate; only `pr-sentinel.yml` does and it's `workflow_dispatch`-only. So never burn a separate "stamp active_pr" commit — set it with `roll` when convenient, or just at the post-merge roll.
 - **Push doesn't need `--no-verify`.** `.husky/pre-push` auto-detects the agent sandbox (`CLAUDECODE`/`CLAUDE_CODE_REMOTE`) and skips the heavy lanes (full Next build, Playwright smoke) that time out here; CI gates build + e2e on every PR. The fast contract preflight + assertion lint still run locally.
-- **Fresh container needs deps.** Run `npm ci` (or `npm run setup`) before tests/lint; the SessionStart brain warns when `node_modules` is missing. The owner should set the remote environment's setup script to `npm ci`.
+- **Deps self-heal.** The SessionStart brain (`.claude/hooks/session-start.sh`) runs `npm ci` once on a fresh container when `node_modules` is missing (idempotent, fail-soft) — no owner web-UI setup script and no manual install needed. `npm run setup` (= `npm ci`) stays as a manual pre-warm.
 - **Land one PR per change.** Avoid the multi-PR / force-push churn — finish the change, push once, open one PR.
 
 ## Bounded Self-Unblock Loop
