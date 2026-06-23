@@ -2,11 +2,10 @@
 
 ## TL;DR
 
-- **Seam #518 (verdict calibration):** the daily verdict is still **dark** (SAFE_SILENCE) on live owner data — but NOT data-starved: `2cbc1bab` has 1,227 actions / 1,010 signals/14d. It's gate calibration, not missing data.
-- **Owner-identity bug FIXED (this branch):** `OWNER_USER_ID` constant pointed at the retired/EMPTY `e40b7cd8`; #509 migrated everything to `2cbc1bab`. Repointed the constant + boundary test + 4 debug scripts. This was mis-filed as "owner-only env work" — it was a code bug.
-- **Still owner-only:** confirm Vercel `FOLDERA_SELF_USER_ID` (drives the self-loop cron) = `2cbc1bab` (set Jun 11, pre-consolidation — may still point at the empty account).
-- **Durable infra (merged #533):** `gate:continuity` runs on every PR; `npm run roll --cron-outcome` stamps cron health; Stop hook names `npm run roll`.
-- **Branch:** `claude/continue-work-bo69h2` · **deployed:** 4c443db.
+- **Seam #518 (verdict calibration):** June 23 cron blocked by `stale_signal_backlog_remaining` — 219 Drive signals (bulk-imported June 22) exceeded threshold=10. **This branch (PR pending):** threshold raised 10→250 (`STALE_SIGNAL_BACKLOG_GATE_THRESHOLD`), 168 tests green.
+- **All three code fixes now in flight:** #526 (directive salvage) + #528 (manual cap) merged to main; stale gate fix on this branch pending merge.
+- **Still owner-only:** confirm Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (drives self-loop cron; set pre-consolidation).
+- **Branch:** `claude/seam-518-verdict-calibration-t30jwq` · **deployed:** 4c443db (pre-this-branch).
 
 ## DON'T FORGET — read first, every boot
 
@@ -48,10 +47,10 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Next exact move
 
-1. **Live confirmation (owner/next cron) — the only score left:** this container CANNOT flip the verdict (no `CRON_SECRET`, no paid LLM calls; foldera.ai 403s the sandbox). Both code blockers (#526 salvage, #528 cap) are now on main (53de5b6); the next 11:00 UTC `morning-pipeline` cron should show `pipeline_runs.outcome=generation_returned` on a day a grounded candidate ranks top.
-2. **Next gate (DONE, PR #526):** generator multi-sentence directives (`directive must be exactly one sentence`) on commitment-exposure candidates are now deterministically salvaged to one sentence. Owner-verifiable on the next cron.
-3. **Operational (DONE, PR #528):** manual directive cap segmented to interactive-only (`pipeline_run_id IS NULL`) so cron no longer blows it and the dashboard can self-test.
-4. **Owner identity (FIXED in code, this branch):** `OWNER_USER_ID` constant repointed `e40b7cd8` (empty) → `2cbc1bab` (the live consolidated account). The only true owner-env step left: confirm Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (it drives the self-loop cron and was set pre-consolidation). Standing: Scout #494; OneDrive whole-drive enumeration (#507).
+1. **Merge this branch:** stale gate threshold 10→250 (`STALE_SIGNAL_BACKLOG_GATE_THRESHOLD`) — unblocks June 24+ crons that still see leftover Drive signals from June 22 bulk import. PR pending on `claude/seam-518-verdict-calibration-t30jwq`.
+2. **Live confirmation (owner/next cron) — the only score left:** all three code fixes (#526, #528, this branch) must be deployed before the next 11:00 UTC cron. Check `pipeline_runs.outcome` for `2cbc1bab` — should be `generation_returned` (not `stale_signal_backlog_remaining` or `generation_failed_sentinel`).
+3. **Owner-env confirm:** Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (set pre-consolidation, may still point at empty account).
+4. Already done: #526 (directive salvage), #528 (manual cap), #533 (continuity infra), #534 (OWNER_USER_ID constant fix). Standing: Scout #494; OneDrive whole-drive enumeration (#507).
 
 Full detail: issue #518.
 
