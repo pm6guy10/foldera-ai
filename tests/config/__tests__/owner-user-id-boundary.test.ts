@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const OWNER_UUID = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
+const OWNER_UUID = '2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f';
 
 function collectSourceFiles(dir: string): string[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });

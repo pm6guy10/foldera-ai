@@ -1,12 +1,12 @@
 {
   "active_issue": 518,
   "active_branch": "claude/continue-work-bo69h2",
-  "active_pr": 533,
-  "deployed_commit_sha": "53de5b6",
+  "active_pr": null,
+  "deployed_commit_sha": "4c443db",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-23T15:31:36.112Z",
+  "last_verified_at": "2026-06-23T18:03:32.670Z",
   "last_cron_run": "2026-06-22T11:39:24Z",
   "last_cron_outcome": "generation_failed_sentinel",
-  "notes": "#518 BOTH sandbox-doable code blockers MERGED to main (53de5b6). (a) item #2, PR #526: deterministic directive one-sentence salvage (lib/briefing/generator.ts applyDirectiveOneSentenceSalvage) so commitment-exposure directives with a trailing explanatory sentence stop failing 'directive must be exactly one sentence', burning paid retries, and shipping nothing. (b) item #3, PR #528: segmented the manual directive cap (lib/utils/api-tracker.ts isOverManualCallLimit) to count only interactive rows (pipeline_run_id IS NULL) — cron directive rows run inside runWithPipelineRunContext and carried a pipeline_run_id, so one morning cron's 8+ rows blew the manual cap of 3 and short-circuited the dashboard 'Generate Now' self-test. Cap stays 3 (misattribution fix, not a billing-rail loosening). Proof for both: directive-one-sentence-salvage.test.ts + manual-call-limit-segmentation.test.ts + lib/briefing 836 + api-tracker.test.ts green; gate:continuity + eslint clean; no paid loop, no prod mutation. NO open PR. REMAINING is owner/cron-side ONLY (sandbox cannot do: no CRON_SECRET, no paid LLM, foldera.ai 403s sandbox): (1) the next 11:00 UTC morning-pipeline cron should flip pipeline_runs.outcome generation_failed_sentinel -> generation_returned once a grounded candidate ranks top — this is the live product proof, the only score; (2) set Vercel OWNER_USER_ID/FOLDERA_SELF_USER_ID -> 2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f; (3) /invite the Foldera bot to #all-foldera-dev for failure alerts. Cleanup/tech-debt backlog: issue #524."
+  "notes": "#518 verdict still dark but NOT data-starved: Supabase 2026-06-23 shows the #509 split-brain consolidation fully executed — e40b7cd8 is EMPTY (0 actions/0 signals/0 pipeline_runs) and 2cbc1bab holds everything (1227 actions, 5775 signals, 1010/14d). So the dark verdict is gate calibration (#526/#528 merged: directive one-sentence salvage + manual-cap segmentation), not missing data; proof pending the next cron that runs WITH those fixes on 2cbc1bab. THIS BRANCH fixes the owner-identity code half the consolidation left behind: lib/auth/constants.ts OWNER_USER_ID was still hardcoded to the empty e40b7cd8, so owner scripts + Slack self-loop + winner-truth + beta-readiness all keyed off a dead account. Repointed constants.ts + owner-user-id-boundary.test.ts + 4 .mjs debug scripts to 2cbc1bab; owner-boundary + multi-user-safety tests green (23). The ONLY genuine owner-env step left: confirm Vercel FOLDERA_SELF_USER_ID = 2cbc1bab (drives workday-presence-trigger-runner self-loop; set Jun 11 pre-consolidation, value hidden, may still point at the empty account). Branch protection (require continuity-gate) also still owner-only. See LESSONS_LEARNED #25. Cleanup/tech-debt backlog: issue #524."
 }
