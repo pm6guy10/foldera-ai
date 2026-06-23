@@ -240,3 +240,11 @@ A friction audit of one session (4 PRs: #526/#528/#529/#530) found the same moti
 - `AGENTS.md` → "Ship Rhythm (sandbox)" records the ceremony-killers (active_pr isn't a CI gate; one PR per change; no `--no-verify`).
 
 **Meta:** before repeating a manual workaround a third time, stop and move it into the harness.
+
+## 24. A Gate That Runs Only on `workflow_dispatch` Gates Nothing — Wire It to the PR Event
+
+Follow-on to #23. The friction audit found `gate:continuity` was well-designed and even had an `active_branch`-parity check, but its only CI wiring was `pr-sentinel.yml` (`on: [workflow_dispatch]`) — a human had to remember to click it, so in practice it never ran and a PR with a stale `ACTIVE_SEAM_STATE.json` (wrong branch, closed active issue, bloated TL;DR) merged freely. An unenforced gate is theater: the logic exists, the enforcement doesn't.
+
+**Rule (enforcement lives in the trigger, not the script):** a quality gate is only real when it runs on the event it's meant to guard — `on: pull_request` for a per-PR invariant, not `workflow_dispatch`. Before trusting any gate, check *what fires it*. Concretely (2026-06-23): added `.github/workflows/continuity-check.yml` (`on: pull_request`, skips drafts) so `npm run gate:continuity` runs on every non-draft PR; the remaining step is owner-only — mark `continuity-gate` a required status check in branch-protection (a workflow file creates the check; only Settings → Branches can *require* it).
+
+**Two friction corollaries shipped with it:** (a) the brain only surfaces the live product's health if the pointer carries it — `npm run roll -- --cron-outcome <x>` now stamps `last_cron_run`/`last_cron_outcome` and SessionStart prints a `cron:` line in the ACTIVE SEAM block, so "is the product alive?" no longer costs a manual Supabase query each session; (b) the Stop ratchet now names the exact command (`npm run roll -- [--pr N | --no-pr]`) instead of saying "roll the pointer forward" — a reminder that names the move is cheaper to obey than one that makes you re-derive it.

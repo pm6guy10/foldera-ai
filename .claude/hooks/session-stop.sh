@@ -36,7 +36,7 @@ MSG=""
 CODE_CHANGED="$(printf '%s\n' "$CHANGED" | grep -E '^(lib|app|components|scripts)/' || true)"
 STATE_CHANGED="$(printf '%s\n' "$CHANGED" | grep -E '^(ACTIVE_HANDOFF\.md|ACTIVE_SEAM_STATE\.json|LESSONS_LEARNED\.md)$' || true)"
 if [ -n "$CODE_CHANGED" ] && [ -z "$STATE_CHANGED" ]; then
-  MSG="${MSG}Code changed but ACTIVE_HANDOFF.md / ACTIVE_SEAM_STATE.json / LESSONS_LEARNED.md were not — roll the seam pointer forward AND append what you learned to LESSONS_LEARNED.md so the next session inherits it. This is the continuity ratchet: read enforced at start, write enforced at stop."
+  MSG="${MSG}Code changed but ACTIVE_HANDOFF.md / ACTIVE_SEAM_STATE.json / LESSONS_LEARNED.md were not — run \`npm run roll -- [--pr N | --no-pr]\` to stamp the seam pointer, update ACTIVE_HANDOFF.md ## TL;DR, and append what you learned to LESSONS_LEARNED.md so the next session inherits it. This is the continuity ratchet: read enforced at start, write enforced at stop."
 fi
 
 if [ -n "$MSG" ]; then
