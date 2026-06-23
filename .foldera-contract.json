@@ -18,7 +18,8 @@
     "content/**",
     "pages/**",
     ".github/**",
-    ".husky/**"
+    ".husky/**",
+    ".claude/**"
   ],
   "forbidden_file_patterns": [
     "app/api/stripe/**",
