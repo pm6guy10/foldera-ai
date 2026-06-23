@@ -2628,7 +2628,7 @@ export async function runDailyGenerate(
         const genFailed = directive.directive === '__GENERATION_FAILED__';
         // Artifact + post-artifact gates are not on ConvictionDirective yet; scorer/generator stage only.
         const blockedGate = genFailed
-          ? (directive.reason ?? 'GENERATION_FAILED').slice(0, 240)
+          ? (directive.reason ?? 'GENERATION_FAILED').slice(0, 2000)
           : null;
         void finalizeUserPipelineRun({
           id: pipelineRunId,
