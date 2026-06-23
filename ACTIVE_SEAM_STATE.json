@@ -1,12 +1,12 @@
 {
   "active_issue": 518,
   "active_branch": "claude/seam-518-verdict-calibration-t30jwq",
-  "active_pr": null,
+  "active_pr": 536,
   "deployed_commit_sha": "4c443db",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-23T19:46:00.000Z",
+  "last_verified_at": "2026-06-23T20:26:00.000Z",
   "last_cron_run": "2026-06-23T11:49:00Z",
   "last_cron_outcome": "stale_signal_backlog_remaining",
-  "notes": "June 23 cron (11:49-11:51 UTC) produced no pipeline_run: stale_signal_backlog_remaining — 219 unprocessed Drive file_modified signals (occurred_at April-May 2026, bulk-ingested June 22 at 19:17) exceeded the threshold of 10, blocking generation for 2cbc1bab (1,010 processed signals). Root cause: STALE_SIGNAL_BACKLOG_GATE_THRESHOLD=10 is too strict for established accounts hit by a bulk historical import. Fix (this branch): threshold raised to 250, extracted to named export. Tests: 168 green. Prior merges on main that also need to land to clear the verdict: #526 (directive one-sentence salvage), #528 (manual cap segmentation). The only remaining live blocker after this fix lands: confirm Vercel FOLDERA_SELF_USER_ID=2cbc1bab; confirm next cron returns generation_returned."
+  "notes": "PR #536 open (draft) — stale gate 10→250 + blocked_gate diagnostic 240→2000. 9 zombie commitments manually suppressed in production this session: ClickUp interview ×2, Data License ×2, Columbia Motors ×2, Project Hydra ×3. After suppression, SAFE_SILENCE is the honest verdict for today — no high-quality candidate in the active pool (professional signal aged out >14d). New issue #537 opened for structural commitment hygiene fix (external-promisor staleness gate, marketing-sender extraction filter, fuzzy dedup). Next cron (June 24 ~11:00 UTC) is the live score — expect generation_returned if fresh professional signal arrives overnight, else safe_silence is correct."
 }
