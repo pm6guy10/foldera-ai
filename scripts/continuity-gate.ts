@@ -33,6 +33,10 @@ const requiredFiles = [
 ];
 
 const ACTIVE_HANDOFF_MAX_LINES = 80;
+// Evergreen TL;DR mode: ACTIVE_HANDOFF.md must open with a bounded, always-current
+// TL;DR section. The SessionStart brain surfaces it first; the Stop ratchet keeps it
+// fresh; this bound stops it from growing back into a wall of text.
+const ACTIVE_HANDOFF_TLDR_MAX_LINES = 8;
 
 const requiredCloseoutValues = ['updated', 'unchanged - reason', 'not applicable - reason'];
 const requiredCloseoutFiles = [
@@ -141,6 +145,19 @@ function extractYamlNumber(raw: string, key: string): number | null {
 function extractYamlScalar(raw: string, key: string): string | null {
   const match = raw.match(new RegExp(`^${key}:\\s*(.+?)\\s*$`, 'm'));
   return match ? match[1].trim().replace(/^['"]|['"]$/g, '') : null;
+}
+
+/** Return the body lines of a `## Heading` section (up to the next `## `), or null if absent. */
+function extractMarkdownSection(raw: string, heading: string): string | null {
+  const lines = raw.split(/\r?\n/);
+  const start = lines.findIndex((line) => line.trim() === heading);
+  if (start === -1) return null;
+  const body: string[] = [];
+  for (let i = start + 1; i < lines.length; i += 1) {
+    if (/^##\s/.test(lines[i])) break;
+    body.push(lines[i]);
+  }
+  return body.join('\n');
 }
 
 function extractActiveHandoffIssue(raw: string): number | null {
@@ -280,8 +297,20 @@ export function runContinuityGate(root: string, options?: { issueStateFetcher?: 
   if (handoffLineCount > ACTIVE_HANDOFF_MAX_LINES) {
     failures.push(`ACTIVE_HANDOFF.md is ${handoffLineCount} lines; keep it at <= ${ACTIVE_HANDOFF_MAX_LINES} lines.`);
   }
-  for (const marker of ['# ACTIVE HANDOFF', 'Current slice:', '## Next exact move', 'GitHub writeback before stop is mandatory.']) {
+  for (const marker of ['# ACTIVE HANDOFF', '## TL;DR', 'Current slice:', '## Next exact move', 'GitHub writeback before stop is mandatory.']) {
     if (!activeHandoff.includes(marker)) failures.push(`ACTIVE_HANDOFF.md is missing required marker: ${marker}`);
+  }
+  // Evergreen TL;DR mode: the TL;DR section must stay bounded (always-current, not a wall).
+  const tldrSection = extractMarkdownSection(activeHandoff, '## TL;DR');
+  if (tldrSection !== null) {
+    const tldrLines = tldrSection.split(/\r?\n/).filter((line) => line.trim().length > 0);
+    if (tldrLines.length === 0) {
+      failures.push('ACTIVE_HANDOFF.md ## TL;DR section is empty; keep it a current 3-5 line summary.');
+    } else if (tldrLines.length > ACTIVE_HANDOFF_TLDR_MAX_LINES) {
+      failures.push(
+        `ACTIVE_HANDOFF.md ## TL;DR section is ${tldrLines.length} non-blank lines; keep it <= ${ACTIVE_HANDOFF_TLDR_MAX_LINES} (evergreen TL;DR mode).`,
+      );
+    }
   }
 
   const buildOrder = readRepoFile(root, 'FOLDERA_BUILD_ORDER.yaml');

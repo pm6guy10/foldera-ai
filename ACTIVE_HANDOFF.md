@@ -1,5 +1,12 @@
 # ACTIVE HANDOFF - FOLDERA
 
+## TL;DR
+
+- **Seam #518 (verdict calibration):** the daily verdict is still **dark** (SAFE_SILENCE) on live owner data.
+- **Just merged:** #526 directive one-sentence salvage + #528 manual-cap segmentation — both sandbox-doable code blockers cleared.
+- **Only score left:** the next 11:00 UTC `morning-pipeline` cron must flip `pipeline_runs.outcome` → `generation_returned` (owner/cron-side; sandbox can't trigger it).
+- **Branch:** `claude/continue-work-bo69h2` · **PR:** none open · **deployed:** 53de5b6.
+
 ## DON'T FORGET — read first, every boot
 
 1. **Value is the only score.** Foldera exists to produce one act the user wouldn't have done. Green CI, audits, clean code, merged PRs are *hygiene* — not value.

@@ -79,6 +79,31 @@ describe('continuity gate', () => {
     expect(runContinuityGate(fixtureRoot)).toEqual([]);
   });
 
+  it('fails when ACTIVE_HANDOFF.md drops the evergreen ## TL;DR section', () => {
+    const fixtureRoot = createFixtureRoot();
+    const original = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
+    writeFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md', original.replace('## TL;DR', '## TLDR-removed'));
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(failures).toContain('ACTIVE_HANDOFF.md is missing required marker: ## TL;DR');
+  });
+
+  it('fails when the ## TL;DR section grows past the evergreen bound', () => {
+    const fixtureRoot = createFixtureRoot();
+    const original = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
+    const bloat = Array.from({ length: 12 }, (_, i) => `- bloat line ${i}`).join('\n');
+    writeFixtureFile(
+      fixtureRoot,
+      'ACTIVE_HANDOFF.md',
+      original.replace('## TL;DR\n', `## TL;DR\n\n${bloat}\n`),
+    );
+
+    const failures = runContinuityGate(fixtureRoot);
+
+    expect(failures.some((f) => f.includes('## TL;DR section is') && f.includes('evergreen TL;DR mode'))).toBe(true);
+  });
+
   it('fails when a second active seam is declared', () => {
     const fixtureRoot = createFixtureRoot();
     const original = readFixtureFile(fixtureRoot, 'ACTIVE_HANDOFF.md');
@@ -238,25 +263,25 @@ describe('continuity gate', () => {
     expect(failures).toEqual([]);
   });
 
-  it('fails when a pull request changes a file outside the active contract allowlist', () => {
+  it('fails when a pull request changes a forbidden-pattern file (hard rail still gates)', () => {
     const fixtureRoot = createFixtureRoot();
     const failures = validateContractFileDiff(fixtureRoot, [
       'ACTIVE_HANDOFF.md',
-      'components/legacy-widget.tsx',
+      'lib/scout/scout-loop.ts',
     ]);
 
     expect(failures).toContain(
-      'Forbidden file change: components/legacy-widget.tsx matches .foldera-contract.json forbidden_file_patterns.',
+      'Forbidden file change: lib/scout/scout-loop.ts matches .foldera-contract.json forbidden_file_patterns.',
     );
   });
 
-  it('fails when a pull request changes a file that is neither explicitly allowed nor workflow-governance scoped', () => {
+  it('allows arbitrary non-forbidden files under the allow-by-default contract (#522)', () => {
     const fixtureRoot = createFixtureRoot();
+    // Allow-by-default-minus-forbidden: a random repo file is permitted; only the
+    // forbidden hard rails (stripe/scout/migrations/secrets) are blocked.
     const failures = validateContractFileDiff(fixtureRoot, ['README.md']);
 
-    expect(failures).toContain(
-      'Unauthorized file change: README.md is not allowed by .foldera-contract.json allowed_file_patterns.',
-    );
+    expect(failures).toEqual([]);
   });
 
   it('fails when required closeout receipt rows are incomplete', () => {
