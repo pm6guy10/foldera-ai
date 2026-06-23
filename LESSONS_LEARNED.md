@@ -228,3 +228,15 @@ Brandon: *"enforce evergreen tldr mode."* Two enforced halves, wired the same wa
 - **Output TL;DR:** every reply leads with a ≤4-line TL;DR and stays terse by default — no end-of-session wall-of-text, expand only on request. Re-injected by the SessionStart brain so it persists across sessions ("evergreen"), and written into `AGENTS.md`.
 
 **Rule:** a standing behavior only sticks if it's enforced where it can't be skipped — gate for the artifact, brain-injection for the behavior. A bound (≤8 lines) is what makes "evergreen" real: without it, summaries rot into walls. Wired 2026-06-23 (`scripts/continuity-gate.ts`, `.claude/hooks/session-start.sh`, `AGENTS.md`).
+
+## 23. Automate the Process Win at the Gate/Script — Don't Re-Derive It
+
+A friction audit of one session (4 PRs: #526/#528/#529/#530) found the same motion burned over and over: every push needed `--no-verify` (the pre-push `npm run build` + Playwright smoke time out in the agent sandbox); the control plane was hand-edited every cycle to stamp `active_pr` and roll `deployed_commit_sha`; and a fresh container had no `node_modules`. The biggest waste: the `active_pr` stamping commits gated **nothing** — `ci.yml` (the real PR gate) doesn't run the continuity gate at all; only `pr-sentinel.yml` does and it's `workflow_dispatch`-only.
+
+**Rule (same shape as the continuity ratchet and evergreen TL;DR mode):** when a process step is friction you hit more than once, encode it as a guard/script/hook so the next session inherits it — never re-derive it by hand. Concretely (2026-06-23):
+- `.husky/pre-push` auto-detects the agent sandbox (`CLAUDECODE`/`CLAUDE_CODE_REMOTE`) and skips the heavy lanes; CI still gates build + e2e (no policy drift).
+- `npm run roll` (`scripts/roll-pointer.ts`) stamps `ACTIVE_SEAM_STATE.json` in one command and self-validates with the gate — no hand-edited JSON.
+- `npm run setup` = `npm ci`; the SessionStart brain warns when deps are missing; owner sets the env setup script to `npm ci`.
+- `AGENTS.md` → "Ship Rhythm (sandbox)" records the ceremony-killers (active_pr isn't a CI gate; one PR per change; no `--no-verify`).
+
+**Meta:** before repeating a manual workaround a third time, stop and move it into the harness.
