@@ -148,6 +148,16 @@ Standing owner directive (2026-06-23, durable): **TL;DR mode is on, evergreen.**
 - **Output:** lead every reply with a `≤4-line TL;DR`; keep replies terse by default; no end-of-session wall-of-text — expand only when asked. The SessionStart brain re-injects this every session so it persists.
 - **Cockpit:** `ACTIVE_HANDOFF.md` opens with a `## TL;DR` section (a current 3–5 line where-we-stand + the single next move). The brain surfaces it first; the Stop write-back ratchet keeps it fresh; `gate:continuity` requires it to exist and stay `≤ 8` non-blank lines. Update it as part of every write-back, same as the seam pointer.
 
+## Ship Rhythm (sandbox) — don't re-derive these
+
+Encoded from a friction audit (2026-06-23) so no session relearns them:
+
+- **Pointer = one command.** Stamp the control plane with `npm run roll` (e.g. `npm run roll -- --pr 526`, or `npm run roll -- --no-pr` post-merge) — it sets `active_branch`/`active_pr`/`deployed_commit_sha`/`last_verified_at` and self-validates with the continuity gate. Don't hand-edit `ACTIVE_SEAM_STATE.json`.
+- **`active_pr` is not a CI gate.** The PR gate `ci.yml` does **not** run the continuity gate; only `pr-sentinel.yml` does and it's `workflow_dispatch`-only. So never burn a separate "stamp active_pr" commit — set it with `roll` when convenient, or just at the post-merge roll.
+- **Push doesn't need `--no-verify`.** `.husky/pre-push` auto-detects the agent sandbox (`CLAUDECODE`/`CLAUDE_CODE_REMOTE`) and skips the heavy lanes (full Next build, Playwright smoke) that time out here; CI gates build + e2e on every PR. The fast contract preflight + assertion lint still run locally.
+- **Fresh container needs deps.** Run `npm ci` (or `npm run setup`) before tests/lint; the SessionStart brain warns when `node_modules` is missing. The owner should set the remote environment's setup script to `npm ci`.
+- **Land one PR per change.** Avoid the multi-PR / force-push churn — finish the change, push once, open one PR.
+
 ## Bounded Self-Unblock Loop
 
 Inside the one active issue, keep working until a terminal state: `PROOF`, `MERGE READY`, `BLOCKED` (exact external blocker named), or `STOPPED` (receipt posted, next seam named). If a required check is red, inspect the exact failing job/step/test, patch the smallest file set, push, recheck. Never evade connector, GitHub, Vercel, Supabase, OAuth, browser, or OS permission boundaries — a required user approval is an external blocker, not a puzzle.

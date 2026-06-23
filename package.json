@@ -27,6 +27,8 @@
     "gate:visual": "npx tsx scripts/visual-gate-status.ts",
     "gate:command": "npx tsx scripts/source-truth-check.ts",
     "gate:continuity": "npx tsx scripts/continuity-gate.ts",
+    "setup": "npm ci",
+    "roll": "npx tsx scripts/roll-pointer.ts",
     "governor:intake": "npx tsx scripts/repo-intake-governor.ts",
     "gate:repo-intake-governor": "npx vitest run tests/repo-intake-governor --reporter=verbose",
     "gate:free-plan": "npx tsx scripts/free-plan-gate.ts && npm run cost:egress-audit",

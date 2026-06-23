@@ -9,6 +9,10 @@
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo .)"
 cd "$ROOT" 2>/dev/null || true
 
+# Read-only setup guard: a fresh container has no node_modules and `npx` will fetch the
+# wrong tool versions. Warn (never install — this hook must stay side-effect-free).
+[ -d node_modules ] || echo "# SETUP: node_modules missing — run 'npm ci' (or 'npm run setup') before tests/lint."
+
 echo "=== FOLDERA BRAIN — auto-loaded, read before acting ==="
 echo "Boot order: ACTIVE_HANDOFF.md -> active issue -> Issue #136 (Run Ledger)."
 echo "GitHub source truth beats chat/memory. One seam, one branch, one PR. Close loops."
