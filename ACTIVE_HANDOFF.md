@@ -1,5 +1,12 @@
 # ACTIVE HANDOFF - FOLDERA
 
+## TL;DR
+
+- **Seam #518 (verdict calibration):** the daily verdict is still **dark** (SAFE_SILENCE) on live owner data.
+- **Just merged:** #526 directive one-sentence salvage + #528 manual-cap segmentation — both sandbox-doable code blockers cleared.
+- **Only score left:** the next 11:00 UTC `morning-pipeline` cron must flip `pipeline_runs.outcome` → `generation_returned` (owner/cron-side; sandbox can't trigger it).
+- **Branch:** `claude/continue-work-bo69h2` · **PR:** none open · **deployed:** 53de5b6.
+
 ## DON'T FORGET — read first, every boot
 
 1. **Value is the only score.** Foldera exists to produce one act the user wouldn't have done. Green CI, audits, clean code, merged PRs are *hygiene* — not value.
@@ -30,7 +37,7 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 **MERGED to main (9453393, PR #526) — #518 item #2, generator fix not a gate change:** deterministic **directive one-sentence salvage** (`lib/briefing/generator.ts` → `applyDirectiveOneSentenceSalvage`, wired into `validateGeneratedArtifact` before the one-sentence check). The model appends an explanatory 2nd sentence to commitment-exposure directives → `directive must be exactly one sentence` fails the generation AND persistence gates, burns every paid LLM retry, ships nothing (dark verdict). Salvage collapses to the leading imperative sentence (pure truncation; declines on a weak-demonstrative lead). Proof: `directive-one-sentence-salvage.test.ts` + `lib/briefing` 836 green. Prompt and taste-gates untouched.
 
-**Shipped this branch — #518 item #3, operational (not a billing-rail loosening):** segmented the manual directive cap (`lib/utils/api-tracker.ts` → `isOverManualCallLimit`) to count only **interactive** rows (`pipeline_run_id IS NULL`). Cron directive/`directive_retry` rows run inside `runWithPipelineRunContext` and carry a `pipeline_run_id`, so a single morning cron's 8+ rows blew the manual cap of 3 and short-circuited the dashboard "Generate Now" self-test. Cap stays 3 — this fixes a misattribution. Proof (no paid loop): `manual-call-limit-segmentation.test.ts` (8 cron → not over; 3 interactive → over; 8 cron + 2 interactive → 3rd manual allowed; user-scoped) + existing `api-tracker.test.ts` green.
+**MERGED to main (53de5b6, PR #528) — #518 item #3, operational (not a billing-rail loosening):** segmented the manual directive cap (`lib/utils/api-tracker.ts` → `isOverManualCallLimit`) to count only **interactive** rows (`pipeline_run_id IS NULL`). Cron directive/`directive_retry` rows run inside `runWithPipelineRunContext` and carry a `pipeline_run_id`, so a single morning cron's 8+ rows blew the manual cap of 3 and short-circuited the dashboard "Generate Now" self-test. Cap stays 3 — this fixes a misattribution. Proof (no paid loop): `manual-call-limit-segmentation.test.ts` (8 cron → not over; 3 interactive → over; 8 cron + 2 interactive → 3rd manual allowed; user-scoped) + existing `api-tracker.test.ts` green.
 
 **Prior (deployed, 3f24e7e):** `missing_schedule_resolution_context` (`lib/briefing/artifact-taste-pack.ts`) made grounding-aware (fires only when `currentnessDays == null`). **Deliberately NOT touched** (blind loosening = the #452 mistake): goal-drift `missing_current_artifact_anchor` (already grounding-aware; live candidate is hollow) and `discrepancy-card-frame.ts` `weak_risk`/`reminder_without_risk` (`WINNER_TRACE_ROOT_CAUSE.md` says it is correct).
 
@@ -38,9 +45,9 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Next exact move
 
-1. **Live confirmation (owner/next cron):** this container CANNOT flip the verdict (no `CRON_SECRET`, no paid LLM calls; foldera.ai 403s the sandbox). After this PR merges + deploys, the next 11:00 UTC `morning-pipeline` cron should show `pipeline_runs.outcome=generation_returned` on a day a grounded calendar-gap ranks top.
-2. **Next gate (DONE this branch):** generator multi-sentence directives (`directive must be exactly one sentence`) on commitment-exposure candidates are now deterministically salvaged to one sentence — see "Shipped this branch". Owner-verifiable on the next cron.
-3. **Operational (DONE this branch):** manual directive cap segmented to interactive-only (`pipeline_run_id IS NULL`) so cron no longer blows it and the dashboard can self-test.
+1. **Live confirmation (owner/next cron) — the only score left:** this container CANNOT flip the verdict (no `CRON_SECRET`, no paid LLM calls; foldera.ai 403s the sandbox). Both code blockers (#526 salvage, #528 cap) are now on main (53de5b6); the next 11:00 UTC `morning-pipeline` cron should show `pipeline_runs.outcome=generation_returned` on a day a grounded candidate ranks top.
+2. **Next gate (DONE, PR #526):** generator multi-sentence directives (`directive must be exactly one sentence`) on commitment-exposure candidates are now deterministically salvaged to one sentence. Owner-verifiable on the next cron.
+3. **Operational (DONE, PR #528):** manual directive cap segmented to interactive-only (`pipeline_run_id IS NULL`) so cron no longer blows it and the dashboard can self-test.
 4. **Owner (sandbox cannot do):** set Vercel `OWNER_USER_ID`/`FOLDERA_SELF_USER_ID` → `2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f`. Standing: Scout #494; OneDrive whole-drive enumeration (#507).
 
 Full detail: issue #518.

@@ -141,6 +141,13 @@ Standing owner directive (2026-06-22, durable): **every session reduces friction
 
 The hard rails never relax and still gate everything: no Stripe/Scout/`supabase/migrations`/secrets changes, no auto-send, no blind loosening of a scoring/quality gate (test + before/after read required), no "done" without real product proof, and no self-modification of these guardrails (the forbidden set, auth, billing) without explicit owner sign-off. Reducing friction is the default; weakening a safety rail is not friction.
 
+## TL;DR / Evergreen Output Mode
+
+Standing owner directive (2026-06-23, durable): **TL;DR mode is on, evergreen.** Two enforced halves:
+
+- **Output:** lead every reply with a `≤4-line TL;DR`; keep replies terse by default; no end-of-session wall-of-text — expand only when asked. The SessionStart brain re-injects this every session so it persists.
+- **Cockpit:** `ACTIVE_HANDOFF.md` opens with a `## TL;DR` section (a current 3–5 line where-we-stand + the single next move). The brain surfaces it first; the Stop write-back ratchet keeps it fresh; `gate:continuity` requires it to exist and stay `≤ 8` non-blank lines. Update it as part of every write-back, same as the seam pointer.
+
 ## Bounded Self-Unblock Loop
 
 Inside the one active issue, keep working until a terminal state: `PROOF`, `MERGE READY`, `BLOCKED` (exact external blocker named), or `STOPPED` (receipt posted, next seam named). If a required check is red, inspect the exact failing job/step/test, patch the smallest file set, push, recheck. Never evade connector, GitHub, Vercel, Supabase, OAuth, browser, or OS permission boundaries — a required user approval is an external blocker, not a puzzle.

@@ -219,3 +219,12 @@ Brandon: *"how is this self-learning… it needs to enforce get smart every time
 - **Stop hook** (`.claude/hooks/session-stop.sh`) blocks a silent stop when code changed but `ACTIVE_HANDOFF.md` / `ACTIVE_SEAM_STATE.json` / `LESSONS_LEARNED.md` did not — roll the seam forward and append the lesson. Write enforced. It blocks once (respects `stop_hook_active`) so it reminds, never traps.
 
 Read-enforced **+** write-enforced = institutional memory that COMPOUNDS instead of one-and-done. Keep this distinct from *product* self-learning from real user outcomes (`outcome-learning.ts` / autopsy scripts) — a different layer. Wired in `.claude/settings.json` (2026-06-23). This very entry exists because the Stop hook required it.
+
+## 22. Evergreen TL;DR Mode: a Bounded, Enforced Summary at Both Ends
+
+Brandon: *"enforce evergreen tldr mode."* Two enforced halves, wired the same way the continuity ratchet is — harness/gate, not prose-you-choose-to-honor:
+
+- **Cockpit TL;DR:** `ACTIVE_HANDOFF.md` opens with a `## TL;DR` (3–5 lines: where-we-stand + the single next move). The SessionStart brain surfaces it FIRST; the Stop ratchet keeps it fresh (can't change code + stop without touching the handoff); `gate:continuity` requires the marker and bounds it to ≤ 8 non-blank lines so it can't regrow into a wall.
+- **Output TL;DR:** every reply leads with a ≤4-line TL;DR and stays terse by default — no end-of-session wall-of-text, expand only on request. Re-injected by the SessionStart brain so it persists across sessions ("evergreen"), and written into `AGENTS.md`.
+
+**Rule:** a standing behavior only sticks if it's enforced where it can't be skipped — gate for the artifact, brain-injection for the behavior. A bound (≤8 lines) is what makes "evergreen" real: without it, summaries rot into walls. Wired 2026-06-23 (`scripts/continuity-gate.ts`, `.claude/hooks/session-start.sh`, `AGENTS.md`).

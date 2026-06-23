@@ -14,6 +14,15 @@ echo "Boot order: ACTIVE_HANDOFF.md -> active issue -> Issue #136 (Run Ledger)."
 echo "GitHub source truth beats chat/memory. One seam, one branch, one PR. Close loops."
 echo ""
 
+# Evergreen TL;DR — the always-current cockpit summary, surfaced FIRST so every
+# session opens with where-things-stand + the single next move. Kept fresh by the
+# Stop write-back ratchet; existence + bound enforced by gate:continuity.
+if [ -f ACTIVE_HANDOFF.md ]; then
+  echo "# TL;DR"
+  awk '/^## TL;DR/{f=1;next} /^## /{if(f)exit} f' ACTIVE_HANDOFF.md | sed '/^[[:space:]]*$/d'
+  echo ""
+fi
+
 # Doctrine — the DON'T FORGET block (the distilled brain).
 if [ -f ACTIVE_HANDOFF.md ]; then
   echo "# DON'T FORGET"
@@ -42,5 +51,10 @@ echo "# STANDING RULE"
 echo "Reduce friction by default; CLOSE loops (don't just open PRs/issues); don't re-derive"
 echo "context or end every session with a giant breakdown. Hard safety rails still need"
 echo "sign-off (forbidden set, auth, billing, no auto-send, no blind gate-loosening)."
+echo ""
+echo "# TL;DR MODE (evergreen, enforced)"
+echo "Lead every reply with a <=4-line TL;DR; keep replies terse by default; no end-of-"
+echo "session wall-of-text — expand only when asked. Keep ACTIVE_HANDOFF.md '## TL;DR'"
+echo "current as part of write-back (gate:continuity requires it; max 8 lines)."
 echo ""
 echo "Full map: ACTIVE_HANDOFF.md + the active issue. Before first edit: check Issue #136, post SESSION START."
