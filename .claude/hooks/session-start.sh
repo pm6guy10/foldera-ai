@@ -65,6 +65,18 @@ if [ -f ACTIVE_HANDOFF.md ]; then
   echo ""
 fi
 
+# Live-pool probe — kills the per-session ritual of re-guessing schema columns and
+# re-deriving the candidate pool. The hook can't run SQL (no creds in sandbox), but the
+# agent has the Supabase MCP: paste the canned, schema-correct queries from this doc.
+if [ -f docs/LIVE_POOL_PROBE.md ]; then
+  echo "# LIVE POOL (verdict-calibration sessions)"
+  echo "Before re-diagnosing #518/#537: run the canned probes in docs/LIVE_POOL_PROBE.md"
+  echo "(Supabase MCP, project neydszeamsflpghtrhue, owner 2cbc1bab). It carries the exact"
+  echo "schema (we keep getting columns wrong) + the 'is silence honest?' health query."
+  echo "SAFE_SILENCE is a valid SUCCESS — do NOT loosen a gate to force a card."
+  echo ""
+fi
+
 echo "# STANDING RULE"
 echo "Reduce friction by default; CLOSE loops (don't just open PRs/issues); don't re-derive"
 echo "context or end every session with a giant breakdown. Hard safety rails still need"

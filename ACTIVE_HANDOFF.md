@@ -2,16 +2,15 @@
 
 ## TL;DR
 
-- **Seam #518 (verdict calibration):** the daily verdict is still **dark** (SAFE_SILENCE) on live owner data — but NOT data-starved: `2cbc1bab` has 1,227 actions / 1,010 signals/14d. It's gate calibration, not missing data.
-- **Owner-identity bug FIXED (this branch):** `OWNER_USER_ID` constant pointed at the retired/EMPTY `e40b7cd8`; #509 migrated everything to `2cbc1bab`. Repointed the constant + boundary test + 4 debug scripts. This was mis-filed as "owner-only env work" — it was a code bug.
-- **Still owner-only:** confirm Vercel `FOLDERA_SELF_USER_ID` (drives the self-loop cron) = `2cbc1bab` (set Jun 11, pre-consolidation — may still point at the empty account).
-- **Durable infra (merged #533):** `gate:continuity` runs on every PR; `npm run roll --cron-outcome` stamps cron health; Stop hook names `npm run roll`.
-- **Branch:** `claude/continue-work-bo69h2` · **deployed:** 4c443db.
+- **Seam #518 (verdict calibration):** PR #536 (`claude/seam-518-verdict-calibration-t30jwq`) pending merge — stale gate 10→250, blocked_gate truncation fix, morning-pipeline daily_brief→seed_from_scorer swap, + full email send surface deleted (daily-brief-send.ts ~865 lines + 3 routes removed, lifecycle generate-only).
+- **Commitment pool hygiene (#537, new issue):** 9 zombie commitments manually suppressed. Structural fix needed: external-promisor staleness gate + marketing-sender extraction filter + fuzzy dedup.
+- **Current honest verdict:** SAFE_SILENCE is correct today — after cleanup, no high-quality candidate in the pool. Professional signal has aged out of 14d window.
+- **Still owner-only:** confirm Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab`.
 
 ## DON'T FORGET — read first, every boot
 
 1. **Value is the only score.** Foldera exists to produce one act the user wouldn't have done. Green CI, audits, clean code, merged PRs are *hygiene* — not value.
-2. **Safe silence beats a fake card.** Never manufacture a verdict; quiet on weak evidence. The Scout obeys this too: no opportunity worth surfacing → stay quiet.
+2. **Always ship one real act — never go dark. Empty is not a product.** When no high-stakes discrepancy clears the bar, degrade gracefully to the best *real* available act (a due commitment teed up, an owed reply drafted, a goal-advancing follow-up), honestly framed by stakes. The one hard line that stays: never *fabricate* stakes or post a fixture as real — lower-stakes-but-true beats invented-urgency, and both beat silence. It must be an ACT, not a list/inbox-summary. `do_nothing` is a rare last resort, not a default. (Owner directive 2026-06-23; see #538.)
 3. **No "done" without live product proof.** Build/tests/CI green is necessary, never sufficient.
 4. **Don't make Brandon the router/tester/merger.** Pick the highest-leverage move, do it end-to-end, bring the result + reasoning.
 5. **Scout is additive and never auto-sends.** It proposes finished, review-gated artifacts. The Workday Presence Layer stays the always-on default; every `SCOUT_*` flag defaults off.
@@ -48,12 +47,13 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Next exact move
 
-1. **Live confirmation (owner/next cron) — the only score left:** this container CANNOT flip the verdict (no `CRON_SECRET`, no paid LLM calls; foldera.ai 403s the sandbox). Both code blockers (#526 salvage, #528 cap) are now on main (53de5b6); the next 11:00 UTC `morning-pipeline` cron should show `pipeline_runs.outcome=generation_returned` on a day a grounded candidate ranks top.
-2. **Next gate (DONE, PR #526):** generator multi-sentence directives (`directive must be exactly one sentence`) on commitment-exposure candidates are now deterministically salvaged to one sentence. Owner-verifiable on the next cron.
-3. **Operational (DONE, PR #528):** manual directive cap segmented to interactive-only (`pipeline_run_id IS NULL`) so cron no longer blows it and the dashboard can self-test.
-4. **Owner identity (FIXED in code, this branch):** `OWNER_USER_ID` constant repointed `e40b7cd8` (empty) → `2cbc1bab` (the live consolidated account). The only true owner-env step left: confirm Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (it drives the self-loop cron and was set pre-consolidation). Standing: Scout #494; OneDrive whole-drive enumeration (#507).
+1. **Merge PR #536** — all changes pushed (commit `de2af17`). Build + gate:continuity green. Ready to merge.
+2. **Start #537 Fix A** (external-promisor staleness gate in `daily-brief-generate.ts`): kill discrepancy_exposure candidates where the promisor is external + thread signal stale + implied_due passed. Auto-suppresses Columbia Motors pattern structurally.
+3. **Live confirmation:** after #536 deploys, check next cron run. Metric to watch: `workday_presence_suppression_trace.trace_type` in `auth.users.user_metadata` for `2cbc1bab`.
+4. **Owner-env confirm:** Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (Slack cards need this to fire).
+5. Done this session: email send surface fully deleted, lifecycle generate-only, 263 tests green, build clean. Standing: Scout #494; OneDrive #507.
 
-Full detail: issue #518.
+Full detail: issue #518 (gate fixes), issue #537 (commitment hygiene).
 
 ## Product doctrine
 

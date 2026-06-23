@@ -362,7 +362,7 @@ export async function computeHealthVerdict(
     failureClass = 'DELIVERY_FAILED';
     suggestedFix =
       'Check Resend API key, verified email, daily send dedup';
-    cursorPromptRef = 'Check lib/cron/daily-brief-send.ts runDailySend and getVerifiedDailyBriefRecipientEmail';
+    cursorPromptRef = 'Check Slack Right Now card delivery — seed-from-scorer route and workday-presence-trigger-runner';
   } else if (syncHealthy && processingHealthy && generationHealthy && deliveryHealthy) {
     failureClass = null; // GREEN
   }
@@ -518,7 +518,7 @@ export async function computeAndPersistHealthVerdict(
 }
 
 // ---------------------------------------------------------------------------
-// Health line string builder (used by daily-brief-send.ts for owner email)
+// Health line string builder (used by diagnostics / health-check route)
 // ---------------------------------------------------------------------------
 
 /**

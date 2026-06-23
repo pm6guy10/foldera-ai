@@ -800,7 +800,7 @@ describe('briefing pipeline receipt', () => {
     const { processUnextractedSignals } = await import('@/lib/signals/signal-processor');
     const { scoreOpenLoops } = await import('@/lib/briefing/scorer');
     const { generateDirective } = await import('@/lib/briefing/generator');
-    const { runDailyGenerate, runDailySend } = await import('@/lib/cron/daily-brief');
+    const { runDailyGenerate } = await import('@/lib/cron/daily-brief');
 
     const rawSignal = runtime.signals[0];
     expect(rawSignal.user_id).toBe(TEST_USER_ID);
@@ -874,38 +874,9 @@ describe('briefing pipeline receipt', () => {
       runtime.actions.some((action) => action.user_id === TEST_USER_ID && action.status === 'pending_approval'),
     ).toBe(false);
 
-    const sendResult = await runDailySend({ userIds: [TEST_USER_ID] });
-    expect(sendResult.results).toEqual([
-      expect.objectContaining({
-        code: 'no_send_blocker_persisted',
-        detail: 'Generic no-send blocker persisted without email delivery.',
-        success: true,
-        userId: TEST_USER_ID,
-        meta: expect.objectContaining({
-          action_id: savedAction?.id,
-          daily_email_idempotency_key: expect.stringContaining(`daily-brief:${TEST_USER_ID}:`),
-          generic_no_send_suppressed: true,
-          quiet_hold_receipt: expect.objectContaining({
-            status: 'held_no_finished_artifact',
-            delivery: 'silent',
-            blocked_reasons_summary: expect.arrayContaining([
-              'generic_no_send_suppressed',
-              'no_finished_artifact_available',
-            ]),
-          }),
-        }),
-      }),
-    ]);
-    expect(mockResendSend).not.toHaveBeenCalled();
-
+    // Email send removed — Slack Right Now card is the delivery surface.
+    // No Resend call is made; verified by absence of resend_id on the saved action.
     const sentAction = runtime.actions.find((action) => action.id === savedAction?.id);
-    expect(sentAction?.execution_result?.daily_brief_sent_at).toBeUndefined();
     expect(sentAction?.execution_result?.resend_id).toBeUndefined();
-    expect(sentAction?.execution_result?.quiet_hold_receipt).toEqual(
-      expect.objectContaining({
-        status: 'held_no_finished_artifact',
-        delivery: 'silent',
-      }),
-    );
   }, 30000);
 });

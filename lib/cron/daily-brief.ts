@@ -33,7 +33,6 @@
  *   lib/cron/daily-brief-types.ts      — types
  *   lib/cron/daily-brief-status.ts     — stage formatting, normalizeBriefResult
  *   lib/cron/daily-brief-generate.ts   — generate stage + all helpers
- *   lib/cron/daily-brief-send.ts       — send stage
  *   lib/cron/brief-service.ts          — runBriefLifecycle (single authority)
  *
  * External consumers import from this file; internal modules import
@@ -45,7 +44,6 @@ import { createServerClient } from '@/lib/db/client';
 import { logStructuredEvent } from '@/lib/utils/structured-logger';
 import { buildRunResult, toSafeDailyBriefStageStatus } from './daily-brief-status';
 import { runDailyGenerate } from './daily-brief-generate';
-import { runDailySend } from './daily-brief-send';
 
 // Re-export all types
 export type {
@@ -60,21 +58,16 @@ export type {
 } from './daily-brief-types';
 
 // Re-export formatting / normalization
-export {
-  getTriggerResponseStatus,
-  normalizeBriefResult,
-  toSafeDailyBriefStageStatus,
-} from './daily-brief-status';
+export { normalizeBriefResult } from './daily-brief-status';
 
-// Re-export stage functions (consumed by daily-generate/route.ts, daily-send/route.ts, etc.)
+// Re-export stage functions (consumed by daily-generate/route.ts, etc.)
 export { runDailyGenerate } from './daily-brief-generate';
-export { runDailySend } from './daily-brief-send';
 
 import type { DailyBriefOrchestrationResult, DailyBriefSignalWindowOptions } from './daily-brief-types';
 
 // ---------------------------------------------------------------------------
-// runDailyBrief — core orchestration (generate + send)
-// Used by: brief-service.ts (primary), trigger/route.ts, app/api/cron/daily-brief/route.ts
+// runDailyBrief — generate stage only (email send removed; Slack card is the delivery surface)
+// Used by: brief-service.ts
 // ---------------------------------------------------------------------------
 
 export async function runDailyBrief(
@@ -85,29 +78,19 @@ export async function runDailyBrief(
 
   const generate = await runDailyGenerate(merged);
   const date = generate.date;
-  const send = merged.pipelineDryRun
-    ? buildRunResult(
-        date,
-        'Send skipped (pipeline dry run — no email, no new action row).',
-        (merged.userIds ?? []).map((userId) => ({
-          code: 'send_skipped_pipeline_dry_run' as const,
-          success: true,
-          userId,
-          detail: 'pipelineDryRun: send stage not executed',
-        })),
-      )
-    : await runDailySend(merged);
   const signalProcessing = generate.signalProcessing;
+
+  // Send stage removed — Slack Right Now card is the delivery surface.
+  const send = buildRunResult(date, 'Email send removed: Slack Right Now card is the delivery surface.', []);
+
   const ok =
     (toSafeDailyBriefStageStatus(signalProcessing).status === 'ok' ||
       toSafeDailyBriefStageStatus(signalProcessing).status === 'skipped') &&
     (toSafeDailyBriefStageStatus(generate).status === 'ok' ||
-      toSafeDailyBriefStageStatus(generate).status === 'skipped') &&
-    (toSafeDailyBriefStageStatus(send).status === 'ok' ||
-      toSafeDailyBriefStageStatus(send).status === 'skipped');
+      toSafeDailyBriefStageStatus(generate).status === 'skipped');
 
   return {
-    date: generate.date,
+    date,
     generate,
     ok,
     send,

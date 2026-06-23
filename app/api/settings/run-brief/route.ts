@@ -577,7 +577,6 @@ export async function POST(request: Request) {
     // was adding 15-30s overhead and causing 504s. Nightly-ops handles it at 4am.
     const { result: dailyBrief, sendFallbackAttempted } = await runBriefLifecycle({
       userIds: [userId],
-      ensureSend: !pipelineDryRun,
       briefInvocationSource: 'settings_run_brief',
       skipStaleGate: true,
       skipSpendCap: false,

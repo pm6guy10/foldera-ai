@@ -105,6 +105,13 @@ const DAILY_SIGNAL_BATCH_SIZE = 5;
 const DAILY_SIGNAL_PROCESSING_BUDGET_MS = 20_000;
 const DO_NOTHING_COOLDOWN_MS = 4 * 60 * 60 * 1000;
 
+// Calibrated threshold: 10 was too strict for established accounts — a single bulk
+// historical import (e.g. 219 Drive file_modified signals from April-May ingested on
+// June 22) temporarily inflates the stale backlog past the threshold and silences
+// an account with 1,000+ processed signals. 250 still blocks truly degraded new
+// accounts while allowing brief generation through temporary backlog spikes.
+export const STALE_SIGNAL_BACKLOG_GATE_THRESHOLD = 250;
+
 /** Pending rows older than this do not block the early guard (belt-and-suspenders with pre-reconcile). */
 const STALE_PENDING_HOURS = 18;
 
@@ -1984,7 +1991,7 @@ async function runSignalProcessingForUser(
       route_budget_exhausted: Date.now() >= deadline,
     };
 
-    if (staleAfter >= 10 && !options.skipStaleGate) {
+    if (staleAfter >= STALE_SIGNAL_BACKLOG_GATE_THRESHOLD && !options.skipStaleGate) {
       return {
         code: 'stale_signal_backlog_remaining',
         detail: `${staleAfter} unprocessed signals older than 24 hours remained after the signal-processing budget.`,
@@ -2621,7 +2628,7 @@ export async function runDailyGenerate(
         const genFailed = directive.directive === '__GENERATION_FAILED__';
         // Artifact + post-artifact gates are not on ConvictionDirective yet; scorer/generator stage only.
         const blockedGate = genFailed
-          ? (directive.reason ?? 'GENERATION_FAILED').slice(0, 240)
+          ? (directive.reason ?? 'GENERATION_FAILED').slice(0, 2000)
           : null;
         void finalizeUserPipelineRun({
           id: pipelineRunId,

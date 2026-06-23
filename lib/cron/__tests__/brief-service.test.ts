@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { runBriefLifecycle } from '../brief-service';
-import { runDailyBrief, runDailySend } from '../daily-brief';
+import { runDailyBrief } from '../daily-brief';
 import type { DailyBriefUserResult, DailyBriefOrchestrationResult } from '../daily-brief-types';
 
 vi.mock('../daily-brief', () => ({
   runDailyBrief: vi.fn(),
-  runDailySend: vi.fn(),
 }));
 
 const USER_ID = '33333333-3333-3333-3333-333333333333';
@@ -27,24 +26,14 @@ function makeGenerateResult(code: string, success = true) {
   };
 }
 
-function makeSendResult(code: string, success = true) {
-  return {
-    date: '2026-03-24',
-    message: 'send message',
-    results: [{ code: code as DailyBriefUserResult['code'], success, userId: USER_ID }],
-    succeeded: success ? 1 : 0,
-    total: 1,
-  };
-}
-
-function makeBriefResult(generateCode: string, sendCode: string) {
+function makeBriefResult(generateCode: string) {
   const generate = makeGenerateResult(generateCode);
   const { signalProcessing, ...generateWithoutSignal } = generate;
   return {
     date: '2026-03-24',
     ok: true,
     generate: generateWithoutSignal,
-    send: makeSendResult(sendCode),
+    send: { date: '2026-03-24', message: 'Email send removed.', results: [], succeeded: 0, total: 0 },
     signal_processing: signalProcessing,
   } as DailyBriefOrchestrationResult;
 }
@@ -55,51 +44,20 @@ describe('runBriefLifecycle', () => {
   });
 
   it('calls runDailyBrief with the provided userIds and returns normalized result', async () => {
-    vi.mocked(runDailyBrief).mockResolvedValue(makeBriefResult('pending_approval_persisted', 'email_sent'));
+    vi.mocked(runDailyBrief).mockResolvedValue(makeBriefResult('pending_approval_persisted'));
 
     const { result, sendFallbackAttempted } = await runBriefLifecycle({ userIds: [USER_ID] });
 
     expect(runDailyBrief).toHaveBeenCalledWith({ userIds: [USER_ID] });
     expect(sendFallbackAttempted).toBe(false);
     expect(result.date).toBe('2026-03-24');
-    expect(result.send.results[0].code).toBe('email_sent');
   });
 
-  it('retries send when ensureSend is true and generate succeeded but send did not confirm delivery', async () => {
-    vi.mocked(runDailyBrief).mockResolvedValue(makeBriefResult('pending_approval_persisted', 'no_generated_directive'));
-    vi.mocked(runDailySend).mockResolvedValue(makeSendResult('email_sent'));
-
-    const { result, sendFallbackAttempted } = await runBriefLifecycle({
-      userIds: [USER_ID],
-      ensureSend: true,
-    });
-
-    expect(runDailySend).toHaveBeenCalledWith(
-      expect.objectContaining({ userIds: [USER_ID], ensureSend: true }),
-    );
-    expect(sendFallbackAttempted).toBe(true);
-    expect(result.send.results[0].code).toBe('email_sent');
-  });
-
-  it('does not retry send when generate produced an explicit no-send result', async () => {
-    vi.mocked(runDailyBrief).mockResolvedValue(makeBriefResult('no_send_persisted', 'email_sent'));
-
-    const { result, sendFallbackAttempted } = await runBriefLifecycle({
-      userIds: [USER_ID],
-      ensureSend: true,
-    });
-
-    expect(runDailySend).not.toHaveBeenCalled();
-    expect(sendFallbackAttempted).toBe(false);
-    expect(result.send.results[0].code).toBe('email_sent');
-  });
-
-  it('does not retry send when ensureSend is not set even if generate succeeded and send did not confirm', async () => {
-    vi.mocked(runDailyBrief).mockResolvedValue(makeBriefResult('pending_approval_persisted', 'no_generated_directive'));
+  it('always returns sendFallbackAttempted=false (email send removed)', async () => {
+    vi.mocked(runDailyBrief).mockResolvedValue(makeBriefResult('pending_approval_persisted'));
 
     const { sendFallbackAttempted } = await runBriefLifecycle({ userIds: [USER_ID] });
 
-    expect(runDailySend).not.toHaveBeenCalled();
     expect(sendFallbackAttempted).toBe(false);
   });
 });
