@@ -209,3 +209,13 @@ Brandon, repeatedly and bluntly: *"you pick never front load again."* Ending a t
 **The discovery that drove this session (consequence ≠ keywords):** the engine produced 100% `do_nothing` not because the inbox was quiet but because `computeCommitmentRisk` gave a flat **+15 for the mere presence of a `$`**. On live data that ranked a **$2.71 statement credit (87)** and a **$6.50 milk-frother choice (75)** at/above a **$7,199.50 ESD statutory hardship waiver (85)**. Noise and the one real obligation were indistinguishable, so every selected winner was hollow.
 
 **Rule (stakes scale with magnitude, not presence):** A stakes signal must scale with *magnitude × irreversibility × who-it-affects*. Presence of a number/`$`/"payment" keyword is nearly worthless — almost every receipt has one. Informational money movement (statement credits, subscription receipts, scheduled autopay) is a *notification*, not an obligation; collapse it. Fixed in `lib/signals/commitment-risk.ts` (#474/PR #475), proven on real rows and backfilled live: waiver → 92 (#1), receipts → 22. `commitment-risk.ts` is the reference pattern; carry it up into the signal-side stakes and the generator's `positive_winner_contract` next.
+
+## 21. Continuity Must Be a Ratchet: Read Enforced at Start, Write Enforced at Stop
+
+Brandon: *"how is this self-learning… it needs to enforce get smart every time not this session one and done… is it gonna roll fwd it's not auto."* Right diagnosis. A doc the agent *chooses* to read (`AGENTS.md`, `ACTIVE_HANDOFF.md`) and a roll-forward the agent *chooses* to do are both skippable — that is why the system kept forgetting. More governance prose does not fix it; only harness-run hooks do, because the harness executes them, not the agent, so they cannot be ignored.
+
+**Rule (the continuity ratchet — both ends must be wired):**
+- **SessionStart hook** (`.claude/hooks/session-start.sh`) injects the brain — DON'T FORGET, active seam, next exact move — into every session *before the first action*. Read enforced.
+- **Stop hook** (`.claude/hooks/session-stop.sh`) blocks a silent stop when code changed but `ACTIVE_HANDOFF.md` / `ACTIVE_SEAM_STATE.json` / `LESSONS_LEARNED.md` did not — roll the seam forward and append the lesson. Write enforced. It blocks once (respects `stop_hook_active`) so it reminds, never traps.
+
+Read-enforced **+** write-enforced = institutional memory that COMPOUNDS instead of one-and-done. Keep this distinct from *product* self-learning from real user outcomes (`outcome-learning.ts` / autopsy scripts) — a different layer. Wired in `.claude/settings.json` (2026-06-23). This very entry exists because the Stop hook required it.
