@@ -1,11 +1,11 @@
 {
   "active_issue": 518,
   "active_branch": "claude/continue-work-bo69h2",
-  "active_pr": null,
+  "active_pr": 534,
   "deployed_commit_sha": "4c443db",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-23T18:03:32.670Z",
+  "last_verified_at": "2026-06-23T18:05:12.173Z",
   "last_cron_run": "2026-06-22T11:39:24Z",
   "last_cron_outcome": "generation_failed_sentinel",
   "notes": "#518 verdict still dark but NOT data-starved: Supabase 2026-06-23 shows the #509 split-brain consolidation fully executed — e40b7cd8 is EMPTY (0 actions/0 signals/0 pipeline_runs) and 2cbc1bab holds everything (1227 actions, 5775 signals, 1010/14d). So the dark verdict is gate calibration (#526/#528 merged: directive one-sentence salvage + manual-cap segmentation), not missing data; proof pending the next cron that runs WITH those fixes on 2cbc1bab. THIS BRANCH fixes the owner-identity code half the consolidation left behind: lib/auth/constants.ts OWNER_USER_ID was still hardcoded to the empty e40b7cd8, so owner scripts + Slack self-loop + winner-truth + beta-readiness all keyed off a dead account. Repointed constants.ts + owner-user-id-boundary.test.ts + 4 .mjs debug scripts to 2cbc1bab; owner-boundary + multi-user-safety tests green (23). The ONLY genuine owner-env step left: confirm Vercel FOLDERA_SELF_USER_ID = 2cbc1bab (drives workday-presence-trigger-runner self-loop; set Jun 11 pre-consolidation, value hidden, may still point at the empty account). Branch protection (require continuity-gate) also still owner-only. See LESSONS_LEARNED #25. Cleanup/tech-debt backlog: issue #524."
