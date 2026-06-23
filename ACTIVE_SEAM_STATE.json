@@ -1,12 +1,12 @@
 {
   "active_issue": 518,
-  "active_branch": "claude/closeout-518-pointer",
-  "active_pr": null,
+  "active_branch": "claude/continue-work-bo69h2",
+  "active_pr": 526,
   "deployed_commit_sha": "3f24e7e",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-23T00:20:00Z",
+  "last_verified_at": "2026-06-23T01:00:00Z",
   "last_cron_run": "2026-06-22T11:39:24Z",
   "last_cron_outcome": "generation_failed_sentinel",
-  "notes": "#518 verdict-calibration code is MERGED + deployed (PRs #520, #522, #523 all on main as of 3f24e7e). No open PR. The grounded fix for missing_schedule_resolution_context (lib/briefing/artifact-taste-pack.ts, grounding-aware) shipped; deliberately did NOT blind-loosen goal-drift missing_current_artifact_anchor or discrepancy-card-frame weak_risk (per #452). REMAINING (auto, owner-verifiable): the next 11:00 UTC morning-pipeline cron should flip pipeline_runs.outcome from generation_failed_sentinel to generation_returned on a day a grounded calendar-gap ranks top; the sandbox cannot trigger it (no CRON_SECRET / paid LLM). Freshest live blocker if still dark: generator emits multi-sentence directives on commitment-exposure candidates ('directive must be exactly one sentence') -> a generator/prompt fix, not a gate. ALSO SHIPPED this session: allow-by-default contract + MS #EXT# email self-heal (#522); repo polish + SessionStart brain-hook + Vercel/Slack deploy-noise cut + --no-verify push-wall fix (#523); friction reduction locked in as standing policy (AGENTS.md). Cleanup/tech-debt backlog: issue #524. Owner to-dos: set Vercel OWNER_USER_ID/FOLDERA_SELF_USER_ID -> 2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f; /invite the Foldera bot to #all-foldera-dev for failure alerts."
+  "notes": "#518 next-gate (item #2) SHIPPED on branch claude/continue-work-bo69h2: deterministic directive one-sentence salvage (lib/briefing/generator.ts applyDirectiveOneSentenceSalvage, wired into validateGeneratedArtifact before the one-sentence check). The model appends an explanatory 2nd sentence to commitment-exposure directives -> 'directive must be exactly one sentence' fails the generation AND persistence gates, burns every paid LLM retry, ships nothing (dark verdict). Salvage collapses the directive to its leading imperative sentence (pure truncation of the model's own text, declines when the lead is a weak demonstrative). Proof (no paid loop): directive-one-sentence-salvage.test.ts (repro 2-sentence directive fails countSentences!==1, fix -> ==1, email dots preserved, weak-lead declined) + full lib/briefing suite 836 green + gate:continuity. Did NOT touch the prompt or any taste-gate. REMAINING (auto, owner-verifiable): next 11:00 UTC morning-pipeline cron should flip pipeline_runs.outcome generation_failed_sentinel -> generation_returned once a grounded candidate ranks top; sandbox cannot trigger it (no CRON_SECRET / paid LLM). Prior context: #516 grounding + missing_schedule_resolution_context grounding-aware fix already deployed (3f24e7e). Cleanup/tech-debt backlog: issue #524. Owner to-dos: set Vercel OWNER_USER_ID/FOLDERA_SELF_USER_ID -> 2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f; /invite the Foldera bot to #all-foldera-dev for failure alerts."
 }

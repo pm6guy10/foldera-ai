@@ -5315,14 +5315,87 @@ function shouldHideProofOnlyRecentAction(executionResult: unknown): boolean {
  * enders (. ! ?). Avoids splitting on dots inside emails and on year decimals like "2026."
  * when not followed by space (single-sentence directives ending in a year stay one sentence).
  */
+/** Email addresses carry literal dots that must not be read as sentence breaks. */
+const SENTENCE_EMAIL_MASK_RE = /\b[\w.%+-]+@[\w.-]+\.[a-z]{2,}\b/gi;
+const SENTENCE_EMAIL_MASK_CHAR = '\u00b7';
+
+function maskEmailDotsForSentences(trimmed: string): string {
+  return trimmed.replace(SENTENCE_EMAIL_MASK_RE, (email) =>
+    email.replace(/\./g, SENTENCE_EMAIL_MASK_CHAR),
+  );
+}
+
 export function countSentences(value: string): number {
   const trimmed = value.trim();
   if (!trimmed) return 0;
-  const masked = trimmed.replace(/\b[\w.%+-]+@[\w.-]+\.[a-z]{2,}\b/gi, (email) =>
-    email.replace(/\./g, '\u00b7'),
-  );
+  const masked = maskEmailDotsForSentences(trimmed);
   const parts = masked.split(/(?<=[.!?])\s+/).map((p) => p.trim()).filter(Boolean);
   return parts.length === 0 ? 1 : parts.length;
+}
+
+/**
+ * Return the leading sentence of a directive verbatim \u2014 strictly a truncation of the
+ * model's own text, no invented content. Email dots are masked the same way
+ * countSentences masks them so "Email keri.x@dshs.wa.gov today." stays whole.
+ */
+export function leadingDirectiveSentence(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  const masked = maskEmailDotsForSentences(trimmed);
+  const parts = masked.split(/(?<=[.!?])\s+/).map((p) => p.trim()).filter(Boolean);
+  if (parts.length <= 1) return trimmed;
+  return parts[0].split(SENTENCE_EMAIL_MASK_CHAR).join('.');
+}
+
+/**
+ * A context/pronoun lead is a setup sentence, not the move \u2014 never promote it into the
+ * directive. When the directive opens this way we decline to salvage (status quo: the
+ * downstream deterministic fallback or SAFE_SILENCE still applies), rather than ship a
+ * contentless directive.
+ */
+const DIRECTIVE_WEAK_LEAD_RE = /^(this|that|it|these|those|here|there|because|so|which|and|but|however|note that)\b/i;
+
+/**
+ * The model occasionally appends an explanatory second sentence to the directive (the
+ * "why" belongs in why_now/insight, not the directive). A multi-sentence directive fails
+ * the one-sentence contract \u2014 at generation (validateGeneratedArtifact) and again at
+ * persistence \u2014 which today burns every paid LLM retry and then ships nothing (dark
+ * verdict) even when the leading imperative is perfectly shippable. Collapse it to the
+ * leading sentence in place before validation. Returns true when it salvaged. This only
+ * truncates the model's own text and never invents content; the menu/length/decision
+ * gates still run on the result.
+ */
+export function applyDirectiveOneSentenceSalvage(
+  payload: GeneratedDirectivePayload,
+  ctx?: Pick<StructuredContext, 'candidate_title'>,
+  userId?: string,
+): boolean {
+  const directive = payload.directive;
+  if (typeof directive !== 'string') return false;
+  const originalCount = countSentences(directive);
+  if (originalCount <= 1) return false;
+  const collapsed = leadingDirectiveSentence(directive);
+  if (!collapsed || collapsed === directive.trim()) return false;
+  if (countSentences(collapsed) !== 1) return false;
+  if (DIRECTIVE_WEAK_LEAD_RE.test(collapsed)) return false;
+  payload.directive = collapsed;
+  if (userId) {
+    logStructuredEvent({
+      event: 'directive_one_sentence_salvage',
+      level: 'info',
+      userId,
+      artifactType: payload.artifact_type ?? null,
+      generationStatus: 'directive_one_sentence_salvage',
+      details: {
+        scope: 'validateGeneratedArtifact',
+        original_sentence_count: originalCount,
+        original_len: directive.trim().length,
+        salvaged_len: collapsed.length,
+        candidate_title: ctx?.candidate_title?.slice(0, 80),
+      },
+    });
+  }
+  return true;
 }
 
 function isDecisionMenu(value: string): boolean {
@@ -7649,6 +7722,7 @@ function validateGeneratedArtifact(
   const pipelineDry = relax?.pipelineDryRun === true;
   if (!pipelineDry) {
     applyBracketTemplateSalvage(payload, ctx, relax?.userIdForLogs);
+    applyDirectiveOneSentenceSalvage(payload, ctx, relax?.userIdForLogs);
     // Diagnostic: compare model output vs salvage. In production log lengths only unless
     // FOLDERA_LOG_SALVAGE_ARTIFACT=true (avoids shipping full title/subject in default logs).
     const art = payload.artifact as Record<string, unknown>;
