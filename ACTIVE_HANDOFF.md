@@ -5,7 +5,8 @@
 - **Seam #518 (verdict calibration):** the daily verdict is still **dark** (SAFE_SILENCE) on live owner data.
 - **Just merged:** #526 directive one-sentence salvage + #528 manual-cap segmentation — both sandbox-doable code blockers cleared.
 - **Only score left:** the next 11:00 UTC `morning-pipeline` cron must flip `pipeline_runs.outcome` → `generation_returned` (owner/cron-side; sandbox can't trigger it).
-- **Branch:** `claude/continue-work-bo69h2` · **PR:** none open · **deployed:** 53de5b6.
+- **Also enforced:** evergreen TL;DR mode (bounded cockpit `## TL;DR` + standing terse-output rule) — PR #529.
+- **Branch:** `claude/continue-work-bo69h2` · **PR:** none open · **deployed:** 491a4a3.
 
 ## DON'T FORGET — read first, every boot
 

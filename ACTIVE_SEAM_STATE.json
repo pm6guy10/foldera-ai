@@ -1,8 +1,8 @@
 {
   "active_issue": 518,
   "active_branch": "claude/continue-work-bo69h2",
-  "active_pr": 529,
-  "deployed_commit_sha": "53de5b6",
+  "active_pr": null,
+  "deployed_commit_sha": "491a4a3",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
   "last_verified_at": "2026-06-23T01:30:00Z",
