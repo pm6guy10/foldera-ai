@@ -130,6 +130,17 @@ Not covered: starting another seam, changing product scope, paid/model-backed pr
 
 The `.foldera-contract.json` file scope is **allow-by-default minus a hard forbidden set** — not a narrow per-seam whitelist (changed 2026-06-22 to cut friction). The load-bearing safety is `forbidden_file_patterns` (Stripe, Scout, `supabase/migrations/**`, secrets), the proof doctrine, the no-auto-send rule, and the forbidden public-claim check — those stay hard. A small, owner-directed fix that lands outside the active seam (e.g. an identity/display hotfix) may ride its own `claude/hotfix-*` branch and PR without displacing the active seam's control plane; keep the active-seam docs pointed at the real seam. Touching anything under `forbidden_file_patterns`, loosening a scoring/quality gate without a test + before/after read, or shipping without the required proof is still out of bounds.
 
+## Friction Reduction — Standing Authorization
+
+Standing owner directive (2026-06-22, durable): **every session reduces friction, by default, without re-asking.** This is permanent authorization — do not present a menu of cleanups and wait; when you see process friction or "vibe-code" cruft, cut it and report. Concretely, on any session you may, without a fresh approval:
+
+- prefer allow-by-default over per-seam whitelists; remove ceremony that gates work without protecting anything;
+- fix hooks/CI/scripts that fail in a clean or sandbox checkout (e.g. abort-on-missing-secrets → graceful skip);
+- delete dead/duplicate config, stale docs, and orphaned governance; tidy the repo toward a world-class first impression;
+- land small owner-aligned fixes outside the active seam on their own branch.
+
+The hard rails never relax and still gate everything: no Stripe/Scout/`supabase/migrations`/secrets changes, no auto-send, no blind loosening of a scoring/quality gate (test + before/after read required), no "done" without real product proof, and no self-modification of these guardrails (the forbidden set, auth, billing) without explicit owner sign-off. Reducing friction is the default; weakening a safety rail is not friction.
+
 ## Bounded Self-Unblock Loop
 
 Inside the one active issue, keep working until a terminal state: `PROOF`, `MERGE READY`, `BLOCKED` (exact external blocker named), or `STOPPED` (receipt posted, next seam named). If a required check is red, inspect the exact failing job/step/test, patch the smallest file set, push, recheck. Never evade connector, GitHub, Vercel, Supabase, OAuth, browser, or OS permission boundaries — a required user approval is an external blocker, not a puzzle.
