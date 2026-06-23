@@ -2,11 +2,11 @@
 
 ## TL;DR
 
-- **Seam #518 (verdict calibration):** the daily verdict is still **dark** (SAFE_SILENCE) on live owner data.
-- **Just merged:** #526 directive one-sentence salvage + #528 manual-cap segmentation — both sandbox-doable code blockers cleared.
-- **Only score left:** the next 11:00 UTC `morning-pipeline` cron must flip `pipeline_runs.outcome` → `generation_returned` (owner/cron-side; sandbox can't trigger it).
-- **This session (durable infra):** `gate:continuity` now runs on every PR (`continuity-check.yml`); `npm run roll --cron-outcome` stamps cron result; SessionStart surfaces it; Stop hook names `npm run roll`.
-- **Branch:** `claude/continue-work-bo69h2` · **PR:** none open · **deployed:** 53de5b6.
+- **Seam #518 (verdict calibration):** the daily verdict is still **dark** (SAFE_SILENCE) on live owner data — but NOT data-starved: `2cbc1bab` has 1,227 actions / 1,010 signals/14d. It's gate calibration, not missing data.
+- **Owner-identity bug FIXED (this branch):** `OWNER_USER_ID` constant pointed at the retired/EMPTY `e40b7cd8`; #509 migrated everything to `2cbc1bab`. Repointed the constant + boundary test + 4 debug scripts. This was mis-filed as "owner-only env work" — it was a code bug.
+- **Still owner-only:** confirm Vercel `FOLDERA_SELF_USER_ID` (drives the self-loop cron) = `2cbc1bab` (set Jun 11, pre-consolidation — may still point at the empty account).
+- **Durable infra (merged #533):** `gate:continuity` runs on every PR; `npm run roll --cron-outcome` stamps cron health; Stop hook names `npm run roll`.
+- **Branch:** `claude/continue-work-bo69h2` · **deployed:** 4c443db.
 
 ## DON'T FORGET — read first, every boot
 
@@ -51,7 +51,7 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 1. **Live confirmation (owner/next cron) — the only score left:** this container CANNOT flip the verdict (no `CRON_SECRET`, no paid LLM calls; foldera.ai 403s the sandbox). Both code blockers (#526 salvage, #528 cap) are now on main (53de5b6); the next 11:00 UTC `morning-pipeline` cron should show `pipeline_runs.outcome=generation_returned` on a day a grounded candidate ranks top.
 2. **Next gate (DONE, PR #526):** generator multi-sentence directives (`directive must be exactly one sentence`) on commitment-exposure candidates are now deterministically salvaged to one sentence. Owner-verifiable on the next cron.
 3. **Operational (DONE, PR #528):** manual directive cap segmented to interactive-only (`pipeline_run_id IS NULL`) so cron no longer blows it and the dashboard can self-test.
-4. **Owner (sandbox cannot do):** set Vercel `OWNER_USER_ID`/`FOLDERA_SELF_USER_ID` → `2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f`. Standing: Scout #494; OneDrive whole-drive enumeration (#507).
+4. **Owner identity (FIXED in code, this branch):** `OWNER_USER_ID` constant repointed `e40b7cd8` (empty) → `2cbc1bab` (the live consolidated account). The only true owner-env step left: confirm Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (it drives the self-loop cron and was set pre-consolidation). Standing: Scout #494; OneDrive whole-drive enumeration (#507).
 
 Full detail: issue #518.
 

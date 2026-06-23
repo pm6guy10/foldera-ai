@@ -28,7 +28,7 @@ const supabase = createClient(
 );
 
 // Brandon (owner). Same scope the scorer uses in scoreOpenLoops().
-const userId = process.env.AUDIT_USER_ID || 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
+const userId = process.env.AUDIT_USER_ID || '2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f';
 
 async function main() {
   const { data: pool, error } = await supabase

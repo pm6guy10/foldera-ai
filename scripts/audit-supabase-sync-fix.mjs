@@ -10,7 +10,7 @@ config({ path: '.env.local' });
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const userId = process.env.AUDIT_USER_ID || 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
+const userId = process.env.AUDIT_USER_ID || '2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f';
 
 if (!url || !key) {
   console.error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in .env.local');

@@ -10,7 +10,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY,
 );
 
-const userId = 'e40b7cd8-4925-42f7-bc99-5022969f1d22';
+const userId = '2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f';
 
 async function main() {
   const [
