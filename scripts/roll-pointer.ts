@@ -9,10 +9,11 @@
  * workflow_dispatch only). So: stamp it cheaply when convenient, don't churn commits.
  *
  * Usage:
- *   npm run roll -- --pr 526                 # stamp active_pr=526, branch+sha from git
- *   npm run roll -- --no-pr                  # active_pr=null (post-merge resting state)
- *   npm run roll -- --no-pr --sha 65e8adb    # also set deployed_commit_sha
- *   npm run roll -- --issue 518 --note "..." # optionally update active_issue / notes
+ *   npm run roll -- --pr 526                              # stamp active_pr=526, branch+sha from git
+ *   npm run roll -- --no-pr                               # active_pr=null (post-merge resting state)
+ *   npm run roll -- --no-pr --sha 65e8adb                # also set deployed_commit_sha
+ *   npm run roll -- --issue 518 --note "..."              # optionally update active_issue / notes
+ *   npm run roll -- --cron-outcome generation_returned    # stamp last cron result after Supabase check
  *
  * Defaults: active_branch = current git branch; deployed_commit_sha keeps its current
  * value unless --sha is given; last_verified_at = now. Always runs the continuity gate
@@ -33,6 +34,8 @@ type SeamState = Record<string, unknown> & {
   active_pr?: number | null;
   deployed_commit_sha?: string | null;
   last_verified_at?: string | null;
+  last_cron_run?: string | null;
+  last_cron_outcome?: string | null;
   notes?: string | null;
 };
 
@@ -99,6 +102,10 @@ function main(): void {
   }
   if (args.has('note')) {
     state.notes = String(args.get('note'));
+  }
+  if (args.has('cron-outcome')) {
+    state.last_cron_outcome = String(args.get('cron-outcome'));
+    state.last_cron_run = new Date().toISOString();
   }
 
   state.last_verified_at = new Date().toISOString();

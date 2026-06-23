@@ -5,8 +5,8 @@
 - **Seam #518 (verdict calibration):** the daily verdict is still **dark** (SAFE_SILENCE) on live owner data.
 - **Just merged:** #526 directive one-sentence salvage + #528 manual-cap segmentation — both sandbox-doable code blockers cleared.
 - **Only score left:** the next 11:00 UTC `morning-pipeline` cron must flip `pipeline_runs.outcome` → `generation_returned` (owner/cron-side; sandbox can't trigger it).
-- **Also enforced:** evergreen TL;DR mode (bounded cockpit `## TL;DR` + standing terse-output rule) — PR #529.
-- **Branch:** `claude/continue-work-bo69h2` · **PR:** none open · **deployed:** 491a4a3.
+- **This session (durable infra):** `gate:continuity` now runs on every PR (`continuity-check.yml`); `npm run roll --cron-outcome` stamps cron result; SessionStart surfaces it; Stop hook names `npm run roll`.
+- **Branch:** `claude/continue-work-bo69h2` · **PR:** none open · **deployed:** 53de5b6.
 
 ## DON'T FORGET — read first, every boot
 
@@ -41,6 +41,8 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 **MERGED to main (53de5b6, PR #528) — #518 item #3, operational (not a billing-rail loosening):** segmented the manual directive cap (`lib/utils/api-tracker.ts` → `isOverManualCallLimit`) to count only **interactive** rows (`pipeline_run_id IS NULL`). Cron directive/`directive_retry` rows run inside `runWithPipelineRunContext` and carry a `pipeline_run_id`, so a single morning cron's 8+ rows blew the manual cap of 3 and short-circuited the dashboard "Generate Now" self-test. Cap stays 3 — this fixes a misattribution. Proof (no paid loop): `manual-call-limit-segmentation.test.ts` (8 cron → not over; 3 interactive → over; 8 cron + 2 interactive → 3rd manual allowed; user-scoped) + existing `api-tracker.test.ts` green.
 
 **Prior (deployed, 3f24e7e):** `missing_schedule_resolution_context` (`lib/briefing/artifact-taste-pack.ts`) made grounding-aware (fires only when `currentnessDays == null`). **Deliberately NOT touched** (blind loosening = the #452 mistake): goal-drift `missing_current_artifact_anchor` (already grounding-aware; live candidate is hollow) and `discrepancy-card-frame.ts` `weak_risk`/`reminder_without_risk` (`WINNER_TRACE_ROOT_CAUSE.md` says it is correct).
+
+**Durable infra (this session, governance-only, no paid risk):** `gate:continuity` now runs on **every PR** (`.github/workflows/continuity-check.yml`) — previously `pr-sentinel.yml` was `workflow_dispatch`-only and gated nothing; the `active_branch`-parity check is now actually enforced pre-merge (owner: make `continuity-gate` a required check in branch protection). `npm run roll -- --cron-outcome <x>` stamps `last_cron_run`/`last_cron_outcome`; SessionStart surfaces `cron:` in the ACTIVE SEAM block so the product's live health shows without a manual Supabase query; Stop hook now names `npm run roll`. See LESSONS_LEARNED #24.
 
 **Already done prior this session:** #509 consolidation EXECUTED (`e40b7cd8` → `2cbc1bab`); identity #511 (PRs #512/#513); Drive depth #514 (PR #515); dark-verdict grounding #516 (PR #517).
 
