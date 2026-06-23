@@ -126,6 +126,10 @@ One explicit Brandon instruction for an active seam authorizes all safe in-scope
 
 Not covered: starting another seam, changing product scope, paid/model-backed proof, secrets/credentials/OAuth/billing, production data mutation unless the issue requires it, or anything blocked by platform authorization. When a non-covered action is required, name the exact external blocker, write the GitHub receipt, and stop.
 
+## Contract Scope: Allow-By-Default-Minus-Forbidden
+
+The `.foldera-contract.json` file scope is **allow-by-default minus a hard forbidden set** — not a narrow per-seam whitelist (changed 2026-06-22 to cut friction). The load-bearing safety is `forbidden_file_patterns` (Stripe, Scout, `supabase/migrations/**`, secrets), the proof doctrine, the no-auto-send rule, and the forbidden public-claim check — those stay hard. A small, owner-directed fix that lands outside the active seam (e.g. an identity/display hotfix) may ride its own `claude/hotfix-*` branch and PR without displacing the active seam's control plane; keep the active-seam docs pointed at the real seam. Touching anything under `forbidden_file_patterns`, loosening a scoring/quality gate without a test + before/after read, or shipping without the required proof is still out of bounds.
+
 ## Bounded Self-Unblock Loop
 
 Inside the one active issue, keep working until a terminal state: `PROOF`, `MERGE READY`, `BLOCKED` (exact external blocker named), or `STOPPED` (receipt posted, next seam named). If a required check is red, inspect the exact failing job/step/test, patch the smallest file set, push, recheck. Never evade connector, GitHub, Vercel, Supabase, OAuth, browser, or OS permission boundaries — a required user approval is an external blocker, not a puzzle.

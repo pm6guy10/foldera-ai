@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   normalizeMicrosoftAccountEmail,
   providerDisplayName,
+  shouldUpdateStoredMicrosoftEmail,
 } from '../provider-display';
 
 describe('normalizeMicrosoftAccountEmail', () => {
@@ -36,6 +37,35 @@ describe('normalizeMicrosoftAccountEmail', () => {
     expect(
       normalizeMicrosoftAccountEmail('first_last_outlook.com#EXT#@tenant.onmicrosoft.com'),
     ).toBe('first_last@outlook.com');
+  });
+});
+
+describe('shouldUpdateStoredMicrosoftEmail (self-heal)', () => {
+  const resolved = 'b-kapp@outlook.com'; // already normalized + lowercased
+
+  it('repairs a stuck guest #EXT# UPN that the null-only backfill could never fix', () => {
+    expect(
+      shouldUpdateStoredMicrosoftEmail(
+        'b-kapp_outlook.com#EXT#@bkappoutlook.onmicrosoft.com',
+        resolved,
+      ),
+    ).toBe(true);
+  });
+
+  it('backfills a null/empty stored email', () => {
+    expect(shouldUpdateStoredMicrosoftEmail(null, resolved)).toBe(true);
+    expect(shouldUpdateStoredMicrosoftEmail(undefined, resolved)).toBe(true);
+    expect(shouldUpdateStoredMicrosoftEmail('', resolved)).toBe(true);
+  });
+
+  it('is idempotent — a healthy row is never rewritten (case/space-insensitive)', () => {
+    expect(shouldUpdateStoredMicrosoftEmail('b-kapp@outlook.com', resolved)).toBe(false);
+    expect(shouldUpdateStoredMicrosoftEmail('  B-Kapp@Outlook.com ', resolved)).toBe(false);
+  });
+
+  it('never wipes a stored email when the Graph lookup resolved nothing', () => {
+    expect(shouldUpdateStoredMicrosoftEmail('b-kapp@outlook.com', '')).toBe(false);
+    expect(shouldUpdateStoredMicrosoftEmail(null, '')).toBe(false);
   });
 });
 
