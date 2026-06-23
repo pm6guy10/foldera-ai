@@ -403,8 +403,17 @@ export function evaluateCandidateArtifactability(
   if (taste.family === 'interview_role_fit_packet' && facts.length < 2) {
     blockers.push('missing_role_fit_source_bundle');
   }
+  // A "commitment due, no matching calendar block" finding is only a hollow,
+  // unshippable card when it is UNGROUNDED — i.e. it carries no dated source
+  // signal (currentnessDays == null). Once the finding is grounded with its real
+  // source date (the #516 grounding fix), the gap itself is the timely, actionable
+  // re-entry move ("this is due and nothing is scheduled"), so it must not be
+  // blocked here just for matching the gap text. This makes the gate grounding-aware
+  // exactly like the missing_current_artifact_anchor gate above. Ground, don't
+  // loosen: undated calendar-gap candidates stay blocked; dated ones can ship.
   if (
     taste.family === 'calendar_conflict_brief' &&
+    currentnessDays == null &&
     /\bno matching calendar block\b/i.test(searchText) &&
     /\bkeyword overlap\b[\s\S]{0,40}\bonly 0\b/i.test(searchText)
   ) {
