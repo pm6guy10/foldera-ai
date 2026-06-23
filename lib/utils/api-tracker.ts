@@ -339,7 +339,14 @@ export async function isOverDailyLimit(userId: string, callType?: string): Promi
  * (skipSpendCap=true). It prevents smoke-test suites from burning $2.50/day
  * on repeated Generate Now calls.
  *
- * Counts directive + directive_retry api_usage rows since UTC midnight.
+ * Counts directive + directive_retry api_usage rows since UTC midnight, but ONLY
+ * interactive ones — rows with pipeline_run_id IS NULL. Cron-generated directive
+ * calls run inside a pipeline-run context (runWithPipelineRunContext), so their
+ * rows carry a pipeline_run_id and must not consume the manual budget. Before this
+ * segmentation a single morning cron (8+ directive/directive_retry rows) blew the
+ * manual cap, so the dashboard's "Generate Now" / self-test short-circuited before
+ * scoring (issue #518).
+ *
  * Fails open (returns false) on DB error so legitimate users are never hard-blocked.
  */
 export async function isOverManualCallLimit(userId: string): Promise<boolean> {
@@ -352,6 +359,7 @@ export async function isOverManualCallLimit(userId: string): Promise<boolean> {
       .from('api_usage')
       .select('id', { count: 'exact', head: true })
       .eq('user_id', userId)
+      .is('pipeline_run_id', null)
       .in('endpoint', ['directive', 'directive_retry'])
       .gte('created_at', todayUTC.toISOString());
 
@@ -369,6 +377,7 @@ export async function isOverManualCallLimit(userId: string): Promise<boolean> {
           scope: 'api-tracker',
           call_count: callCount,
           max_calls: MAX_MANUAL_DIRECTIVE_CALLS_PER_DAY,
+          counted: 'interactive_only_pipeline_run_id_null',
         },
       });
       return true;
