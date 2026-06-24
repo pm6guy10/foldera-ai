@@ -69,7 +69,7 @@ function runGit(
 const GOVERNANCE_GATE_FILES = new Set([
   'AGENTS.md',
   'CLAUDE.md',
-  'LESSONS_LEARNED.md',
+  'docs/archive/LESSONS_LEARNED.md',
   'scripts/continuity-gate.ts',
   'scripts/preflight-contract.ts',
 ]);
@@ -84,17 +84,14 @@ function touchesOnlyGovernanceGateFiles(files: string[]): boolean {
 const STOP_STATE_CONTRACTLESS_FILES = new Set([
   '.foldera-contract.json',
   'ACTIVE_HANDOFF.md',
-  'CURRENT_STATE.md',
-  'SESSION_HISTORY.md',
-  'scripts/controller-autopilot.ts',
+  'docs/archive/SESSION_HISTORY.md',
   'scripts/preflight-contract.ts',
-  'scripts/__tests__/controller-autopilot.test.ts',
   'scripts/__tests__/preflight-contract.test.ts',
 ]);
 
 const RELEASE_GATE_CONTRACTLESS_FILES = new Set([
   'ACTIVE_HANDOFF.md',
-  'SESSION_HISTORY.md',
+  'docs/archive/SESSION_HISTORY.md',
   'package.json',
   'docs/RELEASE_GATES.md',
   'docs/REAL_NON_OWNER_BETA_PROOF_CHECKLIST.md',
@@ -111,7 +108,7 @@ const RELEASE_GATE_CONTRACTLESS_FILES = new Set([
 
 const QUALITY_GATE_CONTRACTLESS_FILES = new Set([
   'ACTIVE_HANDOFF.md',
-  'SESSION_HISTORY.md',
+  'docs/archive/SESSION_HISTORY.md',
   'package.json',
   'docs/QUALITY_GATES.md',
   'scripts/quality-gate-status.ts',
@@ -124,7 +121,7 @@ const QUALITY_GATE_CONTRACTLESS_FILES = new Set([
 
 const VISUAL_GATE_CONTRACTLESS_FILES = new Set([
   'ACTIVE_HANDOFF.md',
-  'SESSION_HISTORY.md',
+  'docs/archive/SESSION_HISTORY.md',
   'package.json',
   'docs/QUALITY_GATES.md',
   'tests/dashboard/live-artifact-pixel-lock.spec.ts',

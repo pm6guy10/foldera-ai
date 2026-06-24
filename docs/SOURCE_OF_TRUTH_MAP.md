@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-22 UTC (active seam is **#518** — verdict calibration; live-verified still dark, gate calibration shipped in PR #520. Standing/next, not active: Scout money-move #494, OneDrive whole-drive enumeration #507. Prior: 2026-06-21 control plane was on Scout #494 after the LANDING pass #496/PR #497.)
+Last updated: 2026-06-24 UTC (active seam is **#524** — repo cleanup; PR #536 merged (verdict calibration complete). Open product PRs: #539 (external-promisor staleness gate), #541 (observation shape rejection + Slack receipt). Next: #538 graceful degradation.)
 
 This is the keep-list ledger. Everything not listed here is reference, archive, or git history — never authority.
 
@@ -16,7 +16,7 @@ This is the keep-list ledger. Everything not listed here is reference, archive, 
 | `FOLDERA_MASTER_BIBLE.md` | Product doctrine, north star, and product operating system (reference authority, merged by #240). |
 | `AGENTS.md` | The single agent execution contract. `CLAUDE.md`, `.cursorrules`, `.cursor/rules/agent.mdc` are pointers to it. |
 | `README.md` | Repo entrypoint and local commands. |
-| `SESSION_HISTORY.md` / `LESSONS_LEARNED.md` | Append-only history. Never current control. |
+| `docs/archive/SESSION_HISTORY.md` / `docs/archive/LESSONS_LEARNED.md` | Append-only history. Never current control. |
 | `docs/SOURCE_OF_TRUTH_MAP.md` | This ledger. |
 | `docs/DESIGN_SYSTEM.md` | Binding design standard / quality bar for every visible surface (tokens, type, spacing, real-logos rule, product mockup, motion, responsive). Design authority, referenced by `FOLDERA_MASTER_BIBLE.md`. |
 | `docs/SYSTEM_INVENTORY.md` | Canonical "what IS" — every table, route, cron, env var, external resource, reconciled against real Supabase/GitHub/Vercel state (Pass 0 of Master Audit #445). The anti-rediscovery foundation; update it when the real system changes, never re-derive it. |
@@ -33,7 +33,7 @@ it from scratch.
 | 0 | Inventory / ground-truth | — | `docs/SYSTEM_INVENTORY.md` |
 | 1 | Security / RLS | `PASS` | issue #445 (#447) |
 | 2 | DB integrity | `PASS` | issue #445 (#449/#450) |
-| 3 | Cost / economics | `CONCERN` | `docs/COST_AND_ECONOMICS_AUDIT.md` |
+| 3 | Cost / economics | `CONCERN` | `docs/archive/COST_AND_ECONOMICS_AUDIT.md` |
 | 4 | Backend / runtime correctness | `CONCERN` | `docs/backend/RUNTIME_CORRECTNESS.md` |
 | 5 | AI/ML grounding & faithfulness | `PASS` | `docs/backend/AI_GROUNDING_FAITHFULNESS.md` |
 | 6 | Frontend perf / a11y | `PASS` | `docs/frontend/PERF_A11Y_AUDIT.md` |

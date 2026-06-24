@@ -2,10 +2,10 @@
 
 ## TL;DR
 
-- **Seam #518 (verdict calibration):** PR #536 (`claude/seam-518-verdict-calibration-t30jwq`) pending merge — stale gate 10→250, blocked_gate truncation fix, morning-pipeline daily_brief→seed_from_scorer swap, + full email send surface deleted (daily-brief-send.ts ~865 lines + 3 routes removed, lifecycle generate-only).
-- **Commitment pool hygiene (#537, new issue):** 9 zombie commitments manually suppressed. Structural fix needed: external-promisor staleness gate + marketing-sender extraction filter + fuzzy dedup.
-- **Current honest verdict:** SAFE_SILENCE is correct today — after cleanup, no high-quality candidate in the pool. Professional signal has aged out of 14d window.
-- **Still owner-only:** confirm Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab`.
+- **PR #536 MERGED** (verdict calibration: stale gate 10→250, email send surface deleted, morning pipeline → seed-from-scorer).
+- **Active seam #524 (repo cleanup):** branch `claude/repo-cleanup-o89hvu` — stale branch deletion, stub workflow retirement, dated docs archive, ghost gov refs removed, SESSION_HISTORY/LESSONS_LEARNED relocated, cleanup-branch gate exemption added.
+- **Open PRs:** #539 (Fix A: external-promisor staleness gate) · #541 (Option C: observation shape rejection + concrete incoming work + Slack receipt).
+- **Next after this:** merge #539 + #541, then #538 (graceful degradation — never go dark). Owner: set Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab`.
 
 ## DON'T FORGET — read first, every boot
 
@@ -17,7 +17,7 @@
 6. **The Guardian looks inward, not outward.** Watch the user's *own* world (the thread they're about to drop, the reply owed, the deadline in their files) and reduce load. Do **not** fish the open web for external "opportunities" — that is tone-deaf. A fixture/sample card must never be posted to a real channel as if real. See issues #492 / #494 / #481.
 7. **Reduce friction by default, every session.** Standing owner directive: cut process friction and cruft proactively without re-asking; never lock things down. Hard safety rails still need sign-off. See `AGENTS.md` → "Friction Reduction — Standing Authorization".
 
-Keep this cockpit short and value-first. Completed-issue history lives in `SESSION_HISTORY.md` + git, never here.
+Keep this cockpit short and value-first. Completed-issue history lives in `docs/archive/SESSION_HISTORY.md` + git, never here.
 
 ## Boot
 
@@ -27,7 +27,7 @@ Keep this cockpit short and value-first. Completed-issue history lives in `SESSI
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #518 is the active VERDICT-CALIBRATION seam.
+Issue #524 is the active REPO-CLEANUP seam.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
@@ -47,13 +47,11 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Next exact move
 
-1. **Merge PR #536** — all changes pushed (commit `de2af17`). Build + gate:continuity green. Ready to merge.
-2. **Start #537 Fix A** (external-promisor staleness gate in `daily-brief-generate.ts`): kill discrepancy_exposure candidates where the promisor is external + thread signal stale + implied_due passed. Auto-suppresses Columbia Motors pattern structurally.
-3. **Live confirmation:** after #536 deploys, check next cron run. Metric to watch: `workday_presence_suppression_trace.trace_type` in `auth.users.user_metadata` for `2cbc1bab`.
-4. **Owner-env confirm:** Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (Slack cards need this to fire).
-5. Done this session: email send surface fully deleted, lifecycle generate-only, 263 tests green, build clean. Standing: Scout #494; OneDrive #507.
-
-Full detail: issue #518 (gate fixes), issue #537 (commitment hygiene).
+1. **Ship this PR** (`claude/repo-cleanup-o89hvu` → #524): stale branches deleted, stub workflows retired, docs archived, gov refs cleaned, SESSION_HISTORY/LESSONS_LEARNED moved, cleanup-branch gate added. Gate:continuity green.
+2. **Merge #539** (external-promisor staleness gate — Fix A for #537 commitment hygiene). Already drafted and green.
+3. **Merge #541** (Option C: observation-shape rejection + concrete-incoming-work lane + Slack receipt). Already drafted and green.
+4. **Start #538** (graceful degradation ladder — never go dark): tier-descent from high-stakes discrepancy → due commitment → owed reply → goal move → `do_nothing` only when all tiers empty.
+5. **Owner:** set Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (Slack cards need this to fire).
 
 ## Product doctrine
 

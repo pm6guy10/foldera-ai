@@ -18,8 +18,6 @@ export const ROOT_KEEP_MARKDOWN = [
   'CLAUDE.md',
   'FOLDERA_MASTER_BIBLE.md',
   'README.md',
-  'SESSION_HISTORY.md',
-  'LESSONS_LEARNED.md',
 ];
 
 const requiredFiles = [
@@ -399,7 +397,9 @@ export function runContinuityGate(root: string, options?: { issueStateFetcher?: 
       failures.push('ACTIVE_SEAM_STATE.json must set active_branch.');
     } else if (currentBranch && activeBranch !== currentBranch) {
       const changedFiles = options?.changedFiles ?? readChangedFilesLocally(root);
-      if (!isGovernanceOnlyChange(changedFiles)) {
+      // Hotfix and cleanup branches are off-seam by definition; skip the parity check.
+      const isCleanupBranch = /^claude\/(hotfix-|cleanup-|[^/]+-cleanup-)/.test(currentBranch);
+      if (!isGovernanceOnlyChange(changedFiles) && !isCleanupBranch) {
         failures.push(
           `ACTIVE_SEAM_STATE.json active_branch "${activeBranch}" must match current branch "${currentBranch}".`,
         );

@@ -1,9 +1,9 @@
 {
-  "backlog_id": "verdict-calibration-518",
-  "active_issue": 518,
-  "base_commit": "7e2f972",
+  "backlog_id": "repo-cleanup-524",
+  "active_issue": 524,
+  "base_commit": "aba6877",
   "money_loop_rung": "m2",
-  "user_system_path": "Verdict calibration (#518): finish making the daily verdict ship live. #516 grounded hunt findings (unit-proven, deployed) but live verification on the owner is incomplete (manual call cap + stale fixture got in the way). Verify via the 11:00 UTC cron; if the brain still SAFE_SILENCEs, calibrate the remaining over-strict gates (schedule-resolution, goal-drift anchor, discrepancy-card-frame weak_risk) with test/replay proof, never blind loosening.",
+  "user_system_path": "Repo cleanup (#524): stale branch deletion, stub workflow retirement, dated docs archive, ghost governance ref removal, SESSION_HISTORY/LESSONS_LEARNED relocation to docs/archive/, cleanup-branch gate exemption. Allow-by-default contract; all product/gate work deferred to #537/#538/#539/#541.",
   "allowed_file_patterns": [
     "*",
     "app/**",

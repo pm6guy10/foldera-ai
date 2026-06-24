@@ -96,31 +96,26 @@ describe('preflight contract validation', () => {
     }
   });
 
-  it('allows a staged controller STOP cleanup to remove a stale contract', () => {
+  it('allows a staged STOP cleanup to remove a stale contract', () => {
     const { repoDir, baseCommit } = makeRepo();
     try {
       mkdirSync(join(repoDir, 'scripts', '__tests__'), { recursive: true });
+      mkdirSync(join(repoDir, 'docs', 'archive'), { recursive: true });
       writeContract(repoDir, {
         base_commit: baseCommit,
-        allowed_file_patterns: ['scripts/controller-autopilot.ts'],
+        allowed_file_patterns: ['scripts/preflight-contract.ts'],
       });
-      writeFileSync(join(repoDir, 'scripts', 'controller-autopilot.ts'), 'old\n');
-      writeFileSync(
-        join(repoDir, 'scripts', '__tests__', 'controller-autopilot.test.ts'),
-        'old\n',
-      );
-      writeValidActiveHandoff(repoDir, 'old controller state');
-      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), 'old\n');
+      writeFileSync(join(repoDir, 'scripts', 'preflight-contract.ts'), 'old\n');
+      writeFileSync(join(repoDir, 'scripts', '__tests__', 'preflight-contract.test.ts'), 'old\n');
+      writeValidActiveHandoff(repoDir, 'old seam state');
+      writeFileSync(join(repoDir, 'docs', 'archive', 'SESSION_HISTORY.md'), 'old\n');
       commitAll(repoDir, 'contract');
 
       rmSync(join(repoDir, '.foldera-contract.json'));
-      writeFileSync(join(repoDir, 'scripts', 'controller-autopilot.ts'), 'new\n');
-      writeFileSync(
-        join(repoDir, 'scripts', '__tests__', 'controller-autopilot.test.ts'),
-        'new\n',
-      );
-      writeValidActiveHandoff(repoDir, 'controller stop cleanup');
-      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), 'new\n');
+      writeFileSync(join(repoDir, 'scripts', 'preflight-contract.ts'), 'new\n');
+      writeFileSync(join(repoDir, 'scripts', '__tests__', 'preflight-contract.test.ts'), 'new\n');
+      writeValidActiveHandoff(repoDir, 'stop cleanup');
+      writeFileSync(join(repoDir, 'docs', 'archive', 'SESSION_HISTORY.md'), 'new\n');
       execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
 
       const result = validateContractForStage(repoDir, 'pre-commit');
@@ -133,31 +128,26 @@ describe('preflight contract validation', () => {
     }
   });
 
-  it('allows a committed controller STOP cleanup without a contract during pre-push', () => {
+  it('allows a committed STOP cleanup without a contract during pre-push', () => {
     const { repoDir, baseCommit } = makeRepo();
     try {
       mkdirSync(join(repoDir, 'scripts', '__tests__'), { recursive: true });
+      mkdirSync(join(repoDir, 'docs', 'archive'), { recursive: true });
       writeContract(repoDir, {
         base_commit: baseCommit,
-        allowed_file_patterns: ['scripts/controller-autopilot.ts'],
+        allowed_file_patterns: ['scripts/preflight-contract.ts'],
       });
-      writeFileSync(join(repoDir, 'scripts', 'controller-autopilot.ts'), 'old\n');
-      writeFileSync(
-        join(repoDir, 'scripts', '__tests__', 'controller-autopilot.test.ts'),
-        'old\n',
-      );
-      writeValidActiveHandoff(repoDir, 'old controller state');
-      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), 'old\n');
+      writeFileSync(join(repoDir, 'scripts', 'preflight-contract.ts'), 'old\n');
+      writeFileSync(join(repoDir, 'scripts', '__tests__', 'preflight-contract.test.ts'), 'old\n');
+      writeValidActiveHandoff(repoDir, 'old seam state');
+      writeFileSync(join(repoDir, 'docs', 'archive', 'SESSION_HISTORY.md'), 'old\n');
       commitAll(repoDir, 'contract');
 
       rmSync(join(repoDir, '.foldera-contract.json'));
-      writeFileSync(join(repoDir, 'scripts', 'controller-autopilot.ts'), 'new\n');
-      writeFileSync(
-        join(repoDir, 'scripts', '__tests__', 'controller-autopilot.test.ts'),
-        'new\n',
-      );
-      writeValidActiveHandoff(repoDir, 'controller stop cleanup');
-      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), 'new\n');
+      writeFileSync(join(repoDir, 'scripts', 'preflight-contract.ts'), 'new\n');
+      writeFileSync(join(repoDir, 'scripts', '__tests__', 'preflight-contract.test.ts'), 'new\n');
+      writeValidActiveHandoff(repoDir, 'stop cleanup');
+      writeFileSync(join(repoDir, 'docs', 'archive', 'SESSION_HISTORY.md'), 'new\n');
       commitAll(repoDir, 'stop cleanup');
 
       const result = validateContractForStage(repoDir, 'pre-push');
@@ -187,7 +177,6 @@ describe('preflight contract validation', () => {
 
       writeFileSync(join(repoDir, 'scripts', 'preflight-contract.ts'), 'follow-up\n');
       writeValidActiveHandoff(repoDir, 'receipt follow-up');
-      writeFileSync(join(repoDir, 'CURRENT_STATE.md'), 'follow-up\n');
       execSync('git add .', { cwd: repoDir, stdio: 'ignore' });
 
       const result = validateContractForStage(repoDir, 'pre-commit');
@@ -197,7 +186,6 @@ describe('preflight contract validation', () => {
       expect(result.touchedFiles).toEqual(
         expect.arrayContaining([
           'ACTIVE_HANDOFF.md',
-          'CURRENT_STATE.md',
           'scripts/preflight-contract.ts',
         ]),
       );
@@ -221,8 +209,9 @@ describe('preflight contract validation', () => {
       writeFileSync(join(repoDir, 'scripts', 'controller-autopilot.ts'), 'stop\n');
       commitAll(repoDir, 'stop cleanup');
 
+      mkdirSync(join(repoDir, 'docs', 'archive'), { recursive: true });
       writeValidActiveHandoff(repoDir, 'receipt cleanup');
-      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), 'receipt\n');
+      writeFileSync(join(repoDir, 'docs', 'archive', 'SESSION_HISTORY.md'), 'receipt\n');
       commitAll(repoDir, 'receipt cleanup');
 
       const result = validateContractForStage(repoDir, 'pre-push');
@@ -230,7 +219,7 @@ describe('preflight contract validation', () => {
       expect(result.ok).toBe(true);
       expect(result.code).toBe('ok');
       expect(result.touchedFiles).toEqual(
-        expect.arrayContaining(['ACTIVE_HANDOFF.md', 'SESSION_HISTORY.md']),
+        expect.arrayContaining(['ACTIVE_HANDOFF.md', 'docs/archive/SESSION_HISTORY.md']),
       );
     } finally {
       rmSync(repoDir, { recursive: true, force: true });
@@ -240,13 +229,13 @@ describe('preflight contract validation', () => {
   it('allows release-gate controller files without a product contract', () => {
     const { repoDir } = makeRepo();
     try {
-      mkdirSync(join(repoDir, 'docs'), { recursive: true });
+      mkdirSync(join(repoDir, 'docs', 'archive'), { recursive: true });
       mkdirSync(join(repoDir, 'lib', 'config'), { recursive: true });
       mkdirSync(join(repoDir, 'lib', 'cron', '__tests__'), { recursive: true });
       mkdirSync(join(repoDir, 'lib', 'ops'), { recursive: true });
       mkdirSync(join(repoDir, 'scripts', '__tests__'), { recursive: true });
       writeValidActiveHandoff(repoDir, 'release gate status controller');
-      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), '## Receipt\n- release gate\n');
+      writeFileSync(join(repoDir, 'docs', 'archive', 'SESSION_HISTORY.md'), '## Receipt\n- release gate\n');
       writeFileSync(join(repoDir, 'package.json'), '{"scripts":{"gate:status":"tsx scripts/release-gate-status.ts"}}\n');
       writeFileSync(join(repoDir, 'docs', 'RELEASE_GATES.md'), '# Release gates\n');
       writeFileSync(join(repoDir, 'docs', 'REAL_NON_OWNER_BETA_PROOF_CHECKLIST.md'), '# Beta proof\n');
@@ -269,7 +258,7 @@ describe('preflight contract validation', () => {
       expect(result.touchedFiles).toEqual(
         expect.arrayContaining([
           'ACTIVE_HANDOFF.md',
-          'SESSION_HISTORY.md',
+          'docs/archive/SESSION_HISTORY.md',
           'package.json',
           'docs/RELEASE_GATES.md',
           'docs/REAL_NON_OWNER_BETA_PROOF_CHECKLIST.md',
@@ -290,10 +279,10 @@ describe('preflight contract validation', () => {
   it('allows quality-gate controller files without a product contract', () => {
     const { repoDir } = makeRepo();
     try {
-      mkdirSync(join(repoDir, 'docs'), { recursive: true });
+      mkdirSync(join(repoDir, 'docs', 'archive'), { recursive: true });
       mkdirSync(join(repoDir, 'scripts', '__tests__'), { recursive: true });
       writeValidActiveHandoff(repoDir, 'quality gate status controller');
-      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), '## Receipt\n- quality gate\n');
+      writeFileSync(join(repoDir, 'docs', 'archive', 'SESSION_HISTORY.md'), '## Receipt\n- quality gate\n');
       writeFileSync(join(repoDir, 'package.json'), '{"scripts":{"gate:quality":"tsx scripts/quality-gate-status.ts"}}\n');
       writeFileSync(join(repoDir, 'docs', 'QUALITY_GATES.md'), '# Quality gates\n');
       writeFileSync(join(repoDir, 'scripts', 'quality-gate-status.ts'), 'export {}\n');
@@ -315,7 +304,7 @@ describe('preflight contract validation', () => {
       expect(result.touchedFiles).toEqual(
         expect.arrayContaining([
           'ACTIVE_HANDOFF.md',
-          'SESSION_HISTORY.md',
+          'docs/archive/SESSION_HISTORY.md',
           'package.json',
           'docs/QUALITY_GATES.md',
           'scripts/quality-gate-status.ts',
@@ -332,10 +321,10 @@ describe('preflight contract validation', () => {
   it('allows decision-trace quality-gate controller files without a product contract', () => {
     const { repoDir } = makeRepo();
     try {
-      mkdirSync(join(repoDir, 'docs'), { recursive: true });
+      mkdirSync(join(repoDir, 'docs', 'archive'), { recursive: true });
       mkdirSync(join(repoDir, 'scripts', '__tests__'), { recursive: true });
       writeValidActiveHandoff(repoDir, 'decision trace quality gate controller');
-      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), '## Receipt\n- decision trace gate\n');
+      writeFileSync(join(repoDir, 'docs', 'archive', 'SESSION_HISTORY.md'), '## Receipt\n- decision trace gate\n');
       writeFileSync(join(repoDir, 'package.json'), '{"scripts":{"gate:decision-trace":"tsx scripts/decision-trace-gate-status.ts"}}\n');
       writeFileSync(join(repoDir, 'docs', 'QUALITY_GATES.md'), '# Quality gates\n');
       writeFileSync(join(repoDir, 'scripts', 'decision-trace-gate-status.ts'), 'export {}\n');
@@ -357,7 +346,7 @@ describe('preflight contract validation', () => {
       expect(result.touchedFiles).toEqual(
         expect.arrayContaining([
           'ACTIVE_HANDOFF.md',
-          'SESSION_HISTORY.md',
+          'docs/archive/SESSION_HISTORY.md',
           'package.json',
           'docs/QUALITY_GATES.md',
           'scripts/decision-trace-gate-status.ts',
@@ -374,12 +363,12 @@ describe('preflight contract validation', () => {
   it('allows visual-gate controller files without a product contract', () => {
     const { repoDir } = makeRepo();
     try {
-      mkdirSync(join(repoDir, 'docs'), { recursive: true });
+      mkdirSync(join(repoDir, 'docs', 'archive'), { recursive: true });
       mkdirSync(join(repoDir, 'tests', 'dashboard'), { recursive: true });
       mkdirSync(join(repoDir, 'tests', 'e2e'), { recursive: true });
       mkdirSync(join(repoDir, 'scripts', '__tests__'), { recursive: true });
       writeValidActiveHandoff(repoDir, 'visual gate status controller');
-      writeFileSync(join(repoDir, 'SESSION_HISTORY.md'), '## Receipt\n- visual gate\n');
+      writeFileSync(join(repoDir, 'docs', 'archive', 'SESSION_HISTORY.md'), '## Receipt\n- visual gate\n');
       writeFileSync(join(repoDir, 'package.json'), '{"scripts":{"gate:visual":"tsx scripts/visual-gate-status.ts"}}\n');
       writeFileSync(join(repoDir, 'docs', 'QUALITY_GATES.md'), '# Quality gates\n');
       writeFileSync(join(repoDir, 'tests', 'dashboard', 'live-artifact-pixel-lock.spec.ts'), 'export {}\n');
@@ -403,7 +392,7 @@ describe('preflight contract validation', () => {
       expect(result.touchedFiles).toEqual(
         expect.arrayContaining([
           'ACTIVE_HANDOFF.md',
-          'SESSION_HISTORY.md',
+          'docs/archive/SESSION_HISTORY.md',
           'package.json',
           'docs/QUALITY_GATES.md',
           'tests/dashboard/live-artifact-pixel-lock.spec.ts',
