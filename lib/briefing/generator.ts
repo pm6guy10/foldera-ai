@@ -6265,6 +6265,32 @@ function buildNoValidActionBlockerDirective(scored: ScorerResultNoValidAction): 
  * Tier 3 — owed reply: surfaces the highest-scored non-discrepancy send_message candidate.
  * Returns null when both tiers are genuinely empty (do_nothing is correct).
  */
+/**
+ * Tier-2 junk guard. The commitment pool is contaminated with personal errands, shopping,
+ * loyalty/marketing, and subscription trivia (observed live for 2cbc1bab: "Babe massage",
+ * "Amazon shoes", "Book hotel using $35.16 OneKeyCash", "Reply 'Keep'/'Remove' to confirm
+ * subscription", "Register for ... Summit"). Shipping any of these as the never-go-dark act is
+ * worse than honest silence — it is a nag on junk. This is a TIGHTENING (drops garbage from a
+ * fallback tier), never a gate loosen: a dropped commitment falls through to Tier 3 or do_nothing.
+ */
+export function isLowValueErrandCommitment(description: string | null | undefined): boolean {
+  const d = (description ?? '').toLowerCase();
+  if (!d.trim()) return true;
+  const PATTERNS: RegExp[] = [
+    // shopping / errands / purchases
+    /\b(buy|purchase|order|amazon|shoes|groceries|present|gift(?!ed)|wishlist)\b/,
+    // personal / social occasions
+    /\b(massage|birthday|recital|anniversary|wedding|haircut|dentist|date night)\b/,
+    // travel loyalty / gift-card / points
+    /\b(onekeycash|gift\s?card|loyalty|miles|reward points|book\s+(?:a\s+)?hotel|expedia)\b/,
+    // marketing / subscription / promo events
+    /\b(unsubscribe|subscription|newsletter|register for|rsvp|webinar|summit|keep'?\s*or\s*'?remove|confirm (?:email )?subscription)\b/,
+    // gig-platform micro-bonus boilerplate
+    /\b(earn \$\d|\$\d+ bonus|micro-?task|complete task to earn)\b/,
+  ];
+  return PATTERNS.some((re) => re.test(d));
+}
+
 export async function attemptTierDescentDirective(args: {
   userId: string;
   supabase: ReturnType<typeof createServerClient>;
@@ -6289,8 +6315,12 @@ export async function attemptTierDescentDirective(args: {
       .lte('due_at', cutoff)
       .in('trust_class', ['trusted', 'unclassified'])
       .order('due_at', { ascending: true })
-      .limit(1);
-    commitments = result.data as typeof commitments;
+      .limit(10);
+    // Drop personal-errand / shopping / marketing trivia so the never-go-dark act is real work,
+    // not a nag on junk. First substantive survivor wins; none → fall to Tier 3 / do_nothing.
+    commitments = ((result.data as typeof commitments) ?? []).filter(
+      (c) => !isLowValueErrandCommitment(c?.description),
+    );
   } catch {
     // DB unavailable — skip Tier 2, fall through to Tier 3 or null.
   }
