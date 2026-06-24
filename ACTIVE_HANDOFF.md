@@ -2,11 +2,9 @@
 
 ## TL;DR
 
-- **Seam #540 (gate-stack output re-aim):** PR #541 open (draft). Option C: Move A rejects observation/homework shape; Move B promotes concrete incoming work; Move C persists Slack receipt. 998/998 tests green. Awaiting owner merge + live proof.
-- **Root cause:** 17 days dark (last real act 2026-04-22). Layer 1: lifecycle gate kills ~67/68 candidates. Layer 2: survivors are observation-shaped not finished-work. April-22 ESB interview prep is the north-star act.
-- **Always degrade — never go dark (owner, 2026-06-24).** If cron stays dark post-deploy: widen `INCOMING_ASK_RE` in `decision-enforcement.ts`. Never touch the observation gate or numeric thresholds.
-- **Live proof is the only done.** After PR #541 merges: `pipeline_runs.outcome` for `2cbc1bab` must move off `generation_failed_sentinel`; directive = finished-work shape; `workday_presence_slack_send` receipt in `tkg_actions`.
-- **Standing:** #537 Fix B/C queued (PR #539 = Fix A, merged); Scout #494; OneDrive #507.
+- **Seam #540 (gate-stack output re-aim):** PR #541 **MERGED 2026-06-24**. Option C live on main. Live proof is next: check morning-pipeline cron for `2cbc1bab` — `pipeline_runs.outcome` off `generation_failed_sentinel`; directive = finished-work shape; `workday_presence_slack_send` receipt in `tkg_actions`.
+- **If cron stays dark:** widen `INCOMING_ASK_RE` in `decision-enforcement.ts`. Never touch the observation gate or numeric thresholds.
+- **Standing:** #537 Fix B/C queued; Scout #494; OneDrive #507.
 
 ## DON'T FORGET — read first, every boot
 
