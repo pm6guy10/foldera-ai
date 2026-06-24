@@ -1,9 +1,9 @@
 {
-  "backlog_id": "commitment-hygiene-537",
-  "active_issue": 537,
-  "base_commit": "aba6877",
+  "backlog_id": "gate-stack-output-540",
+  "active_issue": 540,
+  "base_commit": "e3fa1e8",
   "money_loop_rung": "m2",
-  "user_system_path": "Commitment pool hygiene (#537): keep zombie commitments from contaminating the winner pool when professional signal is thin, so tier-descent surfaces a real act instead of a passive counterparty callback. Fix A (this branch): structural external-promisor staleness gate in detectDiscrepancies() — drop counterparty-as-subject commitments that are past-due and stale (>21d no fresh touch) before any extractor runs. Fix B (marketing-sender extraction filter) and Fix C (fuzzy dedup) remain. Every gate change carries a test + before/after read; never blind-loosen, never fabricate stakes to force a card (SAFE_SILENCE stays a valid success).",
+  "user_system_path": "Gate-stack output re-aim (#540): 17 days dark, last real act 2026-04-22. Option C one-seam bet: Move A (observation/nag shape gate + chore-list gate generalized), Move B (isConcreteIncomingWork broadens forceActionableNow), Move C (insertSlackSendReceipt). 998 tests green. Live proof post-merge.",
   "allowed_file_patterns": [
     "*",
     "app/**",
@@ -30,20 +30,21 @@
   ],
   "allowed_files_raw": "Allow-by-default-minus-forbidden (friction reduction, owner-directed 2026-06-22). The contract no longer pins a narrow per-seam whitelist that blocks owner-authorized fixes outside the active seam. The real guard is forbidden_file_patterns + the proof doctrine, not a whitelist. Small owner-directed hotfixes (e.g. the Microsoft guest #EXT# email self-heal in lib/sync + lib/ui shipped on this branch) no longer require displacing the active seam.",
   "forbidden_files_raw": "HARD RAILS (unchanged by the allow-by-default switch): No Stripe, Scout, schema/migration, or secrets changes. No auto-send. No BLIND loosening of positive_winner_contract or the discrepancy-card quality gate (the #452 'hollow drafts' mistake) — every gate change carries a test + before/after read.",
-  "required_local_proof": "npm run gate:continuity && npm run typecheck (roll-forward); for #537 code work additionally: npx vitest run lib/briefing/__tests__/",
-  "required_browser_proof": "Live (owner): after the next 11:00 UTC morning-pipeline cron, the Columbia-Motors-style external-promisor commitment no longer appears in pipeline_runs.gate_funnel.discrepancy_candidates_preview for 2cbc1bab; the surfaced card (or honest SAFE_SILENCE) reflects the cleaned pool.",
-  "browser_proof_command": "manual: after the morning-pipeline cron, query pipeline_runs for 2cbc1bab and confirm gate_funnel.discrepancy_candidates_preview contains no stale external-promisor (counterparty-as-subject, past-due) candidate.",
-  "acceptance_condition": "Control-plane rolled to #537 with gate:continuity green; Fix A (external-promisor staleness gate) shipped with test + before/after read; stale external-promisor zombies are dropped from the discrepancy pool before scoring. Fix B and Fix C remain open under #537. No blind loosening; no fabricated stakes.",
+  "required_local_proof": "npm run gate:continuity && npm run typecheck; npx vitest run lib/briefing lib/workday-presence (998 tests green)",
+  "required_browser_proof": "Live (owner): after next morning-pipeline cron, pipeline_runs.outcome moves off generation_failed_sentinel for 2cbc1bab; directive is finished-work shape; workday_presence_slack_send receipt appears in tkg_actions.",
+  "browser_proof_command": "manual: wait for morning-pipeline cron, query pipeline_runs + tkg_actions for 2cbc1bab; verify directive is finished-work shape (not observation/nag).",
+  "acceptance_condition": "gate:continuity green + 998 tests green + PR merged + live cron delivers finished-work shape directive with receipt.",
   "is_user_facing": true,
   "anti_regression_checks": [
-    "gate:continuity green with active_issue #537",
-    "active_issue #537 is OPEN on GitHub",
+    "gate:continuity green with active_issue #540",
+    "active_issue #540 is OPEN on GitHub",
     "no edits under app/api/stripe, lib/scout, supabase/migrations",
-    "lib/briefing suite green incl. the new Fix A external-promisor gate tests",
-    "the gate fires ONLY on counterparty-as-subject + past-due + >21d-stale commitments (the user's own imperatives and fresh/future commitments are untouched)"
+    "998 vitest green (lib/briefing + lib/workday-presence suites)",
+    "observation gate scoped to directive only (not why_now) — generator-runtime.test.ts 39/39 green",
+    "isConcreteIncomingWork excludes discrepancy/emergent/compound candidates — no threshold change"
   ],
-  "stop_condition": "Session-closeout roll-forward lands #537 Fix A on claude/slack-right-now-seed-scorer-zxge0c -> main; gate:continuity + typecheck + lib/briefing green; Fix B/Fix C named as next_seam.",
-  "next_command": "Next session: read #537. Ship Fix B (marketing-sender extraction filter — reject commitment extraction from noreply@/donotreply@/team@info.* one-way senders) and Fix C (fuzzy dedup on commitment creation, similarity > 0.85). Owner: set Vercel FOLDERA_SELF_USER_ID -> 2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f so Slack cards fire. Standing: Scout #494 activation; OneDrive whole-drive enumeration (#507).",
+  "stop_condition": "PR merged for claude/gate-stack-output-issue-bpglwy; next morning-pipeline cron delivers finished-work shape directive with receipt for 2cbc1bab.",
+  "next_command": "Next session: read #540. After deploy check cron + tkg_actions for 2cbc1bab. If still dark, widen INCOMING_ASK_RE (Move B). Never loosen observation gate or numeric thresholds. Standing: #537 commitment hygiene; Scout #494; OneDrive #507.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

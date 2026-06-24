@@ -1,12 +1,12 @@
 {
-  "active_issue": 537,
-  "active_branch": "claude/slack-right-now-seed-scorer-zxge0c",
-  "active_pr": 539,
-  "deployed_commit_sha": "8a525a5",
+  "active_issue": 540,
+  "active_branch": "claude/gate-stack-output-issue-bpglwy",
+  "active_pr": 541,
+  "deployed_commit_sha": "e3fa1e8",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-23T23:45:00.000Z",
+  "last_verified_at": "2026-06-24T01:26:00.000Z",
   "last_cron_run": "2026-06-23T11:49:00Z",
   "last_cron_outcome": "stale_signal_backlog_remaining",
-  "notes": "Seam #518 DONE (PR #536 merged aba6877). Rolled forward to #537 commitment-pool hygiene. This branch ships #537 Fix A — the external-promisor staleness gate: detectDiscrepancies() now drops stale external-promisor zombies (counterparty-as-subject phrasing + due/implied-due in the past + no fresh extraction touch in 21d) from the commitment pool before any extractor runs, so the Columbia Motors callback pattern can never become a candidate (and never burns a retry). Pure, unit-testable chokepoint in lib/briefing/discrepancy-detector.ts (not daily-brief-generate.ts as the issue text guessed — candidates aren't individually exposed there); canonical_form added to the scorer commitment fetch. Proof: lib/briefing 846 tests green incl. 13 new Fix A tests; typecheck clean. Fix B (marketing-sender extraction filter) and Fix C (fuzzy dedup) remain open under #537. Owner-only blocker unchanged: Vercel FOLDERA_SELF_USER_ID = 2cbc1bab so Slack cards fire."
+  "notes": "Issue #540 — Option C one-seam bet: Move A (observation/nag shape gate + generalized chore-list gate), Move B (isConcreteIncomingWork broadens forceActionableNow), Move C (insertSlackSendReceipt). 94 test files / 998 tests green. PR #541 pending merge. Live verification post-merge only (Lesson #1)."
 }
