@@ -54,7 +54,7 @@ jobs:
 
           # Anything outside this allowlist forces a deploy.
           runtime=true
-          if printf '%s\n' "$changed" | grep -qvE '^(.+\.mdx?$|docs/|audit-reports/|SESSION_HISTORY\.md$|CURRENT_STATE\.md$|LESSONS_LEARNED\.md$|AGENTS\.md$|CLAUDE\.md$|README\.md$|\.cursorrules$|\.github/workflows/docs-fast\.yml$)'; then
+          if printf '%s\n' "$changed" | grep -qvE '^(.+\.mdx?$|docs/|audit-reports/|AGENTS\.md$|CLAUDE\.md$|README\.md$|\.cursorrules$|\.github/workflows/docs-fast\.yml$)'; then
             runtime=true
           else
             runtime=false

@@ -22,7 +22,7 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 518
+active_issue: 524
 priority_class: PRODUCT
 work_type: FIX
 why_this_first: "Verdict calibration (#518), session-closeout roll-forward. #516 (PR #517) fixed the dominant dark-verdict cause -- hunt findings dropped occurredAt, so positive_winner_contract blocked ~96% of winners; that fix is deployed + unit-proven (hunt-grounding-516). But LIVE verification on owner 2cbc1bab is incomplete: the manual auto-detect path is capped at 3 directive calls/UTC-day and today's 11:41 cron blew the cap (8 rows), so taps short-circuited before scoring. Prod mutations this session (disclosed): deleted today's 8 directive/directive_retry api_usage rows for 2cbc1bab; removed the leftover pipe_test workday_presence_state + workday_presence_suppression_trace keys. Brain still hasn't run post-fix (directive_calls_today=0). NEXT: verify via the 11:00 UTC morning-pipeline cron (not manual-limited) -> expect pipeline_runs.outcome=generation_returned; if still SAFE_SILENCE, calibrate the remaining gates with test/replay proof, no blind loosening. Predecessors complete this session: #509 consolidation (executed), identity #511 (PRs #512/#513), Drive #514 (PR #515), verdict-grounding #516 (PR #517)."
