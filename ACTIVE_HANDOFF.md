@@ -2,10 +2,10 @@
 
 ## TL;DR
 
-- **Seam #537 (commitment pool hygiene) — Fix A SHIPPED, PR #539 open (draft).** External-promisor staleness gate: `detectDiscrepancies()` drops counterparty-as-subject commitments ("X will contact you…") that are past-due AND stale (>21d no fresh touch) before any extractor runs, so the Columbia Motors zombie can't win or burn a retry. Pure chokepoint in `lib/briefing/discrepancy-detector.ts`; `canonical_form` added to the scorer fetch. lib/briefing 846 green (+13), typecheck + gate:continuity clean.
-- **Predecessor #518 DONE:** PR #536 merged (`aba6877`) — stale gate 10→250, morning-pipeline daily_brief→seed_from_scorer, email send surface deleted.
-- **#537 next:** Fix B (marketing-sender extraction filter) + Fix C (fuzzy dedup) — the same hygiene seam at the creation boundary.
-- **Owner-gated:** (1) live confirm — next cron's `discrepancy_candidates_preview` for `2cbc1bab` has no stale external-promisor candidate; (2) set Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` so Slack cards fire.
+- **FULL AUDIT done — issue #540 (FTR). Read it first.** The honest end-to-end answer to "does Foldera work?": **No, not since April 22.** 12 real generations ever; dark 17 days straight; the June Slack-card surface has delivered **0** acted cards (8 attempts). Pool is healthy (141 fresh, 23 high-risk) — silence is the **gate stack**, not data starvation.
+- **Two failure layers; we only ever fix Layer 1.** L1 plumbing: `lifecycle_gate` zeroes 67/68 (`scorer.ts:6184`), then `positive_winner_contract` blocks survivors (`artifact-taste-pack.ts:396/:414`), then the one-sentence gate burns retries (`generator.ts:7775`). L2 substance: even when it ships, output is nags/homework — except the **one** valued act ever (Apr 22, conf 95, "…here is your completed prep" — did real work, handed it over done).
+- **Next session = ONE structural bet, driven to a live delivered+tapped+valued act.** Likely L2: re-aim at the Apr-22 shape (do a real piece of work, deliver it done), not another gate tweak. Decision is Brandon's. Stop the fix-one-thing-and-move-on reflex.
+- **Owner-only still:** set Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (delivery no-ops silently without it).
 
 ## DON'T FORGET — read first, every boot
 
@@ -33,7 +33,9 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Current slice:
 
-**COMMITMENT POOL HYGIENE (#537) — Fix A shipped (PR #539, draft, `1c7a25c`): external-promisor staleness gate.** When professional signal is thin, stale/misextracted commitments float to the top of the discrepancy ranking and win a weak card. Observed 2026-06-23: "Columbia Motors will contact you regarding the 2017 Toyota Sienna" — a passive counterparty callback with no actionable move for Brandon. Manual suppression (`suppressed_at`/`suppressed_reason`) is whack-a-mole; the extractor keeps minting zombies.
+**FULL-AUDIT FTR (#540) — "does it work?" answered with live receipts. This is the active record; read #540 before doing anything.** The product has not delivered an acted-on act since **2026-04-22**. The dark verdict is a two-layer failure (L1 gate stack zeroes everything; L2 substance is homework), and we keep fixing L1 one gate at a time and giving up before L2. The one proof-of-value ever (Apr 22 interview prep, "here is your completed prep") is the north-star shape: do a concrete real piece of work and hand it over **done** — the opposite of surfacing a pattern/nag. Next session commits to **one** structural bet (likely re-aiming at that shape) and drives it to a live delivered+tapped+valued act, measured against #540's 4-point definition of "it works." No more touch-and-move-on.
+
+**Superseded today (#537 pool hygiene, PR #539 draft):** Fix A (external-promisor staleness gate) shipped and is fine, but the audit proves it was Layer-1 hygiene that changes nothing about why we're dark — the Columbia zombie it removes was candidate #2; candidate #1 died at the same generation gate. Leave PR #539 as-is; do not invest more in Fix B/C until #540's bet is chosen.
 
 **Fix A (this branch).** `lib/briefing/discrepancy-detector.ts` → new `isStaleExternalPromisorCommitment()` / `hasExternalPromisorPhrasing()`, applied as a pre-filter in `detectDiscrepancies()` right after the `trust_class` filter. It drops a commitment from the pool **before any extractor runs** when all three hold: (1) counterparty-as-subject phrasing ("X will…", "X to provide…", "X is responsible for…" — not the user's own imperatives or first-person promises), (2) `due_at`/`implied_due_at` in the **past**, (3) no fresh extraction touch in **21+ days** (`updated_at`). So the zombie never becomes a candidate and never burns a retry. `canonical_form` added to the scorer commitment fetch (`lib/briefing/scorer.ts`) so the gate sees the normalized form. **Chosen location:** the detector, not `daily-brief-generate.ts` as the issue text guessed — that file calls the opaque `generateDirective()` and never sees individual candidates; the detector is the real, pure, unit-testable chokepoint into `gate_funnel.discrepancy_candidates_preview`.
 
@@ -43,12 +45,12 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Next exact move
 
-1. **#537 Fix B** — marketing-sender extraction filter: reject commitment extraction when the signal `author` is a noreply/marketing/one-way sender (`noreply@`, `donotreply@`, `team@info.*`, `*@trx.mail*`) or has no reply-to. Kills the ClickUp interview ghost at the source.
-2. **#537 Fix C** — fuzzy dedup on commitment creation: similarity > 0.85 (pg_trgm / normalized distance) updates the existing record instead of inserting a duplicate (the "Sign Inbound Data License Agreement" ×2 pattern).
-3. **Live confirmation:** after deploy, the next morning-pipeline cron's `pipeline_runs.gate_funnel.discrepancy_candidates_preview` for `2cbc1bab` should contain no stale external-promisor candidate.
-4. **Owner-env:** set Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (Slack cards need this to fire). Standing: Scout #494; OneDrive #507.
+1. **Read issue #540 in full.** It is the FTR audit and the rubric. Do not start by re-diagnosing — it's done, with live receipts.
+2. **Pick ONE structural bet with Brandon and commit the whole session to it.** The audit points at Layer 2 (re-aim the engine at the Apr-22 shape: detect a concrete real piece of work that landed in Brandon's world, *do it*, deliver it **done**; treat "observation about Brandon" as out of scope). The alternative is a Layer-1 unblock (lifecycle_gate / positive_winner_contract / one-sentence salvage) but the audit argues L1 alone just lets homework through. This is Brandon's product-definition call.
+3. **Drive that bet to a live, delivered, tapped, valued act** and measure against #540's 4-point definition of "it works." Add a Slack delivery receipt (today `trigger-runner.ts:680` drops the send result).
+4. **Owner-env (still blocking delivery):** set Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` — without it the Slack card silently no-ops (`trigger-runner.ts:372`). Standing: Scout #494; OneDrive #507.
 
-Full detail: issue #537 (commitment hygiene); predecessor issue #518 (verdict calibration, merged).
+Full detail: issue **#540** (full audit / FTR — start here); #537 (pool hygiene, superseded); #518 (verdict calibration, merged).
 
 ## Product doctrine
 
