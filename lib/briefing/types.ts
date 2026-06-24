@@ -274,6 +274,8 @@ export interface GenerationRunLog {
   future_findings?: unknown[];
   /** True when the scorer returned no_valid_action and the generator built a deterministic blocker artifact. */
   no_valid_action_blocker?: boolean;
+  /** Tier-descent label when a Tier-2/3 fallback fires instead of do_nothing. */
+  tier_descent_winner?: string | null;
 }
 
 /**

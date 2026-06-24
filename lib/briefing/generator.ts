@@ -6259,6 +6259,86 @@ function buildNoValidActionBlockerDirective(scored: ScorerResultNoValidAction): 
   } as ConvictionDirective;
 }
 
+/**
+ * Tier-descent safety net: fires when all Tier-1 discrepancy candidates are exhausted.
+ * Tier 2 — commitment due ≤14d: surfaces a real due commitment as a write_document directive.
+ * Tier 3 — owed reply: surfaces the highest-scored non-discrepancy send_message candidate.
+ * Returns null when both tiers are genuinely empty (do_nothing is correct).
+ */
+export async function attemptTierDescentDirective(args: {
+  userId: string;
+  supabase: ReturnType<typeof createServerClient>;
+  topCandidates: ScoredLoop[];
+  candidateDiscovery: import('./types').GenerationCandidateDiscoveryLog | null;
+}): Promise<ConvictionDirective | null> {
+  const { userId, supabase, topCandidates, candidateDiscovery } = args;
+
+  // Tier 2: commitment with due_at in [today, +14d] — exclude past-due and future-beyond-window.
+  const today = new Date().toISOString().slice(0, 10);
+  const cutoff = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+  let commitments: Array<{ id: string; description: string; due_at: string }> | null = null;
+  try {
+    const result = await supabase
+      .from('tkg_commitments')
+      .select('id, description, due_at')
+      .eq('user_id', userId)
+      .in('status', ['active', 'at_risk'])
+      .is('suppressed_at', null)
+      .not('due_at', 'is', null)
+      .gte('due_at', today)
+      .lte('due_at', cutoff)
+      .in('trust_class', ['trusted', 'unclassified'])
+      .order('due_at', { ascending: true })
+      .limit(1);
+    commitments = result.data as typeof commitments;
+  } catch {
+    // DB unavailable — skip Tier 2, fall through to Tier 3 or null.
+  }
+
+  if (commitments && commitments.length > 0) {
+    const c = commitments[0] as { id: string; description: string; due_at: string };
+    const dueDate = c.due_at.slice(0, 10);
+    const runLog = buildNoSendGenerationLog(
+      `tier_descent: Tier 2 commitment due ${dueDate} — ${c.description.slice(0, 80)}`,
+      'system',
+      candidateDiscovery,
+    );
+    runLog.tier_descent_winner = 'tier2_commitment_due';
+    return {
+      directive: `Finalize ${c.description.trim()} — due ${dueDate}.`,
+      action_type: 'write_document',
+      confidence: 55,
+      reason: `Commitment due ${dueDate}: no prep artifact exists yet.`,
+      evidence: [{ type: 'commitment', description: c.description, date: c.due_at }],
+      generationLog: runLog,
+    };
+  }
+
+  // Tier 3: highest-scored thread-backed owed-reply candidate (commitment, relationship, or sendable discrepancy).
+  const sendCandidate = topCandidates.find((c) => isThreadBackedSendableLoop(c));
+  if (sendCandidate) {
+    const runLog = buildNoSendGenerationLog(
+      `tier_descent: Tier 3 send_message owed — ${sendCandidate.title.slice(0, 80)}`,
+      'system',
+      candidateDiscovery,
+    );
+    runLog.tier_descent_winner = 'tier3_send_message_owed';
+    return {
+      directive: `Draft and send reply for: ${sendCandidate.title.trim()}.`,
+      action_type: 'send_message',
+      confidence: 45,
+      reason: `Open thread needs a reply: ${sendCandidate.title.slice(0, 120)}.`,
+      evidence: [{
+        type: (sendCandidate.type === 'commitment' ? 'commitment' : 'signal') as import('./types').EvidenceItem['type'],
+        description: sendCandidate.title,
+      }],
+      generationLog: runLog,
+    };
+  }
+
+  return null;
+}
+
 function buildBudgetCapDirectiveFromScored(
   scored: ScorerResultWinnerSelected,
   budgetRaw: unknown,
@@ -10570,6 +10650,26 @@ export async function generateDirective(
     ]);
 
     if (scored.outcome === 'no_valid_action') {
+      // Tier-descent: try Tier 2 (due commitment) then Tier 3 (owed reply) before giving up.
+      const noValidActionSupabase = createServerClient();
+      const tierDescentDirective = await attemptTierDescentDirective({
+        userId,
+        supabase: noValidActionSupabase,
+        topCandidates: scored.topCandidates,
+        candidateDiscovery: scored.candidateDiscovery,
+      });
+      if (tierDescentDirective !== null) {
+        logStructuredEvent({
+          event: 'tier_descent_winner', level: 'info', userId,
+          artifactType: tierDescentDirective.action_type, generationStatus: 'tier_descent',
+          details: {
+            scope: 'generator',
+            tier: tierDescentDirective.generationLog?.tier_descent_winner ?? null,
+            directive_preview: tierDescentDirective.directive.slice(0, 100),
+          },
+        });
+        return tierDescentDirective;
+      }
       return buildNoValidActionBlockerDirective(scored);
     }
 
@@ -11969,6 +12069,7 @@ export async function generateDirective(
     noSendLog.attempt_slot_trace = attemptSlotTrace;
     noSendLog.good_candidate_blockers = winnerQualityTrace?.good_candidate_blockers;
     noSendLog.future_findings = futureFindingsTrace;
+
     return emptyDirective(
       failureUserReason,
       noSendLog,

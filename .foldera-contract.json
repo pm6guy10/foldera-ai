@@ -1,9 +1,9 @@
 {
-  "backlog_id": "gate-stack-output-540",
-  "active_issue": 540,
-  "base_commit": "e3fa1e8",
+  "backlog_id": "graceful-degradation-538",
+  "active_issue": 538,
+  "base_commit": "230e776",
   "money_loop_rung": "m2",
-  "user_system_path": "Gate-stack output re-aim (#540): 17 days dark, last real act 2026-04-22. Option C one-seam bet: Move A (observation/nag shape gate + chore-list gate generalized), Move B (isConcreteIncomingWork broadens forceActionableNow), Move C (insertSlackSendReceipt). 998 tests green. Live proof post-merge.",
+  "user_system_path": "Graceful degradation / never go dark (#538): when all Tier-1 discrepancy candidates are exhausted, tier-descent safety net fires. Tier 2: commitment due ≤14d → write_document. Tier 3: thread-backed owed reply → send_message. do_nothing only when both tiers genuinely empty. 1014 tests green. PR pending.",
   "allowed_file_patterns": [
     "*",
     "app/**",
@@ -30,21 +30,22 @@
   ],
   "allowed_files_raw": "Allow-by-default-minus-forbidden (friction reduction, owner-directed 2026-06-22). The contract no longer pins a narrow per-seam whitelist that blocks owner-authorized fixes outside the active seam. The real guard is forbidden_file_patterns + the proof doctrine, not a whitelist. Small owner-directed hotfixes (e.g. the Microsoft guest #EXT# email self-heal in lib/sync + lib/ui shipped on this branch) no longer require displacing the active seam.",
   "forbidden_files_raw": "HARD RAILS (unchanged by the allow-by-default switch): No Stripe, Scout, schema/migration, or secrets changes. No auto-send. No BLIND loosening of positive_winner_contract or the discrepancy-card quality gate (the #452 'hollow drafts' mistake) — every gate change carries a test + before/after read.",
-  "required_local_proof": "npm run gate:continuity && npm run typecheck; npx vitest run lib/briefing lib/workday-presence (998 tests green)",
-  "required_browser_proof": "Live (owner): after next morning-pipeline cron, pipeline_runs.outcome moves off generation_failed_sentinel for 2cbc1bab; directive is finished-work shape; workday_presence_slack_send receipt appears in tkg_actions.",
-  "browser_proof_command": "manual: wait for morning-pipeline cron, query pipeline_runs + tkg_actions for 2cbc1bab; verify directive is finished-work shape (not observation/nag).",
-  "acceptance_condition": "gate:continuity green + 998 tests green + PR merged + live cron delivers finished-work shape directive with receipt.",
+  "required_local_proof": "npm run gate:continuity && npm run typecheck; npx vitest run lib/briefing lib/workday-presence (1014 tests green)",
+  "required_browser_proof": "Live (owner): after next morning-pipeline cron, pipeline_runs.gate_funnel.tier_descent_winner is non-null for 2cbc1bab on a day with no Tier-1 discrepancy; directive is finished-work shape (not do_nothing).",
+  "browser_proof_command": "manual: wait for morning-pipeline cron; query pipeline_runs for 2cbc1bab; check gate_funnel.tier_descent_winner.",
+  "acceptance_condition": "gate:continuity green + 1014 tests green + PR merged + live cron tier_descent_winner non-null for 2cbc1bab.",
   "is_user_facing": true,
   "anti_regression_checks": [
-    "gate:continuity green with active_issue #540",
-    "active_issue #540 is OPEN on GitHub",
+    "gate:continuity green with active_issue #538",
+    "active_issue #538 is OPEN on GitHub",
     "no edits under app/api/stripe, lib/scout, supabase/migrations",
-    "998 vitest green (lib/briefing + lib/workday-presence suites)",
-    "observation gate scoped to directive only (not why_now) — generator-runtime.test.ts 39/39 green",
-    "isConcreteIncomingWork excludes discrepancy/emergent/compound candidates — no threshold change"
+    "1014 vitest green (lib/briefing + lib/workday-presence suites)",
+    "tier-descent only fires in no_valid_action branch — BAD1-5 in usefulness-gate still pass",
+    "tier-descent Tier 2 excludes past-due commitments (gte today filter)",
+    "tier-descent Tier 3 uses isThreadBackedSendableLoop — no fabricated or stale signal candidates"
   ],
-  "stop_condition": "PR merged for claude/gate-stack-output-issue-bpglwy; next morning-pipeline cron delivers finished-work shape directive with receipt for 2cbc1bab.",
-  "next_command": "Next session: read #540. After deploy check cron + tkg_actions for 2cbc1bab. If still dark, widen INCOMING_ASK_RE (Move B). Never loosen observation gate or numeric thresholds. Standing: #537 commitment hygiene; Scout #494; OneDrive #507.",
+  "stop_condition": "PR merged for claude/pr-merge-sequence-kziba2; next morning-pipeline cron shows tier_descent_winner non-null for 2cbc1bab on a no-Tier-1 day.",
+  "next_command": "Next session: read #538. After deploy check pipeline_runs.gate_funnel.tier_descent_winner for 2cbc1bab. Standing: #537 Fix B/C; Scout #494; OneDrive #507.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

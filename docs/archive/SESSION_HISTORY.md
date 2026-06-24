@@ -4,6 +4,18 @@
 
 Operating doctrine pointer: see [FOLDERA_OPERATING_DOCTRINE.md](/C:/Users/b-kap/foldera-ai/FOLDERA_OPERATING_DOCTRINE.md) for the durable owner/operator seam order and current stop condition.
 
+## 2026-06-24 — Graceful degradation / never go dark (#538 → PR pending on claude/pr-merge-sequence-kziba2)
+
+- MODE: Merge sequence (#542 → #539 → #541) completed; #538 implementation started and code-proven.
+- What shipped — **Tier-descent safety net** (`lib/briefing/generator.ts` + `lib/briefing/__tests__/tier-descent.test.ts`):
+  - `attemptTierDescentDirective(args)` exported function fires in the `no_valid_action` branch of `generateDirective` — only when the scorer exhausted all Tier-1 candidates. LLM-failure paths untouched.
+  - **Tier 2:** queries `tkg_commitments` for active/at_risk, trusted/unclassified commitments due today–+14d (past-due excluded via `gte today` filter, error-safe try-catch). Returns `write_document` directive if found.
+  - **Tier 3:** scans `scored.topCandidates` using `isThreadBackedSendableLoop` (existing scorer gate — commitment, relationship, sendable discrepancy with entity name). Returns `send_message` directive if found. Signal type explicitly excluded.
+  - `tier_descent_winner` label (`'tier2_commitment_due' | 'tier3_send_message_owed'`) persisted in `GenerationRunLog`, surfaced in `gate_funnel` extras via `daily-brief-generate.ts`.
+  - `tier_descent_winner` field added to `GenerationRunLog` interface in `lib/briefing/types.ts`.
+- 6 new unit tests; 1014/1014 total green; gate:continuity green.
+- Live proof pending: after PR merges and deploys, `pipeline_runs.gate_funnel.tier_descent_winner` should be non-null for `2cbc1bab` on a day with no Tier-1 discrepancy.
+
 ## 2026-06-24 — Gate-stack output re-aim: Option C shipped (observation shape gate + incoming-work promotion + Slack receipt) (#540 → PR #541)
 
 - MODE: One product seam, harness-proven, draft PR. Three moves, all code+unit-proven: Move A (observation/nag shape gate + chore-list gate generalized), Move B (isConcreteIncomingWork broadens forceActionableNow), Move C (insertSlackSendReceipt). 28 new tests; 998/998 total green.

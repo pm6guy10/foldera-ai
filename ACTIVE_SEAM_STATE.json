@@ -1,12 +1,12 @@
 {
-  "active_issue": 540,
-  "active_branch": "claude/gate-stack-output-issue-bpglwy",
-  "active_pr": 541,
-  "deployed_commit_sha": "e3fa1e8",
+  "active_issue": 538,
+  "active_branch": "claude/pr-merge-sequence-kziba2",
+  "active_pr": null,
+  "deployed_commit_sha": "230e776",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-24T01:26:00.000Z",
+  "last_verified_at": "2026-06-24T20:12:00.000Z",
   "last_cron_run": "2026-06-23T11:49:00Z",
   "last_cron_outcome": "stale_signal_backlog_remaining",
-  "notes": "Issue #540 — Option C one-seam bet: Move A (observation/nag shape gate + generalized chore-list gate), Move B (isConcreteIncomingWork broadens forceActionableNow), Move C (insertSlackSendReceipt). 94 test files / 998 tests green. PR #541 pending merge. Live verification post-merge only (Lesson #1)."
+  "notes": "Issue #538 — Graceful degradation / never go dark. #542+#539+#540 merged. Tier-descent safety net: Tier 2 (commitment due ≤14d → write_document) + Tier 3 (thread-backed owed reply → send_message) fires in the no_valid_action branch before do_nothing. 95 test files / 1014 tests green. PR pending push."
 }
