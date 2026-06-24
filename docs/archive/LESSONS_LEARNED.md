@@ -293,3 +293,16 @@ Brandon, 2026-06-24, after a day of pool-hygiene: *"we always touch on it and th
 **The one proof-of-value, and what it teaches:** exactly one act in the entire history cleared "valuable" — 2026-04-22, conf 95: it took a concrete real input that landed in the user's world (interview questions that actually arrived) and returned *"here is your completed prep."* It **did the work and handed it over done** — the inverse of homework. That is the north-star shape. The lesson isn't "tune gate N," it's: **re-aim the engine at the did-real-work-delivered-done shape and treat 'observation about the user' as out of scope.** Magic is reachable (N=1 proves it); the machine just isn't pointed at it.
 
 **Rule (define "works" so the goalposts stop moving):** "works" = on live data, zero homework asked of the user: a real act on ≥5/7 consecutive days, delivered with a persisted receipt, tapped ≥1/week and called valuable, and ≥1/week of the did-real-work-done shape. Green CI is not on this list (Lesson #1). Until those hold live, the product does not work — say exactly that.
+
+## 29. The Generator Has Two Semantically Opposite "Give Up" Paths — Safety Nets Belong in Only One
+
+`generateDirective()` has two distinct failure modes that look similar in code but are structurally opposite:
+
+- **`no_valid_action`** — the scorer exhausted the candidate pool and found nothing viable. Tier-descent belongs HERE: commitment data and open-loop signals are already loaded and may contain a truthful act even though the discrepancy pool is empty.
+- **Generation-exhausted** — the scorer found viable candidates, the LLM ran 2+ retries against the winner, and still couldn't produce a clean artifact. Tier-descent does NOT belong here: recycling the same failed candidate against a weaker artifact frame doesn't produce a better artifact — it just lets bad output through under a different label.
+
+**The bug that made this concrete (seam #538):** tier-descent was initially placed in the generation-exhausted branch. Immediately, BAD1-5 tests (simulate a good candidate + failing LLM) returned `send_message` instead of `GENERATION_FAILED_SENTINEL` — the bad-LLM scorer still left the candidate in `topCandidates`, so the Tier-3 filter picked it up. The fix was conceptual, not syntactic: identify which failure mode the safety net recovers from, then route it only there.
+
+**Rule:** `scored.outcome === 'no_valid_action'` is the only branch where tier-descent may fire. The generation-retry/exhaust branch is downstream of a valid winner and must never trigger a safety-net path that re-routes to a different candidate class.
+
+**Corollary — `isThreadBackedSendableLoop` is the correct Tier-3 semantic gate:** a loose type exclusion (`type !== 'discrepancy/compound/emergent'`) still passes `signal`-type candidates. Signal-type candidates are observations — precisely what the quality gate correctly blocks. `isThreadBackedSendableLoop` (existing scorer gate: commitment, relationship, or specific sendable discrepancy class with a real entity name) encodes "Foldera owes a reply on behalf of the user" — the only shape where Tier-3 is honest. A Tier-3 that bypasses this will misfire on stale observations the upstream gate already correctly rejected.

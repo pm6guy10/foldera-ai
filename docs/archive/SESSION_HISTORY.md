@@ -4,17 +4,21 @@
 
 Operating doctrine pointer: see [FOLDERA_OPERATING_DOCTRINE.md](/C:/Users/b-kap/foldera-ai/FOLDERA_OPERATING_DOCTRINE.md) for the durable owner/operator seam order and current stop condition.
 
-## 2026-06-24 — Graceful degradation / never go dark (#538 → PR pending on claude/pr-merge-sequence-kziba2)
+## 2026-06-24 — Graceful degradation / never go dark (#538 → PR #545 on claude/pr-merge-sequence-kziba2)
 
-- MODE: Merge sequence (#542 → #539 → #541) completed; #538 implementation started and code-proven.
+- MODE: Merge sequence (#542 → #539 → #541) completed; #538 implementation shipped and harness-proven.
 - What shipped — **Tier-descent safety net** (`lib/briefing/generator.ts` + `lib/briefing/__tests__/tier-descent.test.ts`):
   - `attemptTierDescentDirective(args)` exported function fires in the `no_valid_action` branch of `generateDirective` — only when the scorer exhausted all Tier-1 candidates. LLM-failure paths untouched.
   - **Tier 2:** queries `tkg_commitments` for active/at_risk, trusted/unclassified commitments due today–+14d (past-due excluded via `gte today` filter, error-safe try-catch). Returns `write_document` directive if found.
   - **Tier 3:** scans `scored.topCandidates` using `isThreadBackedSendableLoop` (existing scorer gate — commitment, relationship, sendable discrepancy with entity name). Returns `send_message` directive if found. Signal type explicitly excluded.
   - `tier_descent_winner` label (`'tier2_commitment_due' | 'tier3_send_message_owed'`) persisted in `GenerationRunLog`, surfaced in `gate_funnel` extras via `daily-brief-generate.ts`.
   - `tier_descent_winner` field added to `GenerationRunLog` interface in `lib/briefing/types.ts`.
-- 6 new unit tests; 1014/1014 total green; gate:continuity green.
-- Live proof pending: after PR merges and deploys, `pipeline_runs.gate_funnel.tier_descent_winner` should be non-null for `2cbc1bab` on a day with no Tier-1 discrepancy.
+  - `createServerClient()` called locally within the `no_valid_action` branch as `noValidActionSupabase` — the global `supabase` is not initialized until after that branch.
+- **Two architectural bugs discovered and fixed during testing:**
+  1. **Wrong branch placement.** Tier-descent was initially placed in the generation-exhausted branch (scorer found a winner, LLM failed to produce a clean artifact). This caused BAD1-5 tests to return `send_message` instead of `GENERATION_FAILED_SENTINEL` — the failed candidate was still in `topCandidates`, so Tier-3 picked it up. `no_valid_action` (scorer found nothing) vs generation-exhausted are semantically opposite; recycling the same failed candidate under a weaker frame doesn't improve it. Fix: moved tier-descent exclusively to the `no_valid_action` branch.
+  2. **Loose Tier-3 filter.** Initial filter (`type !== 'discrepancy/compound/emergent'`) still let `signal`-type candidates through. Signal-type candidates are observations that the quality gate already correctly rejected. Fix: changed filter to `isThreadBackedSendableLoop(c)` — the correct semantic boundary for "Foldera owes a reply on behalf of the user." Test caught it: `pipeline-receipt.test.ts` had a mock with a March-28 commitment (3 months past) that the Tier-2 `.gte` filter would have blocked, but try-catch on the strict mock silently skipped Tier 2, then Tier 3 picked up the signal candidate.
+- 6 new unit tests; 1014/1014 total green; gate:continuity green. Commit `cc5c227`.
+- Live proof pending: after PR #545 merges and deploys, `pipeline_runs.gate_funnel.tier_descent_winner` should be non-null for `2cbc1bab` on a day with no Tier-1 discrepancy.
 
 ## 2026-06-24 — Gate-stack output re-aim: Option C shipped (observation shape gate + incoming-work promotion + Slack receipt) (#540 → PR #541)
 
