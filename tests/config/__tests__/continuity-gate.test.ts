@@ -18,8 +18,8 @@ const requiredFixtureFiles = [
   'CLAUDE.md',
   'FOLDERA_MASTER_BIBLE.md',
   'README.md',
-  'SESSION_HISTORY.md',
-  'LESSONS_LEARNED.md',
+  'docs/archive/SESSION_HISTORY.md',
+  'docs/archive/LESSONS_LEARNED.md',
   'FOLDERA_BUILD_ORDER.yaml',
   '.foldera-contract.json',
   'docs/SOURCE_OF_TRUTH_MAP.md',
@@ -191,6 +191,45 @@ describe('continuity gate', () => {
 
     const failures = runContinuityGate(fixtureRoot, {
       changedFiles: ['AGENTS.md', 'ACTIVE_SEAM_STATE.json'],
+      issueStateFetcher: () => 'skip',
+    });
+
+    expect(failures.some((f) => f.includes('active_branch'))).toBe(true);
+  });
+
+  it('passes active_branch mismatch for a cleanup branch with code changes', () => {
+    const fixtureRoot = createFixtureRoot();
+    fs.mkdirSync(path.join(fixtureRoot, '.git'));
+    process.env.GITHUB_HEAD_REF = 'claude/repo-cleanup-o89hvu';
+
+    const failures = runContinuityGate(fixtureRoot, {
+      changedFiles: ['AGENTS.md', 'app/components/Foo.tsx'],
+      issueStateFetcher: () => 'skip',
+    });
+
+    expect(failures.every((f) => !f.includes('active_branch'))).toBe(true);
+  });
+
+  it('passes active_branch mismatch for a hotfix branch with code changes', () => {
+    const fixtureRoot = createFixtureRoot();
+    fs.mkdirSync(path.join(fixtureRoot, '.git'));
+    process.env.GITHUB_HEAD_REF = 'claude/hotfix-ms-email-518';
+
+    const failures = runContinuityGate(fixtureRoot, {
+      changedFiles: ['lib/sync/email.ts'],
+      issueStateFetcher: () => 'skip',
+    });
+
+    expect(failures.every((f) => !f.includes('active_branch'))).toBe(true);
+  });
+
+  it('still fails active_branch mismatch for a regular feature branch with code changes', () => {
+    const fixtureRoot = createFixtureRoot();
+    fs.mkdirSync(path.join(fixtureRoot, '.git'));
+    process.env.GITHUB_HEAD_REF = 'claude/feature-some-new-thing';
+
+    const failures = runContinuityGate(fixtureRoot, {
+      changedFiles: ['app/components/Foo.tsx'],
       issueStateFetcher: () => 'skip',
     });
 

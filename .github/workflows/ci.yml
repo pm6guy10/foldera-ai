@@ -3,7 +3,7 @@ name: CI
 # ─────────────────────────────────────────────────────────────────────────────
 # Change-aware CI.
 #
-# Doctrine (see SESSION_HISTORY.md 2026-04-22 entries for history):
+# Doctrine (see docs/archive/SESSION_HISTORY.md 2026-04-22 entries for history):
 #   1. Classify file changes first. Every downstream job is gated on the bucket
 #      it actually cares about. Docs-only PRs do not run Playwright.
 #   2. Single owner per ref — concurrency cancels any stale run on the same

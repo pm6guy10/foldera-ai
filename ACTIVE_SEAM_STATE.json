@@ -1,8 +1,8 @@
 {
   "active_issue": 537,
   "active_branch": "claude/slack-right-now-seed-scorer-zxge0c",
-  "active_pr": null,
-  "deployed_commit_sha": "aba6877",
+  "active_pr": 539,
+  "deployed_commit_sha": "8a525a5",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
   "last_verified_at": "2026-06-23T23:45:00.000Z",

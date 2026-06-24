@@ -255,7 +255,17 @@ While answering "what do we do next to make money," a check of the two owner acc
 
 **Rule:** when a DB/identity migration is executed, the same change usually has a **code half** (constants, hardcoded IDs, fixtures) that must move in lockstep — grep the literal across the whole repo (`rg <uuid>`), not just the env. And when something is parked as "owner-only / sandbox-cannot-do," sanity-check that it actually requires owner privileges; a surprising amount of "owner work" is a code edit the harness can do and prove. Two genuinely-distinct halves remain owner-only here: the **DB mutation** (done, #509) and the **Vercel env** (`FOLDERA_SELF_USER_ID`, hidden value, drives the self-loop cron) — but the constant was neither. Fixed 2026-06-23: `constants.ts` + `owner-user-id-boundary.test.ts` + the 4 `.mjs` debug scripts repointed to `2cbc1bab`. Corollary for #518: the dark verdict is **not** data-starvation (the account is rich) — it is gate calibration, which keeps the focus where the value is.
 
-## 26. Filter the Pool Before the Extractors, Not Inside Them — Extractors Are Blind to Whole Garbage Classes
+## 26. The Seam Pointer Is the Most Expensive File to Leave Stale — Update It First, Not Last
+
+(2026-06-24 — #524 repo cleanup session.) The entire session booted on a stale seam pointer: `ACTIVE_SEAM_STATE.json` still named closed issue #518 and merged PR #536 as the active seam. Every session-start brain injection surfaced verdict-calibration context that no longer applied. The cleanup-branch exemption in `continuity-gate.ts` was needed *because* the pointer hadn't been updated when #536 merged — the gate was failing on the mismatch between the new cleanup branch and the stale `active_branch` field.
+
+**Rule:** when a seam closes (PR merges), the very first commit on the next branch must update the 4 control-plane files (`ACTIVE_SEAM_STATE.json`, `FOLDERA_BUILD_ORDER.yaml`, `.foldera-contract.json`, `ACTIVE_HANDOFF.md`) before anything else. A stale pointer is more expensive than it looks: it misleads the session brain (wrong context injected at boot), fails the gate (branch mismatch), and cascades into cleanup work that wouldn't have been needed. The `npm run roll` command exists for exactly this — run it as the first commit, not the last.
+
+**Corollary — ghost refs in contractless sets silently bloat governance:** `STOP_STATE_CONTRACTLESS_FILES` in `scripts/preflight-contract.ts` had 3 entries for files that never existed (`CURRENT_STATE.md`, `scripts/controller-autopilot.ts`, `scripts/__tests__/controller-autopilot.test.ts`). They made it appear that more files were safe to commit without a contract than actually were, and they kept tests pegged to a fictional controller-cleanup scenario. Removing them broke 7 tests that needed to be rewritten to match real file paths. Lesson: any file in a contractless allowlist that doesn't exist in the repo is a lie waiting to confuse the next agent.
+
+**Corollary — cleanup-branch exemption belongs in the gate, not in the seam pointer:** when a branch is structurally off-seam (hotfix, cleanup), the gate should recognize that by pattern, not require the seam pointer to be updated to match. Without the `/^claude\/(hotfix-|[^/]+-cleanup-)/.test(currentBranch)` exemption, every cleanup branch would fail the parity check until someone remembered to update `ACTIVE_SEAM_STATE.json` again. Encode the structural exception once in the gate; don't rely on per-seam memory.
+
+## 27. Filter the Pool Before the Extractors, Not Inside Them — Extractors Are Blind to Whole Garbage Classes
 
 Seam #537 (2026-06-23) surfaced what the product does when professional signal is thin: it doesn't go quiet, it reaches down the discrepancy ranking and lets a **passive counterparty callback** win the card — *"Columbia Motors will contact you regarding the 2017 Toyota Sienna."* That is a commitment where the **counterparty is the subject and Brandon has no move**. It is structurally a zombie: past-due, untouched for weeks, and re-minted every run, so manual `suppressed_at` is whack-a-mole.
 
@@ -265,7 +275,7 @@ The instinct is to fix it inside an extractor (e.g. add a staleness check to `ex
 
 **Don't trust the issue text's file guess.** The #537 issue named `daily-brief-generate.ts` as the fix site; that file calls the opaque `generateDirective()` and never sees individual candidates. The real chokepoint was the detector. Locate the seam by where the data actually flows, not where the ticket points.
 
-## 27. Look at the End of the Pipe Before You Touch the Middle — and a Two-Layer Failure Can't Be Fixed One Layer at a Time
+## 28. Look at the End of the Pipe Before You Touch the Middle — and a Two-Layer Failure Can't Be Fixed One Layer at a Time
 
 Brandon, 2026-06-24, after a day of pool-hygiene: *"we always touch on it and then we give up, fix one thing and move on… we're at the same farm. Does it work? Does it work well? Does it work consistently? … is it valuable? would someone pay for this?"* He was right, and the reason we kept circling is that **no session had ever simply queried the end of the pipe.** One audit (issue #540, FTR) answered "does it work?" in three live queries we should have run months ago:
 

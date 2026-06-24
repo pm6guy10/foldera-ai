@@ -10,7 +10,7 @@ name: CI
 # Triggered by:
 #   - any **/*.md, **/*.mdx change
 #   - anything under docs/ or audit-reports/
-#   - SESSION_HISTORY.md, README.md, LESSONS_LEARNED.md, CURRENT_STATE.md, AGENTS.md
+#   - README.md, AGENTS.md, CLAUDE.md
 #
 # If a PR touches markdown AND code, the code paths match ci.yml's triggers so
 # the full lane runs there. This docs-fast workflow's own path filter excludes
