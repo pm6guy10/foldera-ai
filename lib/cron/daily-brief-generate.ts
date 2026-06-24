@@ -2643,6 +2643,7 @@ export async function runDailyGenerate(
           gateFunnel: buildGateFunnelFromScorerDiagnostics(diag, {
             candidate_discovery_count: directive.generationLog?.candidateDiscovery?.candidateCount ?? null,
             gen_stage: directive.generationLog?.stage ?? null,
+            tier_descent_winner: directive.generationLog?.tier_descent_winner ?? null,
           }),
           winnerActionType: directive.action_type ?? null,
           winnerConfidence: typeof directive.confidence === 'number' ? directive.confidence : null,

@@ -22,11 +22,16 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 540
+active_issue: 538
 priority_class: PRODUCT
 work_type: FIX
-why_this_first: "Gate-stack output re-aim (#540). 17 days dark; last real act 2026-04-22. Two stacked failures: Layer 1 (lifecycle gate kills ~67/68 real candidates), Layer 2 (even survivors produce homework/observation instead of finished work). Option C one-seam bet: Move A adds observation/nag shape gate + generalizes chore-list gate; Move B broadens forceActionableNow to concrete incoming work (not a threshold change); Move C persists Slack delivery receipt. All three moves code+unit-proven (998 tests green). PR #541 pending; live verification post-merge only per Lesson #1."
-next_seam: "After deploy: verify next morning-pipeline cron for owner 2cbc1bab — pipeline_runs.outcome should move off generation_failed_sentinel; directive must be finished-work shape; a workday_presence_slack_send receipt should appear in tkg_actions. Standing: #538 graceful degradation (never go dark); #537 Fix B/C (commitment pool hygiene); Scout #494; OneDrive #507."
+why_this_first: "Graceful degradation / never go dark (#538). #542+#539+#540 all merged. When all Tier-1 discrepancy candidates fail the scorer, generateDirective called emptyDirective → do_nothing → pipeline stays dark. Tier-descent safety net wired into the no_valid_action branch: Tier 2 surfaces a near-due commitment as write_document; Tier 3 surfaces the highest-scored thread-backed owed-reply as send_message. do_nothing only when both tiers genuinely empty. No gate loosening, no LLM fabrication — deterministic from existing data. 1014 tests green including 6 new tier-descent tests. PR pending."
+next_seam: "After deploy: verify pipeline_runs.gate_funnel.tier_descent_winner is non-null for 2cbc1bab on a day with no Tier-1 discrepancy. Standing: #537 Fix B/C (commitment pool hygiene); Scout #494; OneDrive #507."
+completed_issue_540:
+  issue: 540
+  pr: 541
+  pr_merge_sha: 230e776
+  summary: "Gate-stack output re-aim: Option C — Move A adds observation/nag shape gate + generalizes chore-list gate to all write_document types; Move B: isConcreteIncomingWorkCandidate broadens forceActionableNow to real inbound asks (interview questions, form-to-complete, confirmation requests); Move C: insertSlackSendReceipt persists tkg_actions row on every real Slack delivery. 28 new tests + 998/998 total green. Squash-merged #542 (cleanup) + #539 (Fix A) + #541 (Option C) to main SHA 230e776."
 completed_issue_537:
   issue: 537
   pr: 539
