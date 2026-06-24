@@ -1,12 +1,12 @@
 {
-  "active_issue": 524,
-  "active_branch": "claude/repo-cleanup-o89hvu",
-  "active_pr": null,
-  "deployed_commit_sha": "aba6877",
+  "active_issue": 537,
+  "active_branch": "claude/slack-right-now-seed-scorer-zxge0c",
+  "active_pr": 539,
+  "deployed_commit_sha": "8a525a5",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-24T00:00:00.000Z",
+  "last_verified_at": "2026-06-23T23:45:00.000Z",
   "last_cron_run": "2026-06-23T11:49:00Z",
   "last_cron_outcome": "stale_signal_backlog_remaining",
-  "notes": "PR #536 MERGED (verdict calibration: stale gate 10→250, email send surface deleted, morning pipeline → seed-from-scorer). Active seam: #524 repo cleanup — stale branch deletion, stub workflow retirement, dated docs archive, ghost gov ref removal, SESSION_HISTORY/LESSONS_LEARNED relocation, cleanup-branch gate exemption. Open PRs: #539 (Fix A: external-promisor staleness gate), #541 (Option C: observation shape rejection + concrete-incoming-work + Slack receipt). Next after cleanup: merge #539/#541, then tackle #538 (graceful degradation — never go dark)."
+  "notes": "Seam #518 DONE (PR #536 merged aba6877). Rolled forward to #537 commitment-pool hygiene. This branch ships #537 Fix A — the external-promisor staleness gate: detectDiscrepancies() now drops stale external-promisor zombies (counterparty-as-subject phrasing + due/implied-due in the past + no fresh extraction touch in 21d) from the commitment pool before any extractor runs, so the Columbia Motors callback pattern can never become a candidate (and never burns a retry). Pure, unit-testable chokepoint in lib/briefing/discrepancy-detector.ts (not daily-brief-generate.ts as the issue text guessed — candidates aren't individually exposed there); canonical_form added to the scorer commitment fetch. Proof: lib/briefing 846 tests green incl. 13 new Fix A tests; typecheck clean. Fix B (marketing-sender extraction filter) and Fix C (fuzzy dedup) remain open under #537. Owner-only blocker unchanged: Vercel FOLDERA_SELF_USER_ID = 2cbc1bab so Slack cards fire."
 }

@@ -123,6 +123,8 @@ interface CommitmentRow {
   trust_class?: 'trusted' | 'junk' | 'transactional' | 'personal' | 'unclassified' | null;
   source?: string | null;
   source_id?: string | null;
+  /** Normalized commitment form (preferred over `description` for promisor-subject detection). */
+  canonical_form?: string | null;
 }
 
 interface GoalRow {
@@ -568,6 +570,70 @@ function extractDecay(
     });
   }
   return results;
+}
+
+// ---------------------------------------------------------------------------
+// #537 Fix A — External-promisor staleness gate
+//
+// A commitment whose *subject is the counterparty* ("Columbia Motors will
+// contact you…", "Acme to provide the quote…", "Vendor is responsible for…")
+// is a passive callback: Foldera has no execution artifact to produce for it
+// and no way to observe the counterparty following through. When such a
+// commitment has gone stale (no fresh extraction touch in 21+ days) AND its
+// window has already passed (due / implied-due in the past), it is a zombie
+// that floats to the top of the winner pool whenever professional signal is
+// thin. Drop it from the commitment pool before any extractor runs so it never
+// becomes a candidate (and never counts as a retry). All three conditions must
+// hold — the staleness + past-due guards keep this from ever touching a live,
+// future, or recently-refreshed commitment.
+// ---------------------------------------------------------------------------
+
+export const STALE_EXTERNAL_PROMISOR_AGE_MS = 21 * 24 * 60 * 60 * 1000;
+
+// First-person commitments ("I will send…", "We will deliver…") are the user's
+// own promises — never an external promisor.
+const FIRST_PERSON_PROMISOR_SUBJECT = /^\s*(?:i|we)\b/i;
+
+// Imperatives directed at the user start with a base verb ("Submit availability…",
+// "Sign the agreement…", "Reply to confirm…"). The user is the actor → not external.
+const LEADING_IMPERATIVE_VERB =
+  /^\s*(?:submit|send|sign|reply|respond|complete|draft|schedule|review|pay|call|email|confirm|provide|deliver|follow\s*up|finish|prepare|update|return|create|write|read|check|file|book|register|fill|upload|forward|share|finalize|approve|attend|join|set\s*up|reach\s*out|get\s*back|circle\s*back|make|ensure|add|remove|fix|build|test|deploy|order|buy|renew|cancel|draft|prep)\b/i;
+
+// Counterparty-as-subject phrasing: "<subject 1-5 tokens> is responsible for…"
+// OR "<subject> {will|shall|to|is going to|…} <outward action verb>…".
+const EXTERNAL_PROMISOR_MODAL =
+  /^\s*[\w][\w&.,'’-]*(?:\s+[\w&.,'’-]+){0,4}\s+(?:is\s+responsible\s+for|(?:will|shall|should|is\s+(?:expected|going|supposed)\s+to|are\s+(?:expected|going|supposed)\s+to|to)\s+(?:contact|reach|get|follow|call|email|send|provide|deliver|respond|reply|confirm|schedule|return|ship|issue|process|review|approve|sign|update|notify|pay|refund|quote|finalize|circle|be\b))/i;
+
+/** True when the commitment text reads as a counterparty promise, not the user's own action. */
+export function hasExternalPromisorPhrasing(text: string | null | undefined): boolean {
+  if (!text) return false;
+  const t = text.trim();
+  if (!t) return false;
+  if (FIRST_PERSON_PROMISOR_SUBJECT.test(t)) return false;
+  if (LEADING_IMPERATIVE_VERB.test(t)) return false;
+  return EXTERNAL_PROMISOR_MODAL.test(t);
+}
+
+/**
+ * #537 Fix A — true when a commitment is a stale external-promisor zombie:
+ * counterparty-as-subject phrasing + window already passed + no fresh touch in 21d.
+ */
+export function isStaleExternalPromisorCommitment(c: CommitmentRow, now: number): boolean {
+  if (!hasExternalPromisorPhrasing(c.canonical_form ?? c.description)) return false;
+
+  // Window already passed: due_at / implied_due_at in the past.
+  const dueAt = c.due_at ?? c.implied_due_at;
+  if (!dueAt) return false;
+  const dueMs = new Date(dueAt).getTime();
+  if (!Number.isFinite(dueMs) || dueMs >= now) return false;
+
+  // Gone stale: no fresh extraction touch in 21+ days. `updated_at` proxies the
+  // thread's last fresh signal — a new inbound re-extraction bumps it (thread_id
+  // on tkg_commitments is frequently NULL, so it is not a reliable join key).
+  if (!c.updated_at) return true; // never updated → definitely stale
+  const updatedMs = new Date(c.updated_at).getTime();
+  if (!Number.isFinite(updatedMs)) return true;
+  return now - updatedMs >= STALE_EXTERNAL_PROMISOR_AGE_MS;
 }
 
 // ---------------------------------------------------------------------------
@@ -3392,7 +3458,10 @@ export function detectDiscrepancies(args: {
 }): Discrepancy[] {
   const nowMs = (args.now ?? new Date()).getTime();
   const selfNameTokens = args.selfNameTokens;
-  const commitments = args.commitments.filter((c) => (c.trust_class ?? 'unclassified') === 'trusted' || (c.trust_class ?? 'unclassified') === 'unclassified');
+  const commitments = args.commitments
+    .filter((c) => (c.trust_class ?? 'unclassified') === 'trusted' || (c.trust_class ?? 'unclassified') === 'unclassified')
+    // #537 Fix A: drop stale external-promisor zombies before any extractor runs.
+    .filter((c) => !isStaleExternalPromisorCommitment(c, nowMs));
   const entities = args.entities.filter((e) => (e.trust_class ?? 'unclassified') === 'trusted' || (e.trust_class ?? 'unclassified') === 'unclassified');
   const { goals, decryptedSignals } = args;
   const structured = args.structuredSignals ?? [];

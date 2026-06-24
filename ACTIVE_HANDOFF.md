@@ -2,10 +2,10 @@
 
 ## TL;DR
 
-- **PR #542 OPEN** (repo cleanup #524): 5 stub workflows deleted, 9 audit docs archived, SESSION_HISTORY/LESSONS_LEARNED moved to `docs/archive/`, ghost gov refs removed, cleanup-branch gate exemption added. Gate green, 75 tests pass. Pending merge.
-- **Open PRs:** #542 (repo cleanup) · #539 (external-promisor staleness gate) · #541 (observation shape + Slack receipt).
-- **Next:** merge #542 → merge #539 + #541 → start #538 (graceful degradation, never go dark).
-- **Owner actions:** (1) delete 38 stale `claude/*` branches (command in PR #542 body); (2) set Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab`.
+- **FULL AUDIT done — issue #540 (FTR). Read it first.** The honest end-to-end answer to "does Foldera work?": **No, not since April 22.** 12 real generations ever; dark 17 days straight; the June Slack-card surface has delivered **0** acted cards (8 attempts). Pool is healthy (141 fresh, 23 high-risk) — silence is the **gate stack**, not data starvation.
+- **Two failure layers; we only ever fix Layer 1.** L1 plumbing: `lifecycle_gate` zeroes 67/68 (`scorer.ts:6184`), then `positive_winner_contract` blocks survivors (`artifact-taste-pack.ts:396/:414`), then the one-sentence gate burns retries (`generator.ts:7775`). L2 substance: even when it ships, output is nags/homework — except the **one** valued act ever (Apr 22, conf 95, "…here is your completed prep" — did real work, handed it over done).
+- **Next session = ONE structural bet, driven to a live delivered+tapped+valued act.** Likely L2: re-aim at the Apr-22 shape (do a real piece of work, deliver it done), not another gate tweak. Decision is Brandon's. Stop the fix-one-thing-and-move-on reflex.
+- **Owner-only still:** set Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (delivery no-ops silently without it).
 
 ## DON'T FORGET — read first, every boot
 
@@ -21,27 +21,36 @@ Keep this cockpit short and value-first. Completed-issue history lives in `docs/
 
 ## Boot
 
-1. Read this file. 2. Read active issue #524. 3. Check issue #136 for recent INTERRUPT receipts.
+1. Read this file. 2. Read the active issue (#537). 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #524 is the active REPO-CLEANUP seam.
+Issue #537 is the active COMMITMENT-HYGIENE seam.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
 ## Current slice:
 
-**REPO CLEANUP (#524) — PR #542 open, gate:continuity green.** Shipped: 5 stub `agent-*.yml` workflows deleted (no implementation behind them); 9 dated audit docs archived to `docs/archive/`; `SESSION_HISTORY.md` + `LESSONS_LEARNED.md` moved from root → `docs/archive/` with all refs updated (CI workflows, continuity-gate, preflight-contract, SOURCE_OF_TRUTH_MAP, ACTIVE_HANDOFF); 3 ghost file entries removed from `STOP_STATE_CONTRACTLESS_FILES` (`CURRENT_STATE.md`, `controller-autopilot.ts`, `controller-autopilot.test.ts` — never existed); cleanup-branch exemption added to `continuity-gate.ts` so `claude/hotfix-*` and `claude/*-cleanup-*` skip the `active_branch` parity check; seam pointer fixed across all 4 control-plane files (was stale on closed #518 / PR #536). 75 config+preflight tests pass. One remaining owner action: delete 38 stale `claude/*` branches (command in PR #542 body).
+**FULL-AUDIT FTR (#540) — "does it work?" answered with live receipts. This is the active record; read #540 before doing anything.** The product has not delivered an acted-on act since **2026-04-22**. The dark verdict is a two-layer failure (L1 gate stack zeroes everything; L2 substance is homework), and we keep fixing L1 one gate at a time and giving up before L2. The one proof-of-value ever (Apr 22 interview prep, "here is your completed prep") is the north-star shape: do a concrete real piece of work and hand it over **done** — the opposite of surfacing a pattern/nag. Next session commits to **one** structural bet (likely re-aiming at that shape) and drives it to a live delivered+tapped+valued act, measured against #540's 4-point definition of "it works." No more touch-and-move-on.
+
+**Superseded today (#537 pool hygiene, PR #539 draft):** Fix A (external-promisor staleness gate) shipped and is fine, but the audit proves it was Layer-1 hygiene that changes nothing about why we're dark — the Columbia zombie it removes was candidate #2; candidate #1 died at the same generation gate. Leave PR #539 as-is; do not invest more in Fix B/C until #540's bet is chosen.
+
+**Fix A (this branch).** `lib/briefing/discrepancy-detector.ts` → new `isStaleExternalPromisorCommitment()` / `hasExternalPromisorPhrasing()`, applied as a pre-filter in `detectDiscrepancies()` right after the `trust_class` filter. It drops a commitment from the pool **before any extractor runs** when all three hold: (1) counterparty-as-subject phrasing ("X will…", "X to provide…", "X is responsible for…" — not the user's own imperatives or first-person promises), (2) `due_at`/`implied_due_at` in the **past**, (3) no fresh extraction touch in **21+ days** (`updated_at`). So the zombie never becomes a candidate and never burns a retry. `canonical_form` added to the scorer commitment fetch (`lib/briefing/scorer.ts`) so the gate sees the normalized form. **Chosen location:** the detector, not `daily-brief-generate.ts` as the issue text guessed — that file calls the opaque `generateDirective()` and never sees individual candidates; the detector is the real, pure, unit-testable chokepoint into `gate_funnel.discrepancy_candidates_preview`.
+
+**Proof (no paid calls):** `lib/briefing/__tests__/discrepancy-detector.test.ts` +13 (phrasing match/reject, three-condition gate, prefers canonical_form, integration: Columbia zombie dropped, the user's own stale at_risk commitment still surfaces). `lib/briefing` 846 green; `tsc --noEmit` clean.
+
+**Predecessor #518 DONE** — PR #536 merged (`aba6877`): stale gate 10→250, blocked_gate truncation fix, morning-pipeline daily_brief→seed_from_scorer, full email send surface deleted (lifecycle generate-only). The Slack Right Now card is now the sole delivery surface.
 
 ## Next exact move
 
-1. **Ship this PR** (`claude/repo-cleanup-o89hvu` → #524): stale branches deleted, stub workflows retired, docs archived, gov refs cleaned, SESSION_HISTORY/LESSONS_LEARNED moved, cleanup-branch gate added. Gate:continuity green.
-2. **Merge #539** (external-promisor staleness gate — Fix A for #537 commitment hygiene). Already drafted and green.
-3. **Merge #541** (Option C: observation-shape rejection + concrete-incoming-work lane + Slack receipt). Already drafted and green.
-4. **Start #538** (graceful degradation ladder — never go dark): tier-descent from high-stakes discrepancy → due commitment → owed reply → goal move → `do_nothing` only when all tiers empty.
-5. **Owner:** set Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` (Slack cards need this to fire).
+1. **Read issue #540 in full.** It is the FTR audit and the rubric. Do not start by re-diagnosing — it's done, with live receipts.
+2. **Pick ONE structural bet with Brandon and commit the whole session to it.** The audit points at Layer 2 (re-aim the engine at the Apr-22 shape: detect a concrete real piece of work that landed in Brandon's world, *do it*, deliver it **done**; treat "observation about Brandon" as out of scope). The alternative is a Layer-1 unblock (lifecycle_gate / positive_winner_contract / one-sentence salvage) but the audit argues L1 alone just lets homework through. This is Brandon's product-definition call.
+3. **Drive that bet to a live, delivered, tapped, valued act** and measure against #540's 4-point definition of "it works." Add a Slack delivery receipt (today `trigger-runner.ts:680` drops the send result).
+4. **Owner-env (still blocking delivery):** set Vercel `FOLDERA_SELF_USER_ID` = `2cbc1bab` — without it the Slack card silently no-ops (`trigger-runner.ts:372`). Standing: Scout #494; OneDrive #507.
+
+Full detail: issue **#540** (full audit / FTR — start here); #537 (pool hygiene, superseded); #518 (verdict calibration, merged).
 
 ## Product doctrine
 

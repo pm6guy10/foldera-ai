@@ -10,6 +10,8 @@ import {
   detectDiscrepancies,
   extractBehavioralPatterns,
   getEntityRejectionReasons,
+  hasExternalPromisorPhrasing,
+  isStaleExternalPromisorCommitment,
   type Discrepancy,
 } from '../discrepancy-detector';
 
@@ -2766,5 +2768,121 @@ describe('extractBehavioralPatterns — interview week cluster', () => {
     const out = extractBehavioralPatterns([], [], [], structured, [], [], now);
 
     expect(out.find((d) => d.id.includes('interview_week'))).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #537 Fix A: external-promisor staleness gate
+// ---------------------------------------------------------------------------
+
+describe('hasExternalPromisorPhrasing (#537 Fix A)', () => {
+  it('matches counterparty-as-subject promises', () => {
+    expect(hasExternalPromisorPhrasing('Columbia Motors will contact you regarding the 2017 Toyota Sienna')).toBe(true);
+    expect(hasExternalPromisorPhrasing('Acme to provide the signed quote')).toBe(true);
+    expect(hasExternalPromisorPhrasing('The vendor is responsible for the data migration')).toBe(true);
+    expect(hasExternalPromisorPhrasing('Dr. Lee will follow up with the test results')).toBe(true);
+  });
+
+  it('does NOT match the user’s own imperatives or first-person promises', () => {
+    expect(hasExternalPromisorPhrasing('Submit availability for ClickUp interview')).toBe(false);
+    expect(hasExternalPromisorPhrasing('Sign Inbound Data License Agreement')).toBe(false);
+    expect(hasExternalPromisorPhrasing('Reply to confirm the 2 PM slot')).toBe(false);
+    expect(hasExternalPromisorPhrasing('Complete assessment for Project Hydra before next task drop')).toBe(false);
+    expect(hasExternalPromisorPhrasing('I will send the signed contract by Friday')).toBe(false);
+    expect(hasExternalPromisorPhrasing('We will deliver the final report next week')).toBe(false);
+    expect(hasExternalPromisorPhrasing('')).toBe(false);
+    expect(hasExternalPromisorPhrasing(null)).toBe(false);
+  });
+});
+
+describe('isStaleExternalPromisorCommitment (#537 Fix A)', () => {
+  const columbia = (overrides = {}) => ({
+    id: 'columbia',
+    description: 'Columbia Motors will contact you regarding the 2017 Toyota Sienna',
+    category: 'personal',
+    status: 'at_risk',
+    risk_score: 40,
+    due_at: null as string | null,
+    implied_due_at: daysAgoISO(10),
+    source_context: null,
+    updated_at: daysAgoISO(30),
+    ...overrides,
+  });
+
+  it('fires for external promisor + past due + stale (>21d)', () => {
+    expect(isStaleExternalPromisorCommitment(columbia(), now)).toBe(true);
+  });
+
+  it('prefers canonical_form over description when present', () => {
+    const c = columbia({
+      description: 'callback re Sienna',
+      canonical_form: 'Columbia Motors will contact you about the Sienna',
+    });
+    expect(isStaleExternalPromisorCommitment(c, now)).toBe(true);
+  });
+
+  it('does NOT fire when the window has not passed (due in future)', () => {
+    expect(isStaleExternalPromisorCommitment(columbia({ implied_due_at: daysFromNowISO(3) }), now)).toBe(false);
+  });
+
+  it('does NOT fire when recently refreshed (updated within 21d)', () => {
+    expect(isStaleExternalPromisorCommitment(columbia({ updated_at: daysAgoISO(10) }), now)).toBe(false);
+  });
+
+  it('does NOT fire for the user’s own imperative commitments', () => {
+    const c = columbia({ description: 'Submit availability for ClickUp interview', canonical_form: null });
+    expect(isStaleExternalPromisorCommitment(c, now)).toBe(false);
+  });
+
+  it('does NOT fire when there is no due date at all', () => {
+    expect(isStaleExternalPromisorCommitment(columbia({ implied_due_at: null, due_at: null }), now)).toBe(false);
+  });
+});
+
+describe('detectDiscrepancies drops stale external-promisor zombies (#537 Fix A)', () => {
+  it('removes a Columbia-style zombie that would otherwise produce an avoidance discrepancy', () => {
+    const zombie = {
+      ...makeCommitment({
+        id: 'columbia-zombie',
+        description: 'Columbia Motors will contact you regarding the 2017 Toyota Sienna',
+        status: 'at_risk',
+        updated_at: daysAgoISO(30),
+        due_at: daysAgoISO(10),
+      }),
+    };
+
+    const withGate = detectDiscrepancies({
+      entities: [],
+      commitments: [zombie],
+      goals: [makeGoal()],
+      decryptedSignals: [],
+    });
+
+    // No discrepancy of any class should reference the zombie commitment.
+    expect(withGate.some((d) => d.id.includes('columbia-zombie'))).toBe(false);
+    expect(withGate.filter((d) => d.class === 'avoidance')).toHaveLength(0);
+  });
+
+  it('keeps a stale commitment that is the user’s own action (not external-promisor)', () => {
+    // Same staleness/at_risk profile as the zombie, but the subject is the user
+    // (an imperative). The gate must NOT drop it — avoidance still fires.
+    const ownAction = {
+      ...makeCommitment({
+        id: 'own-action',
+        description: 'Submit the signed vendor contract to procurement',
+        status: 'at_risk',
+        updated_at: daysAgoISO(30),
+        due_at: daysAgoISO(10),
+      }),
+    };
+
+    const result = detectDiscrepancies({
+      entities: [],
+      commitments: [ownAction],
+      goals: [makeGoal()],
+      decryptedSignals: [],
+    });
+
+    expect(result.filter((d) => d.class === 'avoidance')).toHaveLength(1);
   });
 });
