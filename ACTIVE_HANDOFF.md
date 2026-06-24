@@ -21,13 +21,15 @@ Keep this cockpit short and value-first. Completed-issue history lives in `docs/
 
 ## Boot
 
-1. Read this file. 2. Read the active issue (#537). 3. Check issue #136 for recent INTERRUPT receipts.
+1. Read this file. 2. Read the active issue (#540 — the FTR audit + rubric). 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #537 is the active COMMITMENT-HYGIENE seam.
+Issue #540 is the active AUDIT-FTR seam.
+
+#537 (commitment hygiene) Fix A merged e3fa1e8 via PR #539; Fix B/C parked pending the #540 structural-bet decision.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
@@ -35,7 +37,7 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 **FULL-AUDIT FTR (#540) — "does it work?" answered with live receipts. This is the active record; read #540 before doing anything.** The product has not delivered an acted-on act since **2026-04-22**. The dark verdict is a two-layer failure (L1 gate stack zeroes everything; L2 substance is homework), and we keep fixing L1 one gate at a time and giving up before L2. The one proof-of-value ever (Apr 22 interview prep, "here is your completed prep") is the north-star shape: do a concrete real piece of work and hand it over **done** — the opposite of surfacing a pattern/nag. Next session commits to **one** structural bet (likely re-aiming at that shape) and drives it to a live delivered+tapped+valued act, measured against #540's 4-point definition of "it works." No more touch-and-move-on.
 
-**Superseded today (#537 pool hygiene, PR #539 draft):** Fix A (external-promisor staleness gate) shipped and is fine, but the audit proves it was Layer-1 hygiene that changes nothing about why we're dark — the Columbia zombie it removes was candidate #2; candidate #1 died at the same generation gate. Leave PR #539 as-is; do not invest more in Fix B/C until #540's bet is chosen.
+**Superseded (#537 pool hygiene, PR #539 MERGED e3fa1e8):** Fix A (external-promisor staleness gate) is in main and is fine, but the audit proves it was Layer-1 hygiene that changes nothing about why we're dark — the Columbia zombie it removes was candidate #2; candidate #1 died at the same generation gate. Do not invest more in Fix B/C until #540's bet is chosen.
 
 **Fix A (this branch).** `lib/briefing/discrepancy-detector.ts` → new `isStaleExternalPromisorCommitment()` / `hasExternalPromisorPhrasing()`, applied as a pre-filter in `detectDiscrepancies()` right after the `trust_class` filter. It drops a commitment from the pool **before any extractor runs** when all three hold: (1) counterparty-as-subject phrasing ("X will…", "X to provide…", "X is responsible for…" — not the user's own imperatives or first-person promises), (2) `due_at`/`implied_due_at` in the **past**, (3) no fresh extraction touch in **21+ days** (`updated_at`). So the zombie never becomes a candidate and never burns a retry. `canonical_form` added to the scorer commitment fetch (`lib/briefing/scorer.ts`) so the gate sees the normalized form. **Chosen location:** the detector, not `daily-brief-generate.ts` as the issue text guessed — that file calls the opaque `generateDirective()` and never sees individual candidates; the detector is the real, pure, unit-testable chokepoint into `gate_funnel.discrepancy_candidates_preview`.
 

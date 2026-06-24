@@ -1,12 +1,12 @@
 {
-  "active_issue": 537,
+  "active_issue": 540,
   "active_branch": "claude/slack-right-now-seed-scorer-zxge0c",
-  "active_pr": 539,
-  "deployed_commit_sha": "8a525a5",
+  "active_pr": null,
+  "deployed_commit_sha": "e3fa1e8",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-23T23:45:00.000Z",
+  "last_verified_at": "2026-06-24T19:31:37.884Z",
   "last_cron_run": "2026-06-23T11:49:00Z",
   "last_cron_outcome": "stale_signal_backlog_remaining",
-  "notes": "Seam #518 DONE (PR #536 merged aba6877). Rolled forward to #537 commitment-pool hygiene. This branch ships #537 Fix A — the external-promisor staleness gate: detectDiscrepancies() now drops stale external-promisor zombies (counterparty-as-subject phrasing + due/implied-due in the past + no fresh extraction touch in 21d) from the commitment pool before any extractor runs, so the Columbia Motors callback pattern can never become a candidate (and never burns a retry). Pure, unit-testable chokepoint in lib/briefing/discrepancy-detector.ts (not daily-brief-generate.ts as the issue text guessed — candidates aren't individually exposed there); canonical_form added to the scorer commitment fetch. Proof: lib/briefing 846 tests green incl. 13 new Fix A tests; typecheck clean. Fix B (marketing-sender extraction filter) and Fix C (fuzzy dedup) remain open under #537. Owner-only blocker unchanged: Vercel FOLDERA_SELF_USER_ID = 2cbc1bab so Slack cards fire."
+  "notes": "AUDIT FTR #540 is the active record — read it first. #537 Fix A (external-promisor staleness gate) merged as e3fa1e8 via PR #539, but the audit proves it was Layer-1 hygiene that doesn't move the value needle: Foldera has not delivered an acted-on act since 2026-04-22; dark 17 days straight; June Slack-card surface 0/8 delivered. Two-layer failure: L1 gate stack zeroes everything (lifecycle_gate 67/68 scorer.ts:6184; positive_winner_contract artifact-taste-pack.ts:396/414; one-sentence gate generator.ts:7775), L2 substance is homework. The one valued act ever (Apr 22, 'here is your completed prep') is the north-star shape. Next session: pick ONE structural bet (likely re-aim at the Apr-22 did-real-work-done shape, not another gate tweak), drive to a live delivered+tapped+valued act, measure vs #540's 4-point definition. #537 Fix B/C parked pending that decision. Owner-only blocker: Vercel FOLDERA_SELF_USER_ID = 2cbc1bab."
 }
