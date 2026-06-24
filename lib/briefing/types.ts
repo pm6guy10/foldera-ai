@@ -178,6 +178,9 @@ export interface GenerationCandidateSource {
   kind: 'signal' | 'commitment' | 'relationship' | 'emergent' | 'compound';
   id?: string;
   source?: string;
+  /** Underlying `tkg_signals.type` (e.g. 'email_sent', 'file_modified'). Carried so downstream
+   *  detectors (own-activity Rung 1) can identify the signal class from `sourceSignals` alone. */
+  signalType?: string;
   occurredAt?: string;
   summary?: string;
 }

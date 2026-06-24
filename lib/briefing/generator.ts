@@ -110,6 +110,7 @@ import {
   adaptInterviewSourceSignalsForGate,
   isTimeBoundInterviewExecutionCandidate,
 } from './stakes-gate';
+import { sourceSignalsHaveRecentOwnActivity } from './scorer-candidate-sources';
 import { getGoalQuarantineReason, isUsableGoalRow } from './goal-hygiene';
 import { buildSignalMetadataSummaryRows } from './signal-metadata-summary';
 import { evaluateArtifactQualityGate, evaluateCommandCenterCandidateGate } from './artifact-quality-gate';
@@ -478,7 +479,7 @@ export function buildInterviewWriteDocumentValidatorRepairAddendum(issues: strin
       : '';
 
   const finishedWorkShape = issues.some(
-    (i) => i.startsWith('observation_shape:') || i === 'triage_chore_list',
+    (i) => i.startsWith('observation_shape:') || i === 'triage_chore_list' || i.startsWith('own_activity_unfinished'),
   )
     ? '\n- **Finished-work shape required:** Do not tell the user what you noticed. Draft the actual reply, complete the actual prep, or produce the actual document — grounded in the concrete source — and hand it over done.'
     : '';
@@ -1826,7 +1827,10 @@ export function selectRankedCandidates(
       isThreadBackedSendableLoop(runner)
       && !isThreadBackedSendableLoop(discCand)
       && passesTop3RankingInvariants(runner);
-    if (!protectThreadBackedSendable) {
+    // Rung 1: an own-activity winner ("finish the thing you started") must not be re-buried
+    // by an observation-shaped discrepancy.
+    const protectOwnActivity = isOwnActivityWinner(runner);
+    if (!protectThreadBackedSendable && !protectOwnActivity) {
       topDiscrepancy.viabilityScore = top.viabilityScore + 0.001;
       topDiscrepancy.note = `${topDiscrepancy.note}; discrepancy forced above task`;
       rated.sort((a, b) => {
@@ -1835,6 +1839,29 @@ export function selectRankedCandidates(
       });
       top = rated[0];
     }
+  }
+
+  // Rung 1 — advance what the user has started: a recent own-activity candidate (sent mail /
+  // drive edit) should win over observation-shaped discrepancy/pattern candidates. Promote the
+  // highest-viability non-disqualified own-activity entry just above the current top, mirroring
+  // the interview-class write_document promotion below.
+  const ownActivityEntry = rated
+    .filter((entry) => !entry.disqualified && isOwnActivityWinner(entry.candidate))
+    .sort((a, b) => b.viabilityScore - a.viabilityScore)[0];
+  if (ownActivityEntry && top.candidate.id !== ownActivityEntry.candidate.id) {
+    ownActivityEntry.viabilityScore = Math.max(
+      ownActivityEntry.viabilityScore,
+      top.viabilityScore + 0.001,
+    );
+    ownActivityEntry.note = [
+      ownActivityEntry.note,
+      'own-activity (Rung 1) advanced over observation-shaped candidate',
+    ].filter(Boolean).join('; ');
+    rated.sort((a, b) => {
+      if (a.disqualified !== b.disqualified) return a.disqualified ? 1 : -1;
+      return b.viabilityScore - a.viabilityScore;
+    });
+    top = rated[0];
   }
 
   if (
@@ -2762,6 +2789,9 @@ export interface StructuredContext {
    * Interview-class write_document winner: full-body source hydration ran. Prompt must require JSON-only output.
    */
   interview_class_hydrated_write_document?: boolean;
+  /** Rung 1: winner is backed by a recent own-activity signal (sent mail / drive edit). The
+   *  artifact must hand over a finished/next-move shape, not an observation. */
+  own_activity_winner?: boolean;
 }
 
 /** Distinct `tkg_signals.source` in supporting + life snapshot (generator bundle audit). */
@@ -3747,6 +3777,7 @@ export function buildStructuredContext(
     hunt_send_message_recipient_allowlist,
     interview_class_hydrated_write_document:
       winner.suggestedActionType === 'write_document' && isInterviewClassWriteDocumentWinner(winner),
+    own_activity_winner: isOwnActivityWinner(winner),
   };
 }
 
@@ -6318,9 +6349,8 @@ export async function attemptTierDescentDirective(args: {
       .limit(10);
     // Drop personal-errand / shopping / marketing trivia so the never-go-dark act is real work,
     // not a nag on junk. First substantive survivor wins; none → fall to Tier 3 / do_nothing.
-    commitments = ((result.data as typeof commitments) ?? []).filter(
-      (c) => !isLowValueErrandCommitment(c?.description),
-    );
+    const rows = (result.data ?? []) as Array<{ id: string; description: string; due_at: string }>;
+    commitments = rows.filter((c) => !isLowValueErrandCommitment(c.description));
   } catch {
     // DB unavailable — skip Tier 2, fall through to Tier 3 or null.
   }
@@ -7006,6 +7036,16 @@ export function isInterviewClassWriteDocumentWinner(loop: ScoredLoop): boolean {
     scoredLoopToStakesCandidateForInterviewGate(loop),
     adaptInterviewSourceSignalsForGate(loop.sourceSignals),
   );
+}
+
+/**
+ * Rung 1 — "advance what the user has started": loops backed by a recent (≤7d) own-activity
+ * signal (sent mail / drive edit). Pure; derived solely from `loop.sourceSignals` (signalType +
+ * occurredAt). Used to promote own-activity above observation-shaped discrepancies and to force a
+ * finished/next-move artifact shape.
+ */
+export function isOwnActivityWinner(loop: ScoredLoop): boolean {
+  return sourceSignalsHaveRecentOwnActivity(loop.sourceSignals);
 }
 
 export function parseSignalSnippetWithFullBody(
@@ -7886,7 +7926,7 @@ export function applyHuntSendMessageRecipientCoercion(
   return true;
 }
 
-function validateGeneratedArtifact(
+export function validateGeneratedArtifact(
   payload: GeneratedDirectivePayload | null,
   ctx: StructuredContext,
   canonicalArtifactType: ValidArtifactTypeCanonical,
@@ -8079,6 +8119,14 @@ function validateGeneratedArtifact(
     if (homeworkReason && !hasFinishedHomeworkHandoffContent(JSON.stringify(payload.artifact ?? {}))) {
       issues.push(
         `homework_handoff:${homeworkReason} — artifact hands unfinished prep or research back to the user`,
+      );
+    }
+    // Rung 1: an own-activity winner ("finish the thing you started") must hand over the next
+    // move done, not an observation about what the user did. ADDS a bar — positive_winner_contract
+    // and weak_risk still run independently.
+    if (ctx.own_activity_winner && !hasFinishedHomeworkHandoffContent(JSON.stringify(payload.artifact ?? {}))) {
+      issues.push(
+        'own_activity_unfinished — own-activity winner must hand over the finished next move, not an observation',
       );
     }
     if (interviewClassRelaxGen) {

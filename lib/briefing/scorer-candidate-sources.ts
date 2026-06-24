@@ -3,6 +3,48 @@
  * and when a commitment is anchored to a real mail thread (gmail/outlook).
  */
 
+import type { GenerationCandidateSource } from './types';
+
+/** Window (ms) within which the user's own activity is still "in flight" and advanceable. */
+export const OWN_ACTIVITY_RECENCY_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Own-activity signal classes (Rung 1 — advance what the user has started):
+ *   - sent mail        (`type = 'email_sent'`)
+ *   - drive file edits (`type = 'file_modified'`, source `drive`)
+ * These are authored by the user, so they have no external counterparty entity.
+ */
+export function isOwnActivitySignalType(
+  type: string | null | undefined,
+  source?: string | null | undefined,
+): boolean {
+  const t = String(type ?? '').trim().toLowerCase();
+  if (t === 'email_sent') return true;
+  if (t === 'file_modified') {
+    const s = String(source ?? '').trim().toLowerCase();
+    // file_modified spans uploads/imports; restrict the own-activity carve-out to drive edits.
+    return s.includes('drive');
+  }
+  return false;
+}
+
+/**
+ * True when `sourceSignals` carry a recent (≤7d) own-activity signal class.
+ * Pure — used by both the scorer gate carve-outs and the generator winner detector.
+ */
+export function sourceSignalsHaveRecentOwnActivity(
+  sourceSignals: ReadonlyArray<Pick<GenerationCandidateSource, 'signalType' | 'source' | 'occurredAt'>> | undefined,
+  now: number = Date.now(),
+): boolean {
+  if (!sourceSignals || sourceSignals.length === 0) return false;
+  return sourceSignals.some((s) => {
+    if (!isOwnActivitySignalType(s.signalType, s.source)) return false;
+    const occurredAt = s.occurredAt ? new Date(s.occurredAt).getTime() : NaN;
+    if (!Number.isFinite(occurredAt)) return false;
+    return now - occurredAt <= OWN_ACTIVITY_RECENCY_MS;
+  });
+}
+
 const CALENDAR_ONLY = new Set(['outlook_calendar', 'google_calendar']);
 const INTERNAL_FEEDBACK_ONLY = new Set(['user_feedback']);
 const CHAT_ONLY = new Set(['claude_conversation', 'chatgpt_conversation', 'conversation_ingest']);

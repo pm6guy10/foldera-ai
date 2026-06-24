@@ -69,6 +69,8 @@ import {
   getSignalSourceAuthorityTier,
   isExcludedSignalSourceForScorerPool,
   isChatConversationSignalSource,
+  isOwnActivitySignalType,
+  OWN_ACTIVITY_RECENCY_MS,
 } from './scorer-candidate-sources';
 import { buildSignalMetadataSummaryRows } from './signal-metadata-summary';
 import { SIGNAL_CONTEXT_LIMIT, SIGNAL_CONTEXT_SELECT } from '@/lib/utils/signal-egress';
@@ -5007,6 +5009,9 @@ export async function scoreOpenLoops(
     mailThreadAnchored?: boolean;
     /** Commitment-only: the row's own deterministic risk_score (0–100). See ScorerBaseCandidate.riskScore. */
     riskScore?: number | null;
+    /** Rung 1: recent own-activity signal (sent mail / drive edit). Carves out ONLY the
+     *  no-external-entity drops; the candidate stays subject to every other quality gate. */
+    ownActivity?: boolean;
   }> = [];
   let suppressedCandidates = 0;
 
@@ -5229,6 +5234,16 @@ export async function scoreOpenLoops(
     const calStart =
       calParsed && calParsed.startMs > Date.now() ? calParsed.startMs : undefined;
 
+    // Rung 1: the user's OWN recent activity (sent mail / drive edit, ≤7d) has no external
+    // counterparty entity. Flag it so the entity/stakes gates carve out ONLY the
+    // no-external-entity drop — every other quality gate still applies.
+    const signalType = s.type as string | undefined;
+    const occurredAtMs = s.occurred_at ? new Date(s.occurred_at as string).getTime() : NaN;
+    const isOwnActivity =
+      isOwnActivitySignalType(signalType, s.source as string | undefined) &&
+      Number.isFinite(occurredAtMs) &&
+      Date.now() - occurredAtMs <= OWN_ACTIVITY_RECENCY_MS;
+
     candidates.push({
       id: s.id,
       type: 'signal',
@@ -5243,6 +5258,7 @@ export async function scoreOpenLoops(
           kind: 'signal',
           id: s.id,
           source: s.source as string | undefined,
+          signalType,
           occurredAt: s.occurred_at as string | undefined,
           summary: text.slice(0, 160),
         },
@@ -5251,6 +5267,7 @@ export async function scoreOpenLoops(
       // Prevents dropping real threads whose entity name is absent from decrypted body text.
       author: s.author as string | undefined,
       calendarEventStartMs: calStart,
+      ownActivity: isOwnActivity || undefined,
     });
   }
 
@@ -5597,6 +5614,21 @@ export async function scoreOpenLoops(
     (signals as Array<{ content: string; source?: string; author?: string; type?: string }>),
     selfEmails,
   );
+  // Rung 1 carve-out: a recent own-activity candidate (sent mail / drive edit) is authored by
+  // the user, so it legitimately has no external entity and is dropped here for `no_entity_detected`.
+  // Re-admit ONLY that exact entity-absence drop; every other entity-gate reason still drops it,
+  // and no other candidate class is affected.
+  const ownActivityEntityReadmits = entityGateResult.dropped.filter(
+    (d) =>
+      d.reason === 'no_entity_detected' &&
+      (d.candidate as { ownActivity?: boolean }).ownActivity === true,
+  );
+  if (ownActivityEntityReadmits.length > 0) {
+    entityGateResult.passed.push(...ownActivityEntityReadmits.map((d) => d.candidate));
+    entityGateResult.dropped = entityGateResult.dropped.filter(
+      (d) => !ownActivityEntityReadmits.includes(d),
+    );
+  }
   if (entityGateResult.dropped.length > 0) {
     console.log(JSON.stringify({
       event: 'entity_reality_gate_filter',

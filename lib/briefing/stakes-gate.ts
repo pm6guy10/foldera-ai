@@ -12,6 +12,7 @@
 import { MS_14D, MS_30D } from '@/lib/config/constants';
 import type { ActionType, GenerationCandidateSource } from './types';
 import type { MatchedGoal } from './scorer';
+import { sourceSignalsHaveRecentOwnActivity } from './scorer-candidate-sources';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -379,7 +380,11 @@ export function applyStakesGate(candidates: StakesCandidate[]): StakesGateResult
     }
 
     // Condition 1: Real External Entity
-    if (!hasRealExternalEntity(c)) {
+    // Rung 1 carve-out: the user's own recent activity (sent mail / drive edit, ≤7d) is
+    // authored BY the user and so has no external counterparty — it legitimately fails this
+    // condition. Carve out ONLY condition 1 for own-activity; conditions 2–5 still run, so it
+    // remains subject to every other quality gate.
+    if (!hasRealExternalEntity(c) && !sourceSignalsHaveRecentOwnActivity(c.sourceSignals)) {
       dropped.push({ candidate: c, failedCondition: 1, reason: 'no_real_external_entity' });
       continue;
     }
