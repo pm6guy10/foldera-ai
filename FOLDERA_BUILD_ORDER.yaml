@@ -22,11 +22,16 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 537
+active_issue: 540
 priority_class: PRODUCT
 work_type: FIX
-why_this_first: "Commitment pool hygiene (#537). When professional signal is thin, stale/misextracted commitments float to the top of the discrepancy ranking and win a weak card (observed 2026-06-23: 'Columbia Motors will contact you regarding the 2017 Toyota Sienna' — a passive counterparty callback with no actionable move for Brandon). Manual suppression is whack-a-mole; the extractor keeps minting new zombies. This branch ships Fix A, the structural external-promisor staleness gate: detectDiscrepancies() drops commitments whose subject is the counterparty ('X will…', 'X to provide…', 'X is responsible for…') when the window has passed (due/implied-due in the past) AND there is no fresh extraction touch in 21d — before any extractor runs, so the zombie never becomes a candidate or burns a retry. Implemented in lib/briefing/discrepancy-detector.ts (pure, unit-testable chokepoint into discrepancy_candidates_preview — NOT daily-brief-generate.ts as the issue text guessed, where individual candidates aren't exposed); canonical_form added to the scorer commitment fetch. Proof: lib/briefing 846 green incl. 13 new Fix A tests; typecheck clean. Predecessor #518 (verdict calibration) DONE — PR #536 merged aba6877."
-next_seam: "#537 Fix B (marketing-sender extraction filter — reject commitment extraction from noreply@/donotreply@/team@info.* one-way senders, e.g. the ClickUp interview ghost) and Fix C (fuzzy dedup on commitment creation — pg_trgm/normalized-distance > 0.85 updates the existing record instead of inserting a duplicate, e.g. the 'Sign Inbound Data License Agreement' ×2). Owner: set Vercel FOLDERA_SELF_USER_ID -> 2cbc1bab so Slack cards fire. Standing: Scout money-move #494; OneDrive whole-drive enumeration (#507)."
+why_this_first: "Gate-stack output re-aim (#540). 17 days dark; last real act 2026-04-22. Two stacked failures: Layer 1 (lifecycle gate kills ~67/68 real candidates), Layer 2 (even survivors produce homework/observation instead of finished work). Option C one-seam bet: Move A adds observation/nag shape gate + generalizes chore-list gate; Move B broadens forceActionableNow to concrete incoming work (not a threshold change); Move C persists Slack delivery receipt. All three moves code+unit-proven (998 tests green). PR #541 pending; live verification post-merge only per Lesson #1."
+next_seam: "After deploy: verify next morning-pipeline cron for owner 2cbc1bab — pipeline_runs.outcome should move off generation_failed_sentinel; directive must be finished-work shape; a workday_presence_slack_send receipt should appear in tkg_actions. Standing: #538 graceful degradation (never go dark); #537 Fix B/C (commitment pool hygiene); Scout #494; OneDrive #507."
+completed_issue_537:
+  issue: 537
+  pr: 539
+  pr_merge_sha: e3fa1e8
+  summary: "Commitment pool hygiene Fix A: external-promisor staleness gate in detectDiscrepancies() — drops counterparty-as-subject commitments that are past-due and stale (>21d no fresh touch) before any extractor runs. Columbia Motors zombie pattern eliminated. lib/briefing 846 green incl. 13 new Fix A tests; typecheck clean."
 completed_issue_518:
   issue: 518
   pr: 536

@@ -466,6 +466,38 @@ export function isInterviewClassWriteDocumentEnforcementRelaxation(input: {
   return true;
 }
 
+/**
+ * Inbound concrete-ask detector: a real, dated, external message that contains a
+ * question, request, or work item the engine can finish and hand over done.
+ * This is the generalisation of the interview-class bypass — same mechanism,
+ * broader trigger.  Only fires for write_document / send_message candidates that
+ * are NOT discrepancy / emergent / goal_drift types (those are observation-shaped).
+ */
+const INCOMING_ASK_RE =
+  /\b(sent\s+you|asks?\s+you|please\s+(?:review|complete|respond|confirm|fill|submit)|can\s+you\s+(?:please\s+)?(?:review|provide|send|confirm|complete|respond)|questions?\s+for\s+you|interview\s+questions?|application\s+(?:questions?|form)|assessment\s+(?:for|to)|form\s+(?:to\s+)?complete|reply\s+(?:needed|requested|required)|waiting\s+on\s+(?:your\s+)?response|response\s+(?:needed|required|overdue))\b/i;
+
+export function isConcreteIncomingWorkCandidate(input: {
+  candidateType: string;
+  actionType: string;
+  hasRecentSignal: boolean;
+  title: string;
+  content: string;
+}): boolean {
+  // Must be a type the engine can produce finished work for
+  if (input.actionType !== 'write_document' && input.actionType !== 'send_message') return false;
+  // Observation-shaped types are explicitly excluded — they need their own gate, not a bypass
+  if (
+    input.candidateType === 'discrepancy' ||
+    input.candidateType === 'emergent' ||
+    input.candidateType === 'compound'
+  ) return false;
+  // Must have a real recent signal (no stale/synthetic candidates)
+  if (!input.hasRecentSignal) return false;
+  // Must contain an incoming-ask shape
+  const haystack = `${input.title}\n${input.content}`;
+  return INCOMING_ASK_RE.test(haystack) || ENFORCEMENT_INTERVIEW_ANCHOR_RE.test(haystack);
+}
+
 function collectWriteDocumentModeText(input: {
   artifact?: Record<string, unknown> | null;
   candidateTitle?: string | null;

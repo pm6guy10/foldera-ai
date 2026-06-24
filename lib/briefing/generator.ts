@@ -263,6 +263,56 @@ function findThinEntryPhrase(combinedLower: string): string | null {
   return null;
 }
 
+/**
+ * Observation / nag shapes that should NEVER ship as a directive.
+ * These are patterns where the directive tells the user what was noticed about
+ * their behaviour rather than handing over finished work they can act on.
+ * Verbatim shapes sourced from the 2026-06-24 FTR audit (#540).
+ */
+const OBSERVATION_SHAPE_PATTERNS: Array<{ reason: string; pattern: RegExp }> = [
+  {
+    reason: 'reveals_pattern_about_user',
+    // "9 inbound signals reveal systematic avoidance", "reveals a gap"
+    pattern: /\breveals?\b.{0,50}(avoidance|pattern|gap|risk|exposure|behavior|behaviour)\b/i,
+  },
+  {
+    reason: 'needs_tracking_homework',
+    // "deadline pattern needs systematic tracking", "needs a system"
+    pattern: /\bneeds?\b.{0,25}(systematic\s+)?(tracking|a system|attention|follow-?up|monitoring)\b/i,
+  },
+  {
+    reason: 'names_abstract_risk',
+    // "cloud storage commitment creates deletion risk", "creates exposure"
+    pattern: /\bcreates?\b.{0,35}(risk|exposure|liability|deletion risk)\b/i,
+  },
+  {
+    reason: 'behavioral_diagnosis',
+    // "zero replies", "systematic avoidance", "with no response"
+    pattern: /\b(zero\s+(?:replies|follow-through|response)|systematic\s+avoidance|deadline\s+pattern|with\s+no\s+response)\b/i,
+  },
+  {
+    reason: 'diagnoses_user_behavior',
+    // second-person behavioral diagnosis: "you're avoiding", "you keep ignoring"
+    pattern: /\byou(?:'?re|\s+are|\s+have\s+been|\s+keep)\b.{0,50}(avoid|ignor|drop|miss|forget|delay)\w*/i,
+  },
+];
+
+/** Exported for unit tests only. */
+export function findObservationShapeReason(value: string): string | null {
+  for (const { reason, pattern } of OBSERVATION_SHAPE_PATTERNS) {
+    if (pattern.test(value)) return reason;
+  }
+  return null;
+}
+
+const OBSERVATION_SHAPE_REPAIR_HINTS: Record<string, string> = {
+  reveals_pattern_about_user: 'Do not tell the user what was noticed about their behaviour — draft the actual reply, produce the actual document, or complete the actual prep instead',
+  needs_tracking_homework: 'Do not assign a tracking system or follow-up task — do the work and hand it over done',
+  names_abstract_risk: 'Do not name an abstract risk for the user to manage — produce a concrete finished artifact that resolves it',
+  behavioral_diagnosis: 'Do not state a behavioral diagnosis (zero replies, avoidance, no response) — hand over finished work instead',
+  diagnoses_user_behavior: 'Do not diagnose the user\'s behaviour — produce and deliver the finished work',
+};
+
 const HOMEWORK_HANDOFF_PATTERNS: Array<{ reason: string; pattern: RegExp }> = [
   {
     reason: 'research_handoff',
@@ -379,7 +429,11 @@ const HOMEWORK_HANDOFF_REPAIR_HINTS: Record<string, string> = {
 
 function interviewValidatorRepairTriggerIssues(issues: string[]): string[] {
   return issues.filter(
-    (i) => i.startsWith('interview_artifact:') || i.startsWith('homework_handoff:'),
+    (i) =>
+      i.startsWith('interview_artifact:') ||
+      i.startsWith('homework_handoff:') ||
+      i.startsWith('observation_shape:') ||
+      i.startsWith('triage_chore_list'),
   );
 }
 
@@ -404,6 +458,14 @@ export function buildInterviewWriteDocumentValidatorRepairAddendum(issues: strin
       const hint = HOMEWORK_HANDOFF_REPAIR_HINTS[hw[1]];
       if (hint) hints.add(hint);
     }
+    const obs = issue.match(/^observation_shape:([\w_]+)/);
+    if (obs) {
+      const hint = OBSERVATION_SHAPE_REPAIR_HINTS[obs[1]];
+      if (hint) hints.add(hint);
+    }
+    if (issue === 'triage_chore_list') {
+      hints.add('No chore checklist or triage list — produce copy-paste-ready finished work (a drafted reply, a completed document, or a concrete next step delivered done)');
+    }
   }
 
   const summaryFix = issues.some((i) => i.includes('decision_enforcement:summary_without_decision'))
@@ -415,6 +477,12 @@ export function buildInterviewWriteDocumentValidatorRepairAddendum(issues: strin
       ? `\n**Phrase-level bans implied by the failure codes (do not reintroduce or paraphrase into new homework):**\n${[...hints].map((h) => `- ${h}`).join('\n')}`
       : '';
 
+  const finishedWorkShape = issues.some(
+    (i) => i.startsWith('observation_shape:') || i === 'triage_chore_list',
+  )
+    ? '\n- **Finished-work shape required:** Do not tell the user what you noticed. Draft the actual reply, complete the actual prep, or produce the actual document — grounded in the concrete source — and hand it over done.'
+    : '';
+
   return (
     `INTERVIEW_WRITE_DOCUMENT_VALIDATOR_REPAIR (single retry — mandatory):\n` +
     `The previous JSON failed Foldera finish-quality gates. Produce ONE corrected JSON object only (same schema; CANONICAL_ACTION unchanged).\n\n` +
@@ -422,7 +490,7 @@ export function buildInterviewWriteDocumentValidatorRepairAddendum(issues: strin
     `**Rewrite shape:**\n` +
     `- Finished **prose brief** after the SOURCE block: tight narrative the user reads once and speaks from. Short sections of prose are OK; no worksheets, no numbered owner prep lists, no "Preparation notes" homework blocks.\n` +
     `- Ground logistics (time, Webex, names) in SOURCE as factual sentences only — not as tips assigning the user work.\n` +
-    `- Do not negate banned phrases by quoting them; omit those patterns entirely.${summaryFix}` +
+    `- Do not negate banned phrases by quoting them; omit those patterns entirely.${summaryFix}${finishedWorkShape}` +
     hintsBlock
   );
 }
@@ -7916,6 +7984,31 @@ function validateGeneratedArtifact(
         );
       }
     }
+
+    // Observation/nag shape gate — applies to ALL candidate types.
+    // Rejects directives that state what was noticed about the user instead of
+    // handing over finished work. Grounded artifacts (e.g. a reply draft that
+    // mentions a risk) are exempted via hasFinishedHomeworkHandoffContent guard.
+    // Scoped to directive only — why_now is consequence framing (engine-internal),
+    // not a user-visible observation, and must not trip this gate.
+    const obsReason = findObservationShapeReason(payload.directive ?? '');
+    if (obsReason && !hasFinishedHomeworkHandoffContent(JSON.stringify(payload.artifact ?? {}))) {
+      issues.push(
+        `observation_shape:${obsReason} — directive states an observation about the user instead of handing over finished work`,
+      );
+    }
+  }
+
+  // Chore-list / triage gate — generalized to ALL candidate types (not just discrepancy).
+  if (!pipelineDry && canonicalArtifactType === 'write_document') {
+    const artObj = (payload.artifact as Record<string, unknown>) ?? {};
+    const artContent = String(artObj.content ?? '');
+    const choreListCombined = `${payload.directive ?? ''}\n${payload.why_now ?? ''}\n${artContent}`;
+    if (looksLikeDiscrepancyTriageOrChoreList(choreListCombined)) {
+      issues.push(
+        'triage_chore_list — produce copy-paste-ready finished work; no chore checklists or triage lists',
+      );
+    }
   }
 
   if (
@@ -7926,13 +8019,6 @@ function validateGeneratedArtifact(
     if (ctx.discrepancy_class === 'schedule_conflict') {
       issues.push(
         'schedule_conflict_finished_work:document_below_bar — require a real calendar mutation artifact or suppress the candidate',
-      );
-    }
-    const content = String((payload.artifact as Record<string, unknown>).content ?? '');
-    const combined = `${payload.directive ?? ''}\n${payload.why_now ?? ''}\n${content}`;
-    if (looksLikeDiscrepancyTriageOrChoreList(combined)) {
-      issues.push(
-        'discrepancy_finished_work:triage_or_chore_list — produce copy-paste-ready replies or one finished document; no chore checklists',
       );
     }
   }

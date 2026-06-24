@@ -4,6 +4,16 @@
 
 Operating doctrine pointer: see [FOLDERA_OPERATING_DOCTRINE.md](/C:/Users/b-kap/foldera-ai/FOLDERA_OPERATING_DOCTRINE.md) for the durable owner/operator seam order and current stop condition.
 
+## 2026-06-24 — Gate-stack output re-aim: Option C shipped (observation shape gate + incoming-work promotion + Slack receipt) (#540 → PR #541)
+
+- MODE: One product seam, harness-proven, draft PR. Three moves, all code+unit-proven: Move A (observation/nag shape gate + chore-list gate generalized), Move B (isConcreteIncomingWork broadens forceActionableNow), Move C (insertSlackSendReceipt). 28 new tests; 998/998 total green.
+- What shipped — **Option C** (PR #541, branch `claude/gate-stack-output-issue-bpglwy`):
+  - **Move A (generator.ts):** `OBSERVATION_SHAPE_PATTERNS` + `findObservationShapeReason(directive)` in `validateGeneratedArtifact` — rejects audit/nag-shaped directives (directive-only scope; `hasFinishedHomeworkHandoffContent` guard exempts grounded finished-work). Chore-list gate generalized to all `write_document` types. Repair-first retry extended for `observation_shape:*` and `triage_chore_list`.
+  - **Move B (decision-enforcement.ts + scorer.ts):** `INCOMING_ASK_RE` regex + `isConcreteIncomingWorkCandidate(...)` (tight predicate: `write_document|send_message` only, real inbound signal, excludes discrepancy/emergent/compound). Wired into `classifyLifecycle({ forceActionableNow: interviewClass || concreteIncomingWork })`.
+  - **Move C (lib/workday-presence/slack-send-receipt.ts new):** `insertSlackSendReceipt(...)` persists `tkg_actions` row with `action_source: 'workday_presence_slack_send'`, `action_type: 'presence_action'`, `status: 'executed'`. Wired into `trigger-runner.ts` where `slack_result` was previously dropped.
+- Verification (deterministic, no paid calls): `npx vitest run lib/briefing lib/workday-presence` → **998 green** (+28 new tests); `tsc --noEmit` clean; `npm run gate:continuity` green.
+- Live proof pending: after PR #541 merges and deploys, `pipeline_runs.outcome` for `2cbc1bab` must move off `generation_failed_sentinel`; directive = finished-work shape; `workday_presence_slack_send` receipt in `tkg_actions`.
+
 ## 2026-06-24 — The full audit: "does Foldera work?" answered with live receipts (#540, FTR)
 
 - MODE: Owner stopped the fix-one-thing-and-move-on reflex and demanded a real end-to-end audit — *"we're at the same farm. Does it work? Does it work well? Consistently? Is it valuable? Would someone pay?"* No code shipped; the deliverable is a durable record (issue **#540**) so the next session starts from bedrock. Began the session mid-pivot (was about to ship a one-sentence-gate fix); abandoned that for the audit.

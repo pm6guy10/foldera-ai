@@ -13,6 +13,7 @@ import {
 import { createServerClient } from '@/lib/db/client';
 import { findLapsingCommitmentSignal } from './commitment-bridge';
 import { insertTriggerReceipt } from './trigger-receipt';
+import { insertSlackSendReceipt } from './slack-send-receipt';
 import { type RightNowMessagePayload } from './message';
 import { draftIsReviewable, normalizeWorkdayPresenceState, type WorkdayPresenceState } from './model';
 import { attachRecycledDraft } from './recycled-draft';
@@ -461,6 +462,25 @@ export async function maybeRunWorkdayPresenceTriggerRunnerForUser(
     },
   });
   if (updateResult.error) throw updateResult.error;
+
+  // Persist a durable delivery receipt when a live Slack card was sent.
+  // slack_result is only non-null on a real production send (guarded by isOwner +
+  // isProduction + slackBotToken in the adapter setup above).
+  if (result.slack_result?.ok === true) {
+    const triggerType =
+      (result.selected_context as { trigger_type?: string } | null)?.trigger_type ?? null;
+    try {
+      await insertSlackSendReceipt({
+        supabase,
+        userId,
+        slackResult: result.slack_result,
+        triggerType: triggerType as Parameters<typeof insertSlackSendReceipt>[0]['triggerType'],
+        label: result.reason.slice(0, 200),
+      });
+    } catch {
+      // Receipt persistence is best-effort — never fail the delivery because of it.
+    }
+  }
 
   return {
     started: true,

@@ -78,6 +78,7 @@ import {
   isUsableGoalRow,
 } from './goal-hygiene';
 import { assessLowValueEventInvite } from './low-value-event-invite';
+import { isConcreteIncomingWorkCandidate } from './decision-enforcement';
 
 // ---------------------------------------------------------------------------
 // Self-referential signal filter — excludes Foldera's own directive outputs
@@ -4630,7 +4631,7 @@ export async function scoreOpenLoops(
     supabase
       .from('tkg_commitments')
       .select(
-        'id, description, canonical_form, category, status, risk_score, due_at, implied_due_at, source_context, updated_at, trust_class, promisor_id, promisee_id, source, source_id',
+        'id, description, category, status, risk_score, due_at, implied_due_at, source_context, updated_at, trust_class, promisor_id, promisee_id, source, source_id',
       )
       .eq('user_id', userId)
       .in('trust_class', ['trusted', 'unclassified'])
@@ -6187,13 +6188,41 @@ export async function scoreOpenLoops(
       c.title,
       signals as Array<{ content: string; occurred_at?: string }>,
     );
+
+    // Concrete-incoming-work bypass: generalises the interview-class forceActionableNow
+    // to any real, dated, external inbound request the engine can finish (reply-owed,
+    // form-to-complete, question-to-answer). Observation-shaped types (discrepancy,
+    // emergent, compound) are explicitly excluded — they keep their existing paths.
+    const concreteIncomingWork = isConcreteIncomingWorkCandidate({
+      candidateType: c.type,
+      actionType: c.actionType,
+      hasRecentSignal: hasRecentSig,
+      title: c.title,
+      content: c.content,
+    });
+
+    if (concreteIncomingWork && !interviewClass) {
+      logStructuredEvent({
+        event: 'concrete_incoming_work_force_actionable',
+        level: 'info',
+        userId,
+        artifactType: c.actionType,
+        generationStatus: 'scoring',
+        details: {
+          scope: 'scorer',
+          candidate_title: c.title.slice(0, 100),
+          candidate_type: c.type,
+        },
+      });
+    }
+
     const lifecycle = classifyLifecycle({
       urgency: loopUrgency,
       stakes: specificityAdjustedStakes,
       tractability,
       entityPenalty,
       hasRecentSignal: hasRecentSig,
-      forceActionableNow: interviewClass,
+      forceActionableNow: interviewClass || concreteIncomingWork,
     });
 
     // Reentry: if classified dormant_later but a recent signal was found, promote to active_now.
