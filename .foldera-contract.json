@@ -1,7 +1,7 @@
 {
   "backlog_id": "value-cascade-546",
   "active_issue": 546,
-  "base_commit": "6b67edb",
+  "base_commit": "3714b62",
   "money_loop_rung": "m2",
   "user_system_path": "Learning agentic life-system / value cascade (#546). Owner thesis locked in FOLDERA_MASTER_BIBLE.md: proactive, instant, rooted in what the user has done; opportunity-finder not CBT nag. R1 — advance what you've started: promote own-activity candidates (own email_sent / drive file_modified, fresh) to win over observation-shaped discrepancies, and force a real next-move/finished artifact. #538 tier-descent merged (PR #545); its Tier-2 gated against junk/errand commitments. Next rung: event-driven delivery off the daily cron.",
   "allowed_file_patterns": [
@@ -45,7 +45,7 @@
     "#538 Tier-2 cannot ship junk/errand commitments (isLowValueErrandCommitment)"
   ],
   "stop_condition": "PR merged for claude/value-cascade-r1-own-activity; a live own-activity act lands in Slack with a persisted receipt for 2cbc1bab.",
-  "next_command": "Next session: read #546. Land R1 engine green; wire event-driven delivery off the daily cron; replay a fresh own-activity signal for 2cbc1bab to a delivered+receipted act. Then R2–R6, goal-inference refresh, expert-panel/avatars, gmail sent-mail connector.",
+  "next_command": "Next session: read #546. Wire event-driven delivery off the daily cron; replay a fresh own-activity signal for 2cbc1bab to a delivered+receipted act. Then R2–R6, goal-inference refresh, expert-panel/avatars, gmail sent-mail connector.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

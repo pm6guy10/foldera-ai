@@ -2,10 +2,10 @@
 
 ## TL;DR
 
-- **Seam #546 (learning agentic life-system / value cascade):** active on `claude/value-cascade-r1-own-activity`. Thesis locked in `FOLDERA_MASTER_BIBLE.md`. Building **R1 — advance what you've started** (sent mail / drive edits win + force next-move output).
-- **#538 tier-descent MERGED** (PR #545, main `6b67edb`). Its Tier-2 now gated against junk/errand commitments (no nag-on-junk).
-- **Why R1:** live data — engine ships homework/junk because its only fuel is noreply inbound + a contaminated commitment pool; the real fuel (own `email_sent`/`drive file_modified`, fresh) is ignored & entity-gated out.
-- **Next:** event-driven delivery (off the daily cron — nothing lands today); live proof = an own-activity act lands in Slack with a `workday_presence_slack_send` receipt for `2cbc1bab`.
+- **Seam #546 (learning agentic life-system / value cascade):** **R1 MERGED** (PR #547, main `3714b62`). Own-activity fuel (`email_sent`/`file_modified` ≤7d) now wins over homework/junk; Tier-2 junk gate; finished/next-move output bar. Thesis locked in `FOLDERA_MASTER_BIBLE.md`.
+- **Next move:** event-driven delivery — move evaluate-and-deliver off `morning-pipeline` cron (`0 11 * * *`) onto the signal-ingest cycle so fresh sent-mail/drive edits produce a Slack card within minutes.
+- **Then:** live proof for `2cbc1bab` — fresh `email_sent`/`file_modified` → directive (not `do_nothing`) → Slack card → `workday_presence_slack_send` receipt.
+- **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars, Gmail sent-mail connector (1 vs 967), #537 Fix B/C.
 
 ## DON'T FORGET — read first, every boot
 
@@ -35,24 +35,25 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Current slice:
 
-**R1 — ADVANCE WHAT YOU'VE STARTED (#546) — in progress.**
+**R1 — ADVANCE WHAT YOU'VE STARTED (#546) — MERGED (PR #547, `3714b62`).**
 
-Re-aim the daily engine at the user's own recent activity instead of homework/junk:
-- Promote own-activity candidates (`email_sent`, `drive file_modified`, fresh ≤7d) to win over observation-shaped discrepancy/pattern candidates; they currently get entity-gated out (no external counterparty) — carve them out of the `no_real_external_entity` drop only.
-- Force a real next-move / finished-work artifact for an own-activity winner (`hasFinishedHomeworkHandoffContent` bar) — "here's the next move to finish X you started," not a nag.
-- **Shipped this session:** doctrine lock-in (Bible + #546); #538 Tier-2 junk gate (`isLowValueErrandCommitment`, 11 tier-descent tests green).
+Shipped:
+- Own-activity carve-out: `email_sent`/`drive file_modified` (≤7d) re-admitted past `no_entity_detected` gate only — all other entity-gate conditions unchanged.
+- `selectRankedCandidates` promotes own-activity winner over observation-shaped discrepancies; `protectOwnActivity` carve-out in `topDiscrepancy` block prevents re-burial.
+- `own_activity_unfinished` issue + repair steer forces finished/next-move artifact shape when own-activity wins.
+- Tier-2 junk gate (`isLowValueErrandCommitment`): errands/personal tasks can't ship as never-go-dark act.
+- 1031/1031 vitest green; typecheck clean; gate:continuity green.
 
-Key invariants:
+Key invariants (still hold):
 - Own-activity carve-out is additive — does NOT weaken the external-entity requirement for any other class.
 - No loosening of `positive_winner_contract` / `weak_risk` — R1 ADDS an output bar.
 - Inward only; never fabricate to fill silence.
 
 ## Next exact move
 
-1. **Land R1 engine** (own-activity promotion + next-move output gate) green on `lib/briefing lib/workday-presence`; open draft PR.
-2. **Event-driven delivery:** move evaluate-and-deliver off the daily `morning-pipeline` (`0 11 * * *`) onto the signal-ingest cycle so fresh sent-mail/drive edits produce a Slack card within minutes (nothing lands today; bridge exists but `seed-from-scorer` returns `seeded=false` on dark verdict).
-3. **Live proof:** replay a fresh `email_sent`/`file_modified` thread for `2cbc1bab` → directive (not do_nothing) → Slack card → `workday_presence_slack_send` receipt.
-4. **Standing (in #546):** R2–R6, goal-inference refresh, expert-panel/avatars, gmail sent-mail connector (1 vs 967), #537 Fix B/C.
+1. **Event-driven delivery (next):** move evaluate-and-deliver off `morning-pipeline` (`0 11 * * *`) onto signal-ingest cycle — fresh `email_sent`/`file_modified` should produce a Slack card within minutes, not at next 11:00 UTC. Bridge exists (`seedWorkdayPresenceStateFromBrief` → `trigger-runner.ts` → Slack) but `seed-from-scorer` returns `seeded=false` on dark verdict, so dark verdict IS the delivery failure.
+2. **Live proof:** replay a fresh `email_sent`/`file_modified` thread for `2cbc1bab` → directive (not do_nothing) → Slack card → `workday_presence_slack_send` receipt in `tkg_actions`.
+3. **Standing (in #546):** R2–R6 cascade, goal-inference refresh (keystone — everything depends on a continuously-refreshed model of what you care about), expert-panel/avatars + gap analysis, Gmail sent-mail connector fix (1 vs 967), #537 Fix B/C.
 
 ## Product doctrine
 

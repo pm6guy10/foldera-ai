@@ -1,12 +1,12 @@
 {
   "active_issue": 546,
-  "active_branch": "claude/value-cascade-r1-own-activity",
+  "active_branch": "main",
   "active_pr": null,
-  "deployed_commit_sha": "6b67edb",
+  "deployed_commit_sha": "3714b62",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-24T23:15:00.000Z",
+  "last_verified_at": "2026-06-25T00:00:00.000Z",
   "last_cron_run": "2026-06-22T11:49:00Z",
   "last_cron_outcome": "dark_no_pipeline_run_since_jun22",
-  "notes": "Issue #546 — Learning agentic life-system / value cascade. Owner thesis locked in FOLDERA_MASTER_BIBLE.md (2026-06-24): proactive, instant, rooted in what the user has done; opportunity-finder not CBT nag. #538 tier-descent merged (PR #545, main 6b67edb); its Tier-2 gated against junk/errand commitments (isLowValueErrandCommitment). Building R1 — advance what you've started (own email_sent/drive file_modified win over observation-shaped discrepancies + force next-move output). Next: event-driven delivery off the daily cron. Live grounding: no pipeline_runs since Jun 22; engine fuel is noreply inbound + contaminated commitment pool; real own-activity fuel ignored/entity-gated."
+  "notes": "Issue #546 — Learning agentic life-system / value cascade. R1 MERGED (PR #547, main 3714b62, 2026-06-25): own-activity fuel (email_sent/file_modified ≤7d) now wins over observation-shaped discrepancies; Tier-2 junk gate (isLowValueErrandCommitment); own_activity_unfinished output bar forces finished/next-move shape. Thesis locked in FOLDERA_MASTER_BIBLE.md. Next: event-driven delivery — move evaluate-and-deliver off morning-pipeline cron (0 11 * * *) onto signal-ingest cycle. Then: live proof for 2cbc1bab (fresh email_sent/file_modified → directive → Slack card → receipt). Then R2–R6, goal-inference, expert-panel, Gmail sent-mail connector (1 vs 967)."
 }
