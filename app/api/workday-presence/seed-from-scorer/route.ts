@@ -139,7 +139,26 @@ async function persistSuppressionTrace(input: {
 
 export async function POST(request: Request) {
   const auth = await resolveAnyUser(request);
-  if (auth instanceof NextResponse) return auth;
+  if (auth instanceof NextResponse) {
+    const fallbackUserId = process.env.FOLDERA_SELF_USER_ID?.trim();
+    if (fallbackUserId) {
+      try {
+        const supabase = createServerClient();
+        await supabase.auth.admin.updateUserById(fallbackUserId, {
+          user_metadata: {
+            workday_presence_suppression_trace: {
+              trace_type: 'auth_failed',
+              gate: 'auth_failed',
+              blocker_reason:
+                'seed-from-scorer: auth resolution failed — check FOLDERA_SELF_USER_ID/INGEST_USER_ID in Vercel env',
+              no_send: true,
+            },
+          },
+        });
+      } catch { /* suppress — already in error path */ }
+    }
+    return auth;
+  }
 
   try {
     // The real brain: score → decide the move → draft it. skipSpendCap so triggered seeds
@@ -308,6 +327,20 @@ export async function POST(request: Request) {
       suppression_trace: null,
     });
   } catch (error: unknown) {
+    try {
+      const supabase = createServerClient();
+      await supabase.auth.admin.updateUserById(auth.userId, {
+        user_metadata: {
+          workday_presence_suppression_trace: {
+            trace_type: 'generation_failed',
+            gate: 'generation_failed',
+            blocker_reason: `seed-from-scorer: unhandled crash — ${error instanceof Error ? error.message : String(error)}`,
+            generation_failed: true,
+            no_send: true,
+          },
+        },
+      });
+    } catch { /* suppress */ }
     return apiErrorForRoute(error, 'workday-presence seed-from-scorer POST');
   }
 }
