@@ -2,11 +2,9 @@
   "active_issue": 546,
   "active_branch": "main",
   "active_pr": null,
-  "deployed_commit_sha": "9da3b04",
+  "deployed_commit_sha": "0ff0dcc",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-25T04:54:02.146Z",
-  "last_cron_run": "2026-06-22T11:49:00Z",
-  "last_cron_outcome": "dark_no_pipeline_run_since_jun22",
-  "notes": "Issue #546 — Learning agentic life-system / value cascade. R1 MERGED (PR #547, main 3714b62, 2026-06-25): own-activity fuel (email_sent/file_modified ≤7d) now wins over observation-shaped discrepancies; Tier-2 junk gate (isLowValueErrandCommitment); own_activity_unfinished output bar forces finished/next-move shape. Thesis locked in FOLDERA_MASTER_BIBLE.md. Next: event-driven delivery — move evaluate-and-deliver off morning-pipeline cron (0 11 * * *) onto signal-ingest cycle. Then: live proof for 2cbc1bab (fresh email_sent/file_modified → directive → Slack card → receipt). Then R2–R6, goal-inference, expert-panel, Gmail sent-mail connector (1 vs 967)."
+  "last_verified_at": "2026-06-25T05:10:00.000Z",
+  "notes": "Issue #546 — Learning agentic life-system / value cascade. Three fixes deployed to main: R1 own-activity wins (PR #547), delivery wiring — trigger-runner in morning-pipeline + ingest-and-deliver cron (PR #548), persistence-gate one-sentence salvage (PR #550). Waiting on live proof: morning-pipeline or ingest-and-deliver fires → directive (not do_nothing) → Slack card → workday_presence_slack_send receipt in tkg_actions."
 }
