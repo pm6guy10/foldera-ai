@@ -23,7 +23,7 @@ describe('vercel.json cron config', () => {
       },
       {
         path: '/api/cron/ingest-and-deliver',
-        schedule: '*/30 * * * *',
+        schedule: '0 18 * * *',
       },
     ]);
   });

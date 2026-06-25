@@ -17,7 +17,8 @@
  * last_signal_cursor) that prevents duplicate Slack cards.
  *
  * Auth: CRON_SECRET Bearer token.
- * Schedule: every 30 minutes
+ * Schedule: 0 18 * * * (daily at 18:00 UTC / 11am PT)
+ * Note: Vercel Hobby is limited to once-daily crons. Change to every-30-min on Pro.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
