@@ -2,10 +2,9 @@
 
 ## TL;DR
 
-- **Seam #546 (learning agentic life-system / value cascade):** **R1 MERGED** (PR #547, main `3714b62`). Own-activity fuel (`email_sent`/`file_modified` ≤7d) now wins.
-- **Event-driven delivery MERGED** (PR #548, main `ab046c9`): `ingest-and-deliver` cron (sync → if new signals: seed-from-scorer → trigger-runner → Slack card); morning-pipeline now calls trigger-runner after seed-from-scorer (was the missing wiring bug).
-- **Persistence-gate salvage MERGED** (PR #550, main `0ff0dcc`): Jun 20–22 dark verdicts diagnosed — pool was full (141 active, 112 email_sent), both gates killed multi-sentence directives. Generation gate already salvaged (#526); persistence gate now does too. All three fixes deployed.
-- **Next move:** live proof for `2cbc1bab` — next pipeline run fires → directive (not `do_nothing`) → Slack card → `workday_presence_slack_send` receipt in `tkg_actions`.
+- **#553 MERGED (main `7cd6545`):** seed-from-scorer now resolves the canonical owner (`FOLDERA_SELF_USER_ID`) — fixes the brain going dark since Jun 23. Auth/crash failures now write a `suppression_trace` (no more silent blackouts).
+- **Delivery is event-driven** (NOT a scheduled daily brief): new signal ingestion → seed-from-scorer → trigger-runner → Slack card. The `vercel.json` crons are only the Hobby-throttled trigger.
+- **Next move:** confirm a real card (or a named `suppression_trace`) lands on `2cbc1bab` after deploy; if the card is weak, that weakness is the next #546 seam.
 - **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars, Gmail sent-mail connector (1 vs 967), commitment pool hygiene (Fix B/C).
 
 ## DON'T FORGET — read first, every boot
@@ -19,6 +18,15 @@
 7. **Reduce friction by default, every session.** Standing owner directive: cut process friction and cruft proactively without re-asking. Hard safety rails still need sign-off. See `AGENTS.md` → "Friction Reduction — Standing Authorization".
 
 Keep this cockpit short and value-first. Completed-issue history lives in `docs/archive/SESSION_HISTORY.md` + git, never here.
+
+## SETTLED — do not relitigate
+
+These are decided. Do not re-derive, re-probe, or re-propose the dead alternative.
+
+1. **Delivery is event-driven, not a scheduled cron/daily brief.** `vercel.json` crons (`morning-pipeline`, `ingest-and-deliver`) are ONLY the Hobby-throttled trigger — never present "wait for the 11:00 cron" as the product. The old `daily-brief-generate` flow is RETIRED (replaced by these two, #548).
+2. **Owner = `2cbc1bab`.** `FOLDERA_SELF_USER_ID` is canonical owner resolution everywhere; `INGEST_USER_ID` is legacy fallback only (fixed in #553). Old account `e40b7cd8` is empty post-#509.
+3. **`SAFE_SILENCE` is a valid SUCCESS.** Never loosen a gate to force a card.
+4. **Live-pool schema + probes live in `docs/LIVE_POOL_PROBE.md`.** Don't re-derive columns or re-pull the pool to "see what the brain has" — it's already canned.
 
 ## Boot
 
@@ -52,7 +60,7 @@ Key invariants (still hold):
 
 ## Next exact move
 
-1. **Live proof (next):** after PR merges + Vercel deploy, confirm: fresh `email_sent`/`file_modified` arrives → 30-min `ingest-and-deliver` cron fires → `seed-from-scorer` seeds state → `trigger-runner` fires → Slack card → `workday_presence_slack_send` receipt in `tkg_actions`.
+1. **Live proof (next):** after the #553 Vercel deploy, confirm the event-driven path end-to-end: fresh `email_sent`/`file_modified` ingested → `seed-from-scorer` seeds state (resolving `2cbc1bab`) → `trigger-runner` fires → Slack card → `workday_presence_slack_send` receipt in `tkg_actions`. A named `suppression_trace` instead is honest silence, not failure.
 2. **Standing (in #546):** R2–R6 cascade, goal-inference refresh (keystone — everything depends on a continuously-refreshed model of what you care about), expert-panel/avatars + gap analysis, Gmail sent-mail connector fix (1 vs 967), #537 Fix B/C.
 
 ## Product doctrine
