@@ -45,16 +45,23 @@ if [ -f ACTIVE_HANDOFF.md ]; then
   echo ""
 fi
 
+# SETTLED decisions — discovered once, never relitigated. Auto-injected so the
+# dead alternative (scheduled-cron model, INGEST_USER_ID owner, re-probing the
+# pool) can't resurface and burn a session re-deriving it.
+if [ -f ACTIVE_HANDOFF.md ]; then
+  echo "# SETTLED — do not relitigate"
+  awk '/^## SETTLED/{f=1;next} /^## /{if(f)exit} f' ACTIVE_HANDOFF.md | sed '/^[[:space:]]*$/d'
+  echo ""
+fi
+
 # Active seam — machine truth from the control plane.
 if [ -f ACTIVE_SEAM_STATE.json ]; then
   ISSUE=$(grep -oE '"active_issue"[: ]+[0-9]+' ACTIVE_SEAM_STATE.json | grep -oE '[0-9]+' | head -1)
   BRANCH=$(grep -oE '"active_branch"[: ]+"[^"]*"' ACTIVE_SEAM_STATE.json | sed -E 's/.*"active_branch"[: ]+"([^"]*)".*/\1/')
   PR=$(grep -oE '"active_pr"[: ]+[^,}]*' ACTIVE_SEAM_STATE.json | sed -E 's/.*"active_pr"[: ]+//')
-  CRON_OUTCOME=$(grep -oE '"last_cron_outcome"[: ]+"[^"]*"' ACTIVE_SEAM_STATE.json | sed -E 's/.*"last_cron_outcome"[: ]+"([^"]*)".*/\1/')
-  CRON_RUN=$(grep -oE '"last_cron_run"[: ]+"[^"]*"' ACTIVE_SEAM_STATE.json | sed -E 's/.*"last_cron_run"[: ]+"([^"]*)".*/\1/')
   echo "# ACTIVE SEAM"
   echo "issue #${ISSUE:-?} - branch ${BRANCH:-?} - PR ${PR:-none}"
-  echo "cron: ${CRON_OUTCOME:-?} @ ${CRON_RUN:-?}"
+  echo "delivery: event-driven (vercel.json crons = Hobby-throttled trigger only; NOT a daily-brief schedule)"
   echo ""
 fi
 
