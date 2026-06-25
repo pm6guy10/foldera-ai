@@ -1,6 +1,6 @@
 {
   "active_issue": 546,
-  "active_branch": "main",
+  "active_branch": "claude/slack-card-quality-acr383",
   "active_pr": null,
   "deployed_commit_sha": "0ff0dcc",
   "runtime_env": "production",

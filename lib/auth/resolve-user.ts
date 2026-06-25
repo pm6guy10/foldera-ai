@@ -87,9 +87,9 @@ export function resolveCronUser(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const userId = process.env.INGEST_USER_ID;
+  const userId = process.env.INGEST_USER_ID ?? process.env.FOLDERA_SELF_USER_ID;
   if (!userId) {
-    return NextResponse.json({ error: 'INGEST_USER_ID not configured' }, { status: 500 });
+    return NextResponse.json({ error: 'INGEST_USER_ID (or FOLDERA_SELF_USER_ID) not configured' }, { status: 500 });
   }
 
   return { userId };
@@ -116,9 +116,9 @@ export async function resolveAnyUser(
       }
       return { userId: asUserId };
     }
-    const userId = process.env.INGEST_USER_ID;
+    const userId = process.env.INGEST_USER_ID ?? process.env.FOLDERA_SELF_USER_ID;
     if (!userId) {
-      return NextResponse.json({ error: 'INGEST_USER_ID not configured' }, { status: 500 });
+      return NextResponse.json({ error: 'INGEST_USER_ID (or FOLDERA_SELF_USER_ID) not configured' }, { status: 500 });
     }
     return { userId };
   }
