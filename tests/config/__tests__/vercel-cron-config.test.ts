@@ -14,12 +14,16 @@ function getCronRules() {
   return parsed.crons ?? [];
 }
 
-describe('vercel.json morning cron config', () => {
-  it('schedules a single orchestrated morning pipeline entry', () => {
+describe('vercel.json cron config', () => {
+  it('schedules the morning pipeline and the event-driven ingest-and-deliver cycle', () => {
     expect(getCronRules()).toEqual([
       {
         path: '/api/cron/morning-pipeline',
         schedule: '0 11 * * *',
+      },
+      {
+        path: '/api/cron/ingest-and-deliver',
+        schedule: '0 18 * * *',
       },
     ]);
   });

@@ -2,9 +2,9 @@
 
 ## TL;DR
 
-- **Seam #546 (learning agentic life-system / value cascade):** **R1 MERGED** (PR #547, main `3714b62`). Own-activity fuel (`email_sent`/`file_modified` ≤7d) now wins over homework/junk; Tier-2 junk gate; finished/next-move output bar. Thesis locked in `FOLDERA_MASTER_BIBLE.md`.
-- **Next move:** event-driven delivery — move evaluate-and-deliver off `morning-pipeline` cron (`0 11 * * *`) onto the signal-ingest cycle so fresh sent-mail/drive edits produce a Slack card within minutes.
-- **Then:** live proof for `2cbc1bab` — fresh `email_sent`/`file_modified` → directive (not `do_nothing`) → Slack card → `workday_presence_slack_send` receipt.
+- **Seam #546 (learning agentic life-system / value cascade):** **R1 MERGED** (PR #547, main `3714b62`). Own-activity fuel (`email_sent`/`file_modified` ≤7d) now wins.
+- **Event-driven delivery WIRED (PR open, branch `claude/event-driven-delivery-wiring-1mrd2s`):** New `ingest-and-deliver` cron runs every 30 min (sync → if new signals: seed-from-scorer → trigger-runner → Slack card). Morning-pipeline now also calls trigger-runner after seed-from-scorer (was missing — the key bug). 16 new tests green.
+- **Next move:** live proof for `2cbc1bab` — confirm fresh `email_sent`/`file_modified` → directive (not `do_nothing`) → Slack card → `workday_presence_slack_send` receipt after deploy.
 - **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars, Gmail sent-mail connector (1 vs 967), #537 Fix B/C.
 
 ## DON'T FORGET — read first, every boot
@@ -51,9 +51,8 @@ Key invariants (still hold):
 
 ## Next exact move
 
-1. **Event-driven delivery (next):** move evaluate-and-deliver off `morning-pipeline` (`0 11 * * *`) onto signal-ingest cycle — fresh `email_sent`/`file_modified` should produce a Slack card within minutes, not at next 11:00 UTC. Bridge exists (`seedWorkdayPresenceStateFromBrief` → `trigger-runner.ts` → Slack) but `seed-from-scorer` returns `seeded=false` on dark verdict, so dark verdict IS the delivery failure.
-2. **Live proof:** replay a fresh `email_sent`/`file_modified` thread for `2cbc1bab` → directive (not do_nothing) → Slack card → `workday_presence_slack_send` receipt in `tkg_actions`.
-3. **Standing (in #546):** R2–R6 cascade, goal-inference refresh (keystone — everything depends on a continuously-refreshed model of what you care about), expert-panel/avatars + gap analysis, Gmail sent-mail connector fix (1 vs 967), #537 Fix B/C.
+1. **Live proof (next):** after PR merges + Vercel deploy, confirm: fresh `email_sent`/`file_modified` arrives → 30-min `ingest-and-deliver` cron fires → `seed-from-scorer` seeds state → `trigger-runner` fires → Slack card → `workday_presence_slack_send` receipt in `tkg_actions`.
+2. **Standing (in #546):** R2–R6 cascade, goal-inference refresh (keystone — everything depends on a continuously-refreshed model of what you care about), expert-panel/avatars + gap analysis, Gmail sent-mail connector fix (1 vs 967), #537 Fix B/C.
 
 ## Product doctrine
 
