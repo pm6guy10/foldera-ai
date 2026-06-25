@@ -86,20 +86,20 @@ async function handler(request: NextRequest) {
     const totalNewSignals = microsoftNewSignals + googleNewSignals;
     const forwardHeaders = makeForwardHeaders(request);
 
-    // Stage 3: seed-from-scorer — only when fresh signals arrived.
-    // Uses CRON_SECRET auth so resolveAnyUser maps to INGEST_USER_ID (owner).
+    // Stage 3: seed-from-scorer — always runs so workday_presence_state stays current
+    // even when no new signals arrived (e.g. morning-pipeline not active, Drive-only
+    // syncs). The scorer draws from the commitment pool, not signals, so it always has
+    // candidates. Built-in safe-silence and suppression_trace prevent noise.
+    const seedRequest = new NextRequest(
+      new URL('/api/workday-presence/seed-from-scorer', request.nextUrl.origin),
+      { method: 'POST', headers: forwardHeaders },
+    );
+    const seedResponse = await runSeedFromScorer(seedRequest);
     let seedResult: unknown = null;
-    if (totalNewSignals > 0) {
-      const seedRequest = new NextRequest(
-        new URL('/api/workday-presence/seed-from-scorer', request.nextUrl.origin),
-        { method: 'POST', headers: forwardHeaders },
-      );
-      const seedResponse = await runSeedFromScorer(seedRequest);
-      try {
-        seedResult = await seedResponse.json();
-      } catch {
-        seedResult = { error: 'non-json seed response', status: seedResponse.status };
-      }
+    try {
+      seedResult = await seedResponse.json();
+    } catch {
+      seedResult = { error: 'non-json seed response', status: seedResponse.status };
     }
 
     // Stage 4: trigger-runner — always runs; built-in dedup prevents duplicate cards.
