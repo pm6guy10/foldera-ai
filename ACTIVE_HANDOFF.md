@@ -3,7 +3,7 @@
 ## TL;DR
 
 - **#553 + #554 MERGED (main `8987acc`):** brain fix live (`FOLDERA_SELF_USER_ID` canonical, dark since Jun 23 fixed) + boot context contradiction-free (SETTLED anchor, dead cron framing gone).
-- **Delivery is event-driven** (NOT a scheduled daily brief): signal ingestion → seed-from-scorer → trigger-runner → Slack card. The `vercel.json` crons are only the Hobby-throttled trigger.
+- **Delivery is push-driven** (event, not schedule): Graph webhook `/api/webhooks/graph` → sync → materiality gate → `deliverWorkdayPresence` (seed→trigger) → Slack card, in seconds. Cron is demoted to a cheap subscription-renewer, never "the schedule the card waits on".
 - **Next move:** live proof, now *measured* — precision meter (`card-precision.ts`) links fired→acted; target 10 acted cards on `2cbc1bab`. Real card or named `suppression_trace`; `SAFE_SILENCE` still success.
 - **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars, Gmail sent-mail connector (1 vs 967), commitment pool hygiene (Fix B/C).
 
@@ -23,7 +23,7 @@ Keep this cockpit short and value-first. Completed-issue history lives in `docs/
 
 These are decided. Do not re-derive, re-probe, or re-propose the dead alternative.
 
-1. **Delivery is event-driven, not a scheduled cron/daily brief.** `vercel.json` crons (`morning-pipeline`, `ingest-and-deliver`) are ONLY the Hobby-throttled trigger — never present "wait for the 11:00 cron" as the product. The old `daily-brief-generate` flow is RETIRED (replaced by these two, #548).
+1. **Delivery is push/event-driven, not a scheduled cron.** Provider push (Microsoft Graph change-notifications → `/api/webhooks/graph`; Gmail watch is phase 2) fires the card the instant data changes — the change is the clock. `deliverWorkdayPresence` (`lib/workday-presence/deliver-now.ts`) is the single seed→trigger pipeline ALL callers use. The `vercel.json` crons are a Hobby-throttled fallback heartbeat + subscription-renewer only; never "wait for the cron". Old `daily-brief-generate` RETIRED (#548).
 2. **Owner = `2cbc1bab`.** `FOLDERA_SELF_USER_ID` is canonical owner resolution everywhere; `INGEST_USER_ID` is legacy fallback only (fixed in #553). Old account `e40b7cd8` is empty post-#509.
 3. **`SAFE_SILENCE` is a valid SUCCESS.** Never loosen a gate to force a card.
 4. **Live-pool schema + probes live in `docs/LIVE_POOL_PROBE.md`.** Don't re-derive columns or re-pull the pool to "see what the brain has" — it's already canned.
@@ -60,7 +60,7 @@ Key invariants (still hold):
 
 ## Next exact move
 
-1. **Live proof — now measured:** event-driven path end-to-end (fresh `email_sent`/`file_modified` → `seed-from-scorer` resolves `2cbc1bab` → `trigger-runner` → Slack card → `workday_presence_slack_send` receipt), then click → `responded_to_slack_ts` linked → precision meter (Probe 5) reflects it. Target: 10 acted cards. A named `suppression_trace` is honest silence, not failure.
+1. **Live proof — push end-to-end:** set `GRAPH_WEBHOOK_SECRET` in Vercel → owner reconnects Outlook (or cron Stage 0 runs) → `user_metadata.workday_presence_graph_subscription` set → real inbound Outlook mail → Graph POSTs `/api/webhooks/graph` → sync→gate→`deliverWorkdayPresence` → Slack card in seconds (no cron). Then click → `responded_to_slack_ts` → precision meter (Probe 5). Target: 10 acted cards. Named `suppression_trace` is honest silence.
 2. **Standing (in #546):** R2–R6 cascade, goal-inference refresh (keystone — everything depends on a continuously-refreshed model of what you care about), expert-panel/avatars + gap analysis, Gmail sent-mail connector fix (1 vs 967), #537 Fix B/C.
 
 ## Product doctrine

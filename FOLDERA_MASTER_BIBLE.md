@@ -83,6 +83,30 @@ Guardian looks inward). "Never go silent" is satisfied by **real proactive value
 stakes or a posted fixture (lower-stakes-but-true beats invented urgency). The cascade is **one act at a
 time**, finished and handed over — not a digest, to-do list, or inbox summary.
 
+## Event-driven push, not cron polling (owner thesis — 2026-06-25)
+
+Point 1 above ("instant, event-driven; a once-a-day cron is a handicap") names the *what*. This is the *how*,
+recorded so the cron keeps getting demoted instead of re-debated. The owner's bar: **no user intervention —
+no refresh, no homework, no handholding.** Foldera decides *when to speak* on its own. That forces three
+answers, and a poll-on-a-clock (cron) answers none of them — which is exactly why "cron" kept resurfacing:
+the system had no other way to learn something changed.
+
+1. **When does it speak?** The *data source* tells it. A provider webhook fires the instant data changes —
+   Microsoft Graph change-notifications → `/api/webhooks/graph` (primary; Outlook), Gmail `watch` → Pub/Sub
+   (phase 2). **The change event is the clock** — no schedule, no button.
+2. **Refresh frequency?** Near-real-time (seconds), bounded only by a short debounce window so a burst of
+   mail collapses to one evaluation.
+3. **Cost control?** A free **materiality gate** runs *before* the expensive brain (`isMaterialChange`), so
+   LLM spend never scales with raw inbound volume; plus debounce, the dedup cursor, the bottom gate,
+   `SAFE_SILENCE`, and the per-day spend cap.
+
+The single delivery pipeline every caller shares is `deliverWorkdayPresence` (`lib/workday-presence/
+deliver-now.ts`): **heartbeat** context always evaluates the pool (completeness — catches time-based lapsing
+commitments); **push** context gates on the materiality of the just-synced delta (cost). The cron does not
+vanish — it **demotes** from data-poller (LLM on a timer) to a cheap, LLM-free **subscription-renewer**
+(Graph subs expire ~70h; a daily tick re-arms them). That remaining tick is a watchdog, never the schedule
+the card waits on.
+
 ## The $100M wedge & the magic-moment proof gate (owner thesis — 2026-06-25)
 
 This is a **monetization hypothesis**, not a redefinition of what Foldera *is* (the life-system thesis above

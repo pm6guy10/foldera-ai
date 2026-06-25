@@ -16,6 +16,12 @@
  * cron and on-demand paths can never drift apart (the seed-gate bug existed
  * precisely because those two paths were hand-duplicated).
  *
+ * It also re-arms the owner's Microsoft Graph push subscription (Stage 0). On Vercel
+ * Hobby the cron count is capped at 2, so the dedicated renew-graph-subscriptions cron
+ * is not scheduled here; folding the owner's renewal into this daily tick keeps Outlook
+ * push armed with zero new cron entries. (On Pro, schedule the dedicated renewer for
+ * all-user coverage.)
+ *
  * Auth: CRON_SECRET Bearer token.
  * Schedule: 0 18 * * * (daily at 18:00 UTC / 11am PT)
  * Note: Vercel Hobby is limited to once-daily crons. Change to every-30-min on Pro.
@@ -26,6 +32,7 @@ import { validateCronAuth } from '@/lib/auth/resolve-user';
 import { syncMicrosoft } from '@/lib/sync/microsoft-sync';
 import { syncGoogle } from '@/lib/sync/google-sync';
 import { deliverWorkdayPresence } from '@/lib/workday-presence/deliver-now';
+import { ensureGraphSubscription } from '@/lib/sync/graph-subscription';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -44,6 +51,15 @@ async function handler(request: NextRequest) {
   }
 
   try {
+    // Stage 0: re-arm the owner's Graph push subscription so Outlook change-notifications
+    // keep firing /api/webhooks/graph (the real, event-driven delivery path). Best-effort.
+    let graphSubscription: unknown = null;
+    try {
+      graphSubscription = await ensureGraphSubscription(userId);
+    } catch (err: unknown) {
+      graphSubscription = { error: err instanceof Error ? err.message : String(err) };
+    }
+
     // Stage 1: Sync Microsoft (picks up Outlook email_sent, OneDrive file_modified)
     let microsoftNewSignals = 0;
     let microsoftError: string | undefined;
@@ -88,6 +104,7 @@ async function handler(request: NextRequest) {
       },
       ...(microsoftError ? { microsoft_error: microsoftError } : {}),
       ...(googleError ? { google_error: googleError } : {}),
+      graph_subscription: graphSubscription,
       seed_result: delivery.seed,
       trigger_result: delivery.trigger,
     });

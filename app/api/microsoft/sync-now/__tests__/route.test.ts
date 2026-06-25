@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const getServerSession = vi.fn();
 const syncMicrosoft = vi.fn();
 const rateLimit = vi.fn();
-const maybeRunWorkdayPresenceTriggerRunnerForUser = vi.fn();
+const deliverWorkdayPresence = vi.fn();
 
 vi.mock('next-auth', () => ({
   getServerSession,
@@ -17,8 +17,8 @@ vi.mock('@/lib/sync/microsoft-sync', () => ({
   syncMicrosoft,
 }));
 
-vi.mock('@/lib/workday-presence/trigger-runner', () => ({
-  maybeRunWorkdayPresenceTriggerRunnerForUser,
+vi.mock('@/lib/workday-presence/deliver-now', () => ({
+  deliverWorkdayPresence,
 }));
 
 vi.mock('@/lib/utils/rate-limit', () => ({
@@ -35,6 +35,7 @@ describe('POST /api/microsoft/sync-now', () => {
       remaining: 2,
       resetAt: new Date(Date.now() + 60_000),
     });
+    deliverWorkdayPresence.mockResolvedValue({ trigger_context: 'heartbeat', seeded: true });
   });
 
   it('blocks manual sync during egress emergency mode without operator secret', async () => {
@@ -107,7 +108,7 @@ describe('POST /api/microsoft/sync-now', () => {
     );
   });
 
-  it('fires the trigger-runner helper when fresh signals were ingested', async () => {
+  it('runs the full deliver pipeline when fresh signals were ingested', async () => {
     syncMicrosoft.mockResolvedValue({
       mail_signals: 1,
       calendar_signals: 1,
@@ -124,10 +125,10 @@ describe('POST /api/microsoft/sync-now', () => {
     const response = await POST(new Request('http://localhost/api/microsoft/sync-now', { method: 'POST' }));
 
     expect(response.status).toBe(200);
-    expect(maybeRunWorkdayPresenceTriggerRunnerForUser).toHaveBeenCalledWith('user-1');
+    expect(deliverWorkdayPresence).toHaveBeenCalledWith('user-1');
   });
 
-  it('does not fire the trigger-runner helper when sync ingests no new signals', async () => {
+  it('still runs the deliver pipeline even when sync ingests no new signals (explicit sync = heartbeat)', async () => {
     syncMicrosoft.mockResolvedValue({
       mail_signals: 0,
       calendar_signals: 0,
@@ -144,7 +145,9 @@ describe('POST /api/microsoft/sync-now', () => {
     const response = await POST(new Request('http://localhost/api/microsoft/sync-now', { method: 'POST' }));
 
     expect(response.status).toBe(200);
-    expect(maybeRunWorkdayPresenceTriggerRunnerForUser).not.toHaveBeenCalled();
+    // Explicit "sync now" always evaluates the pool (scorer draws from commitments, not
+    // signals); safe-silence prevents noise.
+    expect(deliverWorkdayPresence).toHaveBeenCalledWith('user-1');
   });
 
   it('returns 400 when Microsoft is not connected', async () => {

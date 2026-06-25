@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { getAuthOptions } from '@/lib/auth/auth-options';
 import { saveUserToken, findCrossUserTokenConflict } from '@/lib/auth/user-tokens';
+import { ensureGraphSubscription } from '@/lib/sync/graph-subscription';
 import { normalizeMicrosoftAccountEmail } from '@/lib/ui/provider-display';
 import { authDebugLog } from '@/lib/auth/auth-debug';
 import { cookies } from 'next/headers';
@@ -166,6 +167,15 @@ export async function GET(request: NextRequest) {
 
   authDebugLog(`[microsoft/callback] Microsoft connected for user ${userId} (${msEmail ?? 'no email'})`);
 
-  // 7. Redirect back to settings
+  // 7. Arm Graph push immediately so Outlook changes deliver event-driven from now on
+  // (don't wait for the daily renewal cron). Best-effort: a failure here is re-armed by
+  // the cron; never block the connect redirect on it.
+  try {
+    await ensureGraphSubscription(userId, { force: true });
+  } catch (err: unknown) {
+    console.warn('[microsoft/callback] Graph subscription bootstrap failed:', err instanceof Error ? err.message : err);
+  }
+
+  // 8. Redirect back to settings
   return NextResponse.redirect(`${settingsUrl}?microsoft_connected=true`);
 }
