@@ -1,7 +1,7 @@
 {
   "active_issue": 546,
   "active_branch": "claude/foldera-100m-strategy-4fur3o",
-  "active_pr": null,
+  "active_pr": 555,
   "deployed_commit_sha": "8987acc",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
