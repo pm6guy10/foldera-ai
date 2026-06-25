@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { getAuthOptions } from "@/lib/auth/auth-options";
 import { syncMicrosoft } from "@/lib/sync/microsoft-sync";
-import { maybeRunWorkdayPresenceTriggerRunnerForUser } from "@/lib/workday-presence/trigger-runner";
+import { deliverWorkdayPresence } from "@/lib/workday-presence/deliver-now";
 import { rateLimit } from "@/lib/utils/rate-limit";
 import { blockManualSyncDuringEgressEmergency } from "@/lib/utils/egress-emergency";
 
@@ -57,10 +57,10 @@ export async function POST(request: Request) {
       result.calendar_signals +
       result.file_signals +
       result.task_signals;
-    const triggerRunner =
-      total > 0
-        ? await maybeRunWorkdayPresenceTriggerRunnerForUser(userId)
-        : { started: false, reason: "no_new_signals" as const };
+    // Full on-demand pipeline: seed-from-scorer (always — the scorer draws from the
+    // commitment pool, not signals) then trigger-runner. This is the cron-free path:
+    // an explicit "sync now" produces a card within seconds, signals or not.
+    const delivery = await deliverWorkdayPresence(userId);
     const coverageTotal =
       result.mail_total_signals +
       result.calendar_total_signals +
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       total,
       inserted_total: total,
       coverage_total: coverageTotal,
-      trigger_runner: triggerRunner,
+      delivery,
       ...result,
     });
   } catch (err: any) {
