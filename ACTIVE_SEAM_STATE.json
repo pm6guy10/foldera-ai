@@ -1,7 +1,7 @@
 {
   "active_issue": 546,
-  "active_branch": "main",
-  "active_pr": null,
+  "active_branch": "claude/slack-card-quality-acr383",
+  "active_pr": 553,
   "deployed_commit_sha": "0ff0dcc",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",

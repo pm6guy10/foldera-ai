@@ -87,16 +87,16 @@ export function resolveCronUser(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const userId = process.env.INGEST_USER_ID;
+  const userId = process.env.FOLDERA_SELF_USER_ID?.trim() ?? process.env.INGEST_USER_ID?.trim();
   if (!userId) {
-    return NextResponse.json({ error: 'INGEST_USER_ID not configured' }, { status: 500 });
+    return NextResponse.json({ error: 'FOLDERA_SELF_USER_ID (or INGEST_USER_ID) not configured' }, { status: 500 });
   }
 
   return { userId };
 }
 
 /**
- * Resolves the user by trying cron auth first (CRON_SECRET → INGEST_USER_ID),
+ * Resolves the user by trying cron auth first (CRON_SECRET → FOLDERA_SELF_USER_ID / INGEST_USER_ID),
  * then falling back to the NextAuth session. Used by test-mode routes that need
  * to be drivable from scripts (for proof runs) as well as from a browser session.
  *
@@ -116,9 +116,9 @@ export async function resolveAnyUser(
       }
       return { userId: asUserId };
     }
-    const userId = process.env.INGEST_USER_ID;
+    const userId = process.env.FOLDERA_SELF_USER_ID?.trim() ?? process.env.INGEST_USER_ID?.trim();
     if (!userId) {
-      return NextResponse.json({ error: 'INGEST_USER_ID not configured' }, { status: 500 });
+      return NextResponse.json({ error: 'FOLDERA_SELF_USER_ID (or INGEST_USER_ID) not configured' }, { status: 500 });
     }
     return { userId };
   }
