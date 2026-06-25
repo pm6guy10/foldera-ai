@@ -5464,6 +5464,23 @@ const DIRECTIVE_WEAK_LEAD_RE = /^(this|that|it|these|those|here|there|because|so
  * truncates the model's own text and never invents content; the menu/length/decision
  * gates still run on the result.
  */
+/**
+ * Pure core of the one-sentence salvage: return the leading-imperative collapse of a
+ * multi-sentence directive, or null when the directive is already one sentence or the
+ * lead is context rather than the move (so the caller leaves it untouched). Shared by
+ * the generation gate (validateGeneratedArtifact) and the persistence gate
+ * (validateDirectiveForPersistence) so both stop going dark on the identical input.
+ */
+export function salvageLeadingOneSentence(directive: unknown): string | null {
+  if (typeof directive !== 'string') return null;
+  if (countSentences(directive) <= 1) return null;
+  const collapsed = leadingDirectiveSentence(directive);
+  if (!collapsed || collapsed === directive.trim()) return null;
+  if (countSentences(collapsed) !== 1) return null;
+  if (DIRECTIVE_WEAK_LEAD_RE.test(collapsed)) return null;
+  return collapsed;
+}
+
 export function applyDirectiveOneSentenceSalvage(
   payload: GeneratedDirectivePayload,
   ctx?: Pick<StructuredContext, 'candidate_title'>,
@@ -5472,11 +5489,8 @@ export function applyDirectiveOneSentenceSalvage(
   const directive = payload.directive;
   if (typeof directive !== 'string') return false;
   const originalCount = countSentences(directive);
-  if (originalCount <= 1) return false;
-  const collapsed = leadingDirectiveSentence(directive);
-  if (!collapsed || collapsed === directive.trim()) return false;
-  if (countSentences(collapsed) !== 1) return false;
-  if (DIRECTIVE_WEAK_LEAD_RE.test(collapsed)) return false;
+  const collapsed = salvageLeadingOneSentence(directive);
+  if (collapsed === null) return false;
   payload.directive = collapsed;
   if (userId) {
     logStructuredEvent({
@@ -8408,6 +8422,26 @@ export function validateDirectiveForPersistence(input: {
   const embeddedType = (input.directive as any).embeddedArtifactType;
   if (embeddedType && !VALID_ARTIFACT_TYPES.has(embeddedType)) {
     issues.push(`artifact type "${embeddedType}" is not a valid user-facing type`);
+  }
+
+  // Persistence-gate salvage: the generation gate already collapses a trailing "why"
+  // sentence to its leading imperative (applyDirectiveOneSentenceSalvage), but a
+  // directive can reach persistence without passing through that gate (deterministic
+  // fallbacks, directly-built directives). Without the same salvage here, a perfectly
+  // shippable leading imperative with an explanatory second sentence dies dark on the
+  // "must remain exactly one sentence" contract — the exact live failure on #518.
+  // Mirror the generation behavior so both gates agree on identical input.
+  const persistenceSalvaged = salvageLeadingOneSentence(input.directive.directive);
+  if (persistenceSalvaged !== null) {
+    input.directive.directive = persistenceSalvaged;
+    logStructuredEvent({
+      event: 'directive_one_sentence_salvage',
+      level: 'info',
+      userId: input.userId,
+      artifactType: String(input.directive.action_type ?? '') || null,
+      generationStatus: 'directive_one_sentence_salvage',
+      details: { scope: 'validateDirectiveForPersistence', salvaged_len: persistenceSalvaged.length },
+    });
   }
 
   if (BANNED_LANGUAGE_PATTERNS.some((p) => p.test(input.directive.directive))) {

@@ -127,6 +127,35 @@ describe('daily brief pinned constraints', () => {
     expect(issues).toEqual([]);
   });
 
+  it('salvages a two-sentence directive at the persistence gate instead of going dark (#518)', () => {
+    // The exact live failure (pipeline_runs Jun 20-22): a shippable leading imperative
+    // carries a trailing "why" sentence, fails "directive must remain exactly one
+    // sentence", burns every retry, ships nothing. The generation gate already salvages
+    // this; the persistence gate must agree so a directive that reaches persistence by
+    // any other path (deterministic fallback) is not dropped dark.
+    const directive = buildDirective({
+      directive:
+        'Email Holly to confirm the two strongest MAS3 talking points by 4 PM today. The reference packet slips past the interview decision window otherwise.',
+    });
+    const issues = validateDirectiveForPersistence({
+      userId: OWNER_USER_ID,
+      directive,
+      artifact: {
+        type: 'email',
+        to: 'holly@example.com',
+        subject: 'Reference talking points for MAS3',
+        body: 'Hi Holly,\n\nCan you confirm by 4 PM PT today the two or three strongest talking points you would use for my MAS3 candidacy, and who should own final packaging? If we miss this cutoff, the reference packet slips past the interview decision window.\n\nThanks,\nBrandon',
+        draft_type: 'email_compose',
+      },
+    });
+
+    expect(issues).not.toContain('directive must remain exactly one sentence');
+    // Salvage mutates in place to the leading imperative — model's own text, never invented.
+    expect(directive.directive).toBe(
+      'Email Holly to confirm the two strongest MAS3 talking points by 4 PM today.',
+    );
+  });
+
   it('rejects send_message when directive and artifact use conflicting event timing', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-04-14T23:30:00.000Z'));

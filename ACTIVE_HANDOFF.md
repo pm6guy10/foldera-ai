@@ -3,8 +3,9 @@
 ## TL;DR
 
 - **Seam #546 (learning agentic life-system / value cascade):** **R1 MERGED** (PR #547, main `3714b62`). Own-activity fuel (`email_sent`/`file_modified` ≤7d) now wins.
-- **Event-driven delivery WIRED (PR open, branch `claude/event-driven-delivery-wiring-1mrd2s`):** New `ingest-and-deliver` cron runs every 30 min (sync → if new signals: seed-from-scorer → trigger-runner → Slack card). Morning-pipeline now also calls trigger-runner after seed-from-scorer (was missing — the key bug). 16 new tests green.
-- **Next move:** live proof for `2cbc1bab` — confirm fresh `email_sent`/`file_modified` → directive (not `do_nothing`) → Slack card → `workday_presence_slack_send` receipt after deploy.
+- **Event-driven delivery MERGED** (PR #548, main `ab046c9`): `ingest-and-deliver` cron (sync → if new signals: seed-from-scorer → trigger-runner → Slack card); morning-pipeline now calls trigger-runner after seed-from-scorer (was the missing wiring bug).
+- **Dark-verdict root cause found in live data (2026-06-25):** last real runs (Jun 20–22) died at *generation/persistence validation* — NOT fuel (141 active commitments, 112 email_sent, 401 file_modified) and NOT wiring. Killers: `directive must be exactly one sentence` + `positive_winner_contract:missing_current_artifact_anchor`. One-sentence salvage existed at the **generation** gate (#526, Jun 22 18:13) but the **persistence** gate was unsalvaged. **Fixed (branch `claude/persistence-one-sentence-salvage`):** shared `salvageLeadingOneSentence` wired into both gates, +1 test. All Jun 20–22 failures pre-date the fixes — stale; nothing has *run* since Jun 22.
+- **Next move:** live proof for `2cbc1bab` — deploy + trigger one run; confirm directive (not `do_nothing`) → Slack card → `workday_presence_slack_send` receipt.
 - **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars, Gmail sent-mail connector (1 vs 967), #537 Fix B/C.
 
 ## DON'T FORGET — read first, every boot
