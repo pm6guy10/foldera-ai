@@ -2,9 +2,9 @@
 
 ## TL;DR
 
-- **#553 MERGED (main `7cd6545`):** seed-from-scorer now resolves the canonical owner (`FOLDERA_SELF_USER_ID`) — fixes the brain going dark since Jun 23. Auth/crash failures now write a `suppression_trace` (no more silent blackouts).
-- **Delivery is event-driven** (NOT a scheduled daily brief): new signal ingestion → seed-from-scorer → trigger-runner → Slack card. The `vercel.json` crons are only the Hobby-throttled trigger.
-- **Next move:** confirm a real card (or a named `suppression_trace`) lands on `2cbc1bab` after deploy; if the card is weak, that weakness is the next #546 seam.
+- **#553 + #554 MERGED (main `8987acc`):** brain fix live (`FOLDERA_SELF_USER_ID` canonical, dark since Jun 23 fixed) + boot context contradiction-free (SETTLED anchor, dead cron framing gone).
+- **Delivery is event-driven** (NOT a scheduled daily brief): signal ingestion → seed-from-scorer → trigger-runner → Slack card. The `vercel.json` crons are only the Hobby-throttled trigger.
+- **Next move:** live proof — confirm a real card (or named `suppression_trace`) on `2cbc1bab`; if the card is weak, that weakness is the next #546 seam.
 - **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars, Gmail sent-mail connector (1 vs 967), commitment pool hygiene (Fix B/C).
 
 ## DON'T FORGET — read first, every boot
@@ -60,7 +60,7 @@ Key invariants (still hold):
 
 ## Next exact move
 
-1. **Live proof (next):** after the #553 Vercel deploy, confirm the event-driven path end-to-end: fresh `email_sent`/`file_modified` ingested → `seed-from-scorer` seeds state (resolving `2cbc1bab`) → `trigger-runner` fires → Slack card → `workday_presence_slack_send` receipt in `tkg_actions`. A named `suppression_trace` instead is honest silence, not failure.
+1. **Live proof:** confirm the event-driven path end-to-end — fresh `email_sent`/`file_modified` ingested → `seed-from-scorer` seeds state (resolving `2cbc1bab`) → `trigger-runner` fires → Slack card → `workday_presence_slack_send` receipt in `tkg_actions`. A named `suppression_trace` instead is honest silence, not failure.
 2. **Standing (in #546):** R2–R6 cascade, goal-inference refresh (keystone — everything depends on a continuously-refreshed model of what you care about), expert-panel/avatars + gap analysis, Gmail sent-mail connector fix (1 vs 967), #537 Fix B/C.
 
 ## Product doctrine

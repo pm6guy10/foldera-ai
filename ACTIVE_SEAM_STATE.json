@@ -1,10 +1,10 @@
 {
   "active_issue": 546,
   "active_branch": "claude/slack-card-quality-acr383",
-  "active_pr": 554,
-  "deployed_commit_sha": "7cd6545",
+  "active_pr": null,
+  "deployed_commit_sha": "8987acc",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-25T05:10:00.000Z",
-  "notes": "Issue #546 — Learning agentic life-system / value cascade. #553 MERGED (main 7cd6545): seed-from-scorer resolves canonical owner FOLDERA_SELF_USER_ID (fixes the dark brain since Jun 23) + auth/crash failures now write suppression_trace. PR #554 (docs): SETTLED anchor + purge dead cron framing. Delivery is event-driven; vercel.json crons are the Hobby-throttled trigger only. Next: confirm a real card (or named suppression_trace) on 2cbc1bab after deploy."
+  "last_verified_at": "2026-06-25T20:35:00.000Z",
+  "notes": "Issue #546 — Learning agentic life-system / value cascade. #553 MERGED (main 7cd6545): brain fix — seed-from-scorer now resolves FOLDERA_SELF_USER_ID (fixes dark brain since Jun 23) + auth/crash failures write suppression_trace. #554 MERGED (main 8987acc): SETTLED anchor + dead cron framing purged — boot context contradiction-free. Next: live proof — confirm card or named suppression_trace on 2cbc1bab."
 }
