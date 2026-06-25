@@ -32,6 +32,10 @@
     {
       "path": "/api/cron/morning-pipeline",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/ingest-and-deliver",
+      "schedule": "*/30 * * * *"
     }
   ],
   "github": {
