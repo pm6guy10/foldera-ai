@@ -2,15 +2,15 @@
 
 ## TL;DR
 
-- **Seam #538 (graceful degradation — never go dark):** PR open on `claude/pr-merge-sequence-kziba2`. Tier-descent safety net wired into `no_valid_action` branch: Tier 2 (commitment due ≤14d → write_document) + Tier 3 (thread-backed owed reply → send_message). do_nothing only when both genuinely empty.
-- **#542 + #539 + #540 all merged** to main SHA `230e776`. Repo clean. 1014/1014 tests green.
-- **Live proof for #538:** After deploy, `pipeline_runs.gate_funnel.tier_descent_winner` must be non-null for `2cbc1bab` on a day with no Tier-1 discrepancy.
-- **Standing:** #537 Fix B/C queued; Scout #494; OneDrive #507.
+- **Seam #546 (learning agentic life-system / value cascade):** active on `claude/value-cascade-r1-own-activity`. Thesis locked in `FOLDERA_MASTER_BIBLE.md`. Building **R1 — advance what you've started** (sent mail / drive edits win + force next-move output).
+- **#538 tier-descent MERGED** (PR #545, main `6b67edb`). Its Tier-2 now gated against junk/errand commitments (no nag-on-junk).
+- **Why R1:** live data — engine ships homework/junk because its only fuel is noreply inbound + a contaminated commitment pool; the real fuel (own `email_sent`/`drive file_modified`, fresh) is ignored & entity-gated out.
+- **Next:** event-driven delivery (off the daily cron — nothing lands today); live proof = an own-activity act lands in Slack with a `workday_presence_slack_send` receipt for `2cbc1bab`.
 
 ## DON'T FORGET — read first, every boot
 
 1. **Value is the only score.** Foldera exists to produce one act the user wouldn't have done. Green CI, audits, clean code, merged PRs are *hygiene* — not value.
-2. **Always ship one real act — never go dark. Empty is not a product.** When no high-stakes discrepancy clears the bar, degrade to the next thing Foldera can **do and hand over done** — a drafted reply, completed prep, teed-up response. A due-date reminder ("your bill is due") is NOT a real act — it is a nag. Never fabricate stakes or post a fixture as real. `do_nothing` is a rare last resort. (Owner directive 2026-06-23/24; see #538.)
+2. **Learning agentic life-system — proactive, instant, value-cascade.** Foldera lurks/watches/learns the user's *own* world and ships the next real act they'd never have asked for — opportunity-finder, not CBT nag. Walk the cascade until something clears a real bar: **R1 advance what you started** (sent mail, open drafts, in-flight projects) → owed replies → inbound-ask→finished prep → goal moves → relationship → outward Scout (a rung, sign-off-gated). Instant/event-driven, not a daily cron. Never fabricate to fill silence; a due-date nag is NOT an act. See `FOLDERA_MASTER_BIBLE.md` → "Learning Agentic Life-System" (owner thesis 2026-06-24).
 3. **No "done" without live product proof.** Build/tests/CI green is necessary, never sufficient.
 4. **Don't make Brandon the router/tester/merger.** Pick the highest-leverage move, do it end-to-end, bring the result + reasoning.
 5. **Scout is additive and never auto-sends.** The Workday Presence Layer stays the always-on default; every `SCOUT_*` flag defaults off.
@@ -21,39 +21,38 @@ Keep this cockpit short and value-first. Completed-issue history lives in `docs/
 
 ## Boot
 
-1. Read this file. 2. Read the active issue (#538). 3. Check issue #136 for recent INTERRUPT receipts.
+1. Read this file. 2. Read the active issue (#546). 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #538 is the active GRACEFUL-DEGRADATION seam.
+Issue #546 is the active LEARNING-AGENTIC-LIFE-SYSTEM seam.
+
+#546 (value cascade) enumerates rungs R1–R6 + goal-inference + expert-panel; R1 (advance what you've started) is the current slice.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
 ## Current slice:
 
-**GRACEFUL DEGRADATION / NEVER GO DARK (#538) — code-proven, PR pending.**
+**R1 — ADVANCE WHAT YOU'VE STARTED (#546) — in progress.**
 
-`attemptTierDescentDirective` (exported, in `lib/briefing/generator.ts`) is wired into `generateDirective` at the `no_valid_action` branch:
-- Tier 2: queries `tkg_commitments` for commitments due today–+14d, status active/at_risk, trust_class trusted/unclassified. Returns a `write_document` directive if found.
-- Tier 3: scans `scored.topCandidates` for thread-backed (`isThreadBackedSendableLoop`) owed-reply candidate. Returns a `send_message` directive if found.
-- Returns `null` (→ `buildNoValidActionBlockerDirective`) when both tiers empty.
-- `tier_descent_winner` label recorded in `GenerationRunLog` and surfaced in `gate_funnel` extras.
-- 6 new unit tests in `lib/briefing/__tests__/tier-descent.test.ts`; 1014/1014 total green.
+Re-aim the daily engine at the user's own recent activity instead of homework/junk:
+- Promote own-activity candidates (`email_sent`, `drive file_modified`, fresh ≤7d) to win over observation-shaped discrepancy/pattern candidates; they currently get entity-gated out (no external counterparty) — carve them out of the `no_real_external_entity` drop only.
+- Force a real next-move / finished-work artifact for an own-activity winner (`hasFinishedHomeworkHandoffContent` bar) — "here's the next move to finish X you started," not a nag.
+- **Shipped this session:** doctrine lock-in (Bible + #546); #538 Tier-2 junk gate (`isLowValueErrandCommitment`, 11 tier-descent tests green).
 
 Key invariants:
-- Fires ONLY in `no_valid_action` branch — LLM-failure paths untouched.
-- Tier 2 excludes past-due commitments (`gte today` filter).
-- Tier 3 uses `isThreadBackedSendableLoop` — no stale signal fabrication.
-- No gate loosening, no numeric threshold changes.
+- Own-activity carve-out is additive — does NOT weaken the external-entity requirement for any other class.
+- No loosening of `positive_winner_contract` / `weak_risk` — R1 ADDS an output bar.
+- Inward only; never fabricate to fill silence.
 
 ## Next exact move
 
-1. **Push** `claude/pr-merge-sequence-kziba2` and open draft PR.
-2. **Live confirmation post-deploy:** check next morning-pipeline cron for `2cbc1bab` — `pipeline_runs.gate_funnel.tier_descent_winner` should be non-null; directive must not be `do_nothing`.
-3. **If still dark (both tiers empty):** verify commitments table has near-future-due rows for 2cbc1bab. Never loosen gates or numeric thresholds.
-4. **Standing:** #537 Fix B/C; Scout #494; OneDrive #507.
+1. **Land R1 engine** (own-activity promotion + next-move output gate) green on `lib/briefing lib/workday-presence`; open draft PR.
+2. **Event-driven delivery:** move evaluate-and-deliver off the daily `morning-pipeline` (`0 11 * * *`) onto the signal-ingest cycle so fresh sent-mail/drive edits produce a Slack card within minutes (nothing lands today; bridge exists but `seed-from-scorer` returns `seeded=false` on dark verdict).
+3. **Live proof:** replay a fresh `email_sent`/`file_modified` thread for `2cbc1bab` → directive (not do_nothing) → Slack card → `workday_presence_slack_send` receipt.
+4. **Standing (in #546):** R2–R6, goal-inference refresh, expert-panel/avatars, gmail sent-mail connector (1 vs 967), #537 Fix B/C.
 
 ## Product doctrine
 

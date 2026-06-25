@@ -39,6 +39,50 @@ That means:
 - avoid unnecessary noise
 - stay quiet when no move is justified
 
+## The Learning Agentic Life-System (owner thesis — 2026-06-24, locked)
+
+This is the durable owner vision the engine is being aimed at. It evolves (does not replace) the Workday
+Presence framing above: the re-entry point is the *first* rung, not the whole ladder. Encoded here so it
+stops being rediscovered every session.
+
+**Thesis (Brandon's words):** Foldera is **a learning agentic system that makes you more productive and
+successful in every part of your life.** The market's "AI assistants" (Claude's Slack buddy, "hire an AI"
+tools) all still require you to *tell them what you care about*. Foldera's differentiator: it **lurks,
+watches, knows, learns, and does things on your behalf that you'd never have been smart enough to ask** —
+it makes the connection you'd never have guessed. *You don't know what you don't know;* Foldera's job is
+that gap. Not a guardian-of-gaps, not a CBT nag ("you're dropping the ball") — an **opportunity-finder and
+breakthrough-stacker** ("*this* is perfect for you," "here's why you're stuck — here's the fix").
+
+The architecture this implies (the durable ladder):
+
+1. **Instant, event-driven delivery.** Things land in Slack *as they happen*, near-instant. A once-a-day
+   cron is a handicap. **Nothing landing at all — good or bad — is the cardinal failure.**
+2. **Value-driven sequential cascade.** Walk down rungs until something clears a *real* bar. Never fabricate
+   to fill silence; never go silent, because there is always a higher-leverage proactive move:
+   - **R1 — Advance what you've started** (sent mail, opened drafts, in-flight projects, pending work).
+   - **R2 — Owed replies / cooling threads.**
+   - **R3 — Concrete inbound ask landed → hand back finished work** (the April-22 "here is your completed
+     prep" north-star shape).
+   - **R4 — Goal moves.**
+   - **R5 — Relationship maintenance.**
+   - **R6 — Outward opportunity / research** (a deal on something you track, an Airbnb for the family time
+     you wanted, "here's why you're not making money"). This is the **Scout lane — a rung, not a sin.**
+     Sequential, not bad. It re-enters only behind owner sign-off (`lib/scout` + `SCOUT_*` flags) and with
+     new anti-fabrication guardrails — it fabricated once (#492), and that must not repeat.
+3. **Goal inference is the keystone weak point.** It is stale/outdated; everything downstream (gap analysis,
+   proactive matching, "what you didn't know to ask") depends on a continuously-refreshed model of what the
+   user actually cares about, rebuilt from their recent real activity.
+4. **Encoded expert panel / "avatars" → gap analysis.** Watch what the user actually does (an activity model
+   — "a Facebook pixel for where your time and work go"), compare against a panel of encoded experts (the
+   field expert / mentor watching around the clock), surface the deviation between *what they're doing* and
+   *what an expert would do / what they want*, and shrink that gap — without putting the onus on the user.
+
+**Reconciliation with the guardrails below (these still bind):** "lurks/watches" means **inward**, over the
+user's *own* connected sources — never surveillance of others, never the open web as a fishing ground (the
+Guardian looks inward). "Never go silent" is satisfied by **real proactive value**, never by fabricated
+stakes or a posted fixture (lower-stakes-but-true beats invented urgency). The cascade is **one act at a
+time**, finished and handed over — not a digest, to-do list, or inbox summary.
+
 ## What Foldera Is
 
 Foldera is:

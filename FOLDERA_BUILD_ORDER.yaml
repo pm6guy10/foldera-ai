@@ -22,11 +22,16 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 538
+active_issue: 546
 priority_class: PRODUCT
-work_type: FIX
-why_this_first: "Graceful degradation / never go dark (#538). #542+#539+#540 all merged. When all Tier-1 discrepancy candidates fail the scorer, generateDirective called emptyDirective → do_nothing → pipeline stays dark. Tier-descent safety net wired into the no_valid_action branch: Tier 2 surfaces a near-due commitment as write_document; Tier 3 surfaces the highest-scored thread-backed owed-reply as send_message. do_nothing only when both tiers genuinely empty. No gate loosening, no LLM fabrication — deterministic from existing data. 1014 tests green including 6 new tier-descent tests. PR pending."
-next_seam: "After deploy: verify pipeline_runs.gate_funnel.tier_descent_winner is non-null for 2cbc1bab on a day with no Tier-1 discrepancy. Standing: #537 Fix B/C (commitment pool hygiene); Scout #494; OneDrive #507."
+work_type: FEATURE
+why_this_first: "Learning agentic life-system / value cascade (#546). Owner thesis locked 2026-06-24 (FOLDERA_MASTER_BIBLE.md): Foldera lurks/watches/learns the user's own world and ships the next real act they'd never have asked for — proactive opportunity-finder, instant/event-driven, never a CBT nag. Live audit: the engine ships homework/junk because its only fuel is noreply inbound + a contaminated commitment pool; the real fuel (own email_sent / drive file_modified, fresh) is ignored and entity-gated out. Building R1 — advance what you've started: promote own-activity candidates to win over observation-shaped discrepancies + force a real next-move/finished artifact. #538 tier-descent merged (PR #545) and its Tier-2 gated against junk/errand commitments. No gate loosening; inward only; never fabricate to fill silence."
+next_seam: "Event-driven delivery (off the daily morning-pipeline cron — nothing lands today). Live proof: a fresh own-activity (email_sent/file_modified) thread for 2cbc1bab produces a directive (not do_nothing) that lands in Slack with a workday_presence_slack_send receipt. Then R2–R6, goal-inference refresh, expert-panel/avatars, gmail sent-mail connector (1 vs 967), #537 Fix B/C."
+completed_issue_538:
+  issue: 538
+  pr: 545
+  pr_merge_sha: 6b67edb
+  summary: "Graceful degradation / never go dark: attemptTierDescentDirective wired into the no_valid_action branch — Tier 2 (commitment due ≤14d → write_document) + Tier 3 (thread-backed owed reply → send_message); do_nothing only when both empty; tier_descent_winner surfaced in gate_funnel. 1014 tests green. Tier-2 subsequently gated against junk/errand commitments (isLowValueErrandCommitment) under #546 so the never-go-dark act is real work, not nag-on-junk."
 completed_issue_540:
   issue: 540
   pr: 541

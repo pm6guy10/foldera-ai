@@ -1,9 +1,9 @@
 {
-  "backlog_id": "graceful-degradation-538",
-  "active_issue": 538,
-  "base_commit": "230e776",
+  "backlog_id": "value-cascade-546",
+  "active_issue": 546,
+  "base_commit": "6b67edb",
   "money_loop_rung": "m2",
-  "user_system_path": "Graceful degradation / never go dark (#538): when all Tier-1 discrepancy candidates are exhausted, tier-descent safety net fires. Tier 2: commitment due ≤14d → write_document. Tier 3: thread-backed owed reply → send_message. do_nothing only when both tiers genuinely empty. 1014 tests green. PR pending.",
+  "user_system_path": "Learning agentic life-system / value cascade (#546). Owner thesis locked in FOLDERA_MASTER_BIBLE.md: proactive, instant, rooted in what the user has done; opportunity-finder not CBT nag. R1 — advance what you've started: promote own-activity candidates (own email_sent / drive file_modified, fresh) to win over observation-shaped discrepancies, and force a real next-move/finished artifact. #538 tier-descent merged (PR #545); its Tier-2 gated against junk/errand commitments. Next rung: event-driven delivery off the daily cron.",
   "allowed_file_patterns": [
     "*",
     "app/**",
@@ -28,24 +28,24 @@
     ".env",
     ".env.local"
   ],
-  "allowed_files_raw": "Allow-by-default-minus-forbidden (friction reduction, owner-directed 2026-06-22). The contract no longer pins a narrow per-seam whitelist that blocks owner-authorized fixes outside the active seam. The real guard is forbidden_file_patterns + the proof doctrine, not a whitelist. Small owner-directed hotfixes (e.g. the Microsoft guest #EXT# email self-heal in lib/sync + lib/ui shipped on this branch) no longer require displacing the active seam.",
-  "forbidden_files_raw": "HARD RAILS (unchanged by the allow-by-default switch): No Stripe, Scout, schema/migration, or secrets changes. No auto-send. No BLIND loosening of positive_winner_contract or the discrepancy-card quality gate (the #452 'hollow drafts' mistake) — every gate change carries a test + before/after read.",
-  "required_local_proof": "npm run gate:continuity && npm run typecheck; npx vitest run lib/briefing lib/workday-presence (1014 tests green)",
-  "required_browser_proof": "Live (owner): after next morning-pipeline cron, pipeline_runs.gate_funnel.tier_descent_winner is non-null for 2cbc1bab on a day with no Tier-1 discrepancy; directive is finished-work shape (not do_nothing).",
-  "browser_proof_command": "manual: wait for morning-pipeline cron; query pipeline_runs for 2cbc1bab; check gate_funnel.tier_descent_winner.",
-  "acceptance_condition": "gate:continuity green + 1014 tests green + PR merged + live cron tier_descent_winner non-null for 2cbc1bab.",
+  "allowed_files_raw": "Allow-by-default-minus-forbidden (friction reduction, owner-directed 2026-06-22). The real guard is forbidden_file_patterns + the proof doctrine, not a whitelist.",
+  "forbidden_files_raw": "HARD RAILS: No Stripe, Scout (lib/scout — the outward R6 rung re-enters only behind owner sign-off + new anti-fabrication guardrails), schema/migration, or secrets changes. No auto-send. No BLIND loosening of positive_winner_contract or the discrepancy-card quality gate — every gate change carries a test + before/after read. R1's own-activity carve-out is additive (does not weaken the external-entity requirement for any other class).",
+  "required_local_proof": "npm run gate:continuity && npm run typecheck; npx vitest run lib/briefing lib/workday-presence (baseline 1014 green, plus new R1 + Tier-2-gate tests)",
+  "required_browser_proof": "Live (owner): a fresh own-activity thread (email_sent / file_modified) for 2cbc1bab produces a directive (not do_nothing) of next-move/finished shape that lands in Slack with a workday_presence_slack_send receipt in tkg_actions.",
+  "browser_proof_command": "manual: replay a fresh email_sent/file_modified signal for 2cbc1bab through the engine; confirm directive shape + seeded=true + Slack card + receipt.",
+  "acceptance_condition": "gate:continuity green + vitest green (baseline + new tests) + PR merged + live own-activity act delivered with a persisted receipt for 2cbc1bab.",
   "is_user_facing": true,
   "anti_regression_checks": [
-    "gate:continuity green with active_issue #538",
-    "active_issue #538 is OPEN on GitHub",
+    "gate:continuity green with active_issue #546",
+    "active_issue #546 is OPEN on GitHub",
     "no edits under app/api/stripe, lib/scout, supabase/migrations",
-    "1014 vitest green (lib/briefing + lib/workday-presence suites)",
-    "tier-descent only fires in no_valid_action branch — BAD1-5 in usefulness-gate still pass",
-    "tier-descent Tier 2 excludes past-due commitments (gte today filter)",
-    "tier-descent Tier 3 uses isThreadBackedSendableLoop — no fabricated or stale signal candidates"
+    "baseline 1014 vitest green (lib/briefing + lib/workday-presence) plus new R1 + Tier-2-gate tests",
+    "own-activity carve-out is additive — external-entity requirement unchanged for all other candidate classes",
+    "no loosening of positive_winner_contract / weak_risk — R1 ADDS an output bar",
+    "#538 Tier-2 cannot ship junk/errand commitments (isLowValueErrandCommitment)"
   ],
-  "stop_condition": "PR merged for claude/pr-merge-sequence-kziba2; next morning-pipeline cron shows tier_descent_winner non-null for 2cbc1bab on a no-Tier-1 day.",
-  "next_command": "Next session: read #538. After deploy check pipeline_runs.gate_funnel.tier_descent_winner for 2cbc1bab. Standing: #537 Fix B/C; Scout #494; OneDrive #507.",
+  "stop_condition": "PR merged for claude/value-cascade-r1-own-activity; a live own-activity act lands in Slack with a persisted receipt for 2cbc1bab.",
+  "next_command": "Next session: read #546. Land R1 engine green; wire event-driven delivery off the daily cron; replay a fresh own-activity signal for 2cbc1bab to a delivered+receipted act. Then R2–R6, goal-inference refresh, expert-panel/avatars, gmail sent-mail connector.",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",
