@@ -1,10 +1,10 @@
 {
   "active_issue": 546,
-  "active_branch": "claude/slack-card-quality-acr383",
+  "active_branch": "claude/foldera-100m-strategy-4fur3o",
   "active_pr": null,
   "deployed_commit_sha": "8987acc",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
   "last_verified_at": "2026-06-25T20:35:00.000Z",
-  "notes": "Issue #546 — Learning agentic life-system / value cascade. #553 MERGED (main 7cd6545): brain fix — seed-from-scorer now resolves FOLDERA_SELF_USER_ID (fixes dark brain since Jun 23) + auth/crash failures write suppression_trace. #554 MERGED (main 8987acc): SETTLED anchor + dead cron framing purged — boot context contradiction-free. Next: live proof — confirm card or named suppression_trace on 2cbc1bab."
+  "notes": "Issue #546 — Learning agentic life-system / value cascade. Card-precision meter: links fired Slack card (workday_presence_slack_send.slack_ts) to response (responded_to_slack_ts) so 'of cards fired, how many acted' is computable (lib/workday-presence/card-precision.ts, Probe 5, surfaced in self-optimizer). $100M wedge + magic-moment proof gate recorded in Bible (owner thesis 2026-06-25). Next: live proof — measured precision on 2cbc1bab, target 10 acted cards; named suppression_trace is honest silence."
 }

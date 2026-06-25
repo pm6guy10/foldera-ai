@@ -8,12 +8,19 @@ import type { WorkdayPresenceState } from './model';
  * same audit trail.
  *
  * view_draft is engagement, not a loop close — no terminal receipt for it.
+ *
+ * `respondedToSlackTs` is the message_ts of the original Slack card this action
+ * answers (Slack puts it on the interaction payload). Stamping it onto the
+ * receipt is the join key for the card-precision meter: it links this response
+ * row back to the `workday_presence_slack_send` row that fired the card, so we
+ * can compute fired → acted. See `card-precision.ts`.
  */
 export async function insertPresenceReceipt(
   supabase: SupabaseClient,
   userId: string,
   actionId: RightNowMessageActionId,
   state: WorkdayPresenceState,
+  respondedToSlackTs?: string | null,
 ): Promise<void> {
   if (actionId === 'view_draft') return;
   const status = actionId === 'done' || actionId === 'break_smaller' ? 'approved' : 'draft_rejected';
@@ -31,6 +38,7 @@ export async function insertPresenceReceipt(
       current_focus: state.current_focus,
       next_move: state.next_move,
       state_source: state.state_source,
+      ...(respondedToSlackTs ? { responded_to_slack_ts: respondedToSlackTs } : {}),
       ...(state.draft ? { draft_title: state.draft.title, draft_action_type: state.draft.action_type } : {}),
     },
   });

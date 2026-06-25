@@ -83,6 +83,38 @@ Guardian looks inward). "Never go silent" is satisfied by **real proactive value
 stakes or a posted fixture (lower-stakes-but-true beats invented urgency). The cascade is **one act at a
 time**, finished and handed over — not a digest, to-do list, or inbox summary.
 
+## The $100M wedge & the magic-moment proof gate (owner thesis — 2026-06-25)
+
+This is a **monetization hypothesis**, not a redefinition of what Foldera *is* (the life-system thesis above
+still holds — Foldera is not a single-workflow tool). It records *how this becomes a $100M company* and
+*what has to be proven first*, so the path stops being re-argued.
+
+**The math.** ~1,000 customers × $100k, or ~100k seats × $1k — same destination. The horizontal "ambient
+assistant for everyone" version caps out: low-trust, ~$30/mo, brutal churn, and a feature war against free
+Microsoft/Google bundles that needs a consumer-distribution company (~280k retained subs) to clear $100M.
+Not what this is.
+
+**The wedge.** Take the one thing the doctrine already nails — high-conviction, work-already-done,
+inward-watching — and point it at a **single expensive-to-miss workflow with a non-user buyer.** Lead
+candidate: **deal rescue** for revenue teams ("this $40k deal is going cold, here's the re-engagement,
+send?") — the one act is **dollar-attributable**, so the ROI story ("Foldera flagged it, you acted, it
+closed") justifies six-figure ACV and a budget-holding VP. Same-shape adjacents: CS churn rescue, recruiter
+candidate-cold, dealmaker/legal commitment-miss. The pattern that makes it $100M not $5M: **(1)** the one act
+ties to money, **(2)** missing it is expensive, **(3)** the buyer isn't the end user. *(Which vertical is a
+hypothesis to validate with design partners, not a settled pivot.)*
+
+**Precision is the moat.** "The agent that's only ever right when it speaks." One wrong or creepy
+interruption a week → uninstalled. This **reinforces** the existing precision-over-recall / `SAFE_SILENCE`
+doctrine — it does not loosen it. The drafted work must be genuinely sendable ("View Draft → approve" means
+the draft is good); that is an AI-quality bar, not a UI.
+
+**The proof gate (the whole game).** Everything above is downstream of one unproven thing: *is the magic
+moment real and repeatable?* — "it surfaced something I'd have dropped, with the work already done, and I
+just approved." The gate: **~10 interventions the owner rates "I'd have missed this / it saved me," with
+precision measured** (of cards fired, how many got acted on — `lib/workday-presence/card-precision.ts`,
+Probe 5 in `docs/LIVE_POOL_PROBE.md`). Until that clears, strategy is theater. Then design partners in **one**
+role, single metric: "did you act, would you pay" — and vertical, buyer, and pricing fall out mechanically.
+
 ## What Foldera Is
 
 Foldera is:
