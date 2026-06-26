@@ -1,10 +1,10 @@
 {
   "active_issue": 567,
-  "active_branch": "main",
+  "active_branch": "claude/lp-hero-hierarchy-tzsdur",
   "active_pr": null,
   "deployed_commit_sha": "c0b7c51",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-26T23:05:00.000Z",
-  "notes": "SEAM: #567 MERGED (PR #568, c0b7c51). Four code moves on main: pipeline_runs observability, ghost-goal vocabulary-dark gate, FOLDERA_MASTER_BIBLE Part VI doctrine, CURRENT_ARTIFACT_ANCHOR_RE un-rot. gate:continuity green; 1064 vitest pass. Issue #567 remains OPEN — waiting on owner sign-offs: (1) tkg_goals DB edit to re-ground apex goal, (2) Gmail connector fix (1→967). No code work remains."
+  "last_verified_at": "2026-06-26T23:25:00.000Z",
+  "notes": "BRANCH claude/lp-hero-hierarchy-tzsdur carries an LP-hero UI change only (no seam/DB change): the live Right Now decision card now leads the hero (lead-with-the-decision doctrine); the constellation+glyph moved down to the #product centerpiece it illustrates. All gate-locked homepage copy + the single landing-right-now-card testid preserved. #567 SEAM unchanged and still OPEN — waiting on owner sign-offs: (1) tkg_goals DB edit to re-ground apex goal, (2) Gmail connector fix (1→967). No backend/seam code work remains on #567."
 }

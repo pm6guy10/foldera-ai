@@ -3523,8 +3523,11 @@
   .fd .assure{margin-top:24px;display:flex;flex-wrap:wrap;gap:10px 16px;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;color:var(--fg5);align-items:center}
   .fd .assure .s{color:var(--border-2)}
   
-  .fd .hero-mark-wrap{position:relative;display:none;align-items:center;justify-content:center;min-height:340px}
-  @media(min-width:960px){.fd .hero-mark-wrap{display:flex;min-height:440px}}
+  .fd .hero-stage{position:relative;width:100%;margin-top:32px}
+  @media(min-width:960px){.fd .hero-stage{margin-top:0}}
+  .fd .hero-stage .stage{max-width:520px}
+  .fd .constellation-stage{position:relative;display:flex;align-items:center;justify-content:center;min-height:340px;max-width:560px;margin:8px auto 0}
+  @media(min-width:960px){.fd .constellation-stage{min-height:460px}}
   .fd .hero-mark-glow{position:absolute;width:62%;height:58%;border-radius:50%;
     background:radial-gradient(50% 50% at 40% 46%,rgba(232,53,200,0.30),transparent 66%),
               radial-gradient(54% 54% at 64% 58%,rgba(34,211,238,0.34),transparent 68%);filter:blur(30px);animation:breathe 7s ease-in-out infinite}
@@ -3566,9 +3569,34 @@
   .fd .rn-src .tx s{display:block;text-decoration:none;font-size:11.5px;color:var(--fg5);margin-top:1px}
   .fd .rn-src .m{font-family:var(--mono);font-size:10px;color:var(--fg4)}
   .fd .rn-src .m.hot{color:var(--cyan)}
+  .fd .rn-src .m.mut{color:var(--fg5);opacity:0.65}
   .fd .rn-foot{margin-top:24px;padding-top:20px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
   .fd .rn-foot .note{font-family:var(--mono);font-size:11px;letter-spacing:0.06em;color:var(--fg5)}
   .fd .rn-acts{display:flex;gap:10px}
+  /* live state machine: the card changes state on incoming signals */
+  .fd .rn{transition:border-color .5s ease,box-shadow .5s ease,opacity .5s ease}
+  .fd .rn.is-stale{opacity:0.9;border-color:var(--border)}
+  .fd .rn.is-stale .rn-directive{border-left-color:var(--amber);color:var(--fg2)}
+  .fd .rn.is-conflict{border-color:rgba(232,53,200,0.42);box-shadow:0 40px 100px -24px rgba(0,0,0,1),0 0 60px -28px rgba(232,53,200,0.45)}
+  .fd .rn-modes{display:inline-flex;align-items:center;gap:7px}
+  .fd .rn-modes .md{width:7px;height:7px;border-radius:50%;border:0;padding:0;background:var(--border-2);cursor:pointer;transition:background .35s ease,transform .35s ease}
+  .fd .rn-modes .md:hover{background:var(--fg5)}
+  .fd .rn-modes .md.on{background:var(--cyan);transform:scale(1.3);box-shadow:0 0 0 3px rgba(34,211,238,0.14)}
+  .fd .rn-anim{animation:rn-fade .55s cubic-bezier(.22,.61,.36,1)}
+  @keyframes rn-fade{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+  @media(prefers-reduced-motion:reduce){.fd .rn-anim{animation:none}.fd .rn-modes .md{transition:none}}
+  .fd .rn-badge{margin-left:11px;font-family:var(--mono);font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:#06141a;padding:3px 8px;border-radius:9999px;font-weight:700;vertical-align:middle;background:var(--cyan)}
+  .fd .rn-badge.stale{background:var(--amber)}
+  .fd .rn-badge.conflict{background:linear-gradient(90deg,#f06ad6,var(--cyan))}
+  .fd .callout.muted{background:var(--card-2);border:1px solid var(--border);color:var(--fg4);box-shadow:none}
+  .fd .callout.muted svg{color:var(--fg5)}
+  .fd .rn-opts{margin-top:16px;display:flex;flex-direction:column;gap:10px}
+  .fd .rn-opt{display:flex;align-items:center;gap:13px;padding:14px 15px;border:1px solid var(--border-2);border-radius:12px;background:var(--card-2)}
+  .fd .rn-opt .ic{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--bg-2);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+  .fd .rn-opt .tx{flex:1;min-width:0}
+  .fd .rn-opt .tx b{display:block;font-size:14px;font-weight:600;color:var(--fg1)}
+  .fd .rn-opt .tx span{display:block;font-size:11.5px;color:var(--fg5);margin-top:2px}
+  .fd .rn-opt .conf{font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--cyan);flex-shrink:0}
   
   .fd .sec{padding:96px 0;border-top:1px solid var(--border)}
   @media(min-width:960px){.fd .sec{padding:120px 0}}
@@ -3785,4 +3813,4 @@
 @keyframes con-floaty{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
 @media(prefers-reduced-motion:reduce){.fd .con-chip{animation:none}}
 /* central core sits above the rings, the orbiting chips frame it */
-.fd .hero-mark-wrap .hero-mark{width:min(86%,400px)}
+.fd .constellation-stage .hero-mark{width:min(86%,360px)}
