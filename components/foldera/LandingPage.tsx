@@ -109,12 +109,6 @@ const navLinks = [
   { href: '#cta', label: 'Pilot' },
 ];
 
-const rightNowSources: Array<{ logo: string; title: string; detail: string; meta: string; hot: boolean }> = [
-  { logo: 'slack', title: 'Slack', detail: '#q2-planning — mentioned you', meta: '3 new', hot: true },
-  { logo: 'gmail', title: 'Gmail', detail: 'Re: Headcount — Finance', meta: '2:14', hot: false },
-  { logo: 'google-calendar', title: 'Google Calendar', detail: 'Budget review · Today 4:00', meta: 'hold', hot: false },
-];
-
 const taxCells: Array<{ value: number; decimals: number; prefix: string; u: string; lab: string; src: string }> = [
   { value: 9.4, decimals: 1, prefix: '', u: 'hrs', lab: 'Lost every week to context switching.', src: 'Workplace research' },
   { value: 2.7, decimals: 1, prefix: '', u: '×', lab: 'Slower to refocus after each interruption.', src: 'Attention studies' },
@@ -300,6 +294,229 @@ function BrandLockup({ extraClass = '' }: { extraClass?: string }) {
   );
 }
 
+/* ----------------------------------------------------- hero decision card (live state machine) */
+
+type DecisionState = 'active' | 'changed' | 'stale' | 'conflict';
+
+type CardSource = { logo: string; title: string; detail: string; meta: string; tone?: 'hot' | 'muted' };
+
+type DecisionView = {
+  badge?: { label: string; kind: 'changed' | 'stale' | 'conflict' };
+  kicker: string;
+  directive?: string;
+  options?: Array<{ logo: string; title: string; detail: string; conf: string }>;
+  why: ReactNode;
+  callout?: { text: string; muted?: boolean };
+  sources?: CardSource[];
+  note: string;
+  primary: string;
+  secondary: string;
+};
+
+// The whole product expressed as one surface that changes state on incoming work
+// signals. The landing page renders that state machine live so visitors feel the
+// system deciding, refining, and narrowing — never a static screenshot.
+const DECISION_VIEWS: Record<DecisionState, DecisionView> = {
+  active: {
+    kicker: 'Your next move',
+    directive: 'Review the Q2 headcount plan.',
+    why: (
+      <>
+        <b>Sarah</b> updated the doc, Finance commented, and you were mentioned in Slack. Approving now unblocks the
+        budget timeline.
+      </>
+    ),
+    callout: { text: 'Draft reply ready — approve to send, or open the doc first.' },
+    sources: [
+      { logo: 'slack', title: 'Slack', detail: '#q2-planning — mentioned you', meta: '3 new', tone: 'hot' },
+      { logo: 'gmail', title: 'Gmail', detail: 'Re: Headcount — Finance', meta: '2:14' },
+      { logo: 'google-calendar', title: 'Google Calendar', detail: 'Budget review · Today 4:00', meta: 'hold' },
+    ],
+    note: 'State attached · context private',
+    primary: 'Open the doc',
+    secondary: 'Snooze',
+  },
+  changed: {
+    badge: { label: 'Updated', kind: 'changed' },
+    kicker: 'Your next move',
+    directive: 'Review the Q2 headcount plan.',
+    why: (
+      <>
+        <b>New —</b> Finance just signed off on the budget line. The move is the same; the reasoning just got stronger.
+      </>
+    ),
+    callout: { text: 'Draft reply refreshed with the approved numbers.' },
+    sources: [
+      { logo: 'slack', title: 'Slack', detail: '#q2-planning — Finance approved', meta: '5 new', tone: 'hot' },
+      { logo: 'gmail', title: 'Gmail', detail: 'Re: Headcount — sign-off', meta: 'now', tone: 'hot' },
+      { logo: 'google-calendar', title: 'Google Calendar', detail: 'Budget review · Today 4:00', meta: 'hold' },
+    ],
+    note: 'Refined from 2 new signals · 09:43',
+    primary: 'Open the doc',
+    secondary: 'Snooze',
+  },
+  stale: {
+    badge: { label: 'Update available', kind: 'stale' },
+    kicker: 'Confidence dropped',
+    directive: 'Review the Q2 headcount plan.',
+    why: 'The doc hasn’t moved in three days and the budget review has passed. This may no longer be your best next move.',
+    callout: { text: 'The signals behind this have gone quiet.', muted: true },
+    sources: [
+      { logo: 'slack', title: 'Slack', detail: '#q2-planning — last reply', meta: '3d ago', tone: 'muted' },
+      { logo: 'gmail', title: 'Gmail', detail: 'Re: Headcount — Finance', meta: '2d ago', tone: 'muted' },
+      { logo: 'google-calendar', title: 'Google Calendar', detail: 'Budget review · ended', meta: 'past', tone: 'muted' },
+    ],
+    note: 'Last reinforced 3 days ago',
+    primary: 'Re-evaluate',
+    secondary: 'Keep anyway',
+  },
+  conflict: {
+    badge: { label: 'Two priorities', kind: 'conflict' },
+    kicker: 'Two priorities are competing',
+    why: 'Both cleared the bar at the same moment. Foldera won’t quietly collapse them — the call stays yours.',
+    options: [
+      { logo: 'slack', title: 'Close the ACME renewal', detail: 'Deadline today · Sarah is waiting', conf: 'High' },
+      { logo: 'gmail', title: 'Review the Q2 headcount plan', detail: 'Finance is blocked on you', conf: 'High' },
+    ],
+    note: '2 candidates · equal confidence',
+    primary: 'Let Foldera decide',
+    secondary: 'I’ll choose',
+  },
+};
+
+const DECISION_SEQUENCE: DecisionState[] = ['active', 'changed', 'active', 'stale', 'active', 'conflict'];
+const DECISION_DWELL: Record<DecisionState, number> = { active: 4600, changed: 2800, stale: 5200, conflict: 6200 };
+const DECISION_STATES: DecisionState[] = ['active', 'changed', 'stale', 'conflict'];
+const STATE_LABELS: Record<DecisionState, string> = {
+  active: 'Active decision',
+  changed: 'Refined by a new signal',
+  stale: 'Confidence dropped',
+  conflict: 'Two priorities competing',
+};
+
+function HeroDecisionCard({ accessHref }: { accessHref: string }) {
+  const [seqIdx, setSeqIdx] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [reduced, setReduced] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduced(mql.matches);
+    const onChange = () => setReduced(mql.matches);
+    mql.addEventListener?.('change', onChange);
+    return () => mql.removeEventListener?.('change', onChange);
+  }, []);
+
+  const state = DECISION_SEQUENCE[seqIdx];
+
+  useEffect(() => {
+    if (reduced || paused) return;
+    const t = window.setTimeout(() => setSeqIdx((i) => (i + 1) % DECISION_SEQUENCE.length), DECISION_DWELL[state]);
+    return () => window.clearTimeout(t);
+  }, [seqIdx, paused, reduced, state]);
+
+  const view = DECISION_VIEWS[state];
+
+  const jumpTo = (target: DecisionState) => {
+    const idx = DECISION_SEQUENCE.indexOf(target);
+    if (idx !== -1) setSeqIdx(idx);
+  };
+
+  return (
+    <div className="stage">
+      <div className="stage-glow" aria-hidden="true" />
+      <div
+        className={`rn is-${state}`}
+        data-testid="landing-right-now-card"
+        data-state={state}
+        onPointerEnter={() => setPaused(true)}
+        onPointerLeave={() => setPaused(false)}
+      >
+        <div className="rn-scan" aria-hidden="true" />
+        <div className="rn-top">
+          <span className="rn-live">
+            <span className="dot" /> Right Now
+          </span>
+          <span className="rn-modes" role="tablist" aria-label="Decision state">
+            {DECISION_STATES.map((s) => (
+              <button
+                key={s}
+                type="button"
+                role="tab"
+                aria-selected={s === state}
+                aria-label={STATE_LABELS[s]}
+                className={`md ${s === state ? 'on' : ''}`}
+                onClick={() => jumpTo(s)}
+              />
+            ))}
+          </span>
+        </div>
+        <div className="rn-main">
+          <div className="rn-anim" key={state}>
+            <div className="rn-kicker">
+              {view.kicker}
+              {view.badge ? <span className={`rn-badge ${view.badge.kind}`}>{view.badge.label}</span> : null}
+            </div>
+            {view.directive ? <div className="rn-directive">{view.directive}</div> : null}
+            {view.options ? (
+              <div className="rn-opts">
+                {view.options.map((opt) => (
+                  <div className="rn-opt" key={opt.title}>
+                    <span className="ic">
+                      <Logo name={opt.logo} size={15} />
+                    </span>
+                    <span className="tx">
+                      <b>{opt.title}</b>
+                      <span>{opt.detail}</span>
+                    </span>
+                    <span className="conf">{opt.conf}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <p className="rn-why">{view.why}</p>
+            {view.callout ? (
+              <div className={`callout ${view.callout.muted ? 'muted' : ''}`}>
+                <Sparkles aria-hidden="true" />
+                {view.callout.text}
+              </div>
+            ) : null}
+            {view.sources ? (
+              <div className="rn-srcs">
+                {view.sources.map((s) => (
+                  <div className="rn-src" key={s.detail}>
+                    <span className="ic">
+                      <Logo name={s.logo} size={15} />
+                    </span>
+                    <span className="tx">
+                      <b>{s.title}</b>
+                      <s>{s.detail}</s>
+                    </span>
+                    <span className={`m ${s.tone === 'hot' ? 'hot' : ''} ${s.tone === 'muted' ? 'mut' : ''}`}>
+                      {s.meta}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <div className="rn-foot">
+              <span className="note">{view.note}</span>
+              <span className="rn-acts">
+                <button type="button" className="btn btn-ghost btn-sm">
+                  {view.secondary}
+                </button>
+                <a href={accessHref} className="btn btn-primary btn-sm">
+                  {view.primary}
+                </a>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ----------------------------------------------------- page */
 
 export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) {
@@ -442,55 +659,7 @@ export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) 
                 </div>
               </div>
               <div className="hero-stage reveal pre">
-                <div className="stage">
-                  <div className="stage-glow" aria-hidden="true" />
-                  <div className="rn" data-testid="landing-right-now-card">
-                    <div className="rn-scan" aria-hidden="true" />
-                    <div className="rn-top">
-                      <span className="rn-live">
-                        <span className="dot" /> Right Now
-                      </span>
-                      <span className="rn-stamp">09:42</span>
-                    </div>
-                    <div className="rn-main">
-                      <div className="rn-kicker">Your next move</div>
-                      <div className="rn-directive">Review the Q2 headcount plan.</div>
-                      <p className="rn-why">
-                        <b>Sarah</b> updated the doc, Finance commented, and you were mentioned in Slack. Approving now
-                        unblocks the budget timeline.
-                      </p>
-                      <div className="callout">
-                        <Sparkles aria-hidden="true" />
-                        Draft reply ready — approve to send, or open the doc first.
-                      </div>
-                      <div className="rn-srcs">
-                        {rightNowSources.map((s) => (
-                          <div className="rn-src" key={s.detail}>
-                            <span className="ic">
-                              <Logo name={s.logo} size={15} />
-                            </span>
-                            <span className="tx">
-                              <b>{s.title}</b>
-                              <s>{s.detail}</s>
-                            </span>
-                            <span className={`m ${s.hot ? 'hot' : ''}`}>{s.meta}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="rn-foot">
-                        <span className="note">State attached · context private</span>
-                        <span className="rn-acts">
-                          <button type="button" className="btn btn-ghost btn-sm">
-                            Snooze
-                          </button>
-                          <a href={accessHref} className="btn btn-primary btn-sm">
-                            Open the doc
-                          </a>
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <HeroDecisionCard accessHref={accessHref} />
               </div>
             </div>
           </div>
