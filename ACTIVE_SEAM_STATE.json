@@ -1,10 +1,10 @@
 {
   "active_issue": 546,
-  "active_branch": "main",
+  "active_branch": "claude/expire-past-events-537",
   "active_pr": null,
   "deployed_commit_sha": "52ed353",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-26T03:05:00.000Z",
-  "notes": "PR #556 MERGED (52ed353): Slack Right Now card now IS the draft — leads with ready-to-send recipient+subject+body inline + Approve & Send (review-gated modal, no auto-send); homework scaffolding + View Draft step gone. Baseline: PR #555 (event-driven Outlook push, budget fix, Micro1 excluded, card-precision meter). Active issue #546 still open — R2-R6 cascade, goal-inference refresh, Gmail connector fix, expert-panel/avatars. Next: owner sets GRAPH_WEBHOOK_SECRET + reconnects Outlook → live push-triggered card (new form) → precision meter proof (target 10 acted cards)."
+  "last_verified_at": "2026-06-26T14:10:00.000Z",
+  "notes": "Pool hygiene (#546 cascade / #537): past-due EVENT commitments (attend_participate) are now auto-expired from candidacy at the scorer load choke point — structural replacement for per-row manual suppression. Action/payment/follow-up overdue commitments preserved (overdue = more urgent, not moot). Baseline: #556 (card IS the draft), #555 (event-driven push, budget fix, Micro1 excluded). Verified in prod: budget reconcile durable at function level ($2.17/$30); Outlook connected (mail flowing); brain unblocked, stays honestly silent on weak/nag pool."
 }
