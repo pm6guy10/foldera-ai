@@ -2,11 +2,11 @@
 
 ## TL;DR
 
-- **#553 + #554 MERGED (main `8987acc`):** brain fix live (`FOLDERA_SELF_USER_ID` canonical, dark since Jun 23 fixed) + boot context contradiction-free (SETTLED anchor, dead cron framing gone).
-- **Delivery is push-driven** (event, not schedule): Graph webhook `/api/webhooks/graph` → sync → materiality gate → `deliverWorkdayPresence` (seed→trigger) → Slack card, in seconds. Cron is demoted to a cheap subscription-renewer, never "the schedule the card waits on".
-- **Brain unblocked (2026-06-26):** dark since Jun 23 was a *phantom budget cap* — `api_budget_check_and_reserve` reserved a flat 10¢/run and never reconciled, so the meter read $30 (capped) on $2.07 real spend. Fixed: meter now reconciles to the real `api_usage` ledger (`sql/030_api_budget_reconcile.sql`); June reset to true $2.07. Also killed the `@expert.micro1.ai` eval account that was silently draining shared budget (`isExcludedPipelineUser`).
-- **Next move:** live proof, now *measured* — precision meter (`card-precision.ts`) links fired→acted; target 10 acted cards on `2cbc1bab`. Real card or named `suppression_trace`; `SAFE_SILENCE` still success.
-- **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars, Gmail sent-mail connector (1 vs 967), commitment pool hygiene (Fix B/C).
+- **#555 MERGED (main `dcb804d`):** event-driven Outlook push live — Graph webhook `/api/webhooks/graph` fires the card the instant mail arrives; cron demoted to subscription-renewer only. Budget phantom cap fixed ($30 ghost → true $2.07); Micro1 eval agent killed (`isExcludedPipelineUser`). Card-precision meter wired (`responded_to_slack_ts` join key).
+- **Delivery is push-driven** (event, not schedule): Outlook mail → Graph POSTs `/api/webhooks/graph` → `syncMicrosoft` → materiality gate → `deliverWorkdayPresence` → Slack card, seconds. No schedule, no button.
+- **To go live (one owner action):** set `GRAPH_WEBHOOK_SECRET` in Vercel → reconnect Outlook (or wait for daily cron Stage 0 to re-arm). After that: send yourself an Outlook email, card should land in the ping channel in seconds.
+- **Next move:** live proof + precision meter — first push-triggered card, then click → `responded_to_slack_ts` → Probe 5. Target: 10 acted cards.
+- **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars, Gmail sent-mail connector fix (1 vs 967), #537 Fix B/C.
 
 ## DON'T FORGET — read first, every boot
 
@@ -24,10 +24,11 @@ Keep this cockpit short and value-first. Completed-issue history lives in `docs/
 
 These are decided. Do not re-derive, re-probe, or re-propose the dead alternative.
 
-1. **Delivery is push/event-driven, not a scheduled cron.** Provider push (Microsoft Graph change-notifications → `/api/webhooks/graph`; Gmail watch is phase 2) fires the card the instant data changes — the change is the clock. `deliverWorkdayPresence` (`lib/workday-presence/deliver-now.ts`) is the single seed→trigger pipeline ALL callers use. The `vercel.json` crons are a Hobby-throttled fallback heartbeat + subscription-renewer only; never "wait for the cron". Old `daily-brief-generate` RETIRED (#548).
+1. **Delivery is push/event-driven, not a scheduled cron.** Provider push (Microsoft Graph change-notifications → `/api/webhooks/graph`; Gmail watch is phase 2) fires the card the instant data changes — the change is the clock. `deliverWorkdayPresence` (`lib/workday-presence/deliver-now.ts`) is the single seed→trigger pipeline ALL callers use. The `vercel.json` crons are a Hobby-throttled fallback heartbeat + subscription-renewer only; never "wait for the cron". Old `daily-brief-generate` RETIRED (#548). **Push architecture MERGED #555.**
 2. **Owner = `2cbc1bab`.** `FOLDERA_SELF_USER_ID` is canonical owner resolution everywhere; `INGEST_USER_ID` is legacy fallback only (fixed in #553). Old account `e40b7cd8` is empty post-#509.
 3. **`SAFE_SILENCE` is a valid SUCCESS.** Never loosen a gate to force a card.
 4. **Live-pool schema + probes live in `docs/LIVE_POOL_PROBE.md`.** Don't re-derive columns or re-pull the pool to "see what the brain has" — it's already canned.
+5. **Budget phantom cap fixed (#555).** `api_budget_check_and_reserve` reconciled to real `api_usage` ledger; June reset to true $2.07. Micro1 eval agent (`398a8c82` / `zz933@expert.micro1.ai`) permanently excluded via `isExcludedPipelineUser`.
 
 ## Boot
 
