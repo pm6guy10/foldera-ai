@@ -1227,6 +1227,60 @@ function isMoreThanThreeDaysOld(dateMs: number | null, nowMs: number): boolean {
   return dateMs != null && nowMs - dateMs > daysMs(3);
 }
 
+/**
+ * Categories whose commitments are anchored to a calendar OCCASION — a birthday, an
+ * event you attend, a meeting you show up to. Once that date passes, the thing is
+ * moot (you cannot attend a birthday that already happened). This is the deliberate
+ * opposite of an ACTION commitment (follow_up, payment_financial, deliver_document,
+ * provide_information, …) where an overdue deadline makes the work MORE urgent, not
+ * irrelevant. Only event-anchored commitments are auto-expired once their date passes.
+ */
+const EVENT_ANCHORED_COMMITMENT_CATEGORIES = new Set(['attend_participate']);
+
+/** Keep an event through the end of its own day before treating it as past. */
+const EXPIRED_EVENT_GRACE_MS = daysMs(1);
+
+export type ExpirableCommitment = {
+  id?: string | null;
+  category?: string | null;
+  due_at?: string | null;
+  description?: string | null;
+};
+
+/**
+ * True when an event-anchored commitment's hard calendar date is already in the past
+ * (beyond a one-day grace). Action/payment/follow-up commitments always return false —
+ * being overdue never makes them moot.
+ */
+export function isExpiredEventCommitment(commitment: ExpirableCommitment, nowMs: number): boolean {
+  if (!EVENT_ANCHORED_COMMITMENT_CATEGORIES.has(String(commitment.category ?? '').trim())) {
+    return false;
+  }
+  const dueMs = parseFiniteDateMs(commitment.due_at);
+  if (dueMs == null) return false; // no hard date → not an expirable dated event
+  return nowMs - dueMs > EXPIRED_EVENT_GRACE_MS;
+}
+
+/**
+ * Partition commitments into the live pool vs. expired calendar events. Past-due EVENT
+ * commitments (a birthday that already happened, a meeting that already occurred) are
+ * pulled out of candidacy ENTIRELY so they can never pollute scoring — the structural
+ * answer to zombie dated reminders (#537), replacing per-row manual suppression. An
+ * overdue action is preserved (it is more urgent, not dead); only past events drop.
+ */
+export function partitionExpiredEventCommitments<T extends ExpirableCommitment>(
+  commitments: readonly T[],
+  nowMs: number,
+): { kept: T[]; expired: T[] } {
+  const kept: T[] = [];
+  const expired: T[] = [];
+  for (const commitment of commitments) {
+    if (isExpiredEventCommitment(commitment, nowMs)) expired.push(commitment);
+    else kept.push(commitment);
+  }
+  return { kept, expired };
+}
+
 export function filterStaleDatedEventCandidatesBeforeScoring<
   T extends Pick<ScorerBaseCandidate, 'title' | 'content' | 'sourceSignals'>
     & Partial<Pick<ScorerBaseCandidate, 'commitmentDueMs' | 'calendarEventStartMs'>>,
@@ -4695,6 +4749,27 @@ export async function scoreOpenLoops(
 
   const commitments = commitmentsRes.data ?? [];
   diag.sourceCounts.commitments_raw = commitments.length;
+
+  // Structural zombie guard (#537): a calendar EVENT whose date has already passed is
+  // moot — pull past-due event commitments out of candidacy entirely so they can never
+  // pollute the pool. This is the automatic, every-run replacement for per-row manual
+  // suppression. Action/payment/follow-up commitments are deliberately preserved here:
+  // an overdue action is MORE urgent, not dead (see partitionExpiredEventCommitments).
+  {
+    const eventPartition = partitionExpiredEventCommitments(commitments, Date.now());
+    if (eventPartition.expired.length > 0) {
+      console.log(
+        JSON.stringify({
+          event: 'expired_event_commitment_filter',
+          before: commitments.length,
+          after: eventPartition.kept.length,
+          dropped: eventPartition.expired.length,
+        }),
+      );
+      commitments.splice(0, commitments.length, ...eventPartition.kept);
+    }
+  }
+
   diag.sourceCounts.signals_raw = (signalsRes.data ?? []).length;
   diag.sourceCounts.entities_raw = (entitiesRes.data ?? []).length;
   diag.sourceCounts.goals_raw = (goalsRes.data ?? []).length;
