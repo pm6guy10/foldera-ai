@@ -5,6 +5,6 @@
   "deployed_commit_sha": "fd9c5cc",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-26T17:00:00.000Z",
+  "last_verified_at": "2026-06-26T18:40:00.000Z",
   "notes": "ACTIVE: extend 'card IS the act' to write_document — acquisition legwork. lib/conviction/acquisition-legwork.ts + a new branch in generateArtifact (lib/conviction/artifact-generator.ts): a purchase/prep/booking write_document move now does the real lookup (searchWebForEnrichment, self-gated on SCOUT_WEB_ENABLED + isPaidLlmAllowed) and hands the FINISHED act — the chosen thing + a grounded link — instead of a 'decide/buy/wrap/confirm' homework checklist. Never fabricates a link (degrades to the decisive brief). Harness-proven: 9 acquisition tests incl. live evaluateBottomGate pass + a write_document draft-led render test; typecheck/lint green. Prior merges: #556 (reply card IS the draft), #562 (past events auto-expire). NEXT: enable SCOUT_WEB_ENABLED for live proof on a real acquisition commitment (owner flag flip = paid web search); then precision meter; #546 R2-R6."
 }
