@@ -98,6 +98,37 @@ describe('workday presence message payload', () => {
     expect(payload.text).toContain('*Reply to sarah@example.com*');
   });
 
+  it('renders a write_document acquisition draft as the finished act (pick + link inline), not homework', () => {
+    const state = normalizeWorkdayPresenceState({
+      current_focus: 'Birthday gift for Nathaniel',
+      next_move: 'Order the gift before the party.',
+      why_it_matters: "Nathaniel's birthday is 2026-07-04.",
+      state_source: 'scored_winner',
+      draft: {
+        action_type: 'write_document',
+        title: 'Ready to order for Nathaniel',
+        preview: 'LEGO Botanicals Orchid (set 10311), $49.99.',
+        body: [
+          'THE PICK',
+          'LEGO Botanicals Orchid (set 10311), $49.99.',
+          '',
+          'Order it here: https://www.lego.com/en-us/product/orchid-10311',
+          '',
+          'NEXT PHYSICAL STEP: open the link above and place the order before 2026-07-04.',
+        ].join('\n'),
+      },
+    });
+    const payload = buildRightNowMessagePayload(state);
+    expect(payload.mode).toBe('active');
+    // The finished object leads the card: title headline + the real link inline.
+    expect(payload.text).toContain('*Ready to order for Nathaniel*');
+    expect(payload.text).toContain('https://www.lego.com/en-us/product/orchid-10311');
+    // No send button (nothing to send) and no homework scaffolding.
+    expect(payload.actions.map((a) => a.id)).toEqual(['dismiss']);
+    expect(payload.text).not.toContain('Next move:');
+    expect(payload.text).not.toContain('Draft ready (');
+  });
+
   it('renders a quiet dismissed card with no buttons while the dismiss snooze is active', () => {
     // Mirrors applyDismiss: a real dismiss always sets snoozed_until (4h hold),
     // not just an interaction_history entry.

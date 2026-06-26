@@ -8,6 +8,12 @@ import {
   getSendMessageRecipientGroundingIssues,
   getArtifactPersistenceIssues,
 } from './artifact-generator-compat';
+import {
+  isAcquisitionDirective,
+  buildAcquisitionSearchQuery,
+  buildAcquisitionArtifactFromSearch,
+} from './acquisition-legwork';
+import { searchWebForEnrichment } from '@/lib/scout/web-search';
 
 type GoalCandidate = {
   text: string;
@@ -730,6 +736,15 @@ export async function generateArtifact(
     }
     if (!embedded && isAdminDeadlineDirective(directive)) {
       return buildAdminDeadlineDecisionPacket(directive);
+    }
+    // Acquisition legwork: a purchase/prep/booking move's finished act is the chosen thing
+    // plus a real link, not a checklist. Do the lookup and hand it over done. The search
+    // self-gates on SCOUT_WEB_ENABLED + isPaidLlmAllowed (returns null when off), and we
+    // only ship when it grounds a real link — otherwise fall through to the decisive brief.
+    if (!embedded && isAcquisitionDirective(directive)) {
+      const summary = await searchWebForEnrichment(buildAcquisitionSearchQuery(directive), userId);
+      const acquired = buildAcquisitionArtifactFromSearch(directive, summary);
+      if (acquired) return acquired;
     }
   }
 

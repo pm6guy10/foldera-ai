@@ -1,10 +1,10 @@
 {
   "active_issue": 546,
-  "active_branch": "main",
+  "active_branch": "claude/card-is-act-write-document-7xsol8",
   "active_pr": null,
   "deployed_commit_sha": "fd9c5cc",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-26T15:00:00.000Z",
-  "notes": "Session closed out 2026-06-26 (PR #563). Today's merges: #556 (card IS the draft), #562 (past-due events auto-expire from candidacy / #537). Baseline #555 (event-driven push, budget fix durable, Micro1 excluded). Docs rolled fwd (ACTIVE_HANDOFF, SESSION_HISTORY, LESSONS_LEARNED #30/#31). Verified prod: budget reconcile durable at function level; Outlook connected; brain unblocked, nothing hinges on owner. OPEN/NEXT: extend 'card IS the act' to write_document/prep-steps (birthday-checklist still homework); then live proof on cleaned pool (real act or honest SAFE_SILENCE); #546 R2-R6 cascade, goal-inference refresh, Gmail connector (1 vs 967)."
+  "last_verified_at": "2026-06-26T17:00:00.000Z",
+  "notes": "ACTIVE: extend 'card IS the act' to write_document — acquisition legwork. lib/conviction/acquisition-legwork.ts + a new branch in generateArtifact (lib/conviction/artifact-generator.ts): a purchase/prep/booking write_document move now does the real lookup (searchWebForEnrichment, self-gated on SCOUT_WEB_ENABLED + isPaidLlmAllowed) and hands the FINISHED act — the chosen thing + a grounded link — instead of a 'decide/buy/wrap/confirm' homework checklist. Never fabricates a link (degrades to the decisive brief). Harness-proven: 9 acquisition tests incl. live evaluateBottomGate pass + a write_document draft-led render test; typecheck/lint green. Prior merges: #556 (reply card IS the draft), #562 (past events auto-expire). NEXT: enable SCOUT_WEB_ENABLED for live proof on a real acquisition commitment (owner flag flip = paid web search); then precision meter; #546 R2-R6."
 }
