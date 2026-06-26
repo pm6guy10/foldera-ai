@@ -81,8 +81,14 @@ const TRANSACTIONAL_SENDER_RE =
   /\b(?:onboarding|no[-_]?reply|noreply|notification|notifications|support|alerts?|updates?)@(?:resend\.dev|resend\.com|accounts\.google\.com|microsoft\.com|stripe\.com|github\.com|linkedin\.com|slack\.com)\b/i;
 const STALE_STATUS_WITHOUT_ARTIFACT_RE =
   /\b(no activity since|silent \d+ days?|last seen \d+ days?|stopped|fading connection|relationship at risk|\b\d+\s+days ago\b|30[–-]90d ago)\b/i;
+// A current-artifact anchor is a relative time cue ("due in 3d", "this week") or a
+// concrete ISO date. The date arm was hardcoded to 2026-05-.. — a literal that went dead
+// the moment the calendar left May 2026, silently blocking every real dated commitment
+// from June on. Restore the original intent (a concrete date is an anchor) for any month
+// with a bare ISO date; recency is owned by the separate currentness / stale-evidence
+// checks, not this text fallback.
 const CURRENT_ARTIFACT_ANCHOR_RE =
-  /\b(due in \d+d|due today|due tomorrow|deadline closing|today|tomorrow|this week|scheduled|calendar|conflict|overlap|by end of day|2026-05-(?:0[5-9]|[12]\d|3[01]))\b/i;
+  /\b(due in \d+d|due today|due tomorrow|deadline closing|today|tomorrow|this week|scheduled|calendar|conflict|overlap|by end of day|\d{4}-\d{2}-\d{2})\b/i;
 
 export const ARTIFACT_TASTE_EXAMPLES: ArtifactTasteExample[] = [
   {

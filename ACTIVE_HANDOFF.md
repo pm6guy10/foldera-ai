@@ -2,10 +2,10 @@
 
 ## TL;DR
 
-- **#564 MERGED — write_document acquisition legwork is on main.** Acquisition/purchase/prep moves now do the real lookup and hand the FINISHED act (chosen thing + grounded link), not homework. `lib/conviction/acquisition-legwork.ts` + `generateArtifact` branch; never fabricates a link (degrades to decisive brief). 9 harness tests green.
-- **Live proof blocked on 2 Vercel env vars:** `SCOUT_ENABLED=true` + `SCOUT_WEB_ENABLED=true` (Production). Live pool has a real target: "Book hotel stay using $35.16 OneKeyCash balance" (Supabase id `829b5e13`).
-- **Prior merges:** #556 (reply card IS the draft); #562 (past-due events auto-expire); #564 (write_document acquisition legwork). #555 baseline.
-- **Next:** owner sets env vars → live proof → precision meter (Probe 5). Standing #546: R2–R6 cascade, goal-inference refresh, Gmail connector (1 vs 967).
+- **Value reset (owner 2026-06-26):** Foldera is **decision-replacement**, not a task tool. Metric = **trust = the user stops re-checking** (closure, not certainty). Reminders (bills, hotel points) are **junk tier** — silence beats them. First indispensable move = **"finish what I started" (R1):** watch real Drive/Outlook activity, hand back the finished asset he drafted and never shipped.
+- **#565 MERGED — decision-closure card footer (override-killer).** Coverage-assurance + continuity quiet lines so the user has permission to stop re-checking. `lib/workday-presence/decision-closure.ts` plumbed state→seed→renderer. Runner-up list deliberately omitted (re-triggers comparison).
+- **In flight (this branch):** fix rotted `CURRENT_ARTIFACT_ANCHOR_RE` (month-locked to 2026-05). Narrow latent-bug fix; does NOT alone make a card fire.
+- **Next (scoped issue, new chat):** foundation so a real card FIRES — stop ghost apex-goal monopoly (`extractDrift`) + re-ground goal (sign-off), own-activity fuel + Gmail connector (1-of-967, sign-off), restore `pipeline_runs` observability, durable doctrine to Bible. Prior merges: #556/#562/#564/#565.
 
 ## DON'T FORGET — read first, every boot
 

@@ -1,10 +1,10 @@
 {
   "active_issue": 546,
-  "active_branch": "claude/decision-closure-card-coverage",
-  "active_pr": 565,
-  "deployed_commit_sha": "68926d1",
+  "active_branch": "claude/foundation-anchor-regex",
+  "active_pr": null,
+  "deployed_commit_sha": "c553f47",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-26T21:10:00.000Z",
-  "notes": "SEAM: decision-closure card lines (override-killer). Owner reset value def 2026-06-26: Foldera = decision-replacement; trust = user stops re-checking (closure, not certainty). Override = the 'if it mattered it'd be here' permission breaking; #1 cause is coverage doubt. lib/workday-presence/decision-closure.ts (pure: buildCoverageLine/buildContinuityLine) plumbed through WorkdayPresenceState -> seed-from-scorer-core (fieldSize from candidateDiscovery, prior claim from metadata) -> message.ts quiet footer. Coverage-ASSURANCE not display; dropped the runner-up-list idea (re-triggers comparison). 18 new tests, 158 workday-presence green, tsc clean. NEXT: live N=1 - card WITH coverage line vs WITHOUT -> does it cut re-checking (falsifiable; KILL if no delta vs ranked list). Upstream still blocks a real card firing: ghost apex goal monopoly + ignored Drive/Outlook/Gmail fuel + rotted CURRENT_ARTIFACT_ANCHOR_RE (audit in plan file)."
+  "last_verified_at": "2026-06-26T21:30:00.000Z",
+  "notes": "SEAM: fix rotted CURRENT_ARTIFACT_ANCHOR_RE (artifact-taste-pack.ts) - was hardcoded to 2026-05-.. (dead since May), now a bare ISO date any month + regression test. Narrow latent-bug fix (the missing_current_artifact_anchor blocker only fires for the other_grounded_artifact family); does NOT by itself make a card fire. 904 briefing tests green, tsc clean. Prior: MERGED #565 decision-closure card footer (override-killer). NEXT (separate scoped issue, new chat): foundation so a real indispensable card FIRES - stop ghost apex goal monopoly (extractDrift) + re-ground goal (sign-off), turn on own-activity fuel + Gmail connector (1-of-967, sign-off), restore pipeline_runs observability, durable doctrine to Bible. Value reset 2026-06-26: Foldera = decision-replacement; trust = user stops re-checking; reminders are junk, silence beats them."
 }
