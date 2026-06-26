@@ -1,6 +1,6 @@
 {
   "active_issue": 546,
-  "active_branch": "main",
+  "active_branch": "claude/session-closeout-0626",
   "active_pr": null,
   "deployed_commit_sha": "2a1c41f",
   "runtime_env": "production",
