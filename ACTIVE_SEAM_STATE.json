@@ -1,10 +1,10 @@
 {
   "active_issue": 546,
-  "active_branch": "claude/session-closeout-0626",
-  "active_pr": 563,
-  "deployed_commit_sha": "2a1c41f",
+  "active_branch": "main",
+  "active_pr": null,
+  "deployed_commit_sha": "fd9c5cc",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-26T14:15:00.000Z",
-  "notes": "PR #562 MERGED (2a1c41f): past-due EVENT commitments (attend_participate) auto-expired from candidacy at the scorer load choke point — structural #537 fix replacing per-row manual suppression; overdue action/payment/follow-up preserved. Baseline: #556 (card IS the draft), #555 (event-driven push, budget fix, Micro1 excluded). Verified in prod: budget reconcile durable at function level ($2.17/$30); Outlook connected (mail flowing); brain unblocked. Active #546 cascade still open — R2-R6, goal-inference refresh, Gmail connector (1 vs 967), expert-panel/avatars. Next: live proof on cleaned pool (real act or honest SAFE_SILENCE)."
+  "last_verified_at": "2026-06-26T15:00:00.000Z",
+  "notes": "Session closed out 2026-06-26 (PR #563). Today's merges: #556 (card IS the draft), #562 (past-due events auto-expire from candidacy / #537). Baseline #555 (event-driven push, budget fix durable, Micro1 excluded). Docs rolled fwd (ACTIVE_HANDOFF, SESSION_HISTORY, LESSONS_LEARNED #30/#31). Verified prod: budget reconcile durable at function level; Outlook connected; brain unblocked, nothing hinges on owner. OPEN/NEXT: extend 'card IS the act' to write_document/prep-steps (birthday-checklist still homework); then live proof on cleaned pool (real act or honest SAFE_SILENCE); #546 R2-R6 cascade, goal-inference refresh, Gmail connector (1 vs 967)."
 }
