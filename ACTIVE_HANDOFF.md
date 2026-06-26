@@ -2,11 +2,11 @@
 
 ## TL;DR
 
-- **#555 MERGED (main `dcb804d`):** event-driven Outlook push live — Graph webhook `/api/webhooks/graph` fires the card the instant mail arrives; cron demoted to subscription-renewer only. Budget phantom cap fixed ($30 ghost → true $2.07); Micro1 eval agent killed (`isExcludedPipelineUser`). Card-precision meter wired (`responded_to_slack_ts` join key).
-- **Delivery is push-driven** (event, not schedule): Outlook mail → Graph POSTs `/api/webhooks/graph` → `syncMicrosoft` → materiality gate → `deliverWorkdayPresence` → Slack card, seconds. No schedule, no button.
-- **To go live (one owner action):** set `GRAPH_WEBHOOK_SECRET` in Vercel → reconnect Outlook (or wait for daily cron Stage 0 to re-arm). After that: send yourself an Outlook email, card should land in the ping channel in seconds.
-- **Next move:** live proof + precision meter — first push-triggered card, then click → `responded_to_slack_ts` → Probe 5. Target: 10 acted cards.
-- **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars, Gmail sent-mail connector fix (1 vs 967), #537 Fix B/C.
+- **Card IS the act, not homework — today's spine.** #556 made reply cards lead with the ready-to-send draft (Approve & Send, no auto-send); #562 stops the pool feeding dead reminders (past-due `attend_participate` events auto-expire from candidacy, overdue actions preserved). Both MERGED to main.
+- **#555 baseline (merged):** event-driven Outlook push live; budget phantom cap fixed *durably at the function level* ($2.17/$30, verified in prod); Micro1 eval agent excluded; card-precision meter wired.
+- **Verified today, nothing hinges on the owner:** Outlook is connected (mail flowing, no reconnect); brain unblocked. `GRAPH_WEBHOOK_SECRET` is instant-push-only — NOT required for daily cards.
+- **The open disease:** "do the work, don't assign it" is fixed only for reply drafts. `write_document`/prep-steps cards (the Nathaniel-birthday 4-step checklist) still hand homework — extend draft-led acts to every artifact type.
+- **Next:** live proof on the cleaned pool — real act or honest SAFE_SILENCE. Standing #546: R2–R6 cascade, goal-inference refresh (keystone), Gmail connector (1 vs 967), expert-panel/avatars.
 
 ## DON'T FORGET — read first, every boot
 
@@ -28,7 +28,8 @@ These are decided. Do not re-derive, re-probe, or re-propose the dead alternativ
 2. **Owner = `2cbc1bab`.** `FOLDERA_SELF_USER_ID` is canonical owner resolution everywhere; `INGEST_USER_ID` is legacy fallback only (fixed in #553). Old account `e40b7cd8` is empty post-#509.
 3. **`SAFE_SILENCE` is a valid SUCCESS.** Never loosen a gate to force a card.
 4. **Live-pool schema + probes live in `docs/LIVE_POOL_PROBE.md`.** Don't re-derive columns or re-pull the pool to "see what the brain has" — it's already canned.
-5. **Budget phantom cap fixed (#555).** `api_budget_check_and_reserve` reconciled to real `api_usage` ledger; June reset to true $2.07. Micro1 eval agent (`398a8c82` / `zz933@expert.micro1.ai`) permanently excluded via `isExcludedPipelineUser`.
+5. **Budget phantom cap fixed (#555).** `api_budget_check_and_reserve` reconciles to real `api_usage` ledger on every call (durable, not a one-time reset). Micro1 eval agent (`398a8c82` / `zz933@expert.micro1.ai`) permanently excluded via `isExcludedPipelineUser`.
+6. **Card IS the act; pool self-cleans.** The card leads with the ready-to-send draft, not homework scaffolding (#556, `send_message` only so far). Past-due EVENT commitments auto-expire from candidacy at scorer load (#562/#537), overdue actions preserved. Don't reintroduce homework framing or per-row manual suppression.
 
 ## Boot
 
@@ -46,24 +47,18 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Current slice:
 
-**R1 — ADVANCE WHAT YOU'VE STARTED (#546) — MERGED (PR #547, `3714b62`).**
+**Card IS the act + pool hygiene (#546 cascade) — both MERGED 2026-06-26.**
 
-Shipped:
-- Own-activity carve-out: `email_sent`/`drive file_modified` (≤7d) re-admitted past `no_entity_detected` gate only — all other entity-gate conditions unchanged.
-- `selectRankedCandidates` promotes own-activity winner over observation-shaped discrepancies; `protectOwnActivity` carve-out in `topDiscrepancy` block prevents re-burial.
-- `own_activity_unfinished` issue + repair steer forces finished/next-move artifact shape when own-activity wins.
-- Tier-2 junk gate (`isLowValueErrandCommitment`): errands/personal tasks can't ship as never-go-dark act.
-- 1031/1031 vitest green; typecheck clean; gate:continuity green.
-
-Key invariants (still hold):
-- Own-activity carve-out is additive — does NOT weaken the external-entity requirement for any other class.
-- No loosening of `positive_winner_contract` / `weak_risk` — R1 ADDS an output bar.
-- Inward only; never fabricate to fill silence.
+- **#556 — the card IS the draft.** `formatDraftLedText` (`lib/workday-presence/message.ts`): reply cards lead with recipient+subject+body inline + Approve & Send (opens the review-gated modal — submit is the send authorization, no auto-send). Homework scaffolding + the View Draft step are gone. Covers `send_message` only so far.
+- **#562 — past events auto-expire (#537).** `partitionExpiredEventCommitments` (`lib/briefing/scorer.ts`) drops past-due `attend_participate` commitments at candidate load, every run — structural replacement for manual suppression. Overdue action/payment/follow-up PRESERVED (more urgent, not moot). ~218 prod zombies out of candidacy.
+- Verified: typecheck + scorer/message suites green; continuity-gate green; merged branches auto-deleted by the new `delete-merged-branches` Action. Budget durable + Outlook live confirmed in prod (no owner action pending).
+- Open: extend "card IS the act" to `write_document`/prep-steps (the birthday-checklist homework) + #546 R2–R6.
 
 ## Next exact move
 
-1. **Live proof — push end-to-end:** set `GRAPH_WEBHOOK_SECRET` in Vercel → owner reconnects Outlook (or cron Stage 0 runs) → `user_metadata.workday_presence_graph_subscription` set → real inbound Outlook mail → Graph POSTs `/api/webhooks/graph` → sync→gate→`deliverWorkdayPresence` → Slack card in seconds (no cron). Then click → `responded_to_slack_ts` → precision meter (Probe 5). Target: 10 acted cards. Named `suppression_trace` is honest silence.
-2. **Standing (in #546):** R2–R6 cascade, goal-inference refresh (keystone — everything depends on a continuously-refreshed model of what you care about), expert-panel/avatars + gap analysis, Gmail sent-mail connector fix (1 vs 967), #537 Fix B/C.
+1. **Extend "card IS the act" to every artifact type.** #556 fixed reply drafts only; `write_document`/prep-steps still hand homework (the Nathaniel-birthday 4-step checklist). For a purchase/prep commitment the act = do the legwork (a concrete thing + link), not a plan.
+2. **Live proof on the cleaned pool:** next cron → real act (owed reply / advance-started) or honest SAFE_SILENCE; then click → `responded_to_slack_ts` → precision meter (Probe 5), target 10 acted cards. Nothing hinges on the owner (Outlook connected, budget durable); `GRAPH_WEBHOOK_SECRET` = instant-push-only, not required for daily cards.
+3. **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars + gap analysis, Gmail sent-mail connector fix (1 vs 967).
 
 ## Product doctrine
 

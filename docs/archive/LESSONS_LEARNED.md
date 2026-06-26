@@ -23,6 +23,7 @@ If a session says "done" without a production receipt, it is not done. Reopen it
 | Signal stuck -> reprocess | Signal undecryptable -> flag dead_key, never retry |
 | Email didn't send -> debug | No valid candidate -> send wait_rationale anyway |
 | CC forgot context -> remind it | CC loses context -> one-concern-per-prompt structure |
+| Stale commitment surfaced -> suppress that row | Past-due EVENT -> auto-expire from candidacy at scorer load (#562) |
 
 If you fixed the same problem twice, you fixed the instance. Build the defense that makes the problem impossible.
 
@@ -306,3 +307,17 @@ Brandon, 2026-06-24, after a day of pool-hygiene: *"we always touch on it and th
 **Rule:** `scored.outcome === 'no_valid_action'` is the only branch where tier-descent may fire. The generation-retry/exhaust branch is downstream of a valid winner and must never trigger a safety-net path that re-routes to a different candidate class.
 
 **Corollary — `isThreadBackedSendableLoop` is the correct Tier-3 semantic gate:** a loose type exclusion (`type !== 'discrepancy/compound/emergent'`) still passes `signal`-type candidates. Signal-type candidates are observations — precisely what the quality gate correctly blocks. `isThreadBackedSendableLoop` (existing scorer gate: commitment, relationship, or specific sendable discrepancy class with a real entity name) encodes "Foldera owes a reply on behalf of the user" — the only shape where Tier-3 is honest. A Tier-3 that bypasses this will misfire on stale observations the upstream gate already correctly rejected.
+
+## 30. The Card Must BE the Act, Not Assign It — Homework Recurs in Every Artifact Type
+
+The owner's repeated, visceral complaint across cards: *"it gave me homework… it should if anything have linked me a present."* A card that says "decide on gift type → purchase → wrap → confirm logistics," or "send a quick check-in," is a to-do list the user still has to execute. The act is the *done thing*: the reply already written (tap Approve & Send), the gift already chosen (tap to buy). "Here is your completed prep" (the lone N=1 magic moment, Lesson #28) is the shape; a plan is its inverse.
+
+**The trap:** the fix is per-artifact-type, not global. #556 made `send_message` cards lead with the ready-to-send draft inline — but `write_document`/prep-steps cards (the Nathaniel-birthday 4-step checklist) kept handing homework, because that path was never converted. Fixing one artifact type and declaring "no more homework" is wrong; the disease lives in every generation path that emits a plan instead of a product.
+
+**Rule:** for each artifact type the brain can emit, the card must render the *finished object the user approves or sends*, never a description of work for them to do. A multi-step "preparation steps" breakdown is a homework tell — if the card lists steps the user performs, it has failed, regardless of how well-grounded it is.
+
+## 31. Verify the Dependency Before Handing the Owner Homework
+
+For several turns the standing "next move" was *"set `GRAPH_WEBHOOK_SECRET` in Vercel + reconnect Outlook"* — owner homework, repeated every close. Both halves were wrong on inspection: Outlook was already connected (126 inbound mails ingested in 4 days — sync was live), and the secret is instant-push-only, **not required for daily cards at all**. The system was delivering on the daily cron with zero owner action; the "homework" was an unverified assumption dressed as a blocker.
+
+**Rule:** before telling the owner to go do an infra step, prove the dependency is actually missing AND actually required for the outcome. Query prod (is the token live? is data flowing?) and trace whether the daily/default path even needs the thing. "Don't make Brandon the operator" (Lesson #20) includes not inventing operator tasks — an unchecked "you need to set X" is the same flinch as front-loading a choice. If the only true blocker is outside your tools, say *exactly that one thing* and confirm everything else runs without it.
