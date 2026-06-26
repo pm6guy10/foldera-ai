@@ -7,6 +7,7 @@
 
 import { createServerClient, type SupabaseClient } from '@/lib/db/client';
 import { encryptToken, decryptToken, isEncrypted } from '@/lib/crypto/token-encryption';
+import { isExcludedPipelineUser } from '@/lib/config/constants';
 
 interface SaveUserTokenParams {
   access_token: string;
@@ -243,7 +244,9 @@ export async function listConnectedUserIds(supabaseArg?: SupabaseClient): Promis
     return [];
   }
 
-  return [...new Set((data ?? []).map((row: { user_id: string }) => row.user_id))];
+  return [...new Set((data ?? []).map((row: { user_id: string }) => row.user_id))].filter(
+    (id) => !isExcludedPipelineUser(id),
+  );
 }
 
 export async function getAllUsersWithProvider(
@@ -264,7 +267,7 @@ export async function getAllUsersWithProvider(
     return [];
   }
 
-  return (data ?? []).map((row) => row.user_id);
+  return (data ?? []).map((row) => row.user_id).filter((id) => !isExcludedPipelineUser(id));
 }
 
 /**

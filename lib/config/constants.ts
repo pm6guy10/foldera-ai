@@ -105,6 +105,39 @@ export function getOwnerCanaryUserIds(): string[] {
 }
 
 /**
+ * User IDs excluded from EVERY production pipeline loop (provider sync, signal
+ * extraction, directive generation). These accounts must never consume the
+ * shared paid-LLM budget — they are synthetic or external QA harness accounts,
+ * not real owner/customer value loops.
+ *
+ * Owner directive 2026-06-26: "kill micro1 email connect for good." The
+ * `@expert.micro1.ai` eval tester (connected for QA only) was silently synced by
+ * the all-users cron and drained the June Anthropic budget to $0 with zero owner
+ * value. Excluding by id here is permanent: even if the account reconnects its
+ * inbox, it can never re-enter a paid loop.
+ *
+ * Extend at runtime via EXCLUDED_PIPELINE_USER_IDS (comma/space separated UUIDs).
+ */
+const STATIC_EXCLUDED_PIPELINE_USER_IDS: readonly string[] = [
+  TEST_USER_ID, // synthetic stress-test user (never has real tokens)
+  '398a8c82-d110-4dea-9b53-004d0f406149', // zz933@expert.micro1.ai — micro1 eval tester
+];
+
+export function getExcludedPipelineUserIds(): Set<string> {
+  const fromEnv = (process.env.EXCLUDED_PIPELINE_USER_IDS ?? '')
+    .split(/[\s,]+/)
+    .map((id) => id.trim())
+    .filter(Boolean);
+  return new Set<string>([...STATIC_EXCLUDED_PIPELINE_USER_IDS, ...fromEnv]);
+}
+
+/** True if a user is excluded from all paid pipeline loops (see above). */
+export function isExcludedPipelineUser(userId: string | null | undefined): boolean {
+  if (!userId) return false;
+  return getExcludedPipelineUserIds().has(userId);
+}
+
+/**
  * Nightly `/api/cron/nightly-ops` scales `resolveSignalBacklogMode().maxSignals` by this factor
  * so backlog drains faster. Daily-brief signal processing is unchanged.
  */

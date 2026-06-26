@@ -51,6 +51,7 @@ import {
   CONFIDENCE_PERSIST_THRESHOLD,
   SIGNAL_RETENTION_DAYS,
   daysMs,
+  isExcludedPipelineUser,
 } from '@/lib/config/constants';
 import { resolveUserPromptNames, type UserPromptNames } from '@/lib/auth/user-display-name';
 import {
@@ -10714,6 +10715,26 @@ export async function generateDirective(
   /** Env-only: synthetic payload, zero Anthropic (distinct from test `dryRun` = skip api_usage persist). */
   const envFixture = process.env.FOLDERA_DRY_RUN === 'true';
   try {
+    // Excluded pipeline users (synthetic + external QA/eval accounts, e.g. micro1)
+    // must never spend the shared paid-LLM budget. Zero-spend dry-run/fixture paths
+    // are unaffected, so test fixtures using TEST_USER_ID still synthesize normally.
+    if (
+      !options.dryRun &&
+      !envFixture &&
+      !options.pipelineDryRun &&
+      isExcludedPipelineUser(userId)
+    ) {
+      logStructuredEvent({
+        event: 'generation_skipped', level: 'warn', userId,
+        artifactType: null, generationStatus: 'excluded_pipeline_user',
+        details: { scope: 'generator', reason: 'non_billable_account' },
+      });
+      return emptyDirective(
+        'Excluded pipeline user — no paid generation.',
+        buildNoSendGenerationLog('Excluded pipeline user — no paid generation.', 'system', null),
+      );
+    }
+
     if (
       !options.dryRun &&
       !envFixture &&
