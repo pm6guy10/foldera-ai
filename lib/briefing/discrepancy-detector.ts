@@ -42,7 +42,7 @@
  */
 
 import { isLikelyAutomatedTransactionalInbound } from './automated-inbound-signal';
-import { isChatConversationSignalSource } from './scorer-candidate-sources';
+import { isChatConversationSignalSource, isOwnActivitySignalType } from './scorer-candidate-sources';
 import type { ActionType, GenerationCandidateSource } from './types';
 
 // ---------------------------------------------------------------------------
@@ -869,6 +869,7 @@ function extractDrift(
   goals: GoalRow[],
   commitments: CommitmentRow[],
   decryptedSignals: string[],
+  ownActivityDecryptedSignals: readonly string[] = [],
 ): Discrepancy[] {
   const results: Discrepancy[] = [];
   const highPriorityGoals = goals.filter((g) => g.priority <= 2);
@@ -890,6 +891,17 @@ function extractDrift(
     });
 
     if (!signalHit && !commitmentHit) {
+      // Own-activity vocabulary gate: if the user has recent own-activity signals
+      // (email_sent / file_modified) but none of them contain even a single goal keyword,
+      // the goal text is vocabulary-dark relative to observable own output — the goal is
+      // abstract/ungrounded and a drift card cannot produce a real finished act. Skip it.
+      // (Without own-activity signals the existing logic is unchanged.)
+      if (ownActivityDecryptedSignals.length > 0) {
+        const hasAnyOwnActivityOverlap = gkws.some((kw) =>
+          ownActivityDecryptedSignals.some((s) => s.includes(kw)),
+        );
+        if (!hasAnyOwnActivityOverlap) continue;
+      }
       const trigger: TriggerMetadata = {
         baseline_state: `P${g.priority} goal declared: "${g.goal_text.slice(0, 80)}"`,
         current_state: `Zero matching activity in signals or commitments`,
@@ -3468,6 +3480,13 @@ export function detectDiscrepancies(args: {
   const groundedStructured = structured.filter((signal) => !isChatConversationSignalSource(signal.source, signal.type));
   const recentDirectives = args.recentDirectives ?? [];
 
+  // Collect own-activity signal texts (email_sent / drive file_modified) for the
+  // drift vocabulary gate. Signals are metadata summaries, so this is the content
+  // already available — no encryption boundary is crossed.
+  const ownActivityDecryptedSignals = structured
+    .filter((s) => isOwnActivitySignalType(s.type, s.source))
+    .map((s) => s.content.toLowerCase());
+
   const all: Discrepancy[] = [
     ...extractScheduleConflicts(groundedStructured, nowMs),
     ...extractStaleDocuments(groundedStructured, goals, nowMs),
@@ -3495,7 +3514,7 @@ export function detectDiscrepancies(args: {
     ...extractRisk(entities, goals, decryptedSignals, nowMs),
     ...extractExposure(commitments, goals, nowMs, groundedStructured),
     ...extractAvoidance(commitments, goals, nowMs),
-    ...extractDrift(goals, commitments, decryptedSignals),
+    ...extractDrift(goals, commitments, decryptedSignals, ownActivityDecryptedSignals),
     ...extractDecay(entities, goals, decryptedSignals, nowMs),
   ];
 

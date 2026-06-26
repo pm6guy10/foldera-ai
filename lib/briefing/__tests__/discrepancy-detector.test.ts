@@ -358,6 +358,64 @@ describe('extractDrift (class: drift)', () => {
     expect(drift[0].title).toMatch(/Goal drift/);
     expect(drift[0].content).not.toMatch(/Brandon/);
   });
+
+  it('does NOT fire for vocabulary-dark goal when own-activity signals exist (ghost-goal gate)', () => {
+    // The ghost-goal gate: if the user has recent own-activity signals (email_sent / file_modified)
+    // but the goal text vocabulary has zero overlap with those signals, the goal is considered
+    // vocabulary-dark (abstract, ungrounded). Drift should NOT emit — the user IS working,
+    // just not in vocabulary that matches the goal text.
+    const result = detectDiscrepancies({
+      entities: [],
+      commitments: [],
+      goals: [makeGoal({ goal_text: 'Build Foldera into a revenue-generating product', priority: 1 })],
+      decryptedSignals: [],
+      structuredSignals: [
+        // email_sent metadata summary — no goal keywords present
+        {
+          id: 'sig-sent-1',
+          source: 'gmail',
+          type: 'email_sent',
+          occurred_at: daysAgoISO(1),
+          content: '[Sent email metadata]\nFrom: self\nOccurred: 2026-06-25\nSource: gmail\nSignal type: email_sent',
+        },
+        {
+          id: 'sig-sent-2',
+          source: 'gmail',
+          type: 'email_sent',
+          occurred_at: daysAgoISO(2),
+          content: '[Sent email metadata]\nFrom: self\nOccurred: 2026-06-24\nSource: gmail\nSignal type: email_sent',
+        },
+      ],
+      now: NOW,
+    });
+    // Ghost-goal gate fires: own-activity signals exist but none mention goal keywords
+    expect(result.filter((d) => d.class === 'drift')).toHaveLength(0);
+  });
+
+  it('DOES fire when own-activity signal contains a goal keyword (vocabulary visible)', () => {
+    // The gate must NOT block goals whose vocabulary overlaps with own-activity signals.
+    const result = detectDiscrepancies({
+      entities: [],
+      commitments: [],
+      goals: [makeGoal({ goal_text: 'Close enterprise sales deal with Acme Corp', priority: 1 })],
+      decryptedSignals: [],
+      structuredSignals: [
+        {
+          id: 'sig-sent-acme',
+          source: 'gmail',
+          type: 'email_sent',
+          occurred_at: daysAgoISO(3),
+          // "acme" keyword from goal appears in this own-activity signal content
+          content: '[Sent email metadata]\nFrom: self\nExtracted entities: Acme Corp, Janet Lee',
+        },
+      ],
+      now: NOW,
+    });
+    // "acme" is a goal keyword that appears in the own-activity signal — drift should still fire
+    // (since the signalHit threshold is 2 keywords, this single-keyword own-activity overlap
+    //  means the goal is vocabulary-visible but still has no strong signal match)
+    expect(result.filter((d) => d.class === 'drift')).toHaveLength(1);
+  });
 });
 
 // ---------------------------------------------------------------------------

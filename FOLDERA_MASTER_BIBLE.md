@@ -1279,3 +1279,38 @@ The Scout is an **additive, opt-in, owner-first lane**, not a replacement.
 ## Sequencing
 
 Scout ships behind feature flags, owner-first (one user: the owner), proven free in the harness before any paid validation. New external dependencies (embeddings provider, SMS), production schema application, and any paid generation cycle are owner-gated and require explicit authorization per `AGENTS.md` — they are never agent self-unblocks.
+
+---
+
+# PART VI — VALUE MAP, EVIDENCE BAR, OVERRIDE MODEL (locked 2026-06-26, issue #567)
+
+This part encodes the owner's reset value definition so it stops being rediscovered every session.
+
+## Value definition
+
+**Foldera = decision-replacement, not a task tool.** The metric is **trust = the user stops re-checking** (closure, not certainty). The product earns its place by eliminating a re-check that would otherwise happen — the user opens Foldera, sees the card, and does NOT go open five other tabs to verify.
+
+**Junk tier (never send):** Reminders about bills, hotel points, subscriptions, due dates. The user's bank and calendar already send these. A reminder is homework wrapped in urgency; it adds no decision leverage. **Silence beats a reminder.**
+
+**R1 (first indispensable rung):** "Finish what I started." Watch real Drive/Outlook/Gmail activity and hand back the *finished, sendable asset* the user drafted toward a goal and never shipped — the "here is your completed work" shape. This is the first move that earns trust.
+
+## Evidence bar — four gates a claim must clear
+
+A candidate earns the single full-authority claim only when it clears **all four**:
+
+1. **Leverage, not urgency** — acting on it unblocks downstream work / reduces real risk. A bill is urgent and unblocks nothing → never qualifies.
+2. **Earned, not generated** — grounded in real observed signal, not an inferred abstraction. An apex goal with zero observable activity in signals/commitments → the goal text is ungrounded, not the user. Do not generate drift cards for vocabulary-dark goals.
+3. **Field-dominant** — the highest-leverage point *now*, not just above a threshold. If two are close, hold rather than fake confidence.
+4. **Continuous** — consistent with yesterday or explicitly says what moved. **Silence is correct when nothing clears the bar.**
+
+## Override model — what the card must defeat
+
+A user re-checks (overrides the card) when the "if it mattered it'd already be here" permission breaks. The #1 cause is **coverage doubt** — "did it check everything?" Kill it with coverage-**assurance** ("checked N other loops, none outranks this") + continuity ("same focus as yesterday because X held"). Never a list (a visible stack re-triggers comparison). This ships as the decision-closure footer (issue #565).
+
+## Ghost-goal guard (code doctrine, issue #567)
+
+An apex goal (P1/P2 in `tkg_goals`) whose vocabulary has zero overlap with the user's own-activity signals (email_sent / file_modified) is **vocabulary-dark** — the goal text is abstract and the drift card it produces cannot hand over a real finished act. The correct output is `SAFE_SILENCE`. The code gate lives in `extractDrift` (lib/briefing/discrepancy-detector.ts): if own-activity signals exist and none contain even a single goal keyword, the goal is skipped for drift emission. The DB fix (re-grounding/re-prioritizing the goal in `tkg_goals`) requires owner sign-off and is tracked separately.
+
+## Fuel priority (code doctrine, issue #567)
+
+Own-activity signals (email_sent, file_modified ≤7 days) are Rung 1 fuel. They represent what the user is actively working on. Candidate promotion is wired in the scorer and generator: own-activity candidates get the `ownActivity` flag, bypass the entity-reality gate's `no_entity_detected` drop (since the user is the author), and get bumped above observation-shaped discrepancy candidates by the Rung 1 viability boost in `generator.ts`. The Gmail sent-mail connector fix (1→967) is a prerequisite for this fuel to arrive — tracked under its own sign-off.
