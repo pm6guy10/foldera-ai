@@ -235,6 +235,53 @@ describe('positive winner contract', () => {
     expect(groundedReceipt.newest_source_at).not.toBeNull();
   });
 
+  it('clears missing_current_artifact_anchor for a concrete ISO date in any month (regex was month-locked to 2026-05)', () => {
+    // The date arm of CURRENT_ARTIFACT_ANCHOR_RE was hardcoded to 2026-05-.., so every
+    // real dated commitment from June on was silently blocked as ungrounded. A bare ISO
+    // date is a concrete anchor regardless of month; recency is owned by the separate
+    // currentness / stale-evidence checks, not this text fallback.
+    const undated = makeCandidate({
+      id: 'other-artifact-undated',
+      type: 'discrepancy',
+      title: 'Ship the revenue milestone',
+      content: 'Ship the revenue milestone.',
+      suggestedActionType: 'make_decision',
+      sourceSignals: [],
+      relatedSignals: [],
+    });
+    const julyDated = makeCandidate({
+      id: 'other-artifact-july',
+      type: 'discrepancy',
+      title: 'Ship the revenue milestone',
+      content: 'Ship the revenue milestone — committed deliverable 2026-07-11.',
+      suggestedActionType: 'make_decision',
+      sourceSignals: [],
+      relatedSignals: [],
+    });
+    const mayDated = makeCandidate({
+      id: 'other-artifact-may',
+      type: 'discrepancy',
+      title: 'Ship the revenue milestone',
+      content: 'Ship the revenue milestone — committed deliverable 2026-05-13.',
+      suggestedActionType: 'make_decision',
+      sourceSignals: [],
+      relatedSignals: [],
+    });
+
+    // Control: no concrete date → correctly blocked (no blind loosening).
+    expect(evaluateCandidateArtifactability(undated, { now }).blockers).toContain(
+      'missing_current_artifact_anchor',
+    );
+    // Fix: a July date now clears it (previously it did not — only May matched).
+    expect(evaluateCandidateArtifactability(julyDated, { now }).blockers).not.toContain(
+      'missing_current_artifact_anchor',
+    );
+    // Back-compat: a May date still clears it.
+    expect(evaluateCandidateArtifactability(mayDated, { now }).blockers).not.toContain(
+      'missing_current_artifact_anchor',
+    );
+  });
+
   it('blocks low-value platform invites and calendar-gap invites without a direct dependency fact', () => {
     const notionExposure = makeCandidate({
       id: 'notion-platform-exposure',

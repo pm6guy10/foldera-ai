@@ -5,6 +5,7 @@
 //
 // Runs the real brain: score → decide the move → draft it → seed workday_presence_state,
 // or write an honest workday_presence_suppression_trace when no real move clears the bar.
+import { randomUUID } from 'crypto';
 import { createServerClient } from '@/lib/db/client';
 import { generateDirective } from '@/lib/briefing/generator';
 import { generateArtifact } from '@/lib/conviction/artifact-generator';
@@ -19,6 +20,11 @@ import {
   sendDraftIsGrounded,
 } from '@/lib/workday-presence/seed-from-directive';
 import { buildCoverageLine, buildContinuityLine } from '@/lib/workday-presence/decision-closure';
+import {
+  insertUserPipelineRunStart,
+  finalizeUserPipelineRun,
+  buildGateFunnelFromScorerDiagnostics,
+} from '@/lib/observability/pipeline-run';
 
 export interface SeedOutcome {
   seeded: boolean;
@@ -140,12 +146,44 @@ async function persistSuppressionTrace(input: {
 /**
  * Score → decide → draft → seed (or suppress) workday_presence_state for one user.
  * Throws on unhandled errors; callers own the generation_failed trace + HTTP mapping.
+ *
+ * @param invocationSource  Label for pipeline_runs.invocation_source (e.g. 'ingest_and_deliver',
+ *   'sync_now', 'graph_webhook'). Defaults to 'seed_from_scorer'.
  */
-export async function seedFromScorerForUser(userId: string): Promise<SeedOutcome> {
+export async function seedFromScorerForUser(
+  userId: string,
+  invocationSource: string = 'seed_from_scorer',
+): Promise<SeedOutcome> {
+  // Each call is its own pipeline run — no external cronInvocationId in the live path,
+  // so we generate a UUID pair. This restores the pipeline_runs funnel trace that was
+  // only wiring through the retired daily-brief loop.
+  const pipelineRunId = randomUUID();
+  const cronInvocationId = randomUUID();
+
+  void insertUserPipelineRunStart({
+    id: pipelineRunId,
+    userId,
+    cronInvocationId,
+    invocationSource,
+  });
+
+  let runOutcome = 'generation_threw';
+  let runBlockedGate: string | null = null;
+  let runWinnerActionType: string | null = null;
+  let runWinnerConfidence: number | null = null;
+  let runCandidatesEvaluated: number | null = null;
+  let runGateFunnel: Record<string, unknown> = {};
+
+  try {
   // The real brain: score → decide the move → draft it. skipSpendCap so triggered seeds
   // run; the per-day manual call limit still bounds cost.
   const directive = await generateDirective(userId, { skipSpendCap: true });
   const diagnostics = getLastScorerDiagnostics();
+  runGateFunnel = buildGateFunnelFromScorerDiagnostics(diagnostics);
+  const pool = diagnostics?.candidatePool;
+  runCandidatesEvaluated = pool
+    ? (pool.commitment ?? 0) + (pool.signal ?? 0) + (pool.relationship ?? 0)
+    : null;
   const winnerTitle =
     diagnostics?.finalWinner?.title?.trim() ||
     directive.directive.slice(0, 120).trim() ||
@@ -156,6 +194,8 @@ export async function seedFromScorerForUser(userId: string): Promise<SeedOutcome
   const metadata = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
 
   if (!isRealMove(directive)) {
+    runOutcome = 'safe_silence';
+    runBlockedGate = 'safe_silence';
     const suppressionTrace = buildSuppressionTrace({
       directive,
       diagnostics,
@@ -177,6 +217,9 @@ export async function seedFromScorerForUser(userId: string): Promise<SeedOutcome
     };
   }
 
+  runWinnerActionType = directive.action_type ?? null;
+  runWinnerConfidence = directive.confidence ?? null;
+
   // Draft the artifact behind the move (the thing "View Draft" opens). Best-effort:
   // a real move with no artifact still seeds — the move itself is the value.
   let artifact: ConvictionArtifact | null = null;
@@ -189,6 +232,8 @@ export async function seedFromScorerForUser(userId: string): Promise<SeedOutcome
   // Anti-fabrication: an email draft not grounded in a real inbound thread or
   // cited evidence never reaches the card. Stay quiet instead of lying.
   if (directive.action_type === 'send_message' && !sendDraftIsGrounded(directive, artifact)) {
+    runOutcome = 'suppressed_ungrounded_send';
+    runBlockedGate = 'ungrounded_send_draft';
     const blockerReason =
       'ungrounded_send_draft: drafted email has no real inbound thread and the recipient is not in cited evidence — refusing to present fabricated correspondence.';
     const suppressionTrace = buildSuppressionTrace({
@@ -218,6 +263,8 @@ export async function seedFromScorerForUser(userId: string): Promise<SeedOutcome
   if (artifact) {
     const gate = evaluateBottomGate(directive, artifact);
     if (!gate.pass) {
+      runOutcome = 'suppressed_bottom_gate';
+      runBlockedGate = 'bottom_gate';
       const blockerReason = `bottom_gate: ${gate.blocked_reasons.join(', ')} — winner not important enough to interrupt.`;
       const suppressionTrace = buildSuppressionTrace({
         directive,
@@ -302,6 +349,7 @@ export async function seedFromScorerForUser(userId: string): Promise<SeedOutcome
   });
   if (updateResult.error) throw updateResult.error;
 
+  runOutcome = 'seeded';
   return {
     seeded: true,
     state,
@@ -326,4 +374,18 @@ export async function seedFromScorerForUser(userId: string): Promise<SeedOutcome
       suppression_trace: null,
     },
   };
+
+  } finally {
+    void finalizeUserPipelineRun({
+      id: pipelineRunId,
+      userId,
+      outcome: runOutcome,
+      gateFunnel: runGateFunnel,
+      winnerActionType: runWinnerActionType,
+      winnerConfidence: runWinnerConfidence,
+      blockedGate: runBlockedGate,
+      candidatesEvaluated: runCandidatesEvaluated,
+      rawExtras: { invocation_source: invocationSource },
+    });
+  }
 }

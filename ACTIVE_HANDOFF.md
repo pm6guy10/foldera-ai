@@ -2,10 +2,10 @@
 
 ## TL;DR
 
-- **#564 MERGED — write_document acquisition legwork is on main.** Acquisition/purchase/prep moves now do the real lookup and hand the FINISHED act (chosen thing + grounded link), not homework. `lib/conviction/acquisition-legwork.ts` + `generateArtifact` branch; never fabricates a link (degrades to decisive brief). 9 harness tests green.
-- **Live proof blocked on 2 Vercel env vars:** `SCOUT_ENABLED=true` + `SCOUT_WEB_ENABLED=true` (Production). Live pool has a real target: "Book hotel stay using $35.16 OneKeyCash balance" (Supabase id `829b5e13`).
-- **Prior merges:** #556 (reply card IS the draft); #562 (past-due events auto-expire); #564 (write_document acquisition legwork). #555 baseline.
-- **Next:** owner sets env vars → live proof → precision meter (Probe 5). Standing #546: R2–R6 cascade, goal-inference refresh, Gmail connector (1 vs 967).
+- **#567 ACTIVE — foundation so the first indispensable R1 card fires.** Four code moves (no sign-off): (1) `pipeline_runs` funnel write ported into `seed-from-scorer-core.ts` — live runs traceable again; (2) ghost-goal gate in `extractDrift` stops "Build Foldera into revenue" monopolizing the survivor slot; (3) value map + evidence bar + override model encoded in `FOLDERA_MASTER_BIBLE.md` Part VI; (4) un-rotted `CURRENT_ARTIFACT_ANCHOR_RE` (ported from #566).
+- **Needs owner sign-off to complete:** `tkg_goals` DB edit (re-ground/re-prioritize apex goal) + Gmail connector fix (1→967).
+- **Prior merges:** #565 (decision-closure card footer); #564 (acquisition legwork). #566 (anchor regex) was ported into this seam and closed — not a separate merge. PR #568 (this seam) is READY on `claude/issue-567-al9edy`; merge gated on the two owner sign-offs above.
+- **Next after sign-offs:** owner triggers `/api/cron/ingest-and-deliver` → expected card = a finished asset from R1 (not a reminder, not silence); ghost-goal drift gone from trace.
 
 ## DON'T FORGET — read first, every boot
 
@@ -32,32 +32,33 @@ These are decided. Do not re-derive, re-probe, or re-propose the dead alternativ
 
 ## Boot
 
-1. Read this file. 2. Read the active issue (#546). 3. Check issue #136 for recent INTERRUPT receipts.
+1. Read this file. 2. Read the active issue (#567). 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #546 is the active LEARNING-AGENTIC-LIFE-SYSTEM seam.
-
-#546 (value cascade) enumerates rungs R1–R6 + goal-inference + expert-panel; R1 (advance what you've started) is the current slice.
+Issue #567 is the active foundation seam.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
 ## Current slice:
 
-**Live proof of write_document acquisition legwork (#546 cascade). #564 merged on main.**
+**#567 — three code moves shipped on `claude/issue-567-al9edy`, PR pending.**
 
-- Code on main: `lib/conviction/acquisition-legwork.ts` + `generateArtifact` acquisition branch. Self-gated on `SCOUT_WEB_ENABLED` + `isPaidLlmAllowed()` — no-ops until flag is on.
-- Live pool target: "Book hotel stay using $35.16 OneKeyCash balance" (Supabase id `829b5e13`, risk_score 49, active, unsuppressed).
-- Pending: owner sets `SCOUT_ENABLED=true` + `SCOUT_WEB_ENABLED=true` in Vercel Production → next deliver trigger → card should be pick+link, not checklist.
+1. **Observability restored:** `pipeline_runs` start/finalize ported into `seed-from-scorer-core.ts` — every live `ingest-and-deliver` / `sync-now` / webhook delivery now writes a traceable funnel row.
+2. **Ghost-goal gate:** `extractDrift` skips goals whose vocabulary has zero overlap with own-activity signals (email_sent / file_modified). "Build Foldera into a revenue-generating product" no longer monopolizes the survivor slot.
+3. **Doctrine encoded:** value map + evidence bar + override model locked in `FOLDERA_MASTER_BIBLE.md` Part VI.
+
+**Blocked on owner sign-off:**
+- `tkg_goals` DB edit: re-ground / re-prioritize the apex goal from real own-activity (so it produces a real finished act, not a make_decision drift card)
+- Gmail connector fix: `1 → 967` ingested sent emails (the Rung 1 fuel that feeds own-activity candidate promotion)
 
 ## Next exact move
 
-1. **Owner: set 2 Vercel env vars** — Vercel dashboard → foldera-ai → Settings → Environment Variables → Production: `SCOUT_ENABLED=true`, `SCOUT_WEB_ENABLED=true`. No redeploy needed.
-2. **Trigger delivery** — next cron tick or manual `/api/cron/ingest-and-deliver` → hotel-booking card should be a specific pick + OneKeyCash booking link.
-3. **Precision meter (Probe 5)** — once live card confirmed; then extend to interview-prep write_document (currently SAFE_SILENT on homework).
-4. **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars + gap analysis, Gmail sent-mail connector fix (1 vs 967).
+1. **Owner sign-off:** `tkg_goals` DB edit + Gmail connector config → then trigger `/api/cron/ingest-and-deliver`
+2. **Expected result:** R1 card = a finished asset the user started (not a reminder, not silence); ghost-goal drift gone from `pipeline_runs` trace
+3. **Verify via Probe 1** (docs/LIVE_POOL_PROBE.md) after trigger — `pipeline_runs` should now have a traceable row with `blocked_gate` / `outcome` visible
 
 ## Product doctrine
 
