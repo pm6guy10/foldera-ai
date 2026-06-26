@@ -1,7 +1,7 @@
 {
   "active_issue": 546,
-  "active_branch": "main",
-  "active_pr": null,
+  "active_branch": "claude/session-closeout-0626",
+  "active_pr": 563,
   "deployed_commit_sha": "2a1c41f",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
