@@ -1,0 +1,77 @@
+name: Delete merged branches
+
+# Two jobs share one workflow:
+#   1. on PR merge  -> delete that PR's head branch (if claude/*)
+#   2. manual run   -> one-time sweep of the existing backlog: every claude/*
+#                      branch whose PR is already merged is deleted.
+# Only branches under the claude/* namespace are ever touched. main and any
+# non-claude branch are left alone.
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  delete-on-merge:
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'claude/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete this PR's head branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const ref = `heads/${context.payload.pull_request.head.ref}`;
+            try {
+              await github.rest.git.deleteRef({ owner: context.repo.owner, repo: context.repo.repo, ref });
+              core.info(`Deleted ${ref}`);
+            } catch (e) {
+              if (e.status === 422) { core.info(`${ref} already gone`); }
+              else { throw e; }
+            }
+
+  sweep-backlog:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete every claude/* branch whose PR is already merged
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+
+            // Collect head-ref -> merged? from all PRs (open + closed).
+            const merged = new Set();
+            for await (const { data: prs } of github.paginate.iterator(
+              github.rest.pulls.list, { owner, repo, state: 'closed', per_page: 100 }
+            )) {
+              for (const pr of prs) {
+                if (pr.merged_at && pr.head?.ref?.startsWith('claude/')) merged.add(pr.head.ref);
+              }
+            }
+
+            // List every claude/* branch ref currently on origin.
+            const live = [];
+            for await (const { data: refs } of github.paginate.iterator(
+              github.rest.git.listMatchingRefs, { owner, repo, ref: 'heads/claude/', per_page: 100 }
+            )) {
+              for (const r of refs) live.push(r.ref.replace(/^refs\/heads\//, ''));
+            }
+
+            let deleted = 0, skipped = 0;
+            for (const branch of live) {
+              if (!merged.has(branch)) { skipped++; continue; }
+              try {
+                await github.rest.git.deleteRef({ owner, repo, ref: `heads/${branch}` });
+                core.info(`Deleted ${branch}`);
+                deleted++;
+              } catch (e) {
+                if (e.status === 422) { core.info(`${branch} already gone`); }
+                else { core.warning(`Failed ${branch}: ${e.message}`); }
+              }
+            }
+            core.notice(`Backlog sweep: ${deleted} deleted, ${skipped} kept (no merged PR).`);
