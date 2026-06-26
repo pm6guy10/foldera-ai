@@ -96,6 +96,45 @@ LIMIT 25;
 (`author` is plaintext even though `content` is encrypted — judge professional vs.
 marketing/gig from the sender domain.)
 
+## Probe 5 — card precision (fired → acted), the magic-moment number
+
+"Of Slack cards fired, how many did the owner act on?" Joins the send receipt
+(`workday_presence_slack_send`, `slack_ts`) to the response receipt
+(`workday_presence`, `responded_to_slack_ts`). Code path: `lib/workday-presence/card-precision.ts`.
+
+```sql
+WITH fired AS (
+  SELECT DISTINCT execution_result->>'slack_ts' AS ts
+  FROM tkg_actions
+  WHERE user_id = '2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f'
+    AND action_source = 'workday_presence_slack_send'
+    AND execution_result->>'slack_ok' = 'true'
+    AND execution_result->>'slack_ts' IS NOT NULL
+    AND generated_at >= NOW() - INTERVAL '7 days'
+),
+resp AS (
+  SELECT execution_result->>'responded_to_slack_ts' AS ts,
+         bool_or(status = 'approved') AS acted
+  FROM tkg_actions
+  WHERE user_id = '2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f'
+    AND action_source = 'workday_presence'
+    AND execution_result->>'responded_to_slack_ts' IS NOT NULL
+    AND generated_at >= NOW() - INTERVAL '7 days'
+  GROUP BY 1
+)
+SELECT
+  COUNT(*)                                                   AS fired,
+  COUNT(*) FILTER (WHERE r.acted)                            AS acted,
+  COUNT(*) FILTER (WHERE r.ts IS NOT NULL AND NOT r.acted)   AS dismissed,
+  COUNT(*) FILTER (WHERE r.ts IS NULL)                       AS ignored,
+  ROUND(100.0 * COUNT(*) FILTER (WHERE r.acted) / NULLIF(COUNT(*),0), 1) AS precision_pct
+FROM fired f
+LEFT JOIN resp r USING (ts);
+```
+Forward-only: the `responded_to_slack_ts` join key ships now, so cards fired
+before it read as `ignored`. Don't read early low precision as a quality miss —
+read it from the first card fired *after* the key landed.
+
 ---
 
 ## Manual suppression (authorized last-resort — proven 2026-06-23)

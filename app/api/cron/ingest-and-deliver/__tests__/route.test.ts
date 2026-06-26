@@ -4,8 +4,8 @@ import { NextRequest, NextResponse } from 'next/server';
 const validateCronAuth = vi.fn();
 const mockSyncMicrosoft = vi.fn();
 const mockSyncGoogle = vi.fn();
-const mockSeedFromScorer = vi.fn();
-const mockTriggerRunner = vi.fn();
+const mockDeliver = vi.fn();
+const mockEnsureGraphSubscription = vi.fn();
 
 vi.mock('@/lib/auth/resolve-user', () => ({
   validateCronAuth,
@@ -19,12 +19,12 @@ vi.mock('@/lib/sync/google-sync', () => ({
   syncGoogle: mockSyncGoogle,
 }));
 
-vi.mock('@/app/api/workday-presence/seed-from-scorer/route', () => ({
-  POST: mockSeedFromScorer,
+vi.mock('@/lib/workday-presence/deliver-now', () => ({
+  deliverWorkdayPresence: mockDeliver,
 }));
 
-vi.mock('@/app/api/cron/workday-presence-trigger-runner/route', () => ({
-  POST: mockTriggerRunner,
+vi.mock('@/lib/sync/graph-subscription', () => ({
+  ensureGraphSubscription: mockEnsureGraphSubscription,
 }));
 
 function request() {
@@ -60,12 +60,8 @@ describe('ingest-and-deliver cron route', () => {
     process.env.FOLDERA_SELF_USER_ID = 'test-owner-id';
     mockSyncMicrosoft.mockResolvedValue(ZERO_MS_RESULT);
     mockSyncGoogle.mockResolvedValue(ZERO_GOOGLE_RESULT);
-    mockSeedFromScorer.mockResolvedValue(
-      NextResponse.json({ seeded: true, scorer_outcome: 'winner_selected' }),
-    );
-    mockTriggerRunner.mockResolvedValue(
-      NextResponse.json({ ok: true, outcome: 'quiet' }),
-    );
+    mockDeliver.mockResolvedValue({ trigger_context: 'heartbeat', seeded: true, seed: {}, trigger: {} });
+    mockEnsureGraphSubscription.mockResolvedValue({ ok: true, action: 'renewed' });
   });
 
   it('rejects unauthorized requests before syncing', async () => {
@@ -78,8 +74,7 @@ describe('ingest-and-deliver cron route', () => {
     expect(response.status).toBe(401);
     expect(mockSyncMicrosoft).not.toHaveBeenCalled();
     expect(mockSyncGoogle).not.toHaveBeenCalled();
-    expect(mockSeedFromScorer).not.toHaveBeenCalled();
-    expect(mockTriggerRunner).not.toHaveBeenCalled();
+    expect(mockDeliver).not.toHaveBeenCalled();
   });
 
   it('returns 500 when FOLDERA_SELF_USER_ID is missing', async () => {
@@ -93,7 +88,7 @@ describe('ingest-and-deliver cron route', () => {
     expect(body.error).toMatch(/FOLDERA_SELF_USER_ID/);
   });
 
-  it('skips seed-from-scorer and still runs trigger-runner when no new signals', async () => {
+  it('always runs the deliver pipeline (heartbeat), even with no new signals', async () => {
     const { POST } = await import('../route');
     const response = await POST(request());
     const body = await response.json();
@@ -101,41 +96,26 @@ describe('ingest-and-deliver cron route', () => {
     expect(response.status).toBe(200);
     expect(body.ok).toBe(true);
     expect(body.new_signals.total).toBe(0);
-    expect(body.seed_skipped).toBe(true);
-    expect(body.seed_result).toBeNull();
-    expect(mockSeedFromScorer).not.toHaveBeenCalled();
-    expect(mockTriggerRunner).toHaveBeenCalledTimes(1);
+    // The seed gate is gone: the heartbeat always evaluates the pool.
+    expect(mockDeliver).toHaveBeenCalledTimes(1);
+    expect(mockDeliver).toHaveBeenCalledWith('test-owner-id');
   });
 
-  it('calls seed-from-scorer and trigger-runner when Microsoft signals arrive', async () => {
-    mockSyncMicrosoft.mockResolvedValue({
-      ...ZERO_MS_RESULT,
-      mail_signals: 3,
-    });
+  it('reflects Microsoft signal counts and still delivers', async () => {
+    mockSyncMicrosoft.mockResolvedValue({ ...ZERO_MS_RESULT, mail_signals: 3 });
 
     const { POST } = await import('../route');
     const response = await POST(request());
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.ok).toBe(true);
     expect(body.new_signals.microsoft).toBe(3);
     expect(body.new_signals.total).toBe(3);
-    expect(body.seed_skipped).toBe(false);
-    expect(mockSeedFromScorer).toHaveBeenCalledTimes(1);
-    expect(mockTriggerRunner).toHaveBeenCalledTimes(1);
-
-    // seed runs before trigger
-    expect(mockSeedFromScorer.mock.invocationCallOrder[0]).toBeLessThan(
-      mockTriggerRunner.mock.invocationCallOrder[0],
-    );
+    expect(mockDeliver).toHaveBeenCalledTimes(1);
   });
 
-  it('calls seed-from-scorer and trigger-runner when Google signals arrive', async () => {
-    mockSyncGoogle.mockResolvedValue({
-      ...ZERO_GOOGLE_RESULT,
-      drive_signals: 2,
-    });
+  it('reflects Google signal counts and still delivers', async () => {
+    mockSyncGoogle.mockResolvedValue({ ...ZERO_GOOGLE_RESULT, drive_signals: 2 });
 
     const { POST } = await import('../route');
     const response = await POST(request());
@@ -144,25 +124,32 @@ describe('ingest-and-deliver cron route', () => {
     expect(response.status).toBe(200);
     expect(body.new_signals.google).toBe(2);
     expect(body.new_signals.total).toBe(2);
-    expect(body.seed_skipped).toBe(false);
-    expect(mockSeedFromScorer).toHaveBeenCalledTimes(1);
-    expect(mockTriggerRunner).toHaveBeenCalledTimes(1);
+    expect(mockDeliver).toHaveBeenCalledTimes(1);
   });
 
-  it('forwards cron auth header to seed-from-scorer and trigger-runner', async () => {
-    mockSyncMicrosoft.mockResolvedValue({ ...ZERO_MS_RESULT, mail_signals: 1 });
+  it('re-arms the owner Graph subscription (Stage 0) before delivering', async () => {
+    const { POST } = await import('../route');
+    const response = await POST(request());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockEnsureGraphSubscription).toHaveBeenCalledWith('test-owner-id');
+    expect(body.graph_subscription).toEqual({ ok: true, action: 'renewed' });
+  });
+
+  it('still delivers even if the Graph subscription re-arm throws', async () => {
+    mockEnsureGraphSubscription.mockRejectedValue(new Error('graph boom'));
 
     const { POST } = await import('../route');
-    await POST(request());
+    const response = await POST(request());
+    const body = await response.json();
 
-    const seedReq = mockSeedFromScorer.mock.calls[0][0] as NextRequest;
-    const triggerReq = mockTriggerRunner.mock.calls[0][0] as NextRequest;
-
-    expect(seedReq.headers.get('authorization')).toBe('Bearer test-cron-secret');
-    expect(triggerReq.headers.get('authorization')).toBe('Bearer test-cron-secret');
+    expect(response.status).toBe(200);
+    expect(body.graph_subscription).toMatchObject({ error: expect.stringContaining('graph boom') });
+    expect(mockDeliver).toHaveBeenCalledTimes(1);
   });
 
-  it('continues to trigger-runner even when Microsoft sync throws', async () => {
+  it('continues to deliver even when Microsoft sync throws', async () => {
     mockSyncMicrosoft.mockRejectedValue(new Error('ms boom'));
 
     const { POST } = await import('../route');
@@ -173,10 +160,10 @@ describe('ingest-and-deliver cron route', () => {
     expect(body.ok).toBe(true);
     expect(body.microsoft_error).toMatch('ms boom');
     expect(body.new_signals.microsoft).toBe(0);
-    expect(mockTriggerRunner).toHaveBeenCalledTimes(1);
+    expect(mockDeliver).toHaveBeenCalledTimes(1);
   });
 
-  it('continues to trigger-runner even when Google sync throws', async () => {
+  it('continues to deliver even when Google sync throws', async () => {
     mockSyncGoogle.mockRejectedValue(new Error('google boom'));
 
     const { POST } = await import('../route');
@@ -187,7 +174,7 @@ describe('ingest-and-deliver cron route', () => {
     expect(body.ok).toBe(true);
     expect(body.google_error).toMatch('google boom');
     expect(body.new_signals.google).toBe(0);
-    expect(mockTriggerRunner).toHaveBeenCalledTimes(1);
+    expect(mockDeliver).toHaveBeenCalledTimes(1);
   });
 
   it('syncs the owner user (FOLDERA_SELF_USER_ID) for both providers', async () => {

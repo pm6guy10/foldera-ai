@@ -39,6 +39,7 @@ async function persistStateAndReceipt(
   metadata: Record<string, unknown>,
   nextState: WorkdayPresenceState,
   actionId: RightNowMessageActionId,
+  respondedToSlackTs?: string | null,
 ): Promise<WorkdayPresenceState> {
   const stateWithHistory = applyInteractionHistoryToState(
     metadata,
@@ -46,7 +47,7 @@ async function persistStateAndReceipt(
     nextState,
     nextState.updated_at,
   );
-  await insertPresenceReceipt(supabase, userId, actionId, stateWithHistory);
+  await insertPresenceReceipt(supabase, userId, actionId, stateWithHistory, respondedToSlackTs);
   const nextMetadata = appendWorkdayPresenceInteractionHistory(
     metadata,
     actionId,
@@ -212,7 +213,7 @@ async function handleReviewSendSubmission(
     const liveMetadata = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
     const done = applyWorkdayPresenceAction(liveMetadata.workday_presence_state, 'done');
     if (done.ok) {
-      await persistStateAndReceipt(supabase, userId, liveMetadata, done.nextState, 'done');
+      await persistStateAndReceipt(supabase, userId, liveMetadata, done.nextState, 'done', modalMeta.message_ts);
     }
   } catch (doneError: unknown) {
     console.warn('[slack interaction] post-send done failed:', doneError);
@@ -302,7 +303,7 @@ export async function POST(request: Request) {
       blocker: interaction.blocker,
       nowIso,
     });
-    const persistedState = await persistStateAndReceipt(supabase, userId, metadata, receipt.after_state, interaction.actionId);
+    const persistedState = await persistStateAndReceipt(supabase, userId, metadata, receipt.after_state, interaction.actionId, interaction.messageTs);
     const nextPayload = buildRightNowMessagePayload(persistedState);
 
     let updateResult = null;

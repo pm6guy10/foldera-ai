@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const getServerSession = vi.fn();
 const syncGoogle = vi.fn();
 const rateLimit = vi.fn();
-const maybeRunWorkdayPresenceTriggerRunnerForUser = vi.fn();
+const deliverWorkdayPresence = vi.fn();
 
 vi.mock('next-auth', () => ({
   getServerSession,
@@ -17,8 +17,8 @@ vi.mock('@/lib/sync/google-sync', () => ({
   syncGoogle,
 }));
 
-vi.mock('@/lib/workday-presence/trigger-runner', () => ({
-  maybeRunWorkdayPresenceTriggerRunnerForUser,
+vi.mock('@/lib/workday-presence/deliver-now', () => ({
+  deliverWorkdayPresence,
 }));
 
 vi.mock('@/lib/utils/rate-limit', () => ({
@@ -31,6 +31,7 @@ describe('POST /api/google/sync-now', () => {
     vi.clearAllMocks();
     getServerSession.mockResolvedValue({ user: { id: 'user-1' } });
     rateLimit.mockResolvedValue({ success: true, remaining: 2, resetAt: new Date(Date.now() + 60_000) });
+    deliverWorkdayPresence.mockResolvedValue({ trigger_context: 'heartbeat', seeded: true });
   });
 
   it('blocks manual sync during egress emergency mode without operator secret', async () => {
@@ -106,7 +107,7 @@ describe('POST /api/google/sync-now', () => {
     );
   });
 
-  it('fires the trigger-runner helper when fresh signals were ingested', async () => {
+  it('runs the full deliver pipeline when fresh signals were ingested', async () => {
     syncGoogle.mockResolvedValue({
       gmail_signals: 1,
       calendar_signals: 2,
@@ -118,10 +119,10 @@ describe('POST /api/google/sync-now', () => {
     const response = await POST(new Request('http://localhost/api/google/sync-now', { method: 'POST' }));
 
     expect(response.status).toBe(200);
-    expect(maybeRunWorkdayPresenceTriggerRunnerForUser).toHaveBeenCalledWith('user-1');
+    expect(deliverWorkdayPresence).toHaveBeenCalledWith('user-1');
   });
 
-  it('does not fire the trigger-runner helper when sync ingests no new signals', async () => {
+  it('still runs the deliver pipeline even when sync ingests no new signals (explicit sync = heartbeat)', async () => {
     syncGoogle.mockResolvedValue({
       gmail_signals: 0,
       calendar_signals: 0,
@@ -133,7 +134,9 @@ describe('POST /api/google/sync-now', () => {
     const response = await POST(new Request('http://localhost/api/google/sync-now', { method: 'POST' }));
 
     expect(response.status).toBe(200);
-    expect(maybeRunWorkdayPresenceTriggerRunnerForUser).not.toHaveBeenCalled();
+    // An explicit "sync now" always evaluates the pool — the scorer draws from commitments,
+    // not signals, so a card can still fire. Built-in safe-silence prevents noise.
+    expect(deliverWorkdayPresence).toHaveBeenCalledWith('user-1');
   });
 
   it('returns 400 when Google is not connected', async () => {

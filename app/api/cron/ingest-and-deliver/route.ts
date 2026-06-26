@@ -1,20 +1,26 @@
 /**
  * POST /api/cron/ingest-and-deliver
  *
- * Event-driven delivery cycle — runs every 30 min so fresh signals (email_sent,
- * file_modified) produce a Slack card within minutes rather than at the next
- * 11:00 UTC morning cron.
+ * Throttled fallback heartbeat for the event-driven delivery pipeline. The real
+ * product is on-demand: a fresh signal or an explicit "sync now" runs the same
+ * seed → trigger pipeline (lib/workday-presence/deliver-now.ts) within seconds.
+ * This cron exists only because Vercel Hobby caps us at one scheduled tick/day —
+ * it is a safety net, never "the schedule the card waits for".
  *
  * Pipeline (owner user only):
  *   1. Sync Microsoft  (Outlook email_sent, OneDrive file_modified)
  *   2. Sync Google     (Gmail sent, Drive file_modified)
- *   3. If new signals > 0: seed-from-scorer (score → directive → seed state)
- *   4. Always: trigger-runner (evaluate triggers → Slack card if warranted)
+ *   3. deliverWorkdayPresence: seed-from-scorer (always) → trigger-runner
  *
- * seed-from-scorer is gated on new signals to avoid unnecessary LLM calls when
- * nothing changed. trigger-runner always runs because it handles time-based
- * triggers (commitment lapsing) and has built-in dedup (last_trigger_key +
- * last_signal_cursor) that prevents duplicate Slack cards.
+ * deliverWorkdayPresence is the SAME function the sync-now routes call, so the
+ * cron and on-demand paths can never drift apart (the seed-gate bug existed
+ * precisely because those two paths were hand-duplicated).
+ *
+ * It also re-arms the owner's Microsoft Graph push subscription (Stage 0). On Vercel
+ * Hobby the cron count is capped at 2, so the dedicated renew-graph-subscriptions cron
+ * is not scheduled here; folding the owner's renewal into this daily tick keeps Outlook
+ * push armed with zero new cron entries. (On Pro, schedule the dedicated renewer for
+ * all-user coverage.)
  *
  * Auth: CRON_SECRET Bearer token.
  * Schedule: 0 18 * * * (daily at 18:00 UTC / 11am PT)
@@ -25,21 +31,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateCronAuth } from '@/lib/auth/resolve-user';
 import { syncMicrosoft } from '@/lib/sync/microsoft-sync';
 import { syncGoogle } from '@/lib/sync/google-sync';
-import { POST as runSeedFromScorer } from '@/app/api/workday-presence/seed-from-scorer/route';
-import { POST as runTriggerRunner } from '@/app/api/cron/workday-presence-trigger-runner/route';
+import { deliverWorkdayPresence } from '@/lib/workday-presence/deliver-now';
+import { ensureGraphSubscription } from '@/lib/sync/graph-subscription';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
-
-function makeForwardHeaders(request: NextRequest): Headers {
-  const headers = new Headers();
-  const authorization = request.headers.get('authorization');
-  const cronSecret = request.headers.get('x-cron-secret');
-  if (authorization) headers.set('authorization', authorization);
-  if (cronSecret) headers.set('x-cron-secret', cronSecret);
-  return headers;
-}
 
 async function handler(request: NextRequest) {
   const authErr = validateCronAuth(request);
@@ -54,6 +51,15 @@ async function handler(request: NextRequest) {
   }
 
   try {
+    // Stage 0: re-arm the owner's Graph push subscription so Outlook change-notifications
+    // keep firing /api/webhooks/graph (the real, event-driven delivery path). Best-effort.
+    let graphSubscription: unknown = null;
+    try {
+      graphSubscription = await ensureGraphSubscription(userId);
+    } catch (err: unknown) {
+      graphSubscription = { error: err instanceof Error ? err.message : String(err) };
+    }
+
     // Stage 1: Sync Microsoft (picks up Outlook email_sent, OneDrive file_modified)
     let microsoftNewSignals = 0;
     let microsoftError: string | undefined;
@@ -84,37 +90,10 @@ async function handler(request: NextRequest) {
     }
 
     const totalNewSignals = microsoftNewSignals + googleNewSignals;
-    const forwardHeaders = makeForwardHeaders(request);
 
-    // Stage 3: seed-from-scorer — only when fresh signals arrived.
-    // Uses CRON_SECRET auth so resolveAnyUser maps to INGEST_USER_ID (owner).
-    let seedResult: unknown = null;
-    if (totalNewSignals > 0) {
-      const seedRequest = new NextRequest(
-        new URL('/api/workday-presence/seed-from-scorer', request.nextUrl.origin),
-        { method: 'POST', headers: forwardHeaders },
-      );
-      const seedResponse = await runSeedFromScorer(seedRequest);
-      try {
-        seedResult = await seedResponse.json();
-      } catch {
-        seedResult = { error: 'non-json seed response', status: seedResponse.status };
-      }
-    }
-
-    // Stage 4: trigger-runner — always runs; built-in dedup prevents duplicate cards.
-    // Handles commitment-lapsing and other time-based triggers even without new sync signals.
-    const triggerRequest = new NextRequest(
-      new URL('/api/cron/workday-presence-trigger-runner', request.nextUrl.origin),
-      { method: 'POST', headers: forwardHeaders },
-    );
-    const triggerResponse = await runTriggerRunner(triggerRequest);
-    let triggerResult: unknown = null;
-    try {
-      triggerResult = await triggerResponse.json();
-    } catch {
-      triggerResult = { error: 'non-json trigger response', status: triggerResponse.status };
-    }
+    // Stage 3: deliver — seed-from-scorer (always) → trigger-runner. Same pipeline
+    // the on-demand sync-now routes call.
+    const delivery = await deliverWorkdayPresence(userId);
 
     return NextResponse.json({
       ok: true,
@@ -125,9 +104,9 @@ async function handler(request: NextRequest) {
       },
       ...(microsoftError ? { microsoft_error: microsoftError } : {}),
       ...(googleError ? { google_error: googleError } : {}),
-      seed_skipped: totalNewSignals === 0,
-      seed_result: seedResult,
-      trigger_result: triggerResult,
+      graph_subscription: graphSubscription,
+      seed_result: delivery.seed,
+      trigger_result: delivery.trigger,
     });
   } catch (error: unknown) {
     return apiErrorForRoute(error, 'cron/ingest-and-deliver');

@@ -35,6 +35,7 @@ import {
   type TrustClass,
 } from '@/lib/signals/entity-trust';
 import { computeCommitmentRisk } from '@/lib/signals/commitment-risk';
+import { isExcludedPipelineUser } from '@/lib/config/constants';
 
 const HAIKU_MODEL = 'claude-haiku-4-5-20251001';
 const BATCH_SIZE = 20;
@@ -2135,7 +2136,8 @@ export async function listUsersWithUnprocessedSignals(
 
   const userIds = (signalsResult.data ?? [])
     .map((signal) => signal.user_id)
-    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+    .filter((value): value is string => typeof value === 'string' && value.length > 0)
+    .filter((value) => !isExcludedPipelineUser(value));
 
   return [...new Set(userIds)];
 }

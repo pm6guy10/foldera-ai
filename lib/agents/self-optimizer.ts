@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { insertAgentDraft } from '@/lib/agents/draft-queue';
 import { runAgentSonnet } from '@/lib/agents/anthropic-runner';
 import { buildSkipAvoidanceBlock } from '@/lib/agents/skip-patterns';
+import { computeCardPrecision } from '@/lib/workday-presence/card-precision';
 
 export async function runSelfOptimizerAgent(supabase: SupabaseClient): Promise<{
   staged: boolean;
@@ -55,6 +56,18 @@ export async function runSelfOptimizerAgent(supabase: SupabaseClient): Promise<{
   const totalSkipped = Object.values(byType).reduce((s, b) => s + b.skipped, 0);
   const globalRate = totalApproved + totalSkipped > 0 ? totalApproved / (totalApproved + totalSkipped) : 1;
 
+  // Card precision — the magic-moment number: of Slack cards fired, how many did
+  // the owner act on? Scoped to the canonical owner (only account that gets cards).
+  let precisionLine = 'Card precision: not measurable (FOLDERA_SELF_USER_ID unset).';
+  const ownerId = process.env.FOLDERA_SELF_USER_ID?.trim();
+  if (ownerId) {
+    const p = await computeCardPrecision(supabase, { userId: ownerId, sinceIso: since });
+    precisionLine =
+      p.precision === null
+        ? `Card precision (7d, fired→acted): n/a — 0 cards fired (silence, not a miss).`
+        : `Card precision (7d, fired→acted): ${(p.precision * 100).toFixed(1)}% (acted ${p.acted} / fired ${p.fired}, dismissed ${p.dismissed}, ignored ${p.ignored})`;
+  }
+
   let analyticsNote = 'Landing analytics: not connected (set POSTHOG_KEY in agent env to enable).';
   if (process.env.POSTHOG_PERSONAL_API_KEY && process.env.POSTHOG_PROJECT_ID) {
     analyticsNote =
@@ -63,6 +76,7 @@ export async function runSelfOptimizerAgent(supabase: SupabaseClient): Promise<{
 
   const statsBlock = [
     `Global approval rate (7d, approved vs skipped): ${(globalRate * 100).toFixed(1)}%`,
+    precisionLine,
     '',
     'Per action_type:',
     ...lines,

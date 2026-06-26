@@ -3,8 +3,9 @@
 ## TL;DR
 
 - **#553 + #554 MERGED (main `8987acc`):** brain fix live (`FOLDERA_SELF_USER_ID` canonical, dark since Jun 23 fixed) + boot context contradiction-free (SETTLED anchor, dead cron framing gone).
-- **Delivery is event-driven** (NOT a scheduled daily brief): signal ingestion → seed-from-scorer → trigger-runner → Slack card. The `vercel.json` crons are only the Hobby-throttled trigger.
-- **Next move:** live proof — confirm a real card (or named `suppression_trace`) on `2cbc1bab`; if the card is weak, that weakness is the next #546 seam.
+- **Delivery is push-driven** (event, not schedule): Graph webhook `/api/webhooks/graph` → sync → materiality gate → `deliverWorkdayPresence` (seed→trigger) → Slack card, in seconds. Cron is demoted to a cheap subscription-renewer, never "the schedule the card waits on".
+- **Brain unblocked (2026-06-26):** dark since Jun 23 was a *phantom budget cap* — `api_budget_check_and_reserve` reserved a flat 10¢/run and never reconciled, so the meter read $30 (capped) on $2.07 real spend. Fixed: meter now reconciles to the real `api_usage` ledger (`sql/030_api_budget_reconcile.sql`); June reset to true $2.07. Also killed the `@expert.micro1.ai` eval account that was silently draining shared budget (`isExcludedPipelineUser`).
+- **Next move:** live proof, now *measured* — precision meter (`card-precision.ts`) links fired→acted; target 10 acted cards on `2cbc1bab`. Real card or named `suppression_trace`; `SAFE_SILENCE` still success.
 - **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars, Gmail sent-mail connector (1 vs 967), commitment pool hygiene (Fix B/C).
 
 ## DON'T FORGET — read first, every boot
@@ -23,7 +24,7 @@ Keep this cockpit short and value-first. Completed-issue history lives in `docs/
 
 These are decided. Do not re-derive, re-probe, or re-propose the dead alternative.
 
-1. **Delivery is event-driven, not a scheduled cron/daily brief.** `vercel.json` crons (`morning-pipeline`, `ingest-and-deliver`) are ONLY the Hobby-throttled trigger — never present "wait for the 11:00 cron" as the product. The old `daily-brief-generate` flow is RETIRED (replaced by these two, #548).
+1. **Delivery is push/event-driven, not a scheduled cron.** Provider push (Microsoft Graph change-notifications → `/api/webhooks/graph`; Gmail watch is phase 2) fires the card the instant data changes — the change is the clock. `deliverWorkdayPresence` (`lib/workday-presence/deliver-now.ts`) is the single seed→trigger pipeline ALL callers use. The `vercel.json` crons are a Hobby-throttled fallback heartbeat + subscription-renewer only; never "wait for the cron". Old `daily-brief-generate` RETIRED (#548).
 2. **Owner = `2cbc1bab`.** `FOLDERA_SELF_USER_ID` is canonical owner resolution everywhere; `INGEST_USER_ID` is legacy fallback only (fixed in #553). Old account `e40b7cd8` is empty post-#509.
 3. **`SAFE_SILENCE` is a valid SUCCESS.** Never loosen a gate to force a card.
 4. **Live-pool schema + probes live in `docs/LIVE_POOL_PROBE.md`.** Don't re-derive columns or re-pull the pool to "see what the brain has" — it's already canned.
@@ -60,7 +61,7 @@ Key invariants (still hold):
 
 ## Next exact move
 
-1. **Live proof:** confirm the event-driven path end-to-end — fresh `email_sent`/`file_modified` ingested → `seed-from-scorer` seeds state (resolving `2cbc1bab`) → `trigger-runner` fires → Slack card → `workday_presence_slack_send` receipt in `tkg_actions`. A named `suppression_trace` instead is honest silence, not failure.
+1. **Live proof — push end-to-end:** set `GRAPH_WEBHOOK_SECRET` in Vercel → owner reconnects Outlook (or cron Stage 0 runs) → `user_metadata.workday_presence_graph_subscription` set → real inbound Outlook mail → Graph POSTs `/api/webhooks/graph` → sync→gate→`deliverWorkdayPresence` → Slack card in seconds (no cron). Then click → `responded_to_slack_ts` → precision meter (Probe 5). Target: 10 acted cards. Named `suppression_trace` is honest silence.
 2. **Standing (in #546):** R2–R6 cascade, goal-inference refresh (keystone — everything depends on a continuously-refreshed model of what you care about), expert-panel/avatars + gap analysis, Gmail sent-mail connector fix (1 vs 967), #537 Fix B/C.
 
 ## Product doctrine
