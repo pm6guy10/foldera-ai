@@ -1,10 +1,10 @@
 {
   "active_issue": 567,
   "active_branch": "claude/issue-567-al9edy",
-  "active_pr": null,
+  "active_pr": 568,
   "deployed_commit_sha": "c553f47",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-26T21:33:58.000Z",
-  "notes": "SEAM: #567 foundation — make the first indispensable card fire. Three code moves: (1) observability: port pipeline_runs funnel write into seed-from-scorer-core.ts so every live run is traceable; (2) ghost-goal gate: extractDrift skips goals whose vocabulary is dark across own-activity signals (stops P1 'Build Foldera into revenue' monopolizing the survivor slot); (3) doctrine: encode value map + evidence bar + override model into FOLDERA_MASTER_BIBLE.md. DB gate (tkg_goals edit) + Gmail connector fix (1→967) need owner sign-off."
+  "last_verified_at": "2026-06-26T22:58:00.000Z",
+  "notes": "SEAM: #567 foundation — make the first indispensable card fire. Four code moves: (1) observability: port pipeline_runs funnel write into seed-from-scorer-core.ts so every live run is traceable; (2) ghost-goal gate: extractDrift skips goals whose vocabulary is dark across own-activity signals (stops P1 'Build Foldera into revenue' monopolizing the survivor slot); (3) doctrine: encode value map + evidence bar + override model into FOLDERA_MASTER_BIBLE.md; (4) un-rot CURRENT_ARTIFACT_ANCHOR_RE (ported from closed PR #566). PR #568 READY. DB gate (tkg_goals edit) + Gmail connector fix (1→967) need owner sign-off."
 }
