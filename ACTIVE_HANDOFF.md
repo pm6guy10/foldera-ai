@@ -4,6 +4,7 @@
 
 - **#553 + #554 MERGED (main `8987acc`):** brain fix live (`FOLDERA_SELF_USER_ID` canonical, dark since Jun 23 fixed) + boot context contradiction-free (SETTLED anchor, dead cron framing gone).
 - **Delivery is push-driven** (event, not schedule): Graph webhook `/api/webhooks/graph` → sync → materiality gate → `deliverWorkdayPresence` (seed→trigger) → Slack card, in seconds. Cron is demoted to a cheap subscription-renewer, never "the schedule the card waits on".
+- **Brain unblocked (2026-06-26):** dark since Jun 23 was a *phantom budget cap* — `api_budget_check_and_reserve` reserved a flat 10¢/run and never reconciled, so the meter read $30 (capped) on $2.07 real spend. Fixed: meter now reconciles to the real `api_usage` ledger (`sql/030_api_budget_reconcile.sql`); June reset to true $2.07. Also killed the `@expert.micro1.ai` eval account that was silently draining shared budget (`isExcludedPipelineUser`).
 - **Next move:** live proof, now *measured* — precision meter (`card-precision.ts`) links fired→acted; target 10 acted cards on `2cbc1bab`. Real card or named `suppression_trace`; `SAFE_SILENCE` still success.
 - **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars, Gmail sent-mail connector (1 vs 967), commitment pool hygiene (Fix B/C).
 
