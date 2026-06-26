@@ -93,13 +93,17 @@ describe('Slack test-mode Right Now loop', () => {
 
     expect(response.status).toBe(200);
     expect(body.payload.kind).toBe('right_now');
-    // Must show the scored winner, not any recency-derived content
-    expect(body.payload.text).toContain('Project update to be sent by end of day Tuesday');
-    expect(body.payload.text).toContain('Source trail: tkg_signals/calendar/commitment');
+    // Must surface the artifact (the ready-to-send draft itself), not recency-derived content.
+    // The card IS the draft: subject headline + full body inline.
+    expect(body.payload.text).toContain('*Project update — EOD Tuesday*');
+    expect(body.payload.text).toContain('Here is the project update I committed to by end of day Tuesday.');
     expect(body.payload.text).not.toContain('$21.66');
     expect(body.payload.text).not.toContain('manual_anchor');
-    // Artifact-backed: the card offers View Draft + Dismiss, never homework jargon.
-    expect(body.payload.actions.map((a: { id: string }) => a.id)).toEqual(['view_draft', 'dismiss']);
+    // Draft-led card: no homework scaffolding, no "Draft ready" label, no source-trail dump.
+    expect(body.payload.text).not.toContain('Draft ready (');
+    expect(body.payload.text).not.toContain('Source trail:');
+    // No persisted action_id on this fixture → review-only, so Dismiss alone (no send button).
+    expect(body.payload.actions.map((a: { id: string }) => a.id)).toEqual(['dismiss']);
     expect(body.payload.text).not.toMatch(/matched goal|score:\s*\d|smallest (next|concrete) step/i);
     expect(body.slack_test_mode.channel).toBe('test_dm');
   });
