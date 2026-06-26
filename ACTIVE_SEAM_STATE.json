@@ -1,10 +1,10 @@
 {
   "active_issue": 546,
-  "active_branch": "main",
+  "active_branch": "claude/decision-closure-card-coverage",
   "active_pr": null,
   "deployed_commit_sha": "68926d1",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-26T18:45:00.000Z",
-  "notes": "MERGED #564: write_document acquisition legwork landed on main. lib/conviction/acquisition-legwork.ts + generateArtifact branch: purchase/prep/booking write_document now does the real lookup (searchWebForEnrichment, self-gated on SCOUT_WEB_ENABLED + isPaidLlmAllowed) and returns pick+link, never homework. NEXT: owner sets SCOUT_ENABLED=true + SCOUT_WEB_ENABLED=true in Vercel → live proof on 'Book hotel stay using $35.16 OneKeyCash balance' (Supabase id 829b5e13). Then precision meter (Probe 5); #546 R2-R6 cascade, goal-inference refresh, Gmail connector fix."
+  "last_verified_at": "2026-06-26T21:10:00.000Z",
+  "notes": "SEAM: decision-closure card lines (override-killer). Owner reset value def 2026-06-26: Foldera = decision-replacement; trust = user stops re-checking (closure, not certainty). Override = the 'if it mattered it'd be here' permission breaking; #1 cause is coverage doubt. lib/workday-presence/decision-closure.ts (pure: buildCoverageLine/buildContinuityLine) plumbed through WorkdayPresenceState -> seed-from-scorer-core (fieldSize from candidateDiscovery, prior claim from metadata) -> message.ts quiet footer. Coverage-ASSURANCE not display; dropped the runner-up-list idea (re-triggers comparison). 18 new tests, 158 workday-presence green, tsc clean. NEXT: live N=1 - card WITH coverage line vs WITHOUT -> does it cut re-checking (falsifiable; KILL if no delta vs ranked list). Upstream still blocks a real card firing: ghost apex goal monopoly + ignored Drive/Outlook/Gmail fuel + rotted CURRENT_ARTIFACT_ANCHOR_RE (audit in plan file)."
 }

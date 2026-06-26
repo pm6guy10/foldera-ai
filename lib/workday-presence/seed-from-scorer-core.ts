@@ -18,6 +18,7 @@ import {
   isRealMove,
   sendDraftIsGrounded,
 } from '@/lib/workday-presence/seed-from-directive';
+import { buildCoverageLine, buildContinuityLine } from '@/lib/workday-presence/decision-closure';
 
 export interface SeedOutcome {
   seeded: boolean;
@@ -277,6 +278,21 @@ export async function seedFromScorerForUser(userId: string): Promise<SeedOutcome
   }
 
   const state = directiveToPresenceState(directive, winnerTitle, artifact, nowIso, persistedActionId);
+
+  // Decision-closure footers (override-killer). The data is already in scope: the field
+  // size from the scorer's candidate discovery, and the prior claim from the existing
+  // workday_presence_state we are about to overwrite. Computed once here, stored on state.
+  const fieldSize = directive.generationLog?.candidateDiscovery?.candidateCount ?? 0;
+  const coverageLine = buildCoverageLine(fieldSize - 1); // minus the winner itself
+  if (coverageLine) state.coverage_line = coverageLine;
+  const priorState = metadata.workday_presence_state as { current_focus?: string } | undefined;
+  const priorFocus = typeof priorState?.current_focus === 'string' ? priorState.current_focus.trim() : '';
+  const continuityLine = buildContinuityLine(
+    priorFocus ? { key: priorFocus, label: priorFocus } : null,
+    { key: state.current_focus, label: state.current_focus },
+  );
+  if (continuityLine) state.continuity_line = continuityLine;
+
   const updateResult = await supabase.auth.admin.updateUserById(userId, {
     user_metadata: {
       ...metadata,

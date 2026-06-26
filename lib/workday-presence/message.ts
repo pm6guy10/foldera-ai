@@ -88,8 +88,18 @@ function formatDraftLedText(state: WorkdayPresenceState): string {
   }
   lines.push('', body);
 
+  // Quiet decision-closure footer: why → continuity → coverage. One block, never a
+  // stack of competing items — coverage-assurance, not coverage-display. These are the
+  // override-killers: they answer "did it see the rest?" and "did this change?" before
+  // the user goes and re-checks. See decision-closure.ts.
+  const footers: string[] = [];
   const why = state.why_it_matters?.trim();
-  if (why) lines.push('', `_Why now: ${why}_`);
+  if (why) footers.push(`_Why now: ${why}_`);
+  const continuity = state.continuity_line?.trim();
+  if (continuity) footers.push(`_${continuity}_`);
+  const coverage = state.coverage_line?.trim();
+  if (coverage) footers.push(`_${coverage}_`);
+  if (footers.length) lines.push('', ...footers);
   return lines.join('\n');
 }
 

@@ -59,6 +59,59 @@ describe('workday presence message payload', () => {
     expect(payload.text).toContain('_Why now: The meeting is today; a one-line confirm closes the loop._');
   });
 
+  it('renders the decision-closure footer (continuity + coverage) under the draft, quietly', () => {
+    const state = normalizeWorkdayPresenceState({
+      current_focus: 'Homeschool meeting with Deanne Varnum',
+      next_move: 'Reply to Deanne confirming the 2 PM slot.',
+      why_it_matters: 'The meeting is today; a one-line confirm closes the loop.',
+      state_source: 'scored_winner',
+      continuity_line: 'Still the top priority since last time.',
+      coverage_line: 'Checked 11 other open loops — none outranks this right now.',
+      draft: {
+        action_type: 'send_message',
+        title: 'Confirming 2 PM today',
+        preview: 'Hi Deanne — confirming 2 PM works.',
+        to: 'deanne@example.com',
+        body: 'Hi Deanne — confirming 2 PM works.',
+        action_id: 'act-123',
+      },
+    });
+    const payload = buildRightNowMessagePayload(state);
+    // The override-killers ride as quiet italic footers, not a list/stack.
+    expect(payload.text).toContain('_Still the top priority since last time._');
+    expect(payload.text).toContain(
+      '_Checked 11 other open loops — none outranks this right now._',
+    );
+    // Footer order: why → continuity → coverage, all under the body.
+    const why = payload.text.indexOf('_Why now:');
+    const cont = payload.text.indexOf('_Still the top priority');
+    const cov = payload.text.indexOf('_Checked 11 other');
+    expect(why).toBeGreaterThan(-1);
+    expect(why).toBeLessThan(cont);
+    expect(cont).toBeLessThan(cov);
+  });
+
+  it('omits the closure footer entirely when no coverage/continuity was computed (back-compat)', () => {
+    const state = normalizeWorkdayPresenceState({
+      current_focus: 'Owed reply to Sarah',
+      next_move: 'Reply to Sarah.',
+      why_it_matters: 'She is waiting.',
+      state_source: 'scored_winner',
+      draft: {
+        action_type: 'send_message',
+        title: 'Re: numbers',
+        preview: 'Hi Sarah — confirming the numbers look right.',
+        to: 'sarah@example.com',
+        body: 'Hi Sarah — confirming the numbers look right.',
+        action_id: 'act-9',
+      },
+    });
+    const payload = buildRightNowMessagePayload(state);
+    expect(payload.text).toContain('_Why now: She is waiting._');
+    expect(payload.text).not.toContain('Checked ');
+    expect(payload.text).not.toContain('top priority since');
+  });
+
   it('offers only Dismiss (no send button) when the draft has no persisted action_id', () => {
     const state = normalizeWorkdayPresenceState({
       current_focus: 'Homeschool meeting with Deanne Varnum',
