@@ -2,10 +2,10 @@
 
 ## TL;DR
 
-- **#567 ACTIVE — foundation so the first indispensable R1 card fires.** Four code moves (no sign-off): (1) `pipeline_runs` funnel write ported into `seed-from-scorer-core.ts` — live runs traceable again; (2) ghost-goal gate in `extractDrift` stops "Build Foldera into revenue" monopolizing the survivor slot; (3) value map + evidence bar + override model encoded in `FOLDERA_MASTER_BIBLE.md` Part VI; (4) un-rotted `CURRENT_ARTIFACT_ANCHOR_RE` (ported from #566).
-- **Needs owner sign-off to complete:** `tkg_goals` DB edit (re-ground/re-prioritize apex goal) + Gmail connector fix (1→967).
-- **Prior merges:** #565 (decision-closure card footer); #564 (acquisition legwork). #566 (anchor regex) was ported into this seam and closed — not a separate merge. PR #568 (this seam) is READY on `claude/issue-567-al9edy`; merge gated on the two owner sign-offs above.
-- **Next after sign-offs:** owner triggers `/api/cron/ingest-and-deliver` → expected card = a finished asset from R1 (not a reminder, not silence); ghost-goal drift gone from trace.
+- **#567 MERGED (PR #568, `c0b7c51`).** Four code moves on main: `pipeline_runs` observability, ghost-goal gate, doctrine (Bible Part VI), anchor regex un-rot. gate:continuity green; 1064 vitest pass.
+- **Waiting on owner sign-off to close #567:** `tkg_goals` DB edit (re-ground apex goal) + Gmail connector fix (1→967). No code work remains.
+- **After sign-offs:** owner triggers `/api/cron/ingest-and-deliver` → run Probe 1 → expect R1 finished-asset card + traceable `pipeline_runs` row, no ghost-goal drift.
+- **Prior merges:** #568/#567 (this seam), #565 (decision-closure footer), #564 (acquisition legwork). #566 ported+closed.
 
 ## DON'T FORGET — read first, every boot
 
@@ -44,21 +44,20 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Current slice:
 
-**#567 — three code moves shipped on `claude/issue-567-al9edy`, PR pending.**
+**#567 — PR #568 MERGED (`c0b7c51`). Code complete; waiting on owner sign-offs.**
 
-1. **Observability restored:** `pipeline_runs` start/finalize ported into `seed-from-scorer-core.ts` — every live `ingest-and-deliver` / `sync-now` / webhook delivery now writes a traceable funnel row.
-2. **Ghost-goal gate:** `extractDrift` skips goals whose vocabulary has zero overlap with own-activity signals (email_sent / file_modified). "Build Foldera into a revenue-generating product" no longer monopolizes the survivor slot.
-3. **Doctrine encoded:** value map + evidence bar + override model locked in `FOLDERA_MASTER_BIBLE.md` Part VI.
+- All four code moves are on main and green.
+- Issue #567 remains OPEN pending two owner actions (no Claude code work left).
 
-**Blocked on owner sign-off:**
+**Waiting on owner sign-off:**
 - `tkg_goals` DB edit: re-ground / re-prioritize the apex goal from real own-activity (so it produces a real finished act, not a make_decision drift card)
-- Gmail connector fix: `1 → 967` ingested sent emails (the Rung 1 fuel that feeds own-activity candidate promotion)
+- Gmail connector fix: `1 → 967` ingested sent emails (Rung 1 fuel that feeds own-activity candidate promotion)
 
 ## Next exact move
 
 1. **Owner sign-off:** `tkg_goals` DB edit + Gmail connector config → then trigger `/api/cron/ingest-and-deliver`
 2. **Expected result:** R1 card = a finished asset the user started (not a reminder, not silence); ghost-goal drift gone from `pipeline_runs` trace
-3. **Verify via Probe 1** (docs/LIVE_POOL_PROBE.md) after trigger — `pipeline_runs` should now have a traceable row with `blocked_gate` / `outcome` visible
+3. **Verify via Probe 1** (`docs/LIVE_POOL_PROBE.md`) after trigger — `pipeline_runs` shows a traceable row; no `blocked_gate = ghost_goal_drift`
 
 ## Product doctrine
 
