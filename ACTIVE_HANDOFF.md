@@ -2,9 +2,9 @@
 
 ## TL;DR
 
-- **#567 ACTIVE — foundation so the first indispensable R1 card fires.** Three code moves (no sign-off): (1) `pipeline_runs` funnel write ported into `seed-from-scorer-core.ts` — live runs traceable again; (2) ghost-goal gate in `extractDrift` stops "Build Foldera into revenue" monopolizing the survivor slot; (3) value map + evidence bar + override model encoded in `FOLDERA_MASTER_BIBLE.md` Part VI.
+- **#567 ACTIVE — foundation so the first indispensable R1 card fires.** Four code moves (no sign-off): (1) `pipeline_runs` funnel write ported into `seed-from-scorer-core.ts` — live runs traceable again; (2) ghost-goal gate in `extractDrift` stops "Build Foldera into revenue" monopolizing the survivor slot; (3) value map + evidence bar + override model encoded in `FOLDERA_MASTER_BIBLE.md` Part VI; (4) un-rotted `CURRENT_ARTIFACT_ANCHOR_RE` (ported from #566).
 - **Needs owner sign-off to complete:** `tkg_goals` DB edit (re-ground/re-prioritize apex goal) + Gmail connector fix (1→967).
-- **Prior merges:** #565 (decision-closure card footer); #566 (un-rot anchor regex); #564 (acquisition legwork). PR for this seam pending on branch `claude/issue-567-al9edy`.
+- **Prior merges:** #565 (decision-closure card footer); #564 (acquisition legwork). #566 (anchor regex) was ported into this seam and closed — not a separate merge. PR #568 (this seam) is READY on `claude/issue-567-al9edy`; merge gated on the two owner sign-offs above.
 - **Next after sign-offs:** owner triggers `/api/cron/ingest-and-deliver` → expected card = a finished asset from R1 (not a reminder, not silence); ghost-goal drift gone from trace.
 
 ## DON'T FORGET — read first, every boot
