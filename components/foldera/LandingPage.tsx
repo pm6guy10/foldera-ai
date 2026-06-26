@@ -441,32 +441,56 @@ export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) 
                   </a>
                 </div>
               </div>
-              <div className="hero-mark-wrap reveal pre">
-                <div className="con" aria-hidden="true">
-                  <span className="con-ring r2" />
-                  <span className="con-ring r1" />
-                  {constellationChips.map((chip) => (
-                    <span
-                      key={chip.title}
-                      className="con-chip"
-                      style={{ top: chip.top, left: chip.left, animationDelay: chip.delay }}
-                    >
-                      <Logo name={chip.logo} size={16} />
-                      <span className="ct">{chip.title}</span>
-                      {chip.meta ? <span className="cm">{chip.meta}</span> : null}
-                    </span>
-                  ))}
+              <div className="hero-stage reveal pre">
+                <div className="stage">
+                  <div className="stage-glow" aria-hidden="true" />
+                  <div className="rn" data-testid="landing-right-now-card">
+                    <div className="rn-scan" aria-hidden="true" />
+                    <div className="rn-top">
+                      <span className="rn-live">
+                        <span className="dot" /> Right Now
+                      </span>
+                      <span className="rn-stamp">09:42</span>
+                    </div>
+                    <div className="rn-main">
+                      <div className="rn-kicker">Your next move</div>
+                      <div className="rn-directive">Review the Q2 headcount plan.</div>
+                      <p className="rn-why">
+                        <b>Sarah</b> updated the doc, Finance commented, and you were mentioned in Slack. Approving now
+                        unblocks the budget timeline.
+                      </p>
+                      <div className="callout">
+                        <Sparkles aria-hidden="true" />
+                        Draft reply ready — approve to send, or open the doc first.
+                      </div>
+                      <div className="rn-srcs">
+                        {rightNowSources.map((s) => (
+                          <div className="rn-src" key={s.detail}>
+                            <span className="ic">
+                              <Logo name={s.logo} size={15} />
+                            </span>
+                            <span className="tx">
+                              <b>{s.title}</b>
+                              <s>{s.detail}</s>
+                            </span>
+                            <span className={`m ${s.hot ? 'hot' : ''}`}>{s.meta}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="rn-foot">
+                        <span className="note">State attached · context private</span>
+                        <span className="rn-acts">
+                          <button type="button" className="btn btn-ghost btn-sm">
+                            Snooze
+                          </button>
+                          <a href={accessHref} className="btn btn-primary btn-sm">
+                            Open the doc
+                          </a>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="hero-mark-glow" aria-hidden="true" />
-                <Image
-                  className="mark hero-mark"
-                  src="/foldera-glyph.svg"
-                  alt="Foldera mark"
-                  width={500}
-                  height={500}
-                  unoptimized
-                  priority
-                />
               </div>
             </div>
           </div>
@@ -499,54 +523,31 @@ export function LandingPage({ isAuthenticated = false }: LandingPageProps = {}) 
                 Nine apps go quiet. <span className="dim">One trusted move appears.</span>
               </h2>
             </div>
-            <div className="stage reveal pre">
-              <div className="stage-glow" aria-hidden="true" />
-              <div className="rn" data-testid="landing-right-now-card">
-                <div className="rn-scan" aria-hidden="true" />
-                <div className="rn-top">
-                  <span className="rn-live">
-                    <span className="dot" /> Right Now
+            <div className="constellation-stage reveal pre">
+              <div className="con" aria-hidden="true">
+                <span className="con-ring r2" />
+                <span className="con-ring r1" />
+                {constellationChips.map((chip) => (
+                  <span
+                    key={chip.title}
+                    className="con-chip"
+                    style={{ top: chip.top, left: chip.left, animationDelay: chip.delay }}
+                  >
+                    <Logo name={chip.logo} size={16} />
+                    <span className="ct">{chip.title}</span>
+                    {chip.meta ? <span className="cm">{chip.meta}</span> : null}
                   </span>
-                  <span className="rn-stamp">09:42</span>
-                </div>
-                <div className="rn-main">
-                  <div className="rn-kicker">Your next move</div>
-                  <div className="rn-directive">Review the Q2 headcount plan.</div>
-                  <p className="rn-why">
-                    <b>Sarah</b> updated the doc, Finance commented, and you were mentioned in Slack. Approving now
-                    unblocks the budget timeline.
-                  </p>
-                  <div className="callout">
-                    <Sparkles aria-hidden="true" />
-                    Draft reply ready — approve to send, or open the doc first.
-                  </div>
-                  <div className="rn-srcs">
-                    {rightNowSources.map((s) => (
-                      <div className="rn-src" key={s.detail}>
-                        <span className="ic">
-                          <Logo name={s.logo} size={15} />
-                        </span>
-                        <span className="tx">
-                          <b>{s.title}</b>
-                          <s>{s.detail}</s>
-                        </span>
-                        <span className={`m ${s.hot ? 'hot' : ''}`}>{s.meta}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="rn-foot">
-                    <span className="note">State attached · context private</span>
-                    <span className="rn-acts">
-                      <button type="button" className="btn btn-ghost btn-sm">
-                        Snooze
-                      </button>
-                      <a href={accessHref} className="btn btn-primary btn-sm">
-                        Open the doc
-                      </a>
-                    </span>
-                  </div>
-                </div>
+                ))}
               </div>
+              <div className="hero-mark-glow" aria-hidden="true" />
+              <Image
+                className="mark hero-mark"
+                src="/foldera-glyph.svg"
+                alt="Foldera mark"
+                width={500}
+                height={500}
+                unoptimized
+              />
             </div>
           </div>
         </section>
