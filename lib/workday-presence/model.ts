@@ -116,6 +116,13 @@ export type WorkdayPresenceState = {
   source_trail: WorkdayPresenceSourceTrailEntry[];
   /** The drafted artifact behind this move, if the brain produced one. */
   draft?: WorkdayPresenceDraft | null;
+  /**
+   * Decision-closure footers (the override-killer). Computed once at seed time and
+   * stored, so the card can prove it surveyed the field and held a line of judgment
+   * without the renderer re-deriving anything. See decision-closure.ts.
+   */
+  coverage_line?: string | null;
+  continuity_line?: string | null;
   snoozed_until: string | null;
   interaction_history: Array<{
     interaction_type: WorkdayPresenceInteractionType;
@@ -313,6 +320,8 @@ export function normalizeWorkdayPresenceState(input: unknown): WorkdayPresenceSt
     state_source: clean(row.state_source) ?? 'manual_anchor',
     source_trail: normalizeSourceTrail(row.source_trail),
     ...(draft ? { draft } : {}),
+    ...(clean(row.coverage_line) ? { coverage_line: clean(row.coverage_line) } : {}),
+    ...(clean(row.continuity_line) ? { continuity_line: clean(row.continuity_line) } : {}),
     snoozed_until: clean(row.snoozed_until),
     interaction_history: Array.isArray(row.interaction_history)
       ? row.interaction_history
