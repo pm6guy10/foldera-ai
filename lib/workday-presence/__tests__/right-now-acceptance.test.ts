@@ -82,14 +82,18 @@ describe('Right Now acceptance standard: artifact-backed, not winner-backed', ()
     expect(buildRightNowCard(winnerOnlyState).mode).toBe('setup');
   });
 
-  it('PROOF 2: an artifact-backed candidate renders View Draft / Dismiss', () => {
+  it('PROOF 2: an artifact-backed candidate renders the draft inline (the card IS the draft)', () => {
     expect(rightNowHasPreparedObject(artifactBackedState)).toBe(true);
 
     const payload = buildRightNowMessagePayload(artifactBackedState);
     expect(payload.mode).toBe('active');
-    expect(payload.actions.map((a) => a.id)).toEqual(['view_draft', 'dismiss']);
-    expect(payload.actions.map((a) => a.label)).toEqual(['View Draft', 'Dismiss']);
-    expect(payload.text).toContain('Draft ready (send_message): Project update — EOD Tuesday');
+    // No persisted action_id on this fixture → review-only, so just Dismiss (no send button).
+    expect(payload.actions.map((a) => a.id)).toEqual(['dismiss']);
+    // The ready-to-send draft leads the card inline — subject headline + full body,
+    // not a "Draft ready: <label>" homework line.
+    expect(payload.text).toContain('*Project update — EOD Tuesday*');
+    expect(payload.text).toContain('Here is the project update I committed to by end of day Tuesday.');
+    expect(payload.text).not.toContain('Draft ready (');
   });
 
   it('PROOF 3: no "write the next step", score, matched goal, or scorer jargon reaches the card', () => {
@@ -99,10 +103,11 @@ describe('Right Now acceptance standard: artifact-backed, not winner-backed', ()
     const silent = buildRightNowMessagePayload(winnerOnlyState);
     expect(silent.text).not.toMatch(SCORER_JARGON);
 
-    // The artifact-backed card renders the real move, never the scorer reasoning.
+    // The artifact-backed card renders the real move (the ready-to-send draft body),
+    // never the scorer reasoning.
     const active = buildRightNowMessagePayload(artifactBackedState);
     expect(active.text).not.toMatch(SCORER_JARGON);
-    expect(active.text).toContain('Send the project update to the team before end of day Tuesday.');
+    expect(active.text).toContain('Here is the project update I committed to by end of day Tuesday.');
   });
 
   it('PROOF 4: a saved manual anchor never defaults to homework wording', () => {

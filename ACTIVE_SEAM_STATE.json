@@ -1,10 +1,10 @@
 {
   "active_issue": 546,
-  "active_branch": "main",
-  "active_pr": null,
+  "active_branch": "claude/card-is-the-draft",
+  "active_pr": 556,
   "deployed_commit_sha": "dcb804d",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-26T00:30:00.000Z",
-  "notes": "PR #555 MERGED (dcb804d). Event-driven Outlook push live on main. Budget phantom cap fixed; Micro1 eval agent excluded. Card-precision meter wired. Active issue #546 still open — R2-R6 cascade, goal-inference refresh, Gmail connector fix, expert-panel/avatars. Next: owner sets GRAPH_WEBHOOK_SECRET + reconnects Outlook → live push-triggered card → precision meter proof (target 10 acted cards)."
+  "last_verified_at": "2026-06-26T03:00:00.000Z",
+  "notes": "PR #556 (issue #546): the Slack Right Now card now IS the draft — leads with the ready-to-send recipient+subject+body inline, one quiet Why-now footer, Approve & Send button (review-gated modal, no auto-send). Kills the homework-assignment form (no more return-here/next-move/why-this-matters/source-trail wall, no View Draft step). Presentation + tests only; no migration, no gate loosening. Baseline: PR #555 MERGED (dcb804d) — event-driven Outlook push live, budget phantom cap fixed, Micro1 excluded, card-precision meter wired."
 }

@@ -27,7 +27,7 @@ describe('workday presence message payload', () => {
     expect(payload.actions.map((a) => a.id)).toEqual(['dismiss']);
   });
 
-  it('renders View Draft + Dismiss and the draft-ready line when a draft exists', () => {
+  it('leads with the draft inline (the card IS the draft) — no homework scaffolding', () => {
     const state = normalizeWorkdayPresenceState({
       current_focus: 'Homeschool meeting with Deanne Varnum',
       next_move: 'Reply to Deanne confirming the 2 PM slot.',
@@ -39,17 +39,27 @@ describe('workday presence message payload', () => {
         preview: 'Hi Deanne — confirming 2 PM works.',
         to: 'deanne@example.com',
         body: 'Hi Deanne — confirming 2 PM works. Curriculum outline attached.',
+        action_id: 'act-123',
       },
     });
     const payload = buildRightNowMessagePayload(state);
-    expect(payload.actions.map((a) => a.id)).toEqual(['view_draft', 'dismiss']);
-    expect(payload.actions.map((a) => a.label)).toEqual(['View Draft', 'Dismiss']);
-    expect(payload.text).toContain('Draft ready (send_message): Confirming 2 PM today');
-    // Collapsed by default — full body only after a view_draft tap.
-    expect(payload.text).not.toContain('Curriculum outline attached');
+    // Approve & Send is offered (send_message backed by a real action_id); no View Draft.
+    expect(payload.actions.map((a) => a.id)).toEqual(['review_send', 'dismiss']);
+    expect(payload.actions.map((a) => a.label)).toEqual(['Approve & Send', 'Dismiss']);
+    // The ready-to-send body and recipient are inline by default — no tap required.
+    expect(payload.text).toContain('*Confirming 2 PM today*');
+    expect(payload.text).toContain('To: deanne@example.com');
+    expect(payload.text).toContain('Curriculum outline attached');
+    // No homework framing on the draft card.
+    expect(payload.text).not.toContain('Draft ready (');
+    expect(payload.text).not.toContain('Next move:');
+    expect(payload.text).not.toContain('Return here:');
+    expect(payload.text).not.toContain('Source trail:');
+    // One quiet why footer survives.
+    expect(payload.text).toContain('_Why now: The meeting is today; a one-line confirm closes the loop._');
   });
 
-  it('expands the full draft in place after a view_draft tap', () => {
+  it('offers only Dismiss (no send button) when the draft has no persisted action_id', () => {
     const state = normalizeWorkdayPresenceState({
       current_focus: 'Homeschool meeting with Deanne Varnum',
       next_move: 'Reply to Deanne confirming the 2 PM slot.',
@@ -62,25 +72,30 @@ describe('workday presence message payload', () => {
         to: 'deanne@example.com',
         body: 'Hi Deanne — confirming 2 PM works. Curriculum outline attached.',
       },
-      interaction_history: [
-        {
-          interaction_type: 'view_draft',
-          timestamp: '2026-06-12T16:00:00.000Z',
-          resulting_state: {
-            next_move: 'Reply to Deanne confirming the 2 PM slot.',
-            blocker: null,
-            waiting_on: null,
-            last_completed_step: null,
-          },
-        },
-      ],
     });
     const payload = buildRightNowMessagePayload(state);
-    expect(payload.text).toContain('--- Draft ---');
-    expect(payload.text).toContain('To: deanne@example.com');
-    expect(payload.text).toContain('Subject: Confirming 2 PM today');
+    // No action_id → nothing safe to execute → review-only, still draft-led inline.
+    expect(payload.actions.map((a) => a.id)).toEqual(['dismiss']);
     expect(payload.text).toContain('Curriculum outline attached');
-    expect(payload.actions.map((a) => a.id)).toEqual(['view_draft', 'dismiss']);
+  });
+
+  it('falls back to "Reply to <recipient>" headline when the draft has no subject', () => {
+    const state = normalizeWorkdayPresenceState({
+      current_focus: 'Owed reply to Sarah',
+      next_move: 'Reply to Sarah.',
+      why_it_matters: 'She is waiting.',
+      state_source: 'scored_winner',
+      draft: {
+        action_type: 'send_message',
+        title: '',
+        preview: 'Hi Sarah — confirming the numbers look right.',
+        to: 'sarah@example.com',
+        body: 'Hi Sarah — confirming the numbers look right.',
+        action_id: 'act-456',
+      },
+    });
+    const payload = buildRightNowMessagePayload(state);
+    expect(payload.text).toContain('*Reply to sarah@example.com*');
   });
 
   it('renders a quiet dismissed card with no buttons while the dismiss snooze is active', () => {
