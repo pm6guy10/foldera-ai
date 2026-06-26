@@ -2,10 +2,10 @@
 
 ## TL;DR
 
-- **Card IS the act — now for `write_document` too (this branch).** Acquisition/purchase/prep moves (the Nathaniel-birthday checklist) do the real lookup and hand the FINISHED act — the chosen thing + a grounded link — instead of homework. `lib/conviction/acquisition-legwork.ts` + a branch in `generateArtifact`; never fabricates a link (degrades to the decisive brief). Harness-proven (9 tests incl. live `evaluateBottomGate`); typecheck/lint green.
-- **Self-gated, no blind loosening:** the lookup is `searchWebForEnrichment`, which no-ops unless `SCOUT_WEB_ENABLED` + `isPaidLlmAllowed()`. Prod behaviour unchanged until the flag is flipped.
-- **Prior merges:** #556 (reply card IS the draft, Approve & Send, no auto-send); #562 (past-due `attend_participate` events auto-expire from candidacy, overdue actions preserved). #555 baseline (event-driven Outlook push, budget durable, Micro1 excluded).
-- **Next:** owner flips `SCOUT_WEB_ENABLED` for live proof on a real acquisition commitment (paid web search) → precision meter (Probe 5). Standing #546: R2–R6 cascade, goal-inference refresh, Gmail connector (1 vs 967).
+- **#564 MERGED — write_document acquisition legwork is on main.** Acquisition/purchase/prep moves now do the real lookup and hand the FINISHED act (chosen thing + grounded link), not homework. `lib/conviction/acquisition-legwork.ts` + `generateArtifact` branch; never fabricates a link (degrades to decisive brief). 9 harness tests green.
+- **Live proof blocked on 2 Vercel env vars:** `SCOUT_ENABLED=true` + `SCOUT_WEB_ENABLED=true` (Production). Live pool has a real target: "Book hotel stay using $35.16 OneKeyCash balance" (Supabase id `829b5e13`).
+- **Prior merges:** #556 (reply card IS the draft); #562 (past-due events auto-expire); #564 (write_document acquisition legwork). #555 baseline.
+- **Next:** owner sets env vars → live proof → precision meter (Probe 5). Standing #546: R2–R6 cascade, goal-inference refresh, Gmail connector (1 vs 967).
 
 ## DON'T FORGET — read first, every boot
 
@@ -28,7 +28,7 @@ These are decided. Do not re-derive, re-probe, or re-propose the dead alternativ
 3. **`SAFE_SILENCE` is a valid SUCCESS.** Never loosen a gate to force a card.
 4. **Live-pool schema + probes live in `docs/LIVE_POOL_PROBE.md`.** Don't re-derive columns or re-pull the pool to "see what the brain has" — it's already canned.
 5. **Budget phantom cap fixed (#555).** `api_budget_check_and_reserve` reconciles to real `api_usage` ledger on every call (durable, not a one-time reset). Micro1 eval agent (`398a8c82` / `zz933@expert.micro1.ai`) permanently excluded via `isExcludedPipelineUser`.
-6. **Card IS the act; pool self-cleans.** The card leads with the ready-to-send draft, not homework scaffolding (#556, `send_message` only so far). Past-due EVENT commitments auto-expire from candidacy at scorer load (#562/#537), overdue actions preserved. Don't reintroduce homework framing or per-row manual suppression.
+6. **Card IS the act; pool self-cleans.** The card leads with the ready-to-send draft, not homework scaffolding (#556 `send_message`, #564 `write_document` acquisition). Past-due EVENT commitments auto-expire from candidacy at scorer load (#562/#537), overdue actions preserved. Don't reintroduce homework framing or per-row manual suppression.
 
 ## Boot
 
@@ -46,19 +46,18 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Current slice:
 
-**Card IS the act for `write_document` — acquisition legwork (#546 cascade). Branch `claude/card-is-act-write-document-7xsol8`.**
+**Live proof of write_document acquisition legwork (#546 cascade). #564 merged on main.**
 
-- **The fix:** `lib/conviction/acquisition-legwork.ts` (`isAcquisitionDirective` / `buildAcquisitionSearchQuery` / `buildAcquisitionArtifactFromSearch`) + a new branch in `generateArtifact` (`lib/conviction/artifact-generator.ts`). A purchase/prep/booking `write_document` move does the real lookup and returns the chosen thing + a grounded link, shaped to clear `evaluateBottomGate` — not a "decide → buy → wrap → confirm" checklist.
-- **Rails honoured:** the lookup is `searchWebForEnrichment` (Anthropic web_search), which self-gates on `SCOUT_WEB_ENABLED` + `isPaidLlmAllowed()` → returns null when off, so prod is unchanged until the owner enables it. The link is only ever taken from the real result; no link grounded ⇒ return null ⇒ fall through to the decisive brief (never fabricate "buy here", never homework).
-- **Rendering:** unchanged — `formatDraftLedText` already routes any reviewable draft to the finished-object card, so the `write_document` draft renders inline (locked by a new `message.test.ts` case). The disease was the CONTENT, not the render.
-- Verified: 9 acquisition tests (incl. live `evaluateBottomGate` pass + degrade-not-fabricate) + workday-presence/conviction/cron suites green; typecheck + lint clean.
-- Open: live proof needs the owner to flip `SCOUT_WEB_ENABLED` (paid web search); then #546 R2–R6.
+- Code on main: `lib/conviction/acquisition-legwork.ts` + `generateArtifact` acquisition branch. Self-gated on `SCOUT_WEB_ENABLED` + `isPaidLlmAllowed()` — no-ops until flag is on.
+- Live pool target: "Book hotel stay using $35.16 OneKeyCash balance" (Supabase id `829b5e13`, risk_score 49, active, unsuppressed).
+- Pending: owner sets `SCOUT_ENABLED=true` + `SCOUT_WEB_ENABLED=true` in Vercel Production → next deliver trigger → card should be pick+link, not checklist.
 
 ## Next exact move
 
-1. **Live proof of acquisition legwork.** One genuine owner action: enable `SCOUT_WEB_ENABLED` (paid web-search lane — `searchWebForEnrichment` no-ops without it). Then run a real acquisition commitment through the deliver path → the card should be a finished pick + link, not a checklist → click → `responded_to_slack_ts` → precision meter (Probe 5). Until then the legwork is proven only in the harness.
-2. **Then keep extending `write_document`:** prep classes that still go SAFE_SILENT on homework (interview prep) should hand a finished act, not silence — owner: "it's not that valuable to always be quiet."
-3. **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars + gap analysis, Gmail sent-mail connector fix (1 vs 967).
+1. **Owner: set 2 Vercel env vars** — Vercel dashboard → foldera-ai → Settings → Environment Variables → Production: `SCOUT_ENABLED=true`, `SCOUT_WEB_ENABLED=true`. No redeploy needed.
+2. **Trigger delivery** — next cron tick or manual `/api/cron/ingest-and-deliver` → hotel-booking card should be a specific pick + OneKeyCash booking link.
+3. **Precision meter (Probe 5)** — once live card confirmed; then extend to interview-prep write_document (currently SAFE_SILENT on homework).
+4. **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars + gap analysis, Gmail sent-mail connector fix (1 vs 967).
 
 ## Product doctrine
 

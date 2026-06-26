@@ -1,10 +1,10 @@
 {
   "active_issue": 546,
-  "active_branch": "claude/card-is-act-write-document-7xsol8",
-  "active_pr": 564,
-  "deployed_commit_sha": "fd9c5cc",
+  "active_branch": "main",
+  "active_pr": null,
+  "deployed_commit_sha": "68926d1",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-26T18:40:00.000Z",
-  "notes": "ACTIVE: extend 'card IS the act' to write_document — acquisition legwork. lib/conviction/acquisition-legwork.ts + a new branch in generateArtifact (lib/conviction/artifact-generator.ts): a purchase/prep/booking write_document move now does the real lookup (searchWebForEnrichment, self-gated on SCOUT_WEB_ENABLED + isPaidLlmAllowed) and hands the FINISHED act — the chosen thing + a grounded link — instead of a 'decide/buy/wrap/confirm' homework checklist. Never fabricates a link (degrades to the decisive brief). Harness-proven: 9 acquisition tests incl. live evaluateBottomGate pass + a write_document draft-led render test; typecheck/lint green. Prior merges: #556 (reply card IS the draft), #562 (past events auto-expire). NEXT: enable SCOUT_WEB_ENABLED for live proof on a real acquisition commitment (owner flag flip = paid web search); then precision meter; #546 R2-R6."
+  "last_verified_at": "2026-06-26T18:45:00.000Z",
+  "notes": "MERGED #564: write_document acquisition legwork landed on main. lib/conviction/acquisition-legwork.ts + generateArtifact branch: purchase/prep/booking write_document now does the real lookup (searchWebForEnrichment, self-gated on SCOUT_WEB_ENABLED + isPaidLlmAllowed) and returns pick+link, never homework. NEXT: owner sets SCOUT_ENABLED=true + SCOUT_WEB_ENABLED=true in Vercel → live proof on 'Book hotel stay using $35.16 OneKeyCash balance' (Supabase id 829b5e13). Then precision meter (Probe 5); #546 R2-R6 cascade, goal-inference refresh, Gmail connector fix."
 }
