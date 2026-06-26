@@ -2,11 +2,10 @@
 
 ## TL;DR
 
-- **Card IS the act, not homework — today's spine.** #556 made reply cards lead with the ready-to-send draft (Approve & Send, no auto-send); #562 stops the pool feeding dead reminders (past-due `attend_participate` events auto-expire from candidacy, overdue actions preserved). Both MERGED to main.
-- **#555 baseline (merged):** event-driven Outlook push live; budget phantom cap fixed *durably at the function level* ($2.17/$30, verified in prod); Micro1 eval agent excluded; card-precision meter wired.
-- **Verified today, nothing hinges on the owner:** Outlook is connected (mail flowing, no reconnect); brain unblocked. `GRAPH_WEBHOOK_SECRET` is instant-push-only — NOT required for daily cards.
-- **The open disease:** "do the work, don't assign it" is fixed only for reply drafts. `write_document`/prep-steps cards (the Nathaniel-birthday 4-step checklist) still hand homework — extend draft-led acts to every artifact type.
-- **Next:** live proof on the cleaned pool — real act or honest SAFE_SILENCE. Standing #546: R2–R6 cascade, goal-inference refresh (keystone), Gmail connector (1 vs 967), expert-panel/avatars.
+- **Card IS the act — now for `write_document` too (this branch).** Acquisition/purchase/prep moves (the Nathaniel-birthday checklist) do the real lookup and hand the FINISHED act — the chosen thing + a grounded link — instead of homework. `lib/conviction/acquisition-legwork.ts` + a branch in `generateArtifact`; never fabricates a link (degrades to the decisive brief). Harness-proven (9 tests incl. live `evaluateBottomGate`); typecheck/lint green.
+- **Self-gated, no blind loosening:** the lookup is `searchWebForEnrichment`, which no-ops unless `SCOUT_WEB_ENABLED` + `isPaidLlmAllowed()`. Prod behaviour unchanged until the flag is flipped.
+- **Prior merges:** #556 (reply card IS the draft, Approve & Send, no auto-send); #562 (past-due `attend_participate` events auto-expire from candidacy, overdue actions preserved). #555 baseline (event-driven Outlook push, budget durable, Micro1 excluded).
+- **Next:** owner flips `SCOUT_WEB_ENABLED` for live proof on a real acquisition commitment (paid web search) → precision meter (Probe 5). Standing #546: R2–R6 cascade, goal-inference refresh, Gmail connector (1 vs 967).
 
 ## DON'T FORGET — read first, every boot
 
@@ -47,17 +46,18 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Current slice:
 
-**Card IS the act + pool hygiene (#546 cascade) — both MERGED 2026-06-26.**
+**Card IS the act for `write_document` — acquisition legwork (#546 cascade). Branch `claude/card-is-act-write-document-7xsol8`.**
 
-- **#556 — the card IS the draft.** `formatDraftLedText` (`lib/workday-presence/message.ts`): reply cards lead with recipient+subject+body inline + Approve & Send (opens the review-gated modal — submit is the send authorization, no auto-send). Homework scaffolding + the View Draft step are gone. Covers `send_message` only so far.
-- **#562 — past events auto-expire (#537).** `partitionExpiredEventCommitments` (`lib/briefing/scorer.ts`) drops past-due `attend_participate` commitments at candidate load, every run — structural replacement for manual suppression. Overdue action/payment/follow-up PRESERVED (more urgent, not moot). ~218 prod zombies out of candidacy.
-- Verified: typecheck + scorer/message suites green; continuity-gate green; merged branches auto-deleted by the new `delete-merged-branches` Action. Budget durable + Outlook live confirmed in prod (no owner action pending).
-- Open: extend "card IS the act" to `write_document`/prep-steps (the birthday-checklist homework) + #546 R2–R6.
+- **The fix:** `lib/conviction/acquisition-legwork.ts` (`isAcquisitionDirective` / `buildAcquisitionSearchQuery` / `buildAcquisitionArtifactFromSearch`) + a new branch in `generateArtifact` (`lib/conviction/artifact-generator.ts`). A purchase/prep/booking `write_document` move does the real lookup and returns the chosen thing + a grounded link, shaped to clear `evaluateBottomGate` — not a "decide → buy → wrap → confirm" checklist.
+- **Rails honoured:** the lookup is `searchWebForEnrichment` (Anthropic web_search), which self-gates on `SCOUT_WEB_ENABLED` + `isPaidLlmAllowed()` → returns null when off, so prod is unchanged until the owner enables it. The link is only ever taken from the real result; no link grounded ⇒ return null ⇒ fall through to the decisive brief (never fabricate "buy here", never homework).
+- **Rendering:** unchanged — `formatDraftLedText` already routes any reviewable draft to the finished-object card, so the `write_document` draft renders inline (locked by a new `message.test.ts` case). The disease was the CONTENT, not the render.
+- Verified: 9 acquisition tests (incl. live `evaluateBottomGate` pass + degrade-not-fabricate) + workday-presence/conviction/cron suites green; typecheck + lint clean.
+- Open: live proof needs the owner to flip `SCOUT_WEB_ENABLED` (paid web search); then #546 R2–R6.
 
 ## Next exact move
 
-1. **Extend "card IS the act" to every artifact type.** #556 fixed reply drafts only; `write_document`/prep-steps still hand homework (the Nathaniel-birthday 4-step checklist). For a purchase/prep commitment the act = do the legwork (a concrete thing + link), not a plan.
-2. **Live proof on the cleaned pool:** next cron → real act (owed reply / advance-started) or honest SAFE_SILENCE; then click → `responded_to_slack_ts` → precision meter (Probe 5), target 10 acted cards. Nothing hinges on the owner (Outlook connected, budget durable); `GRAPH_WEBHOOK_SECRET` = instant-push-only, not required for daily cards.
+1. **Live proof of acquisition legwork.** One genuine owner action: enable `SCOUT_WEB_ENABLED` (paid web-search lane — `searchWebForEnrichment` no-ops without it). Then run a real acquisition commitment through the deliver path → the card should be a finished pick + link, not a checklist → click → `responded_to_slack_ts` → precision meter (Probe 5). Until then the legwork is proven only in the harness.
+2. **Then keep extending `write_document`:** prep classes that still go SAFE_SILENT on homework (interview prep) should hand a finished act, not silence — owner: "it's not that valuable to always be quiet."
 3. **Standing (#546):** R2–R6 cascade, goal-inference refresh (keystone), expert-panel/avatars + gap analysis, Gmail sent-mail connector fix (1 vs 967).
 
 ## Product doctrine
