@@ -3,9 +3,9 @@
 ## TL;DR
 
 - **#567 MERGED (PR #568, `c0b7c51`).** Four code moves on main: `pipeline_runs` observability, ghost-goal gate, doctrine (Bible Part VI), anchor regex un-rot. gate:continuity green; 1064 vitest pass.
+- **LP hero decision state machine MERGED (PR #569, `a937c1e`).** Hero now leads with the live Right Now decision card cycling active→changed→stale→conflict. Constellation moved to #product centerpiece. Live on www.foldera.ai.
 - **Waiting on owner sign-off to close #567:** `tkg_goals` DB edit (re-ground apex goal) + Gmail connector fix (1→967). No code work remains.
 - **After sign-offs:** owner triggers `/api/cron/ingest-and-deliver` → run Probe 1 → expect R1 finished-asset card + traceable `pipeline_runs` row, no ghost-goal drift.
-- **Prior merges:** #568/#567 (this seam), #565 (decision-closure footer), #564 (acquisition legwork). #566 ported+closed.
 
 ## DON'T FORGET — read first, every boot
 
