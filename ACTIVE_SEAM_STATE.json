@@ -2,9 +2,9 @@
   "active_issue": 567,
   "active_branch": "main",
   "active_pr": null,
-  "deployed_commit_sha": "a937c1e",
+  "deployed_commit_sha": "32e052c",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-27T00:11:43.000Z",
-  "notes": "PR #569 MERGED (a937c1e). LP hero is now a live decision state machine: active→changed→stale→conflict cycling. Constellation moved to #product centerpiece. Live on www.foldera.ai — confirmed HTTP 200. #567 SEAM unchanged and still OPEN — waiting on owner sign-offs: (1) tkg_goals DB edit to re-ground apex goal, (2) Gmail connector fix (1→967). No backend/seam code work remains on #567."
+  "last_verified_at": "2026-06-27T02:46:00.000Z",
+  "notes": "PR #571 MERGED (32e052c). Mobile fix: decision card order:-1 on mobile — renders first above the fold on all phones. Desktop unchanged. PR #569 (state machine hero) + PR #571 (mobile fix) both on main. #567 SEAM unchanged and still OPEN — waiting on owner sign-offs: (1) tkg_goals DB edit to re-ground apex goal, (2) Gmail connector fix (1→967)."
 }
