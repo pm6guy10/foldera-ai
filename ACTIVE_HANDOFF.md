@@ -4,6 +4,7 @@
 
 - **#567 MERGED (PR #568, `c0b7c51`).** Four code moves on main: `pipeline_runs` observability, ghost-goal gate, doctrine (Bible Part VI), anchor regex un-rot. gate:continuity green; 1064 vitest pass.
 - **LP hero decision state machine MERGED (PR #569, `a937c1e`).** Hero now leads with the live Right Now decision card cycling active→changed→stale→conflict. Constellation moved to #product centerpiece. Live on www.foldera.ai.
+- **Mobile fix MERGED (PR #571, `32e052c`).** Card now `order:-1` on mobile — first thing above the fold on all phones. hero-sub hidden on mobile (card covers it). Desktop unchanged.
 - **Waiting on owner sign-off to close #567:** `tkg_goals` DB edit (re-ground apex goal) + Gmail connector fix (1→967). No code work remains.
 - **After sign-offs:** owner triggers `/api/cron/ingest-and-deliver` → run Probe 1 → expect R1 finished-asset card + traceable `pipeline_runs` row, no ghost-goal drift.
 
