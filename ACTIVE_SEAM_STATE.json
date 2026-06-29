@@ -1,7 +1,7 @@
 {
   "active_issue": 573,
   "active_branch": "fix/retire-lapsing-nag-573",
-  "active_pr": null,
+  "active_pr": 575,
   "deployed_commit_sha": "45c8465",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
