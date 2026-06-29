@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 573
+active_issue: 567
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Retire the commitment_lapsing due-date homework-nag delivery (#573). Doctrine: 'a due-date nag is NOT an act'; 'the card IS the act, not homework scaffolding.' Live lapsing delivery retired by default (runWorkdayPresenceTriggerRunner quiet for commitment_lapsing unless ALLOW_COMMITMENT_LAPSING_SLACK_PING=true) + findLapsingCommitmentSignal gains a 30-day staleness floor + soonest-first ordering so year-old items (e.g. a 2025 Rule 59(e) filing) can't surface. Suppressed 3 stale Rule 59(e) rows in prod per owner. Fail-safe, no paid call, no schema change. #572 (dedup cooldown) MERGED via PR #574."
-next_seam: "Pool-hygiene seam: 88/135 active dated commitments are overdue 30d+ (20 are 180d+) — auto-expire non-event commitments (generalize #562 beyond events) or one-pass suppression with owner review. Then #567 owner sign-offs (tkg_goals re-ground + Gmail connector 1→967)."
+why_this_first: "Foundation so a real indispensable R1 card fires (#567). Code complete (PR #568); parked on owner sign-offs: tkg_goals re-ground + Gmail connector (1→967). This session's side-quest merged #572 (dedup cooldown, PR #574) + #573 (retire commitment_lapsing homework-nag delivery + 30-day staleness floor, PR #575) + suppressed 3 stale Rule 59(e) rows."
+next_seam: "#567 owner sign-offs (tkg_goals re-ground + Gmail connector 1→967) → trigger /api/cron/ingest-and-deliver, verify R1 card via Probe 1. Follow-up: pool-hygiene seam (88/135 active dated commitments overdue 30d+ — auto-expire non-event commitments, generalize #562); reconnect inactive Google/Microsoft OAuth tokens."
 completed_issue_538:
   issue: 538
   pr: 545
