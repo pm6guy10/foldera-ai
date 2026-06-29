@@ -324,6 +324,7 @@ export async function softDisconnectUserToken(
 /**
  * After a non-recoverable refresh (invalid_grant, revoked refresh, etc.), clear secrets
  * so settings shows Connect, cron skips the user, and the next OAuth run restores the row.
+ * Also fires a Slack ping to the owner channel so they know immediately — not days later.
  */
 export async function softDisconnectAfterFatalOAuthRefresh(
   userId: string,
@@ -340,4 +341,28 @@ export async function softDisconnectAfterFatalOAuthRefresh(
     }),
   );
   await softDisconnectUserToken(userId, provider, { oauthReauthRequired: true });
+  void _notifySlackOfDisconnect(provider, meta.error_code ?? 'unknown');
+}
+
+async function _notifySlackOfDisconnect(
+  provider: 'google' | 'microsoft',
+  errorCode: string,
+): Promise<void> {
+  const token = process.env.SLACK_BOT_TOKEN;
+  const channel = process.env.FOLDERA_SLACK_SELF_CHANNEL_ID;
+  const isProduction = process.env.VERCEL_ENV === 'production' || !process.env.VERCEL_ENV;
+  if (!token || !channel || !isProduction) return;
+  const label = provider === 'google' ? 'Google' : 'Microsoft';
+  try {
+    await fetch('https://slack.com/api/chat.postMessage', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        channel,
+        text: `⚠️ Your ${label} connection dropped (${errorCode}). Foldera is dark until you reconnect at /dashboard/settings.`,
+      }),
+    });
+  } catch {
+    // fire-and-forget — Slack failure must never break the disconnect write
+  }
 }
