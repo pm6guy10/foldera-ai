@@ -2,9 +2,15 @@
 
 ---
 
-# 🟢 NEW SESSION — START HERE (snapshot 2026-06-22, identity + dark-verdict session)
+# 🟢 NEW SESSION — START HERE
 
-**Boot order:** `ACTIVE_HANDOFF.md` → `AGENTS.md` → `ACTIVE_SEAM_STATE.json` (active seam: **#518**). Then read the rest of this file for depth.
+> ⚠️ **SUPERSEDED SNAPSHOT BELOW (2026-06-22).** Current truth lives in `ACTIVE_HANDOFF.md` (read it first, always). As of **2026-06-29** the active seam is **#567** (fire the R1 "finish-what-I-started" card), and the one blocker is **the dead keystone: goal inference.** `tkg_goals` is 50–83d stale + garbage n-grams → the engine can't climb the R1–R6 cascade → it serves homework reminders. **Next move = rebuild goal inference from recent real activity** (start: `lib/cron/goal-refresh.ts`). Foldera is the PROACTIVE value cascade, NOT an inbox/reply bot (reply-drafting is only R2). The 2026-06-22 snapshot below is kept for historical depth only.
+
+**Boot order:** `ACTIVE_HANDOFF.md` → `AGENTS.md` → `ACTIVE_SEAM_STATE.json`. Then read the rest of this file for depth.
+
+---
+
+## (historical snapshot 2026-06-22, identity + dark-verdict session)
 
 ## One-paragraph state
 The big discovery this session: the daily verdict had been **DARK since 2026-03-16**. `pipeline_runs` (owner `2cbc1bab`, 45d) showed **77 `generation_failed_sentinel` days** — the engine found **~45 real candidates/run**, ranked them, picked a winner, then the **`positive_winner_contract` gate blocked the winner ~96% of the time** with `error_class` null (mis-calibration, not a crash). **Root cause (fixed, #516/PR #517):** hunt findings dropped their source date — `huntFindingToScoredLoop` built `sourceSignals` with no `occurredAt` and `HuntFinding` had no date field, so `newestSourceDate()==null` and the currentness/anchor gates (`missing_current_artifact_anchor`, `stale_status_without_current_artifact_facts`) executed every hunt winner. Fix **grounds, doesn't loosen** (carry `HuntFinding.newestSignalAt` → `sourceSignals[].occurredAt`); unit-proven, deployed. **Still UNVERIFIED live** (the cause is fixed but no real verdict has been observed shipping yet — see Open Threads).
