@@ -4,7 +4,8 @@ export type AgentJobId =
   | 'gtm_strategist'
   | 'distribution_finder'
   | 'retention_analyst'
-  | 'self_optimizer';
+  | 'self_optimizer'
+  | 'state_move';
 
 /** api_usage.endpoint values for cost caps */
 export const AGENT_USAGE_ENDPOINT: Record<AgentJobId, string> = {
@@ -14,6 +15,7 @@ export const AGENT_USAGE_ENDPOINT: Record<AgentJobId, string> = {
   distribution_finder: 'agent:distribution_finder',
   retention_analyst: 'agent:retention_analyst',
   self_optimizer: 'agent:self_optimizer',
+  state_move: 'agent:state_move',
 };
 
 /** Max USD per run (UTC day summed by endpoint). Health = $0 (no LLM). */
@@ -24,6 +26,7 @@ export const AGENT_RUN_CAP_USD: Record<AgentJobId, number> = {
   distribution_finder: 0.2,
   retention_analyst: 0.1,
   self_optimizer: 0.1,
+  state_move: 0.05,
 };
 
 export function actionSourceForAgent(job: AgentJobId): string {

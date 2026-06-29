@@ -36,7 +36,7 @@ echo "# PRODUCT TRUTH — never flatten this (the recurring fatal failure)"
 echo "Foldera is a PROACTIVE value cascade, NOT an inbox/reply/summary bot. Reply-drafting is R2 — rung 2 of 6, the most reactive lane; do NOT call it 'the product'. Walk rungs until one clears a REAL bar:"
 echo "  R1 advance what you started (drafts/Drive/in-flight work) · R2 owed replies · R3 inbound-ask -> handed-back finished work · R4 goal moves · R5 relationship · R6 Scout: outward opportunity (sign-off-gated)."
 echo "Thesis: it lurks/watches/learns and does what you'd never have been smart enough to ask — the 'holy crap, how did it know' moment. Inward over the user's OWN sources only; never web surveillance; never fabricate to fill silence."
-echo "KEYSTONE = goal inference (tkg_goals). A stale goal model => the engine can't climb the rungs => it falls to commitment-reminders (homework). Refreshing goals from RECENT real activity is the lever — not gate-tuning, not the reply lane."
+echo "KEYSTONE (corrected #567, PR #584): rank against the STATED objective + live evidence, NOT a stored/inferred goal model. The stored tkg_goals table rotted (82d-frozen job-hunting + n-gram garbage) and LOST a live head-to-head to objective-anchored ranking. Do NOT re-propose 'rebuild goal inference / refresh tkg_goals' — that is a settled dead alternative (SETTLED #9). The lever is objective-anchored selection, shipped behind FOLDERA_GOAL_SOURCE=stated (lib/briefing/scorer-goal-source.ts). When output is homework, the cause is the goal ANCHOR, not the flag."
 echo "Owner taste authority = docs/BRANDON.md — run its §5 rejection checklist BEFORE ever asking or claiming 'is it good?'. Vision depth = FOLDERA_MASTER_BIBLE.md Part II-A (cascade) + II-B (Guardian Vision Lock)."
 echo ""
 
