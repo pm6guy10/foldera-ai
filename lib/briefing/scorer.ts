@@ -79,6 +79,7 @@ import {
   getGoalQuarantineReason,
   isUsableGoalRow,
 } from './goal-hygiene';
+import { loadScorerGoals } from './scorer-goal-source';
 import { assessLowValueEventInvite } from './low-value-event-invite';
 import { isConcreteIncomingWorkCandidate } from './decision-enforcement';
 
@@ -4718,15 +4719,11 @@ export async function scoreOpenLoops(
       .order('total_interactions', { ascending: false })
       .limit(30),
 
-    // Active current-priority goals — P1 = most important
-    supabase
-      .from('tkg_goals')
-      .select('goal_text, priority, goal_category, source')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .eq('current_priority', true)
-      .order('priority', { ascending: true })
-      .limit(20),
+    // Goal anchor (#567 paradigm swap) — stored tkg_goals model (default) or the
+    // STATED stable objective when FOLDERA_GOAL_SOURCE=stated. Returns the same
+    // { data } shape; every downstream consumer (matchGoal, goal-primacy gate,
+    // goal-gap boost) is unchanged — only the source of the goal rows differs.
+    loadScorerGoals(supabase, userId),
 
     // Today's executed/approved actions — used to build todayFocusDomains
     // If the user already approved something today, deprioritize unrelated domains.

@@ -17,10 +17,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { runAgentSonnet } from '@/lib/agents/anthropic-runner';
 import { OWNER_USER_ID } from '@/lib/auth/constants';
 import { createServerClient } from '@/lib/db/client';
+import { STABLE_OBJECTIVE } from '@/lib/briefing/stable-objective';
 
-/** The ONE stable objective — stated, never inferred from decayed activity. */
-export const STABLE_OBJECTIVE =
-  'make money / ship Foldera / onboard the first paying non-owner user';
+export { STABLE_OBJECTIVE };
 
 /** Strict shape the model must return — exactly one move, never a list. */
 export interface StateMove {
