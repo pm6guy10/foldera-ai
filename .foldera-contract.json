@@ -1,7 +1,7 @@
 {
-  "backlog_id": "indispensable-card-567",
-  "active_issue": 567,
-  "base_commit": "c553f47",
+  "backlog_id": "commitment-lapsing-dedup-572",
+  "active_issue": 572,
+  "base_commit": "32e052c",
   "money_loop_rung": "m2",
   "user_system_path": "Foundation so the first indispensable R1 card fires (#567). Three code moves: observability (pipeline_runs into seed-from-scorer-core), ghost-goal gate (extractDrift vocabulary check), doctrine (FOLDERA_MASTER_BIBLE Part VI). Owner sign-off needed for tkg_goals DB edit + Gmail connector fix (1→967).",
   "allowed_file_patterns": [
@@ -36,16 +36,16 @@
   "acceptance_condition": "gate:continuity green + vitest green (baseline + new tests) + PR merged + live own-activity act delivered with a persisted receipt for 2cbc1bab.",
   "is_user_facing": true,
   "anti_regression_checks": [
-    "gate:continuity green with active_issue #567",
-    "active_issue #567 is OPEN on GitHub",
+    "gate:continuity green with active_issue #572",
+    "active_issue #572 is OPEN on GitHub",
     "no edits under app/api/stripe, lib/scout, supabase/migrations",
-    "vitest green (lib/briefing + lib/workday-presence) — 2 new ghost-goal gate tests pass",
-    "ghost-goal gate is additive — only blocks vocabulary-dark goals, does not touch other drift conditions",
-    "pipeline_runs funnel write is best-effort (void; never throws into callers)",
+    "vitest green (lib/workday-presence) — 2 new commitment_lapsing cooldown tests pass",
+    "cooldown is additive suppression only — can quiet a re-ping, never create one",
+    "lapsing identity excludes state.updated_at and the signal cursor by design",
     "no loosening of any existing quality gate; no auto-send"
   ],
-  "stop_condition": "PR merged for claude/issue-567-al9edy; pipeline_runs has traceable rows after delivery trigger; no ghost-goal drift card in trace.",
-  "next_command": "Next session: read #567. Owner sign-offs needed (tkg_goals DB edit + Gmail connector). After sign-off: trigger /api/cron/ingest-and-deliver → verify R1 card shape in Probe 1.",
+  "stop_condition": "PR merged for fix/commitment-lapsing-ping-dedup; the same commitment_lapsing card no longer re-posts within the 20h cooldown.",
+  "next_command": "#573 (owner call): retire the due-date homework-nag delivery vs keep it thinned. Then #567 owner sign-offs (tkg_goals re-ground + Gmail connector 1→967).",
   "terminal_state_authority": {
     "allowed": [
       "MERGED_AND_CLOSED",

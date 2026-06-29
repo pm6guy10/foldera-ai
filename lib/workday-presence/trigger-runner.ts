@@ -32,6 +32,12 @@ export type WorkdayPresenceTriggerRunnerCursor = {
   last_trigger_key: string | null;
   last_pinged_at: string | null;
   last_run_at: string | null;
+  // Identity + time of the last commitment_lapsing ping. The lapsing trigger
+  // fires off a synthesized signal that is regenerated every run, so it needs a
+  // cooldown the normal trigger-key/signal-cursor dedup cannot provide (see
+  // COMMITMENT_LAPSING_PING_COOLDOWN_MS).
+  last_lapsing_key: string | null;
+  last_lapsing_pinged_at: string | null;
 };
 
 export type WorkdayPresenceTriggerRunnerResult = {
@@ -323,6 +329,22 @@ function buildTriggerKey(
   return [context.trigger_type, state?.updated_at ?? 'no-state'].join('|');
 }
 
+// commitment_lapsing is the one trigger driven by a *synthesized* signal
+// (findLapsingCommitmentSignal) that is regenerated on every runner invocation,
+// and firing the ping rewrites state.updated_at — which is baked into the trigger
+// key. So the normal `last_trigger_key === triggerKey && signal-cursor` dedup can
+// never match its own prior ping, and the lapsing card re-fires on every run
+// (cron + each event-driven sync), 2-3x/day. Gate it on a stable identity
+// (commitment, not state.updated_at, not signal cursor) plus a cooldown so the
+// same lapsing commitment pings at most once per window. Purely additive
+// suppression — it can only quiet a re-ping, never create one.
+const COMMITMENT_LAPSING_PING_COOLDOWN_MS = 20 * 60 * 60 * 1000;
+
+function lapsingCommitmentIdentity(context: WorkdayPresenceTriggerContext): string | null {
+  if (context.trigger_type !== 'commitment_lapsing') return null;
+  return ['commitment_lapsing', context.commitment.due_at_iso, context.commitment.title].join('|');
+}
+
 function nextCursor(
   cursor: WorkdayPresenceTriggerRunnerCursor,
   nowIso: string,
@@ -344,6 +366,8 @@ export function normalizeWorkdayPresenceTriggerRunnerCursor(
     last_trigger_key: clean(row.last_trigger_key),
     last_pinged_at: clean(row.last_pinged_at),
     last_run_at: clean(row.last_run_at),
+    last_lapsing_key: clean(row.last_lapsing_key),
+    last_lapsing_pinged_at: clean(row.last_lapsing_pinged_at),
   };
 }
 
@@ -657,8 +681,33 @@ export async function runWorkdayPresenceTriggerRunner(input: {
         };
       } else {
         const triggerKey = buildTriggerKey(selection.selected, state);
+        const lapsingIdentity = lapsingCommitmentIdentity(selection.selected);
+        const lapsingLastPingedMs = cursor.last_lapsing_pinged_at
+          ? Date.parse(cursor.last_lapsing_pinged_at)
+          : NaN;
+        const lapsingWithinCooldown =
+          Number.isFinite(lapsingLastPingedMs) &&
+          Date.parse(nowIso) - lapsingLastPingedMs < COMMITMENT_LAPSING_PING_COOLDOWN_MS;
 
         if (
+          lapsingIdentity !== null &&
+          cursor.last_lapsing_key === lapsingIdentity &&
+          lapsingWithinCooldown
+        ) {
+          // Same lapsing commitment already pinged within the cooldown. Suppress
+          // the re-ping so a multi-run day yields one card, not 2-3. nextCursor
+          // spreads the existing cursor, so last_lapsing_pinged_at stays anchored
+          // to the real ping (the window is not extended by suppressions).
+          normalOutcome = {
+            outcome: 'dedup_suppressed',
+            reason: 'dedup: commitment_lapsing already pinged for this commitment within cooldown',
+            cursor: nextCursor(cursor, nowIso),
+            selected_context: selection.selected,
+            trigger_result: triggerResult,
+            slack_result: null,
+            fresh_event_count: freshEvents.length,
+          };
+        } else if (
           cursor.last_trigger_key === triggerKey &&
           cursor.last_signal_cursor === (signalCursor ?? cursor.last_signal_cursor)
         ) {
@@ -694,6 +743,9 @@ export async function runWorkdayPresenceTriggerRunner(input: {
               last_signal_cursor: signalCursor ?? cursor.last_signal_cursor,
               last_trigger_key: triggerKey,
               last_pinged_at: nowIso,
+              ...(lapsingIdentity !== null
+                ? { last_lapsing_key: lapsingIdentity, last_lapsing_pinged_at: nowIso }
+                : {}),
             }),
             selected_context: selection.selected,
             trigger_result: triggerResult,

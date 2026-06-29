@@ -1,10 +1,10 @@
 {
-  "active_issue": 567,
-  "active_branch": "main",
+  "active_issue": 572,
+  "active_branch": "fix/commitment-lapsing-ping-dedup",
   "active_pr": null,
-  "deployed_commit_sha": "a937c1e",
+  "deployed_commit_sha": "32e052c",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-27T00:11:43.000Z",
-  "notes": "PR #569 MERGED (a937c1e). LP hero is now a live decision state machine: active→changed→stale→conflict cycling. Constellation moved to #product centerpiece. Live on www.foldera.ai — confirmed HTTP 200. #567 SEAM unchanged and still OPEN — waiting on owner sign-offs: (1) tkg_goals DB edit to re-ground apex goal, (2) Gmail connector fix (1→967). No backend/seam code work remains on #567."
+  "last_verified_at": "2026-06-28T20:45:00.000Z",
+  "notes": "#572 duplicate guardian card fix on branch fix/commitment-lapsing-ping-dedup. commitment_lapsing re-posted the same Slack card 2-3x/day (live receipts 06-27 18:26 / 06-28 11:49 / 06-28 18:29 UTC). Root cause: buildTriggerKey embeds state.updated_at which the ping rewrites on persist, so dedup never matches its own prior key. Fix = per-commitment identity + 20h cooldown (cursor last_lapsing_key/last_lapsing_pinged_at). Additive suppression only; fail-safe, no paid call, no schema change. vitest lib/workday-presence green (162); typecheck clean; gate:continuity green. #573 = the doctrine-level decision to retire the homework-nag delivery (owner call). #567 parked (owner sign-off: tkg_goals re-ground + Gmail connector 1->967)."
 }

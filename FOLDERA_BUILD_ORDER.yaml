@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 567
+active_issue: 572
 priority_class: PRODUCT
-work_type: FEATURE
-why_this_first: "Foundation so a real indispensable R1 card fires (#567). Three code moves with no sign-off: (1) port pipeline_runs observability into seed-from-scorer-core.ts; (2) ghost-goal gate in extractDrift (own-activity vocabulary check stops P1 'Build Foldera into revenue' monopolizing); (3) doctrine into FOLDERA_MASTER_BIBLE. Owner sign-off still needed for: tkg_goals DB edit, Gmail connector (1→967). #565 decision-closure footer + #566 anchor-regex fix are merged groundwork."
-next_seam: "Owner sign-off on tkg_goals DB edit + Gmail connector fix → live proof: owner triggers /api/cron/ingest-and-deliver → expected card = a finished asset from R1 (not a reminder, not silence). Then R2–R6 cascade, goal-inference refresh, Gmail connector fix (1→967)."
+work_type: BUGFIX
+why_this_first: "Duplicate guardian card (#572): commitment_lapsing re-posted the same Slack card 2-3x/day. Root cause — buildTriggerKey embeds state.updated_at, which the ping rewrites on persist, so the dedup key can never match its own prior fire. Fix = per-commitment identity + 20h cooldown (new cursor fields last_lapsing_key/last_lapsing_pinged_at). Additive suppression only; fail-safe, no paid call, no schema change. #567 parked (owner sign-off: tkg_goals re-ground + Gmail connector 1→967)."
+next_seam: "#573 (owner call): retire the due-date homework-nag delivery entirely — doctrine 'a due-date nag is NOT an act'; #572 only thins it. Then #567 owner sign-offs (tkg_goals re-ground + Gmail connector 1→967) → trigger /api/cron/ingest-and-deliver, verify R1 card via Probe 1."
 completed_issue_538:
   issue: 538
   pr: 545
