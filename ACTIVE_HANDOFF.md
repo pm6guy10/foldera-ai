@@ -2,10 +2,9 @@
 
 ## TL;DR
 
-- **#567 MERGED (PR #568, `c0b7c51`).** Four code moves on main: `pipeline_runs` observability, ghost-goal gate, doctrine (Bible Part VI), anchor regex un-rot. gate:continuity green; 1064 vitest pass.
-- **LP hero decision state machine MERGED (PR #569, `a937c1e`).** Hero now leads with the live Right Now decision card cycling active→changed→stale→conflict. Constellation moved to #product centerpiece. Live on www.foldera.ai.
-- **Waiting on owner sign-off to close #567:** `tkg_goals` DB edit (re-ground apex goal) + Gmail connector fix (1→967). No code work remains.
-- **After sign-offs:** owner triggers `/api/cron/ingest-and-deliver` → run Probe 1 → expect R1 finished-asset card + traceable `pipeline_runs` row, no ghost-goal drift.
+- **Active seam #572 — duplicate guardian card fix (PR pending).** `commitment_lapsing` re-posted the same Slack card 2-3x/day; live receipts confirm. Root cause: the dedup key embeds `state.updated_at`, which the ping itself rewrites → dedup can never match its own prior key. Fixed with a per-commitment 20h cooldown (new cursor fields). Fail-safe, no paid call.
+- **#573 (next seam, owner call):** retire the due-date homework-nag delivery entirely — doctrine says "a due-date nag is NOT an act." #572 only thins it.
+- **#567 parked (owner-gated, code complete):** waiting on `tkg_goals` re-ground + Gmail connector (1→967); no code work remains.
 
 ## DON'T FORGET — read first, every boot
 
@@ -38,26 +37,24 @@ These are decided. Do not re-derive, re-probe, or re-propose the dead alternativ
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #567 is the active foundation seam.
+Issue #572 is the active duplicate-card-fix seam.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
 ## Current slice:
 
-**#567 — PR #568 MERGED (`c0b7c51`). Code complete; waiting on owner sign-offs.**
+**#572 — duplicate `commitment_lapsing` Slack card. Fix on branch `fix/commitment-lapsing-ping-dedup` (PR pending).**
 
-- All four code moves are on main and green.
-- Issue #567 remains OPEN pending two owner actions (no Claude code work left).
-
-**Waiting on owner sign-off:**
-- `tkg_goals` DB edit: re-ground / re-prioritize the apex goal from real own-activity (so it produces a real finished act, not a make_decision drift card)
-- Gmail connector fix: `1 → 967` ingested sent emails (Rung 1 fuel that feeds own-activity candidate promotion)
+- Live receipts: the same lapsing card posted 2026-06-27 18:26 / 06-28 11:49 / 06-28 18:29 UTC (action_source=`workday_presence_slack_send`).
+- Root cause: `buildTriggerKey` embeds `state.updated_at`; the ping rewrites it on persist, so the next run's key never equals the stored one → dedup misses every time.
+- Fix: per-commitment identity + 20h cooldown (cursor `last_lapsing_key`/`last_lapsing_pinged_at`). Additive suppression only; can never create a ping.
+- #567 parked (owner-gated): `tkg_goals` re-ground + Gmail connector (1→967). No code work left there.
 
 ## Next exact move
 
-1. **Owner sign-off:** `tkg_goals` DB edit + Gmail connector config → then trigger `/api/cron/ingest-and-deliver`
-2. **Expected result:** R1 card = a finished asset the user started (not a reminder, not silence); ghost-goal drift gone from `pipeline_runs` trace
-3. **Verify via Probe 1** (`docs/LIVE_POOL_PROBE.md`) after trigger — `pipeline_runs` shows a traceable row; no `blocked_gate = ghost_goal_drift`
+1. **Merge #572** (dedup cooldown) — gate:continuity + vitest green; stops the 2-3x/day duplicate immediately.
+2. **#573 (owner decision):** retire the due-date homework-nag delivery vs keep it thinned — doctrine: "a due-date nag is NOT an act." `SAFE_SILENCE` is a valid success.
+3. **#567 (owner sign-off):** `tkg_goals` re-ground + Gmail connector (1→967) → trigger `/api/cron/ingest-and-deliver`, verify R1 card via Probe 1.
 
 ## Product doctrine
 

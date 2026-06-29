@@ -252,6 +252,103 @@ describe('runWorkdayPresenceTriggerRunner', () => {
   });
 });
 
+describe('commitment_lapsing ping cooldown — stops the same lapsing card re-firing every run', () => {
+  // The lapsing trigger fires off a signal regenerated every run, and persisting
+  // each ping rewrites state.updated_at (baked into the trigger key) — so the
+  // normal dedup can never match its own prior ping. Each run below advances
+  // updated_at to simulate that persist, which is exactly the condition under
+  // which the OLD code re-fired indefinitely. The cooldown is what suppresses it.
+  function lapsingStateAt(updatedAt: string) {
+    return normalizeWorkdayPresenceState({
+      current_focus: 'File Rule 59(e) motion correcting judicial error',
+      next_move: 'Draft and file the motion before the deadline',
+      why_it_matters: 'The post-judgment deadline is firm.',
+      state_source: 'manual_anchor',
+      created_at: '2026-06-28T08:00:00.000Z',
+      updated_at: updatedAt,
+    });
+  }
+
+  const lapsingSignal = {
+    id: 'commit-59e',
+    source: 'calendar',
+    title: 'File Rule 59(e) motion correcting judicial error',
+    starts_at_iso: '2026-06-29T12:00:00.000Z',
+    due_at_iso: '2026-06-29T12:00:00.000Z',
+    commitment_lapsing: true,
+  };
+
+  function liveSlack() {
+    return vi.fn().mockResolvedValue({
+      ok: true,
+      mode: 'live',
+      channel: 'C123',
+      message_ts: '1.1',
+      response: { ok: true },
+    });
+  }
+
+  it('fires once, then suppresses a re-ping of the same commitment within the cooldown', async () => {
+    const postMessage = liveSlack();
+
+    const first = await runWorkdayPresenceTriggerRunner({
+      channel: 'C123',
+      state: lapsingStateAt('2026-06-28T08:00:00.000Z'),
+      cursor: null,
+      nowIso: '2026-06-28T11:30:00.000Z',
+      signals: [lapsingSignal],
+      slack: { postMessage },
+    });
+    expect(first.outcome).toBe('intervention');
+    expect(first.selected_context?.trigger_type).toBe('commitment_lapsing');
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(first.cursor.last_lapsing_key).toContain('commitment_lapsing');
+    expect(first.cursor.last_lapsing_pinged_at).toBe('2026-06-28T11:30:00.000Z');
+
+    // ~7h later, updated_at advanced (as a real persist would) so the normal
+    // dedup key differs and would re-fire — the cooldown must suppress it.
+    const second = await runWorkdayPresenceTriggerRunner({
+      channel: 'C123',
+      state: lapsingStateAt('2026-06-28T11:30:00.000Z'),
+      cursor: first.cursor,
+      nowIso: '2026-06-28T18:30:00.000Z',
+      signals: [lapsingSignal],
+      slack: { postMessage },
+    });
+    expect(second.outcome).toBe('dedup_suppressed');
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    // Cooldown anchored to the real ping, not extended by the suppressed run.
+    expect(second.cursor.last_lapsing_pinged_at).toBe('2026-06-28T11:30:00.000Z');
+  });
+
+  it('re-pings the same commitment once the cooldown window has elapsed', async () => {
+    const postMessage = liveSlack();
+
+    const first = await runWorkdayPresenceTriggerRunner({
+      channel: 'C123',
+      state: lapsingStateAt('2026-06-28T08:00:00.000Z'),
+      cursor: null,
+      nowIso: '2026-06-28T11:30:00.000Z',
+      signals: [lapsingSignal],
+      slack: { postMessage },
+    });
+    expect(first.outcome).toBe('intervention');
+
+    // 21h later (> 20h cooldown): a fresh daily nudge is allowed.
+    const later = await runWorkdayPresenceTriggerRunner({
+      channel: 'C123',
+      state: lapsingStateAt('2026-06-28T11:30:00.000Z'),
+      cursor: first.cursor,
+      nowIso: '2026-06-29T08:30:00.000Z',
+      signals: [lapsingSignal],
+      slack: { postMessage },
+    });
+    expect(later.outcome).toBe('intervention');
+    expect(postMessage).toHaveBeenCalledTimes(2);
+    expect(later.cursor.last_lapsing_pinged_at).toBe('2026-06-29T08:30:00.000Z');
+  });
+});
+
 describe('real ingested calendar signals fire pre_meeting (no flags, encrypted content)', () => {
   const state = normalizeWorkdayPresenceState({
     current_focus: 'Ship the Q3 plan',

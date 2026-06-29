@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-24 UTC (active seam is **#524** — repo cleanup; PR #536 merged (verdict calibration complete). Open product PRs: #539 (external-promisor staleness gate), #541 (observation shape rejection + Slack receipt). Next: #538 graceful degradation.)
+Last updated: 2026-06-28 UTC (active seam is **#572** — duplicate `commitment_lapsing` guardian card: per-commitment 20h cooldown fix on `fix/commitment-lapsing-ping-dedup`. Next seam #573 = retire the due-date homework-nag delivery (owner call). #567 parked on owner sign-offs.)
 
 This is the keep-list ledger. Everything not listed here is reference, archive, or git history — never authority.
 
