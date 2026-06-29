@@ -2,9 +2,9 @@
   "active_issue": 567,
   "active_branch": "main",
   "active_pr": null,
-  "deployed_commit_sha": "66d234a",
+  "deployed_commit_sha": "3c7efe6",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-29T17:00:00.000Z",
-  "notes": "#567 foundation seam parked on owner sign-offs (tkg_goals re-ground + Gmail connector 1->967). This session: #577 boot memory pin, #578 Slack alert on OAuth fatal disconnect, #579 Graph subscription renewal wired into morning-pipeline (was unwired — root cause of 'OneDrive isn't syncing' email). Google + Microsoft tokens reconnected by owner (Jun 29 4:48 AM PT). Remaining: Google OAuth app not verified for sensitive scopes (Gmail) — owner must submit for Google verification; pool hygiene 88/135 overdue 30d+."
+  "last_verified_at": "2026-06-29T18:30:00.000Z",
+  "notes": "#567 = fire the R1 'finish-what-I-started' card. BLOCKED by the dead KEYSTONE: goal inference. tkg_goals is 50-83d stale + garbage n-grams (live-verified 2026-06-29) -> engine can't climb the R1-R6 cascade -> serves homework reminders. NEXT MOVE = rebuild goal inference from recent real activity (start: lib/cron/goal-refresh.ts refreshGoalContext + lib/briefing/goal-hygiene.ts; it currently only decays/updates existing goals, does NOT re-infer fresh). NOT an owner DB edit, NOT Gmail (retired #580, owner is Outlook-primary), NOT gate-tuning. Paid LLM already ON. This session shipped #577 (boot memory pin), #578 (Slack alert on OAuth fatal disconnect), #579 (Graph subscription renewal wired into morning-pipeline), #580 (drop Gmail scopes + google-sync Gmail-optional), #581 (PRODUCT TRUTH hardcoded into SessionStart hook). Live: Outlook + 201 Drive signals flowing; paid LLM proven working."
 }

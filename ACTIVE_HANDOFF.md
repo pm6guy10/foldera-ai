@@ -2,9 +2,10 @@
 
 ## TL;DR
 
-- **Active seam #567 (parked, owner-gated):** waiting on `tkg_goals` re-ground + Gmail connector (1→967). No code work left on this seam.
-- **This session (reliability sweep):** #577 boot memory pin; #578 Slack alert fires the instant an OAuth token fatally drops; #579 Graph subscription renewal wired into morning-pipeline (was the root cause of the "OneDrive isn't syncing" email — Microsoft subscriptions expire every 70h, renewal route existed but was never called).
-- **Remaining owner action:** Google OAuth app not verified for sensitive scopes (Gmail) — submit for Google verification to stop periodic forced re-auth; pool hygiene (88/135 active dated commitments overdue 30d+) is the next code seam.
+- **NEXT = rebuild goal inference (THE keystone). This is the build.** `tkg_goals` is DEAD: 50–83d stale + garbage n-gram goals ("recurring theme 'has in'"). A dead goal model = the engine can't climb the R1/R4/R6 rungs = it falls to commitment-reminders (the birthday/$346.61 homework you keep seeing). Code already exists — `refreshGoalContext()` in `lib/cron/goal-refresh.ts`, wired into daily-maintenance — but it only decays/updates existing goals; it does NOT re-infer a fresh real goal model from recent activity. That's the seam: make goal inference rebuild from recent real activity so #567's R1 "finish-what-I-started" card finally has something to fire on. NOT gate-tuning, NOT the reply lane.
+- **Live proof (2026-06-29):** plumbing all works — Outlook + 201 Drive signals flowing, paid LLM works (it wrote a full draft). When re-scored on live data the engine went SAFE_SILENCE (honest: today's inbox was 15 automated newsletters, zero human mail) and otherwise serves homework because the keystone is dead. The disease is the goal model, not infra/money/Gmail.
+- **This session shipped:** #577 boot memory pin · #578 Slack alert on OAuth fatal disconnect · #579 Graph subscription renewal wired into morning-pipeline (root cause of "OneDrive isn't syncing") · #580 dropped Gmail scopes (owner is Outlook-primary, doesn't use Gmail) + made google-sync Gmail-optional · #581 hardcoded PRODUCT TRUTH (cascade+keystone+BRANDON.md) into the unskippable SessionStart hook.
+- **Owner-only, non-blocking:** Google OAuth app unverified for sensitive scopes (Drive) — only needed if publishing past Testing mode; pool hygiene (88/135 commitments overdue 30d+) is a smaller parallel seam.
 
 ## DON'T FORGET — read first, every boot
 
@@ -43,16 +44,16 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 
 ## Current slice:
 
-**#567 — PR #568 MERGED. Code complete; parked on owner sign-offs.** (This session's side-quest #572/#573 merged: duplicate-card dedup cooldown + lapsing-nag retirement + stale Rule 59(e) suppression.)
+**#567 — fire the R1 "finish-what-I-started" card. BLOCKED by the dead keystone (goal inference), and that is the work.** The earlier "parked on owner sign-offs (tkg_goals re-ground + Gmail 1→967)" framing is STALE/WRONG: Gmail is retired (owner is Outlook-primary, #580), and the goal model isn't an owner DB edit — it's a code capability that's broken. R1 can't fire because the goal model is dead, so the scorer falls to homework reminders.
 
-- Issue #567 remains OPEN pending two owner actions; no Claude code work left.
-- Owner sign-off: `tkg_goals` DB edit (re-ground apex goal) + Gmail connector fix (1→967).
+- Why dead: `tkg_goals` last updated 2026-05-10 (50d); real goals frozen 2026-04-07 (83d); half are garbage n-grams. Live-verified 2026-06-29.
+- Existing code: `refreshGoalContext()` (`lib/cron/goal-refresh.ts`), wired into `daily-maintenance`, but it only decays/updates existing goals + is gated on `priority>=3` — it does NOT re-infer a fresh goal model from recent real activity. THAT is the gap to build.
 
 ## Next exact move
 
-1. **Owner sign-off (#567):** `tkg_goals` re-ground + Gmail connector (1→967) → trigger `/api/cron/ingest-and-deliver`, verify R1 card via Probe 1.
-2. **Pool-hygiene seam (next code seam):** auto-expire/suppress the 88 active commitments overdue 30d+ (generalize past-due expiry #562 beyond events).
-3. **Google OAuth verification (owner-only):** submit app for Google verification — unverified app with Gmail sensitive scope is the remaining token-drop exposure.
+1. **Rebuild goal inference from recent real activity (THE keystone, #567).** Start in `lib/cron/goal-refresh.ts` (`refreshGoalContext`) + `lib/briefing/goal-hygiene.ts`. Make it (re)derive a real, current goal model from the user's recent signals (Outlook + 201 Drive docs), replace the stale/garbage goals, then verify the R1 "finish-what-I-started" card fires via Probe 1 (`docs/LIVE_POOL_PROBE.md`). Prove in harness first; paid LLM is already ON (don't re-suggest enabling it — see memory). This is the whole game: a fresh goal model is what lets the engine climb the cascade instead of serving homework.
+2. **Pool-hygiene (smaller parallel seam):** auto-expire/suppress 88 active commitments overdue 30d+ (generalize past-due expiry #562 beyond events) so dead ghosts stop ranking #1.
+3. **Google OAuth verification (owner-only, non-blocking):** only needed to publish past Testing mode; Drive `drive.readonly` is the lone restricted scope.
 
 ## Product doctrine
 
