@@ -1,7 +1,7 @@
 {
   "active_issue": 572,
   "active_branch": "fix/commitment-lapsing-ping-dedup",
-  "active_pr": null,
+  "active_pr": 574,
   "deployed_commit_sha": "32e052c",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
