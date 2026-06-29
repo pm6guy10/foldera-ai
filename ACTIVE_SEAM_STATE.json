@@ -1,10 +1,10 @@
 {
   "active_issue": 567,
   "active_branch": "main",
-  "active_pr": 576,
-  "deployed_commit_sha": "1ff63a8",
+  "active_pr": "none",
+  "deployed_commit_sha": "66d234a",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-29T14:10:00.000Z",
-  "notes": "#567 foundation seam parked on owner sign-offs (tkg_goals re-ground + Gmail connector 1->967). This session merged side-quests #572 (dedup cooldown, PR #574) + #573 (retire commitment_lapsing due-date homework-nag delivery, default-off ALLOW_COMMITMENT_LAPSING_SLACK_PING flag, + findLapsingCommitmentSignal 30-day staleness floor + soonest-first ordering, PR #575) to main 1ff63a8; suppressed 3 stale Rule 59(e) commitments (>1y overdue) per owner. Open follow-ups: pool hygiene (88/135 active dated commitments overdue 30d+) and reconnecting inactive Google/Microsoft OAuth tokens (the 'OneDrive isn't syncing' email)."
+  "last_verified_at": "2026-06-29T17:00:00.000Z",
+  "notes": "#567 foundation seam parked on owner sign-offs (tkg_goals re-ground + Gmail connector 1->967). This session: #577 boot memory pin, #578 Slack alert on OAuth fatal disconnect, #579 Graph subscription renewal wired into morning-pipeline (was unwired — root cause of 'OneDrive isn't syncing' email). Google + Microsoft tokens reconnected by owner (Jun 29 4:48 AM PT). Remaining: Google OAuth app not verified for sensitive scopes (Gmail) — owner must submit for Google verification; pool hygiene 88/135 overdue 30d+."
 }

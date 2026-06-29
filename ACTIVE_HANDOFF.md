@@ -2,9 +2,9 @@
 
 ## TL;DR
 
-- **#572 + #573 MERGED (PRs #574 `45c8465`, #575 `1ff63a8`):** duplicate `commitment_lapsing` card fixed (20h cooldown); the due-date homework-nag delivery is now retired by default + a 30-day staleness floor stops year-old items surfacing. 3 stale Rule 59(e) rows suppressed.
-- **Active seam #567 (parked, owner-gated, code complete):** waiting on `tkg_goals` re-ground + Gmail connector (1→967); no code work remains.
-- **Open follow-ups:** 88/135 active dated commitments overdue 30d+ (pool-hygiene seam); Google/Microsoft OAuth tokens inactive — reconnect at /dashboard/settings.
+- **Active seam #567 (parked, owner-gated):** waiting on `tkg_goals` re-ground + Gmail connector (1→967). No code work left on this seam.
+- **This session (reliability sweep):** #577 boot memory pin; #578 Slack alert fires the instant an OAuth token fatally drops; #579 Graph subscription renewal wired into morning-pipeline (was the root cause of the "OneDrive isn't syncing" email — Microsoft subscriptions expire every 70h, renewal route existed but was never called).
+- **Remaining owner action:** Google OAuth app not verified for sensitive scopes (Gmail) — submit for Google verification to stop periodic forced re-auth; pool hygiene (88/135 active dated commitments overdue 30d+) is the next code seam.
 
 ## DON'T FORGET — read first, every boot
 
@@ -51,8 +51,8 @@ Constraint everywhere: NO paid API calls and NO production mutation without expl
 ## Next exact move
 
 1. **Owner sign-off (#567):** `tkg_goals` re-ground + Gmail connector (1→967) → trigger `/api/cron/ingest-and-deliver`, verify R1 card via Probe 1.
-2. **Pool-hygiene seam:** auto-expire/suppress the 88 active commitments overdue 30d+ (generalize past-due expiry #562 beyond events).
-3. **Reconnect connectors:** Google/Microsoft OAuth tokens are inactive (the "OneDrive isn't syncing" email + the pre-push preflight FAIL) — reconnect at /dashboard/settings.
+2. **Pool-hygiene seam (next code seam):** auto-expire/suppress the 88 active commitments overdue 30d+ (generalize past-due expiry #562 beyond events).
+3. **Google OAuth verification (owner-only):** submit app for Google verification — unverified app with Gmail sensitive scope is the remaining token-drop exposure.
 
 ## Product doctrine
 
