@@ -40,6 +40,7 @@ export async function GET(request: Request) {
         .select('patterns')
         .eq('user_id', userId)
         .eq('name', 'self')
+        .limit(1)
         .maybeSingle(),
 
       supabase
