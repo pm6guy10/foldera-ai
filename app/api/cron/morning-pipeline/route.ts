@@ -28,11 +28,12 @@ import { GET as runNightlyOps } from '@/app/api/cron/nightly-ops/route';
 import { POST as runSeedFromScorer } from '@/app/api/workday-presence/seed-from-scorer/route';
 import { POST as runTriggerRunner } from '@/app/api/cron/workday-presence-trigger-runner/route';
 import { GET as runDailyMaintenance } from '@/app/api/cron/daily-maintenance/route';
+import { GET as runRenewGraphSubscriptions } from '@/app/api/cron/renew-graph-subscriptions/route';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-type StageName = 'nightly_ops' | 'seed_from_scorer' | 'trigger_runner' | 'daily_maintenance';
+type StageName = 'nightly_ops' | 'seed_from_scorer' | 'trigger_runner' | 'daily_maintenance' | 'renew_graph_subscriptions';
 
 type StageInvocation = {
   name: StageName;
@@ -73,6 +74,12 @@ const STAGE_INVOCATIONS: StageInvocation[] = [
     path: '/api/cron/daily-maintenance',
     method: 'GET',
     handler: runDailyMaintenance,
+  },
+  {
+    name: 'renew_graph_subscriptions',
+    path: '/api/cron/renew-graph-subscriptions',
+    method: 'GET',
+    handler: runRenewGraphSubscriptions,
   },
 ];
 
