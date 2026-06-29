@@ -1801,6 +1801,8 @@ async function findExistingEntityMatches(
     .select('id, name, emails, primary_email, total_interactions, last_interaction, role, company, trust_class, patterns')
     .eq('user_id', userId)
     .ilike('name', normalizedName)
+    .order('total_interactions', { ascending: false, nullsFirst: false })
+    .limit(1)
     .maybeSingle();
 
   if (nameMatchResult.error) {
