@@ -210,11 +210,15 @@ export function getAuthOptions(): NextAuthOptions {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
       authorization: {
         params: {
+          // Gmail scopes intentionally omitted: the owner does not use Gmail
+          // (it is sign-in identity only). gmail.readonly is a Google *Restricted*
+          // scope — requesting it for zero data adds verification/CASA burden for
+          // no value. Google's value surface here is Drive + Calendar; mail/drafts
+          // come from Microsoft (Outlook). Re-add gmail.readonly/gmail.send if a
+          // Gmail-using account is ever onboarded.
           scope: [
             'https://www.googleapis.com/auth/userinfo.email',
             'https://www.googleapis.com/auth/userinfo.profile',
-            'https://www.googleapis.com/auth/gmail.readonly',
-            'https://www.googleapis.com/auth/gmail.send',
             'https://www.googleapis.com/auth/calendar',
             'https://www.googleapis.com/auth/drive.readonly',
           ].join(' '),

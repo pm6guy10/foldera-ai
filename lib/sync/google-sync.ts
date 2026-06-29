@@ -711,8 +711,21 @@ export async function syncGoogle(userId: string, options?: { maxLookbackMs?: num
     gmailSignals = await syncGmail(userId, oauth2, sinceMs);
     gmailOk = true;
   } catch (err: any) {
-    console.error('[google-sync] Gmail sync failed:', err.message);
-    errors.push(`gmail: ${err.message}`);
+    // An Outlook-primary user may grant Google for Drive/Calendar but NOT Gmail.
+    // A missing-scope / insufficient-permission error is NOT a sync failure — treat
+    // it as a graceful skip so the timestamp still advances and Drive/Calendar
+    // progress instead of re-syncing the same window forever. (Mirrors syncDrive.)
+    const msg = String(err?.message ?? '');
+    const isScopeAbsent =
+      err?.code === 403 ||
+      /insufficient|invalid_scope|ACCESS_TOKEN_SCOPE_INSUFFICIENT|Insufficient Permission/i.test(msg);
+    if (isScopeAbsent) {
+      console.warn('[google-sync] gmail scope not granted, skipping gmail sync (treated as OK, not a failure)');
+      gmailOk = true;
+    } else {
+      console.error('[google-sync] Gmail sync failed:', err.message);
+      errors.push(`gmail: ${err.message}`);
+    }
   }
 
   try {
