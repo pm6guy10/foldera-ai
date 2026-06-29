@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-29 UTC (active seam is **#573** — retire the `commitment_lapsing` due-date homework-nag delivery (default-off flag) + `findLapsingCommitmentSignal` 30-day staleness floor, on `fix/retire-lapsing-nag-573`. #572 dedup cooldown MERGED (PR #574). Next: pool hygiene for 88 overdue-30d+ commitments. #567 parked.)
+Last updated: 2026-06-29 UTC (active seam is **#567** — foundation R1 card, parked on owner sign-offs. This session merged #572 dedup cooldown (PR #574) + #573 retire commitment_lapsing homework-nag delivery + 30-day staleness floor (PR #575); suppressed 3 stale Rule 59(e) rows. Follow-up: pool hygiene for 88 overdue-30d+ commitments; reconnect inactive OAuth tokens.)
 
 This is the keep-list ledger. Everything not listed here is reference, archive, or git history — never authority.
 

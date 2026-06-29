@@ -2,9 +2,9 @@
 
 ## TL;DR
 
-- **#572 MERGED (PR #574, `45c8465`):** duplicate `commitment_lapsing` Slack card fixed (per-commitment 20h cooldown; the dedup key embedded `state.updated_at`, which the ping rewrites).
-- **Active seam #573 — retire the due-date homework-nag delivery (PR pending).** Doctrine: "a due-date nag is NOT an act." `commitment_lapsing` live delivery is now retired by default (`ALLOW_COMMITMENT_LAPSING_SLACK_PING` re-enables) + `findLapsingCommitmentSignal` gains a 30-day staleness floor so year-old items can't surface. Killed 3 stale Rule 59(e) rows (>1y overdue) per owner. Fail-safe.
-- **Stale-pool finding:** 88/135 active dated commitments are overdue 30d+ (20 are 180d+) — recommend a pool-hygiene seam (auto-expire non-event commitments). #567 parked (owner sign-offs).
+- **#572 + #573 MERGED (PRs #574 `45c8465`, #575 `1ff63a8`):** duplicate `commitment_lapsing` card fixed (20h cooldown); the due-date homework-nag delivery is now retired by default + a 30-day staleness floor stops year-old items surfacing. 3 stale Rule 59(e) rows suppressed.
+- **Active seam #567 (parked, owner-gated, code complete):** waiting on `tkg_goals` re-ground + Gmail connector (1→967); no code work remains.
+- **Open follow-ups:** 88/135 active dated commitments overdue 30d+ (pool-hygiene seam); Google/Microsoft OAuth tokens inactive — reconnect at /dashboard/settings.
 
 ## DON'T FORGET — read first, every boot
 
@@ -37,24 +37,22 @@ These are decided. Do not re-derive, re-probe, or re-propose the dead alternativ
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #573 is the active retire-lapsing-nag seam.
+Issue #567 is the active foundation seam.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
 ## Current slice:
 
-**#573 — retire the `commitment_lapsing` due-date homework-nag. Branch `fix/retire-lapsing-nag-573` (PR pending). #572 already MERGED (PR #574).**
+**#567 — PR #568 MERGED. Code complete; parked on owner sign-offs.** (This session's side-quest #572/#573 merged: duplicate-card dedup cooldown + lapsing-nag retirement + stale Rule 59(e) suppression.)
 
-- Doctrine: "a due-date nag is NOT an act"; "the card IS the act, not homework scaffolding." The lapsing card is the nag.
-- Change: live lapsing delivery retired by default (`runWorkdayPresenceTriggerRunner` stays quiet for `commitment_lapsing` unless `ALLOW_COMMITMENT_LAPSING_SLACK_PING=true`) + `findLapsingCommitmentSignal` 30-day staleness floor (year-old items can't surface) + soonest-first ordering.
-- Owner-directed kill: suppressed 3 stale Rule 59(e) rows (>1y overdue, 2025 due dates) in prod.
-- Finding: 88/135 active dated commitments overdue 30d+ — broader pool hygiene is a follow-up seam.
+- Issue #567 remains OPEN pending two owner actions; no Claude code work left.
+- Owner sign-off: `tkg_goals` DB edit (re-ground apex goal) + Gmail connector fix (1→967).
 
 ## Next exact move
 
-1. **Merge #573** (retire lapsing nag + staleness floor) — gate:continuity + vitest (163) green; stops the homework-nag delivery.
-2. **Pool-hygiene seam:** 88 active commitments overdue 30d+ pollute the pool — auto-expire non-event commitments (generalize #562 beyond events), or a one-pass suppression with owner review.
-3. **#567 (owner sign-off):** `tkg_goals` re-ground + Gmail connector (1→967) → trigger `/api/cron/ingest-and-deliver`, verify R1 card via Probe 1.
+1. **Owner sign-off (#567):** `tkg_goals` re-ground + Gmail connector (1→967) → trigger `/api/cron/ingest-and-deliver`, verify R1 card via Probe 1.
+2. **Pool-hygiene seam:** auto-expire/suppress the 88 active commitments overdue 30d+ (generalize past-due expiry #562 beyond events).
+3. **Reconnect connectors:** Google/Microsoft OAuth tokens are inactive (the "OneDrive isn't syncing" email + the pre-push preflight FAIL) — reconnect at /dashboard/settings.
 
 ## Product doctrine
 
