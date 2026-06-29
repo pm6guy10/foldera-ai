@@ -98,6 +98,20 @@ describe('findLapsingCommitmentSignal', () => {
     expect(result?.title).not.toContain('SYNC:');
   });
 
+  it('bounds the query to a 30-day staleness floor so year-old overdue items are excluded', async () => {
+    const supabase = makeSupabaseStub([]);
+    const nowIso = '2026-06-29T12:00:00.000Z';
+    await findLapsingCommitmentSignal(supabase as any, 'user-1', nowIso);
+
+    // The floor is now - 30d; year-old 2025 due dates fall below it and cannot match.
+    const orArg = (supabase._spies.or.mock.calls[0]?.[0] ?? '') as string;
+    expect(orArg).toContain('due_at.gte.2026-05-30T12:00:00.000Z');
+    expect(orArg).toContain('implied_due_at.gte.2026-05-30T12:00:00.000Z');
+    expect(orArg).toContain('due_at.lte.2026-06-30T12:00:00.000Z');
+    // Soonest-first ordering — the item nearing lapse wins, not the most ancient.
+    expect(supabase._spies.order).toHaveBeenCalledWith('due_at', { ascending: false, nullsFirst: false });
+  });
+
   it('throws when the query errors instead of silently returning null', async () => {
     const supabase = makeSupabaseStub([], new Error('db unreachable'));
     await expect(

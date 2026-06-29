@@ -454,12 +454,17 @@ export async function maybeRunWorkdayPresenceTriggerRunnerForUser(
     ...(lapsingCommitmentSignal ? [lapsingCommitmentSignal] : []),
   ];
 
+  // #573: retire the due-date homework-nag delivery by default; an explicit
+  // ALLOW_COMMITMENT_LAPSING_SLACK_PING=true re-enables the live lapsing card.
+  const suppressLapsingSlackPing = process.env.ALLOW_COMMITMENT_LAPSING_SLACK_PING !== 'true';
+
   const result = await runWorkdayPresenceTriggerRunner({
     channel,
     cursor,
     nowIso,
     signals: allSignals,
     slack: slackAdapter,
+    suppressLapsingSlackPing,
     persistIntervention: async (intervention) => {
       const nextMetadata = {
         ...metadata,
@@ -597,6 +602,12 @@ export async function runWorkdayPresenceTriggerRunner(input: {
   persistIntervention?: (input: PersistTriggeredInterventionInput) => Promise<void> | void;
   slack?: Pick<SlackAdapter, 'postMessage'> | null;
   state: unknown;
+  // #573: retire the commitment_lapsing due-date homework-nag delivery. When set,
+  // a commitment_lapsing intervention stays quiet (no persist, no Slack, no
+  // receipt) instead of pushing a bare due-date card to the real channel. The
+  // live wrapper passes this true by default (ALLOW_COMMITMENT_LAPSING_SLACK_PING
+  // re-enables it); the pure runner leaves it off so mechanism tests are unchanged.
+  suppressLapsingSlackPing?: boolean;
 }): Promise<WorkdayPresenceTriggerRunnerResult> {
   const state = normalizeWorkdayPresenceState(input.state);
   const cursor = normalizeWorkdayPresenceTriggerRunnerCursor(input.cursor);
@@ -670,6 +681,28 @@ export async function runWorkdayPresenceTriggerRunner(input: {
         normalOutcome = {
           outcome: 'quiet',
           reason: `quiet: trigger fired but no reviewable move (mode=${triggerResult.payload.mode}) — guardian pings finished work only`,
+          cursor: nextCursor(cursor, nowIso, {
+            last_signal_cursor: signalCursor ?? cursor.last_signal_cursor,
+            last_trigger_key: null,
+          }),
+          selected_context: selection.selected,
+          trigger_result: triggerResult,
+          slack_result: null,
+          fresh_event_count: freshEvents.length,
+        };
+      } else if (
+        selection.selected.trigger_type === 'commitment_lapsing' &&
+        input.suppressLapsingSlackPing
+      ) {
+        // #573: a commitment_lapsing card is a due-date homework nag, not an act
+        // (doctrine: "a due-date nag is NOT an act"; "the card IS the act, not
+        // homework scaffolding"). Retire its live delivery — stay quiet
+        // (SAFE_SILENCE) rather than push it to the real channel. No persist, no
+        // Slack, no receipt. Genuinely high-consequence buried items still surface
+        // through the separate consequence-scored hidden-op path below.
+        normalOutcome = {
+          outcome: 'quiet',
+          reason: 'retired: commitment_lapsing due-date nag delivery is disabled (#573) — guardian stays quiet, not homework',
           cursor: nextCursor(cursor, nowIso, {
             last_signal_cursor: signalCursor ?? cursor.last_signal_cursor,
             last_trigger_key: null,

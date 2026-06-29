@@ -347,6 +347,42 @@ describe('commitment_lapsing ping cooldown — stops the same lapsing card re-fi
     expect(postMessage).toHaveBeenCalledTimes(2);
     expect(later.cursor.last_lapsing_pinged_at).toBe('2026-06-29T08:30:00.000Z');
   });
+
+  it('#573: stays quiet and posts nothing when the lapsing nag delivery is retired', async () => {
+    const postMessage = liveSlack();
+    const persistIntervention = vi.fn().mockResolvedValue(undefined);
+
+    // Low-consequence, far-future commitment (a routine chore well outside the
+    // imminence window) so the hidden-op fallback stays quiet too — this isolates
+    // the retirement to the commitment_lapsing path, not the scored buried-signal
+    // path (which is deliberately left intact for genuinely high-consequence items).
+    const benignLapsingSignal = {
+      id: 'commit-chore',
+      source: 'calendar',
+      title: 'Put the trash can out for pickup',
+      starts_at_iso: '2026-09-01T12:00:00.000Z',
+      due_at_iso: '2026-09-01T12:00:00.000Z',
+      commitment_lapsing: true,
+    };
+
+    const result = await runWorkdayPresenceTriggerRunner({
+      channel: 'C123',
+      state: lapsingStateAt('2026-06-28T08:00:00.000Z'),
+      cursor: null,
+      nowIso: '2026-06-28T11:30:00.000Z',
+      signals: [benignLapsingSignal],
+      slack: { postMessage },
+      persistIntervention,
+      suppressLapsingSlackPing: true,
+    });
+
+    expect(result.outcome).toBe('quiet');
+    expect(result.reason).toContain('retired');
+    expect(result.selected_context?.trigger_type).toBe('commitment_lapsing');
+    expect(postMessage).not.toHaveBeenCalled();
+    expect(persistIntervention).not.toHaveBeenCalled();
+    expect(result.cursor.last_lapsing_pinged_at).toBeNull();
+  });
 });
 
 describe('real ingested calendar signals fire pre_meeting (no flags, encrypted content)', () => {

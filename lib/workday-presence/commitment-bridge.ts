@@ -11,6 +11,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  */
 
 const LAPSING_WINDOW_HOURS = 24;
+// A commitment overdue beyond this is not "nearing lapse" — it lapsed long ago.
+// Surfacing year-old obligations (e.g. a 2025 court filing in mid-2026) as fresh
+// lapses is exactly the stale-date noise the guardian must not produce. Bound the
+// lookback so only genuinely near-term or recently-lapsed items qualify.
+const LAPSING_STALE_FLOOR_DAYS = 30;
 
 type LapsingCommitmentRow = {
   id: string;
@@ -63,16 +68,24 @@ export async function findLapsingCommitmentSignal(
   userId: string,
   nowIso: string,
 ): Promise<SynthesizedCommitmentSignal | null> {
-  const windowEnd = new Date(Date.parse(nowIso) + LAPSING_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+  const nowMs = Date.parse(nowIso);
+  const windowEnd = new Date(nowMs + LAPSING_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+  const staleFloor = new Date(nowMs - LAPSING_STALE_FLOOR_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
+  // Bound BOTH ends of the window: due within [now - 30d, now + 24h]. Anything
+  // older than the floor lapsed long ago and is excluded. Order soonest-first
+  // (descending) so the item actually nearing lapse wins, not the most ancient.
   const { data, error } = await supabase
     .from('tkg_commitments')
     .select('id, description, canonical_form, due_at, implied_due_at')
     .eq('user_id', userId)
     .eq('status', 'active')
     .is('suppressed_at', null)
-    .or(`due_at.lte.${windowEnd},implied_due_at.lte.${windowEnd}`)
-    .order('due_at', { ascending: true, nullsFirst: false })
+    .or(
+      `and(due_at.gte.${staleFloor},due_at.lte.${windowEnd}),` +
+        `and(implied_due_at.gte.${staleFloor},implied_due_at.lte.${windowEnd})`,
+    )
+    .order('due_at', { ascending: false, nullsFirst: false })
     .limit(1);
 
   if (error) throw error;
