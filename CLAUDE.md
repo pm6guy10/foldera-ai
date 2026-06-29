@@ -4,8 +4,9 @@
 
 Boot sequence for any Foldera task:
 
-1. Read `ACTIVE_HANDOFF.md`.
-2. Read the active issue it names.
+1. Read `C:\Users\b-kap\.claude\projects\C--Users-b-kap-foldera-ai\memory\MEMORY.md` (session memory — cross-session facts, feedback, and project state).
+2. Read `ACTIVE_HANDOFF.md`.
+3. Read the active issue it names.
 
 Claude-specific notes:
 

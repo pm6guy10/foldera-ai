@@ -35,9 +35,10 @@ Do not check Vercel, Supabase, Slack, or Sentry at boot unless the active issue 
 
 Then complete the boot sequence (applies to both paths):
 
-3. Read `ACTIVE_HANDOFF.md`
-4. Read `ACTIVE_SEAM_STATE.json`
-5. Read the active GitHub issue
+3. Read `C:\Users\b-kap\.claude\projects\C--Users-b-kap-foldera-ai\memory\MEMORY.md` (cross-session memory — read before any action)
+4. Read `ACTIVE_HANDOFF.md`
+5. Read `ACTIVE_SEAM_STATE.json`
+6. Read the active GitHub issue
 
 After the boot gate completes, emit a truth receipt before the first action:
 
