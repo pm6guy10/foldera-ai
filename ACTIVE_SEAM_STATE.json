@@ -1,7 +1,7 @@
 {
   "active_issue": 567,
   "active_branch": "main",
-  "active_pr": null,
+  "active_pr": 576,
   "deployed_commit_sha": "1ff63a8",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
