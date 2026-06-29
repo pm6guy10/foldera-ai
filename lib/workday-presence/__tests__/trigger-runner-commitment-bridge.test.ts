@@ -51,6 +51,9 @@ describe('maybeRunWorkdayPresenceTriggerRunnerForUser — commitment bridge inte
   });
 
   it('fires a real commitment_lapsing intervention and writes a real receipt when a real commitment is due soon, with zero fresh signals', async () => {
+    // #573: the lapsing nag delivery is retired by default — opt back in for this
+    // bridge-mechanism test so it still asserts the synthesized signal fires.
+    vi.stubEnv('ALLOW_COMMITMENT_LAPSING_SLACK_PING', 'true');
     mockGetUserById.mockResolvedValue({
       data: {
         user: {
@@ -95,6 +98,48 @@ describe('maybeRunWorkdayPresenceTriggerRunnerForUser — commitment bridge inte
       userId: 'user-1',
       triggerType: 'commitment_lapsing',
     });
+  });
+
+  it('#573: stays quiet and writes no receipt for a lapsing commitment by default (nag delivery retired)', async () => {
+    mockGetUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            workday_presence_state: {
+              current_focus: 'Close ACME renewal decision',
+              next_move: 'Send owner confirmation note',
+              why_it_matters: 'The renewal window closes at 4 PM PT.',
+              blocker: null,
+              do_not_touch: null,
+              waiting_on: null,
+              last_completed_step: null,
+              state_source: 'manual_anchor',
+              source_trail: [],
+              snoozed_until: null,
+              interaction_history: [],
+              created_at: '2026-06-16T08:00:00.000Z',
+              updated_at: '2026-06-16T08:00:00.000Z',
+            },
+          },
+        },
+      },
+      error: null,
+    });
+
+    mockFindLapsingCommitmentSignal.mockResolvedValue({
+      id: 'commit-1',
+      source: 'calendar',
+      title: 'Send the Q3 budget revision to finance',
+      starts_at_iso: '2026-06-16T20:00:00.000Z',
+      due_at_iso: '2026-06-16T20:00:00.000Z',
+      commitment_lapsing: true,
+    });
+
+    const { maybeRunWorkdayPresenceTriggerRunnerForUser } = await import('../trigger-runner');
+    const result = await maybeRunWorkdayPresenceTriggerRunnerForUser('user-1');
+
+    expect((result as { outcome?: string }).outcome).toBe('quiet');
+    expect(mockInsertTriggerReceipt).not.toHaveBeenCalled();
   });
 
   it('stays quiet when no fresh signal and no lapsing commitment exist', async () => {

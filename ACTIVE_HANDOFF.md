@@ -2,9 +2,9 @@
 
 ## TL;DR
 
-- **Active seam #572 — duplicate guardian card fix (PR pending).** `commitment_lapsing` re-posted the same Slack card 2-3x/day; live receipts confirm. Root cause: the dedup key embeds `state.updated_at`, which the ping itself rewrites → dedup can never match its own prior key. Fixed with a per-commitment 20h cooldown (new cursor fields). Fail-safe, no paid call.
-- **#573 (next seam, owner call):** retire the due-date homework-nag delivery entirely — doctrine says "a due-date nag is NOT an act." #572 only thins it.
-- **#567 parked (owner-gated, code complete):** waiting on `tkg_goals` re-ground + Gmail connector (1→967); no code work remains.
+- **#572 MERGED (PR #574, `45c8465`):** duplicate `commitment_lapsing` Slack card fixed (per-commitment 20h cooldown; the dedup key embedded `state.updated_at`, which the ping rewrites).
+- **Active seam #573 — retire the due-date homework-nag delivery (PR pending).** Doctrine: "a due-date nag is NOT an act." `commitment_lapsing` live delivery is now retired by default (`ALLOW_COMMITMENT_LAPSING_SLACK_PING` re-enables) + `findLapsingCommitmentSignal` gains a 30-day staleness floor so year-old items can't surface. Killed 3 stale Rule 59(e) rows (>1y overdue) per owner. Fail-safe.
+- **Stale-pool finding:** 88/135 active dated commitments are overdue 30d+ (20 are 180d+) — recommend a pool-hygiene seam (auto-expire non-event commitments). #567 parked (owner sign-offs).
 
 ## DON'T FORGET — read first, every boot
 
@@ -37,23 +37,23 @@ These are decided. Do not re-derive, re-probe, or re-propose the dead alternativ
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #572 is the active duplicate-card-fix seam.
+Issue #573 is the active retire-lapsing-nag seam.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
 ## Current slice:
 
-**#572 — duplicate `commitment_lapsing` Slack card. Fix on branch `fix/commitment-lapsing-ping-dedup` (PR pending).**
+**#573 — retire the `commitment_lapsing` due-date homework-nag. Branch `fix/retire-lapsing-nag-573` (PR pending). #572 already MERGED (PR #574).**
 
-- Live receipts: the same lapsing card posted 2026-06-27 18:26 / 06-28 11:49 / 06-28 18:29 UTC (action_source=`workday_presence_slack_send`).
-- Root cause: `buildTriggerKey` embeds `state.updated_at`; the ping rewrites it on persist, so the next run's key never equals the stored one → dedup misses every time.
-- Fix: per-commitment identity + 20h cooldown (cursor `last_lapsing_key`/`last_lapsing_pinged_at`). Additive suppression only; can never create a ping.
-- #567 parked (owner-gated): `tkg_goals` re-ground + Gmail connector (1→967). No code work left there.
+- Doctrine: "a due-date nag is NOT an act"; "the card IS the act, not homework scaffolding." The lapsing card is the nag.
+- Change: live lapsing delivery retired by default (`runWorkdayPresenceTriggerRunner` stays quiet for `commitment_lapsing` unless `ALLOW_COMMITMENT_LAPSING_SLACK_PING=true`) + `findLapsingCommitmentSignal` 30-day staleness floor (year-old items can't surface) + soonest-first ordering.
+- Owner-directed kill: suppressed 3 stale Rule 59(e) rows (>1y overdue, 2025 due dates) in prod.
+- Finding: 88/135 active dated commitments overdue 30d+ — broader pool hygiene is a follow-up seam.
 
 ## Next exact move
 
-1. **Merge #572** (dedup cooldown) — gate:continuity + vitest green; stops the 2-3x/day duplicate immediately.
-2. **#573 (owner decision):** retire the due-date homework-nag delivery vs keep it thinned — doctrine: "a due-date nag is NOT an act." `SAFE_SILENCE` is a valid success.
+1. **Merge #573** (retire lapsing nag + staleness floor) — gate:continuity + vitest (163) green; stops the homework-nag delivery.
+2. **Pool-hygiene seam:** 88 active commitments overdue 30d+ pollute the pool — auto-expire non-event commitments (generalize #562 beyond events), or a one-pass suppression with owner review.
 3. **#567 (owner sign-off):** `tkg_goals` re-ground + Gmail connector (1→967) → trigger `/api/cron/ingest-and-deliver`, verify R1 card via Probe 1.
 
 ## Product doctrine

@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-28 UTC (active seam is **#572** — duplicate `commitment_lapsing` guardian card: per-commitment 20h cooldown fix on `fix/commitment-lapsing-ping-dedup`. Next seam #573 = retire the due-date homework-nag delivery (owner call). #567 parked on owner sign-offs.)
+Last updated: 2026-06-29 UTC (active seam is **#573** — retire the `commitment_lapsing` due-date homework-nag delivery (default-off flag) + `findLapsingCommitmentSignal` 30-day staleness floor, on `fix/retire-lapsing-nag-573`. #572 dedup cooldown MERGED (PR #574). Next: pool hygiene for 88 overdue-30d+ commitments. #567 parked.)
 
 This is the keep-list ledger. Everything not listed here is reference, archive, or git history — never authority.
 

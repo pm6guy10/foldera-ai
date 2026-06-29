@@ -1,10 +1,10 @@
 {
-  "active_issue": 572,
-  "active_branch": "fix/commitment-lapsing-ping-dedup",
-  "active_pr": 574,
-  "deployed_commit_sha": "32e052c",
+  "active_issue": 573,
+  "active_branch": "fix/retire-lapsing-nag-573",
+  "active_pr": null,
+  "deployed_commit_sha": "45c8465",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-28T20:45:00.000Z",
-  "notes": "#572 duplicate guardian card fix on branch fix/commitment-lapsing-ping-dedup. commitment_lapsing re-posted the same Slack card 2-3x/day (live receipts 06-27 18:26 / 06-28 11:49 / 06-28 18:29 UTC). Root cause: buildTriggerKey embeds state.updated_at which the ping rewrites on persist, so dedup never matches its own prior key. Fix = per-commitment identity + 20h cooldown (cursor last_lapsing_key/last_lapsing_pinged_at). Additive suppression only; fail-safe, no paid call, no schema change. vitest lib/workday-presence green (162); typecheck clean; gate:continuity green. #573 = the doctrine-level decision to retire the homework-nag delivery (owner call). #567 parked (owner sign-off: tkg_goals re-ground + Gmail connector 1->967)."
+  "last_verified_at": "2026-06-29T14:05:00.000Z",
+  "notes": "#573 retire the commitment_lapsing due-date homework-nag delivery on branch fix/retire-lapsing-nag-573. Doctrine: a due-date nag is NOT an act; the card IS the act, not homework scaffolding. Live lapsing delivery retired by default (runWorkdayPresenceTriggerRunner quiet for commitment_lapsing unless ALLOW_COMMITMENT_LAPSING_SLACK_PING=true) + findLapsingCommitmentSignal 30-day staleness floor + soonest-first ordering so year-old items can't surface. Owner-directed: suppressed 3 stale Rule 59(e) rows (>1y overdue) in prod. vitest lib/workday-presence green (163). #572 dedup cooldown MERGED via PR #574 (main 45c8465). Finding: 88/135 active dated commitments overdue 30d+ -> pool-hygiene follow-up seam. #567 parked (owner sign-offs)."
 }
