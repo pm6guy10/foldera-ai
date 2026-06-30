@@ -9548,7 +9548,6 @@ export function buildDecisionEnforcedFallbackPayload(input: {
     const writeDirective = `Write a decision memo on "${safeTarget}" — ${memoAskRaw}`.slice(0, 340);
 
     const consequenceSentence = copy.consequence.replace(/^Consequence:\s*/i, '').trim();
-    const mechanismSentence = input.causalDiagnosis.mechanism.trim();
 
     return {
       insight: copy.insight,
@@ -9563,7 +9562,10 @@ export function buildDecisionEnforcedFallbackPayload(input: {
         content: [
           `Source: ${target}.`,
           '',
-          `${memoAsk} ${consequenceSentence} ${mechanismSentence}`,
+          // input.causalDiagnosis.mechanism is an internal classifier label
+          // ("Avoidance pattern: ...", "Hidden approval blocker: ...") — never
+          // user-facing copy (see the bracket-salvage scan note above).
+          `${memoAsk} ${consequenceSentence}`,
         ].join('\n'),
       },
       why_now: copy.whyNow,
