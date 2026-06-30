@@ -3,19 +3,32 @@
  *
  * Single scheduled morning cron entrypoint. Orchestrates the existing cron routes
  * in order so Vercel only needs one production cron definition:
- *   1. nightly-ops
- *   2. seed-from-scorer  (Slack Right Now card seed — replaces email daily-brief)
- *   3. trigger-runner    (evaluate fresh signals against seeded state → Slack card)
+ *   1. seed-from-scorer        (Slack Right Now card seed — replaces email daily-brief)
+ *   2. trigger-runner          (evaluate fresh signals against seeded state → Slack card)
+ *   3. proactive-delivery      (#567 Phase B — surface a draft-backed winner with no
+ *                                fresh signal of its own; never double-posts over trigger-runner)
  *   4. daily-maintenance
+ *   5. renew-graph-subscriptions
+ *   6. nightly-ops             (multi-user sync/signal-processing — runs LAST, best-effort)
+ *
+ * Card delivery runs FIRST and nightly-ops LAST on purpose (#567 Phase B — "cron is a
+ * backup heartbeat, not the hinge", named after a live run where nightly-ops alone took
+ * 221s, then >300s, and starved every stage after it including the scorer for a whole
+ * day). nightly-ops' job — multi-user signal sync/processing, connector health,
+ * behavioral graph, entity-trust-repair — is input prep that benefits a LATER tick (or
+ * sooner via ingest-and-deliver / push), not a same-tick dependency of seed-from-scorer;
+ * if it overruns the 300s budget now, it is the one stage that silently drops for the
+ * day, never the value-delivery stages ahead of it.
  *
  * The underlying routes remain callable directly for manual/operator use.
  * daily-brief/route.ts is preserved for manual operator use but is no longer
- * scheduled — the Slack card (seed-from-scorer + trigger-runner) is the delivery surface.
+ * scheduled — the Slack card (seed-from-scorer + trigger-runner + proactive-delivery)
+ * is the delivery surface.
  *
- * Intra-day delivery: /api/cron/ingest-and-deliver runs every 30 min and re-runs
- * seed-from-scorer + trigger-runner whenever fresh signals arrive, so cards land
- * within minutes of a new email_sent or file_modified event rather than waiting
- * for this 11:00 UTC sweep.
+ * Intra-day delivery: /api/cron/ingest-and-deliver runs every 30 min and re-runs the
+ * same seed → trigger → proactive pipeline (via deliverWorkdayPresence) whenever fresh
+ * signals arrive, so cards land within minutes of a new event rather than waiting for
+ * this 11:00 UTC sweep.
  *
  * Auth: CRON_SECRET Bearer token.
  * Schedule: 0 11 * * * (4am PT / 11:00 UTC)
@@ -27,13 +40,20 @@ import { apiErrorForRoute } from '@/lib/utils/api-error';
 import { GET as runNightlyOps } from '@/app/api/cron/nightly-ops/route';
 import { POST as runSeedFromScorer } from '@/app/api/workday-presence/seed-from-scorer/route';
 import { POST as runTriggerRunner } from '@/app/api/cron/workday-presence-trigger-runner/route';
+import { POST as runProactiveDelivery } from '@/app/api/cron/workday-presence-proactive-delivery/route';
 import { GET as runDailyMaintenance } from '@/app/api/cron/daily-maintenance/route';
 import { GET as runRenewGraphSubscriptions } from '@/app/api/cron/renew-graph-subscriptions/route';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-type StageName = 'nightly_ops' | 'seed_from_scorer' | 'trigger_runner' | 'daily_maintenance' | 'renew_graph_subscriptions';
+type StageName =
+  | 'seed_from_scorer'
+  | 'trigger_runner'
+  | 'proactive_delivery'
+  | 'daily_maintenance'
+  | 'renew_graph_subscriptions'
+  | 'nightly_ops';
 
 type StageInvocation = {
   name: StageName;
@@ -52,12 +72,6 @@ type StageResult = {
 
 const STAGE_INVOCATIONS: StageInvocation[] = [
   {
-    name: 'nightly_ops',
-    path: '/api/cron/nightly-ops',
-    method: 'GET',
-    handler: runNightlyOps,
-  },
-  {
     name: 'seed_from_scorer',
     path: '/api/workday-presence/seed-from-scorer',
     method: 'POST',
@@ -70,6 +84,12 @@ const STAGE_INVOCATIONS: StageInvocation[] = [
     handler: runTriggerRunner,
   },
   {
+    name: 'proactive_delivery',
+    path: '/api/cron/workday-presence-proactive-delivery',
+    method: 'POST',
+    handler: runProactiveDelivery,
+  },
+  {
     name: 'daily_maintenance',
     path: '/api/cron/daily-maintenance',
     method: 'GET',
@@ -80,6 +100,14 @@ const STAGE_INVOCATIONS: StageInvocation[] = [
     path: '/api/cron/renew-graph-subscriptions',
     method: 'GET',
     handler: runRenewGraphSubscriptions,
+  },
+  // Runs LAST and best-effort — see file header. If this overruns the remaining
+  // budget, it is cut off; the value-delivery stages above already completed.
+  {
+    name: 'nightly_ops',
+    path: '/api/cron/nightly-ops',
+    method: 'GET',
+    handler: runNightlyOps,
   },
 ];
 
