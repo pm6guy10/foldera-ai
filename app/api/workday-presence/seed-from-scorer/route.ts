@@ -47,9 +47,9 @@ export async function POST(request: Request) {
   try {
     // The scheduled system (morning-pipeline's forwarded stage call, or any future direct
     // CRON_SECRET caller) never competes with the owner's interactive manual-call budget —
-    // see seedFromScorerForUser's isCronTriggered jsdoc.
+    // see seedFromScorerForUser's isAutomatedTrigger jsdoc.
     const outcome = await seedFromScorerForUser(auth.userId, 'seed_from_scorer', {
-      isCronTriggered: isCronAuthenticated(request),
+      isAutomatedTrigger: isCronAuthenticated(request),
     });
     return NextResponse.json(outcome.payload);
   } catch (error: unknown) {

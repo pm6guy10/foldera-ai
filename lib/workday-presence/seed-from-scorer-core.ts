@@ -150,19 +150,22 @@ async function persistSuppressionTrace(input: {
  *
  * @param invocationSource  Label for pipeline_runs.invocation_source (e.g. 'ingest_and_deliver',
  *   'sync_now', 'graph_webhook'). Defaults to 'seed_from_scorer'.
- * @param options.isCronTriggered  True iff this call was authorized by CRON_SECRET (the
- *   scheduled system), never an interactive owner/browser session. Routes the
- *   generateDirective call through runWithPipelineRunContext so its api_usage rows carry
- *   pipeline_run_id and are excluded from isOverManualCallLimit's interactive-only count
- *   (lib/utils/api-tracker.ts) — that budget exists to stop smoke-tests/repeated manual
- *   clicks from burning spend, not to cap the two scheduled heartbeat ticks. Caller-set
- *   only; never infer this from userId, since the owner's interactive session uses the
- *   same userId as cron-triggered runs for that owner.
+ * @param options.isAutomatedTrigger  True iff this call was provably initiated by a system
+ *   trigger — CRON_SECRET (the scheduled heartbeat) or an authenticated Microsoft Graph push
+ *   webhook — never an interactive owner/browser session (dashboard "Generate Now", sync-now).
+ *   Routes the generateDirective call through runWithPipelineRunContext so its api_usage rows
+ *   carry pipeline_run_id and are excluded from isOverManualCallLimit's interactive-only count
+ *   (lib/utils/api-tracker.ts) — that budget exists to stop smoke-tests/repeated manual clicks
+ *   from burning spend, not to cap the scheduled heartbeat or push (the actual primary,
+ *   event-driven delivery path per deliver-now.ts's header — it must never be capped by a
+ *   budget meant for interactive testing). Caller-set only; never infer this from userId,
+ *   since the owner's interactive session uses the same userId as automated runs for that
+ *   owner.
  */
 export async function seedFromScorerForUser(
   userId: string,
   invocationSource: string = 'seed_from_scorer',
-  options: { isCronTriggered?: boolean } = {},
+  options: { isAutomatedTrigger?: boolean } = {},
 ): Promise<SeedOutcome> {
   // Each call is its own pipeline run — no external cronInvocationId in the live path,
   // so we generate a UUID pair. This restores the pipeline_runs funnel trace that was
@@ -186,10 +189,10 @@ export async function seedFromScorerForUser(
 
   try {
   // The real brain: score → decide the move → draft it. skipSpendCap so triggered seeds
-  // run; the per-day manual call limit still bounds cost for interactive callers — a
-  // cron-triggered call runs inside the pipeline-run context instead, so it is segmented
-  // out of that interactive-only budget rather than competing with it (see jsdoc above).
-  const directive = options.isCronTriggered
+  // run; the per-day manual call limit still bounds cost for interactive callers — an
+  // automated (cron or push) call runs inside the pipeline-run context instead, so it is
+  // segmented out of that interactive-only budget rather than competing with it (jsdoc above).
+  const directive = options.isAutomatedTrigger
     ? await runWithPipelineRunContext({ pipelineRunId, userId }, () =>
         generateDirective(userId, { skipSpendCap: true }),
       )
