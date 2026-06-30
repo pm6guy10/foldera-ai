@@ -1,10 +1,10 @@
 {
   "active_issue": 567,
-  "active_branch": "claude/agent-override-gate-m3rrqn",
-  "active_pr": null,
-  "deployed_commit_sha": "e17a47b",
+  "active_branch": "claude/consolidate-css-tokens-txzbwk",
+  "active_pr": 593,
+  "deployed_commit_sha": "125d901",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-30T20:10:00.024Z",
+  "last_verified_at": "2026-06-30T23:11:59.789Z",
   "notes": "All four #567 follow-on fixes (Phase A+B #585, freshness #586, cron-budget #587, push-budget #588) MERGED+LIVE on main. Next named work: issue #589 (Decision lock Slack cards too long -- owner: brevity is king, fit one screen no scroll). Fix drafted in full in the issue (collapse 9-section body to one Source line + one paragraph) but deliberately not committed this session per owner instruction."
 }
