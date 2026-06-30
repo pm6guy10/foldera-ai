@@ -1,10 +1,10 @@
 {
   "active_issue": 567,
-  "active_branch": "claude/agent-override-gate-m3rrqn",
-  "active_pr": 585,
-  "deployed_commit_sha": "d0326c0",
+  "active_branch": "claude/proactive-delivery-freshness-fix",
+  "active_pr": null,
+  "deployed_commit_sha": "b80fb85",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-30T18:39:57.033Z",
-  "notes": "Phase A+B (#567 follow-on) both shipped on PR #585 (draft, CI pending). A: closed discrepancy bypass of goal-primacy in stated mode. B: proactive-delivery.ts posts a draft-backed heartbeat winner to Slack via the existing payload pipeline (#394-gated, content-deduped); morning-pipeline reordered so nightly_ops runs last instead of starving the scorer. Next: owner reviews diff + one live heartbeat run to confirm a real card lands in #foldera-self-loop."
+  "last_verified_at": "2026-06-30T18:58:53.107Z",
+  "notes": "INCIDENT 2026-06-30: proactive-delivery's first live run posted a stale pre-Phase-A homework card (seedFromScorerForUser hit the daily manual-call-limit, never refreshed workday_presence_state, no dedup cursor yet to catch it). Fixed: evaluateProactiveDelivery now requires state.updated_at within 10min of nowIso (STATE_FRESHNESS_WINDOW_MS). See LESSONS_LEARNED #34. Real end-to-end Phase A+B test still pending — needs a fresh seed past today's manual-call-limit reset."
 }
