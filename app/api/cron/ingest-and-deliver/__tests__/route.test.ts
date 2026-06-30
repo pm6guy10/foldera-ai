@@ -97,10 +97,10 @@ describe('ingest-and-deliver cron route', () => {
     expect(body.ok).toBe(true);
     expect(body.new_signals.total).toBe(0);
     // The seed gate is gone: the heartbeat always evaluates the pool.
-    // isCronTriggered: true (#567) — this route is already CRON_SECRET-gated, so its
+    // isAutomatedTrigger: true (#567) — this route is already CRON_SECRET-gated, so its
     // seed call must be exempt from the interactive-only manual directive call limit.
     expect(mockDeliver).toHaveBeenCalledTimes(1);
-    expect(mockDeliver).toHaveBeenCalledWith('test-owner-id', { isCronTriggered: true });
+    expect(mockDeliver).toHaveBeenCalledWith('test-owner-id', { isAutomatedTrigger: true });
   });
 
   it('reflects Microsoft signal counts and still delivers', async () => {

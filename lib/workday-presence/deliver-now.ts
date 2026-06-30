@@ -33,12 +33,15 @@ export interface DeliverOptions {
   /** Freshly-synced delta counts, required for the 'push' materiality gate. */
   syncDelta?: SyncDelta;
   /**
-   * True iff this call was authorized by CRON_SECRET (the scheduled system), not an
-   * interactive owner/browser session — e.g. ingest-and-deliver, never sync-now. Exempts
-   * the seed call from the interactive-only manual directive call limit; see
-   * seedFromScorerForUser's isCronTriggered jsdoc for why and how.
+   * True iff this call was provably initiated by a system trigger (CRON_SECRET / an
+   * authenticated push webhook), not an interactive owner/browser session — e.g.
+   * ingest-and-deliver, never sync-now. Exempts the seed call from the interactive-only
+   * manual directive call limit; see seedFromScorerForUser's isAutomatedTrigger jsdoc for
+   * why and how. Optional override only — `trigger: 'push'` already implies this is
+   * automated (only the authenticated graph-webhook handler ever sets that context) and
+   * is exempted automatically below, so push callers never need to pass this explicitly.
    */
-  isCronTriggered?: boolean;
+  isAutomatedTrigger?: boolean;
 }
 
 export interface DeliverNowResult {
@@ -80,10 +83,15 @@ export async function deliverWorkdayPresence(
     }
   }
 
+  // 'push' is structurally automated — only the authenticated graph-webhook handler ever
+  // sets this context — so it is exempt from the interactive budget even if a caller
+  // forgets to pass isAutomatedTrigger explicitly. An explicit override always wins.
+  const isAutomated = options.isAutomatedTrigger ?? context === 'push';
+
   let seed: SeedOutcome | { error: string };
   try {
     seed = await seedFromScorerForUser(userId, 'seed_from_scorer', {
-      isCronTriggered: options.isCronTriggered,
+      isAutomatedTrigger: isAutomated,
     });
   } catch (err: unknown) {
     // Seed failures are already self-traced (suppression_trace). Don't block the

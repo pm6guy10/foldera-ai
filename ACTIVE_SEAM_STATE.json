@@ -1,10 +1,10 @@
 {
   "active_issue": 567,
-  "active_branch": "claude/segment-cron-manual-call-limit",
+  "active_branch": "claude/exempt-push-from-manual-call-limit",
   "active_pr": null,
-  "deployed_commit_sha": "6e1a45a",
+  "deployed_commit_sha": "6a770c1",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-30T19:18:21.559Z",
-  "notes": "Segmenting cron-triggered seed calls (isCronTriggered) out of the interactive-only manual directive call limit (3/day) -- the scheduled heartbeat (morning-pipeline + ingest-and-deliver) was silently sharing that tiny budget with manual testing because seed-from-scorer-core.ts never inherited daily-brief-generate.ts's pipeline-run-context segmentation. See LESSONS_LEARNED #35."
+  "last_verified_at": "2026-06-30T19:32:56.631Z",
+  "notes": "STRUCTURAL FIX #2: push (graph-webhook.ts) was ALSO capped by the same interactive manual-call budget that #587 fixed for cron -- owner caught it ('why are we still at cron's mercy' when push is the primary delivery path). Renamed isCronTriggered->isAutomatedTrigger; deliverWorkdayPresence now auto-infers isAutomatedTrigger:true for trigger:'push' so push callers can never forget it. See LESSONS_LEARNED #35 addendum."
 }
