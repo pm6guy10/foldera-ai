@@ -1,10 +1,10 @@
 {
   "active_issue": 567,
-  "active_branch": "claude/proactive-delivery-freshness-fix",
+  "active_branch": "claude/segment-cron-manual-call-limit",
   "active_pr": null,
-  "deployed_commit_sha": "b80fb85",
+  "deployed_commit_sha": "6e1a45a",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-30T18:58:53.107Z",
-  "notes": "INCIDENT 2026-06-30: proactive-delivery's first live run posted a stale pre-Phase-A homework card (seedFromScorerForUser hit the daily manual-call-limit, never refreshed workday_presence_state, no dedup cursor yet to catch it). Fixed: evaluateProactiveDelivery now requires state.updated_at within 10min of nowIso (STATE_FRESHNESS_WINDOW_MS). See LESSONS_LEARNED #34. Real end-to-end Phase A+B test still pending — needs a fresh seed past today's manual-call-limit reset."
+  "last_verified_at": "2026-06-30T19:18:21.559Z",
+  "notes": "Segmenting cron-triggered seed calls (isCronTriggered) out of the interactive-only manual directive call limit (3/day) -- the scheduled heartbeat (morning-pipeline + ingest-and-deliver) was silently sharing that tiny budget with manual testing because seed-from-scorer-core.ts never inherited daily-brief-generate.ts's pipeline-run-context segmentation. See LESSONS_LEARNED #35."
 }

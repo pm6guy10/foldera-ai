@@ -50,6 +50,18 @@ function hasValidCronSecret(request: Request, cronSecret: string): boolean {
 }
 
 /**
+ * True iff this request carries a valid CRON_SECRET — i.e. it is the scheduled system
+ * (or a forwarded morning-pipeline stage call) calling, not an interactive owner/browser
+ * session. Used to exempt scheduled deliveries from interactive-only budgets (e.g. the
+ * manual directive call limit, see isOverManualCallLimit) without touching session-backed
+ * auth at all. Returns false (never throws) when CRON_SECRET is unconfigured.
+ */
+export function isCronAuthenticated(request: Request): boolean {
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  return Boolean(cronSecret && hasValidCronSecret(request, cronSecret));
+}
+
+/**
  * Resolves the authenticated userId for non-cron routes.
  * Session-backed APIs must use session.user.id exclusively.
  *

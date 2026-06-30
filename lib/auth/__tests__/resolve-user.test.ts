@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resolveCronUser, validateCronAuth, resolveAnyUser } from '@/lib/auth/resolve-user';
+import { isCronAuthenticated, resolveCronUser, validateCronAuth, resolveAnyUser } from '@/lib/auth/resolve-user';
 
 const ORIGINAL_CRON_SECRET = process.env.CRON_SECRET;
 const ORIGINAL_INGEST_USER_ID = process.env.INGEST_USER_ID;
@@ -137,5 +137,48 @@ describe('resolveAnyUser', () => {
     const result = await resolveAnyUser(request);
 
     expect(result).toEqual({ userId: impersonatedUserId });
+  });
+});
+
+describe('isCronAuthenticated', () => {
+  // #567 follow-on: a live incident showed the scheduled cron's seed calls compete with
+  // the owner's interactive manual-call budget (lib/utils/api-tracker.ts) because nothing
+  // distinguished "the scheduled system called this" from "a human clicked something" at
+  // the point seedFromScorerForUser runs. isCronAuthenticated is that signal.
+  it('is true for a valid Authorization Bearer CRON_SECRET', () => {
+    process.env.CRON_SECRET = TEST_CRON_SECRET;
+    const request = cronRequest({ authorization: `Bearer ${TEST_CRON_SECRET}` });
+
+    expect(isCronAuthenticated(request)).toBe(true);
+  });
+
+  it('is true for a valid x-cron-secret header', () => {
+    process.env.CRON_SECRET = TEST_CRON_SECRET;
+    const request = cronRequest({ 'x-cron-secret': TEST_CRON_SECRET });
+
+    expect(isCronAuthenticated(request)).toBe(true);
+  });
+
+  it('is false for a missing or wrong secret (never exempts an unauthenticated/interactive call)', () => {
+    process.env.CRON_SECRET = TEST_CRON_SECRET;
+    expect(isCronAuthenticated(cronRequest())).toBe(false);
+    expect(isCronAuthenticated(cronRequest({ authorization: 'Bearer wrong-secret' }))).toBe(false);
+  });
+
+  it('is false (fails closed, never throws) when CRON_SECRET is unconfigured', () => {
+    delete process.env.CRON_SECRET;
+    const request = cronRequest({ authorization: 'Bearer anything' });
+
+    expect(() => isCronAuthenticated(request)).not.toThrow();
+    expect(isCronAuthenticated(request)).toBe(false);
+  });
+
+  it('is false for a session-style request carrying no cron credentials at all', () => {
+    process.env.CRON_SECRET = TEST_CRON_SECRET;
+    const request = new Request('https://foldera.ai/api/workday-presence/seed-from-scorer', {
+      headers: { cookie: 'next-auth.session-token=whatever' },
+    });
+
+    expect(isCronAuthenticated(request)).toBe(false);
   });
 });

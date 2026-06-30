@@ -32,6 +32,13 @@ export interface DeliverOptions {
   trigger?: 'heartbeat' | 'push';
   /** Freshly-synced delta counts, required for the 'push' materiality gate. */
   syncDelta?: SyncDelta;
+  /**
+   * True iff this call was authorized by CRON_SECRET (the scheduled system), not an
+   * interactive owner/browser session — e.g. ingest-and-deliver, never sync-now. Exempts
+   * the seed call from the interactive-only manual directive call limit; see
+   * seedFromScorerForUser's isCronTriggered jsdoc for why and how.
+   */
+  isCronTriggered?: boolean;
 }
 
 export interface DeliverNowResult {
@@ -75,7 +82,9 @@ export async function deliverWorkdayPresence(
 
   let seed: SeedOutcome | { error: string };
   try {
-    seed = await seedFromScorerForUser(userId);
+    seed = await seedFromScorerForUser(userId, 'seed_from_scorer', {
+      isCronTriggered: options.isCronTriggered,
+    });
   } catch (err: unknown) {
     // Seed failures are already self-traced (suppression_trace). Don't block the
     // trigger-runner — it has time-based triggers (commitment lapsing) that can fire
