@@ -13,7 +13,7 @@
 // resolveAnyUser: CRON_SECRET callers resolve to FOLDERA_SELF_USER_ID (owner self-loop);
 // browser-session callers resolve to their own userId (non-owner paid loop — issue #259).
 import { NextResponse } from 'next/server';
-import { resolveAnyUser } from '@/lib/auth/resolve-user';
+import { isCronAuthenticated, resolveAnyUser } from '@/lib/auth/resolve-user';
 import { createServerClient } from '@/lib/db/client';
 import { seedFromScorerForUser } from '@/lib/workday-presence/seed-from-scorer-core';
 import { apiErrorForRoute } from '@/lib/utils/api-error';
@@ -45,7 +45,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const outcome = await seedFromScorerForUser(auth.userId);
+    // The scheduled system (morning-pipeline's forwarded stage call, or any future direct
+    // CRON_SECRET caller) never competes with the owner's interactive manual-call budget —
+    // see seedFromScorerForUser's isCronTriggered jsdoc.
+    const outcome = await seedFromScorerForUser(auth.userId, 'seed_from_scorer', {
+      isCronTriggered: isCronAuthenticated(request),
+    });
     return NextResponse.json(outcome.payload);
   } catch (error: unknown) {
     try {

@@ -25,6 +25,7 @@ import {
   finalizeUserPipelineRun,
   buildGateFunnelFromScorerDiagnostics,
 } from '@/lib/observability/pipeline-run';
+import { runWithPipelineRunContext } from '@/lib/observability/pipeline-run-context';
 
 export interface SeedOutcome {
   seeded: boolean;
@@ -149,10 +150,19 @@ async function persistSuppressionTrace(input: {
  *
  * @param invocationSource  Label for pipeline_runs.invocation_source (e.g. 'ingest_and_deliver',
  *   'sync_now', 'graph_webhook'). Defaults to 'seed_from_scorer'.
+ * @param options.isCronTriggered  True iff this call was authorized by CRON_SECRET (the
+ *   scheduled system), never an interactive owner/browser session. Routes the
+ *   generateDirective call through runWithPipelineRunContext so its api_usage rows carry
+ *   pipeline_run_id and are excluded from isOverManualCallLimit's interactive-only count
+ *   (lib/utils/api-tracker.ts) — that budget exists to stop smoke-tests/repeated manual
+ *   clicks from burning spend, not to cap the two scheduled heartbeat ticks. Caller-set
+ *   only; never infer this from userId, since the owner's interactive session uses the
+ *   same userId as cron-triggered runs for that owner.
  */
 export async function seedFromScorerForUser(
   userId: string,
   invocationSource: string = 'seed_from_scorer',
+  options: { isCronTriggered?: boolean } = {},
 ): Promise<SeedOutcome> {
   // Each call is its own pipeline run — no external cronInvocationId in the live path,
   // so we generate a UUID pair. This restores the pipeline_runs funnel trace that was
@@ -176,8 +186,14 @@ export async function seedFromScorerForUser(
 
   try {
   // The real brain: score → decide the move → draft it. skipSpendCap so triggered seeds
-  // run; the per-day manual call limit still bounds cost.
-  const directive = await generateDirective(userId, { skipSpendCap: true });
+  // run; the per-day manual call limit still bounds cost for interactive callers — a
+  // cron-triggered call runs inside the pipeline-run context instead, so it is segmented
+  // out of that interactive-only budget rather than competing with it (see jsdoc above).
+  const directive = options.isCronTriggered
+    ? await runWithPipelineRunContext({ pipelineRunId, userId }, () =>
+        generateDirective(userId, { skipSpendCap: true }),
+      )
+    : await generateDirective(userId, { skipSpendCap: true });
   const diagnostics = getLastScorerDiagnostics();
   runGateFunnel = buildGateFunnelFromScorerDiagnostics(diagnostics);
   const pool = diagnostics?.candidatePool;

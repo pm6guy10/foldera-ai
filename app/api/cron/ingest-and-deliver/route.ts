@@ -92,8 +92,11 @@ async function handler(request: NextRequest) {
     const totalNewSignals = microsoftNewSignals + googleNewSignals;
 
     // Stage 3: deliver — seed-from-scorer (always) → trigger-runner. Same pipeline
-    // the on-demand sync-now routes call.
-    const delivery = await deliverWorkdayPresence(userId);
+    // the on-demand sync-now routes call. isCronTriggered: true because this whole
+    // handler is already gated by validateCronAuth above — exempts this scheduled
+    // heartbeat from the interactive-only manual directive call limit (the budget meant
+    // to stop smoke-tests/repeated manual clicks, not the two scheduled daily ticks).
+    const delivery = await deliverWorkdayPresence(userId, { isCronTriggered: true });
 
     return NextResponse.json({
       ok: true,
