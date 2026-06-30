@@ -28,6 +28,14 @@ const winnerOnlyNoDraftState = normalizeWorkdayPresenceState({
   updated_at: NOW,
 });
 
+const staleDraftBackedWinnerState = normalizeWorkdayPresenceState({
+  ...draftBackedWinnerState,
+  // 3.5h before NOW — older than a single heartbeat tick, the way a seed call that gets
+  // blocked (manual call-limit / safe_silence / generation_failed) leaves
+  // workday_presence_state untouched from whenever it last successfully wrote.
+  updated_at: '2026-06-30T14:30:00.000Z',
+});
+
 describe('evaluateProactiveDelivery (#567 Phase B)', () => {
   it('delivers a draft-backed scored_winner with no prior cursor', async () => {
     const postMessage = vi.fn().mockResolvedValue({
@@ -90,6 +98,74 @@ describe('evaluateProactiveDelivery (#567 Phase B)', () => {
 
     expect(result.delivered).toBe(false);
     expect(result.reason).toBe('already_delivered_this_winner');
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it('REGRESSION (2026-06-30 live incident): never delivers stale leftover state this tick did not seed, even with no dedup history', async () => {
+    // A seed call blocked by the daily manual-call-limit (or safe_silence / generation_failed
+    // / bottom_gate) leaves workday_presence_state untouched -- still whatever a PRIOR,
+    // possibly hours-old seed wrote. The first time this module ran in production it had no
+    // cursor history and delivered a 3.5h-old pre-Phase-A homework card as if it were fresh.
+    const postMessage = vi.fn();
+
+    const result = await evaluateProactiveDelivery({
+      rawState: staleDraftBackedWinnerState,
+      cursor: null,
+      nowIso: NOW,
+      channel: 'C123',
+      slack: { postMessage },
+      triggerRunnerLastPingedAt: null,
+    });
+
+    expect(result.delivered).toBe(false);
+    expect(result.reason).toBe('state_not_freshly_seeded');
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it('delivers state seeded just inside the freshness window', async () => {
+    const postMessage = vi.fn().mockResolvedValue({
+      ok: true,
+      mode: 'live',
+      channel: 'C123',
+      message_ts: '1719234567.111111',
+      response: {},
+    });
+    const justFreshState = normalizeWorkdayPresenceState({
+      ...draftBackedWinnerState,
+      updated_at: '2026-06-30T17:51:00.000Z', // 9 minutes before NOW, inside the 10-minute window
+    });
+
+    const result = await evaluateProactiveDelivery({
+      rawState: justFreshState,
+      cursor: null,
+      nowIso: NOW,
+      channel: 'C123',
+      slack: { postMessage },
+      triggerRunnerLastPingedAt: null,
+    });
+
+    expect(result.delivered).toBe(true);
+    expect(postMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not deliver state seeded just outside the freshness window', async () => {
+    const postMessage = vi.fn();
+    const justStaleState = normalizeWorkdayPresenceState({
+      ...draftBackedWinnerState,
+      updated_at: '2026-06-30T17:49:00.000Z', // 11 minutes before NOW, outside the 10-minute window
+    });
+
+    const result = await evaluateProactiveDelivery({
+      rawState: justStaleState,
+      cursor: null,
+      nowIso: NOW,
+      channel: 'C123',
+      slack: { postMessage },
+      triggerRunnerLastPingedAt: null,
+    });
+
+    expect(result.delivered).toBe(false);
+    expect(result.reason).toBe('state_not_freshly_seeded');
     expect(postMessage).not.toHaveBeenCalled();
   });
 

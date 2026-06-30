@@ -82,6 +82,20 @@ export function proactiveWinnerKey(state: WorkdayPresenceState): string {
 // it can never wrongly straddle two different ticks and suppress a legitimately new ping.
 const RECENT_REACTIVE_PING_WINDOW_MS = 5 * 60 * 1000;
 
+// A proactive winner must come from THIS tick's seed call, never stale leftover state.
+// seedFromScorerForUser only overwrites workday_presence_state on a SUCCESSFUL seed — it
+// is skipped entirely on safe_silence, generation_failed, the daily manual-call-limit, an
+// ungrounded send, or the bottom gate. So whenever a seed call is blocked for any of those
+// reasons, workday_presence_state silently keeps whatever was last written, possibly hours
+// or days old — and, the first time this module ran in production, possibly written
+// BEFORE the #567 Phase A goal-primacy fix even existed. Without this check,
+// proactive-delivery treats that stale leftover as "the heartbeat's fresh winner" and
+// delivers it: exactly what happened on 2026-06-30 (a 3.5h-old pre-fix homework card got
+// posted live because this was the module's first run and had no dedup history yet).
+// state.updated_at is stamped to nowIso by seedFromScorerForUser on every successful seed
+// — it is the authoritative freshness signal already on hand; no new plumbing needed.
+const STATE_FRESHNESS_WINDOW_MS = 10 * 60 * 1000;
+
 /**
  * Pure decision core (#567 Phase B). Given the current state, the proactive-delivery
  * cursor, and the trigger-runner's last reactive ping time, decide whether to proactively
@@ -89,6 +103,10 @@ const RECENT_REACTIVE_PING_WINDOW_MS = 5 * 60 * 1000;
  *
  * The reactive trigger-runner always wins: if it just posted a card in this same tick,
  * this proactive fallback stays quiet rather than double-posting two cards for one tick.
+ *
+ * The state must also be FRESH — written by THIS tick's seed call (state.updated_at
+ * within STATE_FRESHNESS_WINDOW_MS of nowIso) — never stale leftover state from a seed
+ * call hours/days ago that this tick's own seed attempt failed to refresh.
  */
 export async function evaluateProactiveDelivery(input: {
   rawState: unknown;
@@ -113,6 +131,13 @@ export async function evaluateProactiveDelivery(input: {
 
   const state = normalizeWorkdayPresenceState(input.rawState);
   if (!state) return { delivered: false, reason: 'no_state', cursor };
+
+  const stateAgeMs = Date.parse(input.nowIso) - Date.parse(state.updated_at);
+  if (!Number.isFinite(stateAgeMs) || stateAgeMs < 0 || stateAgeMs >= STATE_FRESHNESS_WINDOW_MS) {
+    // Stale leftover state — not produced by this tick's seed call. Never treat old state
+    // as a fresh proactive winner, no matter how "active" its payload looks.
+    return { delivered: false, reason: 'state_not_freshly_seeded', cursor };
+  }
 
   const payload = buildRightNowMessagePayload(state, input.nowIso);
   if (payload.mode !== 'active') {
