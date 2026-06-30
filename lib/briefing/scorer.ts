@@ -79,7 +79,7 @@ import {
   getGoalQuarantineReason,
   isUsableGoalRow,
 } from './goal-hygiene';
-import { loadScorerGoals } from './scorer-goal-source';
+import { loadScorerGoals, resolveGoalSourceMode, type GoalSourceMode } from './scorer-goal-source';
 import { assessLowValueEventInvite } from './low-value-event-invite';
 import { isConcreteIncomingWorkCandidate } from './decision-enforcement';
 
@@ -2097,6 +2097,42 @@ function isLowValueCalendarAdminDiscrepancy(candidate: ScoredLoop): boolean {
     && CALENDAR_ADMIN_DISCREPANCY_CLASSES.has(candidate.discrepancyClass ?? '')
     && candidate.matchedGoal == null
   );
+}
+
+// #567 follow-on — close the discrepancy bypass of goal-primacy.
+//
+// The goal-primacy gate exempts ALL discrepancies wholesale, on the theory that a
+// detected structural gap IS goal diagnosis. But the detector emits `exposure` and
+// `behavioral_pattern` discrepancies straight off any open personal commitment ("make a
+// payment to bring account under credit limit", "submit a sample video of household
+// tasks"). With the stale tkg_goals anchor that was invisible; with the STATED objective
+// anchor it is the whole leak — homework rides the discrepancy exemption clean past the
+// objective and wins. A relationship/thread-backed outcome (decay, relationship_dropout,
+// engagement_collapse, convergence, risk) is a genuine board-level move and KEEPS its
+// bypass; the personal/admin classes must match the objective or drop to honest silence.
+//
+// Scoped to 'stated' mode so default (stored-goal) behavior is byte-for-byte unchanged and
+// the change is reversible by the same FOLDERA_GOAL_SOURCE switch that shipped the swap.
+const DISCREPANCY_CLASSES_REQUIRING_GOAL_ANCHOR = new Set<string>([
+  'exposure',
+  'behavioral_pattern',
+]);
+
+export function discrepancyBypassesGoalPrimacy(
+  candidate: ScoredLoop,
+  goalSourceMode: GoalSourceMode,
+): boolean {
+  // Default stored-goal mode: every discrepancy bypasses, exactly as before.
+  if (goalSourceMode !== 'stated') return true;
+  // A discrepancy anchored to the objective always survives.
+  if (candidate.matchedGoal != null) return true;
+  // Personal/admin classes with no objective anchor lose the bypass.
+  if (DISCREPANCY_CLASSES_REQUIRING_GOAL_ANCHOR.has(candidate.discrepancyClass ?? '')) {
+    return false;
+  }
+  if (isLowValueCalendarAdminDiscrepancy(candidate)) return false;
+  // Relationship/thread-backed outcome classes keep their bypass.
+  return true;
 }
 
 export function isThreadBackedSendableLoop(c: ScoredLoop): boolean {
@@ -7300,20 +7336,25 @@ export async function scoreOpenLoops(
   // Emergent patterns (anti-patterns, divergences) are exempt — they ARE goal diagnosis.
   // Everything else must connect to a stated goal before competing.
   const beforeGoalGate = scored.length;
+  const goalSourceMode = resolveGoalSourceMode();
   const goalGateDrops: ScorerDropEntry[] = [];
   const goalGateKept: typeof scored = [];
   for (const s of scored) {
     if (
       s.matchedGoal !== null
       || s.type === 'emergent'
-      || s.type === 'discrepancy'
+      || (s.type === 'discrepancy' && discrepancyBypassesGoalPrimacy(s, goalSourceMode))
       || s.type === 'hunt'
       || isGoalPrimacyExemptCareerCommitment(s)
       || isGoalPrimacyExemptInterviewWriteDocument(s)
     ) {
       goalGateKept.push(s);
     } else {
-      goalGateDrops.push({ candidateId: s.id, type: s.type, title: s.title.slice(0, 100), stage: 'goal_primacy_gate', reason: 'no_goal_match', score: s.score });
+      const reason =
+        s.type === 'discrepancy'
+          ? 'discrepancy_no_objective_anchor'
+          : 'no_goal_match';
+      goalGateDrops.push({ candidateId: s.id, type: s.type, title: s.title.slice(0, 100), stage: 'goal_primacy_gate', reason, score: s.score });
     }
   }
   scored = goalGateKept;
