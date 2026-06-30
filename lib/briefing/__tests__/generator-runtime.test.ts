@@ -1742,9 +1742,8 @@ describe('generateDirective runtime failures', () => {
     const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
     expectDocumentArtifactShape(embeddedArtifact, {
       minTitleLength: 12,
-      minLength: 120,
-      minParagraphs: 3,
-      requiredRegexes: [/decision required/i, /\bask:/i, /\bconsequence:/i, /\bowner\b/i],
+      minLength: 80,
+      requiredRegexes: [/^Source: /m, /\bowner\b/i],
     });
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_repaired',
@@ -1802,9 +1801,8 @@ describe('generateDirective runtime failures', () => {
     const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
     expectDocumentArtifactShape(embeddedArtifact, {
       minTitleLength: 12,
-      minLength: 120,
-      minParagraphs: 3,
-      requiredRegexes: [/decision required/i, /\bask:/i, /\bconsequence:/i],
+      minLength: 80,
+      requiredRegexes: [/^Source: /m, /\bowner\b/i],
     });
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_repaired',

@@ -78,7 +78,7 @@ describe('buildDecisionEnforcedFallbackPayload', () => {
     expectDocumentArtifactShape(payload!.artifact, {
       minTitleLength: 12,
       minLength: 60,
-      requiredRegexes: [/decision required/i],
+      requiredRegexes: [/^Source: /, /confirm the decision and name one accountable owner/i],
     });
   });
 

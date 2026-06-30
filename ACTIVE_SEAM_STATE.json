@@ -1,10 +1,10 @@
 {
-  "active_issue": 567,
-  "active_branch": "claude/agent-override-gate-m3rrqn",
+  "active_issue": 589,
+  "active_branch": "claude/build-589-dk0aze",
   "active_pr": null,
   "deployed_commit_sha": "e17a47b",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-30T20:10:00.024Z",
-  "notes": "All four #567 follow-on fixes (Phase A+B #585, freshness #586, cron-budget #587, push-budget #588) MERGED+LIVE on main. Next named work: issue #589 (Decision lock Slack cards too long -- owner: brevity is king, fit one screen no scroll). Fix drafted in full in the issue (collapse 9-section body to one Source line + one paragraph) but deliberately not committed this session per owner instruction."
+  "last_verified_at": "2026-06-30T20:22:17.000Z",
+  "notes": "#589 implemented: buildDecisionEnforcedFallbackPayload's write_document 'Decision lock' branch (lib/briefing/generator.ts) collapsed from 9 labeled sections to one Source line + one paragraph per the issue's drafted diff. Also fixed two production validation gaps the collapse exposed: write_document forcing-function regex required 'by <date>' adjacency (widened to match any embedded ISO date), and two buildCausalFallbackCopy consequence templates (relationship_cooling, timing_asymmetry) relied on the literal 'Consequence:' label word for the missing_pressure_or_consequence gate -- reworded to carry a real risk/blocked signal word now that the label is stripped. decision-enforced-fallback.test.ts + generator-runtime.test.ts updated for the new one-paragraph shape. lib/briefing + lib/workday-presence + lib/cron suites green (1245 tests)."
 }
