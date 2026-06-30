@@ -6,7 +6,7 @@ export async function insertSlackSendReceipt(input: {
   supabase: SupabaseClient;
   userId: string;
   slackResult: SlackSendResult;
-  triggerType: WorkdayPresenceTriggerType | 'hidden_op' | null;
+  triggerType: WorkdayPresenceTriggerType | 'hidden_op' | 'proactive_winner' | null;
   label: string;
 }): Promise<void> {
   const { error } = await input.supabase.from('tkg_actions').insert({

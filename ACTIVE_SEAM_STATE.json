@@ -1,10 +1,10 @@
 {
   "active_issue": 567,
   "active_branch": "claude/agent-override-gate-m3rrqn",
-  "active_pr": null,
-  "deployed_commit_sha": "3c7efe6",
+  "active_pr": 585,
+  "deployed_commit_sha": "d0326c0",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-29T18:30:00.000Z",
-  "notes": "#567 PARADIGM TESTED (do not blindly rebuild goal inference). Ran a falsifiable head-to-head on live data 2026-06-29: Arm A 'no-goals' (stable objective + live evidence -> one move, lib/experimental/state-move.ts) vs Arm B goal-engine (stored tkg_goals -> scorer). RESULT: no-goals wins. Arm B = last 5 pipeline_runs all safe_silence (145 candidates, zero winner); its tkg_goals model is 82d-frozen job-hunting goals + 50d n-gram garbage ('recurring theme has in'); its #1 risk-ranked candidate is personal homework ($346.61 Fred Meyer, risk 88) while the one objective-relevant item (Foldera/Supabase infra) sits buried at risk 52. Arm A re-ranks the SAME pool against the stated objective and surfaces the truth. CEILING (proven on live rows): 14d of inbound signal = 100% newsletters/gig-spam/bills, ZERO professional/sales/human mail -> even the winning arm can only play defense; the objective is advanced by offline/repo work the system can't see. IMPLICATION: stored goal-inference (the #567 keystone) is the wrong primitive; deprecating it is a separate later seam (tkg_goals is load-bearing across the scorer, NOT yanked from a chat); boot-hook PRODUCT TRUTH rewrite deferred until the refactor lands as its receipt. Reproduce: npx tsx scripts/experiment-state-move.ts (needs prod Supabase + ANTHROPIC_API_KEY + ALLOW_PAID_LLM). Prior session shipped #577-#581. Live: Outlook + 201 Drive signals flowing; paid LLM proven working."
+  "last_verified_at": "2026-06-30T18:39:57.033Z",
+  "notes": "Phase A+B (#567 follow-on) both shipped on PR #585 (draft, CI pending). A: closed discrepancy bypass of goal-primacy in stated mode. B: proactive-delivery.ts posts a draft-backed heartbeat winner to Slack via the existing payload pipeline (#394-gated, content-deduped); morning-pipeline reordered so nightly_ops runs last instead of starving the scorer. Next: owner reviews diff + one live heartbeat run to confirm a real card lands in #foldera-self-loop."
 }
