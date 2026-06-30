@@ -2,9 +2,9 @@
   "active_issue": 567,
   "active_branch": "claude/agent-override-gate-m3rrqn",
   "active_pr": 585,
-  "deployed_commit_sha": "5eee9ed",
+  "deployed_commit_sha": "d0326c0",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-30T18:03:50.690Z",
-  "notes": "Phase A (#567 follow-on): closed discrepancy bypass of goal-primacy in stated mode — exposure/behavioral_pattern personal homework now drops at goal_primacy_gate unless objective-matched. Phase B (proactive Slack delivery + de-hinge cron) named next."
+  "last_verified_at": "2026-06-30T18:39:57.033Z",
+  "notes": "Phase A+B (#567 follow-on) both shipped on PR #585 (draft, CI pending). A: closed discrepancy bypass of goal-primacy in stated mode. B: proactive-delivery.ts posts a draft-backed heartbeat winner to Slack via the existing payload pipeline (#394-gated, content-deduped); morning-pipeline reordered so nightly_ops runs last instead of starving the scorer. Next: owner reviews diff + one live heartbeat run to confirm a real card lands in #foldera-self-loop."
 }
