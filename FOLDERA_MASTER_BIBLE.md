@@ -114,6 +114,51 @@ what matters to you, why it matters, and when it matters again.** That is enough
 because it remembers everything, but **because it almost never surfaces the wrong thing** — and the right insight
 finds you at exactly the moment you need it.
 
+### From vision to mechanism (implementation boundary — added 2026-07-01)
+
+**Read this before treating the section above as a spec.** Everything above is *directional truth* — the end
+state the system must gradually approximate — **not** a description of what exists today. The narrative fuses the
+vision layer ("continuity engine," "judgment preservation," "living model") with a system layer that is still
+early: weak-signal capture, objective-anchored ranking, dismissal holds, and resurfacing rules. This boundary
+exists so no engineer or agent reads the vision and assumes high-confidence behavioral modeling, stable identity
+inference, or robust cross-source synthesis already ship. They do not. The vision is the gradient; the mechanism
+below is where bits actually move today. When the two disagree, the mechanism is the truth and the vision is the
+target.
+
+- **What a "continuity event" is (today):** a materially-changed signal on a connected source — primarily a
+  Microsoft Graph push notification (`/api/webhooks/graph`; Gmail `watch` is phase 2), with the heartbeat cron as
+  a fallback tick. The change event is the clock (see the push thesis below). A free materiality gate
+  (`isMaterialChange`, `lib/workday-presence/materiality-gate.ts`) runs *before* the expensive brain so an event
+  that changes nothing is discarded without LLM spend.
+
+- **What gets persisted vs discarded:** the scorer reconstructs open loops from the user's own connected sources
+  and ranks them against a **stated stable objective + live evidence** (`FOLDERA_GOAL_SOURCE=stated`,
+  `lib/briefing/scorer-goal-source.ts`, `lib/briefing/stable-objective.ts`). Transient, immaterial, or
+  objective-irrelevant signals drop out at the materiality gate or the goal-primacy gate. Durable workday state
+  (current focus / blocker / waiting-on / next move) persists in `workday_presence_state`; raw signal exhaust is
+  not retained as a life-archive.
+
+- **What "dismissal" modifies (be precise — this is where the vision runs ahead):** *today* a dismiss is a
+  **4-hour quiet hold**, not a durable weight change and never a deletion — `applyDismiss`
+  (`lib/workday-presence/actions.ts`) sets `snoozed_until = now + 4h` and the card returns once the hold passes if
+  the loop still matters. The "dismissal *ratchet*" in the vision — dismissals teaching the model which judgments
+  are enduring vs one-off — is a **directional target**, not shipped behavior. Do not cite the vision as evidence
+  that durable dismissal-weighting exists.
+
+- **What triggers "Right Now":** the single delivery pipeline every caller shares —
+  `deliverWorkdayPresence` (`lib/workday-presence/deliver-now.ts`) → scorer → `buildRightNowMessagePayload`. A card
+  fires only when a scored winner clears the bar *and* has a prepared, reviewable object behind it; otherwise the
+  system stays `SAFE_SILENCE`. Precision over recall is load-bearing: silence is a valid success, and one wrong or
+  creepy interruption is worse than a missed one.
+
+- **What is explicitly NOT modeled (and must not be claimed):** no psychological profile, no personality/identity
+  inference, no "the AI became you" claim, no surveillance of anyone but the user's own connected sources. In
+  particular, **a stored/inferred goal-or-identity model is a settled dead end, not a roadmap item** — the
+  `tkg_goals` inference approach rotted and *lost* a live head-to-head to objective-anchored ranking (SETTLED #9;
+  PR #584). The "living model" of the vision is approximated today by *stated objective + live evidence*, not by a
+  learned identity graph. When the vision says "across 2,000 moments these patterns have become stable," read it
+  as the destination, not a capability to build toward by reviving goal inference.
+
 ## The Learning Agentic Life-System (owner thesis — 2026-06-24, locked)
 
 This is the durable owner vision the engine is being aimed at. It evolves (does not replace) the Workday
