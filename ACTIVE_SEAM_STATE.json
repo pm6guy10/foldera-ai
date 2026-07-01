@@ -1,7 +1,7 @@
 {
   "active_issue": 589,
   "active_branch": "claude/build-589-dk0aze",
-  "active_pr": null,
+  "active_pr": 591,
   "deployed_commit_sha": "e17a47b",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
