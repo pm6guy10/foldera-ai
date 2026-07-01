@@ -1,10 +1,10 @@
 {
-  "active_issue": 606,
+  "active_issue": 567,
   "active_branch": "claude/product-differentiation-strategy-1mzd00",
-  "active_pr": 607,
+  "active_pr": null,
   "deployed_commit_sha": "e17a47b",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-07-01T19:52:00.000Z",
-  "notes": "#589 MERGED+LIVE (PR #591, main c873c88). Live diagnostic this session found #589's fix hasn't been proven live yet: pipeline_runs has recorded safe_silence for ~30h despite gate_funnel showing winner_selected -- traced via auth.users.raw_user_meta_data.workday_presence_suppression_trace (owner 2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f) to evaluateCommandCenterCandidateGate's INTERNAL_DEBUG_PATTERN (artifact-quality-gate.ts) bare-UUID clause false-positiving on raw commitment/signal ids that lib/briefing/hunt-anomalies.ts was embedding directly into evidenceLines (lines 453, 567). Filed + fixing as #606: dropped the raw ids from evidenceLines (regex itself untouched, still catches real request_id/provider_error/stack-trace leaks); also threading the already-computed suppressionTrace into pipeline_runs.raw_extras (currently discarded) so future suppressed runs are diagnosable from history, not just the single-slot overwritten user_metadata field. This is plausibly the actual reason #567's first indispensable card hasn't fired."
+  "last_verified_at": "2026-07-01T20:15:00.000Z",
+  "notes": "#589 MERGED+LIVE (PR #591, c873c88) and #606 MERGED+LIVE (PR #607, fe3bd70) on main. #606 was a live-diagnosed bug found this session: evaluateCommandCenterCandidateGate's INTERNAL_DEBUG_PATTERN bare-UUID clause was false-positiving on raw commitment/signal ids that hunt-anomalies.ts embedded into evidenceLines, silently killing real R1-shaped candidates pre-LLM for ~30h despite the scorer selecting real winners -- plausibly THE reason #567's first indispensable card hadn't fired. Fixed (ids dropped from evidenceLines; INTERNAL_DEBUG_PATTERN itself untouched) and merged, but NOT YET live-verified: still owner-gated -- trigger the next real pipeline run and re-query pipeline_runs.raw_extras + workday_presence_suppression_trace for 2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f to confirm the two previously-stuck commitment candidates (due 2026-07-05, 2026-07-07) now produce a real card. #567 resumes as the standing foundation seam pending that verification; its own remaining scope (tkg_goals re-ground, Gmail connector 1->967) is untouched by #606."
 }

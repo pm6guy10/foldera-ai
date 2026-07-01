@@ -7,7 +7,7 @@
 - **INCIDENT #1 (2026-06-30, fixed + MERGED, PR #586) — proactive-delivery's first live run posted a STALE pre-fix homework card.** `seedFromScorerForUser` only overwrites `workday_presence_state` on a SUCCESSFUL seed; a blocked seed left `workday_presence_state` stuck at a 3.5h-old pre-Phase-A winner, and proactive-delivery (first run, no dedup history) posted it to the real `#foldera-self-loop` channel as fresh. **Fix (MERGED):** `evaluateProactiveDelivery` requires `state.updated_at` within `STATE_FRESHNESS_WINDOW_MS` (10 min) of `nowIso`. See LESSONS_LEARNED #34.
 - **STRUCTURAL FIX #1 MERGED (PR #587) — the daily manual-call-limit (3/day) was capping the SCHEDULED cron, not just interactive testing.** `isOverManualCallLimit` (`lib/utils/api-tracker.ts`) was designed to exclude cron-context calls via `pipeline_run_id IS NOT NULL`, but that segmentation (`runWithPipelineRunContext`) was only ever wired into the retired `daily-brief-generate.ts` path — `seed-from-scorer-core.ts`, which now IS the delivery path, never got it. Today's testing burst (3 concurrent triggers + retries = 6 calls in 20s) blew through the 3-call/day budget and silently blocked every subsequent cron tick for the rest of the day (`blocker_reason: "Manual directive call limit reached for today."`, `scorer_diagnostics: null` — scorer never even ran). **Fix (MERGED):** new `isCronAuthenticated(request)` (`lib/auth/resolve-user.ts`) exempts CRON_SECRET-authenticated seed calls from the interactive budget.
 - **STRUCTURAL FIX #2 MERGED (PR #588) — the SAME budget was ALSO silently capping push, the actually-primary delivery path.** Owner caught this: "why are we still at cron's mercy" when SETTLED #1 says push is the real product. Verified: `graph-webhook.ts` → `deliverWorkdayPresence(userId, {trigger:'push',...})` never set the cron-exemption flag either — 3 real inbound emails/calendar events in one day would have silently killed event-driven delivery for the rest of the day with zero visible error. **Fix (MERGED):** renamed `isCronTriggered`→`isAutomatedTrigger` and `deliverWorkdayPresence` now auto-infers `isAutomatedTrigger: true` whenever `trigger:'push'` — push callers can never forget to set it, since only the authenticated graph-webhook handler ever sets that context. All four #567 follow-on fixes (Phase A, Phase B, freshness, budget-segmentation×2) are now MERGED + LIVE on `main`. NEXT = trigger the cron/push once to get the first genuine live proof of Phase A+B end to end (owner separately confirmed canvas is the accepted doc-attachment shape via a manual Slack test).
-- **#589 MERGED+LIVE (PR #591, main `c873c88`).** Decision lock card collapsed to one `Source:` line + one paragraph; live owner review also caught + killed a mechanism-classifier-label leak (raw internal taxonomy strings like "Avoidance pattern: ..." appearing verbatim). **#606 (in progress this session) — live diagnostic found the real blocker behind #567's silence.** `pipeline_runs` has recorded `safe_silence` for ~30h despite the scorer's `gate_funnel` showing `winner_selected` — traced via the owner's `workday_presence_suppression_trace` to `evaluateCommandCenterCandidateGate`'s `INTERNAL_DEBUG_PATTERN` bare-UUID clause false-positiving on raw commitment/signal ids that `hunt-anomalies.ts` embedded directly into `evidenceLines` — plausibly the actual reason #567's first indispensable card hasn't fired. Fix: dropped the raw ids from `evidenceLines` (two finding kinds); the regex itself is untouched, still catches real `request_id`/`provider_error`/stack-trace leaks. Also threading the already-computed `suppressionTrace` into `pipeline_runs.raw_extras` (currently discarded) for future diagnosability. NEXT = open PR, then live-verify via a Supabase re-query.
+- **#589 MERGED+LIVE (PR #591, `c873c88`) and #606 MERGED+LIVE (PR #607, `fe3bd70`).** #589: Decision lock card collapsed to one `Source:` line + one paragraph; live owner review also caught + killed a mechanism-classifier-label leak. **#606 — live diagnostic found the plausible real blocker behind #567's silence:** `pipeline_runs` had recorded `safe_silence` for ~30h despite the scorer's `gate_funnel` showing `winner_selected` — traced via `workday_presence_suppression_trace` to `evaluateCommandCenterCandidateGate`'s `INTERNAL_DEBUG_PATTERN` bare-UUID clause false-positiving on raw commitment/signal ids that `hunt-anomalies.ts` embedded directly into `evidenceLines`. Fixed: dropped the raw ids from `evidenceLines` (two finding kinds); the regex itself is untouched, still catches real `request_id`/`provider_error`/stack-trace leaks; also threaded `suppressionTrace` into `pipeline_runs.raw_extras` for future diagnosability. **NOT YET live-verified** — next real pipeline run needs to confirm the two previously-stuck commitment candidates now clear.
 - **Deprecation recorded, not executed:** `tkg_goals` still load-bearing (scorer + generator); goal-refresh cron (`lib/cron/goal-refresh.ts`) still writes it. Pool hygiene (commitments overdue 30d+) is a smaller parallel seam.
 
 ## DON'T FORGET — read first, every boot
@@ -39,28 +39,28 @@ These are decided. Do not re-derive, re-probe, or re-propose the dead alternativ
 
 ## Boot
 
-1. Read this file. 2. Read the active issue (#606). 3. Check issue #136 for recent INTERRUPT receipts.
+1. Read this file. 2. Read the active issue (#567). 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #606 is the active foundation seam.
+Issue #567 is the active foundation seam.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
 ## Current slice:
 
-**#606 — the pre-LLM candidate gate was killing real winners, not just noise.** Live diagnostic (2026-07-01) traced ~30h of `safe_silence` pipeline runs (despite `gate_funnel.final_outcome: 'winner_selected'`) to `evaluateCommandCenterCandidateGate`'s `INTERNAL_DEBUG_PATTERN` bare-UUID clause false-positiving on raw commitment/signal ids embedded in `hunt-anomalies.ts`'s `evidenceLines`.
+**#567 — paradigm corrected; #606 plausibly cleared the real blocker.** Do NOT rebuild stored goal inference. #606 (MERGED, PR #607) fixed a live-diagnosed bug — a bare-UUID false positive in the pre-LLM candidate gate — that was silently killing real R1-shaped commitment candidates for ~30h despite the scorer finding real winners. Not yet live-verified.
 
-- What shipped: dropped the raw ids from `evidenceLines` in two finding kinds (`unreplied_inbound`, `commitment_calendar_gap`) — `INTERNAL_DEBUG_PATTERN` itself untouched, still catches real `request_id`/`provider_error`/stack-trace leaks. Threading the already-computed `suppressionTrace` into `pipeline_runs.raw_extras` (Part B) so future suppressed runs are diagnosable from history instead of a second live query.
-- Proof: new regression tests in `hunt-anomalies.test.ts` (both finding kinds no longer emit a raw UUID) + `artifact-quality-gate.test.ts` (gate stays strict; genuine leaks still caught).
+- What shipped (#606): dropped raw commitment/signal ids from `hunt-anomalies.ts`'s `evidenceLines` (two finding kinds) so they stop false-positiving `evaluateCommandCenterCandidateGate`'s `INTERNAL_DEBUG_PATTERN`; the regex itself is untouched. Threaded `suppressionTrace` into `pipeline_runs.raw_extras` for future diagnosability.
+- Proof: 4 new regression tests; `lib/briefing` + `lib/workday-presence` (1097 tests) green; `npm run gate:continuity` green.
 
 ## Next exact move
 
-1. **Open the PR for #606**, then live-verify: trigger the next real pipeline run (or wait for one) and re-query `pipeline_runs.raw_extras` + `workday_presence_suppression_trace` for `2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f` — confirm the two stuck commitment candidates (due 2026-07-05, 2026-07-07) now produce a real card, or a genuinely different reason.
-2. **Then #567:** owner sign-offs (tkg_goals re-ground + Gmail connector 1→967) — #606 may have been the actual blocker all along; re-check before assuming more work is needed there.
-3. **Then #597:** live dismissal-tap verification, once a real card exists to dismiss.
+1. **Live-verify #606 first:** trigger the next real pipeline run (or wait for one) and re-query `pipeline_runs.raw_extras` + `workday_presence_suppression_trace` for `2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f` — confirm the two previously-stuck commitment candidates (due 2026-07-05, 2026-07-07) now produce a real card.
+2. **Then #567 owner sign-offs** (tkg_goals re-ground + Gmail connector 1→967) — #606 may have been the actual blocker all along; re-check what's really left before assuming more work is needed.
+3. **Then #597:** live dismissal-tap verification, once a real card exists to dismiss. PR #593 (CSS cleanup) still open, low priority, mergeable anytime.
 4. **Pool-hygiene (parallel, unchanged):** auto-expire/suppress 88 active commitments overdue 30d+ (generalize #562 past-due expiry) so dead ghosts stop ranking.
 
 ## Product doctrine
