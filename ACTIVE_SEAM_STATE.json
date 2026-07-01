@@ -1,7 +1,7 @@
 {
   "active_issue": 567,
   "active_branch": "claude/closing-the-gap-95r3z9",
-  "active_pr": null,
+  "active_pr": 610,
   "deployed_commit_sha": "e17a47b",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
