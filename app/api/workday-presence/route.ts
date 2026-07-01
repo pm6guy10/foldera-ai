@@ -14,6 +14,7 @@ import {
   checkFreshSignalTriggerOverride,
   normalizeWorkdayPresenceTriggerRunnerCursor,
 } from '@/lib/workday-presence/trigger-runner';
+import { loadAllClearEvidence } from '@/lib/workday-presence/all-clear';
 import { apiErrorForRoute, badRequest } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -92,12 +93,17 @@ export async function GET(request: Request) {
           : suppressionTrace
             ? 'suppressed_winner'
             : 'setup_needed';
+    // Quiet-day closure: back the "clear" surface with real run evidence (checked N
+    // at <time>) so silence reads as a finished survey, not absence. Null keeps the
+    // surface exactly as quiet as before — additive key, never fabricated.
+    const allClear = surfaceState === 'clear' ? await loadAllClearEvidence(supabase, auth.userId) : null;
     return NextResponse.json({
       surface_state: surfaceState,
       state,
       suppression_trace: suppressionTrace,
       resolution,
       card: buildRightNowCardForLiveLoop(state, resolution),
+      all_clear: allClear,
     });
   } catch (error: unknown) {
     return apiErrorForRoute(error, 'workday-presence GET');

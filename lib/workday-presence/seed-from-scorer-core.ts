@@ -19,7 +19,12 @@ import {
   isRealMove,
   sendDraftIsGrounded,
 } from '@/lib/workday-presence/seed-from-directive';
-import { buildCoverageLine, buildContinuityLine } from '@/lib/workday-presence/decision-closure';
+import {
+  buildContinuityLine,
+  buildConvictionLine,
+  buildCoverageLine,
+  shortenObjectiveLabel,
+} from '@/lib/workday-presence/decision-closure';
 import {
   insertUserPipelineRunStart,
   finalizeUserPipelineRun,
@@ -368,6 +373,14 @@ export async function seedFromScorerForUser(
     { key: state.current_focus, label: state.current_focus },
   );
   if (continuityLine) state.continuity_line = continuityLine;
+  // Conviction: name what this beat and the anchor it was ranked against. Falls back
+  // to the plain coverage count when the scorer couldn't prove a comparison.
+  const convictionLine = buildConvictionLine({
+    objectiveLabel: shortenObjectiveLabel(diagnostics?.finalWinner?.matchedGoal ?? null),
+    runnerUps: (diagnostics?.deprioritized ?? []).slice(0, 2),
+    candidateCount: directive.generationLog?.candidateDiscovery?.candidateCount ?? null,
+  });
+  if (convictionLine) state.conviction_line = convictionLine;
 
   const updateResult = await supabase.auth.admin.updateUserById(userId, {
     user_metadata: {

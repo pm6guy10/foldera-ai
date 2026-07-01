@@ -16,6 +16,7 @@ import {
   applyWorkdayPresenceAction,
 } from '@/lib/workday-presence/actions';
 import { insertPresenceReceipt } from '@/lib/workday-presence/presence-action-receipt';
+import { recordDismissJudgment } from '@/lib/workday-presence/judgment-feedback';
 import { apiErrorForRoute, badRequest } from '@/lib/utils/api-error';
 
 export const dynamic = 'force-dynamic';
@@ -80,9 +81,17 @@ export async function POST(request: Request) {
 
     const persistedState = await persistStateAndReceipt(supabase, auth.userId, metadata, nextState, actionId);
 
+    // Judgment ratchet: a Dismiss also skips the winner's real backing row so the
+    // scorer's behavioral rate learns from it (best-effort, never blocks the ack).
+    const judgment =
+      actionId === 'dismiss'
+        ? await recordDismissJudgment(auth.userId, currentState, 'dashboard_dismiss')
+        : null;
+
     return NextResponse.json({
       state: persistedState,
       payload: buildRightNowMessagePayload(persistedState),
+      ...(judgment ? { judgment } : {}),
     });
   } catch (error: unknown) {
     return apiErrorForRoute(error, 'workday-presence message-action POST');

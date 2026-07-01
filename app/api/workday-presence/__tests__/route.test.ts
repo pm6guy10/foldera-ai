@@ -148,6 +148,66 @@ describe('GET /api/workday-presence', () => {
     expect(body.surface_state).toBe('clear');
     expect(body.suppression_trace.trace_type).toBe('safe_silence');
     expect(body.suppression_trace.candidate_count).toBe(4);
+    // No pipeline_runs evidence reachable through this mock → the surface stays
+    // exactly as quiet as before; the all-clear key is additive and null.
+    expect(body.all_clear).toBeNull();
+  });
+
+  it('backs the clear surface with run evidence when the latest pipeline run proves safe silence', async () => {
+    mockSupabase.auth.admin.getUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            workday_presence_suppression_trace: {
+              trace_type: 'safe_silence',
+              gate: 'safe_silence',
+              blocker_reason: 'No candidate cleared the bar.',
+              scorer_outcome: 'no_valid_action',
+              action_type: 'do_nothing',
+              selected_candidate: null,
+              candidate_count: 14,
+              evidence_empty: true,
+              artifact_exists: false,
+              draft_exists: false,
+              no_send: true,
+              generation_failed: false,
+              ungrounded_send_draft: false,
+              bottom_gate: false,
+            },
+          },
+        },
+      },
+      error: null,
+    });
+    const pipelineRunsChain = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      not: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({
+        data: {
+          outcome: 'safe_silence',
+          completed_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+          candidates_evaluated: 14,
+        },
+        error: null,
+      }),
+    };
+    mockSupabase.from.mockImplementation((table: string) =>
+      table === 'pipeline_runs' ? pipelineRunsChain : mockSignalsChain,
+    );
+
+    const { GET } = await import('../route');
+    const response = await GET(new Request('http://localhost/api/workday-presence'));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.surface_state).toBe('clear');
+    expect(body.all_clear).toEqual({
+      checked_count: 14,
+      completed_at: expect.any(String),
+    });
   });
 
   it('emits exactly one active card when state exists', async () => {

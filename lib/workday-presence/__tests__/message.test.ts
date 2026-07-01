@@ -91,6 +91,40 @@ describe('workday presence message payload', () => {
     expect(cont).toBeLessThan(cov);
   });
 
+  it('conviction line replaces the bare coverage count in the closing footer slot (never both)', () => {
+    const state = normalizeWorkdayPresenceState({
+      current_focus: 'Homeschool meeting with Deanne Varnum',
+      next_move: 'Reply to Deanne confirming the 2 PM slot.',
+      why_it_matters: 'The meeting is today; a one-line confirm closes the loop.',
+      state_source: 'scored_winner',
+      continuity_line: 'Still the top priority since last time.',
+      coverage_line: 'Checked 11 other open loops — none outranks this right now.',
+      conviction_line:
+        'Ranked against "Ship Foldera and onboard the first paying customer" · beat "Renew domain autopay" (important, not today) and 9 others.',
+      draft: {
+        action_type: 'send_message',
+        title: 'Confirming 2 PM today',
+        preview: 'Hi Deanne — confirming 2 PM works.',
+        to: 'deanne@example.com',
+        body: 'Hi Deanne — confirming 2 PM works.',
+        action_id: 'act-123',
+      },
+    });
+    const payload = buildRightNowMessagePayload(state);
+    expect(payload.text).toContain(
+      '_Ranked against "Ship Foldera and onboard the first paying customer" · beat "Renew domain autopay" (important, not today) and 9 others._',
+    );
+    // Same closing slot: the bare count does not stack under the conviction line.
+    expect(payload.text).not.toContain('_Checked 11 other open loops');
+    // Footer order holds: why → continuity → conviction.
+    const why = payload.text.indexOf('_Why now:');
+    const cont = payload.text.indexOf('_Still the top priority');
+    const conviction = payload.text.indexOf('_Ranked against');
+    expect(why).toBeGreaterThan(-1);
+    expect(why).toBeLessThan(cont);
+    expect(cont).toBeLessThan(conviction);
+  });
+
   it('omits the closure footer entirely when no coverage/continuity was computed (back-compat)', () => {
     const state = normalizeWorkdayPresenceState({
       current_focus: 'Owed reply to Sarah',

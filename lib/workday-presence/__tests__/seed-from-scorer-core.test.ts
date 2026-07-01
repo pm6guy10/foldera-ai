@@ -19,6 +19,7 @@ vi.mock('@/lib/db/client', () => ({
 const mockGenerateDirective = vi.fn();
 vi.mock('@/lib/briefing/generator', () => ({
   generateDirective: (...args: unknown[]) => mockGenerateDirective(...args),
+  BUDGET_CAP_DIRECTIVE_SENTINEL: '__BUDGET_CAP__',
 }));
 
 vi.mock('@/lib/conviction/artifact-generator', () => ({
@@ -27,6 +28,13 @@ vi.mock('@/lib/conviction/artifact-generator', () => ({
 
 vi.mock('@/lib/cron/daily-brief-generate', () => ({
   evaluateBottomGate: vi.fn(),
+}));
+
+// seed-from-scorer-core's only value import from the scorer module. Default null
+// (matches a run where the scorer produced no diagnostics); seeded-path tests set it.
+const mockGetLastScorerDiagnostics = vi.fn().mockReturnValue(null);
+vi.mock('@/lib/briefing/scorer', () => ({
+  getLastScorerDiagnostics: () => mockGetLastScorerDiagnostics(),
 }));
 
 const mockInsertUserPipelineRunStart = vi.fn().mockResolvedValue(undefined);
@@ -81,5 +89,53 @@ describe('seedFromScorerForUser — pipeline_runs.raw_extras diagnosability (#60
       trace_type: 'safe_silence',
       blocker_reason: expect.stringContaining('internal_debug_token'),
     });
+  });
+});
+
+describe('seedFromScorerForUser — conviction line on the seeded state', () => {
+  it('stores "ranked against + beat" built from the scorer diagnostics', async () => {
+    mockGetLastScorerDiagnostics.mockReturnValueOnce({
+      finalOutcome: 'winner_selected',
+      finalWinner: {
+        title: 'Send the pilot pricing note',
+        matchedGoal:
+          'Ship Foldera and onboard the first paying customer — launch, demo, signup, onboard',
+      },
+      deprioritized: [{ title: 'Renew domain autopay', killReason: 'not_now' }],
+      candidatePool: { commitment: 5, signal: 4, relationship: 2 },
+    });
+    mockGenerateDirective.mockResolvedValueOnce({
+      directive: 'Write the pilot pricing one-pager and hand it back finished.',
+      action_type: 'write_document',
+      confidence: 82,
+      reason: 'The pilot decision is blocked on pricing.',
+      evidence: [],
+      generationLog: { candidateDiscovery: { candidateCount: 11 } },
+    } as unknown as ConvictionDirective);
+
+    const { seedFromScorerForUser } = await import('../seed-from-scorer-core');
+    const result = await seedFromScorerForUser(USER_ID, 'seed_from_scorer');
+
+    expect(result.seeded).toBe(true);
+    expect(result.state?.conviction_line).toBe(
+      'Ranked against "Ship Foldera and onboard the first paying customer" · beat "Renew domain autopay" (important, not today) and 9 others.',
+    );
+  });
+
+  it('seeds without a conviction line when diagnostics cannot prove the comparison', async () => {
+    // Diagnostics stay null (default) — no objective anchor, no runner-ups.
+    mockGenerateDirective.mockResolvedValueOnce({
+      directive: 'Write the pilot pricing one-pager and hand it back finished.',
+      action_type: 'write_document',
+      confidence: 82,
+      reason: 'The pilot decision is blocked on pricing.',
+      evidence: [],
+    } as unknown as ConvictionDirective);
+
+    const { seedFromScorerForUser } = await import('../seed-from-scorer-core');
+    const result = await seedFromScorerForUser(USER_ID, 'seed_from_scorer');
+
+    expect(result.seeded).toBe(true);
+    expect(result.state?.conviction_line).toBeUndefined();
   });
 });

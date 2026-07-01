@@ -26,6 +26,7 @@ import {
 import { normalizeWorkdayPresenceTriggerRunnerCursor } from '@/lib/workday-presence/trigger-runner';
 import { insertPresenceReceipt } from '@/lib/workday-presence/presence-action-receipt';
 import { buildPresenceLoopReceipt } from '@/lib/workday-presence/presence-loop-receipt';
+import { recordDismissJudgment } from '@/lib/workday-presence/judgment-feedback';
 import { executeAction } from '@/lib/conviction/execute-action';
 import { apiErrorForRoute, badRequest } from '@/lib/utils/api-error';
 
@@ -304,6 +305,14 @@ export async function POST(request: Request) {
       nowIso,
     });
     const persistedState = await persistStateAndReceipt(supabase, userId, metadata, receipt.after_state, interaction.actionId, interaction.messageTs);
+
+    // Judgment ratchet: a Dismiss also skips the winner's real backing row so the
+    // scorer's behavioral rate learns from it (best-effort, never blocks the ack).
+    const judgment =
+      interaction.actionId === 'dismiss'
+        ? await recordDismissJudgment(userId, currentState, 'slack_dismiss')
+        : null;
+
     const nextPayload = buildRightNowMessagePayload(persistedState);
 
     let updateResult = null;
@@ -320,6 +329,7 @@ export async function POST(request: Request) {
         action_id: interaction.actionId,
         state: persistedState,
         payload: nextPayload,
+        ...(judgment ? { judgment } : {}),
         slack_update: updateResult,
         receipt: {
           ...receipt,

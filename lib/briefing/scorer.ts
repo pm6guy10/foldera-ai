@@ -804,6 +804,8 @@ export interface ScorerDiagnostics {
   }>;
   survivors: ScorerSurvivorEntry[];
   finalWinner: ScorerSurvivorEntry | null;
+  /** Top runner-ups with kill classification, populated on winner_selected (conviction footer). */
+  deprioritized?: Array<{ title: string; killReason: KillReason }>;
   finalOutcome: 'winner_selected' | 'no_valid_action' | 'zero_candidates_early';
   earlyExitStage?: string;
   /** Pool size immediately before computeCandidateScore loop (after all pre-scoring filters). */
@@ -7641,6 +7643,7 @@ export async function scoreOpenLoops(
   // Build deprioritized loops: top 3 runner-ups with kill reasons
   const runnerUps = validScoredCandidates.slice(1, 4);
   const deprioritized = runnerUps.map(loop => classifyKillReason(loop, winner.score));
+  diag.deprioritized = deprioritized.map(d => ({ title: d.title.slice(0, 80), killReason: d.killReason }));
 
   logStructuredEvent({
     event: 'scorer_selected',

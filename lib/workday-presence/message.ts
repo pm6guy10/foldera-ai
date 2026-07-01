@@ -97,8 +97,10 @@ function formatDraftLedText(state: WorkdayPresenceState): string {
   if (why) footers.push(`_Why now: ${why}_`);
   const continuity = state.continuity_line?.trim();
   if (continuity) footers.push(`_${continuity}_`);
-  const coverage = state.coverage_line?.trim();
-  if (coverage) footers.push(`_${coverage}_`);
+  // Conviction ("ranked against X · beat Y") REPLACES the bare coverage count when the
+  // scorer proved the comparison — same closing slot, one line, never both.
+  const closing = state.conviction_line?.trim() || state.coverage_line?.trim();
+  if (closing) footers.push(`_${closing}_`);
   if (footers.length) lines.push('', ...footers);
   return lines.join('\n');
 }

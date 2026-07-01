@@ -4,6 +4,16 @@ import { useState } from 'react';
 import type { RightNowCard } from '@/lib/workday-presence/model';
 import { buildStateFromPrompt } from '@/lib/workday-presence/model';
 import type { RightNowMessageActionId } from '@/lib/workday-presence/message';
+import type { AllClearEvidence } from '@/lib/workday-presence/all-clear';
+
+function formatAllClearLine(evidence: AllClearEvidence): string | null {
+  const completedAt = new Date(evidence.completed_at);
+  if (Number.isNaN(completedAt.getTime())) return null;
+  const time = completedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const loops =
+    evidence.checked_count === 1 ? '1 open loop' : `${evidence.checked_count} open loops`;
+  return `Checked ${loops} at ${time} — nothing needs you.`;
+}
 
 type SaveInput = {
   current_focus: string;
@@ -23,12 +33,15 @@ export type RightNowCardActionId = Extract<
 
 export function MorningAnchorCard({
   card,
+  allClear = null,
   onSave,
   onAction,
   onAutoDetect,
   actionPending = false,
 }: {
   card: RightNowCard;
+  /** Evidence-backed quiet-day closure (safe_silence + fresh run proof). Pull-side only. */
+  allClear?: AllClearEvidence | null;
   onSave: (input: SaveInput) => Promise<void>;
   onAction?: (actionId: RightNowCardActionId) => Promise<void>;
   onAutoDetect?: () => Promise<void>;
@@ -46,12 +59,18 @@ export function MorningAnchorCard({
   const [saving, setSaving] = useState(false);
 
   if (card.mode === 'setup') {
+    const allClearLine = allClear ? formatAllClearLine(allClear) : null;
     return (
       <div className="foldera-dashboard-brief-card flex h-full w-full items-start justify-center overflow-y-auto px-5 py-5 sm:px-7 sm:py-6">
         <section className="mx-auto w-full max-w-[760px] rounded-[24px] border border-accent/20 bg-accent-dim/20 backdrop-blur-md p-6 sm:p-8 shadow-[0_0_30px_rgba(245,166,35,0.05)]">
           <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-white">
-            {card.prompt}
+            {allClearLine ? 'All clear.' : card.prompt}
           </h2>
+          {allClearLine ? (
+            <p className="mt-3 text-sm text-text-secondary" data-testid="right-now-all-clear">
+              {allClearLine}
+            </p>
+          ) : null}
           {card.verdict_line ? (
             <p className="mt-3 text-sm text-accent-hover/80">{card.verdict_line}</p>
           ) : null}
@@ -131,6 +150,11 @@ export function MorningAnchorCard({
         <p className="mt-3 text-sm text-text-secondary">{card.return_here}</p>
         <p className="mt-3 text-base text-text-primary">{card.next_move}</p>
         <p className="mt-3 text-sm text-text-secondary">{card.why_this_matters}</p>
+        {card.conviction_line ? (
+          <p className="mt-3 text-sm italic text-text-secondary" data-testid="right-now-conviction">
+            {card.conviction_line}
+          </p>
+        ) : null}
         {card.verdict_line ? (
           <p className="mt-3 text-sm font-semibold text-accent-hover/90">{card.verdict_line}</p>
         ) : null}

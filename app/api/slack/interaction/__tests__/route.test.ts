@@ -147,6 +147,94 @@ describe('POST /api/slack/interaction', () => {
     expect(body.acknowledged).toBe(true);
   });
 
+  it('dismiss skips the winner\'s real backing row so the scorer learns from it', async () => {
+    mockGetUserById.mockResolvedValue({
+      data: { user: { user_metadata: { workday_presence_state: sendState } } },
+      error: null,
+    });
+    mockParseSlackInteractionAction.mockReturnValue({
+      actionId: 'dismiss',
+      channel: 'C123',
+      messageTs: '12345.678',
+    });
+    mockUpdateMessage.mockResolvedValue({ ok: true, message_ts: '12345.678' });
+    mockExecuteAction.mockResolvedValue({ status: 'skipped', action_id: 'action-q2-budget' });
+
+    const { POST } = await import('../route');
+    const response = await POST(postBody());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockExecuteAction).toHaveBeenCalledWith({
+      userId: ownerUserId,
+      actionId: 'action-q2-budget',
+      decision: 'skip',
+      skipReason: 'slack_dismiss',
+    });
+    expect(body.judgment).toEqual({ recorded: true, reason: 'skipped' });
+  });
+
+  it('dismiss without a backing action row teaches nothing and does not call executeAction', async () => {
+    // Default activeState: manual anchor, no draft — nothing to ratchet.
+    mockParseSlackInteractionAction.mockReturnValue({
+      actionId: 'dismiss',
+      channel: 'C123',
+      messageTs: '12345.678',
+    });
+    mockUpdateMessage.mockResolvedValue({ ok: true, message_ts: '12345.678' });
+
+    const { POST } = await import('../route');
+    const response = await POST(postBody());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockExecuteAction).not.toHaveBeenCalled();
+    expect(body.judgment).toEqual({ recorded: false, reason: 'no_backing_action' });
+  });
+
+  it('a failing judgment write never blocks the dismiss ack (best-effort)', async () => {
+    mockGetUserById.mockResolvedValue({
+      data: { user: { user_metadata: { workday_presence_state: sendState } } },
+      error: null,
+    });
+    mockParseSlackInteractionAction.mockReturnValue({
+      actionId: 'dismiss',
+      channel: 'C123',
+      messageTs: '12345.678',
+    });
+    mockUpdateMessage.mockResolvedValue({ ok: true, message_ts: '12345.678' });
+    mockExecuteAction.mockRejectedValue(new Error('db down'));
+
+    const { POST } = await import('../route');
+    const response = await POST(postBody());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.acknowledged).toBe(true);
+    expect(body.judgment).toEqual({ recorded: false, reason: 'db down' });
+  });
+
+  it('non-dismiss interactions never touch the judgment rail', async () => {
+    mockGetUserById.mockResolvedValue({
+      data: { user: { user_metadata: { workday_presence_state: sendState } } },
+      error: null,
+    });
+    mockParseSlackInteractionAction.mockReturnValue({
+      actionId: 'done',
+      channel: 'C123',
+      messageTs: '12345.678',
+    });
+    mockUpdateMessage.mockResolvedValue({ ok: true, message_ts: '12345.678' });
+
+    const { POST } = await import('../route');
+    const response = await POST(postBody());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockExecuteAction).not.toHaveBeenCalled();
+    expect(body.judgment).toBeUndefined();
+  });
+
   it('aborts state update and returns 500 when presence receipt write fails', async () => {
     mockParseSlackInteractionAction.mockReturnValue({
       actionId: 'dismiss',

@@ -65,3 +65,67 @@ export function buildContinuityLine(
     ? `New top priority — "${priorLabel}" is no longer the most urgent.`
     : 'New top priority since last time.';
 }
+
+/** A named runner-up the winner beat, with the scorer's kill classification. */
+export type ConvictionRunnerUp = {
+  title: string;
+  killReason: 'noise' | 'not_now' | 'trap';
+};
+
+/**
+ * The stated-objective goal rows carry a keyword tail ("Ship Foldera and onboard the
+ * first paying customer — launch, demo, signup, …") that exists for matching, not
+ * reading. Cut at the first em-dash or paren so the card shows the objective, not
+ * the search terms.
+ */
+export function shortenObjectiveLabel(goalText: string | null | undefined): string | null {
+  if (!goalText) return null;
+  const cut = goalText.split(/[—(]/, 1)[0]?.trim() ?? '';
+  if (!cut) return null;
+  return cut.length > 60 ? `${cut.slice(0, 57).trimEnd()}…` : cut;
+}
+
+/** Bare internal ids must never render on a card (the #606 lesson). */
+const UUID_LIKE_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-/i;
+
+const KILL_REASON_LABELS: Record<ConvictionRunnerUp['killReason'], string> = {
+  noise: 'urgent but off-goal',
+  not_now: 'important, not today',
+  trap: 'low follow-through',
+};
+
+/**
+ * Conviction: "why this one beat the rest" — the anchor the winner was ranked
+ * against plus the strongest displaced alternative, named. One line, one named
+ * runner-up; the trailing count carries the rest of the field (still assurance,
+ * not display — a full list would re-trigger the comparison behavior).
+ *
+ * Returns null when the objective anchor or a clean runner-up is missing — the
+ * renderer falls back to the plain coverage line rather than fabricating a
+ * comparison that did not happen.
+ */
+export function buildConvictionLine(input: {
+  objectiveLabel: string | null;
+  runnerUps: ConvictionRunnerUp[];
+  candidateCount: number | null;
+}): string | null {
+  const objective = input.objectiveLabel?.trim();
+  if (!objective) return null;
+
+  const runnerUp = input.runnerUps
+    .map((r) => ({ ...r, title: r.title.trim() }))
+    .find((r) => r.title && !UUID_LIKE_PATTERN.test(r.title));
+  if (!runnerUp) return null;
+
+  const title =
+    runnerUp.title.length > 60 ? `${runnerUp.title.slice(0, 57).trimEnd()}…` : runnerUp.title;
+  const beat = `beat "${title}" (${KILL_REASON_LABELS[runnerUp.killReason]})`;
+
+  const others =
+    typeof input.candidateCount === 'number' && Number.isFinite(input.candidateCount)
+      ? input.candidateCount - 2 // minus the winner and the named runner-up
+      : 0;
+  const tail = others === 1 ? ' and 1 other' : others > 1 ? ` and ${others} others` : '';
+
+  return `Ranked against "${objective}" · ${beat}${tail}.`;
+}

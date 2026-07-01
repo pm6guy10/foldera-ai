@@ -230,6 +230,27 @@ describeAuthMocked('Dashboard Right Now loop', () => {
     );
   });
 
+  test('quiet day with fresh run evidence renders the all-clear closure, not the setup prompt', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await setupRightNowMocks(page, {
+      initialCardPayload: {
+        ...SETUP_CARD_PAYLOAD,
+        surface_state: 'clear',
+        all_clear: {
+          checked_count: 14,
+          completed_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+        },
+      },
+    });
+    await page.goto('/dashboard');
+
+    await expect(page.getByRole('heading', { name: 'All clear.' })).toBeVisible({ timeout: 15000 });
+    const evidence = page.getByTestId('right-now-all-clear');
+    await expect(evidence).toBeVisible();
+    await expect(evidence).toContainText(/Checked 14 open loops at .+ — nothing needs you\./);
+    await expect(page.getByRole('heading', { name: SETUP_PROMPT })).toHaveCount(0);
+  });
+
   test('missing source shows the connect strip; connected source stays quiet', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await setupRightNowMocks(page, { integrationStatusResponse: NO_INTEGRATIONS });
