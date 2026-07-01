@@ -131,6 +131,11 @@ export function MorningAnchorCard({
         <p className="mt-3 text-sm text-text-secondary">{card.return_here}</p>
         <p className="mt-3 text-base text-text-primary">{card.next_move}</p>
         <p className="mt-3 text-sm text-text-secondary">{card.why_this_matters}</p>
+        {card.conviction_line ? (
+          <p className="mt-3 text-sm italic text-text-secondary" data-testid="right-now-conviction">
+            {card.conviction_line}
+          </p>
+        ) : null}
         {card.verdict_line ? (
           <p className="mt-3 text-sm font-semibold text-accent-hover/90">{card.verdict_line}</p>
         ) : null}

@@ -69,6 +69,47 @@ describe('workday presence model', () => {
     }
   });
 
+  it('conviction_line survives the normalize round-trip and reaches the card', () => {
+    const conviction =
+      'Ranked against "Ship Foldera and onboard the first paying customer" · beat "Renew domain autopay" (important, not today) and 9 others.';
+    const state = normalizeWorkdayPresenceState({
+      current_focus: 'Close ACME renewal decision',
+      next_move: 'Send owner confirmation note',
+      why_it_matters: 'The renewal window closes at 4 PM PT.',
+      state_source: 'scored_winner',
+      conviction_line: conviction,
+      draft: {
+        action_type: 'send_message',
+        title: 'Owner confirmation note',
+        preview: 'Confirming the renewal decision.',
+        to: 'owner@example.com',
+        body: 'Confirming the renewal decision.',
+        action_id: 'act-1',
+      },
+    });
+    // Normalize must preserve the field — every interaction re-normalizes state, so a
+    // dropped field would silently vanish on the first dismiss.
+    expect(state?.conviction_line).toBe(conviction);
+    const card = buildRightNowCard(state);
+    expect(card.mode).toBe('active');
+    if (card.mode === 'active') {
+      expect(card.conviction_line).toBe(conviction);
+    }
+  });
+
+  it('conviction_line is null on the card when never computed', () => {
+    const state = normalizeWorkdayPresenceState({
+      current_focus: 'Close ACME renewal decision',
+      next_move: 'Send owner confirmation note',
+      why_it_matters: 'The renewal window closes at 4 PM PT.',
+      state_source: 'manual_anchor',
+    });
+    const card = buildRightNowCard(state);
+    if (card.mode === 'active') {
+      expect(card.conviction_line).toBeNull();
+    }
+  });
+
   it('supports one-prompt setup by deriving next_move and the manual-anchor re-entry reason', () => {
     const state = buildStateFromPrompt({
       prompt: 'Ship the renewal decision packet',
