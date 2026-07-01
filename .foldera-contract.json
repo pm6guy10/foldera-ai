@@ -1,9 +1,9 @@
 {
-  "backlog_id": "indispensable-card-567",
-  "active_issue": 567,
-  "base_commit": "1ff63a8",
+  "backlog_id": "decision-lock-card-brevity-589",
+  "active_issue": 589,
+  "base_commit": "6c42c59",
   "money_loop_rung": "m2",
-  "user_system_path": "Foundation so the first indispensable R1 card fires (#567). Three code moves: observability (pipeline_runs into seed-from-scorer-core), ghost-goal gate (extractDrift vocabulary check), doctrine (FOLDERA_MASTER_BIBLE Part VI). Owner sign-off needed for tkg_goals DB edit + Gmail connector fix (1→967).",
+  "user_system_path": "Owner read the first real proactive card: 'brevity is king' — must fit one screen, no scroll (#589). Collapse buildDecisionEnforcedFallbackPayload's write_document 'Decision lock' body from 9 labeled sections to one Source line + one paragraph, while keeping the decision-enforcement forcing-function + pressure gates satisfied. Live Slack render is owner-gated proof.",
   "allowed_file_patterns": [
     "*",
     "app/**",
@@ -31,20 +31,20 @@
   "allowed_files_raw": "Allow-by-default-minus-forbidden (friction reduction, owner-directed 2026-06-22). The real guard is forbidden_file_patterns + the proof doctrine, not a whitelist.",
   "forbidden_files_raw": "HARD RAILS: No Stripe, Scout (lib/scout — the outward R6 rung re-enters only behind owner sign-off + new anti-fabrication guardrails), schema/migration, or secrets changes. No auto-send. No BLIND loosening of positive_winner_contract or the discrepancy-card quality gate — every gate change carries a test + before/after read. R1's own-activity carve-out is additive (does not weaken the external-entity requirement for any other class).",
   "required_local_proof": "npm run gate:continuity && npm run typecheck; npx vitest run lib/briefing lib/workday-presence (baseline 1014 green, plus new R1 + Tier-2-gate tests)",
-  "required_browser_proof": "Live (owner): a fresh own-activity thread (email_sent / file_modified) for 2cbc1bab produces a directive (not do_nothing) of next-move/finished shape that lands in Slack with a workday_presence_slack_send receipt in tkg_actions.",
-  "browser_proof_command": "manual: replay a fresh email_sent/file_modified signal for 2cbc1bab through the engine; confirm directive shape + seeded=true + Slack card + receipt.",
-  "acceptance_condition": "gate:continuity green + vitest green (baseline + new tests) + PR merged + live own-activity act delivered with a persisted receipt for 2cbc1bab.",
+  "required_browser_proof": "Live (owner): trigger a heartbeat/push for 2cbc1bab that yields a Decision-lock write_document card, and read the rendered card in #foldera-self-loop — it fits one screen with no scroll (one Source line + one paragraph), still names a decision + deadline + consequence, and did NOT drop to do_nothing.",
+  "browser_proof_command": "manual: trigger delivery for 2cbc1bab; open the rendered Slack card in #foldera-self-loop; confirm one-screen brevity + write_document (not do_nothing).",
+  "acceptance_condition": "gate:continuity green + vitest green (lib/briefing + lib/workday-presence) + PR merged + shortened Decision-lock card verified one-screen in Slack (owner-gated).",
   "is_user_facing": true,
   "anti_regression_checks": [
-    "gate:continuity green with active_issue #567",
-    "active_issue #567 is OPEN on GitHub",
+    "gate:continuity green with active_issue #589",
+    "active_issue #589 is OPEN on GitHub",
     "no edits under app/api/stripe, lib/scout, supabase/migrations",
     "vitest green (lib/briefing + lib/workday-presence)",
     "commitment_lapsing live delivery retired by default (#573); ALLOW_COMMITMENT_LAPSING_SLACK_PING re-enables (reversible)",
     "findLapsingCommitmentSignal bounds the window to [now-30d, now+24h] — year-old items excluded (#573)",
     "no loosening of any existing quality gate; no auto-send"
   ],
-  "stop_condition": "#567 owner sign-offs done (tkg_goals re-ground + Gmail connector 1→967); pipeline_runs has traceable rows after delivery trigger; no ghost-goal drift card.",
+  "stop_condition": "#589 PR merged; Decision-lock card renders one-screen in Slack (owner-gated) with no do_nothing regression; then #567 prod flag flip remains the next prod/owner-gated move.",
   "next_command": "#567 owner sign-offs (tkg_goals re-ground + Gmail connector 1→967). Follow-up: pool-hygiene seam (88 active commitments overdue 30d+); reconnect inactive Google/Microsoft OAuth tokens.",
   "terminal_state_authority": {
     "allowed": [

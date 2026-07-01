@@ -9542,9 +9542,32 @@ export function buildDecisionEnforcedFallbackPayload(input: {
       return null;
     }
 
-    const memoAsk = copy.ask.replace(/^Ask:\s*/i, '').trim();
+    const memoAskRaw = copy.ask.replace(/^Ask:\s*/i, '').trim();
+    const memoAsk = memoAskRaw.charAt(0).toUpperCase() + memoAskRaw.slice(1);
     const safeTarget = target.replace(/[.!?]+$/g, '').trim().slice(0, 72) || target.slice(0, 72);
-    const writeDirective = `Write a decision memo on "${safeTarget}" — ${memoAsk}`.slice(0, 340);
+    const writeDirective = `Write a decision memo on "${safeTarget}" — ${memoAskRaw}`.slice(0, 340);
+
+    const consequenceRaw = copy.consequence.replace(/^Consequence:\s*/i, '').trim();
+    const consequenceSentence = consequenceRaw.charAt(0).toUpperCase() + consequenceRaw.slice(1);
+    const mechanismSentence = input.causalDiagnosis.mechanism.trim();
+
+    // Decision-enforcement gates (validateGeneratedArtifact) require the write_document
+    // body to carry a recognizable forcing function AND a pressure/consequence signal.
+    // The old 9-line template satisfied both via its literal "Deadline:"/"Next action:"
+    // and "Consequence:" labels; collapsing to one paragraph drops those markers, and
+    // some mechanism classes phrase the ask/consequence without a gate-recognized keyword
+    // (e.g. "lock the final decision …", "the execution window closes …"), which would
+    // silently drop the whole card to do_nothing. When the natural prose already carries
+    // both signals (e.g. "confirm …", "… stays blocked"), keep it verbatim; otherwise
+    // prepend one compact forcing-and-stakes frame — not the redundant boilerplate lines
+    // #589 removed.
+    const bodyParagraph = `${memoAsk} ${consequenceSentence} ${mechanismSentence}`;
+    const forcingFunctionPattern = /\b(?:confirm|decide|choose|approve|schedule|commit|deadline|next\s+(?:step|action))\b|by\s+\w+day|by\s+\d{4}-\d{2}-\d{2}/i;
+    const pressurePattern = /\b(?:block(?:s|ed)?|risk|slip(?:s|ped)?|consequence|dependency|otherwise|conflict|without\s+(?:a\s+)?response|no\s+replies?)\b/i;
+    const bodyWithForcingFunction =
+      forcingFunctionPattern.test(bodyParagraph) && pressurePattern.test(bodyParagraph)
+        ? bodyParagraph
+        : `Decide now — waiting is the risk: ${memoAskRaw} ${consequenceSentence} ${mechanismSentence}`;
 
     return {
       insight: copy.insight,
@@ -9559,21 +9582,7 @@ export function buildDecisionEnforcedFallbackPayload(input: {
         content: [
           `Source: ${target}.`,
           '',
-          `Decision required: confirm the path for "${safeTarget}" and close the open loop by ${deadline}.`,
-          '',
-          `Deciding criterion: the path is safe only if one accountable owner is named and the commitment is time-bound.`,
-          '',
-          'Owner: assign one accountable owner before this remains open for another cycle.',
-          '',
-          `Next action: ${memoAsk}`,
-          '',
-          `Deadline: ${deadline}.`,
-          '',
-          copy.ask,
-          '',
-          copy.consequence,
-          '',
-          `Mechanism: ${input.causalDiagnosis.mechanism}`,
+          bodyWithForcingFunction,
         ].join('\n'),
       },
       why_now: copy.whyNow,

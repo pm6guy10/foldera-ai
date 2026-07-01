@@ -75,11 +75,19 @@ describe('buildDecisionEnforcedFallbackPayload', () => {
     expect(directive.toLowerCase()).not.toMatch(
       /^publish a decision memo that locks owner accountability/i,
     );
+    // #589: the "Decision lock" body collapsed from 9 labeled sections to one
+    // Source line + one paragraph (ask + consequence + mechanism). Assert the
+    // brevity shape still carries the decision topic and the deadline once, and
+    // that the dropped static-boilerplate lines are gone.
     expectDocumentArtifactShape(payload!.artifact, {
       minTitleLength: 12,
       minLength: 60,
-      requiredRegexes: [/decision required/i],
+      requiredRegexes: [/legal review|vendor renewal/i, /\d{4}-\d{2}-\d{2}/],
     });
+    const docContent = String((payload!.artifact as { content?: unknown } | null)?.content ?? '');
+    expect(docContent).not.toMatch(/Deciding criterion:|Owner: assign|Next action:/);
+    // Source line + exactly one body paragraph — no scroll.
+    expect(docContent.split(/\n{2,}/).filter(Boolean)).toHaveLength(2);
   });
 
   it('uses hunt grounded recipient allowlist when summaries omit the external email', () => {

@@ -1,10 +1,10 @@
 {
-  "active_issue": 567,
-  "active_branch": "claude/agent-override-gate-m3rrqn",
+  "active_issue": 589,
+  "active_branch": "claude/decision-lock-card-brevity-589",
   "active_pr": null,
-  "deployed_commit_sha": "e17a47b",
+  "deployed_commit_sha": "6c42c59",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-30T20:10:00.024Z",
-  "notes": "All four #567 follow-on fixes (Phase A+B #585, freshness #586, cron-budget #587, push-budget #588) MERGED+LIVE on main. Next named work: issue #589 (Decision lock Slack cards too long -- owner: brevity is king, fit one screen no scroll). Fix drafted in full in the issue (collapse 9-section body to one Source line + one paragraph) but deliberately not committed this session per owner instruction."
+  "last_verified_at": "2026-07-01T01:49:27.200Z",
+  "notes": "#589 Decision-lock card brevity: 9-section write_document body -> one Source line + one paragraph. Forcing-function + pressure gates re-satisfied via a compact frame only when prose lacks the tokens. 921 briefing tests + lint green; live Slack render owner-gated."
 }

@@ -1740,12 +1740,18 @@ describe('generateDirective runtime failures', () => {
     expect(directive.directive).not.toBe('__GENERATION_FAILED__');
     expect(directive.action_type).toBe('write_document');
     const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    // #589: Decision-lock body collapsed to one Source line + one paragraph (no scroll).
+    // Assert the brevity shape still carries an owner assignment and a concrete deadline,
+    // and that the removed static-boilerplate lines are gone.
     expectDocumentArtifactShape(embeddedArtifact, {
       minTitleLength: 12,
       minLength: 120,
-      minParagraphs: 3,
-      requiredRegexes: [/decision required/i, /\bask:/i, /\bconsequence:/i, /\bowner\b/i],
+      minParagraphs: 2,
+      requiredRegexes: [/\bowner\b/i, /\d{4}-\d{2}-\d{2}/],
     });
+    expect(String((embeddedArtifact as { content?: unknown })?.content ?? '')).not.toMatch(
+      /Deciding criterion:|Owner: assign|Next action:/,
+    );
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_repaired',
       generationStatus: 'decision_enforcement_repaired',
@@ -1800,11 +1806,12 @@ describe('generateDirective runtime failures', () => {
     expect(directive.directive).not.toBe('__GENERATION_FAILED__');
     expect(directive.action_type).toBe('write_document');
     const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    // #589: one Source line + one paragraph. Deadline embedded once; no scroll.
     expectDocumentArtifactShape(embeddedArtifact, {
       minTitleLength: 12,
       minLength: 120,
-      minParagraphs: 3,
-      requiredRegexes: [/decision required/i, /\bask:/i, /\bconsequence:/i],
+      minParagraphs: 2,
+      requiredRegexes: [/\d{4}-\d{2}-\d{2}|deadline|transition/i],
     });
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_repaired',

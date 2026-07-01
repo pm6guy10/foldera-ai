@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 567
+active_issue: 589
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Foundation so a real indispensable R1 card fires (#567). Code complete (PR #568); parked on owner sign-offs: tkg_goals re-ground + Gmail connector (1→967). This session's side-quest merged #572 (dedup cooldown, PR #574) + #573 (retire commitment_lapsing homework-nag delivery + 30-day staleness floor, PR #575) + suppressed 3 stale Rule 59(e) rows."
-next_seam: "#567 owner sign-offs (tkg_goals re-ground + Gmail connector 1→967) → trigger /api/cron/ingest-and-deliver, verify R1 card via Probe 1. Follow-up: pool-hygiene seam (88/135 active dated commitments overdue 30d+ — auto-expire non-event commitments, generalize #562); reconnect inactive Google/Microsoft OAuth tokens."
+why_this_first: "Owner read the first real proactive card and called it out — 'brevity is king,' must fit one screen, no scroll (#589). Decision-lock write_document body collapsed from 9 labeled sections to one Source line + one paragraph. #567's four follow-on fixes are MERGED+LIVE; its remaining move (live smoke + FOLDERA_GOAL_SOURCE=stated flag flip) is prod/owner-gated, so #589 is the actionable dev seam."
+next_seam: "After #589: live Slack render of the shortened Decision-lock card in #foldera-self-loop (owner-gated proof). Then #567 prod flag flip. Follow-ups: same brevity review on the behavioral_pattern write_document branch + LLM multi-step 'Preparation Steps' cards; pool-hygiene (commitments overdue 30d+)."
 completed_issue_538:
   issue: 538
   pr: 545
