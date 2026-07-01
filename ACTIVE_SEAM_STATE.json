@@ -1,10 +1,10 @@
 {
-  "active_issue": 589,
-  "active_branch": "claude/build-589-dk0aze",
-  "active_pr": 591,
+  "active_issue": 606,
+  "active_branch": "claude/product-differentiation-strategy-1mzd00",
+  "active_pr": 607,
   "deployed_commit_sha": "e17a47b",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-30T20:22:17.000Z",
-  "notes": "#589 implemented: buildDecisionEnforcedFallbackPayload's write_document 'Decision lock' branch (lib/briefing/generator.ts) collapsed from 9 labeled sections to one Source line + one paragraph per the issue's drafted diff. Also fixed two production validation gaps the collapse exposed: write_document forcing-function regex required 'by <date>' adjacency (widened to match any embedded ISO date), and two buildCausalFallbackCopy consequence templates (relationship_cooling, timing_asymmetry) relied on the literal 'Consequence:' label word for the missing_pressure_or_consequence gate -- reworded to carry a real risk/blocked signal word now that the label is stripped. decision-enforced-fallback.test.ts + generator-runtime.test.ts updated for the new one-paragraph shape. lib/briefing + lib/workday-presence + lib/cron suites green (1245 tests)."
+  "last_verified_at": "2026-07-01T19:52:00.000Z",
+  "notes": "#589 MERGED+LIVE (PR #591, main c873c88). Live diagnostic this session found #589's fix hasn't been proven live yet: pipeline_runs has recorded safe_silence for ~30h despite gate_funnel showing winner_selected -- traced via auth.users.raw_user_meta_data.workday_presence_suppression_trace (owner 2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f) to evaluateCommandCenterCandidateGate's INTERNAL_DEBUG_PATTERN (artifact-quality-gate.ts) bare-UUID clause false-positiving on raw commitment/signal ids that lib/briefing/hunt-anomalies.ts was embedding directly into evidenceLines (lines 453, 567). Filed + fixing as #606: dropped the raw ids from evidenceLines (regex itself untouched, still catches real request_id/provider_error/stack-trace leaks); also threading the already-computed suppressionTrace into pipeline_runs.raw_extras (currently discarded) so future suppressed runs are diagnosable from history, not just the single-slot overwritten user_metadata field. This is plausibly the actual reason #567's first indispensable card hasn't fired."
 }

@@ -184,6 +184,49 @@ describe('safety-only pre-generation candidate gate', () => {
     expect(result.passes).toBe(true);
     expect(result.reasons).toEqual([]);
   });
+
+  it('still blocks a bare record UUID reaching the gate — callers must keep raw ids out, not this gate (live bug, 2026-07-01)', () => {
+    // Live prod anomaly (2026-07-01): a real commitment_calendar_gap hunt finding
+    // was blocked pre-LLM because hunt-anomalies.ts used to embed the raw
+    // commitment id (a Postgres UUID) directly into evidenceLines, which flows
+    // into relatedSignals (scorer.ts) and then candidateText here.
+    // INTERNAL_DEBUG_PATTERN's bare-UUID clause correctly caught it as a leaked
+    // token — the bug was upstream (hunt-anomalies.ts), not this gate, so the
+    // fix there stops raw ids from ever reaching this input rather than
+    // weakening this gate's leak detection. This test documents that this gate
+    // is intentionally still strict: it's the caller's job to keep raw ids out.
+    const result = evaluateCommandCenterCandidateGate({
+      recommendedAction: 'schedule',
+      suggestedActionType: 'schedule',
+      hasRealRecipient: false,
+      candidateText: [
+        'Commitment due 2026-07-05 with no matching calendar block',
+        'Submit a short sample video of hands doing household tasks',
+      ].join('\n'),
+      sourceFacts: [
+        'Commitment id 3f9a2b1c-45de-4f11-8a2b-9d0e1f2a3b4c: Submit a short sample video of hands doing household tasks',
+      ],
+    });
+
+    expect(result.passes).toBe(false);
+    expect(result.reasons).toContain('internal_debug_token');
+  });
+
+  it('still blocks a genuine internal debug/error leak', () => {
+    const result = evaluateCommandCenterCandidateGate({
+      recommendedAction: 'write_document',
+      suggestedActionType: 'write_document',
+      hasRealRecipient: false,
+      candidateText: [
+        'Draft the vendor decision memo',
+        'LLM call failed with provider_error: invalid_request_error, request_id: req_abc123XYZ',
+      ].join('\n'),
+      sourceFacts: ['stack trace attached in generation log'],
+    });
+
+    expect(result.passes).toBe(false);
+    expect(result.reasons).toContain('internal_debug_token');
+  });
 });
 
 describe('safety-only post-generation artifact gate', () => {

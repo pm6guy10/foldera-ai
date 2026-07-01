@@ -186,6 +186,13 @@ export async function seedFromScorerForUser(
   let runWinnerConfidence: number | null = null;
   let runCandidatesEvaluated: number | null = null;
   let runGateFunnel: Record<string, unknown> = {};
+  // Carries the same suppressionTrace already computed at each suppression branch
+  // (previously only persisted to the single-slot, overwritten
+  // workday_presence_suppression_trace user-metadata field) into the historical
+  // pipeline_runs row, so a suppressed run is diagnosable from pipeline_runs
+  // history directly instead of needing a second live query against the latest
+  // snapshot (issue #606).
+  let runSuppressionTrace: WorkdayPresenceSuppressionTrace | null = null;
 
   try {
   // The real brain: score → decide the move → draft it. skipSpendCap so triggered seeds
@@ -222,6 +229,7 @@ export async function seedFromScorerForUser(
       explicitGate: 'safe_silence',
       artifact: null,
     });
+    runSuppressionTrace = suppressionTrace;
     await persistSuppressionTrace({ authUserId: userId, metadata, suppressionTrace });
     return {
       seeded: false,
@@ -262,6 +270,7 @@ export async function seedFromScorerForUser(
       explicitGate: 'ungrounded_send_draft',
       artifact,
     });
+    runSuppressionTrace = suppressionTrace;
     await persistSuppressionTrace({ authUserId: userId, metadata, suppressionTrace });
     return {
       seeded: false,
@@ -292,6 +301,7 @@ export async function seedFromScorerForUser(
         explicitGate: 'bottom_gate',
         artifact,
       });
+      runSuppressionTrace = suppressionTrace;
       await persistSuppressionTrace({ authUserId: userId, metadata, suppressionTrace });
       return {
         seeded: false,
@@ -404,7 +414,10 @@ export async function seedFromScorerForUser(
       winnerConfidence: runWinnerConfidence,
       blockedGate: runBlockedGate,
       candidatesEvaluated: runCandidatesEvaluated,
-      rawExtras: { invocation_source: invocationSource },
+      rawExtras: {
+        invocation_source: invocationSource,
+        ...(runSuppressionTrace ? { suppression_trace: runSuppressionTrace } : {}),
+      },
     });
   }
 }

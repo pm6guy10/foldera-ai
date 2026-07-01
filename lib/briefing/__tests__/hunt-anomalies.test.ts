@@ -234,6 +234,33 @@ describe('runHuntAnomalies', () => {
     expect(findings.filter((f) => f.kind === 'unreplied_inbound')).toHaveLength(0);
   });
 
+  it('does not leak the raw signal id into unreplied_inbound evidenceLines (live bug, 2026-07-01)', () => {
+    // A UUID-shaped signal id used to be embedded verbatim in evidenceLines
+    // ("Signal <id>: ..."), which flows into candidateText downstream and
+    // false-positived the pre-model internal-debug-token gate. See
+    // artifact-quality-gate.test.ts for the gate-level regression.
+    const uuidId = '3f9a2b1c-45de-4f11-8a2b-9d0e1f2a3b4c';
+    const recvIso = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+    const signals = [mailReceived(uuidId, recvIso, 'Alice <alice@ex.com>', 'Hello there')];
+    const { findings } = runHuntAnomalies({ signals, commitments: [] });
+    const finding = findings.find((f) => f.kind === 'unreplied_inbound');
+    expect(finding).toBeDefined();
+    expect(finding!.evidenceLines.join('\n')).not.toContain(uuidId);
+  });
+
+  it('does not leak the raw commitment id into commitment_calendar_gap evidenceLines (live bug, 2026-07-01)', () => {
+    const uuidId = '7c1e9a4d-22b6-4a55-9f3a-1d8c6e0b5f21';
+    const dueAt = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString();
+    const { findings, countsByKind } = runHuntAnomalies({
+      signals: [],
+      commitments: [{ id: uuidId, description: 'Submit renewal paperwork', due_at: dueAt, implied_due_at: null }],
+    });
+    expect(countsByKind.commitment_calendar_gap).toBeGreaterThanOrEqual(1);
+    const finding = findings.find((f) => f.kind === 'commitment_calendar_gap');
+    expect(finding).toBeDefined();
+    expect(finding!.evidenceLines.join('\n')).not.toContain(uuidId);
+  });
+
   it('huntFindingToScoredLoopContent includes kind and title', () => {
     const f = {
       kind: 'repeated_ignored_sender' as const,
