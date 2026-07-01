@@ -261,6 +261,33 @@ describe('generator response parsing', () => {
     });
   });
 
+  it('copies top-level reason down into artifact for discrepancy-engine schedule_block payloads', () => {
+    // Regression: the retry prompt tells the model the discrepancy-engine format
+    // (top-level reason) is preferred, but only send_message/write_document copied
+    // top-level fields into artifact — schedule_block silently lost `reason` and
+    // failed validation every attempt, never recovering via retry.
+    const raw = JSON.stringify({
+      action: 'schedule_block',
+      confidence: 80,
+      reason: 'No calendar block exists for the commitment due 2026-07-05.',
+      artifact: {
+        title: 'Prep block for 2026-07-05 commitment',
+        start: '2026-07-04T15:00:00-07:00',
+        duration_minutes: 30,
+      },
+    });
+
+    expect(parseGeneratedPayload(raw)).toMatchObject({
+      artifact_type: 'schedule_block',
+      artifact: expect.objectContaining({
+        title: 'Prep block for 2026-07-05 commitment',
+        reason: 'No calendar block exists for the commitment due 2026-07-05.',
+        start: '2026-07-04T15:00:00-07:00',
+        duration_minutes: 30,
+      }),
+    });
+  });
+
   it('maps directive_text and action_type in legacy-shaped LLM JSON (interview prep path)', () => {
     const raw = JSON.stringify({
       action_type: 'write_document',
