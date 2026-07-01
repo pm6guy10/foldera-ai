@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-29 UTC (active seam is **#567** — foundation R1 card, parked on owner sign-offs. This session merged #572 dedup cooldown (PR #574) + #573 retire commitment_lapsing homework-nag delivery + 30-day staleness floor (PR #575); suppressed 3 stale Rule 59(e) rows. Follow-up: pool hygiene for 88 overdue-30d+ commitments; reconnect inactive OAuth tokens.)
+Last updated: 2026-07-01 UTC (active seam is **#592** — the dismissal ratchet: one-tap Slack reason capture wired to always-populated `skip_reason`/`feedback_weight` on `tkg_actions`, plus a judgment-suppression score multiplier in the scorer that demotes, never hard-drops, matching future candidates. No migration. Next: owner live-verifies on a real Slack card.)
 
 This is the keep-list ledger. Everything not listed here is reference, archive, or git history — never authority.
 

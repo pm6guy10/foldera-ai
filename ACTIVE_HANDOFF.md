@@ -2,13 +2,10 @@
 
 ## TL;DR
 
-- **#567 PARADIGM SWAPPED — stored goal inference was the WRONG primitive. Do NOT rebuild it.** A live head-to-head (2026-06-29, PR #584) proved ranking against a STATED stable objective + live evidence beats the stored `tkg_goals` model. **#584 is MERGED + LIVE; `FOLDERA_GOAL_SOURCE=stated` is set in prod.** Confirmed on a live owner run (2026-06-30): `goals_raw 4→2`, outcome flipped `safe_silence → write_document`.
-- **Phase A + Phase B MERGED + LIVE (PR #585).** A: `discrepancyBypassesGoalPrimacy` in `lib/briefing/scorer.ts` closes the goal-primacy gate's blanket `type === 'discrepancy'` exemption in `stated` mode — personal/admin discrepancies now need an objective match or drop to SAFE_SILENCE. B: `lib/workday-presence/proactive-delivery.ts` posts a heartbeat-seeded, draft-backed scored_winner to Slack via the SAME `buildRightNowMessagePayload`→`buildSlackRightNowMessage`→`postMessage` pipeline the manual "Post to Slack" button uses (#394-gated, content-deduped); `morning-pipeline` reordered so `nightly_ops` runs LAST instead of starving the scorer.
-- **INCIDENT #1 (2026-06-30, fixed + MERGED, PR #586) — proactive-delivery's first live run posted a STALE pre-fix homework card.** `seedFromScorerForUser` only overwrites `workday_presence_state` on a SUCCESSFUL seed; a blocked seed left `workday_presence_state` stuck at a 3.5h-old pre-Phase-A winner, and proactive-delivery (first run, no dedup history) posted it to the real `#foldera-self-loop` channel as fresh. **Fix (MERGED):** `evaluateProactiveDelivery` requires `state.updated_at` within `STATE_FRESHNESS_WINDOW_MS` (10 min) of `nowIso`. See LESSONS_LEARNED #34.
-- **STRUCTURAL FIX #1 MERGED (PR #587) — the daily manual-call-limit (3/day) was capping the SCHEDULED cron, not just interactive testing.** `isOverManualCallLimit` (`lib/utils/api-tracker.ts`) was designed to exclude cron-context calls via `pipeline_run_id IS NOT NULL`, but that segmentation (`runWithPipelineRunContext`) was only ever wired into the retired `daily-brief-generate.ts` path — `seed-from-scorer-core.ts`, which now IS the delivery path, never got it. Today's testing burst (3 concurrent triggers + retries = 6 calls in 20s) blew through the 3-call/day budget and silently blocked every subsequent cron tick for the rest of the day (`blocker_reason: "Manual directive call limit reached for today."`, `scorer_diagnostics: null` — scorer never even ran). **Fix (MERGED):** new `isCronAuthenticated(request)` (`lib/auth/resolve-user.ts`) exempts CRON_SECRET-authenticated seed calls from the interactive budget.
-- **STRUCTURAL FIX #2 MERGED (PR #588) — the SAME budget was ALSO silently capping push, the actually-primary delivery path.** Owner caught this: "why are we still at cron's mercy" when SETTLED #1 says push is the real product. Verified: `graph-webhook.ts` → `deliverWorkdayPresence(userId, {trigger:'push',...})` never set the cron-exemption flag either — 3 real inbound emails/calendar events in one day would have silently killed event-driven delivery for the rest of the day with zero visible error. **Fix (MERGED):** renamed `isCronTriggered`→`isAutomatedTrigger` and `deliverWorkdayPresence` now auto-infers `isAutomatedTrigger: true` whenever `trigger:'push'` — push callers can never forget to set it, since only the authenticated graph-webhook handler ever sets that context. All four #567 follow-on fixes (Phase A, Phase B, freshness, budget-segmentation×2) are now MERGED + LIVE on `main`. NEXT = trigger the cron/push once to get the first genuine live proof of Phase A+B end to end (owner separately confirmed canvas is the accepted doc-attachment shape via a manual Slack test).
-- **ISSUE #589 (NOT YET FIXED) — real "Decision lock" cards are too long, don't fit one screen.** Owner read the actual rendered first proactive card and called it out: *"brevity is king."* Root cause: `buildDecisionEnforcedFallbackPayload`'s `write_document` branch (`lib/briefing/generator.ts:9549-9580`) builds the body as 9 separately-labeled sections with heavy redundancy — deadline stated 3×, the "ask" stated 2× near-verbatim, two pure-boilerplate lines ("Deciding criterion...", "Owner: assign one accountable owner...") that carry zero information on every single card. A drafted, verified-safe fix (collapse to one `Source:` line + one paragraph) is written out in full in the issue but was deliberately NOT committed this session (owner said "open an issue and stop"). NEXT = implement the issue's diff, update `decision-enforced-fallback.test.ts`/`generator-runtime.test.ts` for the new shape, and consider whether the same bloat exists in the function's other branches (behavioral_pattern write_document, etc.) and the LLM-generated multi-step cards (e.g. "Nathaniel's Birthday" prep-steps card seen in the same channel).
-- **Deprecation recorded, not executed:** `tkg_goals` still load-bearing (scorer + generator); goal-refresh cron (`lib/cron/goal-refresh.ts`) still writes it. Pool hygiene (commitments overdue 30d+) is a smaller parallel seam.
+- **#592 — the dismissal ratchet is built.** Diagnosis: the product is amnesiac for the USER (continuity is the missing primitive), and the verified receipt on #592 proved the dismissal loop was one-way — 1,204 skipped `tkg_actions` rows, 93% with no `feedback_weight`, 0% ever `outcome_closed`. This PR wires the existing-but-unwired rails: a one-tap Slack overflow (not-now/never/wrong-framing/already-done) always populates `skip_reason` + `feedback_weight`, and a new scorer judgment-suppression pass demotes (never hard-drops) future candidates sharing the dismissed mechanism/topic, decaying per reason. No migration — rides `execution_result` JSONB. 1416 tests green.
+- **PR #591 (#589 card-brevity fix) still open/draft on a separate branch**, awaiting owner merge — untouched by this seam.
+- **#567 paradigm swap stays foundational and MERGED+LIVE:** rank against the STATED objective + live evidence, not a stored/inferred goal model (`FOLDERA_GOAL_SOURCE=stated`). Do not re-propose rebuilding goal inference — see SETTLED #9.
+- **Next:** owner live-verifies a real Slack dismissal-with-reason tap in `#foldera-self-loop` (row updates, later similar card visibly demoted in scorer diagnostics), then decide the `outcome_closed` follow-up as its own scoped seam.
 
 ## DON'T FORGET — read first, every boot
 
@@ -38,28 +35,29 @@ These are decided. Do not re-derive, re-probe, or re-propose the dead alternativ
 
 ## Boot
 
-1. Read this file. 2. Read the active issue (#567). 3. Check issue #136 for recent INTERRUPT receipts.
+1. Read this file. 2. Read the active issue (#592). 3. Check issue #136 for recent INTERRUPT receipts.
 
 ## Active command gate
 
 `ACTIVE_SEAM_STATE.json` is the machine-readable control plane.
 
-Issue #567 is the active foundation seam.
+Issue #592 is the active continuity-ratchet seam.
 
 Constraint everywhere: NO paid API calls and NO production mutation without explicit owner authorization — prove in the harness.
 
 ## Current slice:
 
-**#567 — paradigm corrected. The goal anchor was the wrong primitive; the fix is shipped behind a flag.** Do NOT rebuild stored goal inference. A live head-to-head (2026-06-29, PR #584) proved objective-anchored ranking beats the stored `tkg_goals` model on the same pool. The R1 "finish-what-I-started" framing survives; what dies is the inferred/stored-goal *mechanism*.
+**#592 — the dismissal ratchet.** The product had no memory of the user's dismissal judgments: `skip_reason` populated 28% of the time, `feedback_weight` 7%, `outcome_closed` never. Built the wired version of those existing rails:
 
-- What shipped: `lib/briefing/stable-objective.ts` (the stated objective), `lib/briefing/scorer-goal-source.ts` (flag-gated source), wired into `scoreOpenLoops` (`lib/briefing/scorer.ts`) at the single goal-load chokepoint. `lib/experimental/state-move.ts` + `scripts/experiment-state-move.ts` are the reproducible harness.
-- Why the swap works through existing machinery: the stated-objective rows carry terms (supabase, billing, revenue, paying, onboard, launch) so the existing keyword `matchGoal` + goal-primacy gate promote objective-relevant candidates and drop personal homework — no scorer-logic rewrite.
+- **Capture:** `lib/slack/right-now.ts` adds a one-tap `overflow` menu (not_now/never/wrong_framing/already_done) alongside the existing Dismiss button; `app/api/slack/interaction/route.ts` routes it through new `lib/workday-presence/dismiss-with-reason.ts` → the existing `executeAction` skip path (`lib/conviction/execute-action.ts` gained one optional `extraExecutionResultPatch` field). Legacy plain-`dismiss` taps on already-posted messages are untouched.
+- **Judgment key:** `lib/briefing/generator.ts` stamps a stable `mechanismClass` + `topicKey` on every new directive at generation time (persisted into `execution_result.inspection`, no migration).
+- **Suppression:** `lib/briefing/scorer-failure-suppression.ts` gained a judgment-suppression pipeline (`collectActiveJudgmentSuppressionEntries`, per-reason decay 3d→90d); `lib/briefing/scorer.ts` applies it as a score **multiplier** (never a hard filter) so a March dismissal demotes, never deletes, July's recurrence. Legible via a new `judgmentSuppressionApplied` field on `ScorerDiagnostics`.
 
 ## Next exact move
 
-1. **Live smoke run, then flip the flag (#567).** With prod Supabase + `ANTHROPIC_API_KEY` + `ALLOW_PAID_LLM`, run `npx tsx scripts/experiment-state-move.ts` to confirm the side-by-side live, then set `FOLDERA_GOAL_SOURCE=stated` (Vercel env) for the owner and watch one `pipeline_runs` cycle for a regression. Instant rollback = unset the env var. (Not done from the credential-less container — must run where prod creds exist.)
-2. **Then (later scoped seam): deprecate the goal-refresh cron.** Once `stated` is confirmed live, stop `refreshGoalContext`/`inferGoalsFromBehavior` writing garbage to `tkg_goals` (`lib/cron/goal-refresh.ts`), and migrate the generator's goal-context reads (`lib/briefing/generator.ts`) to the same source. `tkg_goals` is load-bearing — stage it, don't yank it.
-3. **Pool-hygiene (parallel):** auto-expire/suppress 88 active commitments overdue 30d+ (generalize #562 past-due expiry) so dead ghosts stop ranking.
+1. **Live owner verification (#592).** Trigger a heartbeat, tap each of the 4 dismissal-reason options on a real `#foldera-self-loop` card, confirm the `tkg_actions` row gets `skip_reason`/`feedback_weight`/`execution_result.dismissal`, and that a later similar candidate shows up demoted (not missing) in scorer diagnostics.
+2. **Scoped follow-up, not this PR:** `outcome_closed` is still never set — deciding whether/how to close that loop is a separate seam once the reason-capture side is proven live.
+3. **Unrelated, parallel:** PR #591 (#589 card-brevity) still needs an owner merge decision on its own branch.
 
 ## Product doctrine
 

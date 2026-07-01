@@ -11,6 +11,7 @@ import type {
   EvidenceBundleReceipt,
   EvidenceItem,
   GenerationCandidateDiscoveryLog,
+  GenerationCandidateSource,
   GenerationRunLog,
   PipelineDryRunReceipt,
   ValidArtifactTypeCanonical,
@@ -30,6 +31,7 @@ import {
   passesTop3RankingInvariants,
   scoreOpenLoops,
 } from './scorer';
+import { classifyCausalMechanism, type CausalMechanismClass } from './scorer-failure-suppression';
 import { OWNER_USER_ID } from '@/lib/auth/constants';
 import {
   ensureAnthropicBudget,
@@ -2811,14 +2813,27 @@ export function buildEvidenceBundleReceipt(ctx: StructuredContext): EvidenceBund
   };
 }
 
-type CausalMechanismClass =
-  | 'unowned_dependency'
-  | 'timing_asymmetry'
-  | 'avoidance_pattern'
-  | 'relationship_cooling'
-  | 'contradiction_drift'
-  | 'hidden_approval_blocker'
-  | 'general';
+/**
+ * Topic-key axis for the dismissal ratchet (#592) — mirrors `scorerCandidateSuppressionKey`
+ * in scorer.ts (same `${signalId}:${entityId}` / `${signalId}:*` shape) but is intentionally
+ * NOT imported from there: generator.ts's directive-construction path is exercised by tests
+ * that partially mock `../scorer` down to just `scoreOpenLoops`, and this key is a small,
+ * dependency-free derivation — duplicating it here (as scorer.ts itself already does between
+ * `scorerCandidateSuppressionKey` and `suppressionKeyFromLoggedCandidate`) avoids coupling
+ * generator.ts's directive shape to scorer.ts's full mock surface.
+ */
+function topicKeyForCandidate(candidate: { id: string; sourceSignals?: GenerationCandidateSource[] }): string {
+  const ss = candidate.sourceSignals ?? [];
+  const rel = ss.find((s) => s.kind === 'relationship' && s.id);
+  const sig = ss.find((s) => s.kind === 'signal' && s.id);
+  const com = ss.find((s) => s.kind === 'commitment' && s.id);
+  if (rel?.id) {
+    const sid = sig?.id ?? com?.id ?? rel.id;
+    return `${String(sid)}:${String(rel.id)}`;
+  }
+  const sid = sig?.id ?? com?.id ?? candidate.id;
+  return `${String(sid)}:*`;
+}
 
 function normalizeCausalDiagnosis(value: unknown): CausalDiagnosis | null {
   if (!value || typeof value !== 'object') return null;
@@ -2834,29 +2849,6 @@ function normalizeCausalDiagnosis(value: unknown): CausalDiagnosis | null {
     why_exists_now: whyExistsNow,
     mechanism,
   };
-}
-
-function classifyCausalMechanism(text: string): CausalMechanismClass {
-  const lower = text.toLowerCase();
-  if (/\b(approval|approver|sign[-\s]?off|final decision|gatekeeper)\b/.test(lower)) {
-    return 'hidden_approval_blocker';
-  }
-  if (/\b(owner|ownership|accountable|dependency|blocked|blocker|handoff)\b/.test(lower)) {
-    return 'unowned_dependency';
-  }
-  if (/\b(avoidance|no reply|no-response|defer|deferred|stalled thread|silence)\b/.test(lower)) {
-    return 'avoidance_pattern';
-  }
-  if (/\b(contradiction|mismatch|drift|says|stated goal|goal vs|inconsistent)\b/.test(lower)) {
-    return 'contradiction_drift';
-  }
-  if (/\b(deadline|due|timing|window|cutoff|late|slip)\b/.test(lower)) {
-    return 'timing_asymmetry';
-  }
-  if (/\b(relationship|cooling|reciprocity|asymmetric effort|unanswered)\b/.test(lower)) {
-    return 'relationship_cooling';
-  }
-  return 'general';
 }
 
 function inferRequiredCausalDiagnosis(input: {
@@ -11860,6 +11852,10 @@ export async function generateDirective(
         : {}),
       acceptedCausalDiagnosis: payload.causal_diagnosis,
       causalDiagnosisSource: payload.causal_diagnosis_source ?? null,
+      mechanismClass: payload.causal_diagnosis
+        ? classifyCausalMechanism(`${payload.causal_diagnosis.why_exists_now} ${payload.causal_diagnosis.mechanism}`)
+        : null,
+      topicKey: topicKeyForCandidate(currentCandidate),
       winnerSelectionTrace: {
         finalWinnerId: currentCandidate.id,
         finalWinnerType: currentCandidate.type,
@@ -11907,6 +11903,8 @@ export async function generateDirective(
       embeddedArtifactType?: string;
       acceptedCausalDiagnosis?: CausalDiagnosis;
       causalDiagnosisSource?: string | null;
+      mechanismClass?: CausalMechanismClass | null;
+      topicKey?: string;
       winnerSelectionTrace?: {
         finalWinnerId: string;
         finalWinnerType: string;

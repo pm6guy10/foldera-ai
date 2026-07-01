@@ -44,6 +44,7 @@ const mockSupabase = {
   _actionRow: null as typeof baseAction | null,
   _signalSelectReturn: null as { id: string } | null,
   _signalInsertCalls: 0,
+  _tkgActionsUpdateCalls: [] as Record<string, unknown>[],
 
   from(table: string) {
     const self = this;
@@ -96,6 +97,7 @@ const mockSupabase = {
       },
       update(payload: Record<string, unknown>) {
         if (table === 'tkg_actions') {
+          self._tkgActionsUpdateCalls.push(payload);
           // Support atomic claim chain: .update().eq('id').eq('user_id').eq('status').select().maybeSingle()
           // Track the status filter to correctly simulate conditional update
           let statusFilter: unknown = null;
@@ -119,6 +121,9 @@ const mockSupabase = {
                 });
               },
             }),
+            // Non-atomic follow-up update (e.g. the extraExecutionResultPatch merge) has no
+            // .select() call — make the chain itself awaitable like the real Postgrest builder.
+            then: (resolve: (value: { error: null }) => void) => resolve({ error: null }),
           });
           return { eq: (col: string, val: unknown) => { if (col === 'status') statusFilter = val; return eqChain(col, val); } };
         }
@@ -178,6 +183,7 @@ describe('executeAction', () => {
     vi.stubEnv('ALLOW_APPROVAL_EMAIL_SEND', 'true');
     mockSupabase._signalInsertCalls = 0;
     mockSupabase._signalSelectReturn = null;
+    mockSupabase._tkgActionsUpdateCalls = [];
     hasIntegration.mockReset();
     hasIntegration.mockResolvedValue(true);
     sendResendEmail.mockReset();
@@ -213,6 +219,45 @@ describe('executeAction', () => {
     });
     expect(out.status).toBe('skipped');
     expect(mockSupabase._signalInsertCalls).toBe(1);
+  });
+
+  it('merges extraExecutionResultPatch into execution_result on skip, preserving existing fields', async () => {
+    mockSupabase._actionRow = {
+      ...baseAction,
+      status: 'pending_approval',
+      execution_result: { inspection: { mechanism_class: 'avoidance_pattern' } },
+    };
+    const out = await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'skip',
+      skipReason: 'not_relevant',
+      extraExecutionResultPatch: {
+        dismissal: { reason: 'never', mechanism_class: 'avoidance_pattern', topic_key: null },
+      },
+    });
+    expect(out.status).toBe('skipped');
+    const patchCall = mockSupabase._tkgActionsUpdateCalls.find(
+      (call) => call.execution_result !== undefined,
+    );
+    expect(patchCall?.execution_result).toEqual({
+      inspection: { mechanism_class: 'avoidance_pattern' },
+      dismissal: { reason: 'never', mechanism_class: 'avoidance_pattern', topic_key: null },
+    });
+  });
+
+  it('does not write an execution_result patch when extraExecutionResultPatch is omitted', async () => {
+    mockSupabase._actionRow = { ...baseAction, status: 'pending_approval' };
+    await executeAction({
+      userId: USER_ID,
+      actionId: ACTION_ID,
+      decision: 'skip',
+      skipReason: 'not_relevant',
+    });
+    const patchCall = mockSupabase._tkgActionsUpdateCalls.find(
+      (call) => call.execution_result !== undefined,
+    );
+    expect(patchCall).toBeUndefined();
   });
 
   it('approve with email artifact executes and writes approval signal', async () => {

@@ -9,9 +9,11 @@ describe('workday presence message payload', () => {
     expect(payload.mode).toBe('setup');
     expect(payload.text).toContain('What are you trying to move forward today?');
     expect(payload.actions).toEqual([]);
+    // No Dismiss button on a setup card, so the one-tap reason menu has nothing to ride on.
+    expect(payload.includeDismissReasonMenu).toBe(false);
   });
 
-  it('builds an active payload with Dismiss only when no draft exists', () => {
+  it('builds an active payload with Dismiss only when no draft exists, opting into the dismissal-reason menu', () => {
     const state = normalizeWorkdayPresenceState({
       current_focus: 'Close ACME renewal decision',
       next_move: 'Send owner confirmation note',
@@ -25,6 +27,7 @@ describe('workday presence message payload', () => {
     expect(payload.text).toContain('Send owner confirmation note');
     expect(payload.text).toContain('Source trail: manual_anchor');
     expect(payload.actions.map((a) => a.id)).toEqual(['dismiss']);
+    expect(payload.includeDismissReasonMenu).toBe(true);
   });
 
   it('leads with the draft inline (the card IS the draft) — no homework scaffolding', () => {

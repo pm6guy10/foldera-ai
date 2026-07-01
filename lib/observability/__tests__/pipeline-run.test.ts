@@ -98,6 +98,7 @@ describe('buildGateFunnelFromScorerDiagnostics', () => {
       ],
       discrepancies: [],
       convergenceBoosts: [],
+      judgmentSuppressionApplied: [],
       survivors: [],
       finalWinner: null,
       finalOutcome: 'zero_candidates_early',
@@ -188,6 +189,7 @@ describe('buildGateFunnelFromScorerDiagnostics', () => {
       discrepancyInjectionSkips: { locked_contact: 1, failure_suppression: 0 },
       insightDiscrepanciesScored: 1,
       convergenceBoosts: [],
+      judgmentSuppressionApplied: [],
       survivors: [
         {
           candidateId: 'd3',
@@ -255,6 +257,7 @@ describe('buildGateFunnelFromScorerDiagnostics', () => {
         ],
       },
       convergenceBoosts: [],
+      judgmentSuppressionApplied: [],
       survivors: [],
       finalWinner: null,
       finalOutcome: 'no_valid_action',

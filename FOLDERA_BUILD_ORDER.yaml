@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 567
+active_issue: 592
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Foundation so a real indispensable R1 card fires (#567). Code complete (PR #568); parked on owner sign-offs: tkg_goals re-ground + Gmail connector (1→967). This session's side-quest merged #572 (dedup cooldown, PR #574) + #573 (retire commitment_lapsing homework-nag delivery + 30-day staleness floor, PR #575) + suppressed 3 stale Rule 59(e) rows."
-next_seam: "#567 owner sign-offs (tkg_goals re-ground + Gmail connector 1→967) → trigger /api/cron/ingest-and-deliver, verify R1 card via Probe 1. Follow-up: pool-hygiene seam (88/135 active dated commitments overdue 30d+ — auto-expire non-event commitments, generalize #562); reconnect inactive Google/Microsoft OAuth tokens."
+why_this_first: "The product is amnesiac for the USER, not just its agents (#592) — the dismissal loop was one-way (1,204 skips, 93% no feedback_weight, 0% outcome_closed ever). Built the wired ratchet: one-tap Slack reason capture -> always-populated skip_reason/feedback_weight -> judgment-suppression score multiplier in the scorer (demotes, never hard-drops). No migration; rides execution_result JSONB. 1416 tests green."
+next_seam: "#592 owner live verification: tap each of the 4 dismissal-reason options on a real #foldera-self-loop card, confirm tkg_actions updates and a later similar candidate is visibly demoted (not missing) in scorer diagnostics. Scoped follow-up (not this PR): outcome_closed is still never set. Unrelated/parallel: PR #591 (#589 card-brevity) still needs an owner merge decision."
 completed_issue_538:
   issue: 538
   pr: 545

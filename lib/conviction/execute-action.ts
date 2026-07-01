@@ -41,6 +41,12 @@ export interface ExecuteActionInput {
   skipReason?: SkipReason;
   /** Optional caller-supplied artifact that overrides the one stored in the DB row. */
   editedArtifact?: Record<string, unknown>;
+  /**
+   * Optional patch merged into the row's `execution_result` on a skip/reject decision only.
+   * Used by reason-capturing dismiss flows (e.g. the Slack one-tap dismissal ratchet) to
+   * record richer judgment metadata without a schema change. No-op when omitted.
+   */
+  extraExecutionResultPatch?: Record<string, unknown>;
 }
 
 export interface ExecuteActionResult {
@@ -673,7 +679,7 @@ async function executeArtifact(
  * Call from /api/conviction/execute and /api/drafts/decide.
  */
 export async function executeAction(input: ExecuteActionInput): Promise<ExecuteActionResult> {
-  const { userId, actionId, decision, skipReason, editedArtifact } = input;
+  const { userId, actionId, decision, skipReason, editedArtifact, extraExecutionResultPatch } = input;
   const supabase = createServerClient();
   const isReject = decision === 'reject' || decision === 'skip';
 
@@ -714,6 +720,15 @@ export async function executeAction(input: ExecuteActionInput): Promise<ExecuteA
   }
 
   if (isReject) {
+    if (extraExecutionResultPatch) {
+      const existingExecutionResult = (action.execution_result as Record<string, unknown>) ?? {};
+      await supabase
+        .from('tkg_actions')
+        .update({ execution_result: { ...existingExecutionResult, ...extraExecutionResultPatch } })
+        .eq('id', actionId)
+        .eq('user_id', userId);
+    }
+
     const outcomeMemory = buildDiscrepancyOutcomeMemoryLine(action);
     const skipContent = skipReason
       ? `Skipped (${skipReason}): ${action.directive_text ?? ''}\nReason: ${action.reason ?? ''}${outcomeMemory}`

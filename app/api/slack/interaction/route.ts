@@ -3,6 +3,7 @@ import { createServerClient } from '@/lib/db/client';
 import {
   buildReviewSendModal,
   buildSlackRightNowMessage,
+  parseSlackDismissReasonAction,
   parseSlackInteractionAction,
   parseSlackReviewSendAction,
   parseSlackReviewSendSubmission,
@@ -17,6 +18,7 @@ import {
   appendWorkdayPresenceInteractionHistory,
   applyWorkdayPresenceAction,
 } from '@/lib/workday-presence/actions';
+import { applyDismissWithReason } from '@/lib/workday-presence/dismiss-with-reason';
 import { buildRightNowMessagePayload, type RightNowMessageActionId } from '@/lib/workday-presence/message';
 import {
   buildRightNowCard,
@@ -284,6 +286,55 @@ export async function POST(request: Request) {
         buildReviewSendModal({ draft, sourceLine, metadata: modalMeta }),
       );
       return NextResponse.json(redactSlackSecret({ acknowledged: true, view_opened: openResult }));
+    }
+
+    // One-tap dismissal-reason capture: record the judgment on the underlying tkg_actions
+    // row (skip_reason + feedback_weight + the richer execution_result.dismissal block),
+    // then still apply the existing 4h dismiss snooze so the card itself goes quiet exactly
+    // as a plain Dismiss tap would. Purely additive — falls through to the generic
+    // parseSlackInteractionAction path below for every other payload shape, so taps on
+    // messages posted before this shipped (plain "Dismiss" button, no overflow) are untouched.
+    const dismissReason = parseSlackDismissReasonAction(payload);
+    if (dismissReason) {
+      const draftActionId = currentState?.draft?.action_id;
+      if (!draftActionId) return badRequest('No actionable draft to dismiss with a reason');
+
+      const dismissalResult = await applyDismissWithReason(supabase, userId, draftActionId, dismissReason.reason);
+      if (!dismissalResult.ok) return badRequest(`Could not record dismissal: ${dismissalResult.error}`);
+
+      const dismissReceipt = buildPresenceLoopReceipt(currentState, {
+        action_id: 'dismiss',
+        nowIso: new Date().toISOString(),
+      });
+      const persistedDismissState = await persistStateAndReceipt(
+        supabase,
+        userId,
+        metadata,
+        dismissReceipt.after_state,
+        'dismiss',
+        dismissReason.messageTs,
+      );
+      const dismissPayload = buildRightNowMessagePayload(persistedDismissState);
+
+      let dismissUpdateResult = null;
+      if (dismissReason.channel && dismissReason.messageTs) {
+        dismissUpdateResult = await resolveSlackAdapterFromEnv().updateMessage({
+          ...buildSlackRightNowMessage(dismissPayload, dismissReason.channel),
+          ts: dismissReason.messageTs,
+        });
+      }
+
+      return NextResponse.json(
+        redactSlackSecret({
+          acknowledged: true,
+          action_id: 'dismiss',
+          dismissal_reason: dismissReason.reason,
+          skip_reason: dismissalResult.skip_reason,
+          state: persistedDismissState,
+          payload: dismissPayload,
+          slack_update: dismissUpdateResult,
+        }),
+      );
     }
 
     const interaction = parseSlackInteractionAction(payload);
