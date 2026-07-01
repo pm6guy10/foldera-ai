@@ -9,6 +9,45 @@ import type { GenerationCandidateSource } from '@/lib/briefing/types';
 
 const MS_DAY = 24 * 60 * 60 * 1000;
 
+/**
+ * Stable classifier for "why does this judgment exist" — shared by the generator (to
+ * stamp a winning directive's mechanism) and the scorer's judgment-suppression pipeline
+ * (to classify a fresh candidate the same way, so dismissed and future judgments compare
+ * on equal footing). Defined here, not in generator.ts, so the scorer can use it without
+ * an import cycle (generator.ts already imports from scorer.ts).
+ */
+export type CausalMechanismClass =
+  | 'unowned_dependency'
+  | 'timing_asymmetry'
+  | 'avoidance_pattern'
+  | 'relationship_cooling'
+  | 'contradiction_drift'
+  | 'hidden_approval_blocker'
+  | 'general';
+
+export function classifyCausalMechanism(text: string): CausalMechanismClass {
+  const lower = text.toLowerCase();
+  if (/\b(approval|approver|sign[-\s]?off|final decision|gatekeeper)\b/.test(lower)) {
+    return 'hidden_approval_blocker';
+  }
+  if (/\b(owner|ownership|accountable|dependency|blocked|blocker|handoff)\b/.test(lower)) {
+    return 'unowned_dependency';
+  }
+  if (/\b(avoidance|no reply|no-response|defer|deferred|stalled thread|silence)\b/.test(lower)) {
+    return 'avoidance_pattern';
+  }
+  if (/\b(contradiction|mismatch|drift|says|stated goal|goal vs|inconsistent)\b/.test(lower)) {
+    return 'contradiction_drift';
+  }
+  if (/\b(deadline|due|timing|window|cutoff|late|slip)\b/.test(lower)) {
+    return 'timing_asymmetry';
+  }
+  if (/\b(relationship|cooling|reciprocity|asymmetric effort|unanswered)\b/.test(lower)) {
+    return 'relationship_cooling';
+  }
+  return 'general';
+}
+
 /** Default lookback for gate/duplicate failures (matches product spec). */
 export const FAILURE_SUPPRESSION_WINDOW_DAYS = 7;
 
@@ -403,4 +442,160 @@ export async function collectActiveFailureSuppressionKeys(
   }
 
   return active;
+}
+
+// ---------------------------------------------------------------------------
+// Judgment suppression (issue #592 dismissal ratchet)
+//
+// Distinct from the failure-suppression pipeline above: that pipeline is a hard
+// filter for generator-gate failures and exact-row duplicate loops. This one reads
+// the *reason a human gave* for dismissing a real, valid directive and demotes (never
+// hard-drops) future candidates that share the same judgment — "suppress the
+// judgment, not the row." A dismissal in March must not make a July recurrence
+// invisible, so this is consumed as a score multiplier, not a filter.
+// ---------------------------------------------------------------------------
+
+export type DismissalReasonClass = 'not_now' | 'never' | 'wrong_framing' | 'already_done';
+
+/** How long a dismissal keeps dampening matching future candidates, by reason given. */
+const DISMISSAL_DECAY_MS: Record<DismissalReasonClass, number> = {
+  not_now: 3 * MS_DAY,
+  wrong_framing: 10 * MS_DAY,
+  already_done: 21 * MS_DAY,
+  never: 90 * MS_DAY,
+};
+
+/** Score-multiplier floor per reason — candidates survive, never hit zero. */
+const DISMISSAL_FLOOR_MULTIPLIER: Record<DismissalReasonClass, number> = {
+  not_now: 0.6,
+  wrong_framing: 0.4,
+  already_done: 0.25,
+  never: 0.1,
+};
+
+/** Bounds how far back `collectActiveJudgmentSuppressionEntries` looks (longest decay tier). */
+export const JUDGMENT_SUPPRESSION_WINDOW_DAYS = 90;
+
+/** Conservative fallback for rows skipped before `execution_result.dismissal` existed — no `never` tier, since that's a new explicit signal only the one-tap reason UI sets. */
+const LEGACY_SKIP_REASON_TO_DISMISSAL_REASON: Partial<Record<string, DismissalReasonClass>> = {
+  not_relevant: 'wrong_framing',
+  wrong_approach: 'wrong_framing',
+  already_handled: 'already_done',
+};
+
+export type JudgmentSuppressionEntry = {
+  expiresAtMs: number;
+  reason: DismissalReasonClass;
+  feedbackWeight: number | null;
+};
+
+/**
+ * Reads the judgment behind a skipped row: prefers the rich `execution_result.dismissal`
+ * block written by the one-tap reason UI, falls back to `execution_result.inspection.mechanism_class`
+ * + the legacy `skip_reason` enum for rows skipped before this shipped. Returns null when there's
+ * no mechanism to key suppression on at all (nothing to demote against).
+ */
+export function extractDismissalFromExecutionResult(
+  executionResult: unknown,
+  skipReason?: string | null,
+): { reason: DismissalReasonClass; mechanismClass: string | null; topicKey: string | null } | null {
+  const er = executionResult && typeof executionResult === 'object'
+    ? (executionResult as Record<string, unknown>)
+    : null;
+  const dismissal = er?.dismissal as Record<string, unknown> | undefined;
+  const inspection = er?.inspection as Record<string, unknown> | undefined;
+
+  const mechanismClass =
+    typeof dismissal?.mechanism_class === 'string'
+      ? dismissal.mechanism_class
+      : typeof inspection?.mechanism_class === 'string'
+        ? inspection.mechanism_class
+        : null;
+  const topicKey =
+    typeof dismissal?.topic_key === 'string'
+      ? dismissal.topic_key
+      : typeof inspection?.topic_key === 'string'
+        ? inspection.topic_key
+        : null;
+
+  const DISMISSAL_REASON_VALUES: readonly string[] = ['not_now', 'never', 'wrong_framing', 'already_done'];
+  if (typeof dismissal?.reason === 'string' && DISMISSAL_REASON_VALUES.includes(dismissal.reason)) {
+    return { reason: dismissal.reason as DismissalReasonClass, mechanismClass, topicKey };
+  }
+
+  if (!mechanismClass) return null;
+  const legacyReason = skipReason ? LEGACY_SKIP_REASON_TO_DISMISSAL_REASON[skipReason] : undefined;
+  return { reason: legacyReason ?? 'not_now', mechanismClass, topicKey };
+}
+
+/**
+ * Loads active judgment-suppression entries from recently skipped `tkg_actions` rows,
+ * keyed by `mechanismClass[:topicKey]` (precise when a topic key exists, broader fallback
+ * otherwise — mirrors the existing `getSuppressedCandidateKeys` exact/wildcard pattern).
+ * Each key keeps whichever row gives it the furthest-future expiry.
+ */
+export async function collectActiveJudgmentSuppressionEntries(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<Map<string, JudgmentSuppressionEntry>> {
+  const windowStart = new Date(Date.now() - JUDGMENT_SUPPRESSION_WINDOW_DAYS * MS_DAY).toISOString();
+
+  const { data: rows, error } = await supabase
+    .from('tkg_actions')
+    .select('generated_at, skip_reason, feedback_weight, execution_result')
+    .eq('user_id', userId)
+    .eq('status', 'skipped')
+    .gte('generated_at', windowStart)
+    .order('generated_at', { ascending: false })
+    .limit(200);
+
+  if (error) {
+    console.warn('[judgment-suppression] query failed:', error.message);
+    return new Map();
+  }
+
+  const now = Date.now();
+  const entries = new Map<string, JudgmentSuppressionEntry>();
+
+  for (const row of rows ?? []) {
+    const generatedAtMs = new Date(String(row.generated_at ?? 0)).getTime();
+    if (!Number.isFinite(generatedAtMs)) continue;
+
+    const dismissal = extractDismissalFromExecutionResult(row.execution_result, row.skip_reason as string | null);
+    if (!dismissal || !dismissal.mechanismClass) continue;
+
+    const expiresAtMs = generatedAtMs + DISMISSAL_DECAY_MS[dismissal.reason];
+    if (expiresAtMs <= now) continue;
+
+    const key = dismissal.topicKey ? `${dismissal.mechanismClass}:${dismissal.topicKey}` : dismissal.mechanismClass;
+    const feedbackWeight = typeof row.feedback_weight === 'number' ? row.feedback_weight : null;
+
+    const existing = entries.get(key);
+    if (!existing || expiresAtMs > existing.expiresAtMs) {
+      entries.set(key, { expiresAtMs, reason: dismissal.reason, feedbackWeight });
+    }
+  }
+
+  return entries;
+}
+
+/**
+ * Score multiplier (never a hard filter) for a candidate sharing a suppressed judgment.
+ * Prefers the precise `mechanismClass:topicKey` entry, falls back to the broader
+ * `mechanismClass`-only entry. A non-negative `feedback_weight` (not produced by the skip
+ * path today, but a future reconciliation/forgiveness signal) lifts the dampening entirely.
+ */
+export function judgmentSuppressionMultiplierForCandidate(
+  mechanismClass: string | null,
+  topicKey: string | null,
+  entries: Map<string, JudgmentSuppressionEntry>,
+): number {
+  if (!mechanismClass || entries.size === 0) return 1;
+
+  const preciseKey = topicKey ? `${mechanismClass}:${topicKey}` : null;
+  const entry = (preciseKey ? entries.get(preciseKey) : undefined) ?? entries.get(mechanismClass);
+  if (!entry) return 1;
+  if (entry.feedbackWeight !== null && entry.feedbackWeight >= 0) return 1;
+
+  return DISMISSAL_FLOOR_MULTIPLIER[entry.reason];
 }

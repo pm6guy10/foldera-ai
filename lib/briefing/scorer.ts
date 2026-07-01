@@ -56,7 +56,10 @@ import {
   type HuntFindingKind,
 } from './hunt-anomalies';
 import {
+  classifyCausalMechanism,
   collectActiveFailureSuppressionKeys,
+  collectActiveJudgmentSuppressionEntries,
+  judgmentSuppressionMultiplierForCandidate,
   rawScorerCandidateMatchesFailureSuppression,
   scoredLoopMatchesFailureSuppression,
 } from './scorer-failure-suppression';
@@ -802,6 +805,19 @@ export interface ScorerDiagnostics {
     boost: number;
     boostedScore: number;
   }>;
+  /**
+   * Dismissal-ratchet (#592) legibility: candidates demoted (never dropped) because they
+   * share a mechanism/topic the user previously dismissed with a reason. Lets the owner see
+   * why something went quiet without new UI — rides the same diagnostics pipe as everything
+   * else the scorer explains.
+   */
+  judgmentSuppressionApplied: Array<{
+    candidateId: string;
+    title: string;
+    mechanismClass: string;
+    topicKey: string | null;
+    multiplier: number;
+  }>;
   survivors: ScorerSurvivorEntry[];
   finalWinner: ScorerSurvivorEntry | null;
   finalOutcome: 'winner_selected' | 'no_valid_action' | 'zero_candidates_early';
@@ -837,6 +853,7 @@ function initDiagnostics(): ScorerDiagnostics {
     discrepancyInjectionSkips: { locked_contact: 0, failure_suppression: 0 },
     insightDiscrepanciesScored: 0,
     convergenceBoosts: [],
+    judgmentSuppressionApplied: [],
     survivors: [],
     finalWinner: null,
     finalOutcome: 'zero_candidates_early',
@@ -6045,6 +6062,9 @@ export async function scoreOpenLoops(
   let scored: ScoredLoop[] = [];
   const approvalHistory = await getApprovalHistory(userId);
   const globalMlPriors = await fetchGlobalMlPriorMap();
+  // Dismissal ratchet (#592): demote (never drop) candidates sharing a judgment the user
+  // already dismissed with a reason. Loaded once per scoring run, applied per-candidate below.
+  const judgmentSuppressionEntries = await collectActiveJudgmentSuppressionEntries(supabase, userId);
 
   let insightCandidates: Awaited<ReturnType<typeof runInsightScan>> = [];
   if (!options?.pipelineDryRun) {
@@ -6270,6 +6290,29 @@ export async function scoreOpenLoops(
     const goalVelocity = goalCat ? (goalVelocityMap.get(goalCat) ?? 0) : 0;
     const velocityMultiplier = goalVelocity >= 5 ? 1.30 : goalVelocity >= 3 ? 1.15 : goalVelocity >= 1 ? 1.05 : 1.0;
     let score = rawScore * velocityMultiplier;
+
+    // Dismissal ratchet (#592): demote (never drop) a candidate sharing a mechanism/topic
+    // the user already dismissed with a reason. "Suppress the judgment, not the row" — a
+    // March dismissal must not make July's recurrence invisible, only quieter.
+    if (judgmentSuppressionEntries.size > 0) {
+      const candidateMechanismClass = classifyCausalMechanism(`${c.title} ${c.content}`);
+      const candidateTopicKey = scorerCandidateSuppressionKey(c);
+      const judgmentMultiplier = judgmentSuppressionMultiplierForCandidate(
+        candidateMechanismClass,
+        candidateTopicKey,
+        judgmentSuppressionEntries,
+      );
+      if (judgmentMultiplier < 1) {
+        score *= judgmentMultiplier;
+        diag.judgmentSuppressionApplied.push({
+          candidateId: c.id,
+          title: c.title.slice(0, 100),
+          mechanismClass: candidateMechanismClass,
+          topicKey: candidateTopicKey,
+          multiplier: judgmentMultiplier,
+        });
+      }
+    }
 
     // Today-focus penalty: if the user already approved something in a domain today,
     // deprioritize candidates in unrelated domains by 15%. Keeps the picker coherent

@@ -48,6 +48,8 @@ export type RightNowMessagePayload = {
   mode: RightNowCard['mode'] | 'dismissed' | 'silent';
   text: string;
   actions: RightNowMessageAction[];
+  /** True whenever a plain Dismiss button rides the card — the one-tap reason overflow rides alongside it. */
+  includeDismissReasonMenu?: boolean;
 };
 
 function formatSourceTrail(state: WorkdayPresenceState | null): string {
@@ -185,11 +187,13 @@ export function buildRightNowMessagePayload(
   }
 
   const card = buildRightNowCard(state, nowIso);
+  const actions = cardActions(card, state);
 
   return {
     kind: 'right_now',
     mode: card.mode,
     text: formatCardText(card, state),
-    actions: cardActions(card, state),
+    actions,
+    includeDismissReasonMenu: actions.some((action) => action.id === 'dismiss'),
   };
 }

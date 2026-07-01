@@ -27,6 +27,7 @@ const mockSupabase = {
 
 const mockVerifySignature = vi.fn();
 const mockParseSlackInteractionAction = vi.fn();
+const mockParseDismissReasonAction = vi.fn();
 const mockParseReviewSendAction = vi.fn();
 const mockParseReviewSendSubmission = vi.fn();
 const mockBuildReviewSendModal = vi.fn(() => ({ callback_id: 'foldera_review_send' }));
@@ -37,11 +38,13 @@ const mockSlackAdapter = {
   openView: mockOpenView,
 };
 const mockExecuteAction = vi.fn();
+const mockApplyDismissWithReason = vi.fn();
 
 vi.mock('@/lib/db/client', () => ({ createServerClient: () => mockSupabase }));
 vi.mock('@/lib/slack/right-now', () => ({
   verifySlackRequestSignature: mockVerifySignature,
   parseSlackInteractionAction: mockParseSlackInteractionAction,
+  parseSlackDismissReasonAction: mockParseDismissReasonAction,
   parseSlackReviewSendAction: mockParseReviewSendAction,
   parseSlackReviewSendSubmission: mockParseReviewSendSubmission,
   buildReviewSendModal: mockBuildReviewSendModal,
@@ -49,6 +52,7 @@ vi.mock('@/lib/slack/right-now', () => ({
   buildSlackRightNowMessage: (payload: any, channel: string) => ({ channel, text: 'mock' }),
 }));
 vi.mock('@/lib/conviction/execute-action', () => ({ executeAction: mockExecuteAction }));
+vi.mock('@/lib/workday-presence/dismiss-with-reason', () => ({ applyDismissWithReason: mockApplyDismissWithReason }));
 
 const mockApiErrorForRoute = vi.fn((err: any) =>
   NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 }),
@@ -111,9 +115,10 @@ describe('POST /api/slack/interaction', () => {
     });
     mockInsert.mockResolvedValue({ error: null });
     mockUpdateUserById.mockResolvedValue({ data: {}, error: null });
-    // Default: not a review-send button and not a modal sign-off.
+    // Default: not a review-send button, not a modal sign-off, not a dismiss-reason tap.
     mockParseReviewSendAction.mockReturnValue(null);
     mockParseReviewSendSubmission.mockReturnValue(null);
+    mockParseDismissReasonAction.mockReturnValue(null);
   });
 
   it('rejects invalid signature', async () => {
@@ -163,6 +168,73 @@ describe('POST /api/slack/interaction', () => {
     expect(mockInsert).toHaveBeenCalledTimes(1);
     expect(mockUpdateUserById).not.toHaveBeenCalled();
     expect(body.error).toContain('Durable action receipt write failed');
+  });
+
+  it('records a one-tap dismissal reason on the underlying action and still snoozes the card', async () => {
+    mockGetUserById.mockResolvedValue({
+      data: { user: { user_metadata: { workday_presence_state: sendState } } },
+      error: null,
+    });
+    mockParseDismissReasonAction.mockReturnValue({
+      reason: 'never',
+      channel: 'C123',
+      messageTs: '12345.678',
+    });
+    mockApplyDismissWithReason.mockResolvedValue({ ok: true, skip_reason: 'not_relevant' });
+    mockUpdateMessage.mockResolvedValue({ ok: true, message_ts: '12345.678' });
+
+    const { POST } = await import('../route');
+    const response = await POST(postBody());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockApplyDismissWithReason).toHaveBeenCalledWith(
+      mockSupabase,
+      ownerUserId,
+      sendState.draft.action_id,
+      'never',
+    );
+    // The judgment is recorded on tkg_actions (via applyDismissWithReason above) AND the
+    // card itself still snoozes for 4h via the existing dismiss receipt/state-update path.
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(mockUpdateUserById).toHaveBeenCalledTimes(1);
+    expect(mockUpdateMessage).toHaveBeenCalledTimes(1);
+    expect(mockParseSlackInteractionAction).not.toHaveBeenCalled();
+    expect(body.acknowledged).toBe(true);
+    expect(body.dismissal_reason).toBe('never');
+    expect(body.skip_reason).toBe('not_relevant');
+  });
+
+  it('rejects a dismiss-reason tap when there is no actionable draft to attach it to', async () => {
+    // activeState (the default mock) carries no draft.
+    mockParseDismissReasonAction.mockReturnValue({ reason: 'not_now' });
+
+    const { POST } = await import('../route');
+    const response = await POST(postBody());
+
+    expect(response.status).toBe(400);
+    expect(mockApplyDismissWithReason).not.toHaveBeenCalled();
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it('legacy plain Dismiss tap (no overflow selection) is untouched by the dismiss-reason path', async () => {
+    // Pre-existing messages only ever send the plain `dismiss` button payload — the new
+    // parser must return null for that shape so it falls through to the original handling.
+    mockParseDismissReasonAction.mockReturnValue(null);
+    mockParseSlackInteractionAction.mockReturnValue({
+      actionId: 'dismiss',
+      channel: 'C123',
+      messageTs: '12345.678',
+    });
+    mockUpdateMessage.mockResolvedValue({ ok: true, message_ts: '12345.678' });
+
+    const { POST } = await import('../route');
+    const response = await POST(postBody());
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockApplyDismissWithReason).not.toHaveBeenCalled();
+    expect(body.action_id).toBe('dismiss');
   });
 
   it('opens the review modal on the review-send button without sending', async () => {

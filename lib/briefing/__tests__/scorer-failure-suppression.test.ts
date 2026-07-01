@@ -1,11 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  classifyCausalMechanism,
   collectActiveFailureSuppressionKeys,
+  collectActiveJudgmentSuppressionEntries,
   detectDominantNormalizedDirectiveLoop,
   directiveHasStalePastDates,
+  extractDismissalFromExecutionResult,
   extractSuppressionKeysFromExecutionResult,
   GENERATION_LOOP_DETECTION_WINDOW,
   GENERATION_LOOP_MIN_REPEATS,
+  judgmentSuppressionMultiplierForCandidate,
   normalizeDirectiveForLoopDetection,
   rawScorerCandidateMatchesFailureSuppression,
   rowContributesUserSkipSuppression,
@@ -312,6 +316,151 @@ describe('collectActiveFailureSuppressionKeys', () => {
     vi.setSystemTime(now + USER_SKIP_SUPPRESSION_WINDOW_MS + 60_000);
     const keysExpired = await collectActiveFailureSuppressionKeys(supabase, 'user-aaa-111');
     expect(keysExpired.has('signal:sig-user-skip')).toBe(false);
+
+    vi.useRealTimers();
+  });
+});
+
+describe('classifyCausalMechanism', () => {
+  it('classifies avoidance and approval-blocker language', () => {
+    expect(classifyCausalMechanism('No reply on the thread, defer to next week')).toBe('avoidance_pattern');
+    expect(classifyCausalMechanism('Needs final sign-off from the approver')).toBe('hidden_approval_blocker');
+    expect(classifyCausalMechanism('Just a normal status update')).toBe('general');
+  });
+});
+
+describe('extractDismissalFromExecutionResult', () => {
+  it('prefers the rich execution_result.dismissal block when present', () => {
+    const result = extractDismissalFromExecutionResult({
+      inspection: { mechanism_class: 'general', topic_key: 'sig-old:*' },
+      dismissal: { reason: 'never', mechanism_class: 'avoidance_pattern', topic_key: 'sig-1:*' },
+    });
+    expect(result).toEqual({ reason: 'never', mechanismClass: 'avoidance_pattern', topicKey: 'sig-1:*' });
+  });
+
+  it('falls back to inspection.mechanism_class + a conservative legacy skip_reason mapping', () => {
+    expect(
+      extractDismissalFromExecutionResult({ inspection: { mechanism_class: 'timing_asymmetry' } }, 'already_handled'),
+    ).toEqual({ reason: 'already_done', mechanismClass: 'timing_asymmetry', topicKey: null });
+
+    expect(
+      extractDismissalFromExecutionResult({ inspection: { mechanism_class: 'timing_asymmetry' } }, 'wrong_approach'),
+    ).toEqual({ reason: 'wrong_framing', mechanismClass: 'timing_asymmetry', topicKey: null });
+
+    // No skip_reason at all still yields the weakest (`not_now`) tier rather than null,
+    // since `never` is a new explicit signal only the one-tap reason UI sets.
+    expect(
+      extractDismissalFromExecutionResult({ inspection: { mechanism_class: 'timing_asymmetry' } }, null),
+    ).toEqual({ reason: 'not_now', mechanismClass: 'timing_asymmetry', topicKey: null });
+
+    // A legacy `not_relevant` skip_reason must NOT be inferred as `never` — that tier is
+    // reserved for the new explicit one-tap signal.
+    const legacyNotRelevant = extractDismissalFromExecutionResult(
+      { inspection: { mechanism_class: 'general' } },
+      'not_relevant',
+    );
+    expect(legacyNotRelevant?.reason).not.toBe('never');
+  });
+
+  it('returns null when there is no mechanism to key suppression on at all', () => {
+    expect(extractDismissalFromExecutionResult(null, null)).toBeNull();
+    expect(extractDismissalFromExecutionResult({}, 'not_relevant')).toBeNull();
+  });
+});
+
+describe('judgmentSuppressionMultiplierForCandidate', () => {
+  it('returns 1 (no suppression) when there is no matching entry', () => {
+    const entries = new Map([['avoidance_pattern:sig-1:*', { expiresAtMs: Date.now() + 1000, reason: 'never' as const, feedbackWeight: -0.5 }]]);
+    expect(judgmentSuppressionMultiplierForCandidate(null, null, entries)).toBe(1);
+    expect(judgmentSuppressionMultiplierForCandidate('avoidance_pattern', 'sig-2:*', new Map())).toBe(1);
+    expect(judgmentSuppressionMultiplierForCandidate('timing_asymmetry', 'sig-1:*', entries)).toBe(1);
+  });
+
+  it('prefers the precise mechanism:topic entry over the broader mechanism-only entry', () => {
+    const entries = new Map([
+      ['avoidance_pattern', { expiresAtMs: Date.now() + 1000, reason: 'not_now' as const, feedbackWeight: -0.5 }],
+      ['avoidance_pattern:sig-1:*', { expiresAtMs: Date.now() + 1000, reason: 'never' as const, feedbackWeight: -0.5 }],
+    ]);
+    // Exact mechanism+topic match -> the stronger 'never' floor, not the weaker mechanism-only one.
+    expect(judgmentSuppressionMultiplierForCandidate('avoidance_pattern', 'sig-1:*', entries)).toBeLessThan(
+      judgmentSuppressionMultiplierForCandidate('avoidance_pattern', 'sig-2:*', entries),
+    );
+  });
+
+  it('demotes harder for "never"/"already_done" than for "not_now" — never hard-drops (multiplier > 0)', () => {
+    const entryFor = (reason: 'not_now' | 'never' | 'wrong_framing' | 'already_done') =>
+      new Map([['avoidance_pattern', { expiresAtMs: Date.now() + 1000, reason, feedbackWeight: -0.5 }]]);
+
+    const notNow = judgmentSuppressionMultiplierForCandidate('avoidance_pattern', null, entryFor('not_now'));
+    const wrongFraming = judgmentSuppressionMultiplierForCandidate('avoidance_pattern', null, entryFor('wrong_framing'));
+    const alreadyDone = judgmentSuppressionMultiplierForCandidate('avoidance_pattern', null, entryFor('already_done'));
+    const never = judgmentSuppressionMultiplierForCandidate('avoidance_pattern', null, entryFor('never'));
+
+    expect(never).toBeGreaterThan(0);
+    expect(never).toBeLessThan(alreadyDone);
+    expect(alreadyDone).toBeLessThan(wrongFraming);
+    expect(wrongFraming).toBeLessThan(notNow);
+    expect(notNow).toBeLessThan(1);
+  });
+
+  it('lifts the dampening entirely when feedback_weight is non-negative (forgiven/reconciled)', () => {
+    const entries = new Map([['avoidance_pattern', { expiresAtMs: Date.now() + 1000, reason: 'never' as const, feedbackWeight: 0 }]]);
+    expect(judgmentSuppressionMultiplierForCandidate('avoidance_pattern', null, entries)).toBe(1);
+  });
+});
+
+describe('collectActiveJudgmentSuppressionEntries', () => {
+  it('expires a "not_now" dismissal quickly but keeps a "never" dismissal active much longer', async () => {
+    vi.useFakeTimers();
+    const generatedAt = new Date('2026-04-01T00:00:00.000Z').getTime();
+    vi.setSystemTime(generatedAt);
+
+    const rows = [
+      {
+        generated_at: new Date(generatedAt).toISOString(),
+        skip_reason: null,
+        feedback_weight: -0.5,
+        execution_result: {
+          dismissal: { reason: 'not_now', mechanism_class: 'avoidance_pattern', topic_key: 'sig-now:*' },
+        },
+      },
+      {
+        generated_at: new Date(generatedAt).toISOString(),
+        skip_reason: 'not_relevant',
+        feedback_weight: -0.5,
+        execution_result: {
+          dismissal: { reason: 'never', mechanism_class: 'unowned_dependency', topic_key: 'sig-never:*' },
+        },
+      },
+    ];
+
+    const supabase = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              gte: () => ({
+                order: () => ({
+                  limit: () => Promise.resolve({ data: rows, error: null }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as never;
+
+    // Day 5: not_now (3-day decay) has expired; never (90-day decay) is still active.
+    vi.setSystemTime(generatedAt + 5 * 24 * 60 * 60 * 1000);
+    const entriesDay5 = await collectActiveJudgmentSuppressionEntries(supabase, 'user-aaa-111');
+    expect(entriesDay5.has('avoidance_pattern:sig-now:*')).toBe(false);
+    expect(entriesDay5.has('unowned_dependency:sig-never:*')).toBe(true);
+    expect(entriesDay5.get('unowned_dependency:sig-never:*')?.reason).toBe('never');
+
+    // Day 60: never is still active (90-day decay).
+    vi.setSystemTime(generatedAt + 60 * 24 * 60 * 60 * 1000);
+    const entriesDay60 = await collectActiveJudgmentSuppressionEntries(supabase, 'user-aaa-111');
+    expect(entriesDay60.has('unowned_dependency:sig-never:*')).toBe(true);
 
     vi.useRealTimers();
   });

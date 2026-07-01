@@ -14,18 +14,56 @@ import { redactSlackSecret } from './redaction';
 /** Modal that carries the review-gated send sign-off. */
 export const REVIEW_SEND_MODAL_CALLBACK_ID = 'foldera_review_send';
 
+/**
+ * One-tap dismissal-reason capture. Rendered as a Slack `overflow` element (single ⋯
+ * button, native inline menu) alongside the plain Dismiss button so reason-tagging stays
+ * one tap without crowding the card. See `parseSlackDismissReasonAction` for the read side.
+ */
+export const RIGHT_NOW_DISMISS_REASON_ACTION_ID = 'dismiss_reason' as const;
+export type DismissReasonValue = 'not_now' | 'never' | 'wrong_framing' | 'already_done';
+const DISMISS_REASON_VALUES: readonly DismissReasonValue[] = [
+  'not_now',
+  'never',
+  'wrong_framing',
+  'already_done',
+];
+const DISMISS_REASON_LABELS: Record<DismissReasonValue, string> = {
+  not_now: 'Not now',
+  never: 'Never',
+  wrong_framing: 'Wrong framing',
+  already_done: 'Already did it',
+};
+
+export function buildDismissReasonOverflowElement(): {
+  type: 'overflow';
+  action_id: typeof RIGHT_NOW_DISMISS_REASON_ACTION_ID;
+  options: Array<{ text: { type: 'plain_text'; text: string }; value: string }>;
+} {
+  return {
+    type: 'overflow',
+    action_id: RIGHT_NOW_DISMISS_REASON_ACTION_ID,
+    options: DISMISS_REASON_VALUES.map((reason) => ({
+      text: { type: 'plain_text', text: DISMISS_REASON_LABELS[reason] },
+      value: `dismiss_reason:${reason}`,
+    })),
+  };
+}
+
 export type SlackRightNowBlock =
   | { type: 'section'; text: { type: 'mrkdwn'; text: string } }
   | {
       type: 'actions';
       block_id: 'foldera_right_now_actions';
-      elements: Array<{
-        type: 'button';
-        text: { type: 'plain_text'; text: string };
-        action_id: RightNowMessageButtonId;
-        value: RightNowMessageButtonId;
-        style?: 'primary' | 'danger';
-      }>;
+      elements: Array<
+        | {
+            type: 'button';
+            text: { type: 'plain_text'; text: string };
+            action_id: RightNowMessageButtonId;
+            value: RightNowMessageButtonId;
+            style?: 'primary' | 'danger';
+          }
+        | ReturnType<typeof buildDismissReasonOverflowElement>
+      >;
     };
 
 /** Private metadata stashed on the review modal so the sign-off can execute + update in place. */
@@ -69,7 +107,7 @@ export type SlackInteractionPayload = {
   channel?: { id?: string };
   message?: { ts?: string };
   trigger_id?: string;
-  actions?: Array<{ action_id?: string; value?: string }>;
+  actions?: Array<{ action_id?: string; value?: string; selected_option?: { value?: string } }>;
   state?: { values?: Record<string, Record<string, { value?: string }>> };
   view?: {
     callback_id?: string;
@@ -96,13 +134,18 @@ export function buildSlackRightNowMessage(
     blocks.push({
       type: 'actions',
       block_id: 'foldera_right_now_actions',
-      elements: payload.actions.map((action) => ({
-        type: 'button',
-        text: { type: 'plain_text', text: action.label },
-        action_id: action.id,
-        value: action.id,
-        style: buttonStyle(action),
-      })),
+      elements: [
+        ...payload.actions.map((action) => ({
+          type: 'button' as const,
+          text: { type: 'plain_text' as const, text: action.label },
+          action_id: action.id,
+          value: action.id,
+          style: buttonStyle(action),
+        })),
+        // One-tap reason capture rides alongside Dismiss; omitted when the card offers
+        // no dismiss button at all (e.g. zero-action setup/dismissed states).
+        ...(payload.includeDismissReasonMenu ? [buildDismissReasonOverflowElement()] : []),
+      ],
     });
   }
   return {
@@ -373,6 +416,30 @@ export function parseSlackInteractionAction(payload: SlackInteractionPayload): {
   return {
     actionId: rawAction as RightNowMessageActionId,
     blocker,
+    channel: payload.channel?.id,
+    messageTs: payload.message?.ts,
+  };
+}
+
+/**
+ * Read a one-tap dismissal-reason overflow selection. Returns null for any other
+ * payload shape (including legacy plain `dismiss` button taps), so this parser can be
+ * checked alongside `parseSlackInteractionAction` without disturbing it.
+ */
+export function parseSlackDismissReasonAction(payload: SlackInteractionPayload): {
+  reason: DismissReasonValue;
+  channel?: string;
+  messageTs?: string;
+} | null {
+  if (payload.type !== 'block_actions') return null;
+  const action = payload.actions?.[0];
+  if (action?.action_id !== RIGHT_NOW_DISMISS_REASON_ACTION_ID) return null;
+  const rawValue = action.selected_option?.value ?? action.value ?? '';
+  const reason = rawValue.startsWith('dismiss_reason:') ? rawValue.slice('dismiss_reason:'.length) : '';
+  if (!DISMISS_REASON_VALUES.includes(reason as DismissReasonValue)) return null;
+
+  return {
+    reason: reason as DismissReasonValue,
     channel: payload.channel?.id,
     messageTs: payload.message?.ts,
   };

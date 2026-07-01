@@ -3088,6 +3088,8 @@ export async function runDailyGenerate(
       const directiveWithInspection = directive as ConvictionDirective & {
         acceptedCausalDiagnosis?: { mechanism: string; why_exists_now: string };
         causalDiagnosisSource?: string;
+        mechanismClass?: string | null;
+        topicKey?: string;
         winnerSelectionTrace?: {
           finalWinnerId: string;
           finalWinnerType: string;
@@ -3100,6 +3102,8 @@ export async function runDailyGenerate(
       const inspectionMeta = {
         accepted_causal_diagnosis: directiveWithInspection.acceptedCausalDiagnosis ?? null,
         causal_diagnosis_source: directiveWithInspection.causalDiagnosisSource ?? null,
+        mechanism_class: directiveWithInspection.mechanismClass ?? null,
+        topic_key: directiveWithInspection.topicKey ?? null,
         winner_selection_trace: directiveWithInspection.winnerSelectionTrace ?? null,
       };
 
