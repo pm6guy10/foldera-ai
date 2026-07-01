@@ -1,10 +1,10 @@
 {
   "active_issue": 592,
   "active_branch": "claude/foldera-continuity-primitive-2zp5qz",
-  "active_pr": null,
-  "deployed_commit_sha": "38f5e4a",
+  "active_pr": 597,
+  "deployed_commit_sha": "0f8df04",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-07-01T00:07:38.906Z",
+  "last_verified_at": "2026-07-01T00:09:57.786Z",
   "notes": "Dismissal ratchet (#592) shipped: one-tap Slack reason capture -> always-populated skip_reason/feedback_weight -> judgment-suppression score multiplier in scorer. 1416 tests green."
 }
