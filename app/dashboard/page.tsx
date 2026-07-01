@@ -8,6 +8,7 @@ import { LogOut } from 'lucide-react';
 import { MorningAnchorCard, type RightNowCardActionId } from '@/components/dashboard/MorningAnchorCard';
 import { ProductShell } from '@/components/dashboard/ProductShell';
 import type { RightNowCard } from '@/lib/workday-presence/model';
+import type { AllClearEvidence } from '@/lib/workday-presence/all-clear';
 import { AuthTrustPills } from '@/components/auth/AuthTrustPills';
 import { OAuthConnectButton } from '@/components/auth/OAuthConnectButton';
 import { SIGN_OUT_CALLBACK_URL } from '@/lib/auth/constants';
@@ -62,6 +63,17 @@ function readCard(payload: unknown): RightNowCard | null {
   return card as RightNowCard;
 }
 
+function readAllClear(payload: unknown): AllClearEvidence | null {
+  if (!payload || typeof payload !== 'object') return null;
+  const evidence = (payload as { all_clear?: unknown }).all_clear;
+  if (!evidence || typeof evidence !== 'object') return null;
+  const record = evidence as { checked_count?: unknown; completed_at?: unknown };
+  if (typeof record.checked_count !== 'number' || typeof record.completed_at !== 'string') {
+    return null;
+  }
+  return { checked_count: record.checked_count, completed_at: record.completed_at };
+}
+
 function SignOutAction() {
   return (
     <button
@@ -79,6 +91,7 @@ function SignOutAction() {
 function TodayPanel() {
   const { status } = useSession();
   const [card, setCard] = useState<RightNowCard | null>(null);
+  const [allClear, setAllClear] = useState<AllClearEvidence | null>(null);
   const [cardLoading, setCardLoading] = useState(true);
   const [actionPending, setActionPending] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -89,8 +102,10 @@ function TodayPanel() {
       const response = await fetch('/api/workday-presence');
       const payload = await response.json().catch(() => null);
       setCard(response.ok ? readCard(payload) : null);
+      setAllClear(response.ok ? readAllClear(payload) : null);
     } catch {
       setCard(null);
+      setAllClear(null);
     } finally {
       setCardLoading(false);
     }
@@ -259,6 +274,7 @@ function TodayPanel() {
               verdict_line: null,
             }
           }
+          allClear={allClear}
           onSave={saveAnchor}
           onAction={respond}
           onAutoDetect={sourceState === 'connected' ? autoDetect : undefined}
