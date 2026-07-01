@@ -22,11 +22,16 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 606
+active_issue: 567
 priority_class: PRODUCT
-work_type: BUGFIX
-why_this_first: "Live diagnostic (2026-07-01) found the pipeline has recorded safe_silence for ~30h despite the scorer's gate_funnel showing winner_selected. Traced to a real bug: evaluateCommandCenterCandidateGate's INTERNAL_DEBUG_PATTERN bare-UUID clause false-positives on raw commitment/signal ids that hunt-anomalies.ts was embedding into evidenceLines, killing real R1-shaped candidates pre-LLM. This is plausibly the actual reason #567's first indispensable card hasn't fired, and blocks #597's live dismissal-tap verification (no real card to dismiss)."
-next_seam: "#606: dropped the raw ids from hunt-anomalies.ts evidenceLines (two finding kinds); INTERNAL_DEBUG_PATTERN itself untouched so real request_id/provider_error/stack-trace leaks are still caught. Also threading the already-computed suppressionTrace into pipeline_runs.raw_extras so future suppressed runs are diagnosable from history. Live verification after merge: trigger the next pipeline run and confirm the two stuck commitment candidates now produce a real card. Then #567 owner sign-offs (tkg_goals re-ground + Gmail connector 1→967); #597 live dismissal-tap verification once a real card exists."
+work_type: FEATURE
+why_this_first: "Foundation so a real indispensable R1 card fires (#567). #606 (2026-07-01, MERGED PR #607) plausibly WAS the actual blocker: a live-diagnosed bug where evaluateCommandCenterCandidateGate's INTERNAL_DEBUG_PATTERN bare-UUID clause false-positived on raw commitment/signal ids embedded in hunt-anomalies.ts evidenceLines, silently killing real R1-shaped candidates pre-LLM. Fixed and merged, but NOT YET live-verified. #567's own remaining scope (tkg_goals re-ground, Gmail connector 1→967) is unchanged."
+next_seam: "Live-verify #606: trigger the next real pipeline run (or wait for one) and re-query pipeline_runs.raw_extras + workday_presence_suppression_trace for 2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f — confirm the two previously-stuck commitment candidates (due 2026-07-05, 2026-07-07) now produce a real card. Then #567 owner sign-offs (tkg_goals re-ground + Gmail connector 1→967); #597 live dismissal-tap verification once a real card exists; PR #593 (CSS cleanup) still open, low priority."
+completed_issue_606:
+  issue: 606
+  pr: 607
+  pr_merge_sha: fe3bd70
+  summary: "Live diagnostic found ~30h of safe_silence pipeline runs despite the scorer's gate_funnel showing winner_selected. Traced (via workday_presence_suppression_trace) to evaluateCommandCenterCandidateGate's INTERNAL_DEBUG_PATTERN bare-UUID clause false-positiving on raw commitment/signal ids that hunt-anomalies.ts embedded directly into evidenceLines for two finding kinds (unreplied_inbound, commitment_calendar_gap) — those ids flow into relatedSignals (scorer.ts) then candidateText (generator.ts), reaching the gate pre-LLM. Fix is upstream: dropped the raw ids from evidenceLines; INTERNAL_DEBUG_PATTERN itself untouched, still catches real request_id/provider_error/stack-trace leaks. Also threaded the already-computed suppressionTrace into pipeline_runs.raw_extras at all three suppression branches in seed-from-scorer-core.ts (previously discarded after only reaching the single-slot overwritten workday_presence_suppression_trace field), so future suppressed runs are diagnosable from history. 4 new regression tests; lib/briefing + lib/workday-presence (1097 tests) green. Live verification (does the false positive actually clear on the next real run) still pending."
 completed_issue_589:
   issue: 589
   pr: 591

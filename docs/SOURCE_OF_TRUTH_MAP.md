@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-07-01 UTC (active seam is **#606** — live diagnostic traced ~30h of `safe_silence` pipeline runs despite the scorer selecting real winners to `evaluateCommandCenterCandidateGate`'s bare-UUID false-positive on raw ids embedded in `hunt-anomalies.ts` evidenceLines; plausibly the actual blocker behind #567's silence. #589 (Decision lock card brevity) is MERGED+LIVE via PR #591; #567's four follow-on fixes (Phase A+B #585, freshness #586, cron-budget #587, push-budget #588) are MERGED+LIVE.)
+Last updated: 2026-07-01 UTC (active seam is **#567** — foundation R1 card, parked on owner sign-offs. #589 (Decision lock card brevity, PR #591) and #606 (bare-UUID false-positive killing real candidates pre-LLM, PR #607) are both MERGED+LIVE this session; #606 is not yet live-verified — next real pipeline run needs to confirm the fix cleared. #567's four earlier follow-on fixes (Phase A+B #585, freshness #586, cron-budget #587, push-budget #588) are MERGED+LIVE.)
 
 This is the keep-list ledger. Everything not listed here is reference, archive, or git history — never authority.
 
