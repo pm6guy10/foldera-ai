@@ -22,11 +22,16 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 589
+active_issue: 606
 priority_class: PRODUCT
 work_type: BUGFIX
-why_this_first: "Owner read the actual rendered first proactive Slack card and called it out directly: 'brevity is king' -- the Decision lock write_document card was 9 separately-labeled, redundant sections that didn't fit one screen. #567's four follow-on fixes (Phase A+B #585, freshness #586, cron-budget #587, push-budget #588) are MERGED+LIVE; this is the next named owner-facing seam."
-next_seam: "#589 implemented: collapsed buildDecisionEnforcedFallbackPayload's write_document branch to one Source line + one paragraph (lib/briefing/generator.ts), plus two validation-gate fixes the collapse exposed (forcing-function date regex, consequence-template pressure wording). Follow-up named in the issue: review the same bloat in the behavioral_pattern write_document branch and LLM-generated multi-step cards; decide whether formatDraftLedText's footer should dedupe against the now-single-paragraph body."
+why_this_first: "Live diagnostic (2026-07-01) found the pipeline has recorded safe_silence for ~30h despite the scorer's gate_funnel showing winner_selected. Traced to a real bug: evaluateCommandCenterCandidateGate's INTERNAL_DEBUG_PATTERN bare-UUID clause false-positives on raw commitment/signal ids that hunt-anomalies.ts was embedding into evidenceLines, killing real R1-shaped candidates pre-LLM. This is plausibly the actual reason #567's first indispensable card hasn't fired, and blocks #597's live dismissal-tap verification (no real card to dismiss)."
+next_seam: "#606: dropped the raw ids from hunt-anomalies.ts evidenceLines (two finding kinds); INTERNAL_DEBUG_PATTERN itself untouched so real request_id/provider_error/stack-trace leaks are still caught. Also threading the already-computed suppressionTrace into pipeline_runs.raw_extras so future suppressed runs are diagnosable from history. Live verification after merge: trigger the next pipeline run and confirm the two stuck commitment candidates now produce a real card. Then #567 owner sign-offs (tkg_goals re-ground + Gmail connector 1→967); #597 live dismissal-tap verification once a real card exists."
+completed_issue_589:
+  issue: 589
+  pr: 591
+  pr_merge_sha: c873c88
+  summary: "Decision lock write_document card collapsed from 9 separately-labeled redundant sections to one Source line + one paragraph, per owner feedback ('brevity is king'). Widened the write_document forcing-function regex to accept any embedded ISO date (not just literal 'by <date>' adjacency), and reworded two buildCausalFallbackCopy consequence templates (relationship_cooling, timing_asymmetry) that relied on the literal 'Consequence:' label word for the missing_pressure_or_consequence gate. Also fixed a mechanism-classifier-label leak (internal taxonomy strings like 'Avoidance pattern: ...' appearing verbatim in the card) caught via live owner review. Superseded two duplicate independent fixes (PR #598, #605) that still had the label-leak bug."
 completed_issue_538:
   issue: 538
   pr: 545

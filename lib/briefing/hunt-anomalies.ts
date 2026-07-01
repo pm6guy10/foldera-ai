@@ -450,7 +450,13 @@ export function runHuntAnomalies(args: {
       entityName: who,
       supportingSignalIds: [r.id],
       evidenceLines: [
-        `Signal ${r.id}: received from ${peer}, subject: ${r.subject}`,
+        // No raw signal id here — evidenceLines flows into relatedSignals (scorer.ts)
+        // and then candidateText (generator.ts), which the pre-model command-center
+        // candidate gate scans for leaked internal tokens via a bare-UUID pattern
+        // (artifact-quality-gate.ts INTERNAL_DEBUG_PATTERN). A raw id here is a false
+        // positive waiting to happen, not evidence a reader needs; r.id is already
+        // tracked via supportingSignalIds above.
+        `Received from ${peer}, subject: ${r.subject}`,
         r.preview.replace(/\s+/g, ' ').slice(0, 280),
       ],
       severity: 80 + Math.min(15, Math.floor(daysAgo / 7)),
@@ -564,7 +570,9 @@ export function runHuntAnomalies(args: {
       suggestedActionType: 'schedule',
       supportingSignalIds: calContextIds,
       evidenceLines: [
-        `Commitment id ${c.id}: ${desc.slice(0, 200)}`,
+        // No raw commitment id here — see the same note in the unreplied_inbound
+        // finding above; c.id is already tracked via this finding's own `id` field.
+        desc.slice(0, 200),
         nearestCal
           ? `Nearest calendar event (by time): "${nearestCal.title}" — keyword overlap with commitment was only ${bestOverlap}`
           : 'No calendar events in the due window in synced data',

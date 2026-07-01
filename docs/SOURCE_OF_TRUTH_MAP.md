@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-30 UTC (active seam is **#589** — Decision lock Slack write_document cards collapsed from 9 redundant sections to one screen per owner feedback ("brevity is king"); two decision-enforcement validation gates widened so the collapse doesn't silently fall through to do_nothing. #567's four follow-on fixes (Phase A+B #585, freshness #586, cron-budget #587, push-budget #588) are MERGED+LIVE.)
+Last updated: 2026-07-01 UTC (active seam is **#606** — live diagnostic traced ~30h of `safe_silence` pipeline runs despite the scorer selecting real winners to `evaluateCommandCenterCandidateGate`'s bare-UUID false-positive on raw ids embedded in `hunt-anomalies.ts` evidenceLines; plausibly the actual blocker behind #567's silence. #589 (Decision lock card brevity) is MERGED+LIVE via PR #591; #567's four follow-on fixes (Phase A+B #585, freshness #586, cron-budget #587, push-budget #588) are MERGED+LIVE.)
 
 This is the keep-list ledger. Everything not listed here is reference, archive, or git history — never authority.
 
