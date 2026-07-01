@@ -1,7 +1,7 @@
 {
   "active_issue": 567,
   "active_branch": "claude/product-differentiation-strategy-1mzd00",
-  "active_pr": null,
+  "active_pr": 605,
   "deployed_commit_sha": "e17a47b",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
