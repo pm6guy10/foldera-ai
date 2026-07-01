@@ -7302,6 +7302,30 @@ export function extractJsonFromResponse(raw: string): string {
   return cleaned;
 }
 
+// Top-level fields the Discrepancy Engine format allows outside the nested `artifact`
+// object (e.g. `{ action, confidence, reason, start, duration_minutes }`). Both parse
+// branches copy these down into `artifact` when the model omits the nested duplicate —
+// keeps schedule_block/wait_rationale/etc. in sync with send_message/write_document
+// instead of silently dropping fields the retry prompt told the model to put here.
+const KNOWN_ARTIFACT_FIELDS = [
+  'to', 'recipient', 'subject', 'body',
+  'title', 'content', 'document_purpose', 'target_reader',
+  'start', 'duration_minutes', 'reason', 'description',
+  'why_wait', 'what_changes', 'tripwire_date', 'trigger_condition',
+  'exact_reason', 'blocked_by',
+];
+
+function copyKnownArtifactFieldsDown(
+  artifact: Record<string, unknown>,
+  parsed: Record<string, unknown>,
+): void {
+  for (const field of KNOWN_ARTIFACT_FIELDS) {
+    if (artifact[field] === undefined && parsed[field] !== undefined) {
+      artifact[field] = parsed[field];
+    }
+  }
+}
+
 export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | null {
   const cleaned = extractJsonFromResponse(raw);
   const parsed = JSON.parse(cleaned) as Record<string, unknown>;
@@ -7344,6 +7368,7 @@ export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | 
       ? { ...(parsed.artifact as Record<string, unknown>) }
       : {};
     let artifact: Record<string, unknown> = { ...nestedArtifact };
+    copyKnownArtifactFieldsDown(artifact, parsed);
 
     if (artifactType === 'send_message') {
       const message = parsed.message && typeof parsed.message === 'object'
@@ -7406,19 +7431,7 @@ export function parseGeneratedPayload(raw: string): GeneratedDirectivePayload | 
     ? { ...(parsed.artifact as Record<string, unknown>) }
     : {};
 
-  const knownFields = [
-    'to', 'recipient', 'subject', 'body',
-    'title', 'content', 'document_purpose', 'target_reader',
-    'start', 'duration_minutes', 'reason', 'description',
-    'why_wait', 'what_changes', 'tripwire_date', 'trigger_condition',
-    'exact_reason', 'blocked_by',
-  ];
-
-  for (const field of knownFields) {
-    if (artifact[field] === undefined && parsed[field] !== undefined) {
-      artifact[field] = parsed[field];
-    }
-  }
+  copyKnownArtifactFieldsDown(artifact, parsed);
 
   const directiveRaw =
     typeof parsed.directive === 'string' && parsed.directive.trim().length > 0

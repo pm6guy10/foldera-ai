@@ -1,10 +1,10 @@
 {
   "active_issue": 567,
-  "active_branch": "claude/product-differentiation-strategy-1mzd00",
-  "active_pr": 608,
-  "deployed_commit_sha": "e17a47b",
+  "active_branch": "claude/cron-execution-check-9um9gy",
+  "active_pr": 609,
+  "deployed_commit_sha": "f2af9a5",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-07-01T20:15:00.000Z",
-  "notes": "#589 MERGED+LIVE (PR #591, c873c88) and #606 MERGED+LIVE (PR #607, fe3bd70) on main. #606 was a live-diagnosed bug found this session: evaluateCommandCenterCandidateGate's INTERNAL_DEBUG_PATTERN bare-UUID clause was false-positiving on raw commitment/signal ids that hunt-anomalies.ts embedded into evidenceLines, silently killing real R1-shaped candidates pre-LLM for ~30h despite the scorer selecting real winners -- plausibly THE reason #567's first indispensable card hadn't fired. Fixed (ids dropped from evidenceLines; INTERNAL_DEBUG_PATTERN itself untouched) and merged, but NOT YET live-verified: still owner-gated -- trigger the next real pipeline run and re-query pipeline_runs.raw_extras + workday_presence_suppression_trace for 2cbc1bab-8e0e-43b0-bf4a-9a0cd6b5d91f to confirm the two previously-stuck commitment candidates (due 2026-07-05, 2026-07-07) now produce a real card. #567 resumes as the standing foundation seam pending that verification; its own remaining scope (tkg_goals re-ground, Gmail connector 1->967) is untouched by #606."
+  "last_verified_at": "2026-07-01T21:06:44.263Z",
+  "notes": "PR #609 (open, CI running): fixed a live-diagnosed bug found while investigating why a manual trigger hit safe_silence instead of posting a card. parseGeneratedPayload's discrepancy-engine branch (the format the retry prompt tells the model to prefer) never copied top-level reason down into artifact for schedule_block, so validateGeneratedArtifact's schedule_block reason is required check failed every attempt including the retry. This is exactly what blocked the 2026-07-05 commitment candidate #567/#606's live-verification is waiting on. Not yet merged/live-verified."
 }
