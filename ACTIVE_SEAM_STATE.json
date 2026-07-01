@@ -1,7 +1,7 @@
 {
   "active_issue": 567,
   "active_branch": "claude/cleanup-post-610-writeback",
-  "active_pr": null,
+  "active_pr": 611,
   "deployed_commit_sha": "e17a47b",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
