@@ -9,6 +9,15 @@ updates:
     labels:
       - dependencies
     # eslint-config-next@14.2.x peers eslint ^7.23 || ^8 only — ESLint 9/10 breaks Vercel npm install (ERESOLVE).
+    # next@14.2.x peers react/react-dom ^18.2.0 only — React 19 breaks npm install (ERESOLVE, PR #557).
     ignore:
       - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
         update-types: ["version-update:semver-major"]
