@@ -8257,7 +8257,7 @@ export function validateGeneratedArtifact(
     // write_document forcing function check: must contain a concrete next action
     if (canonicalArtifactType === 'write_document') {
       const content = String((payload.artifact as Record<string, unknown>).content ?? '');
-      const hasDecisionPoint = /\b(by\s+\w+day|\bby\s+\d{4}-\d{2}-\d{2}|\bdeadline\b|\bconfirm\b|\bdecide\b|\bchoose\b|\bapprove\b|\bschedule\b|\bcommit\b|\bnext\s+(?:step|action)\b)/i.test(content);
+      const hasDecisionPoint = /\b(by\s+\w+day|\d{4}-\d{2}-\d{2}|\bdeadline\b|\bconfirm\b|\bdecide\b|\bchoose\b|\bapprove\b|\bschedule\b|\bcommit\b|\bnext\s+(?:step|action)\b)/i.test(content);
       const interviewClassRelax = isInterviewClassWriteDocumentEnforcementRelaxation({
         actionType: canonicalArtifactType,
         candidateTitle: ctx.candidate_title,
@@ -9271,14 +9271,14 @@ function buildCausalFallbackCopy(input: {
     case 'relationship_cooling':
       return {
         ask: `Ask: require a direct yes/no response on "${input.target}" by ${input.deadline}.`,
-        consequence: `Consequence: if no response by ${input.deadline}, trust and decision priority continue to decay.`,
+        consequence: `Consequence: if no response by ${input.deadline}, trust and decision priority continue to decay, leaving the relationship at risk.`,
         insight: `Response asymmetry around "${input.target}" is creating decision drag.`,
         whyNow: `Waiting past ${input.deadline} reinforces the cooling pattern and weakens decision leverage.`,
       };
     case 'timing_asymmetry':
       return {
         ask: `Ask: lock the final decision and owner for "${input.target}" by ${input.deadline}.`,
-        consequence: `Consequence: if unresolved by ${input.deadline}, the execution window closes before owners can act.`,
+        consequence: `Consequence: if unresolved by ${input.deadline}, the closing execution window leaves owners blocked from acting in time.`,
         insight: `Decision latency is now larger than the remaining execution window for "${input.target}".`,
         whyNow: `The time window expires faster than ownership is being assigned.`,
       };
@@ -9542,9 +9542,12 @@ export function buildDecisionEnforcedFallbackPayload(input: {
       return null;
     }
 
-    const memoAsk = copy.ask.replace(/^Ask:\s*/i, '').trim();
+    const memoAskRaw = copy.ask.replace(/^Ask:\s*/i, '').trim();
+    const memoAsk = memoAskRaw.charAt(0).toUpperCase() + memoAskRaw.slice(1);
     const safeTarget = target.replace(/[.!?]+$/g, '').trim().slice(0, 72) || target.slice(0, 72);
-    const writeDirective = `Write a decision memo on "${safeTarget}" — ${memoAsk}`.slice(0, 340);
+    const writeDirective = `Write a decision memo on "${safeTarget}" — ${memoAskRaw}`.slice(0, 340);
+
+    const consequenceSentence = copy.consequence.replace(/^Consequence:\s*/i, '').trim();
 
     return {
       insight: copy.insight,
@@ -9559,21 +9562,10 @@ export function buildDecisionEnforcedFallbackPayload(input: {
         content: [
           `Source: ${target}.`,
           '',
-          `Decision required: confirm the path for "${safeTarget}" and close the open loop by ${deadline}.`,
-          '',
-          `Deciding criterion: the path is safe only if one accountable owner is named and the commitment is time-bound.`,
-          '',
-          'Owner: assign one accountable owner before this remains open for another cycle.',
-          '',
-          `Next action: ${memoAsk}`,
-          '',
-          `Deadline: ${deadline}.`,
-          '',
-          copy.ask,
-          '',
-          copy.consequence,
-          '',
-          `Mechanism: ${input.causalDiagnosis.mechanism}`,
+          // input.causalDiagnosis.mechanism is an internal classifier label
+          // ("Avoidance pattern: ...", "Hidden approval blocker: ...") — never
+          // user-facing copy (see the bracket-salvage scan note above).
+          `${memoAsk} ${consequenceSentence}`,
         ].join('\n'),
       },
       why_now: copy.whyNow,

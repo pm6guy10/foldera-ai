@@ -22,11 +22,11 @@ accepted_terminal_states:
   - BLOCKED_WITH_EXACT_RECEIPT
   - HUMAN_REVIEW_REQUIRED_WITH_REASON
   - STOPPED_WITH_AUTHORIZED_REASON
-active_issue: 567
+active_issue: 589
 priority_class: PRODUCT
-work_type: FEATURE
-why_this_first: "Foundation so a real indispensable R1 card fires (#567). Code complete (PR #568); parked on owner sign-offs: tkg_goals re-ground + Gmail connector (1→967). This session's side-quest merged #572 (dedup cooldown, PR #574) + #573 (retire commitment_lapsing homework-nag delivery + 30-day staleness floor, PR #575) + suppressed 3 stale Rule 59(e) rows."
-next_seam: "#567 owner sign-offs (tkg_goals re-ground + Gmail connector 1→967) → trigger /api/cron/ingest-and-deliver, verify R1 card via Probe 1. Follow-up: pool-hygiene seam (88/135 active dated commitments overdue 30d+ — auto-expire non-event commitments, generalize #562); reconnect inactive Google/Microsoft OAuth tokens."
+work_type: BUGFIX
+why_this_first: "Owner read the actual rendered first proactive Slack card and called it out directly: 'brevity is king' -- the Decision lock write_document card was 9 separately-labeled, redundant sections that didn't fit one screen. #567's four follow-on fixes (Phase A+B #585, freshness #586, cron-budget #587, push-budget #588) are MERGED+LIVE; this is the next named owner-facing seam."
+next_seam: "#589 implemented: collapsed buildDecisionEnforcedFallbackPayload's write_document branch to one Source line + one paragraph (lib/briefing/generator.ts), plus two validation-gate fixes the collapse exposed (forcing-function date regex, consequence-template pressure wording). Follow-up named in the issue: review the same bloat in the behavioral_pattern write_document branch and LLM-generated multi-step cards; decide whether formatDraftLedText's footer should dedupe against the now-single-paragraph body."
 completed_issue_538:
   issue: 538
   pr: 545
