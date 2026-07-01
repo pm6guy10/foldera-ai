@@ -34,6 +34,11 @@ const activeState = {
   updated_at: '2026-05-19T12:10:00.000Z',
 };
 
+const mockExecuteAction = vi.fn();
+vi.mock('@/lib/conviction/execute-action', () => ({
+  executeAction: (...args: unknown[]) => mockExecuteAction(...args),
+}));
+
 vi.mock('@/lib/auth/resolve-user', () => ({ resolveUser: mockResolveUser }));
 vi.mock('@/lib/db/client', () => ({ createServerClient: () => mockSupabase }));
 vi.mock('@/lib/utils/api-error', () => ({
@@ -246,6 +251,69 @@ describe('POST /api/workday-presence/message-action', () => {
       action_source: 'workday_presence',
       execution_result: expect.objectContaining({ action_id: actionId }),
     });
+  });
+
+  it('dismiss with a backing draft skips the real action row (judgment ratchet parity with Slack)', async () => {
+    mockSupabase.auth.admin.getUserById.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: {
+            workday_presence_state: {
+              ...activeState,
+              state_source: 'scored_winner',
+              draft: {
+                action_type: 'send_message',
+                title: 'Owner confirmation note',
+                preview: 'Confirming the renewal decision.',
+                to: 'owner@example.com',
+                body: 'Confirming the renewal decision.',
+                action_id: 'act-77',
+              },
+            },
+          },
+        },
+      },
+      error: null,
+    });
+    mockExecuteAction.mockResolvedValue({ status: 'skipped', action_id: 'act-77' });
+
+    const { POST } = await import('../route');
+    const response = await POST(
+      new Request('http://localhost/api/workday-presence/message-action', {
+        method: 'POST',
+        body: JSON.stringify({ action_id: 'dismiss' }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockExecuteAction).toHaveBeenCalledWith({
+      userId: 'u-53',
+      actionId: 'act-77',
+      decision: 'skip',
+      skipReason: 'dashboard_dismiss',
+    });
+    expect(body.judgment).toEqual({ recorded: true, reason: 'skipped' });
+  });
+
+  it('dismiss without a backing draft records nothing (no row to teach through)', async () => {
+    mockSupabase.auth.admin.getUserById.mockResolvedValue({
+      data: { user: { user_metadata: { workday_presence_state: activeState } } },
+      error: null,
+    });
+
+    const { POST } = await import('../route');
+    const response = await POST(
+      new Request('http://localhost/api/workday-presence/message-action', {
+        method: 'POST',
+        body: JSON.stringify({ action_id: 'dismiss' }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockExecuteAction).not.toHaveBeenCalled();
+    expect(body.judgment).toEqual({ recorded: false, reason: 'no_backing_action' });
   });
 
   it('does not write a terminal receipt for view_draft', async () => {

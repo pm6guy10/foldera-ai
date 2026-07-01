@@ -32,7 +32,15 @@ const EMAIL_SEND_DISABLED_REASON = 'email_send_disabled';
 
 export type ExecuteDecision = 'approve' | 'skip' | 'reject';
 
-export type SkipReason = 'not_relevant' | 'already_handled' | 'wrong_approach';
+// 'slack_dismiss' / 'dashboard_dismiss' are server-internal (a Dismiss tap on the
+// Right Now card, via recordDismissJudgment) — the public /api/conviction/execute
+// zod enum (lib/utils/api-schemas.ts) deliberately does not accept them.
+export type SkipReason =
+  | 'not_relevant'
+  | 'already_handled'
+  | 'wrong_approach'
+  | 'slack_dismiss'
+  | 'dashboard_dismiss';
 
 export interface ExecuteActionInput {
   userId: string;
