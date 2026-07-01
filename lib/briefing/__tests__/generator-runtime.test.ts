@@ -1740,11 +1740,12 @@ describe('generateDirective runtime failures', () => {
     expect(directive.directive).not.toBe('__GENERATION_FAILED__');
     expect(directive.action_type).toBe('write_document');
     const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    // #589: collapsed to one `Source:` line + one paragraph — no more 9-section boilerplate.
     expectDocumentArtifactShape(embeddedArtifact, {
       minTitleLength: 12,
-      minLength: 120,
-      minParagraphs: 3,
-      requiredRegexes: [/decision required/i, /\bask:/i, /\bconsequence:/i, /\bowner\b/i],
+      minLength: 100,
+      minParagraphs: 2,
+      requiredRegexes: [/^source:/im, /confirm/i, /\bconsequence:/i, /\bowner\b/i],
     });
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_repaired',
@@ -1800,11 +1801,12 @@ describe('generateDirective runtime failures', () => {
     expect(directive.directive).not.toBe('__GENERATION_FAILED__');
     expect(directive.action_type).toBe('write_document');
     const embeddedArtifact = (directive as { embeddedArtifact?: Record<string, unknown> }).embeddedArtifact;
+    // #589: collapsed to one `Source:` line + one paragraph — no more 9-section boilerplate.
     expectDocumentArtifactShape(embeddedArtifact, {
       minTitleLength: 12,
-      minLength: 120,
-      minParagraphs: 3,
-      requiredRegexes: [/decision required/i, /\bask:/i, /\bconsequence:/i],
+      minLength: 100,
+      minParagraphs: 2,
+      requiredRegexes: [/^source:/im, /confirm/i, /\bconsequence:/i],
     });
     expect(mockLogStructuredEvent).toHaveBeenCalledWith(expect.objectContaining({
       event: 'candidate_repaired',

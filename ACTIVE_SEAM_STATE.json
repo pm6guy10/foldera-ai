@@ -1,10 +1,10 @@
 {
   "active_issue": 567,
-  "active_branch": "claude/agent-override-gate-m3rrqn",
+  "active_branch": "claude/product-differentiation-strategy-1mzd00",
   "active_pr": null,
   "deployed_commit_sha": "e17a47b",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-06-30T20:10:00.024Z",
-  "notes": "All four #567 follow-on fixes (Phase A+B #585, freshness #586, cron-budget #587, push-budget #588) MERGED+LIVE on main. Next named work: issue #589 (Decision lock Slack cards too long -- owner: brevity is king, fit one screen no scroll). Fix drafted in full in the issue (collapse 9-section body to one Source line + one paragraph) but deliberately not committed this session per owner instruction."
+  "last_verified_at": "2026-07-01T18:25:19.000Z",
+  "notes": "All four #567 follow-on fixes (Phase A+B #585, freshness #586, cron-budget #587, push-budget #588) MERGED+LIVE on main; #567 itself remains the active foundation seam, parked on owner sign-offs. This session's side-quest (same pattern as #572/#573) implements #589 (Decision lock Slack cards too long -- owner: brevity is king, fit one screen no scroll): buildDecisionEnforcedFallbackPayload's write_document branch collapsed from a 9-section body to one Source line + one paragraph. Verified against all 4 buildCausalFallbackCopy mechanism classes (default, relationship_cooling, timing_asymmetry, hidden_approval_blocker) so the forcing-function + pressure/consequence + owner-assignment decision-enforcement gates still pass without the old boilerplate lines. Next named work after this lands: #567 owner sign-offs (tkg_goals re-ground + Gmail connector)."
 }

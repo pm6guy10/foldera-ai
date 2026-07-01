@@ -9542,9 +9542,31 @@ export function buildDecisionEnforcedFallbackPayload(input: {
       return null;
     }
 
-    const memoAsk = copy.ask.replace(/^Ask:\s*/i, '').trim();
+    const memoAskRaw = copy.ask.replace(/^Ask:\s*/i, '').trim();
+    const memoAsk = memoAskRaw.charAt(0).toUpperCase() + memoAskRaw.slice(1);
     const safeTarget = target.replace(/[.!?]+$/g, '').trim().slice(0, 72) || target.slice(0, 72);
-    const writeDirective = `Write a decision memo on "${safeTarget}" — ${memoAsk}`.slice(0, 340);
+    const writeDirective = `Write a decision memo on "${safeTarget}" — ${memoAskRaw}`.slice(0, 340);
+
+    // Keep the "Consequence:" label (not stripped) — buildCausalFallbackCopy's
+    // ask text doesn't reliably carry pressure/consequence language on its own,
+    // and the decision-enforcement gate (missing_pressure_or_consequence) matches
+    // on the literal word "consequence".
+    const consequenceSentence = copy.consequence.trim();
+    const mechanismSentence = input.causalDiagnosis.mechanism.trim();
+    // Mirrors two decision-enforcement gates that the old 9-line template satisfied
+    // via fixed boilerplate lines ("Decision required: confirm...", "Owner: assign
+    // one accountable owner..."). Three of buildCausalFallbackCopy's four asks don't
+    // naturally carry a forcing-function keyword or ownership language, so without
+    // these guards the collapsed one-paragraph body would fail
+    // decision_enforcement:missing_forcing_function / missing_owner_assignment on
+    // those causal-mechanism classes.
+    const combinedAskText = `${memoAskRaw} ${consequenceSentence} ${mechanismSentence}`;
+    const hasForcingLanguage = /\b(by\s+\w+day|by\s+\d{4}-\d{2}-\d{2}|deadline|confirm|decide|choose|approve|schedule|commit|next\s+(?:step|action))\b/i.test(
+      combinedAskText,
+    );
+    const forcingPrefix = hasForcingLanguage ? '' : 'Confirm: ';
+    const hasOwnershipLanguage = /\b(owner|accountable|responsible|assign)\b/i.test(combinedAskText);
+    const ownershipSuffix = hasOwnershipLanguage ? '' : ' Name one accountable owner.';
 
     return {
       insight: copy.insight,
@@ -9559,21 +9581,7 @@ export function buildDecisionEnforcedFallbackPayload(input: {
         content: [
           `Source: ${target}.`,
           '',
-          `Decision required: confirm the path for "${safeTarget}" and close the open loop by ${deadline}.`,
-          '',
-          `Deciding criterion: the path is safe only if one accountable owner is named and the commitment is time-bound.`,
-          '',
-          'Owner: assign one accountable owner before this remains open for another cycle.',
-          '',
-          `Next action: ${memoAsk}`,
-          '',
-          `Deadline: ${deadline}.`,
-          '',
-          copy.ask,
-          '',
-          copy.consequence,
-          '',
-          `Mechanism: ${input.causalDiagnosis.mechanism}`,
+          `${forcingPrefix}${memoAsk} ${consequenceSentence} ${mechanismSentence}${ownershipSuffix}`,
         ].join('\n'),
       },
       why_now: copy.whyNow,

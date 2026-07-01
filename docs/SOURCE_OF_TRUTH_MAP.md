@@ -1,6 +1,6 @@
 # Source Of Truth Map
 
-Last updated: 2026-06-29 UTC (active seam is **#567** — foundation R1 card, parked on owner sign-offs. This session merged #572 dedup cooldown (PR #574) + #573 retire commitment_lapsing homework-nag delivery + 30-day staleness floor (PR #575); suppressed 3 stale Rule 59(e) rows. Follow-up: pool hygiene for 88 overdue-30d+ commitments; reconnect inactive OAuth tokens.)
+Last updated: 2026-07-01 UTC (active seam is **#567** — foundation R1 card, parked on owner sign-offs. Prior session merged #572 dedup cooldown (PR #574) + #573 retire commitment_lapsing homework-nag delivery + 30-day staleness floor (PR #575); suppressed 3 stale Rule 59(e) rows. This session's side-quest: #589 Decision lock Slack card brevity fix. Follow-up: pool hygiene for 88 overdue-30d+ commitments; reconnect inactive OAuth tokens.)
 
 This is the keep-list ledger. Everything not listed here is reference, archive, or git history — never authority.
 

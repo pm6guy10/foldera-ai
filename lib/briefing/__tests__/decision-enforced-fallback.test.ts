@@ -75,11 +75,46 @@ describe('buildDecisionEnforcedFallbackPayload', () => {
     expect(directive.toLowerCase()).not.toMatch(
       /^publish a decision memo that locks owner accountability/i,
     );
-    expectDocumentArtifactShape(payload!.artifact, {
+    const { content } = expectDocumentArtifactShape(payload!.artifact, {
       minTitleLength: 12,
       minLength: 60,
-      requiredRegexes: [/decision required/i],
+      requiredRegexes: [/confirm/i, /\d{4}-\d{2}-\d{2}/],
     });
+    // Brevity fix (#589): one `Source:` line + one paragraph, no 9-section boilerplate.
+    const paragraphs = content.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+    expect(paragraphs.length).toBe(2);
+    expect(content).not.toMatch(/Deciding criterion:/i);
+    expect(content).not.toMatch(/Owner: assign one accountable owner/i);
+  });
+
+  it('write_document forcing-function gate still passes for causal mechanism classes without a natural "confirm/decide/deadline" keyword', () => {
+    const mechanismCases: Array<{ label: string; causalDiagnosis: { why_exists_now: string; mechanism: string } }> = [
+      { label: 'relationship_cooling', causalDiagnosis: { why_exists_now: 'Relationship cooling detected', mechanism: 'Unanswered thread with no reciprocity' } },
+      { label: 'timing_asymmetry', causalDiagnosis: { why_exists_now: 'Due date approaching fast', mechanism: 'Timing window closing' } },
+      { label: 'hidden_approval_blocker', causalDiagnosis: { why_exists_now: 'Approval is stuck', mechanism: 'No sign-off owner named' } },
+    ];
+
+    for (const { label, causalDiagnosis } of mechanismCases) {
+      const payload = buildDecisionEnforcedFallbackPayload({
+        winner: baseWinner({ title: `${label} candidate` }),
+        actionType: 'write_document' as ValidArtifactTypeCanonical,
+        candidateDueDate: '2026-04-09',
+        candidateGoal: null,
+        causalDiagnosis,
+        userPromptNames: { user_full_name: 'Test User', user_first_name: 'Test' },
+      });
+      expect(payload).not.toBeNull();
+
+      // Mirrors the write_document forcing-function gate in
+      // validateGeneratedArtifact/generator.ts (hasDecisionPoint) — that check lives
+      // inline against a full StructuredContext, so it's re-asserted here directly
+      // against the artifact content rather than reconstructing that context.
+      const content = String((payload!.artifact as Record<string, unknown>).content ?? '');
+      const hasDecisionPoint = /\b(by\s+\w+day|by\s+\d{4}-\d{2}-\d{2}|deadline|confirm|decide|choose|approve|schedule|commit|next\s+(?:step|action))\b/i.test(
+        content,
+      );
+      expect(hasDecisionPoint).toBe(true);
+    }
   });
 
   it('uses hunt grounded recipient allowlist when summaries omit the external email', () => {

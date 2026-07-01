@@ -25,8 +25,12 @@ accepted_terminal_states:
 active_issue: 567
 priority_class: PRODUCT
 work_type: FEATURE
-why_this_first: "Foundation so a real indispensable R1 card fires (#567). Code complete (PR #568); parked on owner sign-offs: tkg_goals re-ground + Gmail connector (1→967). This session's side-quest merged #572 (dedup cooldown, PR #574) + #573 (retire commitment_lapsing homework-nag delivery + 30-day staleness floor, PR #575) + suppressed 3 stale Rule 59(e) rows."
+why_this_first: "Foundation so a real indispensable R1 card fires (#567). Code complete (PR #568); parked on owner sign-offs: tkg_goals re-ground + Gmail connector (1→967). This session's side-quest merged #572 (dedup cooldown, PR #574) + #573 (retire commitment_lapsing homework-nag delivery + 30-day staleness floor, PR #575) + suppressed 3 stale Rule 59(e) rows. Follow-on side-quest: #589 (Decision lock Slack card brevity)."
 next_seam: "#567 owner sign-offs (tkg_goals re-ground + Gmail connector 1→967) → trigger /api/cron/ingest-and-deliver, verify R1 card via Probe 1. Follow-up: pool-hygiene seam (88/135 active dated commitments overdue 30d+ — auto-expire non-event commitments, generalize #562); reconnect inactive Google/Microsoft OAuth tokens."
+completed_issue_589:
+  issue: 589
+  pr: pending
+  summary: "Decision lock Slack card brevity (owner: 'brevity is king', fit one screen no scroll). buildDecisionEnforcedFallbackPayload's write_document branch (lib/briefing/generator.ts) collapsed from 9 separately-labeled boilerplate lines to one Source: line + one paragraph, implementing the diff drafted in the issue. Found and fixed a latent gap in that drafted diff: 3 of buildCausalFallbackCopy's 4 causal-mechanism asks (relationship_cooling, timing_asymmetry, hidden_approval_blocker) don't naturally carry forcing-function/pressure-consequence/owner-assignment language the way the removed boilerplate lines did — added narrow, conditional guards so those decision-enforcement gates still pass without reintroducing the redundant sentences. Updated decision-enforced-fallback.test.ts + generator-runtime.test.ts fixtures for the new shape; added coverage asserting all 4 mechanism classes clear the gates. lib/briefing suite 912/912 green; typecheck clean."
 completed_issue_538:
   issue: 538
   pr: 545
