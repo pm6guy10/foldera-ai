@@ -1,10 +1,10 @@
 {
   "active_issue": 567,
-  "active_branch": "claude/vision-gap-followup-t0uz6m",
-  "active_pr": null,
-  "deployed_commit_sha": "e5a8152",
+  "active_branch": "claude/post-612-writeback",
+  "active_pr": 613,
+  "deployed_commit_sha": "ef40b94",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-07-02T00:28:07.001Z",
-  "notes": "Skip-signal hygiene backfill (issue #592) atop vision-gap seam #567/#610/#611: live DB check corrected the '1,204 type-inert presence_action' claim (only 15 such rows exist); real fix was quarantining ~1,052 automation/self-log rows from behavioral_rate via feedback_weight=0 (scripts/backfill-skip-signal-hygiene.sql), plus a 1-row presence_action reclassify. Live schema confirmed skip_reason/action_type CHECK constraints already unblocked (local migrations stale). #567 standing next moves unchanged: live-prove #610's three surfaces, live-verify #606."
+  "last_verified_at": "2026-07-02T01:13:15.588Z",
+  "notes": "PR #612 MERGED+LIVE (issue #592 side-fix). Skip-signal hygiene backfill applied to production: quarantined ~1,052 automation/self-log tkg_actions rows (feedback_weight=0) that were counted as real user rejections in computeCandidateScore's behavioral_rate; corrected the '1,204 type-inert presence_action' claim (only 15 such rows exist). Resting on #567 as standing foundation seam. Next moves unchanged: live-prove #610's three surfaces, then live-verify #606."
 }
