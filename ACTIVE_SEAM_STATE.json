@@ -1,10 +1,10 @@
 {
   "active_issue": 567,
   "active_branch": "claude/post-612-writeback",
-  "active_pr": null,
-  "deployed_commit_sha": "ad580c2",
+  "active_pr": 613,
+  "deployed_commit_sha": "ef40b94",
   "runtime_env": "production",
   "db_state_version": "auth.users.user_metadata.workday_presence_state",
-  "last_verified_at": "2026-07-02T01:11:40.573Z",
+  "last_verified_at": "2026-07-02T01:13:15.588Z",
   "notes": "PR #612 MERGED+LIVE (issue #592 side-fix). Skip-signal hygiene backfill applied to production: quarantined ~1,052 automation/self-log tkg_actions rows (feedback_weight=0) that were counted as real user rejections in computeCandidateScore's behavioral_rate; corrected the '1,204 type-inert presence_action' claim (only 15 such rows exist). Resting on #567 as standing foundation seam. Next moves unchanged: live-prove #610's three surfaces, then live-verify #606."
 }
